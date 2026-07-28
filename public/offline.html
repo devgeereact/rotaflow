@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RotaFlow — Offline</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center;
+        background: #0a0a0a; color: #fafafa;
+        font-family: Inter, system-ui, sans-serif; text-align: center; padding: 24px;
+      }
+      .card { max-width: 28rem; }
+      h1 { font-size: 1.5rem; margin: 0 0 .5rem; }
+      p { color: #a3a3a3; line-height: 1.6; margin: 0 0 1.5rem; }
+      button {
+        background: #10b981; color: #022c22; border: 0; border-radius: .75rem;
+        padding: .75rem 1.5rem; font-weight: 600; font-size: 1rem; cursor: pointer;
+      }
+      .dot { color: #10b981; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>You're offline <span class="dot">●</span></h1>
+      <p>
+        This page isn't cached yet and there's no connection right now. Reconnect
+        and try again — the rest of the app still works from cache.
+      </p>
+      <button onclick="location.reload()">Retry</button>
+    </div>
+  </body>
+</html>

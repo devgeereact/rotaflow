@@ -1,0 +1,9 @@
+{
+  "appName": "RotaFlow",
+  "shortName": "RotaFlow",
+  "slug": "rotaflow",
+  "description": "Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.",
+  "appUrl": "https://rotaflow.app",
+  "themeColor": "#2563EB",
+  "backgroundColor": "#FFFFFF"
+}
