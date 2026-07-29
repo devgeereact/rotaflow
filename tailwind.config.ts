@@ -33,6 +33,29 @@ const config: Config = {
           DEFAULT: '#3B6FE0', // brand blue — CTAs, active state, links
           fg: '#FFFFFF', // text/icons on a solid primary fill
         },
+        // Vivid marketing blue + navy ink ramp, sampled from
+        // design/splash-screen.png (and matching signin/dashboard renders).
+        // The brand-expression surfaces — logo mark, wordmark, splash waves —
+        // run hotter and cooler than the muted product `primary`/`content`
+        // tokens. Kept as a separate namespace so restyling the splash never
+        // silently restyles the rota grid. See design/.loop/splash-log.md.
+        brand: {
+          DEFAULT: '#0C60F8', // logo tile, "Flow", progress fill, feature icons
+          deep: '#0A55DE', // deepest wave stop
+          light: '#4C8CFB', // logo accent square, mid wave
+          pale: '#87B4FA', // bottom-centre wave
+          mist: '#C9DCFB', // palest blue wave
+          wash: '#E5EAF4', // progress track, hairline rules
+          // Pending-stage icon/ring tint on design/appboot.png — sampled
+          // directly (not a `brand` opacity blend; alpha-over-white lands
+          // much lighter than this). See design/.loop/appboot-log.md.
+          faint: '#5275CA',
+        },
+        ink: {
+          DEFAULT: '#0D1934', // wordmark "Rota", feature labels
+          muted: '#3E4A6E', // splash subtitle
+          soft: '#5A6684', // status pill, "Loading…" caption
+        },
         secondary: {
           DEFAULT: '#6B7280', // secondary icons/labels (light)
           dark: '#94A3B8', // secondary icons/labels (dark)
@@ -76,6 +99,19 @@ const config: Config = {
         'page-title': ['2rem', { lineHeight: '2.5rem' }], // 32/40
         'section-heading': ['1.5rem', { lineHeight: '2rem' }], // 24/32
         'card-heading': ['1rem', { lineHeight: '1.5rem' }], // 16/24
+        // Splash/marketing lockup only — 120/120, tight tracking, measured off
+        // design/splash-screen.png. Not part of the product type scale.
+        wordmark: ['7.375rem', { lineHeight: '1', letterSpacing: '-0.026em' }],
+      },
+      spacing: {
+        // 266px — the splash logo mark at its reference size; sits between
+        // Tailwind's w-64 (256) and w-72 (288).
+        66: '16.625rem',
+      },
+      letterSpacing: {
+        // Splash subtitle caps — measured at 0.0625em on
+        // design/splash-screen.png, between Tailwind's `wider` and `widest`.
+        lockup: '0.0625em',
       },
       borderRadius: {
         xl: '1rem',
