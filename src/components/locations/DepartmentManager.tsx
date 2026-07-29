@@ -42,6 +42,7 @@ export function DepartmentManager({ orgId, locationId }: DepartmentManagerProps)
 
   const handleAdd = async (): Promise<void> => {
     if (!newName.trim()) return;
+    setError(null);
     try {
       const dept = await createDepartment({ org_id: orgId, location_id: locationId, name: newName.trim() });
       setDepartments((prev) => [...prev, dept].sort((a, b) => a.name.localeCompare(b.name)));
@@ -59,6 +60,7 @@ export function DepartmentManager({ orgId, locationId }: DepartmentManagerProps)
 
   const saveEdit = async (id: string): Promise<void> => {
     if (!editValue.trim()) return;
+    setError(null);
     try {
       const updated = await updateDepartment(id, { name: editValue.trim() });
       setDepartments((prev) => prev.map((d) => (d.id === id ? updated : d)));
@@ -70,6 +72,7 @@ export function DepartmentManager({ orgId, locationId }: DepartmentManagerProps)
   };
 
   const handleDelete = async (id: string): Promise<void> => {
+    setError(null);
     try {
       await deleteDepartment(id);
       setDepartments((prev) => prev.filter((d) => d.id !== id));

@@ -75,6 +75,9 @@ In the Supabase SQL editor, run the migrations **in order**:
 ```
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_rotaflow.sql
+supabase/migrations/0003_fix_organisations_select_rls.sql
+supabase/migrations/0004_rotas_draft_unique.sql
+supabase/migrations/0005_narrow_organisations_select_rls.sql
 ```
 (Or use the Supabase CLI: `supabase db push`.)
 

@@ -65,8 +65,10 @@ export function RotaBuilderPage(): JSX.Element {
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [rota, setRota] = useState<Rota | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [orgDataLoading, setOrgDataLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const [assignModal, setAssignModal] = useState<AssignModalState>({
     open: false,
@@ -84,6 +86,7 @@ export function RotaBuilderPage(): JSX.Element {
   // Org-level data: locations, staff, shift types — independent of week/location.
   useEffect(() => {
     if (!orgId) return;
+    setOrgDataLoading(true);
     void (async () => {
       try {
         const [locs, staffRows, typeRows] = await Promise.all([
@@ -97,6 +100,8 @@ export function RotaBuilderPage(): JSX.Element {
         setLocationId((current) => current ?? locs[0]?.id ?? null);
       } catch (err) {
         reportError(err, { area: 'rota:load-org-data' });
+      } finally {
+        setOrgDataLoading(false);
       }
     })();
   }, [orgId]);
@@ -107,6 +112,7 @@ export function RotaBuilderPage(): JSX.Element {
       setLoading(false);
       return;
     }
+    let active = true;
     setLoading(true);
     void (async () => {
       try {
@@ -118,14 +124,19 @@ export function RotaBuilderPage(): JSX.Element {
           locationId,
         });
         const shiftRows = await listShiftsForRota(draftRota.id);
+        if (!active) return;
         setRota(draftRota);
         setShifts(shiftRows);
       } catch (err) {
+        if (!active) return;
         reportError(err, { area: 'rota:load-week' });
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
+    return () => {
+      active = false;
+    };
   }, [orgId, locationId, weekStart, weekEnd]);
 
   const shiftMap = useMemo(
@@ -265,11 +276,13 @@ export function RotaBuilderPage(): JSX.Element {
   const handlePublish = async (): Promise<void> => {
     if (!rota) return;
     setPublishing(true);
+    setPublishError(null);
     try {
       const updated = await publishRota(rota.id);
       setRota(updated);
     } catch (err) {
       reportError(err, { area: 'rota:publish' });
+      setPublishError('Could not publish this rota. Please try again.');
     } finally {
       setPublishing(false);
     }
@@ -290,7 +303,7 @@ export function RotaBuilderPage(): JSX.Element {
     );
   }
 
-  if (locations.length === 0 && !loading) {
+  if (locations.length === 0 && !orgDataLoading) {
     return (
       <Card>
         <p className="text-content-muted dark:text-content-muted-dark">
@@ -362,6 +375,8 @@ export function RotaBuilderPage(): JSX.Element {
             </Button>
           </div>
         </div>
+
+        {publishError && <p className="mb-4 text-sm text-danger">{publishError}</p>}
 
         <div className="mb-4 flex flex-wrap items-center gap-4 border-b border-surface-border pb-4 dark:border-surface-border-dark">
           <div className="flex gap-1">

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { paletteTokenForColour } from '@/lib/shiftPalette';
+import { paletteToken20ForColour } from '@/lib/shiftPalette';
 
 interface PreviewShiftChipProps {
   label: string;
@@ -15,7 +15,7 @@ export function PreviewShiftChip({ label, colourHex, startTime, endTime }: Previ
       className={cn(
         'w-full rounded-lg border-2 border-dashed px-2 py-1 text-left text-xs font-medium text-content opacity-70 dark:text-content-dark',
         colourHex
-          ? `${paletteTokenForColour(colourHex)}/20`
+          ? paletteToken20ForColour(colourHex)
           : 'bg-surface-subtle dark:bg-surface-subtle-dark',
       )}
     >

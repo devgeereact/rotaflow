@@ -30,17 +30,28 @@ export function RotaGridCell({
   const { setNodeRef, isOver } = useDroppable({
     id: `cell:${shiftCellKey(staffProfileId, date)}`,
   });
+  const isEmpty = shifts.length === 0 && previewSuggestions.length === 0;
+
+  const containerClassName = cn(
+    'min-h-[64px] rounded-lg border border-transparent p-1 transition-colors',
+    isOver && 'border-primary bg-primary/5',
+    isEmpty && 'cursor-pointer hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
+  );
+
+  if (isEmpty) {
+    return (
+      <button
+        type="button"
+        ref={setNodeRef}
+        onClick={onAddShift}
+        aria-label="Add shift"
+        className={cn(containerClassName, 'block w-full text-left')}
+      />
+    );
+  }
 
   return (
-    <div
-      ref={setNodeRef}
-      onClick={shifts.length === 0 && previewSuggestions.length === 0 ? onAddShift : undefined}
-      className={cn(
-        'min-h-[64px] rounded-lg border border-transparent p-1 transition-colors',
-        isOver && 'border-primary bg-primary/5',
-        shifts.length === 0 && previewSuggestions.length === 0 && 'cursor-pointer hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
-      )}
-    >
+    <div ref={setNodeRef} className={containerClassName}>
       <div className="space-y-1">
         {shifts.map((shift) => {
           const shiftType = shiftTypes.find((t) => t.id === shift.shift_type_id);

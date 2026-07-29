@@ -58,8 +58,11 @@ export function computeShiftIsoRange(
   endTime: string,
   timezone: string,
 ): { startsAt: string; endsAt: string } {
+  if (endTime === startTime) {
+    throw new Error('Shift start and end time cannot be the same.');
+  }
   const startsAt = toIsoInTimezone(date, startTime, timezone);
-  const crossesMidnight = endTime <= startTime;
+  const crossesMidnight = endTime < startTime;
   const endDate = crossesMidnight
     ? format(addDays(new Date(`${date}T00:00:00`), 1), 'yyyy-MM-dd')
     : date;
@@ -89,7 +92,8 @@ export function formatDayLabel(dateIso: string): { weekday: string; day: string 
 export function totalScheduledMinutes(shifts: Shift[]): number {
   return shifts.reduce((total, s) => {
     const ms = new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime();
-    return total + Math.max(0, ms / 60000) - s.break_minutes;
+    const net = Math.max(0, ms / 60000) - s.break_minutes;
+    return total + Math.max(0, net);
   }, 0);
 }
 

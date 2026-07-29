@@ -108,7 +108,8 @@ export function ShiftTypeManagerModal({
     }
   };
 
-  const handleDelete = async (id: string): Promise<void> => {
+  const handleDelete = async (id: string, name: string): Promise<void> => {
+    if (!window.confirm(`Delete the "${name}" shift type? This cannot be undone.`)) return;
     try {
       await deleteShiftType(id);
       onChange(shiftTypes.filter((t) => t.id !== id));
@@ -155,7 +156,7 @@ export function ShiftTypeManagerModal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => void handleDelete(type.id)}
+                    onClick={() => void handleDelete(type.id, type.name)}
                     aria-label={`Delete ${type.name}`}
                     className="text-content-muted hover:text-danger dark:text-content-muted-dark"
                   >

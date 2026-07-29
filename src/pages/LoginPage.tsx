@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { env } from '@/lib/env';
@@ -10,6 +10,8 @@ type Provider = 'google' | 'github';
 
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from || '/app/dashboard';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function LoginPage(): JSX.Element {
     withBusy(async () => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate('/app/dashboard');
+      navigate(from, { replace: true });
     });
 
   const signUp = (): Promise<void> =>

@@ -37,13 +37,7 @@ export async function listRotas(orgId: string, locationId?: string): Promise<Rot
   return data ?? [];
 }
 
-/**
- * Find the existing draft rota for this org/location/period, or create one.
- * No unique DB constraint backs this yet, so concurrent callers could race —
- * acceptable for a single-manager MVP (see plan risks), a fast-follow
- * migration is the real fix.
- */
-export async function getOrCreateDraftRota(input: CreateDraftRotaInput): Promise<Rota> {
+async function findDraftRota(input: CreateDraftRotaInput): Promise<Rota | null> {
   let query = supabase
     .from('rotas')
     .select('*')
@@ -55,12 +49,31 @@ export async function getOrCreateDraftRota(input: CreateDraftRotaInput): Promise
     ? query.eq('location_id', input.locationId)
     : query.is('location_id', null);
 
-  const { data: existing, error: findError } = await query.maybeSingle();
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data;
+}
 
-  if (findError) throw findError;
+/**
+ * Find the existing draft rota for this org/location/period, or create one.
+ * A partial unique index (0004_rotas_draft_unique.sql) backs this against
+ * concurrent callers — if two requests race past the find-check, the loser's
+ * insert hits a 23505 unique-violation, and we just reload the winner's row.
+ */
+export async function getOrCreateDraftRota(input: CreateDraftRotaInput): Promise<Rota> {
+  const existing = await findDraftRota(input);
   if (existing) return existing;
 
-  return createDraftRota(input);
+  try {
+    return await createDraftRota(input);
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code;
+    if (code !== '23505') throw err;
+
+    const winner = await findDraftRota(input);
+    if (winner) return winner;
+    throw err;
+  }
 }
 
 export async function updateRota(id: string, patch: RotaUpdate): Promise<Rota> {

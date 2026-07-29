@@ -59,6 +59,7 @@ export function StaffPage(): JSX.Element {
   const [showInactive, setShowInactive] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId) return;
@@ -117,6 +118,7 @@ export function StaffPage(): JSX.Element {
   };
 
   const toggleActive = async (person: StaffProfile): Promise<void> => {
+    setError(null);
     try {
       const updated = person.active
         ? await deactivateStaffProfile(person.id)
@@ -124,6 +126,7 @@ export function StaffPage(): JSX.Element {
       setStaff((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
     } catch (err) {
       reportError(err, { area: 'staff:toggle-active' });
+      setError(`Could not ${person.active ? 'deactivate' : 'reactivate'} ${person.first_name} ${person.last_name}.`);
     }
   };
 
@@ -165,6 +168,8 @@ export function StaffPage(): JSX.Element {
           Show inactive
         </button>
       </div>
+
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {loading ? (
         <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>

@@ -108,18 +108,17 @@ decide (and tell Claude) which of these it should be:
 ```
 
 ### 3. Dashboard / Rota grid — largest scope
-`../src/pages/DashboardPage.tsx` is currently a bare profile/settings stub — this
+`../src/pages/app/DashboardPage.tsx` is currently a bare profile/settings stub — this
 is a full build, not a tweak, and `rotaflowui.png` depicts more than one
 screen's worth of UI at once. **Scope the loop to the main dashboard/rota-grid
 region only** (sidebar nav + header + rota grid + right-hand panels) — ignore
-the small phone mockups and the "DESIGN SYSTEM" strip along the top of the
+ the small phone mockups and the "DESIGN SYSTEM" strip along the top of the
 image, those aren't part of the routed page. Expect to run this loop multiple
 times, narrowing scope each pass (e.g. shell + sidebar first, then the grid
 table, then the coverage/warnings/publish panels).
 
 ```
 {SCREEN_NAME} = Dashboard (rota grid view)
-{ROUTE}       = /dashboard
+{ROUTE}       = /app/dashboard
 {DESIGN_FILE} = rotaflowui.png
-{TARGET_FILE} = src/pages/DashboardPage.tsx
-```
+{TARGET_FILE} = src/pages/app/DashboardPage.tsx

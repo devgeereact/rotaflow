@@ -3,7 +3,10 @@
 The canonical, runnable source is `supabase/migrations/`. `0001_init.sql` ships the
 built-in `profiles` + `app_settings` and conventions; **`0002_rotaflow.sql`** adds the
 RotaFlow domain; **`0003_fix_organisations_select_rls.sql`** fixes an org-creation
-RLS bootstrap bug (see §4). Apply via the Supabase SQL editor or `supabase db push`.
+RLS bootstrap bug (see §4); **`0004_rotas_draft_unique.sql`** adds partial unique
+indexes so concurrent callers can't create duplicate draft rotas; **`0005_narrow_organisations_select_rls.sql`**
+closes the permanent creator-read bypass `0003` left open (see §4). Apply via the
+Supabase SQL editor or `supabase db push`.
 
 RotaFlow is **multi-tenant on a single database**: every domain table carries an
 `org_id`, and Row Level Security isolates tenants. RLS is the last line of defence —
@@ -108,12 +111,17 @@ There is **no** blanket public-read policy. Unauthenticated requests return noth
 These policies are a solid, working baseline — tighten per feature as flows land.
 
 **`organisations` read is a deliberate exception** to the table above:
-`is_org_member(id) OR created_by = auth.uid()` (`0003_fix_organisations_select_rls.sql`).
-Without the `created_by` clause, `insert(...).select().single()` fails RLS for the
-very first org a user creates — Postgres checks the new row against the SELECT
-policy for `RETURNING` *before* the `on_org_created` trigger has inserted their
-membership row, so `is_org_member` alone can't see it yet. The creator must always
-be able to read the org they just created, independent of that trigger's timing.
+`is_org_member(id) OR (created_by = auth.uid() AND no membership row exists yet for
+that org)` (`0003_fix_organisations_select_rls.sql`, narrowed by
+`0005_narrow_organisations_select_rls.sql`). Without the `created_by` clause,
+`insert(...).select().single()` fails RLS for the very first org a user creates —
+Postgres checks the new row against the SELECT policy for `RETURNING` *before* the
+`on_org_created` trigger has inserted their membership row, so `is_org_member` alone
+can't see it yet. `0003`'s original fix left that clause unconditional, which let the
+creator read the org forever, even after their membership was removed or suspended.
+`0005` scopes it to the genuine bootstrap window only — the instant `on_org_created`
+inserts the owner's membership row (same transaction), the `not exists` check flips
+and only `is_org_member()` governs access, same as every other tenant table.
 
 ## 5. Automation
 - **`handle_new_user()`** (from `0001`): creates `profiles` + `app_settings` on sign-up.
