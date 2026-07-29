@@ -34,20 +34,32 @@ The build target is a **static** PWA on Namecheap cPanel (Stellar Plus).
 - Never bypass Row Level Security. Never embed the `service_role` key.
 - Client-exposed keys must be write-scoped or RLS-protected (anon key, ImageKit
   public key, Inngest write-only event key).
+- Edge Functions that act on a user's behalf (see `ai-rota-assistant`) should create
+  their Supabase client with the caller's forwarded JWT (`Authorization` header), not
+  the `service_role` key — RLS then scopes every query to that user's org for free.
+  Reach for `service_role` only for genuinely cross-tenant/system work (billing
+  webhooks, scheduled jobs), and treat that as the exception, not the default.
 
 ## 5. Quality gates (a PR must pass all)
 - `npm run typecheck` — zero errors, no implicit `any`.
 - `npm run lint` — zero warnings.
 - No unused imports/variables, no leaked secrets, no `console.log`.
+- `supabase/functions/**` is Deno (npm:/jsr: specifiers) and is excluded from both
+  gates above — tsc/ESLint can't parse it. Review those files by hand; there is no
+  automated check standing in for you there.
 
 ## 6. Scope discipline
 Do not invent new top-level folders. If a file doesn't fit the structure in
 `docs/ARCHITECTURE.md`, stop and flag it in the PR description instead of
 creating ad-hoc directories.
 
-Respect the phased plan: V1 is the core rota loop. AI scheduling, payroll integrations,
-SSO, the Super Admin billing console, and live payment charging are **Phase 2** — don't
-pull them forward without an explicit decision. SMS is a reserved seam only.
+Respect the phased plan: V1 is the core rota loop. Payroll integrations, SSO, the Super
+Admin billing console, and live payment charging are **Phase 2** — don't pull them
+forward without an explicit decision. SMS is a reserved seam only.
+
+A first slice of AI scheduling — the `ai-rota-assistant` Edge Function (OpenRouter) —
+was deliberately pulled forward into V1; see `docs/ARCHITECTURE.md` §9. Auto-fill,
+demand forecasting and burnout detection remain Phase 2.
 
 ## 6a. Multi-tenancy guardrails (RotaFlow)
 - Every domain table has `org_id`; every query is scoped to the active org. Never write

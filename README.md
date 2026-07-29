@@ -15,13 +15,17 @@ Security.
 - **Availability, leave & overtime** — staff submit, managers approve.
 - **Shift swaps** — request → colleague → manager approval → rota updates.
 - **GPS clock in/out** — QR + GPS + manual, timesheets, hours dashboard.
+- **AI rota assistant** — a manager describes staffing needs in plain English and gets
+  shift suggestions grounded in real staff, skills, availability and existing shifts
+  (OpenRouter, called from a Supabase Edge Function — nothing is invented or written
+  until the manager applies it). See [`docs/ARCHITECTURE.md` §9](docs/ARCHITECTURE.md).
 - **Notifications & announcements** — Web Push + email (SMTP); org/location/department
   broadcasts. *(SMS seam reserved, not wired in V1.)*
 - **Reports & payroll export** — hours, absence, overtime; CSV/Excel.
 - **Roles** — Super Admin · Organisation Owner · Manager · Staff, enforced by RLS.
-- **Phase 2** — AI scheduling, payroll integrations, analytics, SSO, and subscription
-  billing (Apple Pay / Google Pay / PayPal via a pluggable provider). Architected in,
-  built last.
+- **Phase 2** — full AI auto-scheduling (demand forecasting, burnout detection),
+  payroll integrations, analytics, SSO, and subscription billing (Apple Pay / Google
+  Pay / PayPal via a pluggable provider). Architected in, built last.
 
 See [`docs/PRD.md`](docs/PRD.md) for the full scope and phasing.
 
@@ -36,6 +40,8 @@ See [`docs/PRD.md`](docs/PRD.md) for the full scope and phasing.
 | Styling          | Tailwind CSS (NativeWind-ready) | Utility-first, portable to Expo later          |
 | PWA              | `vite-plugin-pwa` (Workbox)     | Precached app shell + runtime caching          |
 | Auth + DB        | Supabase (PostgreSQL + RLS)     | Managed Postgres, row-level security           |
+| Server compute   | Supabase Edge Functions         | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass |
+| AI               | OpenRouter (via Edge Function)  | Rota suggestions grounded in real data; key never touches the client |
 | Media            | ImageKit                        | Real-time image resize/compress over a CDN     |
 | Background jobs  | Inngest                         | Event-driven workflows, cron, retries          |
 | Monitoring       | Sentry                          | Error + performance tracking with source maps  |
@@ -50,6 +56,8 @@ See [`docs/PRD.md`](docs/PRD.md) for the full scope and phasing.
 ### 1. Prerequisites
 - Node.js **>= 18**
 - npm (or pnpm)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) — only needed to deploy the
+  `ai-rota-assistant` Edge Function (step 4); everything else works without it
 
 ### 2. Install & configure
 ```bash
@@ -59,18 +67,29 @@ cp .env.example .env      # then fill in your keys
 ```
 
 ### 3. Set up the database
-In the Supabase SQL editor, run the migration:
+In the Supabase SQL editor, run the migrations **in order**:
 ```
 supabase/migrations/0001_init.sql
+supabase/migrations/0002_rotaflow.sql
 ```
 (Or use the Supabase CLI: `supabase db push`.)
 
-### 4. Develop
+### 4. Deploy the AI rota assistant (optional)
+The natural-language rota assistant runs as a Supabase Edge Function so its OpenRouter
+key never reaches the browser:
+```bash
+supabase functions deploy ai-rota-assistant --project-ref <your-project-ref>
+supabase secrets set OPENROUTER_API_KEY=... --project-ref <your-project-ref>
+```
+Without this, the feature degrades to a clean "not configured yet" message — nothing
+else in the app depends on it.
+
+### 5. Develop
 ```bash
 npm run dev        # http://localhost:5173
 ```
 
-### 5. Verify before shipping
+### 6. Verify before shipping
 ```bash
 npm run typecheck
 npm run lint
@@ -78,7 +97,7 @@ npm run build      # emits ./dist
 npm run preview    # smoke-test the production bundle
 ```
 
-### 6. Deploy to cPanel
+### 7. Deploy to cPanel
 The server has **no Node** — build locally, ship only the artifacts.
 1. Run `npm run build` (emits `./dist`).
 2. Upload **everything inside `dist/`** plus the repo-root **`.htaccess`** into **this
@@ -119,12 +138,14 @@ rotaflow/
 ├── tailwind.config.ts    # design tokens (see docs/DESIGN.md)
 ├── docs/                 # PRD, DESIGN, ARCHITECTURE, SCHEMA, RULES, HOOKS
 ├── public/               # manifest icons, offline.html, robots.txt
-├── supabase/migrations/  # SQL schema + RLS policies
+├── supabase/
+│   ├── migrations/       # SQL schema + RLS policies
+│   └── functions/        # Edge Functions (Deno) — e.g. ai-rota-assistant
 └── src/
     ├── assets/           # static assets imported by code
     ├── components/       # UI (ErrorBoundary, InstallPrompt, ...)
-    ├── context/          # Auth / Theme providers
-    ├── hooks/            # usePWAInstall, useOnlineStatus, ...
+    ├── context/          # Auth / Theme / Org providers
+    ├── hooks/            # usePWAInstall, useOnlineStatus, useOrg, ...
     ├── lib/              # SDK clients (supabase, sentry, imagekit, env)
     ├── pages/            # route views
     ├── services/         # typed Supabase data access

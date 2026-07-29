@@ -25,8 +25,10 @@ Treat the constraints below as ground truth for every response.
 - **TypeScript strict.** No implicit `any`; explicit return types on functions
   and hooks.
 - **Styling:** NativeWind / Tailwind classes, tokens from `tailwind.config.ts`.
-- **Offloaded systems:** Supabase (Auth/DB + RLS), ImageKit (media), Sentry
-  (monitoring), Inngest (background workflows).
+- **Offloaded systems:** Supabase (Auth/DB + RLS + Edge Functions — the only
+  server compute, see `supabase/functions/`), ImageKit (media), Sentry
+  (monitoring), Inngest (background workflows), OpenRouter (AI, called only
+  from an Edge Function — key never reaches the client).
 - **Path alias:** import app code with `@/…` (maps to `src/`).
 
 ## Working style
@@ -34,3 +36,7 @@ Treat the constraints below as ground truth for every response.
 - Keep components small and typed; put SDK setup in `src/lib`, data calls in
   `src/services`, reusable logic in `src/hooks`.
 - When unsure about the DB shape, re-read `docs/SCHEMA.md` rather than guessing.
+- Edge Functions acting on a user's behalf should forward the caller's JWT into
+  their Supabase client (see `supabase/functions/ai-rota-assistant`) so RLS
+  scopes queries — not the `service_role` key. `supabase/functions/**` is Deno
+  and excluded from `npm run typecheck`/`lint`; review it by hand.
