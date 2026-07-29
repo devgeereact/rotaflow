@@ -42,7 +42,11 @@ const FEATURES: BootFeature[] = [
     title: 'Happy Teams',
     body: 'Empower your team and improve satisfaction',
   },
-  { icon: ShieldCheck, title: 'Compliant & Secure', body: 'Stay compliant with confidence' },
+  {
+    icon: ShieldCheck,
+    title: 'Compliant & Secure',
+    body: 'Stay compliant with confidence',
+  },
   {
     icon: BarChart3,
     title: 'Data Driven',
@@ -159,7 +163,9 @@ export function AppBootScreen({
                 />
               )}
               <StepRing icon={Icon} state={state} label={label} className="relative" />
-              <p className="mt-3 text-sm font-medium text-ink dark:text-content-dark">{label}</p>
+              <p className="mt-3 text-sm font-medium text-ink dark:text-content-dark">
+                {label}
+              </p>
               <p
                 className={cn(
                   'text-sm',
@@ -218,7 +224,9 @@ export function AppBootScreen({
                 <Icon size={22} aria-hidden="true" />
               </span>
               <div>
-                <p className="text-sm font-semibold text-ink dark:text-content-dark">{title}</p>
+                <p className="text-sm font-semibold text-ink dark:text-content-dark">
+                  {title}
+                </p>
                 <p className="mt-1 text-sm leading-snug text-content-muted dark:text-content-muted-dark">
                   {body}
                 </p>

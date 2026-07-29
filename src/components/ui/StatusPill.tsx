@@ -28,7 +28,10 @@ export function StatusPill({ className }: StatusPillProps): JSX.Element {
           {online ? 'Online' : 'Offline'}
         </span>
       </span>
-      <span aria-hidden="true" className="h-5 w-px bg-surface-border dark:bg-surface-border-dark" />
+      <span
+        aria-hidden="true"
+        className="h-5 w-px bg-surface-border dark:bg-surface-border-dark"
+      />
       <span className="text-base text-ink-soft dark:text-content-muted-dark">
         v{__APP_VERSION__}
       </span>

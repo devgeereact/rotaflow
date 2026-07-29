@@ -28,7 +28,12 @@ const ACTIVE_SWEEP = 0.4;
  * a uniform tinted ring for done/pending, a partial sweep for the step
  * currently running, and a checkmark badge once a step completes.
  */
-export function StepRing({ icon: Icon, state, label, className }: StepRingProps): JSX.Element {
+export function StepRing({
+  icon: Icon,
+  state,
+  label,
+  className,
+}: StepRingProps): JSX.Element {
   return (
     <span className={cn('relative inline-grid shrink-0 place-items-center', className)}>
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true">
@@ -41,7 +46,8 @@ export function StepRing({ icon: Icon, state, label, className }: StepRingProps)
           className={cn(
             state === 'done' && 'stroke-brand-mist dark:stroke-brand-deep/40',
             state === 'active' && 'stroke-brand-wash dark:stroke-surface-border-dark',
-            state === 'pending' && 'stroke-surface-border dark:stroke-surface-border-dark',
+            state === 'pending' &&
+              'stroke-surface-border dark:stroke-surface-border-dark',
           )}
         />
         {state === 'active' && (
