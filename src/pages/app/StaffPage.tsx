@@ -169,7 +169,11 @@ export function StaffPage(): JSX.Element {
         </button>
       </div>
 
-      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+      {error && (
+        <p className="mb-4 text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
 
       {loading ? (
         <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>

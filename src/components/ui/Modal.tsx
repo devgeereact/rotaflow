@@ -15,6 +15,11 @@ const FOCUSABLE_SELECTOR =
 export function Modal({ open, onClose, title, children }: ModalProps): JSX.Element | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -26,7 +31,7 @@ export function Modal({ open, onClose, title, children }: ModalProps): JSX.Eleme
 
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !dialog) return;
@@ -52,7 +57,7 @@ export function Modal({ open, onClose, title, children }: ModalProps): JSX.Eleme
       window.removeEventListener('keydown', onKeyDown);
       previouslyFocused.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -376,7 +376,11 @@ export function RotaBuilderPage(): JSX.Element {
           </div>
         </div>
 
-        {publishError && <p className="mb-4 text-sm text-danger">{publishError}</p>}
+        {publishError && (
+          <p className="mb-4 text-sm text-danger" role="alert">
+            {publishError}
+          </p>
+        )}
 
         <div className="mb-4 flex flex-wrap items-center gap-4 border-b border-surface-border pb-4 dark:border-surface-border-dark">
           <div className="flex gap-1">
