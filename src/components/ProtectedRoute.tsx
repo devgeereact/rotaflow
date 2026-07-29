@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { SplashScreen } from '@/components/SplashScreen';
 
 /** Gate a route on an authenticated session; redirect to /login otherwise. */
 export function ProtectedRoute({ children }: { children: ReactNode }): JSX.Element {
@@ -8,15 +9,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }): JSX.Eleme
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-background dark:bg-background-dark">
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-surface-border border-t-primary dark:border-surface-border-dark"
-          aria-label="Loading"
-          role="status"
-        />
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   if (!user) {

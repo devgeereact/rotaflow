@@ -77,6 +77,10 @@ interface UseOrg {
   isPlatformAdmin: boolean;
   switchOrg: (orgId: string) => void;
   loading: boolean;
+  // Additive beyond the original spec — used by OnboardingPage and anywhere
+  // that needs to force a re-fetch (e.g. after an invite is accepted).
+  createOrg: (name: string) => Promise<void>;
+  refresh: () => Promise<void>;
 }
 export function useOrg(): UseOrg;
 ```

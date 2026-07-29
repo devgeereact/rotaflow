@@ -25,7 +25,7 @@ export function HomePage(): JSX.Element {
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           {user ? (
-            <Link to="/dashboard">
+            <Link to="/app/dashboard">
               <Button size="lg">Go to dashboard</Button>
             </Link>
           ) : (

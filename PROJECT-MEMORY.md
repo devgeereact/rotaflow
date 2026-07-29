@@ -1,6 +1,30 @@
 # Project Memory — RotaFlow
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-07-29_
+
+## MVP build — Foundation + Core Loop (2026-07-29)
+First real product increment, on top of the design system + AI assistant work.
+Built and **verified end-to-end via live browser testing** (signup → confirm →
+onboarding → add location → add staff → build a rota with drag-and-drop and
+click-to-assign → publish): `/app` shell (sidebar/header/org-switcher),
+`/onboarding` (create-org only — no invites table yet), `/app/locations`
+(+departments), `/app/staff` (full CRUD, soft-delete), `/app/rota` (the rota
+builder — `@dnd-kit` drag-and-drop + click-to-assign modal sharing one write
+path, shift-type manager modal, AI "Auto Fill" folded in from the old
+`AIRotaAssistantPage`, publish). `useOrg`/`usePermissions` rebuilt to match
+`docs/HOOKS.md`'s documented contract. Full plan: see
+`docs/SCREENS.md` for per-screen status.
+
+**Real bug found and fixed via live testing, not code review**: org creation
+failed RLS (`insert().select().single()`) because the SELECT policy
+(`is_org_member`) couldn't see the row before the `on_org_created` trigger
+granted membership — Postgres checks `RETURNING` visibility before that
+trigger fires. Fixed in `0003_fix_organisations_select_rls.sql` by also
+allowing `created_by = auth.uid()`. This is exactly the kind of bug that only
+surfaces with a real authenticated client request — every prior test in this
+project used elevated/service-role access that bypasses RLS entirely. Worth
+remembering: **RLS-sensitive flows need at least one real signed-in-user test,
+not just admin-privileged SQL checks.**
 
 ## Confirmed Decisions
 - **App name:** RotaFlow (working name, user-supplied).

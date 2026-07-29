@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/icons/pwa-512.png" alt="RotaFlow logo" width="120" />
+</p>
+
 # RotaFlow
 
 A **multi-tenant, offline-first workforce scheduling PWA**. Organisations build and

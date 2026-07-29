@@ -36,8 +36,8 @@ role — it gates the `/admin` console only.
 | Forgot / reset password | `[V1]` | No UI exists anywhere |
 | Email verification / magic-link landing | `[V1]` | Needs a screen to handle the Supabase confirmation callback |
 | Accept invite (join org via email link) | `[V1]` | No invite-token flow exists |
-| Onboarding — create or join an organisation | `[Gap→V1]` | Named `/onboarding` in `ARCHITECTURE.md`; today only a form buried inside `AIRotaAssistantPage.tsx` |
-| Org switcher | `[V1]` | For users in multiple orgs; `useOrg().switchOrg` exists in `HOOKS.md`, no UI |
+| Onboarding — create an organisation | `[Built, create-only]` | `/onboarding`. "Join an org" not built — no `invites` table exists yet |
+| Org switcher | `[Built]` | `useOrg().switchOrg` + `OrgSwitcher` in the header; hidden when only one membership |
 
 ## 3. Shared app shell (post-login, role varies content)
 
@@ -65,29 +65,29 @@ role — it gates the `/admin` console only.
 | My timesheets / hours | `[V1]` | `/app/timesheets` (staff mode) |
 | My documents | `[Phase 2]` | `documents` table exists, automation deferred |
 | Emergency contact management | `[Gap]` | `emergency_contacts` table exists, no route |
-| AI Rota Assistant (restricted view) | `[Built]` | Staff see a read-only restriction message |
+| AI Rota Assistant (restricted view) | `[Built]` | Staff/non-managers see a restriction message on `/app/rota` instead of the builder |
 
 ## 5. Manager-facing screens
 
 | Screen | Status | Notes |
 |---|---|---|
-| Rota builder | `[V1]` | `/app/rota` — drag-drop grid, templates, conflict detection, undo/redo |
-| Shift type/template management | `[Gap]` | `shift_types`/`shift_templates` tables exist, no standalone route |
-| Staff directory | `[V1]` | `/app/staff` |
-| Staff profile detail/edit | `[V1]` | Nests emergency contacts + documents |
+| Rota builder | `[Built]` | `/app/rota` — real drag-and-drop (dnd-kit) + click-to-assign modal (same write path), AI auto-fill, publish. No templates, conflict detection, or undo/redo yet |
+| Shift type/template management | `[Built, modal only]` | `shift_types` CRUD via a modal on the rota toolbar — no standalone route. `shift_templates` still untouched |
+| Staff directory | `[Built]` | `/app/staff` — full CRUD, soft-delete via `active` |
+| Staff profile detail/edit | `[Built, partial]` | Edit modal covers core fields; no nested emergency contacts/documents yet |
 | Team availability view | `[V1]` | `/app/availability` (manager mode) |
 | Leave approvals | `[V1]` | `/app/leave` (manager mode) |
 | Swap approvals | `[V1]` | `/app/swaps` (manager mode) |
 | Clock-in review / timesheet exports | `[V1]` | `/app/timesheets` (manager mode) |
 | Announcements composer | `[V1]` | `/app/announcements` (manager mode) |
 | Reports & exports | `[V1]` | `/app/reports` |
-| AI Rota Assistant (full) | `[Built]` | Not listed in `ARCHITECTURE.md`'s route table despite being built — reconcile |
+| AI Rota Assistant (full) | `[Built]` | "Auto Fill" inside `/app/rota` (`AutoFillPanel`) — no longer a standalone page |
 
 ## 6. Owner / org-admin screens
 
 | Screen | Status | Notes |
 |---|---|---|
-| Locations & departments management | `[V1]` | `/app/locations` |
+| Locations & departments management | `[Built]` | `/app/locations` — writable by owner **and** manager per RLS (not owner-only, despite the section heading) |
 | Roles & team management / invite users | `[V1]` | Likely folded into `/app/settings` |
 | Subscription/billing (view only) | `[V1 view / Phase 2 charging]` | PRD scopes live charging out of V1 |
 | Org-wide reports | `[V1]` | Overlaps with Manager's `/app/reports` |
@@ -109,15 +109,25 @@ role — it gates the `/admin` console only.
 
 ## Known reconciliation gaps
 
-1. `ARCHITECTURE.md`'s route table omits the AI Rota Assistant despite it being built and described in §9.
+1. ~~`ARCHITECTURE.md`'s route table omits the AI Rota Assistant~~ — resolved; it's
+   documented as `AutoFillPanel` inside `/app/rota` (§9).
 2. No route for **notifications inbox** despite a full `notifications` table.
 3. No route for **overtime requests** despite a full `overtime_requests` table.
-4. No route for **shift type/template management** despite `shift_types`/`shift_templates` tables.
+4. ~~No route for shift type management~~ — resolved as a modal, not a route
+   (deliberate, see `ARCHITECTURE.md`'s IA note). `shift_templates` is still untouched.
 5. No route for **emergency contacts** or **documents** — likely meant to nest under a staff profile screen.
-6. `ProtectedRoute.tsx` only checks authentication, not role — role-specific screens can't be gated until role-aware routing is added.
+6. `ProtectedRoute.tsx` only checks authentication, not role — role-specific screens
+   still gate in-page (e.g. `/app/rota`'s `canBuildRota` check) rather than at the
+   route level.
+7. **New:** no "join an organisation" mechanism — no `invites` table. Onboarding is
+   create-only; adding a second real user to an org needs a schema addition first.
+8. **New:** `rotas` has no unique constraint on `(org_id, location_id, period_start,
+   period_end)` — concurrent builders on the same week could create duplicate drafts.
+   Low risk for a single-manager MVP; flagged for a fast-follow migration.
 
 ## Suggested next step
 
-Update `ARCHITECTURE.md`'s route table to close gaps 1–5, then scaffold the missing
-`src/pages/*` stubs in priority order — staff daily-use screens first (schedule,
-clock-in, leave, swaps), since the PRD identifies staff as the largest user group.
+Foundation + core loop (onboarding → locations → staff → rota builder → publish) is
+built and verified end-to-end. Next: staff-facing screens (schedule, clock-in, leave,
+swaps) — the PRD identifies staff as the largest user group — then notifications,
+availability, and the invites/join-org flow gap #7 above unblocks.

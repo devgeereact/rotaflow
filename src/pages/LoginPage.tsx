@@ -34,7 +34,7 @@ export function LoginPage(): JSX.Element {
     withBusy(async () => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate('/dashboard');
+      navigate('/app/dashboard');
     });
 
   const signUp = (): Promise<void> =>

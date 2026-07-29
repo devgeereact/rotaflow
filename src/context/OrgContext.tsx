@@ -9,14 +9,28 @@ import {
 } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { createOrganisation, listMyMemberships, type MyMembership } from '@/services/orgService';
+import { getProfile } from '@/services/profileService';
 import { reportError } from '@/lib/sentry';
-import type { MembershipRole, Organisation } from '@/types';
+import type { MembershipRole } from '@/types';
+
+const ACTIVE_ORG_STORAGE_KEY = 'rotaflow:activeOrgId';
+
+export interface OrgMembershipSummary {
+  orgId: string;
+  orgName: string;
+  role: MembershipRole;
+}
 
 export interface OrgContextValue {
-  memberships: MyMembership[];
-  currentOrg: Organisation | null;
-  currentRole: MembershipRole | null;
+  orgId: string | null;
+  orgName: string | null;
+  role: MembershipRole | null;
+  memberships: OrgMembershipSummary[];
+  isPlatformAdmin: boolean;
+  switchOrg: (orgId: string) => void;
   loading: boolean;
+  // Additive beyond docs/HOOKS.md §6 — needed by /onboarding and by any
+  // future "refresh after invite accepted" flow.
   createOrg: (name: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -27,18 +41,29 @@ export const OrgContext = createContext<OrgContextValue | null>(null);
 export function OrgProvider({ children }: { children: ReactNode }): JSX.Element {
   const { user } = useSupabaseAuth();
   const [memberships, setMemberships] = useState<MyMembership[]>([]);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [activeOrgId, setActiveOrgId] = useState<string | null>(() =>
+    typeof window === 'undefined'
+      ? null
+      : window.localStorage.getItem(ACTIVE_ORG_STORAGE_KEY),
+  );
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!user) {
       setMemberships([]);
+      setIsPlatformAdmin(false);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const rows = await listMyMemberships(user.id);
+      const [rows, profile] = await Promise.all([
+        listMyMemberships(user.id),
+        getProfile(user.id),
+      ]);
       setMemberships(rows);
+      setIsPlatformAdmin(profile?.is_platform_admin ?? false);
     } catch (error) {
       reportError(error, { area: 'org:refresh' });
     } finally {
@@ -59,19 +84,33 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
     [user, refresh],
   );
 
+  const switchOrg = useCallback((orgId: string): void => {
+    setActiveOrgId(orgId);
+    window.localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, orgId);
+  }, []);
+
   const value = useMemo<OrgContextValue>(() => {
-    // V1: a manager operates in one org at a time — the first active
-    // membership. Org switching UI lands when multi-org staff need it.
-    const active = memberships[0] ?? null;
+    const summaries: OrgMembershipSummary[] = memberships.map((m) => ({
+      orgId: m.org_id,
+      orgName: m.organisation.name,
+      role: m.role as MembershipRole,
+    }));
+
+    const active =
+      summaries.find((m) => m.orgId === activeOrgId) ?? summaries[0] ?? null;
+
     return {
-      memberships,
-      currentOrg: active?.organisation ?? null,
-      currentRole: (active?.role as MembershipRole | undefined) ?? null,
+      orgId: active?.orgId ?? null,
+      orgName: active?.orgName ?? null,
+      role: active?.role ?? null,
+      memberships: summaries,
+      isPlatformAdmin,
+      switchOrg,
       loading,
       createOrg,
       refresh,
     };
-  }, [memberships, loading, createOrg, refresh]);
+  }, [memberships, activeOrgId, isPlatformAdmin, switchOrg, loading, createOrg, refresh]);
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 }
