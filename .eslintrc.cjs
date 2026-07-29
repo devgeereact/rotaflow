@@ -15,7 +15,14 @@ module.exports = {
     tsconfigRootDir: __dirname,
   },
   plugins: ['@typescript-eslint', 'react-hooks', 'react-refresh'],
-  ignorePatterns: ['dist', 'dev-dist', 'node_modules', '.eslintrc.cjs', 'postcss.config.js'],
+  ignorePatterns: [
+    'dist',
+    'dev-dist',
+    'node_modules',
+    '.eslintrc.cjs',
+    'postcss.config.js',
+    'supabase/functions', // Deno runtime (npm:/jsr: specifiers) — not tsc/ESLint compatible
+  ],
   rules: {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'react-hooks/rules-of-hooks': 'error',

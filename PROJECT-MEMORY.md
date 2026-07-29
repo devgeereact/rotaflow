@@ -57,7 +57,10 @@ _Last updated: 2026-07-28_
 - RISK (native push/SMS): True background push + SMS need server surface (Edge Functions) + third-party accounts (VAPID, Twilio). Fine, but out of a pure-static path — flag as integration work.
 
 ## Future Features (V2+)
-- AI scheduling / auto-fill / demand forecasting / burnout detection / NL scheduling.
+- AI auto-fill / demand forecasting / burnout detection (a first slice of NL
+  scheduling — the `ai-rota-assistant` Supabase Edge Function, OpenRouter-backed
+  — landed early; see docs/ARCHITECTURE.md §9. Auto-fill/forecasting/burnout
+  detection remain V2).
 - Payroll integrations (Sage, Xero, QuickBooks, BrightPay, Staffology).
 - Super Admin platform console + subscription billing (Stripe) + plan gating.
 - SSO (enterprise), advanced analytics, API access, custom branding per tenant.

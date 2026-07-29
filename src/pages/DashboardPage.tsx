@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { getSettings, updateSettings } from '@/services/settingsService';
@@ -77,6 +78,20 @@ export function DashboardPage(): JSX.Element {
             <Button size="sm" onClick={() => void toggleNotifications()}>
               {settings?.notifications_enabled ? 'Turn off' : 'Turn on'}
             </Button>
+          </Card>
+
+          <Card className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-content">AI rota assistant</h2>
+              <p className="text-sm text-content-muted">
+                Draft shifts from a plain-English staffing request.
+              </p>
+            </div>
+            <Link to="/dashboard/ai-assistant">
+              <Button size="sm" variant="secondary">
+                Open
+              </Button>
+            </Link>
           </Card>
         </div>
       )}

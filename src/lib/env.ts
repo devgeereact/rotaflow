@@ -28,7 +28,6 @@ function requireKeys(keys: (keyof ImportMetaEnv)[]): void {
   if (import.meta.env.PROD) return;
   const missing = keys.filter((k) => read(k).length === 0);
   if (missing.length > 0) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[env] Missing env vars: ${missing.join(', ')}. ` +
         'Copy .env.example to .env and fill them in.',

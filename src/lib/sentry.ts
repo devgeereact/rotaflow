@@ -25,7 +25,6 @@ export function reportError(
   context?: Record<string, unknown>,
 ): void {
   if (!env.sentryDsn) {
-    // eslint-disable-next-line no-console
     console.error(error, context);
     return;
   }

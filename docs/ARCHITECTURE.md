@@ -148,3 +148,34 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 - `service_role`, Inngest **signing** key, and DB credentials never touch the client.
 - `.htaccess` adds HTTPS redirect + `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`.
+
+## 9. AI rota assistant (OpenRouter)
+A first slice of NL scheduling (PRD §5, pulled forward from V2): a manager describes
+staffing needs in plain English and gets shift suggestions grounded in real data.
+
+```
+AIRotaAssistantPage (owner/manager, org-scoped)
+  → aiRotaService.generateRotaSuggestions(orgId, prompt, periodStart, periodEnd)
+    → supabase.functions.invoke('ai-rota-assistant', { body })
+        // Authorization header = the calling user's JWT, forwarded automatically.
+      → Edge Function `supabase/functions/ai-rota-assistant`:
+          • creates its Supabase client with that JWT (anon key) — RLS scopes every
+            query to the caller's org; no service-role key is used or needed
+          • checks has_org_role(org, ['owner','manager']) — 403s otherwise
+          • reads staff_profiles, shift_types, existing shifts, approved leave
+            for the period
+          • calls OpenRouter (POST /chat/completions, JSON mode) with that
+            context + the manager's prompt; OPENROUTER_API_KEY is a Supabase
+            project secret, never in the client bundle
+          • validates every suggestion's staffProfileId/shiftTypeId against the
+            org's real rows before returning (never trusts the model's ids)
+  → nothing is written yet — suggestions are a preview
+  → manager clicks "Apply": rotaService.createDraftRota + shiftService.createShifts
+    write a draft rota (RLS: has_org_role(org,['owner','manager']), same as any
+    other rota-builder write)
+```
+
+Model defaults to `openai/gpt-4o-mini`, overridable via the `OPENROUTER_MODEL`
+project secret. Deploy/redeploy with the Supabase MCP `deploy_edge_function` tool
+(or `supabase functions deploy ai-rota-assistant`); set the key with
+`supabase secrets set OPENROUTER_API_KEY=...` or via the dashboard.
