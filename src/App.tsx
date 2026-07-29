@@ -20,6 +20,9 @@ import { TeamPage } from '@/pages/app/TeamPage';
 import { SchedulePage } from '@/pages/app/SchedulePage';
 import { ClockInPage } from '@/pages/app/ClockInPage';
 import { TimesheetsPage } from '@/pages/app/TimesheetsPage';
+import { AvailabilityPage } from '@/pages/app/AvailabilityPage';
+import { LeavePage } from '@/pages/app/LeavePage';
+import { SwapsPage } from '@/pages/app/SwapsPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { StaffPage } from '@/pages/app/StaffPage';
 import { LocationsPage } from '@/pages/app/LocationsPage';
@@ -70,6 +73,9 @@ export function App(): JSX.Element {
                   <Route path="schedule" element={<SchedulePage />} />
                   <Route path="clock" element={<ClockInPage />} />
                   <Route path="timesheets" element={<TimesheetsPage />} />
+                  <Route path="availability" element={<AvailabilityPage />} />
+                  <Route path="leave" element={<LeavePage />} />
+                  <Route path="swaps" element={<SwapsPage />} />
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
