@@ -23,6 +23,30 @@ export function HomePage(): JSX.Element {
           A production-ready starter with auth, offline caching, image optimization, and
           monitoring — all on cheap static hosting.
         </p>
+
+        {/* New CTA section for rota.gakinz.com demo */}
+        <div className="mx-auto mt-8 w-full max-w-2xl rounded-lg border border-surface-border bg-surface p-6 text-left dark:border-surface-border-dark dark:bg-surface-dark">
+          <div className="flex flex-col items-start gap-3">
+            <span className="text-sm font-semibold text-content-muted dark:text-content-muted-dark">Live demo</span>
+            <h2 className="text-2xl font-semibold text-content dark:text-content-dark">Try the public demo</h2>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              A preview of the deployed PWA for quick inspection. The live site is hosted at
+              rota.gakinz.com — open in a new tab to explore the demo environment.
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <a
+                href="https://rota.gakinz.com"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:brightness-95"
+              >
+                Open rota.gakinz.com
+              </a>
+              <span className="text-sm text-content-muted dark:text-content-muted-dark">(Opens in a new tab)</span>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-10 flex items-center justify-center gap-4">
           {user ? (
             <Link to="/app/dashboard">
