@@ -1,17 +1,33 @@
 import { supabase } from '@/lib/supabase';
-import type { Membership, Organisation } from '@/types';
+import type { Membership, Organisation, OrganisationUpdate } from '@/types';
 
 export interface MyMembership extends Membership {
   organisation: Organisation;
 }
 
-function slugify(name: string): string {
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return `${base || 'org'}-${Math.random().toString(36).slice(2, 7)}`;
+/** Normalise a name into a URL-safe slug. No random suffix — the user owns it. */
+export function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'org'
+  );
+}
+
+/**
+ * Is this slug free?
+ *
+ * Cannot be answered with a SELECT: the RLS policy on `organisations` only
+ * exposes orgs the caller belongs to, so a taken slug looks free to everyone
+ * outside that org. Backed by a SECURITY DEFINER function that returns a
+ * boolean and nothing else, so it cannot be used to enumerate tenants.
+ */
+export async function isSlugAvailable(slug: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('slug_available', { p_slug: slug });
+  if (error) throw error;
+  return data === true;
 }
 
 /** Every active organisation the current user belongs to, with role. */
@@ -26,20 +42,73 @@ export async function listMyMemberships(userId: string): Promise<MyMembership[]>
   return data ?? [];
 }
 
+export interface CreateOrganisationInput {
+  name: string;
+  /** Defaults to a slugified name when omitted. */
+  slug?: string;
+  /** Merged into the org's `settings` jsonb (industry, size, locale…). */
+  settings?: Record<string, unknown>;
+}
+
 /**
  * Create a new organisation. The `on_org_created` trigger (0002_rotaflow.sql)
  * makes the creator an active owner automatically.
  */
 export async function createOrganisation(
-  name: string,
+  input: CreateOrganisationInput | string,
   createdBy: string,
 ): Promise<Organisation> {
+  // Kept callable with a bare name so existing callers don't have to change.
+  const normalised: CreateOrganisationInput =
+    typeof input === 'string' ? { name: input } : input;
+
   const { data, error } = await supabase
     .from('organisations')
-    .insert({ name, slug: slugify(name), created_by: createdBy })
+    .insert({
+      name: normalised.name,
+      slug: normalised.slug?.trim() || slugify(normalised.name),
+      settings: (normalised.settings ?? {}) as never,
+      created_by: createdBy,
+    })
     .select('*')
     .single();
 
   if (error) throw error;
   return data;
+}
+
+/** Patch an organisation. Owners only, enforced by RLS. */
+export async function updateOrganisation(
+  orgId: string,
+  patch: OrganisationUpdate,
+): Promise<Organisation> {
+  const { data, error } = await supabase
+    .from('organisations')
+    .update(patch)
+    .eq('id', orgId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Merge keys into `settings` without clobbering the rest of the object.
+ * Read-modify-write is safe here: onboarding is single-user, single-session.
+ */
+export async function mergeOrgSettings(
+  orgId: string,
+  patch: Record<string, unknown>,
+): Promise<Organisation> {
+  const { data: current, error: readError } = await supabase
+    .from('organisations')
+    .select('settings')
+    .eq('id', orgId)
+    .single();
+
+  if (readError) throw readError;
+
+  const merged = { ...((current?.settings as Record<string, unknown>) ?? {}), ...patch };
+  return updateOrganisation(orgId, { settings: merged as never });
 }

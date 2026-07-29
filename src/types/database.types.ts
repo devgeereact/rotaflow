@@ -1405,6 +1405,7 @@ export type Database = {
           expires_at: string;
         }[];
       };
+      slug_available: { Args: { p_slug: string }; Returns: boolean };
       has_org_role: {
         Args: { p_org: string; p_roles: string[] };
         Returns: boolean;

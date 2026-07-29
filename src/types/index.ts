@@ -12,6 +12,7 @@ export type ThemeMode = 'dark' | 'light';
 /** RotaFlow domain rows (see docs/SCHEMA.md). */
 export type Organisation = Database['public']['Tables']['organisations']['Row'];
 export type OrganisationInsert = Database['public']['Tables']['organisations']['Insert'];
+export type OrganisationUpdate = Database['public']['Tables']['organisations']['Update'];
 
 export type MembershipRole = 'owner' | 'manager' | 'staff';
 export type Membership = Database['public']['Tables']['memberships']['Row'];

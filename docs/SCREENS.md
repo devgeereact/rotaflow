@@ -132,7 +132,26 @@ built, verified end-to-end, and hardened by the Phase 1.5 pass (see
 `PROJECT-MEMORY.md` — published-rota reload, session teardown on sign-out,
 load-failure vs empty-state, toasts, OAuth gating).
 
-Next: **Phase 2 — access & identity completion.** The `invites` table (gap #7) is
-the true blocker: with no way to add a second user to an org, none of the
-staff-facing screens can be tested with a real staff account. Then the staff
-schedule view, since the PRD identifies staff as the largest user group.
+**Phase 2 — access & identity — is now built** (code complete, see below for the
+one outstanding step). It closes gap #7 and several `[V1]`/`[Gap]` rows above:
+
+| Screen                     | Now                                                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Sign up                    | `[Built]` — standalone `/signup`, carries an invite token through email confirmation                             |
+| Forgot / reset password    | `[Built]` — `/forgot-password`, `/reset-password`                                                                |
+| Email verification landing | `[Built]` — handled by `detectSessionInUrl` + PKCE on whichever page the link lands on; no separate route needed |
+| Accept invite              | `[Built]` — `/invite/:token`, public so an invitee can preview before signing up                                 |
+| Onboarding                 | `[Built]` — 5-step wizard (create org → about → invite team → plan → done), replacing the create-only stub       |
+| Roles & team management    | `[Built]` — `/app/team`, issue and revoke invitations                                                            |
+| Splash / app boot          | `[Built]` — `AppBootScreen` drives real boot stages from connectivity, auth and org resolution                   |
+
+**Outstanding:** migrations `0006_invites.sql` and `0007_slug_available.sql` are
+written but **not applied** — none of the invite flow works until they are. The
+Supabase CLI is installed but not linked (no access token available in-session).
+
+**Not yet real:** invitations produce a link to send manually. Automated email
+delivery needs the SMTP Edge Function, which belongs to the notifications phase.
+Plan selection records intent only — no payment is collected anywhere.
+
+Next after that: the staff schedule view, since the PRD identifies staff as the
+largest user group.

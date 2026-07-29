@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useOrg } from '@/hooks/useOrg';
-import { SplashScreen } from '@/components/SplashScreen';
+import { AppBootScreen } from '@/components/AppBootScreen';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
@@ -14,7 +14,8 @@ import { Card } from '@/components/ui/Card';
 export function AppShell(): JSX.Element {
   const { loading, loadFailed, memberships, refresh } = useOrg();
 
-  if (loading) return <SplashScreen />;
+  // Auth already resolved to reach AppShell; only the org query is outstanding.
+  if (loading) return <AppBootScreen authResolved orgResolved={false} />;
 
   // Check the failure first. An unreachable memberships query also yields an
   // empty list, and redirecting on that would tell an existing owner to create
