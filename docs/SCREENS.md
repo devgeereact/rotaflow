@@ -71,7 +71,7 @@ role — it gates the `/admin` console only.
 
 | Screen | Status | Notes |
 |---|---|---|
-| Rota builder | `[Built]` | `/app/rota` — real drag-and-drop (dnd-kit) + click-to-assign modal (same write path), AI auto-fill, publish. No templates, conflict detection, or undo/redo yet |
+| Rota builder | `[Built]` | `/app/rota` — real drag-and-drop (dnd-kit) + click-to-assign modal (same write path), AI auto-fill, publish/unpublish. Published weeks reload correctly as of Phase 1.5. No templates, conflict detection, or undo/redo yet |
 | Shift type/template management | `[Built, modal only]` | `shift_types` CRUD via a modal on the rota toolbar — no standalone route. `shift_templates` still untouched |
 | Staff directory | `[Built]` | `/app/staff` — full CRUD, soft-delete via `active` |
 | Staff profile detail/edit | `[Built, partial]` | Edit modal covers core fields; no nested emergency contacts/documents yet |
@@ -128,6 +128,11 @@ role — it gates the `/admin` console only.
 ## Suggested next step
 
 Foundation + core loop (onboarding → locations → staff → rota builder → publish) is
-built and verified end-to-end. Next: staff-facing screens (schedule, clock-in, leave,
-swaps) — the PRD identifies staff as the largest user group — then notifications,
-availability, and the invites/join-org flow gap #7 above unblocks.
+built, verified end-to-end, and hardened by the Phase 1.5 pass (see
+`PROJECT-MEMORY.md` — published-rota reload, session teardown on sign-out,
+load-failure vs empty-state, toasts, OAuth gating).
+
+Next: **Phase 2 — access & identity completion.** The `invites` table (gap #7) is
+the true blocker: with no way to add a second user to an org, none of the
+staff-facing screens can be tested with a real staff account. Then the staff
+schedule view, since the PRD identifies staff as the largest user group.

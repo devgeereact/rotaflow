@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { ToastProvider } from '@/context/ToastContext';
 import { OrgProvider } from '@/context/OrgContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
@@ -20,45 +21,48 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 export function App(): JSX.Element {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <OrgProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/splash" element={<SplashScreen />} />
-              <Route
-                path="/onboarding"
-                element={
-                  <ProtectedRoute>
-                    <OnboardingPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app"
-                element={
-                  <ProtectedRoute>
-                    <AppShell />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="staff" element={<StaffPage />} />
-                <Route path="locations" element={<LocationsPage />} />
-                <Route path="rota" element={<RotaBuilderPage />} />
-              </Route>
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+      {/* Outside AuthProvider so sign-in/sign-out failures can surface too. */}
+      <ToastProvider>
+        <AuthProvider>
+          <OrgProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/splash" element={<SplashScreen />} />
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute>
+                      <OnboardingPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app"
+                  element={
+                    <ProtectedRoute>
+                      <AppShell />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                  <Route path="dashboard" element={<DashboardPage />} />
+                  <Route path="staff" element={<StaffPage />} />
+                  <Route path="locations" element={<LocationsPage />} />
+                  <Route path="rota" element={<RotaBuilderPage />} />
+                </Route>
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
 
-            {/* Global PWA affordances */}
-            <UpdatePrompt />
-            <InstallPrompt />
-            <OfflineBanner />
-          </BrowserRouter>
-        </OrgProvider>
-      </AuthProvider>
+              {/* Global PWA affordances */}
+              <UpdatePrompt />
+              <InstallPrompt />
+              <OfflineBanner />
+            </BrowserRouter>
+          </OrgProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

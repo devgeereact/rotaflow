@@ -10,10 +10,15 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useToast } from '@/hooks/useToast';
 import { listLocations } from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
-import { getOrCreateDraftRota, publishRota } from '@/services/rotaService';
+import {
+  getOrCreateRotaForPeriod,
+  publishRota,
+  unpublishRota,
+} from '@/services/rotaService';
 import {
   createShift,
   deleteShift,
@@ -57,6 +62,7 @@ interface AssignModalState {
 export function RotaBuilderPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canBuildRota } = usePermissions();
+  const { showError, showSuccess } = useToast();
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -66,6 +72,11 @@ export function RotaBuilderPage(): JSX.Element {
   const [rota, setRota] = useState<Rota | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [orgDataLoading, setOrgDataLoading] = useState(true);
+  // Distinct from "no locations exist" — a failed fetch must not be rendered
+  // as an empty org, or we tell an owner to re-add locations they already have.
+  const [orgDataFailed, setOrgDataFailed] = useState(false);
+  // Bumped by the retry button to re-run the org-data effect.
+  const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -87,6 +98,7 @@ export function RotaBuilderPage(): JSX.Element {
   useEffect(() => {
     if (!orgId) return;
     setOrgDataLoading(true);
+    setOrgDataFailed(false);
     void (async () => {
       try {
         const [locs, staffRows, typeRows] = await Promise.all([
@@ -100,11 +112,13 @@ export function RotaBuilderPage(): JSX.Element {
         setLocationId((current) => current ?? locs[0]?.id ?? null);
       } catch (err) {
         reportError(err, { area: 'rota:load-org-data' });
+        setOrgDataFailed(true);
+        showError('Could not load staff and locations. Check your connection and retry.');
       } finally {
         setOrgDataLoading(false);
       }
     })();
-  }, [orgId]);
+  }, [orgId, reloadKey, showError]);
 
   // Rota + shifts for the selected week/location.
   useEffect(() => {
@@ -116,20 +130,23 @@ export function RotaBuilderPage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        const draftRota = await getOrCreateDraftRota({
+        const weekRota = await getOrCreateRotaForPeriod({
           orgId,
           name: `Week of ${weekStart}`,
           periodStart: weekStart,
           periodEnd: weekEnd,
           locationId,
         });
-        const shiftRows = await listShiftsForRota(draftRota.id);
+        const shiftRows = await listShiftsForRota(weekRota.id);
         if (!active) return;
-        setRota(draftRota);
+        setRota(weekRota);
         setShifts(shiftRows);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'rota:load-week' });
+        setRota(null);
+        setShifts([]);
+        showError('Could not load this week. Check your connection and retry.');
       } finally {
         if (active) setLoading(false);
       }
@@ -137,7 +154,7 @@ export function RotaBuilderPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [orgId, locationId, weekStart, weekEnd]);
+  }, [orgId, locationId, weekStart, weekEnd, showError]);
 
   const shiftMap = useMemo(
     () => buildShiftMap(shifts, selectedLocation?.timezone ?? 'Europe/London'),
@@ -209,7 +226,10 @@ export function RotaBuilderPage(): JSX.Element {
           shiftTypeId,
           startTime: type?.default_start?.slice(0, 5) ?? '09:00',
           endTime: type?.default_end?.slice(0, 5) ?? '17:00',
-        }).catch((err) => reportError(err, { area: 'rota:drag-create' }));
+        }).catch((err) => {
+          reportError(err, { area: 'rota:drag-create' });
+          showError('Could not add that shift. Please try again.');
+        });
         return;
       }
 
@@ -231,10 +251,13 @@ export function RotaBuilderPage(): JSX.Element {
           ends_at: endsAt,
         })
           .then((updated) => setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s))))
-          .catch((err) => reportError(err, { area: 'rota:drag-reassign' }));
+          .catch((err) => {
+            reportError(err, { area: 'rota:drag-reassign' });
+            showError('Could not move that shift. It has been left where it was.');
+          });
       }
     },
-    [selectedLocation, shiftTypes, shifts, placeShift],
+    [selectedLocation, shiftTypes, shifts, placeShift, showError],
   );
 
   const handleModalSave = async (values: AssignShiftFormValues): Promise<void> => {
@@ -280,6 +303,7 @@ export function RotaBuilderPage(): JSX.Element {
     try {
       const updated = await publishRota(rota.id);
       setRota(updated);
+      showSuccess('Rota published. Staff can now see this week.');
     } catch (err) {
       reportError(err, { area: 'rota:publish' });
       setPublishError('Could not publish this rota. Please try again.');
@@ -288,9 +312,37 @@ export function RotaBuilderPage(): JSX.Element {
     }
   };
 
+  const handleUnpublish = async (): Promise<void> => {
+    if (!rota) return;
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const updated = await unpublishRota(rota.id);
+      setRota(updated);
+      showSuccess('Rota returned to draft. Re-publish when your changes are ready.');
+    } catch (err) {
+      reportError(err, { area: 'rota:unpublish' });
+      // 23505 means a leftover empty draft from before the Phase 1.5 fix already
+      // occupies this period; say so rather than offering a retry that can't work.
+      const conflict = (err as { code?: string } | null)?.code === '23505';
+      setPublishError(
+        conflict
+          ? 'A separate draft already exists for this week, so this rota cannot be unpublished. Contact support to merge them.'
+          : 'Could not unpublish this rota. Please try again.',
+      );
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const reloadShifts = (): void => {
     if (!rota) return;
-    void listShiftsForRota(rota.id).then(setShifts);
+    void listShiftsForRota(rota.id)
+      .then(setShifts)
+      .catch((err) => {
+        reportError(err, { area: 'rota:reload-shifts' });
+        showError('Could not refresh the grid. Reload the page to see the latest shifts.');
+      });
   };
 
   if (!canBuildRota) {
@@ -299,6 +351,20 @@ export function RotaBuilderPage(): JSX.Element {
         <p className="text-content-muted dark:text-content-muted-dark">
           Only owners and managers can build the rota.
         </p>
+      </Card>
+    );
+  }
+
+  if (orgDataFailed && !orgDataLoading) {
+    return (
+      <Card>
+        <p className="mb-4 text-content-muted dark:text-content-muted-dark">
+          Could not load this organisation&rsquo;s staff and locations. This is a
+          connection problem, not an empty organisation — nothing has been lost.
+        </p>
+        <Button size="sm" onClick={() => setReloadKey((k) => k + 1)}>
+          Retry
+        </Button>
       </Card>
     );
   }
@@ -366,13 +432,25 @@ export function RotaBuilderPage(): JSX.Element {
                 ))}
               </Select>
             )}
-            <Button
-              size="sm"
-              onClick={() => void handlePublish()}
-              disabled={publishing || rota?.status === 'published'}
-            >
-              {publishing ? 'Publishing…' : 'Publish'}
-            </Button>
+            {rota?.status === 'published' ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void handleUnpublish()}
+                disabled={publishing}
+              >
+                {publishing ? 'Updating…' : 'Unpublish'}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => void handlePublish()}
+                disabled={publishing || !rota || shifts.length === 0}
+                title={shifts.length === 0 ? 'Add at least one shift before publishing' : undefined}
+              >
+                {publishing ? 'Publishing…' : 'Publish'}
+              </Button>
+            )}
           </div>
         </div>
 

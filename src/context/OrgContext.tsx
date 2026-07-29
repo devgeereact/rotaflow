@@ -11,9 +11,8 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { createOrganisation, listMyMemberships, type MyMembership } from '@/services/orgService';
 import { getProfile } from '@/services/profileService';
 import { reportError } from '@/lib/sentry';
+import { ACTIVE_ORG_STORAGE_KEY } from '@/lib/session';
 import type { MembershipRole } from '@/types';
-
-const ACTIVE_ORG_STORAGE_KEY = 'rotaflow:activeOrgId';
 
 export interface OrgMembershipSummary {
   orgId: string;
@@ -29,6 +28,13 @@ export interface OrgContextValue {
   isPlatformAdmin: boolean;
   switchOrg: (orgId: string) => void;
   loading: boolean;
+  /**
+   * True when the memberships query failed. Consumers MUST check this before
+   * treating `memberships: []` as "this user has no organisation" — otherwise
+   * a dropped connection reads as a brand-new user and pushes an existing
+   * owner into onboarding, where they can create a duplicate organisation.
+   */
+  loadFailed: boolean;
   // Additive beyond docs/HOOKS.md §6 — needed by /onboarding and by any
   // future "refresh after invite accepted" flow.
   createOrg: (name: string) => Promise<void>;
@@ -48,11 +54,13 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       : window.localStorage.getItem(ACTIVE_ORG_STORAGE_KEY),
   );
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!user) {
       setMemberships([]);
       setIsPlatformAdmin(false);
+      setLoadFailed(false);
       setLoading(false);
       return;
     }
@@ -64,8 +72,12 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       ]);
       setMemberships(rows);
       setIsPlatformAdmin(profile?.is_platform_admin ?? false);
+      setLoadFailed(false);
     } catch (error) {
       reportError(error, { area: 'org:refresh' });
+      // Deliberately leaves any previously loaded memberships in place — a
+      // failed refresh must not blank out a session that was working.
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -107,10 +119,20 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       isPlatformAdmin,
       switchOrg,
       loading,
+      loadFailed,
       createOrg,
       refresh,
     };
-  }, [memberships, activeOrgId, isPlatformAdmin, switchOrg, loading, createOrg, refresh]);
+  }, [
+    memberships,
+    activeOrgId,
+    isPlatformAdmin,
+    switchOrg,
+    loading,
+    loadFailed,
+    createOrg,
+    refresh,
+  ]);
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 }

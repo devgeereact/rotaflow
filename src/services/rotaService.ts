@@ -37,31 +37,53 @@ export async function listRotas(orgId: string, locationId?: string): Promise<Rot
   return data ?? [];
 }
 
-async function findDraftRota(input: CreateDraftRotaInput): Promise<Rota | null> {
+export interface RotaPeriodQuery {
+  orgId: string;
+  periodStart: string;
+  periodEnd: string;
+  locationId?: string | null;
+}
+
+/** Every rota for one org/location/period, newest first. Normally 0 or 1. */
+async function listRotasForPeriod(input: RotaPeriodQuery): Promise<Rota[]> {
   let query = supabase
     .from('rotas')
     .select('*')
     .eq('org_id', input.orgId)
     .eq('period_start', input.periodStart)
-    .eq('period_end', input.periodEnd)
-    .eq('status', 'draft');
+    .eq('period_end', input.periodEnd);
   query = input.locationId
     ? query.eq('location_id', input.locationId)
     : query.is('location_id', null);
 
-  const { data, error } = await query.maybeSingle();
+  const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw error;
-  return data;
+  return data ?? [];
 }
 
 /**
- * Find the existing draft rota for this org/location/period, or create one.
+ * The rota the builder should open for a period, whatever its status.
+ *
+ * A published rota outranks a draft: it is what staff are already looking at,
+ * so it must never be shadowed. Filtering this lookup to `status = 'draft'` was
+ * the pre-1.5 bug — publishing a week and then revisiting it found no draft,
+ * silently created an empty one, and the grid rendered as if the week had been
+ * wiped (the shifts were still attached to the published rota, which nothing
+ * ever read back).
+ */
+export async function findRotaForPeriod(input: RotaPeriodQuery): Promise<Rota | null> {
+  const rows = await listRotasForPeriod(input);
+  return rows.find((r) => r.status === 'published') ?? rows[0] ?? null;
+}
+
+/**
+ * Find the rota for this org/location/period, or create a draft.
  * A partial unique index (0004_rotas_draft_unique.sql) backs this against
  * concurrent callers — if two requests race past the find-check, the loser's
  * insert hits a 23505 unique-violation, and we just reload the winner's row.
  */
-export async function getOrCreateDraftRota(input: CreateDraftRotaInput): Promise<Rota> {
-  const existing = await findDraftRota(input);
+export async function getOrCreateRotaForPeriod(input: CreateDraftRotaInput): Promise<Rota> {
+  const existing = await findRotaForPeriod(input);
   if (existing) return existing;
 
   try {
@@ -70,7 +92,7 @@ export async function getOrCreateDraftRota(input: CreateDraftRotaInput): Promise
     const code = (err as { code?: string } | null)?.code;
     if (code !== '23505') throw err;
 
-    const winner = await findDraftRota(input);
+    const winner = await findRotaForPeriod(input);
     if (winner) return winner;
     throw err;
   }
@@ -93,4 +115,17 @@ export async function publishRota(id: string): Promise<Rota> {
     status: 'published',
     published_at: new Date().toISOString(),
   });
+}
+
+/**
+ * Return a published rota to draft so it can be amended before re-publishing.
+ *
+ * Can fail with 23505 against `rotas_draft_unique_*` if a stray draft already
+ * exists for the same org/location/period — possible only for data created
+ * before the `findRotaForPeriod` fix, which could leave a published rota and an
+ * empty draft side by side. Callers surface that conflict rather than guessing
+ * which of the two to discard.
+ */
+export async function unpublishRota(id: string): Promise<Rota> {
+  return updateRota(id, { status: 'draft', published_at: null });
 }

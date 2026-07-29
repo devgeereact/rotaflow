@@ -77,6 +77,8 @@ interface UseOrg {
   isPlatformAdmin: boolean;
   switchOrg: (orgId: string) => void;
   loading: boolean;
+  // Whether the memberships query failed. See the rule below.
+  loadFailed: boolean;
   // Additive beyond the original spec — used by OnboardingPage and anywhere
   // that needs to force a re-fetch (e.g. after an invite is accepted).
   createOrg: (name: string) => Promise<void>;
@@ -84,6 +86,13 @@ interface UseOrg {
 }
 export function useOrg(): UseOrg;
 ```
+
+> **Rule: never treat `memberships: []` as "this user has no organisation"
+> without checking `loadFailed` first.** A failed query produces an empty list
+> too. Reading one as the other is what sent an existing owner to `/onboarding`
+> whenever the app was offline past the 5-minute API cache window — where they
+> could create a duplicate organisation. `AppShell` and `OnboardingPage` both
+> check `loadFailed && memberships.length === 0` and offer a retry instead.
 
 ### 7. `usePermissions`
 `src/hooks/usePermissions.ts`
@@ -125,6 +134,26 @@ interface UseGeolocation {
 }
 export function useGeolocation(): UseGeolocation;
 ```
+
+### 10. `useToast`
+`src/hooks/useToast.ts`
+Transient user-facing feedback, rendered by `ToastProvider` (`src/context/ToastContext.tsx`).
+```ts
+type ToastVariant = 'success' | 'error' | 'info';
+interface UseToast {
+  toasts: { id: number; variant: ToastVariant; message: string }[];
+  showToast: (variant: ToastVariant, message: string) => number; // returns id
+  showError: (message: string) => number;
+  showSuccess: (message: string) => number;
+  dismissToast: (id: number) => void;
+}
+export function useToast(): UseToast;
+```
+
+> **Rule: every user-initiated write reports its failure to the user, not just
+> to Sentry.** `reportError` alone leaves the user believing the action worked —
+> the rota builder silently dropped drag-and-drop shift assignments that way.
+> Errors render with `role="alert"` and an 8s dwell; success uses `role="status"`.
 
 ## Conventions
 - Every hook is fully typed with an explicit return interface.

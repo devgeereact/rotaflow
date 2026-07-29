@@ -13,7 +13,7 @@ import logo from '@/assets/logo.png';
  * backing mechanism (see plan risks). Don't fake that flow.
  */
 export function OnboardingPage(): JSX.Element {
-  const { loading, memberships, createOrg } = useOrg();
+  const { loading, loadFailed, memberships, createOrg, refresh } = useOrg();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
@@ -42,6 +42,29 @@ export function OnboardingPage(): JSX.Element {
   }, [name, createOrg, navigate]);
 
   if (loading) return <SplashScreen />;
+
+  // Reachable by direct URL, so it needs the same guard as AppShell: never
+  // offer to create an organisation when we simply failed to load the ones
+  // the user may already have.
+  if (loadFailed && memberships.length === 0) {
+    return (
+      <main className="grid min-h-screen place-items-center px-6">
+        <Card className="w-full max-w-sm text-center">
+          <img src={logo} alt="RotaFlow" className="mx-auto mb-6 h-14 w-14" />
+          <h1 className="mb-1 font-display text-2xl text-content dark:text-content-dark">
+            Couldn&rsquo;t load your organisations
+          </h1>
+          <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
+            If you already belong to one, creating another here would duplicate
+            it. Check your connection and try again.
+          </p>
+          <Button className="w-full" onClick={() => void refresh()}>
+            Retry
+          </Button>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="grid min-h-screen place-items-center px-6">
