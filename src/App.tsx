@@ -18,6 +18,8 @@ import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { TeamPage } from '@/pages/app/TeamPage';
 import { SchedulePage } from '@/pages/app/SchedulePage';
+import { ClockInPage } from '@/pages/app/ClockInPage';
+import { TimesheetsPage } from '@/pages/app/TimesheetsPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { StaffPage } from '@/pages/app/StaffPage';
 import { LocationsPage } from '@/pages/app/LocationsPage';
@@ -66,6 +68,8 @@ export function App(): JSX.Element {
                   <Route path="locations" element={<LocationsPage />} />
                   <Route path="rota" element={<RotaBuilderPage />} />
                   <Route path="schedule" element={<SchedulePage />} />
+                  <Route path="clock" element={<ClockInPage />} />
+                  <Route path="timesheets" element={<TimesheetsPage />} />
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>

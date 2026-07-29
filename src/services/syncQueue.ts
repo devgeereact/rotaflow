@@ -27,7 +27,10 @@ import type { ClockEventInsert, LeaveRequestInsert, ShiftSwapInsert } from '@/ty
 const REPLAYERS: {
   [K in OutboxKind]: (payload: unknown) => Promise<void>;
 } = {
-  clock: (payload) => recordClockEvent(payload as ClockEventInsert),
+  // recordClockEvent now returns the inserted row (ClockInPage reads it back
+  // to update UI state on the online path); the replay path only needs to
+  // know the write landed, so the row is discarded here.
+  clock: (payload) => recordClockEvent(payload as ClockEventInsert).then(() => undefined),
   leave: (payload) => createLeaveRequest(payload as LeaveRequestInsert),
   swap: (payload) => requestShiftSwap(payload as ShiftSwapInsert),
 };

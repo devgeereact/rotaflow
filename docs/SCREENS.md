@@ -54,34 +54,34 @@ role — it gates the `/admin` console only.
 
 ## 4. Staff-facing screens
 
-| Screen                              | Status      | Notes                                                                              |
-| ----------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
-| My schedule (rota view)             | `[V1]`      | `/app/schedule` — month/week/day, ICS subscribe/download                           |
-| Availability submission             | `[V1]`      | `/app/availability` (staff mode)                                                   |
-| Leave request + tracking            | `[V1]`      | `/app/leave` (staff mode)                                                          |
-| Overtime request/offer              | `[Gap]`     | `overtime_requests` table exists, no named route                                   |
-| Shift swap request + status         | `[V1]`      | `/app/swaps` (staff mode)                                                          |
-| Clock in/out                        | `[V1]`      | GPS/QR/manual (`clock_events`, `useGeolocation`, `useSyncQueue`)                   |
-| My timesheets / hours               | `[V1]`      | `/app/timesheets` (staff mode)                                                     |
-| My documents                        | `[Phase 2]` | `documents` table exists, automation deferred                                      |
-| Emergency contact management        | `[Gap]`     | `emergency_contacts` table exists, no route                                        |
-| AI Rota Assistant (restricted view) | `[Built]`   | Staff/non-managers see a restriction message on `/app/rota` instead of the builder |
+| Screen                              | Status                | Notes                                                                                                                                                                              |
+| ----------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| My schedule (rota view)             | `[V1]`                | `/app/schedule` — month/week/day, ICS subscribe/download                                                                                                                           |
+| Availability submission             | `[V1]`                | `/app/availability` (staff mode)                                                                                                                                                   |
+| Leave request + tracking            | `[V1]`                | `/app/leave` (staff mode)                                                                                                                                                          |
+| Overtime request/offer              | `[Gap]`               | `overtime_requests` table exists, no named route                                                                                                                                   |
+| Shift swap request + status         | `[V1]`                | `/app/swaps` (staff mode)                                                                                                                                                          |
+| Clock in/out                        | `[Built, GPS+manual]` | `/app/clock` — GPS + manual, offline-queued via `useSyncQueue`. QR deferred: nothing generates a per-location code to scan yet                                                     |
+| My timesheets / hours               | `[Built]`             | `/app/timesheets` (staff mode) — real hours computed from `clock_events`, not the `timesheets` table's submit/approve workflow (unspecified business rules; see PROJECT-MEMORY.md) |
+| My documents                        | `[Phase 2]`           | `documents` table exists, automation deferred                                                                                                                                      |
+| Emergency contact management        | `[Gap]`               | `emergency_contacts` table exists, no route                                                                                                                                        |
+| AI Rota Assistant (restricted view) | `[Built]`             | Staff/non-managers see a restriction message on `/app/rota` instead of the builder                                                                                                 |
 
 ## 5. Manager-facing screens
 
-| Screen                              | Status                | Notes                                                                                                                                                                                                                       |
-| ----------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rota builder                        | `[Built]`             | `/app/rota` — real drag-and-drop (dnd-kit) + click-to-assign modal (same write path), AI auto-fill, publish/unpublish. Published weeks reload correctly as of Phase 1.5. No templates, conflict detection, or undo/redo yet |
-| Shift type/template management      | `[Built, modal only]` | `shift_types` CRUD via a modal on the rota toolbar — no standalone route. `shift_templates` still untouched                                                                                                                 |
-| Staff directory                     | `[Built]`             | `/app/staff` — full CRUD, soft-delete via `active`                                                                                                                                                                          |
-| Staff profile detail/edit           | `[Built, partial]`    | Edit modal covers core fields; no nested emergency contacts/documents yet                                                                                                                                                   |
-| Team availability view              | `[V1]`                | `/app/availability` (manager mode)                                                                                                                                                                                          |
-| Leave approvals                     | `[V1]`                | `/app/leave` (manager mode)                                                                                                                                                                                                 |
-| Swap approvals                      | `[V1]`                | `/app/swaps` (manager mode)                                                                                                                                                                                                 |
-| Clock-in review / timesheet exports | `[V1]`                | `/app/timesheets` (manager mode)                                                                                                                                                                                            |
-| Announcements composer              | `[V1]`                | `/app/announcements` (manager mode)                                                                                                                                                                                         |
-| Reports & exports                   | `[V1]`                | `/app/reports`                                                                                                                                                                                                              |
-| AI Rota Assistant (full)            | `[Built]`             | "Auto Fill" inside `/app/rota` (`AutoFillPanel`) — no longer a standalone page                                                                                                                                              |
+| Screen                         | Status                | Notes                                                                                                                                                                                                                       |
+| ------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rota builder                   | `[Built]`             | `/app/rota` — real drag-and-drop (dnd-kit) + click-to-assign modal (same write path), AI auto-fill, publish/unpublish. Published weeks reload correctly as of Phase 1.5. No templates, conflict detection, or undo/redo yet |
+| Shift type/template management | `[Built, modal only]` | `shift_types` CRUD via a modal on the rota toolbar — no standalone route. `shift_templates` still untouched                                                                                                                 |
+| Staff directory                | `[Built]`             | `/app/staff` — full CRUD, soft-delete via `active`                                                                                                                                                                          |
+| Staff profile detail/edit      | `[Built, partial]`    | Edit modal covers core fields; no nested emergency contacts/documents yet                                                                                                                                                   |
+| Team availability view         | `[V1]`                | `/app/availability` (manager mode)                                                                                                                                                                                          |
+| Leave approvals                | `[V1]`                | `/app/leave` (manager mode)                                                                                                                                                                                                 |
+| Swap approvals                 | `[V1]`                | `/app/swaps` (manager mode)                                                                                                                                                                                                 |
+| Clock-in review                | `[Built]`             | `/app/timesheets` (manager mode, "Team" toggle) — hours review only, no export yet                                                                                                                                          |
+| Announcements composer         | `[V1]`                | `/app/announcements` (manager mode)                                                                                                                                                                                         |
+| Reports & exports              | `[V1]`                | `/app/reports`                                                                                                                                                                                                              |
+| AI Rota Assistant (full)       | `[Built]`             | "Auto Fill" inside `/app/rota` (`AutoFillPanel`) — no longer a standalone page                                                                                                                                              |
 
 ## 6. Owner / org-admin screens
 
@@ -145,13 +145,33 @@ one outstanding step). It closes gap #7 and several `[V1]`/`[Gap]` rows above:
 | Roles & team management    | `[Built]` — `/app/team`, issue and revoke invitations                                                            |
 | Splash / app boot          | `[Built]` — `AppBootScreen` drives real boot stages from connectivity, auth and org resolution                   |
 
-**Outstanding:** migrations `0006_invites.sql` and `0007_slug_available.sql` are
-written but **not applied** — none of the invite flow works until they are. The
-Supabase CLI is installed but not linked (no access token available in-session).
+Migrations `0006_invites.sql` and `0007_slug_available.sql` were applied
+2026-07-29 and the invite round-trip is live.
 
 **Not yet real:** invitations produce a link to send manually. Automated email
 delivery needs the SMTP Edge Function, which belongs to the notifications phase.
 Plan selection records intent only — no payment is collected anywhere.
 
-Next after that: the staff schedule view, since the PRD identifies staff as the
-largest user group.
+**Phase 3 — staff schedule view — is built.** `/app/schedule`, published-only,
+day/week/2-week/month, ICS export, staff agenda vs manager grid.
+
+**Phase 4 (part 1) — offline write outbox — is built.** `useSyncQueue` +
+IndexedDB outbox, to the exact `docs/HOOKS.md` §8 contract. Landed with no
+consumer at the time; Phase 5's clock-in screen is its first.
+
+**Phase 5 — time & attendance — is built**, to the scope below:
+
+| Screen                    | Now                                                         |
+| ------------------------- | ----------------------------------------------------------- |
+| Clock in/out              | `[Built, GPS+manual]` — `/app/clock`, offline-queued        |
+| My hours                  | `[Built]` — `/app/timesheets`, computed from `clock_events` |
+| Clock-in review (manager) | `[Built]` — `/app/timesheets` "Team" toggle                 |
+
+**Deliberately not built:** QR clock-in (nothing generates a per-location code
+to scan), the `timesheets` table's submit/approve/export workflow (no
+automation populates it, and its period/approval rules were never specified —
+see `PROJECT-MEMORY.md`), and payroll export.
+
+Next: leave, availability and shift-swap requests (Phase 6) — the other
+`useSyncQueue` consumers (`leaveService`, `swapService`) already exist from
+Phase 4 with no screen yet, same pattern as clock-in had.
