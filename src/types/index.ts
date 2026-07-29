@@ -33,6 +33,15 @@ export type Shift = Database['public']['Tables']['shifts']['Row'];
 export type ShiftInsert = Database['public']['Tables']['shifts']['Insert'];
 export type ShiftUpdate = Database['public']['Tables']['shifts']['Update'];
 
+export type ClockEvent = Database['public']['Tables']['clock_events']['Row'];
+export type ClockEventInsert = Database['public']['Tables']['clock_events']['Insert'];
+
+export type LeaveRequest = Database['public']['Tables']['leave_requests']['Row'];
+export type LeaveRequestInsert = Database['public']['Tables']['leave_requests']['Insert'];
+
+export type ShiftSwap = Database['public']['Tables']['shift_swaps']['Row'];
+export type ShiftSwapInsert = Database['public']['Tables']['shift_swaps']['Insert'];
+
 export type Invite = Database['public']['Tables']['invites']['Row'];
 export type InviteInsert = Database['public']['Tables']['invites']['Insert'];
 export type InviteUpdate = Database['public']['Tables']['invites']['Update'];
