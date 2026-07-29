@@ -31,6 +31,28 @@ export async function listStaff(
   return data ?? [];
 }
 
+/**
+ * The signed-in user's own staff profile in this org, if they have one.
+ *
+ * Returns null for a manager or owner who was never added to the staff
+ * directory — a real case, since membership and staff record are separate
+ * things. Callers must handle it rather than assuming everyone is staff.
+ */
+export async function getMyStaffProfile(
+  orgId: string,
+  userId: string,
+): Promise<StaffProfile | null> {
+  const { data, error } = await supabase
+    .from('staff_profiles')
+    .select('*')
+    .eq('org_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getStaffProfile(id: string): Promise<StaffProfile | null> {
   const { data, error } = await supabase
     .from('staff_profiles')

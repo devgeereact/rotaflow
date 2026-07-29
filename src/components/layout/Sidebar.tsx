@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarRange,
   Users,
   UserPlus,
   MapPin,
@@ -29,6 +30,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard' },
   { label: 'Rota', icon: CalendarDays, to: '/app/rota' },
+  { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
   { label: 'Staff', icon: Users, to: '/app/staff' },
   { label: 'Team', icon: UserPlus, to: '/app/team' },
   { label: 'Locations', icon: MapPin, to: '/app/locations' },
