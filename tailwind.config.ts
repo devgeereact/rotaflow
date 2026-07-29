@@ -100,8 +100,6 @@ const config: Config = {
         wordmark: ['7.375rem', { lineHeight: '1', letterSpacing: '-0.026em' }],
       },
       spacing: {
-        // 108px — baseline offset of the splash feature strip.
-        27: '6.75rem',
         // 266px — the splash logo mark at its reference size; sits between
         // Tailwind's w-64 (256) and w-72 (288).
         66: '16.625rem',

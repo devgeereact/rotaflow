@@ -106,7 +106,7 @@ export function SplashScreen({
       </main>
 
       {/* Feature strip */}
-      <ul className="absolute inset-x-0 bottom-27 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 px-6">
+      <ul className="absolute inset-x-0 bottom-28 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 px-6">
         {FEATURES.map(({ icon: Icon, label }, i) => (
           <li key={label} className="flex items-center gap-8">
             {i > 0 && (
