@@ -79,7 +79,7 @@ export function SplashScreen({
           Rota<span className="text-brand dark:text-brand-light">Flow</span>
         </h1>
 
-        <p className="text-xs font-semibold uppercase tracking-widest text-ink-muted dark:text-content-muted-dark sm:text-lg lg:text-2xl">
+        <p className="mt-1 text-xs font-medium uppercase tracking-lockup text-ink-muted dark:text-content-muted-dark sm:text-lg lg:text-2xl">
           Workforce Scheduling Platform
         </p>
 
@@ -106,7 +106,7 @@ export function SplashScreen({
       </main>
 
       {/* Feature strip */}
-      <ul className="absolute inset-x-0 bottom-28 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 px-6">
+      <ul className="absolute inset-x-0 bottom-27 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 px-6">
         {FEATURES.map(({ icon: Icon, label }, i) => (
           <li key={label} className="flex items-center gap-8">
             {i > 0 && (
@@ -118,15 +118,13 @@ export function SplashScreen({
             <span className="flex items-center gap-2.5">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-surface-border bg-surface dark:border-surface-border-dark dark:bg-surface-dark">
                 <Icon
-                  size={24}
+                  size={26}
                   strokeWidth={2.25}
                   className="text-brand"
                   aria-hidden="true"
                 />
               </span>
-              <span className="text-sm font-medium text-ink dark:text-content-dark">
-                {label}
-              </span>
+              <span className="text-sm text-ink dark:text-content-dark">{label}</span>
             </span>
           </li>
         ))}

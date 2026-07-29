@@ -97,12 +97,19 @@ const config: Config = {
         'card-heading': ['1rem', { lineHeight: '1.5rem' }], // 16/24
         // Splash/marketing lockup only — 120/120, tight tracking, measured off
         // design/splash-screen.png. Not part of the product type scale.
-        wordmark: ['7.5rem', { lineHeight: '1', letterSpacing: '-0.04em' }],
+        wordmark: ['7.375rem', { lineHeight: '1', letterSpacing: '-0.026em' }],
       },
       spacing: {
-        // 264px — the splash logo mark (design/splash-screen.png renders it at
-        // 266px); sits between Tailwind's w-64 (256) and w-72 (288).
-        66: '16.5rem',
+        // 108px — baseline offset of the splash feature strip.
+        27: '6.75rem',
+        // 266px — the splash logo mark at its reference size; sits between
+        // Tailwind's w-64 (256) and w-72 (288).
+        66: '16.625rem',
+      },
+      letterSpacing: {
+        // Splash subtitle caps — measured at 0.0625em on
+        // design/splash-screen.png, between Tailwind's `wider` and `widest`.
+        lockup: '0.0625em',
       },
       borderRadius: {
         xl: '1rem',

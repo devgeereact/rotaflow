@@ -35,7 +35,7 @@ export function BrandMark({
       <rect x="60" y="120" width="48" height="48" rx="12" className="fill-brand-light" />
       {/* Bar + bowl */}
       <path
-        d="M72 41H156A66 66 0 0 1 173 162L151 122A24 24 0 0 0 150 87H72A12 12 0 0 1 60 75V53A12 12 0 0 1 72 41Z"
+        d="M72 41H156A66 66 0 0 1 166 166L135 126A24 24 0 0 0 150 87H72A12 12 0 0 1 60 75V53A12 12 0 0 1 72 41Z"
         className="fill-primary-fg"
       />
       {/* Diagonal leg */}
