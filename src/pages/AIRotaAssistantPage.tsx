@@ -109,7 +109,7 @@ export function AIRotaAssistantPage(): JSX.Element {
   if (orgLoading) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-16">
-        <p className="text-content-muted">Loading…</p>
+        <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
       </main>
     );
   }
@@ -120,15 +120,15 @@ export function AIRotaAssistantPage(): JSX.Element {
         <Link to="/dashboard" className="text-sm text-primary">
           ← Back to dashboard
         </Link>
-        <h1 className="mb-2 mt-4 font-display text-3xl text-content">
+        <h1 className="mb-2 mt-4 font-display text-3xl text-content dark:text-content-dark">
           Set up your organisation
         </h1>
-        <p className="mb-6 text-content-muted">
+        <p className="mb-6 text-content-muted dark:text-content-muted-dark">
           The AI rota assistant needs an organisation to schedule staff within.
         </p>
         <Card className="space-y-4">
           <input
-            className="w-full rounded-xl border border-surface-border bg-transparent px-4 py-2 text-content"
+            className="w-full rounded-xl border border-surface-border bg-transparent px-4 py-2 text-content dark:border-surface-border-dark dark:text-content-dark"
             placeholder="Organisation name"
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}
@@ -136,7 +136,7 @@ export function AIRotaAssistantPage(): JSX.Element {
           <Button onClick={() => void handleCreateOrg()} disabled={creatingOrg}>
             {creatingOrg ? 'Creating…' : 'Create organisation'}
           </Button>
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
         </Card>
       </main>
     );
@@ -149,10 +149,10 @@ export function AIRotaAssistantPage(): JSX.Element {
       <Link to="/dashboard" className="text-sm text-primary">
         ← Back to dashboard
       </Link>
-      <h1 className="mb-2 mt-4 font-display text-3xl text-content">
+      <h1 className="mb-2 mt-4 font-display text-3xl text-content dark:text-content-dark">
         AI rota assistant
       </h1>
-      <p className="mb-8 text-content-muted">
+      <p className="mb-8 text-content-muted dark:text-content-muted-dark">
         Describe your staffing needs in plain English for{' '}
         <strong>{currentOrg.name}</strong>. Suggestions are grounded in real staff,
         skills and existing shifts — nothing is saved until you apply them.
@@ -160,7 +160,7 @@ export function AIRotaAssistantPage(): JSX.Element {
 
       {!canManage ? (
         <Card>
-          <p className="text-content-muted">
+          <p className="text-content-muted dark:text-content-muted-dark">
             Only owners and managers can generate rota suggestions.
           </p>
         </Card>
@@ -168,27 +168,27 @@ export function AIRotaAssistantPage(): JSX.Element {
         <div className="space-y-6">
           <Card className="space-y-4">
             <div className="flex gap-4">
-              <label className="flex-1 text-sm text-content-muted">
+              <label className="flex-1 text-sm text-content-muted dark:text-content-muted-dark">
                 From
                 <input
                   type="date"
-                  className="mt-1 w-full rounded-xl border border-surface-border bg-transparent px-4 py-2 text-content"
+                  className="mt-1 w-full rounded-xl border border-surface-border bg-transparent px-4 py-2 text-content dark:border-surface-border-dark dark:text-content-dark"
                   value={periodStart}
                   onChange={(e) => setPeriodStart(e.target.value)}
                 />
               </label>
-              <label className="flex-1 text-sm text-content-muted">
+              <label className="flex-1 text-sm text-content-muted dark:text-content-muted-dark">
                 To
                 <input
                   type="date"
-                  className="mt-1 w-full rounded-xl border border-surface-border bg-transparent px-4 py-2 text-content"
+                  className="mt-1 w-full rounded-xl border border-surface-border bg-transparent px-4 py-2 text-content dark:border-surface-border-dark dark:text-content-dark"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
                 />
               </label>
             </div>
             <textarea
-              className="w-full rounded-xl border border-surface-border bg-transparent px-4 py-3 text-content"
+              className="w-full rounded-xl border border-surface-border bg-transparent px-4 py-3 text-content dark:border-surface-border-dark dark:text-content-dark"
               rows={3}
               placeholder="e.g. Cover Saturday and Sunday nights with two people who can do lates, prioritise anyone under their weekly hours."
               value={prompt}
@@ -200,32 +200,32 @@ export function AIRotaAssistantPage(): JSX.Element {
             >
               {generating ? 'Thinking…' : 'Generate suggestions'}
             </Button>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-danger">{error}</p>}
           </Card>
 
           {summary && (
             <Card>
-              <p className="text-content">{summary}</p>
+              <p className="text-content dark:text-content-dark">{summary}</p>
             </Card>
           )}
 
           {suggestions.length > 0 && (
             <Card className="space-y-4">
-              <h2 className="text-lg font-semibold text-content">
+              <h2 className="text-lg font-semibold text-content dark:text-content-dark">
                 Suggested shifts ({suggestions.length})
               </h2>
               <ul className="space-y-3">
                 {suggestions.map((s, i) => (
                   <li
                     key={`${s.staffProfileId}-${s.date}-${s.startTime}-${i}`}
-                    className="rounded-xl border border-surface-border p-4"
+                    className="rounded-xl border border-surface-border p-4 dark:border-surface-border-dark"
                   >
-                    <p className="font-medium text-content">
+                    <p className="font-medium text-content dark:text-content-dark">
                       {s.staffName} · {s.date} · {s.startTime}–{s.endTime}
                       {s.shiftTypeName ? ` · ${s.shiftTypeName}` : ''}
                     </p>
                     {s.reasoning && (
-                      <p className="mt-1 text-sm text-content-muted">{s.reasoning}</p>
+                      <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">{s.reasoning}</p>
                     )}
                   </li>
                 ))}

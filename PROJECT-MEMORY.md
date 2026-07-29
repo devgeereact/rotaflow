@@ -37,11 +37,16 @@ _Last updated: 2026-07-28_
 - CONFIRMED: SMS = design the space (schema fields, notification-channel enum, service seam) but NO active integration for now. Twilio deferred; do not wire it in V1.
 - CONFIRMED: Payments = Apple Pay, Google Pay, PayPal (and similar wallets). Architect the billing/subscription layer around a pluggable payment-provider abstraction from the start, but IMPLEMENT it LAST (final phase). Not Stripe-specific. Webhooks/verification via Supabase Edge Function.
 
-## Design & Naming (CONFIRMED)
-- Aesthetic: Clean & professional (Linear/Notion-like; trusted-tool feel).
-- Theme: auto — follows device (prefers-color-scheme); both light & dark supported.
-- Accent: Blue. Primary ≈ #2563EB (blue-600), dark-mode accent ≈ #3B82F6 (blue-500).
+## Design & Naming (CONFIRMED — superseded 2026-07-29 by design/*.png + docs/DESIGN.md)
+- Aesthetic: Clean & professional (Linear/Notion-like; trusted-tool feel). Still true.
+- Theme: **light by default** (not auto/prefers-color-scheme as originally planned —
+  revised once `design/rotaflowui.png` showed an explicit "Light Mode (Default)"
+  toggle). Dark remains fully supported as a deliberate user choice.
+- Accent: Blue, revised to `#3B6FE0` (was `#2563EB`) per `design/designsystem.png`.
+  Same value in both themes — no separate dark-mode accent.
 - appName: RotaFlow · shortName: RotaFlow (8 chars) · slug: rotaflow.
+- Full token set (colours, type scale, shift-type palette, shadows, icons) now
+  lives in `docs/DESIGN.md` — treat that as canonical, this entry as history.
 
 ## Open Questions
 - What is the ONE feature that must delight on day one? (rota builder drag-drop? offline staff view? GPS clock-in?)

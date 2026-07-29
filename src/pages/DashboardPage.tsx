@@ -51,27 +51,27 @@ export function DashboardPage(): JSX.Element {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-3xl text-content">Dashboard</h1>
+        <h1 className="font-display text-3xl text-content dark:text-content-dark">Dashboard</h1>
         <Button variant="ghost" size="sm" onClick={() => void signOut()}>
           Sign out
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-content-muted">Loading…</p>
+        <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
       ) : (
         <div className="space-y-6">
           <Card>
-            <h2 className="mb-2 text-lg font-semibold text-content">Profile</h2>
-            <p className="text-content-muted">
+            <h2 className="mb-2 text-lg font-semibold text-content dark:text-content-dark">Profile</h2>
+            <p className="text-content-muted dark:text-content-muted-dark">
               {profile?.full_name ?? 'No name set'} · {profile?.email ?? user?.email}
             </p>
           </Card>
 
           <Card className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-content">Notifications</h2>
-              <p className="text-sm text-content-muted">
+              <h2 className="text-lg font-semibold text-content dark:text-content-dark">Notifications</h2>
+              <p className="text-sm text-content-muted dark:text-content-muted-dark">
                 {settings?.notifications_enabled ? 'Enabled' : 'Disabled'}
               </p>
             </div>
@@ -82,8 +82,8 @@ export function DashboardPage(): JSX.Element {
 
           <Card className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-content">AI rota assistant</h2>
-              <p className="text-sm text-content-muted">
+              <h2 className="text-lg font-semibold text-content dark:text-content-dark">AI rota assistant</h2>
+              <p className="text-sm text-content-muted dark:text-content-muted-dark">
                 Draft shifts from a plain-English staffing request.
               </p>
             </div>

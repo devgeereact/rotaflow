@@ -9,9 +9,9 @@ export function ProtectedRoute({ children }: { children: ReactNode }): JSX.Eleme
 
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-background">
+      <div className="grid min-h-screen place-items-center bg-background dark:bg-background-dark">
         <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-surface-border border-t-primary"
+          className="h-8 w-8 animate-spin rounded-full border-2 border-surface-border border-t-primary dark:border-surface-border-dark"
           aria-label="Loading"
           role="status"
         />

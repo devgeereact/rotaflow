@@ -90,8 +90,9 @@ Role determines which nav items and routes render; the server enforces access vi
 - **Tenant state:** an `OrgProvider` (Context) holds the active organisation + the
   caller's role/membership, resolved after auth. Every service call passes `org_id`;
   the org switcher updates this context. Role gates which UI renders (RLS gates data).
-- **UI/theme state:** `ThemeProvider` (Context) — follows device `prefers-color-scheme`
-  by default, with a user override persisted to `app_settings`.
+- **UI/theme state:** `ThemeProvider` (Context) — **light by default** (see
+  `docs/DESIGN.md` §1; a deliberate brand choice, not `prefers-color-scheme`),
+  with a user override persisted to `localStorage`.
 - **Offline write queue:** clock-ins, leave requests and swap responses made offline are
   written to an IndexedDB outbox (`services/syncQueue`), replayed on reconnect via
   `useOnlineStatus`. Reads use the SW's `NetworkFirst` Supabase cache.
