@@ -1,14 +1,80 @@
 import { supabase } from '@/lib/supabase';
-import type { ClockEventInsert } from '@/types';
+import type { ClockEvent, ClockEventInsert } from '@/types';
 
 /**
- * Data layer only — no clock-in screen exists yet (Phase 5). This exists now
- * because useSyncQueue (docs/HOOKS.md §8) needs something to replay a queued
- * 'clock' item against, and clock_events + its RLS already shipped in
- * 0002_rotaflow.sql. Building the insert path ahead of its screen mirrors how
- * inviteService landed before the onboarding step that first called it.
+ * The insert path predates its screen (Phase 4) — useSyncQueue needed
+ * something real to replay a queued 'clock' item against. This phase adds the
+ * reads a clock in/out screen and an hours view actually need.
  */
-export async function recordClockEvent(input: ClockEventInsert): Promise<void> {
-  const { error } = await supabase.from('clock_events').insert(input);
+export async function recordClockEvent(input: ClockEventInsert): Promise<ClockEvent> {
+  const { data, error } = await supabase
+    .from('clock_events')
+    .insert(input)
+    .select('*')
+    .single();
   if (error) throw error;
+  return data;
+}
+
+/**
+ * The most recent event for one person, to derive their current status
+ * (clocked in / on break / clocked out) without maintaining a separate
+ * "current state" column that could drift from the event log.
+ */
+export async function getLatestClockEvent(
+  staffProfileId: string,
+): Promise<ClockEvent | null> {
+  const { data, error } = await supabase
+    .from('clock_events')
+    .select('*')
+    .eq('staff_profile_id', staffProfileId)
+    .order('event_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export interface ClockEventRange {
+  staffProfileId: string;
+  /** Inclusive ISO instant. */
+  fromIso: string;
+  /** Exclusive ISO instant. */
+  toIso: string;
+}
+
+/** One person's events in a window, oldest first — pairs into in/out shifts for hours totals. */
+export async function listClockEventsForStaff(
+  range: ClockEventRange,
+): Promise<ClockEvent[]> {
+  const { data, error } = await supabase
+    .from('clock_events')
+    .select('*')
+    .eq('staff_profile_id', range.staffProfileId)
+    .gte('event_at', range.fromIso)
+    .lt('event_at', range.toIso)
+    .order('event_at', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export interface OrgClockEventRange {
+  orgId: string;
+  fromIso: string;
+  toIso: string;
+}
+
+/** Every event across the org in a window, newest first — manager review. */
+export async function listClockEventsForOrg(
+  range: OrgClockEventRange,
+): Promise<ClockEvent[]> {
+  const { data, error } = await supabase
+    .from('clock_events')
+    .select('*')
+    .eq('org_id', range.orgId)
+    .gte('event_at', range.fromIso)
+    .lt('event_at', range.toIso)
+    .order('event_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
