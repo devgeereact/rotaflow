@@ -20,13 +20,53 @@ updates:
       production-patch:
         dependency-type: production
         update-types: [patch]
-    # React 18 and Vite 6 majors are deliberate migrations, not Dependabot's call.
+    # ---------------------------------------------------------------------
+    # Toolchain majors are migrations, not upgrades — a human plans them.
+    #
+    # The first run of this config proved the point: it opened PRs for
+    # TypeScript 5 -> 7, Tailwind 3 -> 4 and eslint-plugin-react-hooks 5 -> 7.
+    # Tailwind 4 alone replaces the config format, and tailwind.config.ts now
+    # carries the whole design system plus the brand tokens; merging that PR
+    # does not upgrade the project, it breaks the build and leaves someone to
+    # reconstruct the design system from a diff.
+    #
+    # Scope is deliberately narrow. Majors for *runtime* dependencies
+    # (@supabase/supabase-js, @sentry/react, react-router-dom, date-fns…) still
+    # open PRs: those are where a security fix is most likely to land
+    # major-only, and this app holds staff personal data. Blanket-ignoring
+    # every major would suppress exactly the updates worth seeing.
+    # ---------------------------------------------------------------------
     ignore:
+      # Framework — a React or Vite major is a planned migration.
       - dependency-name: react
         update-types: ['version-update:semver-major']
       - dependency-name: react-dom
         update-types: ['version-update:semver-major']
       - dependency-name: vite
+        update-types: ['version-update:semver-major']
+      # Language and build toolchain.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      - dependency-name: tailwindcss
+        update-types: ['version-update:semver-major']
+      - dependency-name: postcss
+        update-types: ['version-update:semver-major']
+      - dependency-name: autoprefixer
+        update-types: ['version-update:semver-major']
+      # Lint and format. An ESLint major means a config-format migration, and
+      # its plugins move in lockstep with it.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'eslint-plugin-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@typescript-eslint/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: prettier
+        update-types: ['version-update:semver-major']
+      # Vite plugins are pinned to the Vite major they support.
+      - dependency-name: '@vitejs/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: vite-plugin-pwa
         update-types: ['version-update:semver-major']
     commit-message:
       prefix: 'chore(deps)'
@@ -34,10 +74,18 @@ updates:
 
   # Actions are pinned by major tag (@v4), which still moves under us. Dependabot
   # is what surfaces a compromised or deprecated action.
+  #
+  # Grouped: the first run opened three separate PRs for three routine bumps.
+  # Action majors are kept flowing rather than ignored — they are usually
+  # mechanical, and a deprecated or compromised action is exactly what this
+  # ecosystem entry exists to surface.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
       day: monday
+    groups:
+      github-actions:
+        patterns: ['*']
     commit-message:
       prefix: 'chore(ci)'
