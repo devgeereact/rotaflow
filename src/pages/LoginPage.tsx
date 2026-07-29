@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { env, type OAuthProvider } from '@/lib/env';
@@ -142,6 +142,21 @@ export function LoginPage(): JSX.Element {
         >
           Email me a magic link instead
         </button>
+
+        <div className="mt-3 flex justify-between text-sm">
+          <Link
+            to="/forgot-password"
+            className="text-content-muted underline-offset-4 hover:underline dark:text-content-muted-dark"
+          >
+            Forgot password?
+          </Link>
+          <Link
+            to="/signup"
+            className="text-secondary underline-offset-4 hover:underline dark:text-secondary-dark"
+          >
+            Create an account
+          </Link>
+        </div>
 
         {/* Only providers actually enabled in Supabase — see env.oauthProviders. */}
         {env.oauthProviders.length > 0 && (

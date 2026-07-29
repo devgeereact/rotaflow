@@ -32,6 +32,10 @@ export type Shift = Database['public']['Tables']['shifts']['Row'];
 export type ShiftInsert = Database['public']['Tables']['shifts']['Insert'];
 export type ShiftUpdate = Database['public']['Tables']['shifts']['Update'];
 
+export type Invite = Database['public']['Tables']['invites']['Row'];
+export type InviteInsert = Database['public']['Tables']['invites']['Insert'];
+export type InviteUpdate = Database['public']['Tables']['invites']['Update'];
+
 export type Location = Database['public']['Tables']['locations']['Row'];
 export type LocationInsert = Database['public']['Tables']['locations']['Insert'];
 export type LocationUpdate = Database['public']['Tables']['locations']['Update'];

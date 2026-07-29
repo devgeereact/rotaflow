@@ -12,6 +12,11 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
+import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
+import { SignupPage } from '@/pages/SignupPage';
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
+import { TeamPage } from '@/pages/app/TeamPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { StaffPage } from '@/pages/app/StaffPage';
 import { LocationsPage } from '@/pages/app/LocationsPage';
@@ -29,7 +34,14 @@ export function App(): JSX.Element {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/splash" element={<SplashScreen />} />
+                {/* Public on purpose: an invitee has no account yet, and
+                    preview_invite is granted to anon so they can see who
+                    invited them before signing up. */}
+                <Route path="/invite/:token" element={<AcceptInvitePage />} />
                 <Route
                   path="/onboarding"
                   element={
@@ -49,6 +61,7 @@ export function App(): JSX.Element {
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="staff" element={<StaffPage />} />
+                  <Route path="team" element={<TeamPage />} />
                   <Route path="locations" element={<LocationsPage />} />
                   <Route path="rota" element={<RotaBuilderPage />} />
                 </Route>
