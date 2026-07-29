@@ -3,6 +3,11 @@
  * Nothing else in the app should read `import.meta.env` directly.
  */
 
+/** OAuth providers the sign-in screen knows how to render. */
+export type OAuthProvider = 'google' | 'github';
+
+const SUPPORTED_OAUTH_PROVIDERS: readonly OAuthProvider[] = ['google', 'github'];
+
 interface AppEnv {
   appName: string;
   appUrl: string;
@@ -12,6 +17,16 @@ interface AppEnv {
   imagekitPublicKey: string;
   sentryDsn: string;
   inngestEventKey: string;
+  /**
+   * Which OAuth providers to offer on the sign-in screen.
+   *
+   * Per-provider, not a single on/off flag: they are enabled independently in
+   * the Supabase dashboard (Authentication → Providers), and rendering a button
+   * for a provider that is disabled upstream is a dead end for the user. As of
+   * 2026-07-29 this project has Google enabled and GitHub disabled, so one flag
+   * for both would necessarily be wrong for one of them.
+   */
+  oauthProviders: readonly OAuthProvider[];
   isProd: boolean;
   mode: string;
 }
@@ -35,6 +50,21 @@ function requireKeys(keys: (keyof ImportMetaEnv)[]): void {
   }
 }
 
+/**
+ * Parse `VITE_ENABLE_OAUTH` — a comma-separated provider list, e.g. "google"
+ * or "google,github". Unknown or legacy values ("true"/"false") match nothing
+ * and yield an empty list, so a misconfigured value hides the buttons rather
+ * than shipping dead ones.
+ */
+function readOAuthProviders(): readonly OAuthProvider[] {
+  return read('VITE_ENABLE_OAUTH')
+    .split(',')
+    .map((part) => part.trim().toLowerCase())
+    .filter((part): part is OAuthProvider =>
+      SUPPORTED_OAUTH_PROVIDERS.includes(part as OAuthProvider),
+    );
+}
+
 requireKeys(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']);
 
 export const env: AppEnv = {
@@ -46,6 +76,7 @@ export const env: AppEnv = {
   imagekitPublicKey: read('VITE_IMAGEKIT_PUBLIC_KEY'),
   sentryDsn: read('VITE_SENTRY_DSN'),
   inngestEventKey: read('VITE_INNGEST_EVENT_KEY'),
+  oauthProviders: readOAuthProviders(),
   isProd: import.meta.env.PROD,
   mode: import.meta.env.MODE,
 };

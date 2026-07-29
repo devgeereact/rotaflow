@@ -2,11 +2,16 @@ import { useState, type ChangeEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
-import { env } from '@/lib/env';
+import { env, type OAuthProvider } from '@/lib/env';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
-type Provider = 'google' | 'github';
+type Provider = OAuthProvider;
+
+const PROVIDER_LABELS: Record<OAuthProvider, string> = {
+  google: 'Google',
+  github: 'GitHub',
+};
 
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
@@ -124,29 +129,29 @@ export function LoginPage(): JSX.Element {
           Email me a magic link instead
         </button>
 
-        <div className="my-5 flex items-center gap-3 text-xs text-content-muted dark:text-content-muted-dark">
-          <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" /> OR{' '}
-          <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" />
-        </div>
+        {/* Only providers actually enabled in Supabase — see env.oauthProviders. */}
+        {env.oauthProviders.length > 0 && (
+          <>
+            <div className="my-5 flex items-center gap-3 text-xs text-content-muted dark:text-content-muted-dark">
+              <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" /> OR{' '}
+              <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" />
+            </div>
 
-        <div className="flex gap-3">
-          <Button
-            className="flex-1"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void signInWithOAuth('google')}
-          >
-            Google
-          </Button>
-          <Button
-            className="flex-1"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void signInWithOAuth('github')}
-          >
-            GitHub
-          </Button>
-        </div>
+            <div className="flex gap-3">
+              {env.oauthProviders.map((provider) => (
+                <Button
+                  key={provider}
+                  className="flex-1"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => void signInWithOAuth(provider)}
+                >
+                  Continue with {PROVIDER_LABELS[provider]}
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
 
         {message && (
           <p role="status" className="mt-4 text-center text-sm text-content-muted dark:text-content-muted-dark">

@@ -2,6 +2,93 @@
 
 _Last updated: 2026-07-29_
 
+## Domain & auth configuration (2026-07-29)
+**Canonical URL: `https://rota.gakinz.com`** — a subdomain of the `gakinz.com`
+cPanel account, docroot `~/rota.gakinz.com/`, origin `185.61.152.45`.
+
+`rotaflow.app` — the scaffold placeholder — **is not ours.** It resolves to
+Vercel and serves an unrelated, already-shipped shift-scheduling product
+(iPhone/iPad/Apple Watch, App Store `id6758777908`). It had leaked into
+`VITE_APP_URL`, which is the auth `redirectTo`, so magic-link and OAuth sign-ins
+were being asked to return users to a third party's website. Replaced everywhere:
+`.env`, `.env.example`, `forge.config.json`, `docs/DEPLOYMENT.md`, `README.md`,
+and the `ai-rota-assistant` Edge Function's `HTTP-Referer`. The `VAPID_SUBJECT` /
+`SMTP_USER` / `SMTP_FROM` identities moved to `@gakinz.com`, since mailboxes at a
+domain we don't own could never have worked.
+
+**Still open — an existing competitor ships under the RotaFlow name in the same
+category and holds the `.app` domain.** Naming has not been revisited.
+
+Auth verified live against project `vwqqbdvlskngrqrejzxi`: `email`, `google` and
+`github` all enabled, both OAuth apps correctly registered against the callback
+`https://vwqqbdvlskngrqrejzxi.supabase.co/auth/v1/callback`. Client-side gating is
+per-provider (`VITE_ENABLE_OAUTH="google,github"`), because a single on/off flag
+would necessarily be wrong for one provider whenever the two differ.
+
+**LIVE as of 2026-07-29**, with **Google sign-in confirmed working end to end**
+against the deployed site (the redirect allowlist can only be proven by a real
+token round-trip — external probing cannot settle it). Verified: DNS
+(Cloudflare-proxied, DNSSEC valid), TLS (`*.gakinz.com` wildcard), origin cert,
+cPanel subdomain vhost (docroot `~/rota.gakinz.com`), app shell, SPA deep links,
+PWA assets, HTTP→HTTPS redirect, and the security headers from `.htaccess`. The
+live bundle has the correct `VITE_APP_URL` and both OAuth providers inlined.
+
+**Two traps hit during that first deploy — both now fixed in the tooling:**
+- **cPanel's Document Root field is relative to `$HOME`.** Entering the absolute
+  path produced `/home/devgeereact/home/devgeereact/rota.gakinz.com`. Leave the
+  auto-filled value; the stray nested directory was removed.
+- **`rsync -a` preserves local file modes.** This repo's files are `600` locally,
+  so `.htaccess` landed `600`, the web server could not read it, and the site
+  served a **directory listing with no SPA routing**. `cpanel-deploy` now
+  normalises to dirs `755` / files `644` over SSH after each sync (macOS ships
+  `openrsync`, which rejects `--chmod=D755,F644`).
+
+`cpanel-deploy` also excludes `*.map` by default, per `docs/DEPLOYMENT.md` §4 —
+verified zero `.map` files on the server. Note that the SPA fallback returns
+**200 for every unknown path**, so a 200 is not evidence a file exists; check the
+content-type.
+
+## Phase 1.5 — hardening pass (2026-07-29)
+A re-smoke-test of Phase 1 (build + lint + typecheck, live HTTP probes against
+the Supabase project, code audit) found one blocker and three high-severity
+gaps. All five items below are fixed; `typecheck`, `lint` and `build` are clean
+and every touched module transforms in dev.
+
+1. **BLOCKER — publishing a rota orphaned it.** `getOrCreateDraftRota` filtered
+   on `status = 'draft'`, so revisiting a published week found no draft, created
+   an empty one, and rendered the grid as if the week had been wiped (the shifts
+   were still attached to the published rota, which nothing ever read back —
+   `listRotas` was dead code). Replaced with `findRotaForPeriod` /
+   `getOrCreateRotaForPeriod`, which ignore status and prefer a published rota
+   over a draft. Added `unpublishRota` + an Unpublish button so publish is no
+   longer a one-way door, and blocked publishing an empty rota.
+2. **Shared-device tenant leak.** `signOut` only cleared the Supabase token,
+   leaving the `supabase-api` (authenticated REST, 5 min) and `imagekit-media`
+   (staff photos, 30 days) Workbox caches plus `rotaflow:activeOrgId` intact for
+   the next user on a ward tablet or warehouse terminal. New
+   `src/lib/session.ts#clearTenantState`, invoked from `signOut` in a `finally`
+   so it still runs when signing out offline.
+3. **A failed load looked like "you have no organisation."** `OrgContext`
+   swallowed query errors to Sentry, and `AppShell` read the resulting empty
+   list as a new user and redirected to `/onboarding` — where an existing owner
+   could create a duplicate org. Added `loadFailed` to the `useOrg` contract;
+   `AppShell` and `OnboardingPage` now show a retry instead. **Never read
+   `memberships: []` as "no org" without checking `loadFailed`.**
+4. **Silent write failures.** No toast system existed anywhere, so drag-and-drop
+   shift create/reassign failures went to Sentry only and the manager believed
+   the shift saved. Added `ToastProvider` + `useToast`; wired into every rota
+   write, plus the previously uncaught `reloadShifts` rejection.
+5. **Dead OAuth buttons.** `/auth/v1/settings` on the live project reports
+   `google: false, github: false`, but LoginPage rendered both. Now gated behind
+   `VITE_ENABLE_OAUTH` (default `false`); flip it once the providers are
+   actually enabled in the Supabase dashboard.
+
+**Still open after this pass** (deliberately deferred, see the roadmap):
+conflict detection (PRD Phase 1 item 3, needs availability/leave data first),
+the stub Dashboard, dead stub tabs in the rota toolbar, the 1.24 MB `logo.png`
+in a 2.29 MB precache, and unverifiable migration state — there is no Supabase
+CLI installed or linked locally, and only 0001–0002 are confirmed applied.
+
 ## MVP build — Foundation + Core Loop (2026-07-29)
 First real product increment, on top of the design system + AI assistant work.
 Built and **verified end-to-end via live browser testing** (signup → confirm →
