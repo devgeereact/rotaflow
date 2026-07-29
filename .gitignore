@@ -32,3 +32,6 @@ Thumbs.db
 
 # Sentry
 .sentryclirc
+
+# Design-match loop artefacts — iteration screenshots, regenerated on every run
+design/.loop/

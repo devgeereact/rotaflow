@@ -2,11 +2,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
+import pkg from './package.json';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   // Relative base so the static bundle works from any cPanel sub-directory.
   base: './',
+
+  // Single source of truth for the version the splash/about surfaces show.
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
 
   resolve: {
     alias: {
