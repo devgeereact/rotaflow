@@ -1,6 +1,7 @@
 # System Architecture
 
 ## 1. Topology
+
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                     Client Browser / Installed PWA                 │
@@ -19,10 +20,12 @@
  PostgreSQL  ·  Edge Functions                  Inngest invokes a Supabase
  (row-level security)                           Edge Function (NOT cPanel)
 ```
+
 The static bundle talks to each managed service directly over HTTPS. cPanel only
 serves files — it never runs application logic.
 
 ## 2. Directory layout
+
 ```text
 src/
 ├── assets/        # images/svgs imported by code
@@ -43,6 +46,7 @@ src/
 ├── main.tsx       # bootstrap: Sentry, SW registration, render
 └── index.css      # Tailwind layers + base styles
 ```
+
 **Dependency direction:** `pages → services → lib`. Components consume `hooks`
 and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 
@@ -54,6 +58,7 @@ and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 `AuthProvider`, `OrgProvider` (active tenant + role), `ThemeProvider`.
 
 ## 3. Rendering & routing
+
 - Single-page app; routing via **React Router** (`createBrowserRouter`).
 - Client-side navigation only. Deep links work because `.htaccess` rewrites any
   unknown path to `index.html`, and Workbox's `navigateFallback` does the same
@@ -61,37 +66,48 @@ and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 - `ProtectedRoute` gates authenticated views on Supabase session state.
 
 ### Information architecture / routes (RotaFlow)
-Routes are organisation-scoped once a tenant is selected. Indicative map:
+
+Routes are organisation-scoped once a tenant is selected. `[Built]` = live
+today; everything else is a real `Sidebar` nav item rendered disabled ("Soon")
+rather than a route, so the IA is visible without shipping dead links.
+
 ```text
-/                         → marketing / redirect to app or login
-/login  /signup           → auth (Supabase)
-/onboarding               → create or join an organisation
-/app                      → tenant shell (requires membership) — org switcher in header
-  /app/dashboard          → today's shifts, absences, pending requests, shortages
-  /app/rota               → rota builder (manager) — drag-drop grid (owner/manager)
-  /app/schedule           → my rota (staff) — month/week/day + ICS subscribe
-  /app/staff              → staff directory + profiles (owner/manager)
-  /app/locations          → locations & departments (owner)
-  /app/availability       → my availability (staff) / team availability (manager)
-  /app/leave              → leave requests + approvals
-  /app/swaps              → shift swap requests + approvals
-  /app/timesheets         → clock events, hours, exports
-  /app/announcements      → communication centre
-  /app/reports            → hours/absence/overtime + payroll export (manager/owner)
-  /app/settings           → org settings, roles, subscription (owner)
-/admin                    → Super Admin console (is_platform_admin) — later phase
+/                         [Built] marketing / redirect to app or login
+/login                    [Built] auth (Supabase) — /signup is a toggle within it, not a separate route
+/onboarding               [Built] create an organisation (no "join" flow yet — no invites table)
+/app                      [Built] tenant shell (requires membership, redirects to /onboarding otherwise) — org switcher in header
+  /app/dashboard          [Built, stub] profile/notifications only — not yet the full "today's shifts" spec
+  /app/rota               [Built] rota builder (owner/manager) — drag-drop + click-to-assign grid, AI auto-fill, publish
+  /app/staff              [Built] staff directory + profiles (read: any member; write: owner/manager)
+  /app/locations          [Built] locations & departments (read/write: owner/manager — see SCHEMA.md RLS, not owner-only)
+  /app/schedule           my rota (staff) — month/week/day + ICS subscribe
+  /app/availability       my availability (staff) / team availability (manager)
+  /app/leave              leave requests + approvals
+  /app/swaps              shift swap requests + approvals
+  /app/timesheets         clock events, hours, exports
+  /app/announcements      communication centre
+  /app/reports            hours/absence/overtime + payroll export (manager/owner)
+  /app/settings           org settings, roles, subscription (owner)
+/admin                    Super Admin console (is_platform_admin) — later phase
 ```
+
 Role determines which nav items and routes render; the server enforces access via RLS.
+Shift-type management has no dedicated route — it's a modal opened from the
+rota builder's toolbar, since it's tightly coupled to rota-building.
 
 ## 4. State management
+
 - **Server/auth state:** Supabase session lives in `AuthProvider` (Context).
   Data is fetched per-view through `services/*`; cache/retry handled by the SW
   and Supabase client. (Swap in TanStack Query later if you need richer caching.)
 - **Tenant state:** an `OrgProvider` (Context) holds the active organisation + the
   caller's role/membership, resolved after auth. Every service call passes `org_id`;
-  the org switcher updates this context. Role gates which UI renders (RLS gates data).
-- **UI/theme state:** `ThemeProvider` (Context) — follows device `prefers-color-scheme`
-  by default, with a user override persisted to `app_settings`.
+  the org switcher (`switchOrg`, persisted to `localStorage`) updates this context.
+  `usePermissions()` derives UI capability flags from the active role — cosmetic
+  gating only, RLS is the real enforcement (see `docs/HOOKS.md` §6–7).
+- **UI/theme state:** `ThemeProvider` (Context) — **light by default** (see
+  `docs/DESIGN.md` §1; a deliberate brand choice, not `prefers-color-scheme`),
+  with a user override persisted to `localStorage`.
 - **Offline write queue:** clock-ins, leave requests and swap responses made offline are
   written to an IndexedDB outbox (`services/syncQueue`), replayed on reconnect via
   `useOnlineStatus`. Reads use the SW's `NetworkFirst` Supabase cache.
@@ -99,6 +115,7 @@ Role determines which nav items and routes render; the server enforces access vi
   working copy is local until published (no global store needed for V1).
 
 ## 5. PWA & offline strategy
+
 - `vite-plugin-pwa` (Workbox, `generateSW`) precaches the hashed app shell
   (`js/css/html/icons/fonts`).
 - **Navigation:** `navigateFallback: index.html` → the SPA boots offline and its
@@ -112,6 +129,7 @@ Role determines which nav items and routes render; the server enforces access vi
 - `public/offline.html` ships as a last-resort static fallback.
 
 ## 6. Data flow example (publish a rota → notify staff)
+
 ```
 RotaBuilderPage (manager, org-scoped)
   → rotaService.publish(orgId, rotaId)
@@ -133,8 +151,10 @@ Offline example (staff clock-in with no signal)
 ```
 
 ## 7. Build & deploy pipeline
+
 The server has **no Node/npm** — the build runs locally (or in CI) and only the static
 artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
+
 1. `npm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps).
 2. Deploy `dist/*` and root `.htaccess` into **this app's own docroot** (e.g.
    `~/<domain>/` or `public_html/<app>/`) via rsync-over-SSH, cPanel Git, or FTP.
@@ -143,6 +163,7 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
    secret paths (`uploads/`, `.env`, `config.php`, backups) from any delete.
 
 ## 8. Security posture
+
 - Only browser-safe keys ship: Supabase **anon** (RLS-guarded), ImageKit **public**,
   Inngest **write-only event** key.
 - `service_role`, Inngest **signing** key, and DB credentials never touch the client.
@@ -150,11 +171,15 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
   `Referrer-Policy`.
 
 ## 9. AI rota assistant (OpenRouter)
+
 A first slice of NL scheduling (PRD §5, pulled forward from V2): a manager describes
 staffing needs in plain English and gets shift suggestions grounded in real data.
 
+Surfaced as the rota builder's "Auto Fill" action (`AutoFillPanel`), not a
+standalone page — it needs an open rota to apply into.
+
 ```
-AIRotaAssistantPage (owner/manager, org-scoped)
+RotaBuilderPage → AutoFillPanel (owner/manager, org-scoped, current rota open)
   → aiRotaService.generateRotaSuggestions(orgId, prompt, periodStart, periodEnd)
     → supabase.functions.invoke('ai-rota-assistant', { body })
         // Authorization header = the calling user's JWT, forwarded automatically.
@@ -169,10 +194,11 @@ AIRotaAssistantPage (owner/manager, org-scoped)
             project secret, never in the client bundle
           • validates every suggestion's staffProfileId/shiftTypeId against the
             org's real rows before returning (never trusts the model's ids)
-  → nothing is written yet — suggestions are a preview
-  → manager clicks "Apply": rotaService.createDraftRota + shiftService.createShifts
-    write a draft rota (RLS: has_org_role(org,['owner','manager']), same as any
-    other rota-builder write)
+  → nothing is written yet — suggestions preview as dashed chips on the live grid
+  → manager clicks "Apply": shiftService.createShifts writes into the rota
+    *already open in the builder* (via rotaService.getOrCreateDraftRota), not a
+    disconnected new draft — RLS: has_org_role(org,['owner','manager']), same as
+    any other rota-builder write
 ```
 
 Model defaults to `openai/gpt-4o-mini`, overridable via the `OPENROUTER_MODEL`

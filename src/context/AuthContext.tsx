@@ -1,13 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import {
-  createContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { clearTenantState } from '@/lib/session';
+import { reportError } from '@/lib/sentry';
 
 export interface AuthContextValue {
   user: User | null;
@@ -51,7 +47,16 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       user: session?.user ?? null,
       loading,
       signOut: async () => {
-        await supabase.auth.signOut();
+        // Local teardown runs in `finally` on purpose: signing out offline (or
+        // against an expired token) rejects here, and leaving the previous
+        // user's cached tenant data on a shared device is the worse outcome.
+        try {
+          await supabase.auth.signOut();
+        } finally {
+          await clearTenantState().catch((err: unknown) =>
+            reportError(err, { area: 'auth:clear-tenant-state' }),
+          );
+        }
       },
     }),
     [session, loading],

@@ -1,0 +1,61 @@
+name: CodeQL
+
+# Free for public repositories, and worth having on this one specifically:
+# RotaFlow is multi-tenant and holds staff personal data (names, contact details,
+# emergency contacts, DBS/RTW documents). Tenant isolation rests on Supabase RLS,
+# but the client still handles that data, and CodeQL catches the classes of bug
+# that review misses — injection into query builders, unsafe DOM sinks, tainted
+# redirects (we shipped a redirect pointed at a third-party domain once already).
+#
+# This does NOT replace RLS as the enforcement boundary. It is a second net.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, so newly published queries reach an unchanged codebase too — most
+    # findings arrive from updated rules, not from new commits.
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to upload results to the Security tab.
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # supabase/functions/** is Deno and excluded from npm typecheck/lint, so
+        # this is the only automated check that reads it at all.
+        language: ['javascript-typescript']
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # security-extended adds lower-severity security queries; the default
+          # pack alone is thin for a data-handling app.
+          queries: security-extended
+
+      # No build step: this is a static Vite SPA and CodeQL's autobuild adds
+      # nothing for JS/TS beyond what the source scan already covers.
+      - name: Analyse
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'

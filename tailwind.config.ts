@@ -1,46 +1,92 @@
 import type { Config } from 'tailwindcss';
 
-// Design tokens mirror docs/DESIGN.md. Keep class names NativeWind-compatible
-// (no arbitrary web-only selectors) so the tree can be ported to Expo later.
+// Design tokens mirror docs/DESIGN.md — the canonical reference is
+// design/designsystem.png. Keep class names NativeWind-compatible (no
+// arbitrary web-only selectors) so the tree can be ported to Expo later.
+//
+// Light is the default theme (docs/DESIGN.md §1). Base token values are the
+// LIGHT palette; pair every surface/text token with its `-dark` counterpart
+// behind a `dark:` variant, e.g. `bg-background dark:bg-background-dark`.
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // RotaFlow — clean & professional, blue accent.
-        // Single-value tokens are the DARK canvas; light mode is expressed with
-        // Tailwind `dark:` variants in components, driven by ThemeContext
-        // (which follows the device `prefers-color-scheme` by default).
-        background: '#0b1220', // slate-950-ish app canvas (dark)
+        background: {
+          DEFAULT: '#F5F7FA', // app canvas (light)
+          dark: '#0B1220', // app canvas (dark)
+        },
         surface: {
-          DEFAULT: '#111a2e', // cards, sheets (dark)
-          border: '#22304d', // dividers, card outlines (dark)
+          DEFAULT: '#FFFFFF', // cards, sheets, rota cells (light)
+          dark: '#111A2E', // cards, sheets, rota cells (dark)
+          subtle: '#FAFBFC', // nested panels, hover fills (light)
+          'subtle-dark': '#15203A', // nested panels, hover fills (dark)
+          border: '#E3E6EA', // card/control outlines (light)
+          'border-dark': '#22304D', // card/control outlines (dark)
+        },
+        divider: {
+          DEFAULT: '#F2F4F6', // subtle in-list separators (light)
+          dark: '#1B2740', // subtle in-list separators (dark)
         },
         primary: {
-          DEFAULT: '#2563eb', // blue-600 — CTAs, active state, brand
-          fg: '#eff6ff', // blue-50 — text on primary
+          DEFAULT: '#3B6FE0', // brand blue — CTAs, active state, links
+          fg: '#FFFFFF', // text/icons on a solid primary fill
         },
         secondary: {
-          DEFAULT: '#3b82f6', // blue-500 — dark-mode accent, links, secondary CTA
+          DEFAULT: '#6B7280', // secondary icons/labels (light)
+          dark: '#94A3B8', // secondary icons/labels (dark)
         },
-        // Status colours for rota states (used with text/icon, never colour alone)
-        success: { DEFAULT: '#16a34a' }, // confirmed / available
-        warning: { DEFAULT: '#d97706' }, // pending / needs attention
-        danger: { DEFAULT: '#dc2626' }, // conflict / rejected / absent
+        // Status colours for rota states (used with text/icon, never colour
+        // alone). Same hex in both themes — must stay recognisable regardless
+        // of mode.
+        success: { DEFAULT: '#1EA06B' }, // published / valid / confirmed / available
+        warning: { DEFAULT: '#E0A030' }, // pending / needs attention / expiring
+        danger: { DEFAULT: '#D94A3A' }, // conflict / rejected / absent / error
+        info: { DEFAULT: '#388FD4' }, // informational / neutral status
         content: {
-          DEFAULT: '#f8fafc', // slate-50 — headings, body (on dark)
-          muted: '#94a3b8', // slate-400 — captions, hints
+          DEFAULT: '#16191F', // headings, body (light)
+          dark: '#F8FAFC', // headings, body (dark)
+          muted: '#6B7280', // captions, hints (light)
+          'muted-dark': '#94A3B8', // captions, hints (dark)
+        },
+        // Shift-type chip palette (8) — see docs/DESIGN.md §2. Same in both
+        // themes; org shift_types.colour should be seeded from these.
+        shift: {
+          clay: '#E28273',
+          amber: '#C69A45',
+          moss: '#86AC6A',
+          teal: '#4FB39A',
+          sky: '#56AACD',
+          indigo: '#6CA0EB',
+          violet: '#C48FD6',
+          rose: '#E888AB',
         },
       },
       fontFamily: {
+        // "Inter Variable" per docs/DESIGN.md — loaded as the full variable
+        // weight range (100..900) from Google Fonts; the family name Google
+        // serves it under is still "Inter".
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
+      fontSize: {
+        // Custom type scale from docs/DESIGN.md §2 (size/line-height).
+        'page-title': ['2rem', { lineHeight: '2.5rem' }], // 32/40
+        'section-heading': ['1.5rem', { lineHeight: '2rem' }], // 24/32
+        'card-heading': ['1rem', { lineHeight: '1.5rem' }], // 16/24
+      },
       borderRadius: {
         xl: '1rem',
         '2xl': '1.5rem',
+      },
+      boxShadow: {
+        // Elevation levels from docs/DESIGN.md §2 — override the Tailwind
+        // defaults so `shadow-sm` / `shadow` / `shadow-lg` match the reference.
+        sm: '0 1px 2px rgba(0,0,0,0.05)', // level 1
+        DEFAULT: '0 4px 12px rgba(0,0,0,0.08)', // level 2
+        lg: '0 8px 24px rgba(0,0,0,0.12)', // level 3
       },
       keyframes: {
         'fade-up': {

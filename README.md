@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/icons/pwa-512.png" alt="RotaFlow logo" width="120" />
+</p>
+
 # RotaFlow
 
 A **multi-tenant, offline-first workforce scheduling PWA**. Organisations build and
@@ -71,6 +75,9 @@ In the Supabase SQL editor, run the migrations **in order**:
 ```
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_rotaflow.sql
+supabase/migrations/0003_fix_organisations_select_rls.sql
+supabase/migrations/0004_rotas_draft_unique.sql
+supabase/migrations/0005_narrow_organisations_select_rls.sql
 ```
 (Or use the Supabase CLI: `supabase db push`.)
 
@@ -99,12 +106,20 @@ npm run preview    # smoke-test the production bundle
 
 ### 7. Deploy to cPanel
 The server has **no Node** — build locally, ship only the artifacts.
+
+**Target: `https://rota.gakinz.com`**, its own docroot at `~/rota.gakinz.com/` on the
+`gakinz.com` cPanel account.
+
 1. Run `npm run build` (emits `./dist`).
-2. Upload **everything inside `dist/`** plus the repo-root **`.htaccess`** into **this
-   app's own document root** — e.g. `~/<domain>/` for an addon domain or
-   `public_html/<app>/` for a subpath. The `.htaccess` handles HTTPS, SPA routing,
-   MIME types, and cache/security headers.
+2. Upload **everything inside `dist/`** plus the repo-root **`.htaccess`** into
+   `~/rota.gakinz.com/`. The `.htaccess` handles HTTPS, SPA routing, MIME types, and
+   cache/security headers.
 3. Load the site over HTTPS and confirm the install prompt appears.
+
+> `VITE_APP_URL` is baked into the bundle at build time and is the auth redirect
+> target, so it must match Supabase → Authentication → URL Configuration (Site URL
+> `https://rota.gakinz.com`, Redirect URLs `https://rota.gakinz.com/**`). Rebuild
+> after changing it.
 
 > ⚠️ **Never deploy into a shared docroot** (one that also serves other sites or holds
 > loose `api.php` / `config.php`), and **never mirror-with-delete** without a dry-run

@@ -1,71 +1,143 @@
 # Design System & Visual Guidelines — RotaFlow
 
+> Source of truth: `design/designsystem.png`, `design/rotaflowui.png`,
+> `design/authscreen.png`, `design/splashscreen.png`. This document and
+> `tailwind.config.ts` are the enforced, code-level expression of those
+> references. **Every future screen, component, or asset must match this
+> document — never invent a colour, size, or radius outside it.**
+
 ## 1. Aesthetic direction
+
 **Clean & professional** — a trusted-tool feel in the spirit of Linear, Notion and
 Stripe. Crisp, calm, and neutral, with dense-where-it-needs-to-be layouts (the rota
 grid) and generous breathing room everywhere else. Motion supports meaning (a shift
 snapping into place, a sync completing) and never decorates for its own sake. The
 product must feel dependable to a care-home manager and effortless to frontline staff.
 
-**Theme:** the app supports both light and dark and **follows the device
-`prefers-color-scheme` by default** (via `ThemeContext`); users can override. Never
-assume a single mode — every surface must read in both.
+**Theme: light-first.** RotaFlow ships **light by default** — every reference
+screen (auth, splash, dashboard, rota grid) is light. Dark remains a fully
+supported, deliberate user choice (see the mode switch in `rotaflowui.png`), not
+the default. `ThemeContext` defaults to `'light'` for first-time visitors and
+persists an explicit user choice; it never silently forces dark from
+`prefers-color-scheme` the way the old (pre-design-system) build did. Every
+surface must still read correctly in both modes — build dark variants
+alongside light ones, don't defer them.
 
 ## 2. Design tokens
-These map 1:1 to `tailwind.config.ts`. **Always use the token class, never a raw hex.**
-Single-value tokens describe the dark canvas; express light mode with Tailwind `dark:`
-variants (e.g. `bg-white dark:bg-surface`), driven by the theme class on `<html>`.
 
-### Colour
-| Token              | Tailwind class                | Hex       | Use                              |
-| ------------------ | ----------------------------- | --------- | -------------------------------- |
-| Background         | `bg-background`               | `#0b1220` | App canvas (dark)                |
-| Surface            | `bg-surface`                  | `#111a2e` | Cards, sheets, rota cells (dark) |
-| Surface border     | `border-surface-border`       | `#22304d` | Dividers, cell/card outlines     |
-| Primary accent     | `bg-primary` / `text-primary` | `#2563eb` | Brand, CTAs, active state        |
-| Primary foreground | `text-primary-fg`             | `#eff6ff` | Text on primary                  |
-| Secondary accent   | `bg-secondary`                | `#3b82f6` | Links, secondary CTA, dark accent|
-| Success            | `bg-success` / `text-success` | `#16a34a` | Confirmed / available / on-shift |
-| Warning            | `bg-warning` / `text-warning` | `#d97706` | Pending / needs attention        |
-| Danger             | `bg-danger` / `text-danger`   | `#dc2626` | Conflict / rejected / absent     |
-| Text primary       | `text-content`                | `#f8fafc` | Headings, body                   |
-| Text secondary     | `text-content-muted`          | `#94a3b8` | Captions, hints                  |
+These map 1:1 to `tailwind.config.ts`. **Always use the token class, never a raw
+hex.** Token values below are the **light** (base, default) palette — pair every
+one with a `dark:` variant using the dark column, e.g.
+`bg-background dark:bg-background-dark`.
 
-Status colours encode rota state (available, pending, conflict, absent) — **always
-pair them with an icon or text label**, never colour alone (accessibility + colour
-blindness).
+### Colour — brand & neutrals
+
+| Token               | Tailwind class                                              | Light hex | Dark hex  | Use                                                                                    |
+| ------------------- | ----------------------------------------------------------- | --------- | --------- | -------------------------------------------------------------------------------------- |
+| Background (canvas) | `bg-background` / `dark:bg-background-dark`                 | `#F5F7FA` | `#0B1220` | App canvas, behind cards                                                               |
+| Surface (default)   | `bg-surface` / `dark:bg-surface-dark`                       | `#FFFFFF` | `#111A2E` | Cards, sheets, panels, rota cells                                                      |
+| Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#FAFBFC` | `#15203A` | Nested panels, hover fills, sidebar                                                    |
+| Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#E3E6EA` | `#22304D` | Card/control outlines                                                                  |
+| Divider             | `border-divider` / `dark:border-divider-dark`               | `#F2F4F6` | `#1B2740` | Subtle in-list separators (lighter than border)                                        |
+| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0` | `#3B6FE0` | Brand, CTAs, active state, links                                                       |
+| Primary foreground  | `text-primary-fg`                                           | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid primary fill                                                     |
+| Secondary           | `text-secondary`                                            | `#6B7280` | `#94A3B8` | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name) |
+| Text primary        | `text-content` / `dark:text-content-dark`                   | `#16191F` | `#F8FAFC` | Headings, body                                                                         |
+| Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#6B7280` | `#94A3B8` | Captions, hints, secondary text                                                        |
+
+### Colour — semantic (operational status)
+
+| Token    | Tailwind class                | Hex       | Use                                              |
+| -------- | ----------------------------- | --------- | ------------------------------------------------ |
+| Valid    | `bg-success` / `text-success` | `#1EA06B` | Published, valid, confirmed, available, on-shift |
+| Warning  | `bg-warning` / `text-warning` | `#E0A030` | Pending, needs attention, expiring soon          |
+| Conflict | `bg-danger` / `text-danger`   | `#D94A3A` | Conflict, rejected, absent, error                |
+| Info     | `bg-info` / `text-info`       | `#388FD4` | Informational note, neutral status               |
+
+Same hex in both themes — these need to stay recognisable regardless of mode.
+Status colours encode rota state — **always pair them with an icon or text
+label**, never colour alone (accessibility + colour blindness).
+
+### Colour — shift type palette (8)
+
+Used for shift-type chips in the rota grid (`LD`, `WN`, `TW`, `SPL`, `EAR`, `OFF`,
+`TRN`, `ANN` and similar org-defined codes — see `shift_types.colour` in
+`docs/SCHEMA.md`). Same in both themes.
+
+| Token          | Tailwind class    | Hex       |
+| -------------- | ----------------- | --------- |
+| `shift-clay`   | `bg-shift-clay`   | `#E28273` |
+| `shift-amber`  | `bg-shift-amber`  | `#C69A45` |
+| `shift-moss`   | `bg-shift-moss`   | `#86AC6A` |
+| `shift-teal`   | `bg-shift-teal`   | `#4FB39A` |
+| `shift-sky`    | `bg-shift-sky`    | `#56AACD` |
+| `shift-indigo` | `bg-shift-indigo` | `#6CA0EB` |
+| `shift-violet` | `bg-shift-violet` | `#C48FD6` |
+| `shift-rose`   | `bg-shift-rose`   | `#E888AB` |
+
+An org's `shift_types.colour` should be seeded from this palette (stored as a hex
+string, per `SCHEMA.md`) so every tenant's rota stays visually consistent with the
+system even though colours are per-org-configurable.
 
 ### Typography
-| Role     | Family          | Tailwind class |
-| -------- | --------------- | -------------- |
-| Body     | Inter / system  | `font-sans`    |
-| Display  | Inter / system  | `font-display` |
-| Mono     | JetBrains Mono  | `font-mono`    |
 
-Inter throughout keeps the tool feeling professional and neutral. Scale: `text-sm`
-captions · `text-base` body · `text-xl`/`text-2xl` section titles · `text-3xl`+ page
-headers. Use `font-mono` for times, hours, and payroll figures so columns align.
+| Role            | Size / line-height | Weight    | Tailwind class                       |
+| --------------- | ------------------ | --------- | ------------------------------------ |
+| Page title      | 32 / 40            | Semibold  | `text-page-title font-semibold`      |
+| Section heading | 24 / 32            | Semibold  | `text-section-heading font-semibold` |
+| Card heading    | 16 / 24            | Semibold  | `text-card-heading font-semibold`    |
+| Body            | 16 / 24            | Regular   | `text-base`                          |
+| Small           | 14 / 20            | Regular   | `text-sm`                            |
+| Caption         | 12 / 16            | Regular   | `text-xs`                            |
+| Code / meta     | 12 / 16            | Monospace | `text-xs font-mono`                  |
+
+Font family: **Inter Variable** throughout (`font-sans` / `font-display` — one
+face, no separate display typeface). `font-mono` is **JetBrains Mono**, used for
+times, hours, and payroll figures so columns align.
 
 ### Spacing & radius
-- Base unit = 4px (Tailwind default). Prefer `gap-*` / `space-y-*`.
-- Radii: cards `rounded-2xl`, controls `rounded-xl`, pills/avatars `rounded-full`.
-- Rota cells stay tighter (`rounded-lg`) for density. Lean on borders + subtle surface
-  contrast over heavy shadows.
 
-## 3. Motion
-| Interaction         | Spec                                                   |
-| ------------------- | ------------------------------------------------------ |
-| Hover (buttons)     | `scale: 1.02`, `duration: 0.15s`, `easeInOut`          |
-| Tap                 | `scale: 0.98`                                          |
-| Shift drag/drop     | snap with a short spring; ghost preview while dragging |
-| Page/section in     | `opacity 0→1`, `y 10→0`, `duration 0.3s`, `ease-out`   |
-| Sync/save confirm   | brief, non-blocking success cue                        |
-| Reduced motion      | Respect `prefers-reduced-motion`; disable transforms   |
+- Base unit = 4px (Tailwind default: `4px·8px·12px·16px·24px·32px·48px·64px` =
+  `1·2·3·4·6·8·12·16`). Prefer `gap-*` / `space-y-*`.
+- Radii: cards `rounded-2xl`, controls `rounded-xl`, pills/status badges/avatars
+  `rounded-full`. Rota cells stay tighter (`rounded-lg`) for density.
+- Lean on `border-surface-border` + subtle surface contrast over heavy shadows.
+
+### Shadows (elevation)
+
+`shadow-sm` / `shadow` / `shadow-lg` are overridden in `tailwind.config.ts` to
+match the reference exactly — use the stock Tailwind class names, don't invent
+new ones.
+
+| Level | Tailwind class     | Spec                          |
+| ----- | ------------------ | ----------------------------- |
+| 1     | `shadow-sm`        | `0 1px 2px rgba(0,0,0,0.05)`  |
+| 2     | `shadow` (default) | `0 4px 12px rgba(0,0,0,0.08)` |
+| 3     | `shadow-lg`        | `0 8px 24px rgba(0,0,0,0.12)` |
+
+## 3. Iconography
+
+**Lucide** (Feather-style, outline), via the `lucide-react` package — never
+inline ad-hoc SVGs, never a second icon set. Standard sizes: `16px` (`size={16}`
+/ `w-4 h-4`) inline with text, `20px` default UI icon, `24px` (`w-6 h-6`)
+featured/empty-state icons. Icon-only controls require `aria-label`.
+
+## 4. Motion
+
+| Interaction       | Spec                                                   |
+| ----------------- | ------------------------------------------------------ |
+| Hover (buttons)   | `scale: 1.02`, `duration: 0.15s`, `easeInOut`          |
+| Tap               | `scale: 0.98`                                          |
+| Shift drag/drop   | snap with a short spring; ghost preview while dragging |
+| Page/section in   | `opacity 0→1`, `y 10→0`, `duration 0.3s`, `ease-out`   |
+| Sync/save confirm | brief, non-blocking success cue                        |
+| Reduced motion    | Respect `prefers-reduced-motion`; disable transforms   |
 
 The `animate-fade-up` utility (in `tailwind.config.ts`) is the CSS-only entrance
 fallback when Framer Motion isn't warranted.
 
-## 4. Accessibility (frontline-critical)
+## 5. Accessibility (frontline-critical)
+
 - Contrast ≥ **4.5:1** for text (AA), verified in **both** light and dark.
 - Interactive targets ≥ **44×44px** — staff use this one-handed on phones.
 - Every focusable element shows a ring: `focus-visible:ring-2 focus-visible:ring-primary`.
@@ -73,10 +145,33 @@ fallback when Framer Motion isn't warranted.
 - Never convey shift/leave/clock state by colour alone — pair with icon + text.
 - Rota grid is keyboard-navigable; drag-drop has a keyboard/assistive alternative.
 
-## 5. Component conventions
-- Build from small primitives in `src/components/ui` (`Button`, `Card`, and rota
-  primitives like `ShiftChip`, `RotaCell`, `StatusBadge` as they're added).
+## 6. Component conventions
+
+- Build from small primitives in `src/components/ui` (`Button`, `Card`, `Badge`,
+  and rota primitives like `ShiftChip`, `RotaCell` as they're added).
 - A `cn()` helper (clsx + tailwind-merge) resolves conditional class conflicts.
 - Variants are prop-driven class maps, not a new component per style.
-- Density matters: the rota builder is information-dense by design; keep chrome quiet
-  so the schedule itself is the focus.
+- Buttons: **primary** = solid `bg-primary` fill, white text. **secondary** =
+  `bg-surface` + `border-surface-border`, `text-content` (a bordered neutral
+  button — this is what earlier drafts of this doc called "ghost"). **ghost** =
+  transparent, `text-primary`, no border — text-only affordance.
+- Density matters: the rota builder is information-dense by design; keep chrome
+  quiet so the schedule itself is the focus.
+
+## 7. Reference assets
+
+`design/` holds the source references — treat them as read-only design intent,
+not files to edit:
+
+- `designsystem.png` — the canonical token sheet (colour, type, spacing, icons,
+  shadows, buttons, form controls, status pills, cards, table, rota grid,
+  notifications).
+- `rotaflowui.png` — full product screen showing the design system applied
+  (dashboard, rota grid, sidebar nav, mobile views, light/dark mode switch).
+- `authscreen.png` — sign-in screen (split layout, marketing panel + form).
+- `splashscreen.png` — app loading/splash screen.
+
+The logo is a rounded-square, solid `#3B6FE0` mark with a stylised white "R".
+Current shipped PWA icons/favicon predate this design system and should be
+regenerated to match before the next asset pass — flag this rather than
+shipping a mismatched icon silently.

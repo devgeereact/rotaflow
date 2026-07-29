@@ -9,8 +9,11 @@
   }
 
   body {
-    @apply bg-background text-content font-sans antialiased;
+    @apply bg-background text-content dark:bg-background-dark dark:text-content-dark font-sans antialiased;
     min-height: 100vh;
+    transition:
+      background-color 150ms ease-in-out,
+      color 150ms ease-in-out;
   }
 
   /* Respect user motion preferences globally. */

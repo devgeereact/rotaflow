@@ -1,0 +1,82 @@
+name: CI
+
+# RotaFlow had no CI at all until this file existed — every commit went straight to
+# main unverified, on a multi-tenant app where a bad build means a care rota nobody
+# can read. These are the gates that already pass today, so any red here is a real
+# regression introduced by the change under review, never pre-existing debt.
+#
+# The build deliberately runs with NO .env present. Vite inlines VITE_* at build time,
+# so a workflow that supplied real Supabase/Sentry keys would (a) put production
+# credentials in a public repo's logs and (b) hide the case that actually breaks —
+# a missing env var. src/lib/env.ts is written to degrade rather than throw, and this
+# job is what keeps that true.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: these jobs only read the repo. Without this block GITHUB_TOKEN
+# gets the repository default, which is far broader than checkout needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    # Not the author's local zone. RotaFlow resolves shift wall-times through a
+    # location's timezone, and the predecessor repo shipped a bug that was invisible
+    # on a UK machine and only appeared under UTC — it built the instant from a date
+    # STRING, which parses in the system zone. Pinning UTC here means CI never shares
+    # the developer's zone and cannot hide that class of bug again.
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Don't leave GITHUB_TOKEN on disk for the rest of the job.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # `npm run build` runs `tsc --noEmit` first, but run it separately so a type
+      # error is reported as a type error rather than buried in a failed bundle.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # --max-warnings 0, so warnings fail too. Currently 0 problems — keep it there.
+      - name: Lint
+        run: npm run lint
+
+      # Now a hard gate. The 37-file backlog that made this report-only was cleared
+      # on 2026-07-29 with `npm run format`; the tree is Prettier-clean.
+      #
+      # Note for anyone hitting a surprise failure here: Prettier can move an
+      # `eslint-disable-next-line` away from the line it suppresses, which turns a
+      # working directive into an "unused disable directive" lint error. Anchor such
+      # comments directly above the reported line — see src/hooks/useOptimizedImage.ts.
+      - name: Format check
+        run: npm run format:check
+
+      - name: Build (no .env — must survive missing VITE_* vars)
+        run: npm run build
+
+      # A PWA that builds but emits no service worker is a silent regression: the app
+      # keeps working online and quietly stops working offline, which is the whole
+      # point of shipping it as a PWA to staff on hospital wifi.
+      - name: Service worker and manifest were emitted
+        run: |
+          set -euo pipefail
+          test -f dist/sw.js || { echo "::error::dist/sw.js missing — the PWA build produced no service worker"; ls -R dist | head -40; exit 1; }
+          test -f dist/manifest.webmanifest || { echo "::error::dist/manifest.webmanifest missing"; exit 1; }
+          echo "✅ sw.js + manifest.webmanifest present"

@@ -1,0 +1,43 @@
+version: 2
+
+# Dependency alerts and updates are free on public repos. This matters more than
+# usual here: the browser bundle ships Supabase auth and handles staff personal
+# data, so a compromised transitive dependency runs in the same context as the
+# session token.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # Batch the noisy, low-risk updates into one PR each so review effort goes to
+    # the things that actually change behaviour.
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-patch:
+        dependency-type: production
+        update-types: [patch]
+    # React 18 and Vite 6 majors are deliberate migrations, not Dependabot's call.
+    ignore:
+      - dependency-name: react
+        update-types: ['version-update:semver-major']
+      - dependency-name: react-dom
+        update-types: ['version-update:semver-major']
+      - dependency-name: vite
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(dev-deps)'
+
+  # Actions are pinned by major tag (@v4), which still moves under us. Dependabot
+  # is what surfaces a compromised or deprecated action.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: 'chore(ci)'

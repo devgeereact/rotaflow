@@ -19,13 +19,17 @@ interface ThemeContextValue {
 const STORAGE_KEY = 'pwa-theme';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+/**
+ * RotaFlow ships light-first (docs/DESIGN.md §1) — the app defaults to
+ * 'light' regardless of system preference, and only switches once a user
+ * makes an explicit, persisted choice. This is a deliberate brand decision,
+ * not an oversight: don't reintroduce a `prefers-color-scheme` fallback here.
+ */
 function getInitialTheme(): ThemeMode {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === 'dark' || stored === 'light') return stored;
-  return window.matchMedia('(prefers-color-scheme: light)').matches
-    ? 'light'
-    : 'dark';
+  return 'light';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }): JSX.Element {
@@ -43,11 +47,10 @@ export function ThemeProvider({ children }: { children: ReactNode }): JSX.Elemen
     [],
   );
 
-  const value = useMemo(() => ({ theme, toggleTheme, setTheme }), [
-    theme,
-    toggleTheme,
-    setTheme,
-  ]);
+  const value = useMemo(
+    () => ({ theme, toggleTheme, setTheme }),
+    [theme, toggleTheme, setTheme],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

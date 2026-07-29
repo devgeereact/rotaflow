@@ -181,7 +181,7 @@ Respond with ONLY a single JSON object (no markdown, no commentary outside the J
       headers: {
         Authorization: `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': Deno.env.get('APP_URL') || 'https://rotaflow.app',
+        'HTTP-Referer': Deno.env.get('APP_URL') || 'https://rota.gakinz.com',
         'X-Title': 'RotaFlow',
       },
       body: JSON.stringify({

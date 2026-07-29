@@ -30,14 +30,14 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <div className="grid min-h-screen place-items-center bg-background p-6 text-center">
+      <div className="grid min-h-screen place-items-center bg-background p-6 text-center dark:bg-background-dark">
         <div className="max-w-md">
-          <h1 className="mb-2 font-display text-2xl text-content">
+          <h1 className="mb-2 font-display text-2xl text-content dark:text-content-dark">
             Something went wrong
           </h1>
-          <p className="mb-6 text-content-muted">
-            The error has been logged. Try reloading — if it keeps happening,
-            please let us know.
+          <p className="mb-6 text-content-muted dark:text-content-muted-dark">
+            The error has been logged. Try reloading — if it keeps happening, please let
+            us know.
           </p>
           <Button onClick={this.handleReset}>Reload app</Button>
         </div>
