@@ -1,124 +1,130 @@
-# Screen-building loop prompt
+# RotaFlow — Design-Match Loop Prompt
 
-A reusable, fill-in-the-blanks prompt for building or refining a RotaFlow screen
-against its `../design` reference image, iterating with real browser screenshots
-until it's visually near-identical. This project is a web PWA (Vite + React
-Router) — there's no mobile simulator, so the loop drives an actual Chrome tab
-against the dev server instead.
+Paste the block under **"The prompt"** into `/loop`. Swap `<SCREEN>` and `<REF>` per
+screen using the tables below.
 
-## How to use it
+**This is a web PWA, not a mobile app** — there's no simulator. The loop drives a real
+Chrome tab against the local Vite dev server (`http://localhost:5173`) and screenshots
+that, not `xcrun simctl`.
 
-1. Copy the template below.
-2. Fill in the four placeholders: `{SCREEN_NAME}`, `{ROUTE}`, `{DESIGN_FILE}`,
-   `{TARGET_FILE}`.
-3. Paste it in, or hand it to `/loop` for repeated passes on the same screen.
+## Screens with a design reference
 
-Ready-made fill-ins for the three real screens are at the bottom — copy one of
-those directly instead of filling the template by hand.
+| `<SCREEN>` | route | `<REF>` | notes |
+|---|---|---|---|
+| splash | `/splash` | `design/splashscreen.png` | Built (`src/components/SplashScreen.tsx`) — refine pass |
+| appboot | `/splash` (2nd state) | `design/appboot.png` | Not built. Second visual state of the same route — the org-provisioning checklist (Secure connection → Loading data → Setting up organisation → Preparing features → Finalising) shown after auth resolves, before splashscreen's plain logo view hands off to `/app/dashboard`. Confirm the exact trigger/transition while building this one. |
+| login | `/login` | `design/signin.png` | Built (`src/pages/LoginPage.tsx`) — refine pass |
+| signup | `/signup` | `design/signup.png` | Gap — today it's a toggle inside `LoginPage.tsx`, not a standalone route. Build the route. |
+| onboarding-org | `/onboarding` step 1/5 | `design/Organisation-Onboarding.png` | Gap — `OnboardingPage.tsx` is a single-step stub today; this is the first step of a 5-step wizard |
+| onboarding-about | `/onboarding` step 2/5 | `design/Organisation-about.png` | Gap |
+| onboarding-team | `/onboarding` step 3/5 | `design/Team-onboarding.png` | Gap |
+| onboarding-plan | `/onboarding` step 4/5 | `design/Plan-Selection.png` | Gap |
+| onboarding-complete | `/onboarding` step 5/5 | `design/Onboarding-Complete.png` | Gap |
+| dashboard | `/app/dashboard` | `design/Workforce-Dashboard.png` | Built (`src/pages/app/DashboardPage.tsx`) — refine pass |
+| staff | `/app/staff` | `design/staff.png` | Built (`src/pages/app/StaffPage.tsx`) — refine pass |
+| rotabuilder | `/app/rota` | `design/Rota-Builder.png` | Built (`src/pages/app/RotaBuilderPage.tsx`) — refine pass |
+| schedule | `/app/schedule` (default) | `design/Schedule-dashboard.png` | Gap — new route (per `docs/SCREENS.md` §4/§5). Manager's default view/manage-published-rotas state. |
+| schedule-live | `/app/schedule` (live state) | `design/live-schedule.png` | Same route as `schedule` — the staff-facing "Live" state with the green live badge and open-requests panel |
+| schedule-published | `/app/schedule` (published state) | `design/published-schedule.png` | Same route as `schedule` — post-publish confirmation state (unpublish action, publish history) |
 
----
+| tokens only | `design/designsystem.png` |
 
-## Template
+## Screens with NO design reference
 
-```
-Build/refine the {SCREEN_NAME} screen by closely recreating the UI from
-@design/{DESIGN_FILE}.
+No mockup exists for these; layout is **inferred** from the nearest built/referenced
+screen plus the tokens in `design/designsystem.png`. Run the loop against the closest
+ref for surface/type/radius fidelity only — do **not** try to make them identical to it.
 
-Your goal is to match the reference design as accurately as possible, including:
-* Layout and spacing
-* Typography, font sizes, and font weights
-* Colors and gradients
-* Button styles
-* Input fields
-* Border radius
-* Shadows and depth
-* Icons and imagery
-* Alignment and padding
-* Overall visual hierarchy
+| `<SCREEN>` | route | closest ref (inferred from) |
+|---|---|---|
+| home | `/` | `design/signin.png` (marketing panel/left column) |
+| locations | `/app/locations` | `design/staff.png` (table/list + filter bar layout) |
+| notfound | `*` (bad route) | `design/designsystem.png` (tokens only) |
+| errorboundary | thrown render | `design/designsystem.png` (tokens only) |
+| offlinebanner | global, offline | `design/designsystem.png` (status pill styles) |
+| installprompt | global, installable | `design/designsystem.png` (card + button styles) |
+| updateprompt | global, new SW waiting | `design/designsystem.png` (card + button styles) |
 
-Ground rules — this project has an enforced design system, don't invent outside it:
-* Use token classes only (`bg-primary`, `text-content`, `rounded-2xl`, `shadow`,
-  etc.) from `tailwind.config.ts` / `docs/DESIGN.md`. Never raw hex values and
-  never inline `style={{}}`.
-* Icons are `lucide-react` only — no ad-hoc SVGs, no second icon set.
-* Reuse/extend primitives in `src/components/ui` (`Button`, `Card`) instead of
-  duplicating styles inline; add a new primitive there if the reference needs
-  one that doesn't exist yet.
-* `docs/DESIGN.md` is the tie-breaker for anything ambiguous in the image —
-  re-read it rather than guessing.
-* The reference image is light-mode only, but every surface still needs a
-  working `dark:` variant per `docs/DESIGN.md` §1 — don't defer dark mode.
-* Main implementation file: `{TARGET_FILE}` (plus any child components it
-  composes).
+## The prompt
 
-Do not redesign or improvise unless something is genuinely missing from the
-reference.
+ONE SCREEN AT A TIME.
 
-After implementing the first version, run it and take a screenshot:
-1. Make sure `npm run dev` is running (start it in the background if not).
-2. Load the Chrome tools if not already loaded (ToolSearch:
-   "select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__computer,mcp__claude-in-chrome__read_page,mcp__claude-in-chrome__tabs_create_mcp").
-3. Navigate to `http://localhost:5173{ROUTE}` in a tab and take a screenshot.
-4. Compare that screenshot against @design/{DESIGN_FILE}.
+PICK A SCREEN AND BUILD
 
-Then iterate:
-1. Identify all visual differences.
-2. Update the implementation.
-3. Take another screenshot.
-4. Compare again.
-5. Repeat until the implemented screen is visually as close to the reference
-   as possible.
+Build the **`<SCREEN>`** screen so it visually matches `<REF>` as closely as possible.
 
-Be strict with the comparison. Pay attention to small details: spacing, text
-positioning, input/button height, shadow depth, icon choice and size, color
-accuracy, and border radius.
+### Ground rules (read before writing code)
 
-Do not stop after the first implementation. Keep refining until the screenshot
-and the reference design look nearly identical. When done, run
-`npm run typecheck` and `npm run lint` and fix anything they flag before
-considering the task complete.
-```
+1. Read `CLAUDE.md` and `docs/RULES.md` — binding. Notably: TypeScript strict, no
+   implicit `any`, explicit return types on functions/hooks; import app code with
+   `@/…`; keep components small and typed (SDK setup in `src/lib`, data calls in
+   `src/services`, reusable logic in `src/hooks`).
+2. **Tokens already exist — use them, don't invent.** `tailwind.config.ts` and
+   `docs/DESIGN.md` define the full palette, spacing, radii, shadows, and type scale.
+   Every value you use must be a token class (`bg-primary`, `text-content`,
+   `rounded-2xl`, `shadow`, etc.) — no raw hex, no arbitrary `p-[13px]`, no inline
+   `style={{}}`. If the design system PNG needs a value that isn't a token yet, add it
+   to `tailwind.config.ts` and note it as inferred in this screen's log.
+3. Icons are `lucide-react` only — no ad-hoc SVGs, no second icon set.
+4. Reuse/extend primitives in `src/components/ui` (`Button`, `Card`, etc.) instead of
+   duplicating styles inline; add a new primitive there if the reference needs one
+   that doesn't exist yet.
+5. The reference image is light-mode only, but every surface still needs a working
+   `dark:` variant per `docs/DESIGN.md` §1 — don't defer dark mode.
+6. **You may run the dev server for this task.** Start `npm run dev` in the background
+   if it isn't already running and reuse it — do not spawn a second instance.
+7. This is a **static PWA build** — no server runtime. Anything server-side (data,
+   auth) goes through Supabase per `docs/SCHEMA.md` / `docs/ARCHITECTURE.md`; don't
+   invent a backend for a screen that needs real data — wire it to Supabase or use
+   the same demo/mock pattern already used on built screens.
 
----
+### Match target
 
-## Ready-made fill-ins
+Layout · spacing · typography (family, size, weight, line height, letter spacing) ·
+colors and gradients · button styles and heights · input fields · border radius ·
+shadows and elevation · icons · imagery and its cropping · alignment and padding ·
+visual hierarchy · empty/loading/error states where the reference shows them.
 
-### 1. Auth / Login — refine pass
-Already implemented; this is a visual-accuracy pass, not a build from scratch.
+Do not redesign or improvise. If the reference is ambiguous or something is missing
+from it, implement the closest reasonable thing **and log it** rather than inventing
+a different layout.
 
-```
-{SCREEN_NAME} = Login
-{ROUTE}       = /login
-{DESIGN_FILE} = authscreen.png
-{TARGET_FILE} = src/pages/LoginPage.tsx
-```
+### The loop
 
-### 2. Splash / loading screen — new
-`splashscreen.png` has no route or component yet. Before running the loop,
-decide (and tell Claude) which of these it should be:
-- a real route (e.g. `/splash`) for manual preview only, or
-- an app-boot overlay shown from `../src/main.tsx` while the app initializes, or
-- a component composed into `App.tsx`'s existing loading/suspense state.
+Each iteration:
 
-```
-{SCREEN_NAME} = Splash / app loading screen
-{ROUTE}       = <decide first — see note above>
-{DESIGN_FILE} = splashscreen.png
-{TARGET_FILE} = <new file, e.g. src/components/SplashScreen.tsx>
-```
+1. Implement / refine the screen.
+2. `npm run typecheck` and `npm run lint` — both must be clean before you screenshot.
+   A type error means the iteration is not done.
+3. Screenshot the running dev server:
+   - Load the Chrome tools if not already loaded (ToolSearch:
+     `"select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__computer,mcp__claude-in-chrome__read_page,mcp__claude-in-chrome__tabs_create_mcp"`).
+   - Navigate to `http://localhost:5173<ROUTE>` and take a screenshot. Save/compare
+     iterations under `design/.loop/<SCREEN>-<N>.png` (`<N>` = iteration number,
+     starting at 1; create `design/.loop/` if absent).
+4. **Read your own screenshot back** with the Read tool, side by side with `<REF>`.
+   Do not trust the code — trust the pixels.
+5. Write the diffs to `design/.loop/<SCREEN>-log.md`, appending a section per
+   iteration: what differed, what you changed, what is still off, what you
+   deliberately inferred. Read this log at the start of every iteration so you don't
+   re-fix the same thing or oscillate between two wrong values.
+6. Repeat.
 
-### 3. Dashboard / Rota grid — largest scope
-`../src/pages/app/DashboardPage.tsx` is currently a bare profile/settings stub — this
-is a full build, not a tweak, and `rotaflowui.png` depicts more than one
-screen's worth of UI at once. **Scope the loop to the main dashboard/rota-grid
-region only** (sidebar nav + header + rota grid + right-hand panels) — ignore
- the small phone mockups and the "DESIGN SYSTEM" strip along the top of the
-image, those aren't part of the routed page. Expect to run this loop multiple
-times, narrowing scope each pass (e.g. shell + sidebar first, then the grid
-table, then the coverage/warnings/publish panels).
+Be strict. Look for: text baseline and vertical centering, button height and
+horizontal padding, gap between stacked elements, corner radius (4 vs 8 vs 12 is
+visible), shadow spread and opacity, icon weight and size, image crop and aspect,
+exact font weight (500 vs 600 is visible), and color accuracy (sample the hex from
+both images, do not eyeball it).
 
-```
-{SCREEN_NAME} = Dashboard (rota grid view)
-{ROUTE}       = /app/dashboard
-{DESIGN_FILE} = rotaflowui.png
-{TARGET_FILE} = src/pages/app/DashboardPage.tsx
+### Stop conditions — stop when ANY of these is true
+
+- The screenshot and the reference are indistinguishable at a glance, and the last
+  two iterations produced no new fixable diffs.
+- You have completed **8 iterations**.
+- The remaining diffs are all things you cannot fix from code (e.g. the reference
+  uses an asset you do not have, or a font not in the project).
+
+On stop, output: a short list of what still differs and why, plus every value you
+inferred rather than read from the design system. Then run `npm run typecheck` and
+`npm run lint` one final time. If you could not reach the dev server, say so plainly —
+do not claim the screen renders.

@@ -68,7 +68,6 @@ function NavList({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
         ) : (
           <div
             key={label}
-            role="menuitem"
             aria-disabled="true"
             tabIndex={-1}
             className={cn(

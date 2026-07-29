@@ -26,25 +26,35 @@ WITH duplicate_rotas AS (
   WHERE status = 'draft'
 ),
 keepers AS (
-  SELECT org_id, location_id, period_start, period_end, min(id) AS keeper_id
-  FROM duplicate_rotas
-  WHERE row_num = 1
-  GROUP BY org_id, location_id, period_start, period_end
+  SELECT
+    r.id AS keeper_id,
+    r.org_id,
+    r.location_id,
+    r.period_start,
+    r.period_end
+  FROM duplicate_rotas r
+  WHERE r.row_num = 1
 ),
 duplicates AS (
   SELECT r.id AS duplicate_id, k.keeper_id
   FROM duplicate_rotas r
-  JOIN keepers k USING (org_id, location_id, period_start, period_end)
+  JOIN keepers k
+    ON r.org_id = k.org_id
+    AND r.period_start = k.period_start
+    AND r.period_end = k.period_end
+    AND (r.location_id IS NOT DISTINCT FROM k.location_id)
   WHERE r.row_num > 1
+),
+reassigned_shifts AS (
+  UPDATE public.shifts s
+  SET rota_id = d.keeper_id
+  FROM duplicates d
+  WHERE s.rota_id = d.duplicate_id
+  RETURNING s.id
 )
-UPDATE public.shifts s
-SET rota_id = d.keeper_id
-FROM duplicates d
-WHERE s.rota_id = d.duplicate_id;
-
-delete from public.rotas r
-using duplicates d
-where r.id = d.duplicate_id;
+DELETE FROM public.rotas r
+USING duplicates d
+WHERE r.id = d.duplicate_id;
 
 create unique index if not exists rotas_draft_unique_location
   on public.rotas (org_id, location_id, period_start, period_end)
