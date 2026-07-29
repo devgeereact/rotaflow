@@ -9,6 +9,7 @@ import { InstallPrompt } from '@/components/InstallPrompt';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { SplashScreen } from '@/components/SplashScreen';
+import { AppBootScreen } from '@/components/AppBootScreen';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
@@ -38,6 +39,14 @@ export function App(): JSX.Element {
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/splash" element={<SplashScreen />} />
+                {/* Design-loop preview only — the real screen only ever
+                    renders inline from ProtectedRoute/AppShell while auth or
+                    org membership is resolving. Fixed props reproduce the
+                    "setting up organisation" mid-boot state in design/appboot.png. */}
+                <Route
+                  path="/appboot"
+                  element={<AppBootScreen authResolved orgResolved={false} />}
+                />
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}

@@ -46,6 +46,10 @@ const config: Config = {
           pale: '#87B4FA', // bottom-centre wave
           mist: '#C9DCFB', // palest blue wave
           wash: '#E5EAF4', // progress track, hairline rules
+          // Pending-stage icon/ring tint on design/appboot.png — sampled
+          // directly (not a `brand` opacity blend; alpha-over-white lands
+          // much lighter than this). See design/.loop/appboot-log.md.
+          faint: '#5275CA',
         },
         ink: {
           DEFAULT: '#0D1934', // wordmark "Rota", feature labels

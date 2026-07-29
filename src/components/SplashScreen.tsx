@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { BarChart3, Calendar, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { StatusPill } from '@/components/ui/StatusPill';
 import { SplashWaves } from '@/components/SplashWaves';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { cn } from '@/lib/utils';
 
 interface SplashFeature {
   icon: LucideIcon;
@@ -42,28 +42,7 @@ export function SplashScreen({
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 dark:bg-background-dark">
       <SplashWaves />
 
-      {/* Status pill */}
-      <div className="absolute right-9 top-8 flex h-11 items-center gap-4 rounded-full border border-surface-border px-5 dark:border-surface-border-dark">
-        <span className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className={cn(
-              'h-2.5 w-2.5 rounded-full',
-              online ? 'bg-success' : 'bg-warning',
-            )}
-          />
-          <span className="text-base text-ink-soft dark:text-content-muted-dark">
-            {online ? 'Online' : 'Offline'}
-          </span>
-        </span>
-        <span
-          aria-hidden="true"
-          className="h-5 w-px bg-surface-border dark:bg-surface-border-dark"
-        />
-        <span className="text-base text-ink-soft dark:text-content-muted-dark">
-          v{__APP_VERSION__}
-        </span>
-      </div>
+      <StatusPill className="absolute right-9 top-8" />
 
       {/* Lockup */}
       <main className="relative flex flex-col items-center pb-16 text-center">
