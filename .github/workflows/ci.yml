@@ -58,13 +58,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Report-only, deliberately. 37 files are currently unformatted; making this
-      # blocking today would fail every PR for reasons unrelated to the PR. Run
-      # `npm run format` once, then promote this to a hard gate by deleting the
-      # continue-on-error line — the check is wired up and waiting for that.
-      - name: Format check (report-only until the backlog is cleared)
+      # Now a hard gate. The 37-file backlog that made this report-only was cleared
+      # on 2026-07-29 with `npm run format`; the tree is Prettier-clean.
+      #
+      # Note for anyone hitting a surprise failure here: Prettier can move an
+      # `eslint-disable-next-line` away from the line it suppresses, which turns a
+      # working directive into an "unused disable directive" lint error. Anchor such
+      # comments directly above the reported line — see src/hooks/useOptimizedImage.ts.
+      - name: Format check
         run: npm run format:check
-        continue-on-error: true
 
       - name: Build (no .env — must survive missing VITE_* vars)
         run: npm run build

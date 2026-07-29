@@ -19,7 +19,10 @@ export function SplashScreen(): JSX.Element {
         aria-hidden="true"
       >
         {Array.from({ length: 24 }).map((_, i) => (
-          <span key={i} className="h-1.5 w-1.5 rounded-full bg-surface-border dark:bg-surface-border-dark" />
+          <span
+            key={i}
+            className="h-1.5 w-1.5 rounded-full bg-surface-border dark:bg-surface-border-dark"
+          />
         ))}
       </div>
 
@@ -81,7 +84,9 @@ export function SplashScreen(): JSX.Element {
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-border dark:bg-surface-border-dark">
             <div className="h-full w-[43%] rounded-full bg-primary" />
           </div>
-          <p className="mt-3 text-xs font-semibold tracking-widest text-primary">LOADING ROTA DATA...</p>
+          <p className="mt-3 text-xs font-semibold tracking-widest text-primary">
+            LOADING ROTA DATA...
+          </p>
         </div>
       </div>
 
@@ -89,7 +94,9 @@ export function SplashScreen(): JSX.Element {
         {features.map(({ icon: Icon, label }) => (
           <li key={label} className="flex items-center gap-3">
             <Icon size={22} className="text-primary" aria-hidden="true" />
-            <span className="text-sm font-medium text-content dark:text-content-dark">{label}</span>
+            <span className="text-sm font-medium text-content dark:text-content-dark">
+              {label}
+            </span>
           </li>
         ))}
       </ul>

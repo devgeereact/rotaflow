@@ -9,7 +9,12 @@ interface PreviewShiftChipProps {
 }
 
 /** Dashed, non-interactive preview of an AI-suggested shift, overlaid on the grid before it's applied. */
-export function PreviewShiftChip({ label, colourHex, startTime, endTime }: PreviewShiftChipProps): JSX.Element {
+export function PreviewShiftChip({
+  label,
+  colourHex,
+  startTime,
+  endTime,
+}: PreviewShiftChipProps): JSX.Element {
   return (
     <div
       className={cn(

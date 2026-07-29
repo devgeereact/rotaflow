@@ -20,7 +20,9 @@ export function shiftCellKey(staffProfileId: string | null, dateIso: string): st
 }
 
 /** Inverse of the `cell:${shiftCellKey(...)}` droppable id used on the grid. */
-export function parseCellId(id: string): { staffProfileId: string | null; date: string } | null {
+export function parseCellId(
+  id: string,
+): { staffProfileId: string | null; date: string } | null {
   if (!id.startsWith('cell:')) return null;
   const [staffPart, date] = id.slice('cell:'.length).split('::');
   if (!staffPart || !date) return null;
@@ -31,7 +33,10 @@ export function parseCellId(id: string): { staffProfileId: string | null; date: 
 export function buildShiftMap(shifts: Shift[], timezone: string): Map<string, Shift[]> {
   const map = new Map<string, Shift[]>();
   for (const shift of shifts) {
-    const localDate = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
+    const localDate = format(
+      toZonedTime(new Date(shift.starts_at), timezone),
+      'yyyy-MM-dd',
+    );
     const key = shiftCellKey(shift.staff_profile_id, localDate);
     map.set(key, [...(map.get(key) ?? []), shift]);
   }

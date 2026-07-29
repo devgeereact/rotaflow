@@ -1,6 +1,7 @@
 # System Architecture
 
 ## 1. Topology
+
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                     Client Browser / Installed PWA                 │
@@ -19,10 +20,12 @@
  PostgreSQL  ·  Edge Functions                  Inngest invokes a Supabase
  (row-level security)                           Edge Function (NOT cPanel)
 ```
+
 The static bundle talks to each managed service directly over HTTPS. cPanel only
 serves files — it never runs application logic.
 
 ## 2. Directory layout
+
 ```text
 src/
 ├── assets/        # images/svgs imported by code
@@ -43,6 +46,7 @@ src/
 ├── main.tsx       # bootstrap: Sentry, SW registration, render
 └── index.css      # Tailwind layers + base styles
 ```
+
 **Dependency direction:** `pages → services → lib`. Components consume `hooks`
 and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 
@@ -54,6 +58,7 @@ and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 `AuthProvider`, `OrgProvider` (active tenant + role), `ThemeProvider`.
 
 ## 3. Rendering & routing
+
 - Single-page app; routing via **React Router** (`createBrowserRouter`).
 - Client-side navigation only. Deep links work because `.htaccess` rewrites any
   unknown path to `index.html`, and Workbox's `navigateFallback` does the same
@@ -61,9 +66,11 @@ and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 - `ProtectedRoute` gates authenticated views on Supabase session state.
 
 ### Information architecture / routes (RotaFlow)
+
 Routes are organisation-scoped once a tenant is selected. `[Built]` = live
 today; everything else is a real `Sidebar` nav item rendered disabled ("Soon")
 rather than a route, so the IA is visible without shipping dead links.
+
 ```text
 /                         [Built] marketing / redirect to app or login
 /login                    [Built] auth (Supabase) — /signup is a toggle within it, not a separate route
@@ -83,11 +90,13 @@ rather than a route, so the IA is visible without shipping dead links.
   /app/settings           org settings, roles, subscription (owner)
 /admin                    Super Admin console (is_platform_admin) — later phase
 ```
+
 Role determines which nav items and routes render; the server enforces access via RLS.
 Shift-type management has no dedicated route — it's a modal opened from the
 rota builder's toolbar, since it's tightly coupled to rota-building.
 
 ## 4. State management
+
 - **Server/auth state:** Supabase session lives in `AuthProvider` (Context).
   Data is fetched per-view through `services/*`; cache/retry handled by the SW
   and Supabase client. (Swap in TanStack Query later if you need richer caching.)
@@ -106,6 +115,7 @@ rota builder's toolbar, since it's tightly coupled to rota-building.
   working copy is local until published (no global store needed for V1).
 
 ## 5. PWA & offline strategy
+
 - `vite-plugin-pwa` (Workbox, `generateSW`) precaches the hashed app shell
   (`js/css/html/icons/fonts`).
 - **Navigation:** `navigateFallback: index.html` → the SPA boots offline and its
@@ -119,6 +129,7 @@ rota builder's toolbar, since it's tightly coupled to rota-building.
 - `public/offline.html` ships as a last-resort static fallback.
 
 ## 6. Data flow example (publish a rota → notify staff)
+
 ```
 RotaBuilderPage (manager, org-scoped)
   → rotaService.publish(orgId, rotaId)
@@ -140,8 +151,10 @@ Offline example (staff clock-in with no signal)
 ```
 
 ## 7. Build & deploy pipeline
+
 The server has **no Node/npm** — the build runs locally (or in CI) and only the static
 artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
+
 1. `npm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps).
 2. Deploy `dist/*` and root `.htaccess` into **this app's own docroot** (e.g.
    `~/<domain>/` or `public_html/<app>/`) via rsync-over-SSH, cPanel Git, or FTP.
@@ -150,6 +163,7 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
    secret paths (`uploads/`, `.env`, `config.php`, backups) from any delete.
 
 ## 8. Security posture
+
 - Only browser-safe keys ship: Supabase **anon** (RLS-guarded), ImageKit **public**,
   Inngest **write-only event** key.
 - `service_role`, Inngest **signing** key, and DB credentials never touch the client.
@@ -157,6 +171,7 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
   `Referrer-Policy`.
 
 ## 9. AI rota assistant (OpenRouter)
+
 A first slice of NL scheduling (PRD §5, pulled forward from V2): a manager describes
 staffing needs in plain English and gets shift suggestions grounded in real data.
 

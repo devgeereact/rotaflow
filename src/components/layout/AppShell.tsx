@@ -27,8 +27,8 @@ export function AppShell(): JSX.Element {
             Couldn&rsquo;t load your organisations
           </h1>
           <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
-            You&rsquo;re still signed in and nothing has been lost. Check your
-            connection and try again.
+            You&rsquo;re still signed in and nothing has been lost. Check your connection
+            and try again.
           </p>
           <Button className="w-full" onClick={() => void refresh()}>
             Retry

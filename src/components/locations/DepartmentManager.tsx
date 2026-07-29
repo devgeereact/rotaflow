@@ -16,7 +16,10 @@ interface DepartmentManagerProps {
 }
 
 /** Inline department CRUD nested under a location's detail panel. */
-export function DepartmentManager({ orgId, locationId }: DepartmentManagerProps): JSX.Element {
+export function DepartmentManager({
+  orgId,
+  locationId,
+}: DepartmentManagerProps): JSX.Element {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -44,8 +47,14 @@ export function DepartmentManager({ orgId, locationId }: DepartmentManagerProps)
     if (!newName.trim()) return;
     setError(null);
     try {
-      const dept = await createDepartment({ org_id: orgId, location_id: locationId, name: newName.trim() });
-      setDepartments((prev) => [...prev, dept].sort((a, b) => a.name.localeCompare(b.name)));
+      const dept = await createDepartment({
+        org_id: orgId,
+        location_id: locationId,
+        name: newName.trim(),
+      });
+      setDepartments((prev) =>
+        [...prev, dept].sort((a, b) => a.name.localeCompare(b.name)),
+      );
       setNewName('');
     } catch (err) {
       reportError(err, { area: 'departments:create' });
@@ -88,7 +97,9 @@ export function DepartmentManager({ orgId, locationId }: DepartmentManagerProps)
         Departments
       </h3>
       {loading ? (
-        <p className="text-sm text-content-muted dark:text-content-muted-dark">Loading…</p>
+        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          Loading…
+        </p>
       ) : (
         <ul className="mb-3 space-y-1">
           {departments.map((dept) => (
@@ -123,7 +134,9 @@ export function DepartmentManager({ orgId, locationId }: DepartmentManagerProps)
                 </div>
               ) : (
                 <>
-                  <span className="text-sm text-content dark:text-content-dark">{dept.name}</span>
+                  <span className="text-sm text-content dark:text-content-dark">
+                    {dept.name}
+                  </span>
                   <span className="flex items-center gap-2">
                     <button
                       type="button"

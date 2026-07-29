@@ -35,7 +35,10 @@ interface ShiftTypePaletteProps {
 }
 
 /** Drag source: shift-type tokens the manager drags onto grid cells to create shifts. */
-export function ShiftTypePalette({ shiftTypes, onManage }: ShiftTypePaletteProps): JSX.Element {
+export function ShiftTypePalette({
+  shiftTypes,
+  onManage,
+}: ShiftTypePaletteProps): JSX.Element {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {shiftTypes.map((type) => (

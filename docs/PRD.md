@@ -1,6 +1,7 @@
 # Product Requirements Document (PRD) — RotaFlow
 
 ## 1. Overview
+
 RotaFlow is a **multi-tenant, offline-first workforce scheduling PWA**. Organisations
 build and communicate staff rotas in minutes; staff get a modern mobile experience
 that works with no signal and syncs when connectivity returns. It runs entirely as a
@@ -18,27 +19,30 @@ manufacturing, security, cleaning, education, churches, events, logistics, offic
 with minimal industry-specific customisation.
 
 ## 2. Target users
+
 - **Public / anyone** — any organisation self-serves and onboards its own team.
 - Four roles per tenant (see §4): **Super Admin** (platform), **Organisation Owner**,
   **Manager**, **Staff** (the largest user group).
 
 ## 3. Goals & success metrics
-| Area          | Target                                                          |
-| ------------- | --------------------------------------------------------------- |
-| Time to rota  | A manager builds a full week's rota in **< 10 minutes**         |
-| Performance   | Lighthouse ≥ 95 (Performance, A11y, Best Practices, PWA)        |
-| Offline       | Staff can open the app and see their shifts with **no** network |
-| Sync          | Offline actions (clock-in, leave request) reconcile on reconnect|
-| Reliability   | 100% of unhandled errors captured in Sentry                     |
-| Tenant safety | Zero cross-tenant data access (enforced by RLS on every table)  |
+
+| Area          | Target                                                           |
+| ------------- | ---------------------------------------------------------------- |
+| Time to rota  | A manager builds a full week's rota in **< 10 minutes**          |
+| Performance   | Lighthouse ≥ 95 (Performance, A11y, Best Practices, PWA)         |
+| Offline       | Staff can open the app and see their shifts with **no** network  |
+| Sync          | Offline actions (clock-in, leave request) reconcile on reconnect |
+| Reliability   | 100% of unhandled errors captured in Sentry                      |
+| Tenant safety | Zero cross-tenant data access (enforced by RLS on every table)   |
 
 ## 4. Roles & permissions (drives PRD + Supabase RLS)
-| Role | Scope | Can do |
-| ---- | ----- | ------ |
-| **Super Admin** | Platform | Tenant management, subscription/billing oversight, support, audit logs, feature flags, GDPR tools. *(Full console is a later phase; role + guardrails exist from day one.)* |
-| **Organisation Owner** | One org | Invite managers, manage subscription, locations, departments, roles, company settings, policies, org-wide reports. |
-| **Manager** | Org / assigned locations | Build & publish rotas, assign shifts, approve leave & overtime, review clock-ins, approve swaps, manage availability, export payroll/timesheets, send announcements. |
-| **Staff** | Self | View rota, receive notifications, clock in/out, request leave & overtime, request/accept shift swaps, set availability, view hours, download rota, manage emergency contact, calendar sync. |
+
+| Role                   | Scope                    | Can do                                                                                                                                                                                      |
+| ---------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Super Admin**        | Platform                 | Tenant management, subscription/billing oversight, support, audit logs, feature flags, GDPR tools. _(Full console is a later phase; role + guardrails exist from day one.)_                 |
+| **Organisation Owner** | One org                  | Invite managers, manage subscription, locations, departments, roles, company settings, policies, org-wide reports.                                                                          |
+| **Manager**            | Org / assigned locations | Build & publish rotas, assign shifts, approve leave & overtime, review clock-ins, approve swaps, manage availability, export payroll/timesheets, send announcements.                        |
+| **Staff**              | Self                     | View rota, receive notifications, clock in/out, request leave & overtime, request/accept shift swaps, set availability, view hours, download rota, manage emergency contact, calendar sync. |
 
 All permissions are enforced by **Supabase RLS predicates** scoped by `org_id` and
 role membership — never in the client alone.
@@ -46,6 +50,7 @@ role membership — never in the client alone.
 ## 5. Feature set (full platform, phased)
 
 ### Phase 1 — Core scheduling loop
+
 1. **Multi-tenant foundation** — organisations, locations, departments; every record
    `org_id`-scoped with RLS isolation; role-based memberships.
 2. **Staff management** — profiles (photo, job title, department, skills, contract
@@ -72,6 +77,7 @@ role membership — never in the client alone.
 14. **GDPR essentials** — consent, audit logging, data export/delete.
 
 ### Phase 2 — Intelligence, enterprise & billing
+
 - AI scheduling / auto-fill, demand forecasting, burnout detection, natural-language
   scheduling ("schedule three nurses for nights next weekend").
 - Payroll integrations (Sage, Xero, QuickBooks, BrightPay, Staffology).
@@ -83,6 +89,7 @@ role membership — never in the client alone.
   Business). Built **last**, but the architecture accommodates it from the start.
 
 ## 6. Non-functional requirements
+
 - **Static-first:** zero server runtime; dynamic behaviour is client-side or offloaded
   to Supabase (Auth/DB/RLS, Edge Functions, `pg_cron`), ImageKit, Sentry, Inngest.
 - **Multi-tenant:** single Supabase project; `org_id` on every table; RLS tenant
@@ -96,6 +103,7 @@ role membership — never in the client alone.
 - **Region/compliance:** UK-first (GDPR / UK GDPR terminology); PII handled with care.
 
 ## 7. Out of scope (V1)
+
 - Full Super Admin billing console and live subscription charging (role/seams exist;
   charging is the final phase).
 - SMS notifications (schema + channel seam reserved; **not** wired up yet).
@@ -103,6 +111,7 @@ role membership — never in the client alone.
 - Native app-store submission (the Expo bridge is a later milestone).
 
 ## 8. Future roadmap
+
 Phase 2 (above) → advanced clock-in modes (NFC, WiFi validation, photo verification)
 → SMS via Twilio → document-expiry automation → Expo/React Native shell reusing hooks
 and components.

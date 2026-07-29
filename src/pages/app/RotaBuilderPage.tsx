@@ -45,7 +45,10 @@ import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { RotaGrid } from '@/components/rota/RotaGrid';
 import { ShiftTypePalette } from '@/components/rota/ShiftTypePalette';
-import { AssignShiftModal, type AssignShiftFormValues } from '@/components/rota/AssignShiftModal';
+import {
+  AssignShiftModal,
+  type AssignShiftFormValues,
+} from '@/components/rota/AssignShiftModal';
 import { ShiftTypeManagerModal } from '@/components/rota/ShiftTypeManagerModal';
 import { AutoFillPanel } from '@/components/rota/AutoFillPanel';
 import type { Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
@@ -237,8 +240,14 @@ export function RotaBuilderPage(): JSX.Element {
         const shiftId = activeId.slice('shift:'.length);
         const shift = shifts.find((s) => s.id === shiftId);
         if (!shift) return;
-        const { time: startTime } = fromIsoInTimezone(shift.starts_at, selectedLocation.timezone);
-        const { time: endTime } = fromIsoInTimezone(shift.ends_at, selectedLocation.timezone);
+        const { time: startTime } = fromIsoInTimezone(
+          shift.starts_at,
+          selectedLocation.timezone,
+        );
+        const { time: endTime } = fromIsoInTimezone(
+          shift.ends_at,
+          selectedLocation.timezone,
+        );
         const { startsAt, endsAt } = computeShiftIsoRange(
           cell.date,
           startTime,
@@ -250,7 +259,9 @@ export function RotaBuilderPage(): JSX.Element {
           starts_at: startsAt,
           ends_at: endsAt,
         })
-          .then((updated) => setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s))))
+          .then((updated) =>
+            setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s))),
+          )
           .catch((err) => {
             reportError(err, { area: 'rota:drag-reassign' });
             showError('Could not move that shift. It has been left where it was.');
@@ -341,7 +352,9 @@ export function RotaBuilderPage(): JSX.Element {
       .then(setShifts)
       .catch((err) => {
         reportError(err, { area: 'rota:reload-shifts' });
-        showError('Could not refresh the grid. Reload the page to see the latest shifts.');
+        showError(
+          'Could not refresh the grid. Reload the page to see the latest shifts.',
+        );
       });
   };
 
@@ -386,7 +399,11 @@ export function RotaBuilderPage(): JSX.Element {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setWeekStart((d) => getMonday(new Date(new Date(d).setDate(new Date(d).getDate() - 7))))}
+              onClick={() =>
+                setWeekStart((d) =>
+                  getMonday(new Date(new Date(d).setDate(new Date(d).getDate() - 7))),
+                )
+              }
               aria-label="Previous week"
               className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
             >
@@ -397,13 +414,21 @@ export function RotaBuilderPage(): JSX.Element {
             </h1>
             <button
               type="button"
-              onClick={() => setWeekStart((d) => getMonday(new Date(new Date(d).setDate(new Date(d).getDate() + 7))))}
+              onClick={() =>
+                setWeekStart((d) =>
+                  getMonday(new Date(new Date(d).setDate(new Date(d).getDate() + 7))),
+                )
+              }
               aria-label="Next week"
               className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
             >
               <ChevronRight size={16} />
             </button>
-            <Button size="sm" variant="ghost" onClick={() => setWeekStart(getMonday(new Date()))}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setWeekStart(getMonday(new Date()))}
+            >
               Today
             </Button>
             <span
@@ -446,7 +471,11 @@ export function RotaBuilderPage(): JSX.Element {
                 size="sm"
                 onClick={() => void handlePublish()}
                 disabled={publishing || !rota || shifts.length === 0}
-                title={shifts.length === 0 ? 'Add at least one shift before publishing' : undefined}
+                title={
+                  shifts.length === 0
+                    ? 'Add at least one shift before publishing'
+                    : undefined
+                }
               >
                 {publishing ? 'Publishing…' : 'Publish'}
               </Button>
@@ -506,7 +535,10 @@ export function RotaBuilderPage(): JSX.Element {
         </div>
 
         <div className="mb-4">
-          <ShiftTypePalette shiftTypes={shiftTypes} onManage={() => setShiftTypeModalOpen(true)} />
+          <ShiftTypePalette
+            shiftTypes={shiftTypes}
+            onManage={() => setShiftTypeModalOpen(true)}
+          />
         </div>
 
         <div className="mb-4 flex gap-6 text-sm text-content-muted dark:text-content-muted-dark">
@@ -536,9 +568,15 @@ export function RotaBuilderPage(): JSX.Element {
               shiftTypes={shiftTypes}
               previewMap={previewMap}
               onAddShift={(staffProfileId, date) =>
-                setAssignModal({ open: true, context: { staffProfileId, date }, shift: null })
+                setAssignModal({
+                  open: true,
+                  context: { staffProfileId, date },
+                  shift: null,
+                })
               }
-              onEditShift={(shift) => setAssignModal({ open: true, context: null, shift })}
+              onEditShift={(shift) =>
+                setAssignModal({ open: true, context: null, shift })
+              }
             />
           </Card>
         )}

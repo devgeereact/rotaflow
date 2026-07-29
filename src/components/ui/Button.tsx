@@ -14,7 +14,8 @@ const VARIANTS: Record<Variant, string> = {
   secondary:
     'bg-surface text-content border border-surface-border hover:bg-surface-subtle ' +
     'dark:bg-surface-dark dark:text-content-dark dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark',
-  ghost: 'bg-transparent text-primary hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
+  ghost:
+    'bg-transparent text-primary hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
 };
 
 const SIZES: Record<Size, string> = {

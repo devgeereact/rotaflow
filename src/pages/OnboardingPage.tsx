@@ -55,8 +55,8 @@ export function OnboardingPage(): JSX.Element {
             Couldn&rsquo;t load your organisations
           </h1>
           <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
-            If you already belong to one, creating another here would duplicate
-            it. Check your connection and try again.
+            If you already belong to one, creating another here would duplicate it. Check
+            your connection and try again.
           </p>
           <Button className="w-full" onClick={() => void refresh()}>
             Retry
@@ -74,8 +74,7 @@ export function OnboardingPage(): JSX.Element {
           Set up your organisation
         </h1>
         <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
-          You'll be the owner and can invite managers and staff once your team is set
-          up.
+          You'll be the owner and can invite managers and staff once your team is set up.
         </p>
 
         <input

@@ -109,7 +109,8 @@ export function ShiftTypeManagerModal({
   };
 
   const handleDelete = async (id: string, name: string): Promise<void> => {
-    if (!window.confirm(`Delete the "${name}" shift type? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete the "${name}" shift type? This cannot be undone.`))
+      return;
     try {
       await deleteShiftType(id);
       onChange(shiftTypes.filter((t) => t.id !== id));
@@ -123,7 +124,9 @@ export function ShiftTypeManagerModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={view === 'list' ? 'Shift types' : editingId ? 'Edit shift type' : 'New shift type'}
+      title={
+        view === 'list' ? 'Shift types' : editingId ? 'Edit shift type' : 'New shift type'
+      }
     >
       {view === 'list' ? (
         <div>
@@ -135,10 +138,15 @@ export function ShiftTypeManagerModal({
               >
                 <span className="flex items-center gap-2.5">
                   <span
-                    className={cn('h-3 w-3 rounded-full', paletteTokenForColour(type.colour))}
+                    className={cn(
+                      'h-3 w-3 rounded-full',
+                      paletteTokenForColour(type.colour),
+                    )}
                     aria-hidden="true"
                   />
-                  <span className="text-sm text-content dark:text-content-dark">{type.name}</span>
+                  <span className="text-sm text-content dark:text-content-dark">
+                    {type.name}
+                  </span>
                   {type.default_start && type.default_end && (
                     <span className="font-mono text-xs text-content-muted dark:text-content-muted-dark">
                       {type.default_start}–{type.default_end}

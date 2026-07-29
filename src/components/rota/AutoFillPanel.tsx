@@ -4,7 +4,10 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { computeShiftIsoRange, formatDayLabel } from '@/lib/rotaGrid';
-import { generateRotaSuggestions, type AiShiftSuggestion } from '@/services/aiRotaService';
+import {
+  generateRotaSuggestions,
+  type AiShiftSuggestion,
+} from '@/services/aiRotaService';
 import { createShifts } from '@/services/shiftService';
 import { reportError } from '@/lib/sentry';
 import type { ShiftInsert } from '@/types';
@@ -90,7 +93,12 @@ export function AutoFillPanel({
     setError(null);
     try {
       const inserts: ShiftInsert[] = suggestions.map((s) => {
-        const { startsAt, endsAt } = computeShiftIsoRange(s.date, s.startTime, s.endTime, timezone);
+        const { startsAt, endsAt } = computeShiftIsoRange(
+          s.date,
+          s.startTime,
+          s.endTime,
+          timezone,
+        );
         return {
           org_id: orgId,
           rota_id: rotaId,
@@ -135,7 +143,10 @@ export function AutoFillPanel({
           onChange={(e) => setPrompt(e.target.value)}
         />
 
-        <Button onClick={() => void handleGenerate()} disabled={generating || !prompt.trim()}>
+        <Button
+          onClick={() => void handleGenerate()}
+          disabled={generating || !prompt.trim()}
+        >
           <Sparkles size={16} aria-hidden="true" className="mr-1.5" />
           {generating ? 'Thinking…' : 'Generate suggestions'}
         </Button>
@@ -150,15 +161,24 @@ export function AutoFillPanel({
           <>
             <ul className="max-h-48 space-y-2 overflow-y-auto">
               {suggestions.map((s, i) => (
-                <li key={i} className="text-sm text-content-muted dark:text-content-muted-dark">
-                  {s.staffName} · {formatDayLabel(s.date).weekday} {formatDayLabel(s.date).day} ·{' '}
-                  {s.startTime}–{s.endTime}
+                <li
+                  key={i}
+                  className="text-sm text-content-muted dark:text-content-muted-dark"
+                >
+                  {s.staffName} · {formatDayLabel(s.date).weekday}{' '}
+                  {formatDayLabel(s.date).day} · {s.startTime}–{s.endTime}
                   {s.shiftTypeName ? ` · ${s.shiftTypeName}` : ''}
                 </li>
               ))}
             </ul>
-            <Button className="w-full" onClick={() => void handleApply()} disabled={applying}>
-              {applying ? 'Applying…' : `Apply ${suggestions.length} shift${suggestions.length === 1 ? '' : 's'}`}
+            <Button
+              className="w-full"
+              onClick={() => void handleApply()}
+              disabled={applying}
+            >
+              {applying
+                ? 'Applying…'
+                : `Apply ${suggestions.length} shift${suggestions.length === 1 ? '' : 's'}`}
             </Button>
           </>
         )}

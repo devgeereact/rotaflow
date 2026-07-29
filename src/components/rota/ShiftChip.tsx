@@ -13,7 +13,13 @@ interface ShiftChipProps {
 }
 
 /** A placed shift on the grid — draggable to reassign, click to edit. */
-export function ShiftChip({ shift, shiftType, startTime, endTime, onClick }: ShiftChipProps): JSX.Element {
+export function ShiftChip({
+  shift,
+  shiftType,
+  startTime,
+  endTime,
+  onClick,
+}: ShiftChipProps): JSX.Element {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `shift:${shift.id}`,
   });

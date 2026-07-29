@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { createOrganisation, listMyMemberships, type MyMembership } from '@/services/orgService';
+import {
+  createOrganisation,
+  listMyMemberships,
+  type MyMembership,
+} from '@/services/orgService';
 import { getProfile } from '@/services/profileService';
 import { reportError } from '@/lib/sentry';
 import { ACTIVE_ORG_STORAGE_KEY } from '@/lib/session';
@@ -108,8 +112,7 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       role: m.role as MembershipRole,
     }));
 
-    const active =
-      summaries.find((m) => m.orgId === activeOrgId) ?? summaries[0] ?? null;
+    const active = summaries.find((m) => m.orgId === activeOrgId) ?? summaries[0] ?? null;
 
     return {
       orgId: active?.orgId ?? null,

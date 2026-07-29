@@ -82,7 +82,9 @@ export async function findRotaForPeriod(input: RotaPeriodQuery): Promise<Rota | 
  * concurrent callers — if two requests race past the find-check, the loser's
  * insert hits a 23505 unique-violation, and we just reload the winner's row.
  */
-export async function getOrCreateRotaForPeriod(input: CreateDraftRotaInput): Promise<Rota> {
+export async function getOrCreateRotaForPeriod(
+  input: CreateDraftRotaInput,
+): Promise<Rota> {
   const existing = await findRotaForPeriod(input);
   if (existing) return existing;
 

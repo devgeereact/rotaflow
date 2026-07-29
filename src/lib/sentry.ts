@@ -20,10 +20,7 @@ export function initSentry(): void {
 }
 
 /** Report a handled error with optional context. */
-export function reportError(
-  error: unknown,
-  context?: Record<string, unknown>,
-): void {
+export function reportError(error: unknown, context?: Record<string, unknown>): void {
   if (!env.sentryDsn) {
     console.error(error, context);
     return;

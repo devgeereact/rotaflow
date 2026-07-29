@@ -20,8 +20,8 @@ export function HomePage(): JSX.Element {
           Ship a PWA <span className="text-primary">today</span>.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-content-muted dark:text-content-muted-dark">
-          A production-ready starter with auth, offline caching, image
-          optimization, and monitoring — all on cheap static hosting.
+          A production-ready starter with auth, offline caching, image optimization, and
+          monitoring — all on cheap static hosting.
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           {user ? (

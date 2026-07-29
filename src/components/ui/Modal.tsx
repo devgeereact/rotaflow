@@ -12,7 +12,12 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Centered dialog overlay. Closes on backdrop click or Escape; traps focus while open. */
-export function Modal({ open, onClose, title, children }: ModalProps): JSX.Element | null {
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+}: ModalProps): JSX.Element | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
@@ -36,7 +41,9 @@ export function Modal({ open, onClose, title, children }: ModalProps): JSX.Eleme
       }
       if (e.key !== 'Tab' || !dialog) return;
 
-      const focusableEls = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      const focusableEls = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      );
       if (focusableEls.length === 0) {
         e.preventDefault();
         return;
@@ -80,7 +87,9 @@ export function Modal({ open, onClose, title, children }: ModalProps): JSX.Eleme
         className="relative z-10 w-full max-w-lg animate-fade-up rounded-2xl border border-surface-border bg-surface p-6 shadow-lg outline-none dark:border-surface-border-dark dark:bg-surface-dark"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-content dark:text-content-dark">{title}</h2>
+          <h2 className="text-lg font-semibold text-content dark:text-content-dark">
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onClose}

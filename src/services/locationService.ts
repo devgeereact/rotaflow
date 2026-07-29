@@ -63,9 +63,7 @@ export async function listDepartments(
   return data ?? [];
 }
 
-export async function createDepartment(
-  input: DepartmentInsert,
-): Promise<Department> {
+export async function createDepartment(input: DepartmentInsert): Promise<Department> {
   const { data, error } = await supabase
     .from('departments')
     .insert(input)

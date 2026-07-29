@@ -5,24 +5,20 @@ export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 
 export type AppSettings = Database['public']['Tables']['app_settings']['Row'];
-export type AppSettingsUpdate =
-  Database['public']['Tables']['app_settings']['Update'];
+export type AppSettingsUpdate = Database['public']['Tables']['app_settings']['Update'];
 
 export type ThemeMode = 'dark' | 'light';
 
 /** RotaFlow domain rows (see docs/SCHEMA.md). */
 export type Organisation = Database['public']['Tables']['organisations']['Row'];
-export type OrganisationInsert =
-  Database['public']['Tables']['organisations']['Insert'];
+export type OrganisationInsert = Database['public']['Tables']['organisations']['Insert'];
 
 export type MembershipRole = 'owner' | 'manager' | 'staff';
 export type Membership = Database['public']['Tables']['memberships']['Row'];
 
 export type StaffProfile = Database['public']['Tables']['staff_profiles']['Row'];
-export type StaffProfileInsert =
-  Database['public']['Tables']['staff_profiles']['Insert'];
-export type StaffProfileUpdate =
-  Database['public']['Tables']['staff_profiles']['Update'];
+export type StaffProfileInsert = Database['public']['Tables']['staff_profiles']['Insert'];
+export type StaffProfileUpdate = Database['public']['Tables']['staff_profiles']['Update'];
 
 export type ShiftType = Database['public']['Tables']['shift_types']['Row'];
 export type ShiftTypeInsert = Database['public']['Tables']['shift_types']['Insert'];
@@ -41,7 +37,5 @@ export type LocationInsert = Database['public']['Tables']['locations']['Insert']
 export type LocationUpdate = Database['public']['Tables']['locations']['Update'];
 
 export type Department = Database['public']['Tables']['departments']['Row'];
-export type DepartmentInsert =
-  Database['public']['Tables']['departments']['Insert'];
-export type DepartmentUpdate =
-  Database['public']['Tables']['departments']['Update'];
+export type DepartmentInsert = Database['public']['Tables']['departments']['Insert'];
+export type DepartmentUpdate = Database['public']['Tables']['departments']['Update'];

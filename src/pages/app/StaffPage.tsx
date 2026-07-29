@@ -15,10 +15,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import {
-  StaffFormModal,
-  type StaffFormValues,
-} from '@/components/staff/StaffFormModal';
+import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
 import type { Department, StaffProfile, StaffProfileInsert } from '@/types';
 
 const CONTRACT_LABELS: Record<string, string> = {
@@ -91,7 +88,9 @@ export function StaffPage(): JSX.Element {
       .filter((s) => showInactive || s.active)
       .filter((s) =>
         term
-          ? `${s.first_name} ${s.last_name} ${s.job_title ?? ''}`.toLowerCase().includes(term)
+          ? `${s.first_name} ${s.last_name} ${s.job_title ?? ''}`
+              .toLowerCase()
+              .includes(term)
           : true,
       );
   }, [staff, showInactive, search]);
@@ -126,14 +125,18 @@ export function StaffPage(): JSX.Element {
       setStaff((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
     } catch (err) {
       reportError(err, { area: 'staff:toggle-active' });
-      setError(`Could not ${person.active ? 'deactivate' : 'reactivate'} ${person.first_name} ${person.last_name}.`);
+      setError(
+        `Could not ${person.active ? 'deactivate' : 'reactivate'} ${person.first_name} ${person.last_name}.`,
+      );
     }
   };
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-3xl text-content dark:text-content-dark">Staff</h1>
+        <h1 className="font-display text-3xl text-content dark:text-content-dark">
+          Staff
+        </h1>
         {canManageStaff && (
           <Button size="sm" onClick={openCreate}>
             <Plus size={16} aria-hidden="true" className="mr-1.5" />
@@ -217,7 +220,9 @@ export function StaffPage(): JSX.Element {
                     {departmentName(person.department_id)}
                   </td>
                   <td className="px-4 py-3 text-content-muted dark:text-content-muted-dark">
-                    {person.contract_type ? CONTRACT_LABELS[person.contract_type] ?? person.contract_type : '—'}
+                    {person.contract_type
+                      ? (CONTRACT_LABELS[person.contract_type] ?? person.contract_type)
+                      : '—'}
                   </td>
                   <td className="px-4 py-3 font-mono text-content-muted dark:text-content-muted-dark">
                     {person.weekly_hours ?? '—'}
@@ -242,7 +247,11 @@ export function StaffPage(): JSX.Element {
                         aria-label={person.active ? 'Deactivate' : 'Reactivate'}
                         className="text-content-muted hover:text-primary dark:text-content-muted-dark"
                       >
-                        {person.active ? <UserRoundX size={16} /> : <UserRoundCheck size={16} />}
+                        {person.active ? (
+                          <UserRoundX size={16} />
+                        ) : (
+                          <UserRoundCheck size={16} />
+                        )}
                       </button>
                     </td>
                   )}

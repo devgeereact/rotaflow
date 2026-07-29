@@ -77,10 +77,17 @@ export function LoginPage(): JSX.Element {
   return (
     <main className="grid min-h-screen place-items-center px-6">
       <Card className="w-full max-w-sm animate-fade-up">
-        <h1 className="mb-1 font-display text-2xl text-content dark:text-content-dark">Welcome back</h1>
-        <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">Sign in to continue.</p>
+        <h1 className="mb-1 font-display text-2xl text-content dark:text-content-dark">
+          Welcome back
+        </h1>
+        <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
+          Sign in to continue.
+        </p>
 
-        <label className="mb-1 block text-sm text-content-muted dark:text-content-muted-dark" htmlFor="email">
+        <label
+          className="mb-1 block text-sm text-content-muted dark:text-content-muted-dark"
+          htmlFor="email"
+        >
           Email
         </label>
         <input
@@ -93,7 +100,10 @@ export function LoginPage(): JSX.Element {
           placeholder="you@example.com"
         />
 
-        <label className="mb-1 block text-sm text-content-muted dark:text-content-muted-dark" htmlFor="password">
+        <label
+          className="mb-1 block text-sm text-content-muted dark:text-content-muted-dark"
+          htmlFor="password"
+        >
           Password
         </label>
         <input
@@ -107,7 +117,11 @@ export function LoginPage(): JSX.Element {
         />
 
         <div className="flex gap-3">
-          <Button className="flex-1" disabled={busy} onClick={() => void signInWithPassword()}>
+          <Button
+            className="flex-1"
+            disabled={busy}
+            onClick={() => void signInWithPassword()}
+          >
             Sign in
           </Button>
           <Button
@@ -133,7 +147,8 @@ export function LoginPage(): JSX.Element {
         {env.oauthProviders.length > 0 && (
           <>
             <div className="my-5 flex items-center gap-3 text-xs text-content-muted dark:text-content-muted-dark">
-              <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" /> OR{' '}
+              <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" />{' '}
+              OR{' '}
               <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" />
             </div>
 
@@ -154,7 +169,10 @@ export function LoginPage(): JSX.Element {
         )}
 
         {message && (
-          <p role="status" className="mt-4 text-center text-sm text-content-muted dark:text-content-muted-dark">
+          <p
+            role="status"
+            className="mt-4 text-center text-sm text-content-muted dark:text-content-muted-dark"
+          >
             {message}
           </p>
         )}

@@ -35,7 +35,9 @@ export function RotaGrid({
               <p className="text-xs font-semibold uppercase text-content-muted dark:text-content-muted-dark">
                 {weekday}
               </p>
-              <p className="text-sm font-medium text-content dark:text-content-dark">{day}</p>
+              <p className="text-sm font-medium text-content dark:text-content-dark">
+                {day}
+              </p>
             </div>
           );
         })}

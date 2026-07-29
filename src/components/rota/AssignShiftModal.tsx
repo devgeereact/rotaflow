@@ -73,7 +73,9 @@ export function AssignShiftModal({
   onSave,
   onDelete,
 }: AssignShiftModalProps): JSX.Element {
-  const [values, setValues] = useState<AssignShiftFormValues>(blankValues(context, dates));
+  const [values, setValues] = useState<AssignShiftFormValues>(
+    blankValues(context, dates),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,7 +130,9 @@ export function AssignShiftModal({
           <Select
             id="as-staff"
             value={values.staffProfileId ?? ''}
-            onChange={(e) => setValues((v) => ({ ...v, staffProfileId: e.target.value || null }))}
+            onChange={(e) =>
+              setValues((v) => ({ ...v, staffProfileId: e.target.value || null }))
+            }
           >
             <option value="">Unassigned</option>
             {staff.map((s) => (
@@ -220,11 +224,19 @@ export function AssignShiftModal({
         {error && <p className="text-sm text-danger">{error}</p>}
 
         <div className="flex gap-3">
-          <Button className="flex-1" onClick={() => void handleSave()} disabled={submitting}>
+          <Button
+            className="flex-1"
+            onClick={() => void handleSave()}
+            disabled={submitting}
+          >
             {submitting ? 'Saving…' : shift ? 'Save changes' : 'Add shift'}
           </Button>
           {shift && onDelete && (
-            <Button variant="secondary" onClick={() => void handleDelete()} disabled={submitting}>
+            <Button
+              variant="secondary"
+              onClick={() => void handleDelete()}
+              disabled={submitting}
+            >
               Remove
             </Button>
           )}

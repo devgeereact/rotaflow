@@ -17,7 +17,7 @@ and only the built artifacts are shipped.
 > subject and the SMTP identities. All are now `rota.gakinz.com` / `gakinz.com`.
 >
 > **DNS/TLS for the subdomain:** add an `A` record `rota` → `185.61.152.45` in
-> Cloudflare, **proxied (orange cloud)** — the origin holds Cloudflare *Origin* certs
+> Cloudflare, **proxied (orange cloud)** — the origin holds Cloudflare _Origin_ certs
 > that browsers reject directly, so grey-clouding takes the site down instantly.
 > Cloudflare's edge certificate already covers `*.gakinz.com` (verified 2026-07-29), so
 > no edge certificate work is needed; confirm the **origin** cert also covers the
@@ -57,6 +57,7 @@ dedicated subdirectory** — for example `~/<domain>/` for an addon domain, or
 sites live in.
 
 Typical options:
+
 - **rsync over SSH** (fast, incremental) into `<docroot>/`.
 - **cPanel Git Version Control** + a `.cpanel.yml` copy step.
 - **FTP/SFTP** upload of `dist/` (CI or manual).

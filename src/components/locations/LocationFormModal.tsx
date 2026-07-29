@@ -77,7 +77,11 @@ export function LocationFormModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={initial ? 'Edit location' : 'Add location'}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={initial ? 'Edit location' : 'Add location'}
+    >
       <div className="space-y-4">
         <div>
           <Label htmlFor="loc-name">Name</Label>
@@ -151,8 +155,8 @@ export function LocationFormModal({
           </div>
         </div>
         <p className="-mt-2 text-xs text-content-muted dark:text-content-muted-dark">
-          Used for GPS clock-in geofencing (a later feature) — captured now so it's
-          ready when clock-in ships.
+          Used for GPS clock-in geofencing (a later feature) — captured now so it's ready
+          when clock-in ships.
         </p>
 
         {error && <p className="text-sm text-danger">{error}</p>}

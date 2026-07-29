@@ -9,23 +9,23 @@ that, not `xcrun simctl`.
 
 ## Screens with a design reference
 
-| `<SCREEN>` | route | `<REF>` | notes |
-|---|---|---|---|
-| splash | `/splash` | `design/splashscreen.png` | Built (`src/components/SplashScreen.tsx`) — refine pass |
-| appboot | `/splash` (2nd state) | `design/appboot.png` | Not built. Second visual state of the same route — the org-provisioning checklist (Secure connection → Loading data → Setting up organisation → Preparing features → Finalising) shown after auth resolves, before splashscreen's plain logo view hands off to `/app/dashboard`. Confirm the exact trigger/transition while building this one. |
-| login | `/login` | `design/signin.png` | Built (`src/pages/LoginPage.tsx`) — refine pass |
-| signup | `/signup` | `design/signup.png` | Gap — today it's a toggle inside `LoginPage.tsx`, not a standalone route. Build the route. |
-| onboarding-org | `/onboarding` step 1/5 | `design/Organisation-Onboarding.png` | Gap — `OnboardingPage.tsx` is a single-step stub today; this is the first step of a 5-step wizard |
-| onboarding-about | `/onboarding` step 2/5 | `design/Organisation-about.png` | Gap |
-| onboarding-team | `/onboarding` step 3/5 | `design/Team-onboarding.png` | Gap |
-| onboarding-plan | `/onboarding` step 4/5 | `design/Plan-Selection.png` | Gap |
-| onboarding-complete | `/onboarding` step 5/5 | `design/Onboarding-Complete.png` | Gap |
-| dashboard | `/app/dashboard` | `design/Workforce-Dashboard.png` | Built (`src/pages/app/DashboardPage.tsx`) — refine pass |
-| staff | `/app/staff` | `design/staff.png` | Built (`src/pages/app/StaffPage.tsx`) — refine pass |
-| rotabuilder | `/app/rota` | `design/Rota-Builder.png` | Built (`src/pages/app/RotaBuilderPage.tsx`) — refine pass |
-| schedule | `/app/schedule` (default) | `design/Schedule-dashboard.png` | Gap — new route (per `docs/SCREENS.md` §4/§5). Manager's default view/manage-published-rotas state. |
-| schedule-live | `/app/schedule` (live state) | `design/live-schedule.png` | Same route as `schedule` — the staff-facing "Live" state with the green live badge and open-requests panel |
-| schedule-published | `/app/schedule` (published state) | `design/published-schedule.png` | Same route as `schedule` — post-publish confirmation state (unpublish action, publish history) |
+| `<SCREEN>`          | route                             | `<REF>`                              | notes                                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | --------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| splash              | `/splash`                         | `design/splashscreen.png`            | Built (`src/components/SplashScreen.tsx`) — refine pass                                                                                                                                                                                                                                                                                        |
+| appboot             | `/splash` (2nd state)             | `design/appboot.png`                 | Not built. Second visual state of the same route — the org-provisioning checklist (Secure connection → Loading data → Setting up organisation → Preparing features → Finalising) shown after auth resolves, before splashscreen's plain logo view hands off to `/app/dashboard`. Confirm the exact trigger/transition while building this one. |
+| login               | `/login`                          | `design/signin.png`                  | Built (`src/pages/LoginPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                                |
+| signup              | `/signup`                         | `design/signup.png`                  | Gap — today it's a toggle inside `LoginPage.tsx`, not a standalone route. Build the route.                                                                                                                                                                                                                                                     |
+| onboarding-org      | `/onboarding` step 1/5            | `design/Organisation-Onboarding.png` | Gap — `OnboardingPage.tsx` is a single-step stub today; this is the first step of a 5-step wizard                                                                                                                                                                                                                                              |
+| onboarding-about    | `/onboarding` step 2/5            | `design/Organisation-about.png`      | Gap                                                                                                                                                                                                                                                                                                                                            |
+| onboarding-team     | `/onboarding` step 3/5            | `design/Team-onboarding.png`         | Gap                                                                                                                                                                                                                                                                                                                                            |
+| onboarding-plan     | `/onboarding` step 4/5            | `design/Plan-Selection.png`          | Gap                                                                                                                                                                                                                                                                                                                                            |
+| onboarding-complete | `/onboarding` step 5/5            | `design/Onboarding-Complete.png`     | Gap                                                                                                                                                                                                                                                                                                                                            |
+| dashboard           | `/app/dashboard`                  | `design/Workforce-Dashboard.png`     | Built (`src/pages/app/DashboardPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                        |
+| staff               | `/app/staff`                      | `design/staff.png`                   | Built (`src/pages/app/StaffPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                            |
+| rotabuilder         | `/app/rota`                       | `design/Rota-Builder.png`            | Built (`src/pages/app/RotaBuilderPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                      |
+| schedule            | `/app/schedule` (default)         | `design/Schedule-dashboard.png`      | Gap — new route (per `docs/SCREENS.md` §4/§5). Manager's default view/manage-published-rotas state.                                                                                                                                                                                                                                            |
+| schedule-live       | `/app/schedule` (live state)      | `design/live-schedule.png`           | Same route as `schedule` — the staff-facing "Live" state with the green live badge and open-requests panel                                                                                                                                                                                                                                     |
+| schedule-published  | `/app/schedule` (published state) | `design/published-schedule.png`      | Same route as `schedule` — post-publish confirmation state (unpublish action, publish history)                                                                                                                                                                                                                                                 |
 
 | tokens only | `design/designsystem.png` |
 
@@ -35,15 +35,15 @@ No mockup exists for these; layout is **inferred** from the nearest built/refere
 screen plus the tokens in `design/designsystem.png`. Run the loop against the closest
 ref for surface/type/radius fidelity only — do **not** try to make them identical to it.
 
-| `<SCREEN>` | route | closest ref (inferred from) |
-|---|---|---|
-| home | `/` | `design/signin.png` (marketing panel/left column) |
-| locations | `/app/locations` | `design/staff.png` (table/list + filter bar layout) |
-| notfound | `*` (bad route) | `design/designsystem.png` (tokens only) |
-| errorboundary | thrown render | `design/designsystem.png` (tokens only) |
-| offlinebanner | global, offline | `design/designsystem.png` (status pill styles) |
-| installprompt | global, installable | `design/designsystem.png` (card + button styles) |
-| updateprompt | global, new SW waiting | `design/designsystem.png` (card + button styles) |
+| `<SCREEN>`    | route                  | closest ref (inferred from)                         |
+| ------------- | ---------------------- | --------------------------------------------------- |
+| home          | `/`                    | `design/signin.png` (marketing panel/left column)   |
+| locations     | `/app/locations`       | `design/staff.png` (table/list + filter bar layout) |
+| notfound      | `*` (bad route)        | `design/designsystem.png` (tokens only)             |
+| errorboundary | thrown render          | `design/designsystem.png` (tokens only)             |
+| offlinebanner | global, offline        | `design/designsystem.png` (status pill styles)      |
+| installprompt | global, installable    | `design/designsystem.png` (card + button styles)    |
+| updateprompt  | global, new SW waiting | `design/designsystem.png` (card + button styles)    |
 
 ## The prompt
 

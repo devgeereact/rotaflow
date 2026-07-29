@@ -100,7 +100,10 @@ export function LocationsPage(): JSX.Element {
         <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
       ) : locations.length === 0 ? (
         <Card className="text-center">
-          <MapPin className="mx-auto mb-3 text-content-muted dark:text-content-muted-dark" size={28} />
+          <MapPin
+            className="mx-auto mb-3 text-content-muted dark:text-content-muted-dark"
+            size={28}
+          />
           <p className="mb-4 text-content-muted dark:text-content-muted-dark">
             No locations yet — add your first site to start building rotas.
           </p>
@@ -121,7 +124,9 @@ export function LocationsPage(): JSX.Element {
                     : 'border-surface-border bg-surface hover:bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark',
                 )}
               >
-                <p className="font-medium text-content dark:text-content-dark">{location.name}</p>
+                <p className="font-medium text-content dark:text-content-dark">
+                  {location.name}
+                </p>
                 {location.address && (
                   <p className="text-sm text-content-muted dark:text-content-muted-dark">
                     {location.address}
