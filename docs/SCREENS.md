@@ -57,10 +57,10 @@ role — it gates the `/admin` console only.
 | Screen                              | Status                | Notes                                                                                                                                                                              |
 | ----------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | My schedule (rota view)             | `[V1]`                | `/app/schedule` — month/week/day, ICS subscribe/download                                                                                                                           |
-| Availability submission             | `[V1]`                | `/app/availability` (staff mode)                                                                                                                                                   |
-| Leave request + tracking            | `[V1]`                | `/app/leave` (staff mode)                                                                                                                                                          |
-| Overtime request/offer              | `[Gap]`               | `overtime_requests` table exists, no named route                                                                                                                                   |
-| Shift swap request + status         | `[V1]`                | `/app/swaps` (staff mode)                                                                                                                                                          |
+| Availability submission             | `[Built]`             | `/app/availability` (staff mode) — recurring weekly pattern; a one-off date is representable in the schema but not exposed yet, closer to a leave request                          |
+| Leave request + tracking            | `[Built]`             | `/app/leave` (staff mode) — includes entitlement (`holiday_allowance` − approved days used this calendar year)                                                                     |
+| Overtime request/offer              | `[Gap]`               | `overtime_requests` table exists, no named route — still deferred, no route was ever named in `ARCHITECTURE.md` unlike availability/leave/swaps                                    |
+| Shift swap request + status         | `[Built]`             | `/app/swaps` (staff mode) — request an owned upcoming shift, optionally targeting a colleague; approving here does not move the shift, see manager row below                       |
 | Clock in/out                        | `[Built, GPS+manual]` | `/app/clock` — GPS + manual, offline-queued via `useSyncQueue`. QR deferred: nothing generates a per-location code to scan yet                                                     |
 | My timesheets / hours               | `[Built]`             | `/app/timesheets` (staff mode) — real hours computed from `clock_events`, not the `timesheets` table's submit/approve workflow (unspecified business rules; see PROJECT-MEMORY.md) |
 | My documents                        | `[Phase 2]`           | `documents` table exists, automation deferred                                                                                                                                      |
@@ -75,9 +75,9 @@ role — it gates the `/admin` console only.
 | Shift type/template management | `[Built, modal only]` | `shift_types` CRUD via a modal on the rota toolbar — no standalone route. `shift_templates` still untouched                                                                                                                 |
 | Staff directory                | `[Built]`             | `/app/staff` — full CRUD, soft-delete via `active`                                                                                                                                                                          |
 | Staff profile detail/edit      | `[Built, partial]`    | Edit modal covers core fields; no nested emergency contacts/documents yet                                                                                                                                                   |
-| Team availability view         | `[V1]`                | `/app/availability` (manager mode)                                                                                                                                                                                          |
-| Leave approvals                | `[V1]`                | `/app/leave` (manager mode)                                                                                                                                                                                                 |
-| Swap approvals                 | `[V1]`                | `/app/swaps` (manager mode)                                                                                                                                                                                                 |
+| Team availability view         | `[Built]`             | `/app/availability` ("Team" toggle)                                                                                                                                                                                         |
+| Leave approvals                | `[Built]`             | `/app/leave` ("Approvals" toggle) — approve/reject; RLS (`has_org_role`) is the real enforcement                                                                                                                            |
+| Swap approvals                 | `[Built]`             | `/app/swaps` ("Approvals" toggle) — approving marks the swap approved only; a manager still reassigns the shift itself in the rota builder, same write path as any other reassignment                                       |
 | Clock-in review                | `[Built]`             | `/app/timesheets` (manager mode, "Team" toggle) — hours review only, no export yet                                                                                                                                          |
 | Announcements composer         | `[V1]`                | `/app/announcements` (manager mode)                                                                                                                                                                                         |
 | Reports & exports              | `[V1]`                | `/app/reports`                                                                                                                                                                                                              |
@@ -172,6 +172,28 @@ to scan), the `timesheets` table's submit/approve/export workflow (no
 automation populates it, and its period/approval rules were never specified —
 see `PROJECT-MEMORY.md`), and payroll export.
 
-Next: leave, availability and shift-swap requests (Phase 6) — the other
-`useSyncQueue` consumers (`leaveService`, `swapService`) already exist from
-Phase 4 with no screen yet, same pattern as clock-in had.
+**Phase 6 — requests workflow — is built**, to the scope below:
+
+| Screen                          | Now                                                                                                                                                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Availability (staff + team)     | `[Built]` — `/app/availability`                                                                                                                                                                      |
+| Leave request + entitlement     | `[Built]` — `/app/leave`                                                                                                                                                                             |
+| Leave approvals                 | `[Built]` — `/app/leave` "Approvals" toggle                                                                                                                                                          |
+| Shift swap request              | `[Built]` — `/app/swaps`                                                                                                                                                                             |
+| Swap respond (target colleague) | `[Built]` — needed `0008_shift_swaps_target_respond.sql`, a real RLS gap flagged when `swapService.ts` first landed in Phase 4 (the target colleague could read but not write a swap targeting them) |
+| Swap approvals (manager)        | `[Built]` — `/app/swaps` "Approvals" toggle, final sign-off only                                                                                                                                     |
+
+**Deliberately not built:** overtime requests (`overtime_requests` table
+exists, but no route was ever named in `ARCHITECTURE.md`, unlike the other
+three — genuinely `[Gap]`, not deferred `[V1]`). Approving a swap does not
+reassign the shift on the rota — that write happens in the rota builder, the
+same path as any other reassignment, so it keeps the builder's conflict and
+coverage context rather than bypassing it from an approval click.
+
+Migration `0008_shift_swaps_target_respond.sql` is written but **not yet
+applied** — same status 0006/0007 had before they were run. The target-accept
+path does not work until it is.
+
+Next: notifications and announcements (Phase 7) — the approval actions above
+currently have no delivery mechanism (an approved leave request doesn't tell
+anyone), which is the gap that phase closes.
