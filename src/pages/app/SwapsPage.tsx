@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
+import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
 import { listShiftsForPeriod } from '@/services/shiftService';
@@ -60,6 +61,7 @@ export function SwapsPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const { enqueue } = useSyncQueue();
+  const { send } = useInngestDispatch();
   const { showError, showSuccess } = useToast();
 
   const [teamMode, setTeamMode] = useState(false);
@@ -201,17 +203,33 @@ export function SwapsPage(): JSX.Element {
 
   const handleReview = useCallback(
     async (id: string, status: 'approved' | 'rejected'): Promise<void> => {
-      if (!user) return;
+      if (!user || !orgId) return;
       try {
+        const swap = swaps.find((s) => s.id === id);
         await reviewShiftSwap(id, status, user.id);
         setReloadKey((k) => k + 1);
         showSuccess(`Swap ${status}.`);
+
+        // Notifies the requester — the swap outcome is theirs, even when the
+        // target colleague accepted it first. Fire-and-forget after the write
+        // already succeeded and the UI already reflects it.
+        const recipientUserId = swap
+          ? staffById.get(swap.requested_by)?.user_id
+          : undefined;
+        if (recipientUserId) {
+          void send('swap/reviewed', {
+            orgId,
+            userIds: [recipientUserId],
+            type: 'swap',
+            title: `Your shift swap was ${status}`,
+          });
+        }
       } catch (err) {
         reportError(err, { area: 'swaps:review' });
         showError('Could not update that swap.');
       }
     },
-    [user, showError, showSuccess],
+    [user, orgId, swaps, staffById, send, showError, showSuccess],
   );
 
   const handleCancel = useCallback(

@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
+import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
 import {
@@ -47,6 +48,7 @@ export function LeavePage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const { enqueue } = useSyncQueue();
+  const { send } = useInngestDispatch();
   const { showError, showSuccess } = useToast();
 
   const [teamMode, setTeamMode] = useState(false);
@@ -157,17 +159,30 @@ export function LeavePage(): JSX.Element {
 
   const handleReview = useCallback(
     async (id: string, status: 'approved' | 'rejected'): Promise<void> => {
-      if (!user) return;
+      if (!user || !orgId) return;
       try {
         const updated = await reviewLeaveRequest(id, status, user.id);
         setRequests((prev) => prev.map((r) => (r.id === id ? updated : r)));
         showSuccess(`Leave request ${status}.`);
+
+        // Fire-and-forget, after the write already succeeded and the UI
+        // already reflects it — a failed dispatch must not undo the review.
+        const recipientUserId = staffById.get(updated.staff_profile_id)?.user_id;
+        if (recipientUserId) {
+          void send('leave/reviewed', {
+            orgId,
+            userIds: [recipientUserId],
+            type: 'leave',
+            title: `Your leave request was ${status}`,
+            body: `${format(new Date(updated.start_date), 'd MMM')} – ${format(new Date(updated.end_date), 'd MMM yyyy')}`,
+          });
+        }
       } catch (err) {
         reportError(err, { area: 'leave:review' });
         showError('Could not update that request.');
       }
     },
-    [user, showError, showSuccess],
+    [user, orgId, staffById, send, showError, showSuccess],
   );
 
   const handleCancel = useCallback(

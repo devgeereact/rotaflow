@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
+import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { listLocations } from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
@@ -66,6 +67,7 @@ export function RotaBuilderPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canBuildRota } = usePermissions();
   const { showError, showSuccess } = useToast();
+  const { send } = useInngestDispatch();
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -163,6 +165,8 @@ export function RotaBuilderPage(): JSX.Element {
     () => buildShiftMap(shifts, selectedLocation?.timezone ?? 'Europe/London'),
     [shifts, selectedLocation],
   );
+
+  const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
 
   const previewMap = useMemo(() => {
     const map = new Map<string, AiShiftSuggestion[]>();
@@ -308,13 +312,33 @@ export function RotaBuilderPage(): JSX.Element {
   };
 
   const handlePublish = async (): Promise<void> => {
-    if (!rota) return;
+    if (!rota || !orgId) return;
     setPublishing(true);
     setPublishError(null);
     try {
       const updated = await publishRota(rota.id);
       setRota(updated);
       showSuccess('Rota published. Staff can now see this week.');
+
+      // Fire-and-forget, after the publish already succeeded — a failed
+      // dispatch must not undo it or block the manager's flow.
+      const recipientUserIds = [
+        ...new Set(
+          shifts
+            .map((s) =>
+              s.staff_profile_id ? staffById.get(s.staff_profile_id)?.user_id : null,
+            )
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      if (recipientUserIds.length > 0) {
+        void send('rota/published', {
+          orgId,
+          userIds: recipientUserIds,
+          type: 'rota',
+          title: `${selectedLocation?.name ?? 'Your rota'} — ${formatWeekLabel(weekStart)} published`,
+        });
+      }
     } catch (err) {
       reportError(err, { area: 'rota:publish' });
       setPublishError('Could not publish this rota. Please try again.');

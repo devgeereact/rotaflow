@@ -27,6 +27,7 @@ interface AppEnv {
    * for both would necessarily be wrong for one of them.
    */
   oauthProviders: readonly OAuthProvider[];
+  vapidPublicKey: string;
   isProd: boolean;
   mode: string;
 }
@@ -77,6 +78,7 @@ export const env: AppEnv = {
   sentryDsn: read('VITE_SENTRY_DSN'),
   inngestEventKey: read('VITE_INNGEST_EVENT_KEY'),
   oauthProviders: readOAuthProviders(),
+  vapidPublicKey: read('VITE_VAPID_PUBLIC_KEY'),
   isProd: import.meta.env.PROD,
   mode: import.meta.env.MODE,
 };
