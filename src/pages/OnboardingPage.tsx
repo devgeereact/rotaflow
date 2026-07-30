@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BarChart3, Building2, ShieldCheck, Users } from 'lucide-react';
+import {
+  ArrowLeft,
+  BarChart3,
+  Building2,
+  Globe2,
+  HelpCircle,
+  MapPinned,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
@@ -14,9 +25,11 @@ import { createInvite } from '@/services/inviteService';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { LanguagePill } from '@/components/ui/LanguagePill';
 import { SplashScreen } from '@/components/SplashScreen';
 import {
   OnboardingLayout,
+  type BrandFeature,
   type OnboardingStepMeta,
 } from '@/components/onboarding/OnboardingLayout';
 import {
@@ -36,89 +49,135 @@ import {
   type PlanOption,
 } from '@/components/onboarding/constants';
 
-const BRAND_FEATURES = [
-  {
-    icon: Building2,
-    title: 'Centralised scheduling',
-    body: 'Manage all your locations, teams and shifts in one place.',
-  },
-  {
-    icon: Users,
-    title: 'Collaborate securely',
-    body: 'Invite team members and assign roles with granular permissions.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Compliant & audit-ready',
-    body: 'Tenant data is isolated at the database level, with audit logging.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Insights that matter',
-    body: 'Make data-driven decisions with reporting and analytics.',
-  },
-];
+interface StepCopy {
+  headline: string;
+  headlineAccent: string;
+  intro: string;
+  features: BrandFeature[];
+}
 
 /**
- * Left-panel copy per step. A function rather than a lookup map so the return
- * type is definite — indexed access is `| undefined` under
- * `noUncheckedIndexedAccess`, and a non-null assertion here would be hiding
- * that rather than answering it.
+ * Left-panel copy + feature list per step (design/Organisation-Onboarding.png,
+ * design/Organisation-about.png, design/Onboarding-Complete.png each show a
+ * different headline and feature set; steps 3–4 have no reference image, so
+ * they fall through to the step-1 copy rather than inventing new copy for an
+ * unseen design).
  */
-function stepCopy(step: number): { headline: JSX.Element; intro: string } {
+function stepCopy(step: number): StepCopy {
   switch (step) {
     case 2:
       return {
-        headline: (
-          <>
-            Tell us about your <span className="text-primary">organisation</span>
-          </>
-        ),
+        headline: 'Tell us about your',
+        headlineAccent: 'organisation',
         intro: 'Help us tailor RotaFlow to your business needs and local settings.',
-      };
-    case 3:
-      return {
-        headline: (
-          <>
-            Build your team. <span className="text-primary">Get started together.</span>
-          </>
-        ),
-        intro:
-          'Invite your colleagues to join your organisation and start scheduling together.',
-      };
-    case 4:
-      return {
-        headline: (
-          <>
-            Choose the right plan for{' '}
-            <span className="text-primary">your organisation</span>
-          </>
-        ),
-        intro:
-          'Select a plan that fits your current needs. You can change it at any time.',
+        features: [
+          {
+            icon: Building2,
+            title: 'Built for your industry',
+            body: 'Get tools and best practices that match your field.',
+          },
+          {
+            icon: Globe2,
+            title: 'Localised experience',
+            body: 'Set your region, time zone and working preferences.',
+          },
+          {
+            icon: Settings2,
+            title: 'Tailored to you',
+            body: "We'll customise features and workflows to fit your needs.",
+          },
+          {
+            icon: ShieldCheck,
+            title: 'Compliant by default',
+            body: 'Stay aligned with local laws and regulations from day one.',
+          },
+        ],
       };
     case 5:
       return {
-        headline: (
-          <>
-            You&rsquo;re all set!{' '}
-            <span className="text-primary">Welcome to RotaFlow</span>
-          </>
-        ),
+        headline: "You're all set!",
+        headlineAccent: 'Welcome to RotaFlow',
         intro: "Your organisation is ready to go. Here's what you can do next.",
+        features: [
+          {
+            icon: BarChart3,
+            title: 'Build smarter rotas',
+            body: 'Create and publish rotas that work for your team.',
+          },
+          {
+            icon: Users,
+            title: 'Keep your team in sync',
+            body: 'Everyone stays informed and on the same page.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'Track time with confidence',
+            body: 'Accurate time tracking and compliance you can trust.',
+          },
+          {
+            icon: Sparkles,
+            title: 'Make better decisions',
+            body: 'Powerful reports and insights to drive your business forward.',
+          },
+        ],
       };
     default:
       return {
-        headline: (
-          <>
-            Let&rsquo;s set up your <span className="text-primary">organisation</span>
-          </>
-        ),
-        intro:
-          'Create your organisation to start building shifts, teams and smarter schedules.',
+        headline: "Let's set up your",
+        headlineAccent: 'organisation',
+        intro: 'Create your organisation to start building shifts, teams and smarter schedules.',
+        features: [
+          {
+            icon: Building2,
+            title: 'Centralised scheduling',
+            body: 'Manage all your locations, teams and shifts in one place.',
+          },
+          {
+            icon: Users,
+            title: 'Collaborate securely',
+            body: 'Invite team members and assign roles with granular permissions.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'Compliant & audit-ready',
+            body: 'Stay compliant with built-in rules, approvals and audit logs.',
+          },
+          {
+            icon: MapPinned,
+            title: 'Insights that matter',
+            body: 'Make data-driven decisions with powerful reporting and analytics.',
+          },
+        ],
       };
   }
 }
+
+/** Top-right slot per step — only steps with a reference image get one. */
+function stepAction(step: number): JSX.Element | null {
+  if (step === 1) {
+    return (
+      <Link
+        to="/login"
+        className="flex items-center gap-1.5 text-sm font-medium text-brand hover:underline dark:text-brand-light"
+      >
+        <ArrowLeft size={15} aria-hidden="true" />
+        Back to sign in
+      </Link>
+    );
+  }
+  if (step === 2) return <LanguagePill />;
+  if (step === 5) {
+    return (
+      <span className="flex items-center gap-1.5 text-sm font-medium text-brand dark:text-brand-light">
+        <HelpCircle size={15} aria-hidden="true" />
+        Need help?
+      </span>
+    );
+  }
+  return null;
+}
+
+const EMPTY_LOCATION: AboutValues['locations'][number] = { name: '', address: '' };
 
 /**
  * Five-step organisation onboarding (design/Organisation-Onboarding.png →
@@ -153,8 +212,7 @@ export function OnboardingPage(): JSX.Element {
     country: 'United Kingdom',
     timezone: 'Europe/London',
     workingWeek: 'mon-sun',
-    locationName: '',
-    locationAddress: '',
+    locations: [EMPTY_LOCATION],
   });
   const [staged, setStaged] = useState<StagedInvite[]>([]);
   const [invitesCreated, setInvitesCreated] = useState(false);
@@ -241,15 +299,16 @@ export function OnboardingPage(): JSX.Element {
         working_week: aboutValues.workingWeek,
       });
 
-      if (aboutValues.locationName.trim()) {
+      const namedLocations = aboutValues.locations.filter((l) => l.name.trim());
+      for (const location of namedLocations) {
         await createLocation({
           org_id: orgId,
-          name: aboutValues.locationName.trim(),
-          address: aboutValues.locationAddress.trim() || null,
+          name: location.name.trim(),
+          address: location.address.trim() || null,
           timezone: aboutValues.timezone,
         });
-        setLocationCount((c) => c + 1);
       }
+      setLocationCount((c) => c + namedLocations.length);
       setStep(3);
     } catch (err) {
       reportError(err, { area: 'onboarding:about' });
@@ -348,26 +407,17 @@ export function OnboardingPage(): JSX.Element {
     );
   }
 
-  const { headline, intro } = stepCopy(step);
+  const { headline, headlineAccent, intro, features } = stepCopy(step);
 
   return (
     <OnboardingLayout
       headline={headline}
+      headlineAccent={headlineAccent}
       intro={intro}
-      features={BRAND_FEATURES}
+      features={features}
       steps={steps}
       currentStep={step}
-      action={
-        step === 1 ? (
-          <Link
-            to="/login"
-            className="flex items-center gap-1.5 text-sm text-primary underline-offset-4 hover:underline"
-          >
-            <ArrowLeft size={15} aria-hidden="true" />
-            Back to sign in
-          </Link>
-        ) : null
-      }
+      action={stepAction(step)}
     >
       {step === 1 && (
         <StepCreateOrg
