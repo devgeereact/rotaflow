@@ -88,7 +88,7 @@ export function StepChoosePlan({
           ))}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {PLANS.map((option) => {
             const selected = plan !== null && option.value === plan;
             const enquiryOnly = option.value === null;
@@ -98,7 +98,7 @@ export function StepChoosePlan({
               <div
                 key={option.name}
                 className={cn(
-                  'relative flex flex-col rounded-2xl border bg-surface p-6 transition-colors dark:bg-surface-dark',
+                  'relative flex flex-col rounded-2xl border bg-surface p-5 transition-colors dark:bg-surface-dark',
                   highlighted
                     ? 'border-2 border-primary'
                     : 'border border-surface-border dark:border-surface-border-dark',
@@ -133,14 +133,14 @@ export function StepChoosePlan({
                   {option.staffLimit}
                 </p>
 
-                <ul className="mb-5 flex-1 space-y-3 border-t border-surface-border pt-4 dark:border-surface-border-dark">
+                <ul className="mb-5 flex-1 space-y-2.5 border-t border-surface-border pt-4 dark:border-surface-border-dark">
                   {option.features.map((f) => (
                     <li
                       key={f}
-                      className="flex gap-2 text-sm text-content dark:text-content-dark"
+                      className="flex gap-1.5 text-xs leading-tight text-content dark:text-content-dark"
                     >
                       <Check
-                        size={16}
+                        size={15}
                         aria-hidden="true"
                         className="mt-0.5 shrink-0 text-primary"
                       />
