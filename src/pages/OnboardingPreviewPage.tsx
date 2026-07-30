@@ -13,8 +13,14 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { LanguagePill } from '@/components/ui/LanguagePill';
-import { OnboardingLayout, type OnboardingStepMeta } from '@/components/onboarding/OnboardingLayout';
-import { StepCreateOrg, type CreateOrgValues } from '@/components/onboarding/StepCreateOrg';
+import {
+  OnboardingLayout,
+  type OnboardingStepMeta,
+} from '@/components/onboarding/OnboardingLayout';
+import {
+  StepCreateOrg,
+  type CreateOrgValues,
+} from '@/components/onboarding/StepCreateOrg';
 import { StepAbout, type AboutValues } from '@/components/onboarding/StepAbout';
 import { StepComplete } from '@/components/onboarding/StepComplete';
 
@@ -42,14 +48,35 @@ export function OnboardingPreviewPage(): JSX.Element {
     country: 'United Kingdom',
     timezone: 'Europe/London',
     workingWeek: 'mon-sun',
-    locations: [{ name: 'Sunnyvale Care Centre', address: '123 Care Street, Manchester, M1 1AA, United Kingdom' }],
+    locations: [
+      {
+        name: 'Sunnyvale Care Centre',
+        address: '123 Care Street, Manchester, M1 1AA, United Kingdom',
+      },
+    ],
   });
 
   const steps: OnboardingStepMeta[] = [
-    { number: 1, title: 'Create organisation', subtitle: step >= 5 ? 'Sunnyvale Care Group' : 'Set up your organisation' },
-    { number: 2, title: 'About your organisation', subtitle: step >= 5 ? 'Care Home · 1 location' : 'Tell us more about your business' },
-    { number: 3, title: 'Invite your team', subtitle: step >= 5 ? '3 invites sent' : 'Add members to get started' },
-    { number: 4, title: 'Choose a plan', subtitle: step >= 5 ? 'Professional · Monthly' : 'Select the right plan for you' },
+    {
+      number: 1,
+      title: 'Create organisation',
+      subtitle: step >= 5 ? 'Sunnyvale Care Group' : 'Set up your organisation',
+    },
+    {
+      number: 2,
+      title: 'About your organisation',
+      subtitle: step >= 5 ? 'Care Home · 1 location' : 'Tell us more about your business',
+    },
+    {
+      number: 3,
+      title: 'Invite your team',
+      subtitle: step >= 5 ? '3 invites sent' : 'Add members to get started',
+    },
+    {
+      number: 4,
+      title: 'Choose a plan',
+      subtitle: step >= 5 ? 'Professional · Monthly' : 'Select the right plan for you',
+    },
     { number: 5, title: 'All done!', subtitle: "You're ready to go" },
   ];
 
@@ -57,12 +84,29 @@ export function OnboardingPreviewPage(): JSX.Element {
     1: {
       headline: "Let's set up your",
       headlineAccent: 'organisation',
-      intro: 'Create your organisation to start building shifts, teams and smarter schedules.',
+      intro:
+        'Create your organisation to start building shifts, teams and smarter schedules.',
       features: [
-        { icon: Building2, title: 'Centralised scheduling', body: 'Manage all your locations, teams and shifts in one place.' },
-        { icon: Users, title: 'Collaborate securely', body: 'Invite team members and assign roles with granular permissions.' },
-        { icon: ShieldCheck, title: 'Compliant & audit-ready', body: 'Stay compliant with built-in rules, approvals and audit logs.' },
-        { icon: MapPinned, title: 'Insights that matter', body: 'Make data-driven decisions with powerful reporting and analytics.' },
+        {
+          icon: Building2,
+          title: 'Centralised scheduling',
+          body: 'Manage all your locations, teams and shifts in one place.',
+        },
+        {
+          icon: Users,
+          title: 'Collaborate securely',
+          body: 'Invite team members and assign roles with granular permissions.',
+        },
+        {
+          icon: ShieldCheck,
+          title: 'Compliant & audit-ready',
+          body: 'Stay compliant with built-in rules, approvals and audit logs.',
+        },
+        {
+          icon: MapPinned,
+          title: 'Insights that matter',
+          body: 'Make data-driven decisions with powerful reporting and analytics.',
+        },
       ],
       action: (
         <span className="flex items-center gap-1.5 text-sm font-medium text-brand dark:text-brand-light">
@@ -76,10 +120,26 @@ export function OnboardingPreviewPage(): JSX.Element {
       headlineAccent: 'organisation',
       intro: 'Help us tailor RotaFlow to your business needs and local settings.',
       features: [
-        { icon: Building2, title: 'Built for your industry', body: 'Get tools and best practices that match your field.' },
-        { icon: Globe2, title: 'Localised experience', body: 'Set your region, time zone and working preferences.' },
-        { icon: Settings2, title: 'Tailored to you', body: "We'll customise features and workflows to fit your needs." },
-        { icon: ShieldCheck, title: 'Compliant by default', body: 'Stay aligned with local laws and regulations from day one.' },
+        {
+          icon: Building2,
+          title: 'Built for your industry',
+          body: 'Get tools and best practices that match your field.',
+        },
+        {
+          icon: Globe2,
+          title: 'Localised experience',
+          body: 'Set your region, time zone and working preferences.',
+        },
+        {
+          icon: Settings2,
+          title: 'Tailored to you',
+          body: "We'll customise features and workflows to fit your needs.",
+        },
+        {
+          icon: ShieldCheck,
+          title: 'Compliant by default',
+          body: 'Stay aligned with local laws and regulations from day one.',
+        },
       ],
       action: <LanguagePill />,
     },
@@ -88,10 +148,26 @@ export function OnboardingPreviewPage(): JSX.Element {
       headlineAccent: 'Welcome to RotaFlow',
       intro: "Your organisation is ready to go. Here's what you can do next.",
       features: [
-        { icon: BarChart3, title: 'Build smarter rotas', body: 'Create and publish rotas that work for your team.' },
-        { icon: Users, title: 'Keep your team in sync', body: 'Everyone stays informed and on the same page.' },
-        { icon: ShieldCheck, title: 'Track time with confidence', body: 'Accurate time tracking and compliance you can trust.' },
-        { icon: Sparkles, title: 'Make better decisions', body: 'Powerful reports and insights to drive your business forward.' },
+        {
+          icon: BarChart3,
+          title: 'Build smarter rotas',
+          body: 'Create and publish rotas that work for your team.',
+        },
+        {
+          icon: Users,
+          title: 'Keep your team in sync',
+          body: 'Everyone stays informed and on the same page.',
+        },
+        {
+          icon: ShieldCheck,
+          title: 'Track time with confidence',
+          body: 'Accurate time tracking and compliance you can trust.',
+        },
+        {
+          icon: Sparkles,
+          title: 'Make better decisions',
+          body: 'Powerful reports and insights to drive your business forward.',
+        },
       ],
       action: (
         <span className="flex items-center gap-1.5 text-sm font-medium text-brand dark:text-brand-light">
@@ -128,6 +204,7 @@ export function OnboardingPreviewPage(): JSX.Element {
           onChange={(patch) => setAboutValues((v) => ({ ...v, ...patch }))}
           onBack={() => {}}
           onContinue={() => {}}
+          onSaveAndExit={() => {}}
           submitting={false}
           error={null}
         />

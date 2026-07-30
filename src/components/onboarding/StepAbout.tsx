@@ -45,6 +45,7 @@ interface StepAboutProps {
   onChange: (patch: Partial<AboutValues>) => void;
   onBack: () => void;
   onContinue: () => void;
+  onSaveAndExit: () => void;
   submitting: boolean;
   error: string | null;
 }
@@ -56,6 +57,7 @@ export function StepAbout({
   onChange,
   onBack,
   onContinue,
+  onSaveAndExit,
   submitting,
   error,
 }: StepAboutProps): JSX.Element {
@@ -68,7 +70,9 @@ export function StepAbout({
 
   const updateLocation = (index: number, patch: Partial<LocationDraft>): void => {
     onChange({
-      locations: values.locations.map((loc, i) => (i === index ? { ...loc, ...patch } : loc)),
+      locations: values.locations.map((loc, i) =>
+        i === index ? { ...loc, ...patch } : loc,
+      ),
     });
   };
 
@@ -88,20 +92,27 @@ export function StepAbout({
       title="About your organisation"
       subtitle="This helps us configure RotaFlow for your workspace."
       footer={
-        <>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <Button variant="secondary" onClick={onBack} disabled={submitting}>
             <ArrowLeft size={16} aria-hidden="true" className="mr-1.5" />
             Back
           </Button>
-          <Button
-            className="bg-brand hover:bg-brand/90 dark:bg-brand"
-            onClick={onContinue}
-            disabled={submitting}
-          >
-            {submitting ? 'Saving…' : 'Continue'}
-            {!submitting && <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />}
-          </Button>
-        </>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="secondary" onClick={onSaveAndExit} disabled={submitting}>
+              Save and exit
+            </Button>
+            <Button
+              className="bg-brand hover:bg-brand/90 dark:bg-brand"
+              onClick={onContinue}
+              disabled={submitting}
+            >
+              {submitting ? 'Saving…' : 'Continue'}
+              {!submitting && (
+                <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />
+              )}
+            </Button>
+          </div>
+        </div>
       }
     >
       <div className="space-y-6">
@@ -208,7 +219,11 @@ export function StepAbout({
           <Label>Primary location</Label>
           <div className="mb-3 flex flex-col gap-3 rounded-xl border border-brand/20 bg-brand-wash p-4 dark:bg-brand-deep/10 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <MapPin size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
+              <MapPin
+                size={18}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-brand"
+              />
               <p className="text-sm text-content-muted dark:text-content-muted-dark">
                 This will be your main operational location. You can add more locations
                 later.
@@ -244,7 +259,9 @@ export function StepAbout({
                         <Input
                           id={`location-name-${index}`}
                           value={location.name}
-                          onChange={(e) => updateLocation(index, { name: e.target.value })}
+                          onChange={(e) =>
+                            updateLocation(index, { name: e.target.value })
+                          }
                           placeholder="e.g. Sunnyvale Care Centre"
                         />
                       </div>
@@ -255,14 +272,20 @@ export function StepAbout({
                         <Input
                           id={`location-address-${index}`}
                           value={location.address}
-                          onChange={(e) => updateLocation(index, { address: e.target.value })}
+                          onChange={(e) =>
+                            updateLocation(index, { address: e.target.value })
+                          }
                           placeholder="123 Care Street, Manchester"
                         />
                       </div>
                     </div>
                     <div className="mt-3 flex justify-end gap-2">
                       {!isPrimary && (
-                        <Button size="sm" variant="secondary" onClick={() => removeLocation(index)}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => removeLocation(index)}
+                        >
                           <Trash2 size={14} aria-hidden="true" className="mr-1" />
                           Remove
                         </Button>
@@ -328,8 +351,8 @@ export function StepAbout({
             })}
           </div>
           <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
-            Leave the primary location blank to skip — you can add locations later from the
-            Locations page.
+            Leave the primary location blank to skip — you can add locations later from
+            the Locations page.
           </p>
         </div>
 

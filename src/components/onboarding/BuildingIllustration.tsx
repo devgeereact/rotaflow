@@ -22,9 +22,23 @@ export function BuildingIllustration(): JSX.Element {
 
       {/* Trees */}
       <g>
-        <rect x="126" y="150" width="6" height="30" className="fill-ink-muted" opacity="0.4" />
+        <rect
+          x="126"
+          y="150"
+          width="6"
+          height="30"
+          className="fill-ink-muted"
+          opacity="0.4"
+        />
         <circle cx="129" cy="140" r="20" className="fill-brand-mist" />
-        <rect x="358" y="160" width="5" height="24" className="fill-ink-muted" opacity="0.4" />
+        <rect
+          x="358"
+          y="160"
+          width="5"
+          height="24"
+          className="fill-ink-muted"
+          opacity="0.4"
+        />
         <circle cx="360" cy="152" r="15" className="fill-brand-pale" />
       </g>
       <g className="fill-brand-light">
@@ -49,7 +63,14 @@ export function BuildingIllustration(): JSX.Element {
         <rect x="150" y="70" width="140" height="120" className="fill-surface" />
         <path d="M145 70 L220 40 L295 70Z" className="fill-brand" />
         {/* Signpost + R mark */}
-        <rect x="217" y="14" width="6" height="26" className="fill-ink-muted" opacity="0.5" />
+        <rect
+          x="217"
+          y="14"
+          width="6"
+          height="26"
+          className="fill-ink-muted"
+          opacity="0.5"
+        />
         <rect x="204" y="4" width="32" height="24" rx="7" className="fill-brand" />
         <path
           d="M213 10h9a4 4 0 0 1 1.2 7.8L227 20h-4l-3-2h-3v2h-3Zm3 2.4v3.2h5.6a1.6 1.6 0 0 0 0-3.2Z"
@@ -69,7 +90,15 @@ export function BuildingIllustration(): JSX.Element {
           )),
         )}
         {/* Door */}
-        <rect x="204" y="160" width="32" height="30" rx="2" className="fill-ink" opacity="0.75" />
+        <rect
+          x="204"
+          y="160"
+          width="32"
+          height="30"
+          rx="2"
+          className="fill-ink"
+          opacity="0.75"
+        />
       </g>
     </svg>
   );
