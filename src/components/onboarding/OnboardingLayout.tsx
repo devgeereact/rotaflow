@@ -29,6 +29,8 @@ interface OnboardingLayoutProps {
   children: ReactNode;
   /** Top-right slot — "Back to sign in", language picker, "Need help?" link. */
   action?: ReactNode;
+  /** Defaults to `BuildingIllustration` — step 3 swaps in `TeamIllustration`. */
+  illustration?: ReactNode;
 }
 
 /**
@@ -58,6 +60,7 @@ export function OnboardingLayout({
   currentStep,
   children,
   action,
+  illustration = <BuildingIllustration />,
 }: OnboardingLayoutProps): JSX.Element {
   const isReceipt = currentStep >= steps.length;
 
@@ -71,7 +74,7 @@ export function OnboardingLayout({
         {/* ---- Brand panel ---- */}
         <aside className="relative hidden lg:block">
           <OnboardingWave />
-          <BuildingIllustration />
+          {illustration}
 
           <div className="relative mb-10 flex items-center gap-3">
             <BrandMark label={null} className="h-11 w-11" />
