@@ -1,6 +1,7 @@
 import { useOrg } from '@/hooks/useOrg';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { UserMenu } from '@/components/layout/UserMenu';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 /** Slim top bar for the /app/* shell. Page-specific chrome (e.g. rota week nav) lives in the page itself. */
 export function Header(): JSX.Element {
@@ -12,6 +13,7 @@ export function Header(): JSX.Element {
         {orgName}
       </span>
       <div className="flex items-center gap-4">
+        <NotificationBell />
         <OrgSwitcher />
         <UserMenu />
       </div>

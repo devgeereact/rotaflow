@@ -24,6 +24,8 @@ import { TimesheetsPage } from '@/pages/app/TimesheetsPage';
 import { AvailabilityPage } from '@/pages/app/AvailabilityPage';
 import { LeavePage } from '@/pages/app/LeavePage';
 import { SwapsPage } from '@/pages/app/SwapsPage';
+import { AnnouncementsPage } from '@/pages/app/AnnouncementsPage';
+import { NotificationsPage } from '@/pages/app/NotificationsPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { StaffPage } from '@/pages/app/StaffPage';
 import { LocationsPage } from '@/pages/app/LocationsPage';
@@ -85,6 +87,8 @@ export function App(): JSX.Element {
                   <Route path="availability" element={<AvailabilityPage />} />
                   <Route path="leave" element={<LeavePage />} />
                   <Route path="swaps" element={<SwapsPage />} />
+                  <Route path="announcements" element={<AnnouncementsPage />} />
+                  <Route path="notifications" element={<NotificationsPage />} />
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>

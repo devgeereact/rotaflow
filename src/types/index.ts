@@ -45,6 +45,17 @@ export type LeaveRequestInsert = Database['public']['Tables']['leave_requests'][
 export type ShiftSwap = Database['public']['Tables']['shift_swaps']['Row'];
 export type ShiftSwapInsert = Database['public']['Tables']['shift_swaps']['Insert'];
 
+export type Announcement = Database['public']['Tables']['announcements']['Row'];
+export type AnnouncementInsert = Database['public']['Tables']['announcements']['Insert'];
+export type AnnouncementUpdate = Database['public']['Tables']['announcements']['Update'];
+
+export type Notification = Database['public']['Tables']['notifications']['Row'];
+
+export type PushSubscriptionRow =
+  Database['public']['Tables']['push_subscriptions']['Row'];
+export type PushSubscriptionInsert =
+  Database['public']['Tables']['push_subscriptions']['Insert'];
+
 export type Invite = Database['public']['Tables']['invites']['Row'];
 export type InviteInsert = Database['public']['Tables']['invites']['Insert'];
 export type InviteUpdate = Database['public']['Tables']['invites']['Update'];
