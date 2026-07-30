@@ -68,6 +68,9 @@ export type Department = Database['public']['Tables']['departments']['Row'];
 export type DepartmentInsert = Database['public']['Tables']['departments']['Insert'];
 export type DepartmentUpdate = Database['public']['Tables']['departments']['Update'];
 
+export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row'];
+export type StaffDocument = Database['public']['Tables']['documents']['Row'];
+
 /**
  * Org SMTP: `smtp_pass` is write-only — excluded from the column-level
  * SELECT grant on the base table (see 0010_org_smtp_settings.sql). The app

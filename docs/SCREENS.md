@@ -80,19 +80,19 @@ role — it gates the `/admin` console only.
 | Swap approvals                 | `[Built]`             | `/app/swaps` ("Approvals" toggle) — approving marks the swap approved only; a manager still reassigns the shift itself in the rota builder, same write path as any other reassignment                                       |
 | Clock-in review                | `[Built]`             | `/app/timesheets` (manager mode, "Team" toggle) — hours review only, no export yet                                                                                                                                          |
 | Announcements composer         | `[Built]`             | `/app/announcements` (manager mode)                                                                                                                                                                                         |
-| Reports & exports              | `[V1]`                | `/app/reports`                                                                                                                                                                                                              |
+| Reports & exports              | `[Built]`             | `/app/reports` — CSV export (timesheets, leave, shifts, swaps) for a date range, owner/manager                                                                                                                              |
 | AI Rota Assistant (full)       | `[Built]`             | "Auto Fill" inside `/app/rota` (`AutoFillPanel`) — no longer a standalone page                                                                                                                                              |
 
 ## 6. Owner / org-admin screens
 
-| Screen                                 | Status                         | Notes                                                                                                                                                                                              |
-| -------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Locations & departments management     | `[Built]`                      | `/app/locations` — writable by owner **and** manager per RLS (not owner-only, despite the section heading)                                                                                         |
-| Roles & team management / invite users | `[Built]`                      | `/app/team` (see Phase 2 in "Suggested next step" below) — the `/app/settings` reference below is stale, this already shipped separately                                                           |
-| Integrations (org SMTP)                | `[Built]`                      | `/app/integrations` — owner-only; per-org SMTP so notification emails send from the org's own domain, falling back to the global sender when unconfigured; test-send via `test-smtp` Edge Function |
-| Subscription/billing (view only)       | `[V1 view / Phase 2 charging]` | PRD scopes live charging out of V1                                                                                                                                                                 |
-| Org-wide reports                       | `[V1]`                         | Overlaps with Manager's `/app/reports`                                                                                                                                                             |
-| GDPR data export/delete                | `[V1]`                         | Not yet built — deferred out of Phase 8 (see below), needs real export-format/retention/cascade decisions first. Would draw on `audit_logs` once designed                                          |
+| Screen                                 | Status                         | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Locations & departments management     | `[Built]`                      | `/app/locations` — writable by owner **and** manager per RLS (not owner-only, despite the section heading)                                                                                                                                                                                                                                                                                                                                    |
+| Roles & team management / invite users | `[Built]`                      | `/app/team` (see Phase 2 in "Suggested next step" below) — the `/app/settings` reference below is stale, this already shipped separately                                                                                                                                                                                                                                                                                                      |
+| Integrations (org SMTP)                | `[Built]`                      | `/app/integrations` — owner-only; per-org SMTP so notification emails send from the org's own domain, falling back to the global sender when unconfigured; test-send via `test-smtp` Edge Function                                                                                                                                                                                                                                            |
+| Subscription/billing (view only)       | `[V1 view / Phase 2 charging]` | PRD scopes live charging out of V1                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Org-wide reports                       | `[Built]`                      | Same `/app/reports` as Manager's row above — one screen, not a separate owner view                                                                                                                                                                                                                                                                                                                                                            |
+| GDPR data export/delete                | `[Built, org-scoped]`          | Per-staff actions on `/app/staff` (owner-only): export everything RotaFlow holds on them as JSON, or anonymize their PII in this org (0011_gdpr_anonymize.sql). Does **not** delete their RotaFlow login — that can span other orgs and needs the Auth Admin API, a platform-level operation out of an org owner's reach. Deliberately anonymizes rather than hard-deletes shift/timesheet/leave history — see the migration's header for why |
 
 ## 7. Super Admin / platform console (explicitly deferred)
 
@@ -216,24 +216,60 @@ that lands; until then, `notifications` stays empty on a fresh deploy.
 
 Per-org SMTP (`0010_org_smtp_settings.sql`) is read by `send-notification`,
 which now prefers it and falls back to the global `SMTP_*` secrets when an
-org hasn't configured its own. The password column has no select policy at
-all — not even the owner who set it can read it back through the client;
+org hasn't configured its own. RLS itself does permit the owner to `SELECT`
+the row (the write policy is `for all`, which covers `SELECT` too) — what
+actually keeps `smtp_pass` from ever coming back through the client is the
+column-level GRANT, which excludes it entirely for `authenticated`.
 `org_smtp_settings_safe` (a `security_invoker` view) is what the UI actually
-queries, and `test-smtp` is the only Edge Function that ever reads it.
+queries, and `test-smtp` is the only Edge Function that ever reads the
+password.
 
-**Not yet built, and deliberately deferred rather than rushed:** Reports/CSV
-export, GDPR data export/delete, and an audit log viewer. All three were in
-the original Phase 8 scope but need real design decisions (export format,
-retention policy, what "delete" actually cascades to) this session hasn't
-made — better to flag them openly than ship something half-specified.
+**Reports/CSV export and GDPR data export/delete are now built too** — see
+Phase 9 below. An audit log viewer remains genuinely deferred: `audit_logs`
+exists and is written to (e.g. by the GDPR anonymize RPC), but nothing reads
+it back yet.
 
-Outstanding, manual, out-of-repo steps carried over from Phase 7 and now
-joined by Phase 8's own:
+Everything that was manual/out-of-repo as of Phase 8 is now done: migrations
+`0009`/`0010` applied, `send-notification`/`test-smtp` deployed, real SMTP
+credentials set (`info@rota.gakinz.com` via cPanel mail), and Inngest event
+routing configured (see Phase 9's own Inngest note below for the one thing
+that turned out to be missing — a hosted app, not a dashboard setting).
 
-- `0009_push_subscriptions.sql` and `0010_org_smtp_settings.sql` — not yet
-  applied to the live database.
-- `send-notification` and `test-smtp` — not yet deployed as Edge Functions.
-- Inngest event routing for `send-notification` — not yet configured on the
-  Inngest dashboard.
-- Real SMTP credentials (global `SMTP_*` secrets) — still placeholders; org
-  owners can configure their own via `/app/integrations` independent of this.
+**Phase 9 — reports & GDPR — is built**, to the scope below:
+
+| Screen                | Now                                                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reports & exports     | `[Built]` — `/app/reports`, owner/manager, date-range CSV export for timesheets (from real `clock_events`, matching `/app/timesheets`'s own math), leave, published shifts, and swaps |
+| GDPR export/anonymize | `[Built, org-scoped]` — per-staff actions on `/app/staff`, owner-only: export everything as JSON, or anonymize their PII in this org via `anonymize_staff_member` (0011)              |
+
+GDPR delete is **anonymize, not hard-delete** — a deliberate choice: shift,
+timesheet and leave rows stay intact (so payroll history and rota records
+remain consistent and defensible for UK payroll retention), but every column
+identifying _who_ it was is scrubbed on `staff_profiles`, and
+`emergency_contacts`/`documents` (pure PII containers with no operational
+value once the person is gone) are deleted outright. Scope is deliberately
+one organisation: this does not delete the person's RotaFlow login
+(`profiles`/`auth.users`), which can span other orgs and needs Supabase's
+Auth Admin API — a platform-level operation, not an org owner's to trigger.
+`documents.file_url` points at externally-hosted files (ImageKit); only the
+database row is removed, not the underlying file — a real "erase everything"
+flow needs a follow-up call to ImageKit's own API, flagged rather than
+silently left half-done.
+
+Also discovered and fixed this phase: **Inngest Cloud has no dashboard-level
+"route event X to a URL" webhook feature.** Functions are code you host
+yourself; Inngest discovers them by syncing an app URL. `supabase/functions/
+inngest/index.ts` now hosts that app (one function per event
+`useInngestDispatch` sends), deployed with `--no-verify-jwt` since Inngest's
+own request signing — not Supabase's gateway JWT check — authenticates calls
+into it.
+
+Migration `0011_gdpr_anonymize.sql` is written but **not yet applied** to
+the live database — same status every new migration has before the user
+runs it. The GDPR actions on `/app/staff` will fail until it is.
+
+Not yet built, still genuinely deferred: an audit log viewer (platform-wide,
+`[Phase 2]` per §7 — `audit_logs` is written to but nothing reads it back in
+the product yet), overtime requests, emergency contacts/documents screens
+(the tables exist and the GDPR export now reads them, but there's still no
+UI to create or edit one), and the Super Admin console.

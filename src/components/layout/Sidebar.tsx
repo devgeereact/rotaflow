@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Swaps', icon: Repeat2, to: '/app/swaps' },
   { label: 'Timesheets', icon: Timer, to: '/app/timesheets' },
   { label: 'Announcements', icon: Megaphone, to: '/app/announcements' },
-  { label: 'Reports', icon: BarChart3 },
+  { label: 'Reports', icon: BarChart3, to: '/app/reports' },
   { label: 'Integrations', icon: Plug, to: '/app/integrations' },
   { label: 'Settings', icon: Settings, to: '/app/settings' },
 ];

@@ -1516,6 +1516,10 @@ export type Database = {
       is_org_member: { Args: { p_org: string }; Returns: boolean };
       is_platform_admin: { Args: never; Returns: boolean };
       my_staff_profile_id: { Args: { p_org: string }; Returns: string };
+      anonymize_staff_member: {
+        Args: { p_org: string; p_staff_profile_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;
