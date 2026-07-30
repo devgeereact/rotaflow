@@ -42,6 +42,27 @@ export async function listMyMemberships(userId: string): Promise<MyMembership[]>
   return data ?? [];
 }
 
+/**
+ * Every active member's user_id — for fanning a notification out to the whole
+ * org (e.g. a published announcement). Excludes the given user (typically the
+ * author) so publishing something doesn't notify yourself about it.
+ */
+export async function listOrgMemberUserIds(
+  orgId: string,
+  excludeUserId?: string,
+): Promise<string[]> {
+  let query = supabase
+    .from('memberships')
+    .select('user_id')
+    .eq('org_id', orgId)
+    .eq('status', 'active');
+  if (excludeUserId) query = query.neq('user_id', excludeUserId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((row) => row.user_id);
+}
+
 export interface CreateOrganisationInput {
   name: string;
   /** Defaults to a slugified name when omitted. */
