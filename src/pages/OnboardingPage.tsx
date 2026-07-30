@@ -287,37 +287,44 @@ export function OnboardingPage(): JSX.Element {
     }
   }, [user, createValues, refresh, switchOrg]);
 
-  const handleAbout = useCallback(async (): Promise<void> => {
-    if (!orgId) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await mergeOrgSettings(orgId, {
-        industry: aboutValues.industry,
-        org_type: aboutValues.orgType,
-        country: aboutValues.country,
-        timezone: aboutValues.timezone,
-        working_week: aboutValues.workingWeek,
-      });
-
-      const namedLocations = aboutValues.locations.filter((l) => l.name.trim());
-      for (const location of namedLocations) {
-        await createLocation({
-          org_id: orgId,
-          name: location.name.trim(),
-          address: location.address.trim() || null,
+  const handleAbout = useCallback(
+    async (after: 'continue' | 'exit' = 'continue'): Promise<void> => {
+      if (!orgId) return;
+      setSubmitting(true);
+      setError(null);
+      try {
+        await mergeOrgSettings(orgId, {
+          industry: aboutValues.industry,
+          org_type: aboutValues.orgType,
+          country: aboutValues.country,
           timezone: aboutValues.timezone,
+          working_week: aboutValues.workingWeek,
         });
+
+        const namedLocations = aboutValues.locations.filter((l) => l.name.trim());
+        for (const location of namedLocations) {
+          await createLocation({
+            org_id: orgId,
+            name: location.name.trim(),
+            address: location.address.trim() || null,
+            timezone: aboutValues.timezone,
+          });
+        }
+        setLocationCount((c) => c + namedLocations.length);
+        if (after === 'exit') {
+          navigate('/app/dashboard', { replace: true });
+        } else {
+          setStep(3);
+        }
+      } catch (err) {
+        reportError(err, { area: 'onboarding:about' });
+        setError('Could not save those details. Please try again.');
+      } finally {
+        setSubmitting(false);
       }
-      setLocationCount((c) => c + namedLocations.length);
-      setStep(3);
-    } catch (err) {
-      reportError(err, { area: 'onboarding:about' });
-      setError('Could not save those details. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [orgId, aboutValues]);
+    },
+    [orgId, aboutValues, navigate],
+  );
 
   const handleCreateInvites = useCallback(async (): Promise<void> => {
     if (!orgId) return;
@@ -436,7 +443,8 @@ export function OnboardingPage(): JSX.Element {
           values={aboutValues}
           onChange={(patch) => setAboutValues((v) => ({ ...v, ...patch }))}
           onBack={() => setStep(1)}
-          onContinue={() => void handleAbout()}
+          onContinue={() => void handleAbout('continue')}
+          onSaveAndExit={() => void handleAbout('exit')}
           submitting={submitting}
           error={error}
         />

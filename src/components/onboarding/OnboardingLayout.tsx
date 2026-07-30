@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Check, HelpCircle, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BrandMark } from '@/components/ui/BrandMark';
-import { SplashWaves } from '@/components/SplashWaves';
+import { OnboardingWave } from '@/components/onboarding/OnboardingWave';
 import { BuildingIllustration } from '@/components/onboarding/BuildingIllustration';
 
 export interface OnboardingStepMeta {
@@ -70,7 +70,7 @@ export function OnboardingLayout({
       <div className="relative mx-auto grid max-w-[1600px] gap-8 px-6 py-8 md:px-10 lg:grid-cols-[minmax(0,20rem)_minmax(0,17rem)_minmax(0,1fr)]">
         {/* ---- Brand panel ---- */}
         <aside className="relative hidden lg:block">
-          <SplashWaves />
+          <OnboardingWave />
           <BuildingIllustration />
 
           <div className="relative mb-10 flex items-center gap-3">
@@ -164,7 +164,7 @@ export function OnboardingLayout({
                     </p>
                     <p
                       className={cn(
-                        'truncate text-xs',
+                        'text-xs leading-snug',
                         done && isReceipt
                           ? 'text-brand dark:text-brand-light'
                           : 'text-content-muted dark:text-content-muted-dark',

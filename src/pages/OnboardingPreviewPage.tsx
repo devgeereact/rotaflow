@@ -204,6 +204,7 @@ export function OnboardingPreviewPage(): JSX.Element {
           onChange={(patch) => setAboutValues((v) => ({ ...v, ...patch }))}
           onBack={() => {}}
           onContinue={() => {}}
+          onSaveAndExit={() => {}}
           submitting={false}
           error={null}
         />

@@ -45,6 +45,7 @@ interface StepAboutProps {
   onChange: (patch: Partial<AboutValues>) => void;
   onBack: () => void;
   onContinue: () => void;
+  onSaveAndExit: () => void;
   submitting: boolean;
   error: string | null;
 }
@@ -56,6 +57,7 @@ export function StepAbout({
   onChange,
   onBack,
   onContinue,
+  onSaveAndExit,
   submitting,
   error,
 }: StepAboutProps): JSX.Element {
@@ -90,22 +92,27 @@ export function StepAbout({
       title="About your organisation"
       subtitle="This helps us configure RotaFlow for your workspace."
       footer={
-        <>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <Button variant="secondary" onClick={onBack} disabled={submitting}>
             <ArrowLeft size={16} aria-hidden="true" className="mr-1.5" />
             Back
           </Button>
-          <Button
-            className="bg-brand hover:bg-brand/90 dark:bg-brand"
-            onClick={onContinue}
-            disabled={submitting}
-          >
-            {submitting ? 'Saving…' : 'Continue'}
-            {!submitting && (
-              <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />
-            )}
-          </Button>
-        </>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="secondary" onClick={onSaveAndExit} disabled={submitting}>
+              Save and exit
+            </Button>
+            <Button
+              className="bg-brand hover:bg-brand/90 dark:bg-brand"
+              onClick={onContinue}
+              disabled={submitting}
+            >
+              {submitting ? 'Saving…' : 'Continue'}
+              {!submitting && (
+                <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />
+              )}
+            </Button>
+          </div>
+        </div>
       }
     >
       <div className="space-y-6">
