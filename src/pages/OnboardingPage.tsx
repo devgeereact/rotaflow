@@ -6,6 +6,7 @@ import {
   Building2,
   CheckCircle2,
   Globe2,
+  Headphones,
   HelpCircle,
   Mail,
   MapPinned,
@@ -14,6 +15,7 @@ import {
   Sparkles,
   UserPlus,
   Users,
+  Zap,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -123,6 +125,35 @@ function stepCopy(step: number): StepCopy {
             icon: CheckCircle2,
             title: 'Easy to manage',
             body: 'You can add more members anytime from settings.',
+          },
+        ],
+      };
+    case 4:
+      return {
+        headline: 'Choose the right plan for',
+        headlineAccent: 'your organisation',
+        intro:
+          'Select a plan that fits your current needs. You can change or upgrade at any time.',
+        features: [
+          {
+            icon: Zap,
+            title: 'Start quickly',
+            body: 'Get your team up and running in minutes.',
+          },
+          {
+            icon: Users,
+            title: 'Scale with confidence',
+            body: 'Upgrade as your team and needs grow.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'Secure & compliant',
+            body: 'Built with enterprise-grade security and UK compliance.',
+          },
+          {
+            icon: Headphones,
+            title: 'Expert support',
+            body: 'Our team is here to help you every step of the way.',
           },
         ],
       };
@@ -262,7 +293,7 @@ export function OnboardingPage(): JSX.Element {
   });
   const [staged, setStaged] = useState<StagedInvite[]>([]);
   const [invitesCreated, setInvitesCreated] = useState(false);
-  const [plan, setPlan] = useState<PlanOption['value']>('starter');
+  const [plan, setPlan] = useState<PlanOption['value']>('professional');
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
 
   // Someone who already belongs to an org has no business here — unless this

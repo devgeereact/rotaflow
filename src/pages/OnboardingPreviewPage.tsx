@@ -6,6 +6,7 @@ import {
   Building2,
   CheckCircle2,
   Globe2,
+  Headphones,
   HelpCircle,
   Mail,
   MapPinned,
@@ -14,6 +15,7 @@ import {
   Sparkles,
   UserPlus,
   Users,
+  Zap,
 } from 'lucide-react';
 import { LanguagePill } from '@/components/ui/LanguagePill';
 import {
@@ -29,10 +31,12 @@ import {
   StepInviteTeam,
   type StagedInvite,
 } from '@/components/onboarding/StepInviteTeam';
+import { StepChoosePlan } from '@/components/onboarding/StepChoosePlan';
 import { StepComplete } from '@/components/onboarding/StepComplete';
 import { TeamIllustration } from '@/components/onboarding/TeamIllustration';
+import type { BillingPeriod, PlanOption } from '@/components/onboarding/constants';
 
-const PREVIEW_STEPS = [1, 2, 3, 5] as const;
+const PREVIEW_STEPS = [1, 2, 3, 4, 5] as const;
 type PreviewStep = (typeof PREVIEW_STEPS)[number];
 
 function isPreviewStep(value: number): value is PreviewStep {
@@ -91,6 +95,8 @@ export function OnboardingPreviewPage(): JSX.Element {
       location: 'Oakview Care Home',
     },
   ]);
+  const [plan, setPlan] = useState<PlanOption['value']>('professional');
+  const [period, setPeriod] = useState<BillingPeriod>('monthly');
 
   const steps: OnboardingStepMeta[] = [
     {
@@ -216,6 +222,41 @@ export function OnboardingPreviewPage(): JSX.Element {
       ),
       illustration: <TeamIllustration />,
     },
+    4: {
+      headline: 'Choose the right plan for',
+      headlineAccent: 'your organisation',
+      intro:
+        'Select a plan that fits your current needs. You can change or upgrade at any time.',
+      features: [
+        {
+          icon: Zap,
+          title: 'Start quickly',
+          body: 'Get your team up and running in minutes.',
+        },
+        {
+          icon: Users,
+          title: 'Scale with confidence',
+          body: 'Upgrade as your team and needs grow.',
+        },
+        {
+          icon: ShieldCheck,
+          title: 'Secure & compliant',
+          body: 'Built with enterprise-grade security and UK compliance.',
+        },
+        {
+          icon: Headphones,
+          title: 'Expert support',
+          body: 'Our team is here to help you every step of the way.',
+        },
+      ],
+      action: (
+        <span className="flex items-center gap-1.5 text-sm font-medium text-brand dark:text-brand-light">
+          <ArrowLeft size={15} aria-hidden="true" />
+          Back
+        </span>
+      ),
+      illustration: undefined,
+    },
     5: {
       headline: "You're all set!",
       headlineAccent: 'Welcome to RotaFlow',
@@ -294,6 +335,18 @@ export function OnboardingPreviewPage(): JSX.Element {
           submitting={false}
           sent={false}
           locationNames={aboutValues.locations.map((l) => l.name).filter(Boolean)}
+        />
+      )}
+      {step === 4 && (
+        <StepChoosePlan
+          plan={plan}
+          period={period}
+          onSelect={setPlan}
+          onPeriod={setPeriod}
+          onBack={() => {}}
+          onContinue={() => {}}
+          submitting={false}
+          error={null}
         />
       )}
       {step === 5 && (
