@@ -33,6 +33,9 @@ export type Shift = Database['public']['Tables']['shifts']['Row'];
 export type ShiftInsert = Database['public']['Tables']['shifts']['Insert'];
 export type ShiftUpdate = Database['public']['Tables']['shifts']['Update'];
 
+export type Availability = Database['public']['Tables']['availability']['Row'];
+export type AvailabilityInsert = Database['public']['Tables']['availability']['Insert'];
+
 export type ClockEvent = Database['public']['Tables']['clock_events']['Row'];
 export type ClockEventInsert = Database['public']['Tables']['clock_events']['Insert'];
 
