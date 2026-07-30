@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, UserRoundX, UserRoundCheck } from 'lucide-react';
+import {
+  Download,
+  Plus,
+  Search,
+  ShieldOff,
+  UserRoundX,
+  UserRoundCheck,
+} from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -10,6 +17,8 @@ import {
   updateStaffProfile,
 } from '@/services/staffService';
 import { listDepartments } from '@/services/locationService';
+import { anonymizeStaffMember, exportStaffData } from '@/services/gdprService';
+import { downloadJson } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -47,7 +56,7 @@ function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
 
 export function StaffPage(): JSX.Element {
   const { orgId } = useOrg();
-  const { canManageStaff } = usePermissions();
+  const { canManageStaff, canManageOrg } = usePermissions();
 
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -57,6 +66,7 @@ export function StaffPage(): JSX.Element {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [gdprBusyId, setGdprBusyId] = useState<string | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId) return;
@@ -128,6 +138,53 @@ export function StaffPage(): JSX.Element {
       setError(
         `Could not ${person.active ? 'deactivate' : 'reactivate'} ${person.first_name} ${person.last_name}.`,
       );
+    }
+  };
+
+  /** GDPR subject-access request — everything RotaFlow holds on this person, as a JSON file. */
+  const handleExportData = async (person: StaffProfile): Promise<void> => {
+    setError(null);
+    setGdprBusyId(person.id);
+    try {
+      const data = await exportStaffData(person.id);
+      downloadJson(`${person.first_name}-${person.last_name}-data-export`, data);
+    } catch (err) {
+      reportError(err, { area: 'staff:gdpr-export' });
+      setError(`Could not export data for ${person.first_name} ${person.last_name}.`);
+    } finally {
+      setGdprBusyId(null);
+    }
+  };
+
+  /**
+   * GDPR erasure request. Scrubs PII on the staff_profiles row and deletes
+   * emergency_contacts/documents outright; every shift/timesheet/leave row
+   * stays intact, now pointing at an anonymized "Deleted Member" — see
+   * 0011_gdpr_anonymize.sql. Does not delete their RotaFlow login, which may
+   * span other organisations.
+   */
+  const handleAnonymize = async (person: StaffProfile): Promise<void> => {
+    if (!orgId) return;
+    if (
+      !window.confirm(
+        `Erase ${person.first_name} ${person.last_name}'s personal data from this organisation? ` +
+          `Their name, phone and photo are permanently scrubbed and their emergency contacts and ` +
+          `documents are deleted. Shift, leave and timesheet history is kept but no longer shows who ` +
+          `it belonged to. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setGdprBusyId(person.id);
+    try {
+      await anonymizeStaffMember(orgId, person.id);
+      await load();
+    } catch (err) {
+      reportError(err, { area: 'staff:gdpr-anonymize' });
+      setError(`Could not erase data for ${person.first_name} ${person.last_name}.`);
+    } finally {
+      setGdprBusyId(null);
     }
   };
 
@@ -241,18 +298,44 @@ export function StaffPage(): JSX.Element {
                   </td>
                   {canManageStaff && (
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void toggleActive(person)}
-                        aria-label={person.active ? 'Deactivate' : 'Reactivate'}
-                        className="text-content-muted hover:text-primary dark:text-content-muted-dark"
-                      >
-                        {person.active ? (
-                          <UserRoundX size={16} />
-                        ) : (
-                          <UserRoundCheck size={16} />
+                      <div className="flex items-center justify-end gap-3">
+                        {canManageOrg && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleExportData(person)}
+                              disabled={gdprBusyId === person.id}
+                              aria-label={`Export data for ${person.first_name} ${person.last_name}`}
+                              title="Export their data (GDPR)"
+                              className="text-content-muted hover:text-primary disabled:opacity-50 dark:text-content-muted-dark"
+                            >
+                              <Download size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleAnonymize(person)}
+                              disabled={gdprBusyId === person.id}
+                              aria-label={`Erase personal data for ${person.first_name} ${person.last_name}`}
+                              title="Erase their personal data (GDPR)"
+                              className="text-content-muted hover:text-danger disabled:opacity-50 dark:text-content-muted-dark"
+                            >
+                              <ShieldOff size={16} />
+                            </button>
+                          </>
                         )}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => void toggleActive(person)}
+                          aria-label={person.active ? 'Deactivate' : 'Reactivate'}
+                          className="text-content-muted hover:text-primary dark:text-content-muted-dark"
+                        >
+                          {person.active ? (
+                            <UserRoundX size={16} />
+                          ) : (
+                            <UserRoundCheck size={16} />
+                          )}
+                        </button>
+                      </div>
                     </td>
                   )}
                 </tr>

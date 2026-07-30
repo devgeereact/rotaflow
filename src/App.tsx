@@ -29,6 +29,7 @@ import { AnnouncementsPage } from '@/pages/app/AnnouncementsPage';
 import { NotificationsPage } from '@/pages/app/NotificationsPage';
 import { IntegrationsPage } from '@/pages/app/IntegrationsPage';
 import { OrgSettingsPage } from '@/pages/app/OrgSettingsPage';
+import { ReportsPage } from '@/pages/app/ReportsPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { StaffPage } from '@/pages/app/StaffPage';
 import { LocationsPage } from '@/pages/app/LocationsPage';
@@ -99,6 +100,7 @@ export function App(): JSX.Element {
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="integrations" element={<IntegrationsPage />} />
                   <Route path="settings" element={<OrgSettingsPage />} />
+                  <Route path="reports" element={<ReportsPage />} />
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
