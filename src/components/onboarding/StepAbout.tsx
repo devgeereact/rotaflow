@@ -68,7 +68,9 @@ export function StepAbout({
 
   const updateLocation = (index: number, patch: Partial<LocationDraft>): void => {
     onChange({
-      locations: values.locations.map((loc, i) => (i === index ? { ...loc, ...patch } : loc)),
+      locations: values.locations.map((loc, i) =>
+        i === index ? { ...loc, ...patch } : loc,
+      ),
     });
   };
 
@@ -99,7 +101,9 @@ export function StepAbout({
             disabled={submitting}
           >
             {submitting ? 'Saving…' : 'Continue'}
-            {!submitting && <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />}
+            {!submitting && (
+              <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />
+            )}
           </Button>
         </>
       }
@@ -208,7 +212,11 @@ export function StepAbout({
           <Label>Primary location</Label>
           <div className="mb-3 flex flex-col gap-3 rounded-xl border border-brand/20 bg-brand-wash p-4 dark:bg-brand-deep/10 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <MapPin size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
+              <MapPin
+                size={18}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-brand"
+              />
               <p className="text-sm text-content-muted dark:text-content-muted-dark">
                 This will be your main operational location. You can add more locations
                 later.
@@ -244,7 +252,9 @@ export function StepAbout({
                         <Input
                           id={`location-name-${index}`}
                           value={location.name}
-                          onChange={(e) => updateLocation(index, { name: e.target.value })}
+                          onChange={(e) =>
+                            updateLocation(index, { name: e.target.value })
+                          }
                           placeholder="e.g. Sunnyvale Care Centre"
                         />
                       </div>
@@ -255,14 +265,20 @@ export function StepAbout({
                         <Input
                           id={`location-address-${index}`}
                           value={location.address}
-                          onChange={(e) => updateLocation(index, { address: e.target.value })}
+                          onChange={(e) =>
+                            updateLocation(index, { address: e.target.value })
+                          }
                           placeholder="123 Care Street, Manchester"
                         />
                       </div>
                     </div>
                     <div className="mt-3 flex justify-end gap-2">
                       {!isPrimary && (
-                        <Button size="sm" variant="secondary" onClick={() => removeLocation(index)}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => removeLocation(index)}
+                        >
                           <Trash2 size={14} aria-hidden="true" className="mr-1" />
                           Remove
                         </Button>
@@ -328,8 +344,8 @@ export function StepAbout({
             })}
           </div>
           <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
-            Leave the primary location blank to skip — you can add locations later from the
-            Locations page.
+            Leave the primary location blank to skip — you can add locations later from
+            the Locations page.
           </p>
         </div>
 

@@ -125,7 +125,8 @@ function stepCopy(step: number): StepCopy {
       return {
         headline: "Let's set up your",
         headlineAccent: 'organisation',
-        intro: 'Create your organisation to start building shifts, teams and smarter schedules.',
+        intro:
+          'Create your organisation to start building shifts, teams and smarter schedules.',
         features: [
           {
             icon: Building2,
