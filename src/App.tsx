@@ -13,6 +13,7 @@ import { AppBootScreen } from '@/components/AppBootScreen';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
+import { OnboardingPreviewPage } from '@/pages/OnboardingPreviewPage';
 import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
 import { SignupPage } from '@/pages/SignupPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -50,6 +51,11 @@ export function App(): JSX.Element {
                   path="/appboot"
                   element={<AppBootScreen authResolved orgResolved={false} />}
                 />
+                {/* Design-loop preview only — /onboarding needs a real
+                    Supabase session and writes real rows. ?step=1|2|5
+                    reproduces the reference-designed steps against mock
+                    local state. */}
+                <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
