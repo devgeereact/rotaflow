@@ -861,6 +861,53 @@ export type Database = {
           },
         ];
       };
+      org_smtp_settings: {
+        Row: {
+          org_id: string;
+          smtp_host: string;
+          smtp_port: number;
+          smtp_user: string;
+          smtp_pass: string;
+          from_email: string;
+          from_name: string | null;
+          verified_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          org_id: string;
+          smtp_host: string;
+          smtp_port?: number;
+          smtp_user: string;
+          smtp_pass: string;
+          from_email: string;
+          from_name?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          org_id?: string;
+          smtp_host?: string;
+          smtp_port?: number;
+          smtp_user?: string;
+          smtp_pass?: string;
+          from_email?: string;
+          from_name?: string | null;
+          verified_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'org_smtp_settings_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: true;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -1423,7 +1470,28 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      org_smtp_settings_safe: {
+        Row: {
+          org_id: string;
+          smtp_host: string;
+          smtp_port: number;
+          smtp_user: string;
+          from_email: string;
+          from_name: string | null;
+          verified_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'org_smtp_settings_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: true;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: string };

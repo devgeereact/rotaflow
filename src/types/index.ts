@@ -67,3 +67,15 @@ export type LocationUpdate = Database['public']['Tables']['locations']['Update']
 export type Department = Database['public']['Tables']['departments']['Row'];
 export type DepartmentInsert = Database['public']['Tables']['departments']['Insert'];
 export type DepartmentUpdate = Database['public']['Tables']['departments']['Update'];
+
+/**
+ * Org SMTP: `smtp_pass` is write-only (no select policy/grant on the base
+ * table — see 0010_org_smtp_settings.sql). The app only ever reads through
+ * the `_safe` view, which omits the password entirely.
+ */
+export type OrgSmtpSettingsSafe =
+  Database['public']['Views']['org_smtp_settings_safe']['Row'];
+export type OrgSmtpSettingsInsert =
+  Database['public']['Tables']['org_smtp_settings']['Insert'];
+export type OrgSmtpSettingsUpdate =
+  Database['public']['Tables']['org_smtp_settings']['Update'];

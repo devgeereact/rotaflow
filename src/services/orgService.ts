@@ -98,6 +98,18 @@ export async function createOrganisation(
   return data;
 }
 
+/** Fetch a single organisation by id, for a settings/edit form. */
+export async function getOrganisation(orgId: string): Promise<Organisation> {
+  const { data, error } = await supabase
+    .from('organisations')
+    .select('*')
+    .eq('id', orgId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 /** Patch an organisation. Owners only, enforced by RLS. */
 export async function updateOrganisation(
   orgId: string,

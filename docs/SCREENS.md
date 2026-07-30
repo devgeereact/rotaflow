@@ -44,10 +44,10 @@ role — it gates the `/admin` console only.
 | Screen                         | Status             | Notes                                                                                                                            |
 | ------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | Dashboard                      | `[Built, partial]` | `src/pages/DashboardPage.tsx` — minimal vs. the full spec (today's shifts, absences, pending requests, shortages)                |
-| Notifications inbox / center   | `[Gap]`            | `notifications` table exists, no route or UI                                                                                     |
-| Announcements feed (read view) | `[V1]`             | `/app/announcements`                                                                                                             |
+| Notifications inbox / center   | `[Built]`          | `/app/notifications` — read + mark-read; genuinely empty until `send-notification` is deployed (manual, out-of-repo step)        |
+| Announcements feed (read view) | `[Built]`          | `/app/announcements`                                                                                                             |
 | Account / profile settings     | `[V1]`             | `profiles` table, no dedicated screen yet                                                                                        |
-| Org settings                   | `[V1]`             | `/app/settings`                                                                                                                  |
+| Org settings                   | `[Built]`          | `/app/settings` — name, industry, org type, country, timezone, working week                                                      |
 | Notification preferences       | `[V1]`             | Toggle exists on Dashboard, belongs in Settings                                                                                  |
 | Theme (light/dark) control     | `[Built]`          | `ThemeContext` + toggle                                                                                                          |
 | Logout                         | `[Built]`          | `useSupabaseAuth().signOut()` in `DashboardPage.tsx` — consider a brief "Signed out" confirmation before redirecting to `/login` |
@@ -79,19 +79,20 @@ role — it gates the `/admin` console only.
 | Leave approvals                | `[Built]`             | `/app/leave` ("Approvals" toggle) — approve/reject; RLS (`has_org_role`) is the real enforcement                                                                                                                            |
 | Swap approvals                 | `[Built]`             | `/app/swaps` ("Approvals" toggle) — approving marks the swap approved only; a manager still reassigns the shift itself in the rota builder, same write path as any other reassignment                                       |
 | Clock-in review                | `[Built]`             | `/app/timesheets` (manager mode, "Team" toggle) — hours review only, no export yet                                                                                                                                          |
-| Announcements composer         | `[V1]`                | `/app/announcements` (manager mode)                                                                                                                                                                                         |
+| Announcements composer         | `[Built]`             | `/app/announcements` (manager mode)                                                                                                                                                                                         |
 | Reports & exports              | `[V1]`                | `/app/reports`                                                                                                                                                                                                              |
 | AI Rota Assistant (full)       | `[Built]`             | "Auto Fill" inside `/app/rota` (`AutoFillPanel`) — no longer a standalone page                                                                                                                                              |
 
 ## 6. Owner / org-admin screens
 
-| Screen                                 | Status                         | Notes                                                                                                      |
-| -------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| Locations & departments management     | `[Built]`                      | `/app/locations` — writable by owner **and** manager per RLS (not owner-only, despite the section heading) |
-| Roles & team management / invite users | `[V1]`                         | Likely folded into `/app/settings`                                                                         |
-| Subscription/billing (view only)       | `[V1 view / Phase 2 charging]` | PRD scopes live charging out of V1                                                                         |
-| Org-wide reports                       | `[V1]`                         | Overlaps with Manager's `/app/reports`                                                                     |
-| GDPR data export/delete                | `[V1]`                         | Backed by `audit_logs`                                                                                     |
+| Screen                                 | Status                         | Notes                                                                                                                                                                                              |
+| -------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Locations & departments management     | `[Built]`                      | `/app/locations` — writable by owner **and** manager per RLS (not owner-only, despite the section heading)                                                                                         |
+| Roles & team management / invite users | `[V1]`                         | Likely folded into `/app/settings`                                                                                                                                                                 |
+| Integrations (org SMTP)                | `[Built]`                      | `/app/integrations` — owner-only; per-org SMTP so notification emails send from the org's own domain, falling back to the global sender when unconfigured; test-send via `test-smtp` Edge Function |
+| Subscription/billing (view only)       | `[V1 view / Phase 2 charging]` | PRD scopes live charging out of V1                                                                                                                                                                 |
+| Org-wide reports                       | `[V1]`                         | Overlaps with Manager's `/app/reports`                                                                                                                                                             |
+| GDPR data export/delete                | `[V1]`                         | Backed by `audit_logs`                                                                                                                                                                             |
 
 ## 7. Super Admin / platform console (explicitly deferred)
 
@@ -194,6 +195,45 @@ Migration `0008_shift_swaps_target_respond.sql` is written but **not yet
 applied** — same status 0006/0007 had before they were run. The target-accept
 path does not work until it is.
 
-Next: notifications and announcements (Phase 7) — the approval actions above
-currently have no delivery mechanism (an approved leave request doesn't tell
-anyone), which is the gap that phase closes.
+**Phase 7 — notifications & announcements — is built**, to the scope below:
+
+| Screen                        | Now                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| Notifications inbox           | `[Built]` — `/app/notifications`, read + mark-read, web push via `useWebPush` |
+| Announcements feed + composer | `[Built]` — `/app/announcements`, staff read / owner+manager compose          |
+
+**Not yet real:** delivery itself. `send-notification` (Edge Function) and
+`0009_push_subscriptions.sql` are written but not yet deployed/applied — both
+manual, out-of-repo steps. The screens are correct and ready for whenever
+that lands; until then `notifications` stays empty on a fresh deploy.
+
+**Phase 8 — settings & integrations — is built**, to the scope below:
+
+| Screen       | Now                                                                                                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Org settings | `[Built]` — `/app/settings`, owner-only edit of name + the same industry/type/country/timezone/working-week fields captured at onboarding                                                        |
+| Integrations | `[Built]` — `/app/integrations`, owner-only per-org SMTP (host/port/user/password/from) so notification email sends from the org's own mailbox instead of a shared sender, with a real test-send |
+
+Per-org SMTP (`0010_org_smtp_settings.sql`) is read by `send-notification`,
+which now prefers it and falls back to the global `SMTP_*` secrets when an
+org hasn't configured its own. The password column has no select policy at
+all — not even the owner who set it can read it back through the client;
+`org_smtp_settings_safe` (a `security_invoker` view) is what the UI actually
+queries, and `test-smtp` is the only Edge Function that ever reads it.
+
+**Not yet built, and deliberately deferred rather than rushed:** Reports/CSV
+export, GDPR data export/delete, and an audit log viewer. All three were in
+the original Phase 8 scope but need real design decisions (export format,
+retention policy, what "delete" actually cascades to) this session hasn't
+made — better to flag them openly than ship something half-specified.
+
+Outstanding, manual, out-of-repo steps carried over from Phase 7 and now
+joined by Phase 8's own:
+
+- `0009_push_subscriptions.sql` and `0010_org_smtp_settings.sql` — not yet
+  applied to the live database.
+- `send-notification` and `test-smtp` — not yet deployed as Edge Functions.
+- Inngest event routing for `send-notification` — not yet configured on the
+  Inngest dashboard.
+- Real SMTP credentials (global `SMTP_*` secrets) — still placeholders; org
+  owners can configure their own via `/app/integrations` independent of this.
