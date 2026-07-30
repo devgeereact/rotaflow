@@ -1,37 +1,71 @@
 import { useState, type ChangeEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Calendar,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { env, type OAuthProvider } from '@/lib/env';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { AuthSplitLayout, type AuthFeature } from '@/components/auth/AuthSplitLayout';
+import { OAuthButtons } from '@/components/auth/OAuthButtons';
 
-type Provider = OAuthProvider;
+const FEATURES: AuthFeature[] = [
+  {
+    icon: Calendar,
+    title: 'Smart Scheduling',
+    body: 'Create balanced rotas in minutes.',
+  },
+  {
+    icon: Users,
+    title: 'Happy Teams',
+    body: 'Empower your team and improve satisfaction.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Compliant & Secure',
+    body: 'Stay compliant with confidence.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Data Driven',
+    body: 'Make better decisions with real-time insights.',
+  },
+];
 
-const PROVIDER_LABELS: Record<OAuthProvider, string> = {
-  google: 'Google',
-  github: 'GitHub',
-};
-
+/** `/login` (design/signin.png). */
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from || '/app/dashboard';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const redirectTo = env.appUrl || window.location.origin;
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);
+    setError(null);
     setMessage(null);
     try {
       await fn();
-    } catch (error) {
-      reportError(error, { area: 'login' });
-      setMessage(error instanceof Error ? error.message : 'Something went wrong.');
+    } catch (err) {
+      reportError(err, { area: 'login' });
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setBusy(false);
     }
@@ -39,150 +73,135 @@ export function LoginPage(): JSX.Element {
 
   const signInWithPassword = (): Promise<void> =>
     withBusy(async () => {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) throw signInError;
       navigate(from, { replace: true });
     });
 
-  const signUp = (): Promise<void> =>
+  const signInWithOAuth = (provider: OAuthProvider): Promise<void> =>
     withBusy(async () => {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: redirectTo },
-      });
-      if (error) throw error;
-      setMessage('Check your email to confirm your account.');
-    });
-
-  const signInWithOAuth = (provider: Provider): Promise<void> =>
-    withBusy(async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo },
       });
-      if (error) throw error;
+      if (oauthError) throw oauthError;
     });
 
   const signInWithMagicLink = (): Promise<void> =>
     withBusy(async () => {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
         options: { emailRedirectTo: redirectTo },
       });
-      if (error) throw error;
+      if (otpError) throw otpError;
       setMessage('Magic link sent — check your inbox.');
     });
 
+  const canSubmit = !busy && email.trim().length > 0 && password.length > 0;
+
   return (
-    <main className="grid min-h-screen place-items-center px-6">
-      <Card className="w-full max-w-sm animate-fade-up">
-        <h1 className="mb-1 font-display text-2xl text-content dark:text-content-dark">
+    <AuthSplitLayout
+      headline="Smarter scheduling."
+      headlineAccent="Happy teams."
+      description="Plan shifts, manage your workforce and keep your team connected — all in one place."
+      features={FEATURES}
+    >
+      <div className="w-full max-w-2xl animate-fade-up rounded-2xl border border-surface-border bg-surface p-9 shadow dark:border-surface-border-dark dark:bg-surface-dark md:p-11">
+        <h1 className="mb-1 font-display text-3xl font-bold text-ink dark:text-content-dark">
           Welcome back
         </h1>
-        <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
-          Sign in to continue.
+        <p className="mb-6 text-ink-muted dark:text-content-muted-dark">
+          Sign in to your RotaFlow account
         </p>
 
-        <label
-          className="mb-1 block text-sm text-content-muted dark:text-content-muted-dark"
-          htmlFor="email"
-        >
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
-          placeholder="you@example.com"
-        />
-
-        <label
-          className="mb-1 block text-sm text-content-muted dark:text-content-muted-dark"
-          htmlFor="password"
-        >
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-          className="mb-5 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
-          placeholder="••••••••"
-        />
-
-        <div className="flex gap-3">
-          <Button
-            className="flex-1"
-            disabled={busy}
-            onClick={() => void signInWithPassword()}
-          >
-            Sign in
-          </Button>
-          <Button
-            className="flex-1"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void signUp()}
-          >
-            Sign up
-          </Button>
+        <div className="mb-6">
+          <Label htmlFor="login-email">Email address</Label>
+          <Input
+            id="login-email"
+            type="email"
+            icon={Mail}
+            autoComplete="email"
+            value={email}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+          />
         </div>
 
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void signInWithMagicLink()}
-          className="mt-4 w-full text-sm text-secondary underline-offset-4 hover:underline disabled:opacity-50 dark:text-secondary-dark"
-        >
-          Email me a magic link instead
-        </button>
+        <div className="mb-2">
+          <Label htmlFor="login-password">Password</Label>
+          <Input
+            id="login-password"
+            type={showPassword ? 'text' : 'password'}
+            icon={Lock}
+            autoComplete="current-password"
+            value={password}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            endAdornment={
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="grid h-7 w-7 place-items-center rounded-md text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            }
+          />
+        </div>
 
-        <div className="mt-3 flex justify-between text-sm">
+        <p className="mb-6 text-right text-sm">
           <Link
             to="/forgot-password"
-            className="text-content-muted underline-offset-4 hover:underline dark:text-content-muted-dark"
+            className="font-medium text-brand hover:underline dark:text-brand-light"
           >
             Forgot password?
           </Link>
-          <Link
-            to="/signup"
-            className="text-secondary underline-offset-4 hover:underline dark:text-secondary-dark"
-          >
-            Create an account
-          </Link>
-        </div>
+        </p>
 
-        {/* Only providers actually enabled in Supabase — see env.oauthProviders. */}
+        <Button
+          className="w-full bg-brand hover:bg-brand/90 dark:bg-brand"
+          size="lg"
+          disabled={!canSubmit}
+          onClick={() => void signInWithPassword()}
+        >
+          {busy ? 'Signing in…' : 'Sign in'}
+        </Button>
+
         {env.oauthProviders.length > 0 && (
           <>
-            <div className="my-5 flex items-center gap-3 text-xs text-content-muted dark:text-content-muted-dark">
-              <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" />{' '}
-              OR{' '}
+            <div className="my-6 flex items-center gap-3 text-sm text-content-muted dark:text-content-muted-dark">
+              <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" />
+              or continue with
               <span className="h-px flex-1 bg-surface-border dark:bg-surface-border-dark" />
             </div>
 
-            <div className="flex gap-3">
-              {env.oauthProviders.map((provider) => (
-                <Button
-                  key={provider}
-                  className="flex-1"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => void signInWithOAuth(provider)}
-                >
-                  Continue with {PROVIDER_LABELS[provider]}
-                </Button>
-              ))}
-            </div>
+            <OAuthButtons
+              providers={env.oauthProviders}
+              busy={busy}
+              onSelect={(provider) => void signInWithOAuth(provider)}
+            />
           </>
         )}
 
+        <button
+          type="button"
+          disabled={busy || !email.trim()}
+          onClick={() => void signInWithMagicLink()}
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-brand transition-transform duration-150 ease-in-out hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:text-brand-light dark:hover:bg-surface-subtle-dark"
+        >
+          <Mail size={18} aria-hidden="true" />
+          Sign in with magic link
+        </button>
+
+        {error && (
+          <p className="mt-4 text-center text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
         {message && (
           <p
             role="status"
@@ -191,7 +210,17 @@ export function LoginPage(): JSX.Element {
             {message}
           </p>
         )}
-      </Card>
-    </main>
+
+        <p className="mt-6 text-center text-sm text-ink-muted dark:text-content-muted-dark">
+          Don&rsquo;t have an account?{' '}
+          <Link
+            to="/signup"
+            className="font-medium text-brand hover:underline dark:text-brand-light"
+          >
+            Sign up
+          </Link>
+        </p>
+      </div>
+    </AuthSplitLayout>
   );
 }
