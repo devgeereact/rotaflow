@@ -17,9 +17,14 @@
 // NOTIFICATION_FUNCTION_SECRET as a Supabase secret and configure the same
 // value on the Inngest function that calls this endpoint.
 //
+// Email: an org's own SMTP account (org_smtp_settings, 0010) is preferred
+// when configured — see resolveSmtpConfig — falling back to the global
+// SMTP_* secrets below, and skipped entirely if neither exists.
+//
 // Deploy: `supabase functions deploy send-notification`.
 // Secrets: `supabase secrets set NOTIFICATION_FUNCTION_SECRET=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=...`
-//   (SMTP_HOST/PORT/USER/PASS/FROM optional — email is skipped without them)
+//   (SMTP_HOST/PORT/USER/PASS/FROM optional — email is skipped without them,
+//   unless the recipient org has configured its own SMTP)
 //
 // NOT VERIFIED END TO END. Written and typechecked, but this session has no
 // way to deploy an Edge Function or drive a real Inngest event through it —
@@ -54,10 +59,56 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 /** Placeholder values ship in .env.example; sending against them would just fail loudly. */
-function smtpIsConfigured(): boolean {
+function globalSmtpIsConfigured(): boolean {
   const host = Deno.env.get('SMTP_HOST');
   const pass = Deno.env.get('SMTP_PASS');
   return Boolean(host) && host !== 'smtp.yourhost.com' && Boolean(pass) && pass !== 'your-smtp-password';
+}
+
+interface SmtpTransportConfig {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+}
+
+/**
+ * An org's own SMTP account (0010_org_smtp_settings.sql) if it has one
+ * configured, so mail comes from their domain/mailbox rather than a shared
+ * system sender. Falls back to the global SMTP_* secrets otherwise — the
+ * same posture as before org-level settings existed. Reads smtp_pass via the
+ * service-role client, which is the only role that ever can (see the
+ * migration's file header).
+ */
+async function resolveSmtpConfig(
+  supabase: ReturnType<typeof createClient>,
+  orgId: string,
+): Promise<SmtpTransportConfig | null> {
+  const { data: orgSmtp } = await supabase
+    .from('org_smtp_settings')
+    .select('smtp_host, smtp_port, smtp_user, smtp_pass, from_email, from_name')
+    .eq('org_id', orgId)
+    .maybeSingle();
+
+  if (orgSmtp) {
+    return {
+      host: orgSmtp.smtp_host,
+      port: orgSmtp.smtp_port,
+      user: orgSmtp.smtp_user,
+      pass: orgSmtp.smtp_pass,
+      from: orgSmtp.from_name ? `"${orgSmtp.from_name}" <${orgSmtp.from_email}>` : orgSmtp.from_email,
+    };
+  }
+
+  if (!globalSmtpIsConfigured()) return null;
+  return {
+    host: Deno.env.get('SMTP_HOST')!,
+    port: Number(Deno.env.get('SMTP_PORT') ?? '587'),
+    user: Deno.env.get('SMTP_USER')!,
+    pass: Deno.env.get('SMTP_PASS')!,
+    from: Deno.env.get('SMTP_FROM')!,
+  };
 }
 
 async function sendPush(
@@ -152,16 +203,18 @@ Deno.serve(async (req: Request) => {
     }
 
     if (channels.includes('email')) {
-      if (!smtpIsConfigured()) {
+      const smtpConfig = await resolveSmtpConfig(supabase, orgId);
+      if (!smtpConfig) {
         // Matches the SMS posture elsewhere in this project: the channel is
-        // reserved in the schema, but not live until real credentials exist.
+        // reserved in the schema, but not live until real credentials exist
+        // — either the org's own, or the global fallback.
         results.email.skipped = userIds.length;
       } else {
         const { default: nodemailer } = await import('npm:nodemailer@6');
         const transport = nodemailer.createTransport({
-          host: Deno.env.get('SMTP_HOST'),
-          port: Number(Deno.env.get('SMTP_PORT') ?? '587'),
-          auth: { user: Deno.env.get('SMTP_USER'), pass: Deno.env.get('SMTP_PASS') },
+          host: smtpConfig.host,
+          port: smtpConfig.port,
+          auth: { user: smtpConfig.user, pass: smtpConfig.pass },
         });
 
         const { data: profiles } = await supabase
@@ -172,7 +225,7 @@ Deno.serve(async (req: Request) => {
         for (const profile of profiles ?? []) {
           try {
             await transport.sendMail({
-              from: Deno.env.get('SMTP_FROM'),
+              from: smtpConfig.from,
               to: profile.email,
               subject: title,
               text: body.body ?? title,
