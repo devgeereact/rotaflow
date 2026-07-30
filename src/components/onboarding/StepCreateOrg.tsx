@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Briefcase, Building2, ArrowRight, Check, Info, Loader2, Users } from 'lucide-react';
+import {
+  Briefcase,
+  Building2,
+  ArrowRight,
+  Check,
+  Info,
+  Loader2,
+  Users,
+} from 'lucide-react';
 import { isSlugAvailable, slugify } from '@/services/orgService';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
@@ -103,7 +111,9 @@ export function StepCreateOrg({
             disabled={!canContinue || submitting}
           >
             {submitting ? 'Creating…' : 'Continue'}
-            {!submitting && <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />}
+            {!submitting && (
+              <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />
+            )}
           </Button>
         </>
       }

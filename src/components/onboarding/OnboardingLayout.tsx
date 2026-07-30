@@ -86,7 +86,8 @@ export function OnboardingLayout({
           </div>
 
           <h1 className="relative mb-4 font-display text-3xl font-bold leading-tight text-ink dark:text-content-dark">
-            {headline} <span className="text-brand dark:text-brand-light">{headlineAccent}</span>
+            {headline}{' '}
+            <span className="text-brand dark:text-brand-light">{headlineAccent}</span>
           </h1>
           <p className="relative mb-8 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
             {intro}

@@ -121,7 +121,11 @@ export function StepComplete({
       </div>
 
       <div className="mb-8 flex items-start gap-3 rounded-xl border border-success/20 bg-success/5 p-4">
-        <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-success" />
+        <ShieldCheck
+          size={20}
+          aria-hidden="true"
+          className="mt-0.5 shrink-0 text-success"
+        />
         <div>
           <p className="text-sm font-semibold text-ink dark:text-content-dark">
             Your account is secure and ready to use.
@@ -167,10 +171,14 @@ export function StepComplete({
               <span className="absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full bg-surface-subtle text-[0.65rem] font-semibold text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
                 {i + 1}
               </span>
-              <span className={cn('mb-3 grid h-11 w-11 place-items-center rounded-xl', tint)}>
+              <span
+                className={cn('mb-3 grid h-11 w-11 place-items-center rounded-xl', tint)}
+              >
                 <Icon size={20} aria-hidden="true" />
               </span>
-              <p className="text-sm font-semibold text-ink dark:text-content-dark">{title}</p>
+              <p className="text-sm font-semibold text-ink dark:text-content-dark">
+                {title}
+              </p>
               <p className="mb-4 flex-1 text-xs text-content-muted dark:text-content-muted-dark">
                 {body}
               </p>
@@ -178,7 +186,10 @@ export function StepComplete({
                 <Button
                   size="sm"
                   variant={i === 0 ? 'primary' : 'secondary'}
-                  className={cn('w-full', i === 0 && 'bg-brand hover:bg-brand/90 dark:bg-brand')}
+                  className={cn(
+                    'w-full',
+                    i === 0 && 'bg-brand hover:bg-brand/90 dark:bg-brand',
+                  )}
                 >
                   {cta}
                   <ArrowRight size={14} aria-hidden="true" className="ml-1" />
@@ -191,7 +202,10 @@ export function StepComplete({
 
       <div className="flex flex-col gap-4 border-t border-surface-border pt-6 dark:border-surface-border-dark sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          🎉 <span className="font-medium text-ink dark:text-content-dark">Welcome aboard!</span>{' '}
+          🎉{' '}
+          <span className="font-medium text-ink dark:text-content-dark">
+            Welcome aboard!
+          </span>{' '}
           We&rsquo;re excited to help you streamline your workforce scheduling.
         </p>
         <div className="flex shrink-0 gap-3">
