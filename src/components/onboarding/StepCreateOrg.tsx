@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Building2, ArrowRight, Check, Info, Loader2 } from 'lucide-react';
+import { Briefcase, Building2, ArrowRight, Check, Info, Loader2, Users } from 'lucide-react';
 import { isSlugAvailable, slugify } from '@/services/orgService';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,18 @@ interface StepCreateOrgProps {
 }
 
 type SlugState = 'idle' | 'checking' | 'available' | 'taken' | 'unknown';
+
+/**
+ * The subdomain suffix shown alongside the slug field, e.g.
+ * "your-org-name**.rota.gakinz.com**" (design/Organisation-Onboarding.png
+ * shows ".rotaflow.app" — not usable: docs/DEPLOYMENT.md already flags that
+ * domain as somebody else's live, unrelated product, the exact mistake
+ * `VITE_APP_URL` shipped with until 2026-07-29). `rota.gakinz.com` is the
+ * domain this app actually owns; no per-org subdomain routing exists yet, but
+ * showing the real domain here is a forward-looking URL pattern, not a false
+ * claim about a domain the project doesn't control.
+ */
+const SLUG_DOMAIN = 'rota.gakinz.com';
 
 export function StepCreateOrg({
   values,
@@ -82,14 +94,16 @@ export function StepCreateOrg({
       subtitle="This will be your workspace in RotaFlow."
       footer={
         <>
-          <Button variant="ghost" onClick={onCancel} disabled={submitting}>
+          <Button variant="secondary" onClick={onCancel} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={onContinue} disabled={!canContinue || submitting}>
+          <Button
+            className="bg-brand hover:bg-brand/90 dark:bg-brand"
+            onClick={onContinue}
+            disabled={!canContinue || submitting}
+          >
             {submitting ? 'Creating…' : 'Continue'}
-            {!submitting && (
-              <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />
-            )}
+            {!submitting && <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />}
           </Button>
         </>
       }
@@ -99,6 +113,7 @@ export function StepCreateOrg({
           <Label htmlFor="org-name">Organisation name</Label>
           <Input
             id="org-name"
+            icon={Building2}
             value={values.name}
             onChange={(e) => handleName(e.target.value)}
             placeholder="e.g. Sunnyvale Care Group"
@@ -109,17 +124,23 @@ export function StepCreateOrg({
         </div>
 
         <div>
-          <Label htmlFor="org-slug">Organisation identifier</Label>
-          <Input
-            id="org-slug"
-            value={values.slug}
-            onChange={(e) => {
-              setSlugTouched(true);
-              onChange({ slug: slugify(e.target.value) });
-            }}
-            placeholder="your-org-name"
-            aria-describedby="org-slug-status"
-          />
+          <Label htmlFor="org-slug">Subdomain</Label>
+          <div className="flex">
+            <Input
+              id="org-slug"
+              className="flex-1 rounded-r-none"
+              value={values.slug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                onChange({ slug: slugify(e.target.value) });
+              }}
+              placeholder="your-org-name"
+              aria-describedby="org-slug-status"
+            />
+            <span className="flex items-center whitespace-nowrap rounded-r-xl border border-l-0 border-surface-border bg-surface-subtle px-3 text-sm text-content-muted dark:border-surface-border-dark dark:bg-surface-subtle-dark dark:text-content-muted-dark">
+              .{SLUG_DOMAIN}
+            </span>
+          </div>
           <p
             id="org-slug-status"
             role="status"
@@ -141,7 +162,7 @@ export function StepCreateOrg({
               <>
                 <Check size={13} aria-hidden="true" className="text-success" />
                 <span className="text-success">
-                  &ldquo;{values.slug}&rdquo; is available
+                  {values.slug}.{SLUG_DOMAIN} is available
                 </span>
               </>
             )}
@@ -152,7 +173,7 @@ export function StepCreateOrg({
             )}
             {(slugState === 'idle' || slugState === 'unknown') && (
               <span className="text-content-muted dark:text-content-muted-dark">
-                A short, unique identifier for your organisation. Lower case, no spaces.
+                This will be your unique organisation URL.
               </span>
             )}
           </p>
@@ -162,6 +183,7 @@ export function StepCreateOrg({
           <Label htmlFor="org-industry">Primary industry</Label>
           <Select
             id="org-industry"
+            icon={Briefcase}
             value={values.industry}
             onChange={(e) => onChange({ industry: e.target.value })}
           >
@@ -175,7 +197,7 @@ export function StepCreateOrg({
         </div>
 
         <fieldset>
-          <legend className="mb-2 block text-sm font-medium text-content dark:text-content-dark">
+          <legend className="mb-2 block text-sm font-medium text-ink dark:text-content-dark">
             Organisation size
           </legend>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -185,10 +207,10 @@ export function StepCreateOrg({
                 <label
                   key={option.value}
                   className={cn(
-                    'flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors',
+                    'relative flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border p-4 pt-6 text-center transition-colors',
                     selected
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                      : 'border-surface-border hover:border-primary/40 dark:border-surface-border-dark',
+                      ? 'border-brand bg-brand-wash dark:bg-brand-deep/10'
+                      : 'border-surface-border hover:border-brand/40 dark:border-surface-border-dark',
                   )}
                 >
                   <input
@@ -197,15 +219,18 @@ export function StepCreateOrg({
                     value={option.value}
                     checked={selected}
                     onChange={() => onChange({ size: option.value })}
-                    className="h-4 w-4 accent-primary"
+                    className="absolute left-3 top-3 h-4 w-4 accent-brand"
                   />
-                  <span>
-                    <span className="block text-sm font-medium text-content dark:text-content-dark">
-                      {option.label}
-                    </span>
-                    <span className="block text-xs text-content-muted dark:text-content-muted-dark">
-                      {option.hint}
-                    </span>
+                  <Users
+                    size={22}
+                    aria-hidden="true"
+                    className={selected ? 'text-brand' : 'text-content-muted'}
+                  />
+                  <span className="block text-sm font-medium text-ink dark:text-content-dark">
+                    {option.label}
+                  </span>
+                  <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                    {option.hint}
                   </span>
                 </label>
               );
@@ -213,8 +238,8 @@ export function StepCreateOrg({
           </div>
         </fieldset>
 
-        <div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
-          <Info size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
+        <div className="flex gap-3 rounded-xl border border-brand/20 bg-brand-wash p-4 dark:bg-brand-deep/10">
+          <Info size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
             You can change these details and add more information later from organisation
             settings.

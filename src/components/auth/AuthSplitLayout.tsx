@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { ChevronDown, Globe, type LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { LanguagePill } from '@/components/ui/LanguagePill';
 import { SplashWaves } from '@/components/SplashWaves';
 import { AuthTrustStrip } from '@/components/auth/AuthTrustStrip';
 
@@ -84,14 +85,7 @@ export function AuthSplitLayout({
 
       <div className="relative flex flex-1 flex-col">
         <div className="flex justify-end px-6 pt-4 md:px-10">
-          {/* Static, not a control: there is no locale switcher behind this
-              yet (single-locale app). A `<button>` here would be a dead
-              click target, which is worse than a plain indicator. */}
-          <div className="flex h-10 items-center gap-2 rounded-full border border-surface-border bg-surface px-4 text-sm text-content-muted shadow-sm dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark">
-            <Globe size={16} aria-hidden="true" />
-            English (UK)
-            <ChevronDown size={14} aria-hidden="true" />
-          </div>
+          <LanguagePill />
         </div>
 
         <div className="flex flex-1 items-center justify-center px-6 py-6">

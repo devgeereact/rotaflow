@@ -20,18 +20,16 @@ export function StepCard({
   footer,
 }: StepCardProps): JSX.Element {
   return (
-    <Card className="animate-fade-up p-6 md:p-8">
+    <Card className="animate-fade-up p-6 shadow md:p-8">
       <div className="mb-6 flex items-start gap-4">
-        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-brand-wash text-brand dark:bg-brand-deep/20 dark:text-brand-light">
           <Icon size={26} aria-hidden="true" />
         </span>
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl font-semibold text-content dark:text-content-dark">
+        <div className="min-w-0 pt-1">
+          <h2 className="font-display text-2xl font-bold text-ink dark:text-content-dark">
             {title}
           </h2>
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            {subtitle}
-          </p>
+          <p className="text-content-muted dark:text-content-muted-dark">{subtitle}</p>
         </div>
       </div>
 

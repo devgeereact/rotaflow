@@ -25,9 +25,8 @@
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
 
-    /* Path alias: import from "@/..." */
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    /* Path alias: import from "@/..." — mappings resolve relative to this file */
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "vite.config.ts", "tailwind.config.ts"]
 }
