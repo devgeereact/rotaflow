@@ -8,26 +8,23 @@
 -- SMTP_* secrets when an org has not configured its own.
 --
 -- The password column is the one genuinely new risk in this schema: it is a
--- third-party mail credential, not just tenant data. Two protections, not one:
+-- third-party mail credential, not just tenant data. The protection is one
+-- real layer, not RLS itself:
 --
--- 1. RLS: owners can INSERT/UPDATE their org's row, but there is NO select
---    policy on the base table at all. Nobody — not even the owner who set
---    it — can read a row back through the client. This mirrors
---    `notifications` (0002: "inserts are performed by Edge Functions... no
---    client insert policy") in spirit: a capability is granted in one
---    direction only, because the other direction is the actual risk.
+-- The `for all` write policy below supplies a USING clause, so it also
+-- governs SELECT — an owner's row-level access to org_smtp_settings is not
+-- blocked by RLS. What actually keeps `smtp_pass` from ever coming back
+-- through the client is the column-level GRANT just below the policy: it
+-- lists every column except `smtp_pass` for `authenticated`'s SELECT grant,
+-- full stop — no policy change could accidentally re-expose it, because the
+-- privilege to read that column doesn't exist for that role at all.
+-- `org_smtp_settings_safe` is what the UI actually queries (same columns,
+-- friendlier surface); this is the same non-negotiable as never re-showing a
+-- saved password in any settings form.
 --
--- 2. Column-level GRANT: even for roles that otherwise could SELECT, `smtp_pass`
---    is excluded from the grant entirely — belt-and-braces in case a future
---    migration ever adds a select policy without noticing the password
---    should stay out of it. `org_smtp_settings_safe` is what the UI actually
---    queries: it has every column except the password, so "is this
---    configured, and with which host/username" is answerable without ever
---    re-exposing the secret. This is the same non-negotiable as never
---    re-showing a saved password in any settings form.
---
--- Only the send-notification Edge Function (service_role, bypasses RLS)
--- ever reads smtp_pass — same posture as VAPID_PRIVATE_KEY.
+-- Only the send-notification and test-smtp Edge Functions (service_role,
+-- bypasses RLS and column grants both) ever read smtp_pass — same posture as
+-- VAPID_PRIVATE_KEY.
 -- =====================================================================
 
 create table if not exists public.org_smtp_settings (
@@ -52,9 +49,10 @@ create trigger org_smtp_settings_set_updated_at
 
 alter table public.org_smtp_settings enable row level security;
 
--- No select policy — see file header. Write is owner-only (has_org_role,
--- not is_org_member: this is billing-adjacent, org-secret configuration, not
--- something every staff member should even be able to attempt to change).
+-- Owner-only for every command, including SELECT (see file header on why
+-- that matters for smtp_pass). has_org_role, not is_org_member: this is
+-- billing-adjacent, org-secret configuration, not something every staff
+-- member should even be able to attempt to change.
 drop policy if exists org_smtp_settings_write on public.org_smtp_settings;
 create policy org_smtp_settings_write on public.org_smtp_settings for all
   using (public.has_org_role(org_id, array['owner']))

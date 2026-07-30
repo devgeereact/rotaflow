@@ -85,11 +85,19 @@ async function resolveSmtpConfig(
   supabase: ReturnType<typeof createClient>,
   orgId: string,
 ): Promise<SmtpTransportConfig | null> {
-  const { data: orgSmtp } = await supabase
+  const { data: orgSmtp, error: orgSmtpError } = await supabase
     .from('org_smtp_settings')
     .select('smtp_host, smtp_port, smtp_user, smtp_pass, from_email, from_name')
     .eq('org_id', orgId)
     .maybeSingle();
+
+  if (orgSmtpError) {
+    // A transient lookup failure must not silently look identical to "this
+    // org has no SMTP configured" — that's exactly the shared-sender outcome
+    // this feature exists to avoid. Never log the row itself: it carries
+    // smtp_pass.
+    console.error('resolveSmtpConfig: org SMTP lookup failed', orgSmtpError.message);
+  }
 
   if (orgSmtp) {
     return {
@@ -214,7 +222,13 @@ Deno.serve(async (req: Request) => {
         const transport = nodemailer.createTransport({
           host: smtpConfig.host,
           port: smtpConfig.port,
+          // 465 is implicit TLS; every other port (587 included) starts plain
+          // and upgrades via STARTTLS — secure:true there breaks the handshake.
+          secure: smtpConfig.port === 465,
           auth: { user: smtpConfig.user, pass: smtpConfig.pass },
+          // A bad owner-provided host must fail fast, not hang the function.
+          connectionTimeout: 10_000,
+          greetingTimeout: 10_000,
         });
 
         const { data: profiles } = await supabase

@@ -21,7 +21,7 @@ import type { OrgSmtpSettingsSafe } from '@/types';
  * `/app/integrations` — owner-only. Lets an org connect its own SMTP account
  * so notification emails go out from their domain/mailbox instead of
  * RotaFlow's shared sender. The password is never re-displayed once saved
- * (org_smtp_settings has no select policy on that column at all — see
+ * (excluded from the column-level SELECT grant on org_smtp_settings — see
  * 0010_org_smtp_settings.sql) — editing host/username/from-address leaves it
  * untouched, and changing it requires typing a new one.
  */
@@ -166,6 +166,13 @@ export function IntegrationsPage(): JSX.Element {
 
   const handleRemove = useCallback(async (): Promise<void> => {
     if (!orgId) return;
+    if (
+      !window.confirm(
+        'Remove these SMTP settings? Notifications will immediately fall back to the shared sender, and the password cannot be recovered — you will need to re-enter it to reconnect.',
+      )
+    ) {
+      return;
+    }
     try {
       await deleteOrgSmtpSettings(orgId);
       setExisting(null);
@@ -193,7 +200,15 @@ export function IntegrationsPage(): JSX.Element {
     );
   }
 
-  if (loadFailed && !loading) {
+  if (loading) {
+    return (
+      <Card>
+        <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
+      </Card>
+    );
+  }
+
+  if (loadFailed) {
     return (
       <Card>
         <p className="mb-4 text-content-muted dark:text-content-muted-dark">
