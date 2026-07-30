@@ -4,12 +4,15 @@ import {
   ArrowLeft,
   BarChart3,
   Building2,
+  CheckCircle2,
   Globe2,
   HelpCircle,
+  Mail,
   MapPinned,
   Settings2,
   ShieldCheck,
   Sparkles,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
@@ -43,6 +46,7 @@ import {
 } from '@/components/onboarding/StepInviteTeam';
 import { StepChoosePlan } from '@/components/onboarding/StepChoosePlan';
 import { StepComplete } from '@/components/onboarding/StepComplete';
+import { TeamIllustration } from '@/components/onboarding/TeamIllustration';
 import {
   PLANS,
   type BillingPeriod,
@@ -58,10 +62,10 @@ interface StepCopy {
 
 /**
  * Left-panel copy + feature list per step (design/Organisation-Onboarding.png,
- * design/Organisation-about.png, design/Onboarding-Complete.png each show a
- * different headline and feature set; steps 3–4 have no reference image, so
- * they fall through to the step-1 copy rather than inventing new copy for an
- * unseen design).
+ * design/Organisation-about.png, design/Team-onboarding.png,
+ * design/Onboarding-Complete.png each show a different headline and feature
+ * set; step 4 has no reference image, so it falls through to the step-1 copy
+ * rather than inventing new copy for an unseen design).
  */
 function stepCopy(step: number): StepCopy {
   switch (step) {
@@ -90,6 +94,35 @@ function stepCopy(step: number): StepCopy {
             icon: ShieldCheck,
             title: 'Compliant by default',
             body: 'Stay aligned with local laws and regulations from day one.',
+          },
+        ],
+      };
+    case 3:
+      return {
+        headline: 'Build your team.',
+        headlineAccent: 'Get started together.',
+        intro:
+          'Invite your colleagues to join your organisation and start scheduling smarter, together.',
+        features: [
+          {
+            icon: UserPlus,
+            title: 'Invite in seconds',
+            body: 'Send invites by email and get your team on board fast.',
+          },
+          {
+            icon: ShieldCheck,
+            title: 'Role-based access',
+            body: "Assign roles and permissions that fit everyone's responsibilities.",
+          },
+          {
+            icon: Mail,
+            title: 'Secure & private',
+            body: 'Invites are secure and only accessible by the intended recipients.',
+          },
+          {
+            icon: CheckCircle2,
+            title: 'Easy to manage',
+            body: 'You can add more members anytime from settings.',
           },
         ],
       };
@@ -154,7 +187,7 @@ function stepCopy(step: number): StepCopy {
 }
 
 /** Top-right slot per step — only steps with a reference image get one. */
-function stepAction(step: number): JSX.Element | null {
+function stepAction(step: number, onBackToStep2: () => void): JSX.Element | null {
   if (step === 1) {
     return (
       <Link
@@ -167,6 +200,18 @@ function stepAction(step: number): JSX.Element | null {
     );
   }
   if (step === 2) return <LanguagePill />;
+  if (step === 3) {
+    return (
+      <button
+        type="button"
+        onClick={onBackToStep2}
+        className="flex items-center gap-1.5 text-sm font-medium text-brand hover:underline dark:text-brand-light"
+      >
+        <ArrowLeft size={15} aria-hidden="true" />
+        Back
+      </button>
+    );
+  }
   if (step === 5) {
     return (
       <span className="flex items-center gap-1.5 text-sm font-medium text-brand dark:text-brand-light">
@@ -425,7 +470,8 @@ export function OnboardingPage(): JSX.Element {
       features={features}
       steps={steps}
       currentStep={step}
-      action={stepAction(step)}
+      action={stepAction(step, () => setStep(2))}
+      illustration={step === 3 ? <TeamIllustration /> : undefined}
     >
       {step === 1 && (
         <StepCreateOrg
@@ -456,10 +502,10 @@ export function OnboardingPage(): JSX.Element {
           onStage={setStaged}
           onSend={() => void handleCreateInvites()}
           onSkip={() => setStep(4)}
-          onBack={() => setStep(2)}
           onCopy={(url) => void copyLink(url)}
           submitting={submitting}
           sent={invitesCreated}
+          locationNames={aboutValues.locations.map((l) => l.name).filter(Boolean)}
         />
       )}
 

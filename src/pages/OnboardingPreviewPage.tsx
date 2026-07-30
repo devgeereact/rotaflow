@@ -2,15 +2,18 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  BarChart3,
   Building2,
+  CheckCircle2,
   Globe2,
   HelpCircle,
+  Mail,
   MapPinned,
   Settings2,
   ShieldCheck,
   Sparkles,
+  UserPlus,
   Users,
-  BarChart3,
 } from 'lucide-react';
 import { LanguagePill } from '@/components/ui/LanguagePill';
 import {
@@ -22,19 +25,32 @@ import {
   type CreateOrgValues,
 } from '@/components/onboarding/StepCreateOrg';
 import { StepAbout, type AboutValues } from '@/components/onboarding/StepAbout';
+import {
+  StepInviteTeam,
+  type StagedInvite,
+} from '@/components/onboarding/StepInviteTeam';
 import { StepComplete } from '@/components/onboarding/StepComplete';
+import { TeamIllustration } from '@/components/onboarding/TeamIllustration';
+
+const PREVIEW_STEPS = [1, 2, 3, 5] as const;
+type PreviewStep = (typeof PREVIEW_STEPS)[number];
+
+function isPreviewStep(value: number): value is PreviewStep {
+  return (PREVIEW_STEPS as readonly number[]).includes(value);
+}
 
 /**
  * Design-loop preview only — `/onboarding` needs a real Supabase session and
  * writes real rows (org creation, locations, invites). This renders steps 1,
- * 2 and 5 (the ones with reference designs) against local-only mock state, so
- * they can be screenshotted without auth or a database.
+ * 2, 3 and 5 (the ones with reference designs) against local-only mock state,
+ * so they can be screenshotted without auth or a database.
  *
- * `?step=1|2|5` picks the step; defaults to 1.
+ * `?step=1|2|3|5` picks the step; defaults to 1.
  */
 export function OnboardingPreviewPage(): JSX.Element {
   const [params] = useSearchParams();
-  const step = Number(params.get('step') ?? '1');
+  const requested = Number(params.get('step') ?? '1');
+  const step: PreviewStep = isPreviewStep(requested) ? requested : 1;
 
   const [createValues, setCreateValues] = useState<CreateOrgValues>({
     name: 'Sunnyvale Care Group',
@@ -55,6 +71,26 @@ export function OnboardingPreviewPage(): JSX.Element {
       },
     ],
   });
+  const [staged, setStaged] = useState<StagedInvite[]>([
+    {
+      email: 'james.davis@sunnyvalecare.co.uk',
+      role: 'manager',
+      department: 'Care',
+      location: 'Main Branch',
+    },
+    {
+      email: 'sarah.lower@sunnyvalecare.co.uk',
+      role: 'staff',
+      department: 'Nursing',
+      location: 'Riverside House',
+    },
+    {
+      email: 'michael.tan@sunnyvalecare.co.uk',
+      role: 'staff',
+      department: 'Support',
+      location: 'Oakview Care Home',
+    },
+  ]);
 
   const steps: OnboardingStepMeta[] = [
     {
@@ -114,6 +150,7 @@ export function OnboardingPreviewPage(): JSX.Element {
           Back to sign in
         </span>
       ),
+      illustration: undefined,
     },
     2: {
       headline: 'Tell us about your',
@@ -142,6 +179,42 @@ export function OnboardingPreviewPage(): JSX.Element {
         },
       ],
       action: <LanguagePill />,
+      illustration: undefined,
+    },
+    3: {
+      headline: 'Build your team.',
+      headlineAccent: 'Get started together.',
+      intro:
+        'Invite your colleagues to join your organisation and start scheduling smarter, together.',
+      features: [
+        {
+          icon: UserPlus,
+          title: 'Invite in seconds',
+          body: 'Send invites by email and get your team on board fast.',
+        },
+        {
+          icon: ShieldCheck,
+          title: 'Role-based access',
+          body: "Assign roles and permissions that fit everyone's responsibilities.",
+        },
+        {
+          icon: Mail,
+          title: 'Secure & private',
+          body: 'Invites are secure and only accessible by the intended recipients.',
+        },
+        {
+          icon: CheckCircle2,
+          title: 'Easy to manage',
+          body: 'You can add more members anytime from settings.',
+        },
+      ],
+      action: (
+        <span className="flex items-center gap-1.5 text-sm font-medium text-brand dark:text-brand-light">
+          <ArrowLeft size={15} aria-hidden="true" />
+          Back
+        </span>
+      ),
+      illustration: <TeamIllustration />,
     },
     5: {
       headline: "You're all set!",
@@ -175,8 +248,9 @@ export function OnboardingPreviewPage(): JSX.Element {
           Need help?
         </span>
       ),
+      illustration: undefined,
     },
-  }[step === 2 ? 2 : step === 5 ? 5 : 1];
+  }[step];
 
   return (
     <OnboardingLayout
@@ -187,6 +261,7 @@ export function OnboardingPreviewPage(): JSX.Element {
       steps={steps}
       currentStep={step}
       action={copy.action}
+      illustration={copy.illustration}
     >
       {step === 1 && (
         <StepCreateOrg
@@ -207,6 +282,18 @@ export function OnboardingPreviewPage(): JSX.Element {
           onSaveAndExit={() => {}}
           submitting={false}
           error={null}
+        />
+      )}
+      {step === 3 && (
+        <StepInviteTeam
+          staged={staged}
+          onStage={setStaged}
+          onSend={() => {}}
+          onSkip={() => {}}
+          onCopy={() => {}}
+          submitting={false}
+          sent={false}
+          locationNames={aboutValues.locations.map((l) => l.name).filter(Boolean)}
         />
       )}
       {step === 5 && (
