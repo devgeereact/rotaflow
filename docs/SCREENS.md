@@ -88,11 +88,11 @@ role — it gates the `/admin` console only.
 | Screen                                 | Status                         | Notes                                                                                                                                                                                              |
 | -------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Locations & departments management     | `[Built]`                      | `/app/locations` — writable by owner **and** manager per RLS (not owner-only, despite the section heading)                                                                                         |
-| Roles & team management / invite users | `[V1]`                         | Likely folded into `/app/settings`                                                                                                                                                                 |
+| Roles & team management / invite users | `[Built]`                      | `/app/team` (see Phase 2 in "Suggested next step" below) — the `/app/settings` reference below is stale, this already shipped separately                                                           |
 | Integrations (org SMTP)                | `[Built]`                      | `/app/integrations` — owner-only; per-org SMTP so notification emails send from the org's own domain, falling back to the global sender when unconfigured; test-send via `test-smtp` Edge Function |
 | Subscription/billing (view only)       | `[V1 view / Phase 2 charging]` | PRD scopes live charging out of V1                                                                                                                                                                 |
 | Org-wide reports                       | `[V1]`                         | Overlaps with Manager's `/app/reports`                                                                                                                                                             |
-| GDPR data export/delete                | `[V1]`                         | Backed by `audit_logs`                                                                                                                                                                             |
+| GDPR data export/delete                | `[V1]`                         | Not yet built — deferred out of Phase 8 (see below), needs real export-format/retention/cascade decisions first. Would draw on `audit_logs` once designed                                          |
 
 ## 7. Super Admin / platform console (explicitly deferred)
 
@@ -205,7 +205,7 @@ path does not work until it is.
 **Not yet real:** delivery itself. `send-notification` (Edge Function) and
 `0009_push_subscriptions.sql` are written but not yet deployed/applied — both
 manual, out-of-repo steps. The screens are correct and ready for whenever
-that lands; until then `notifications` stays empty on a fresh deploy.
+that lands; until then, `notifications` stays empty on a fresh deploy.
 
 **Phase 8 — settings & integrations — is built**, to the scope below:
 

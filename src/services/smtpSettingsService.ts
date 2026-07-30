@@ -25,10 +25,12 @@ export async function getOrgSmtpSettings(
 
 /**
  * Save (create or replace) an org's SMTP credentials. Owner-only, enforced by
- * RLS on the base table. Deliberately does not `.select()` the result: there
- * is no select policy on `org_smtp_settings` at all, so the row can be
- * written but never read back through this client — re-fetch via
- * `getOrgSmtpSettings` (the safe view) if the caller needs confirmation.
+ * RLS on the base table. Deliberately does not `.select()` the result:
+ * `smtp_pass` is excluded from the column-level SELECT grant entirely (RLS
+ * itself does permit the owner to SELECT the row — see 0010's header — but
+ * the grant is what actually keeps the password from coming back), so
+ * re-fetch via `getOrgSmtpSettings` (the safe view) if the caller needs
+ * confirmation.
  */
 export async function saveOrgSmtpSettings(input: OrgSmtpSettingsInsert): Promise<void> {
   const { error } = await supabase
@@ -41,14 +43,18 @@ export async function saveOrgSmtpSettings(input: OrgSmtpSettingsInsert): Promise
  * Update everything except the password — for the common case of editing
  * host/username/from-address without re-entering a credential the client can
  * never see again (it's never read back — see `getOrgSmtpSettings`).
+ *
+ * Always clears `verified_at`: any connection-affecting edit invalidates the
+ * prior "known to work" claim, not just a password change — only test-smtp
+ * gets to set it again.
  */
 export async function updateOrgSmtpFields(
   orgId: string,
-  patch: Omit<OrgSmtpSettingsUpdate, 'smtp_pass' | 'org_id'>,
+  patch: Omit<OrgSmtpSettingsUpdate, 'smtp_pass' | 'org_id' | 'verified_at'>,
 ): Promise<void> {
   const { error } = await supabase
     .from('org_smtp_settings')
-    .update(patch)
+    .update({ ...patch, verified_at: null })
     .eq('org_id', orgId);
   if (error) throw error;
 }

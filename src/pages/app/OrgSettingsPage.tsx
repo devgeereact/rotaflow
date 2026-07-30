@@ -127,7 +127,15 @@ export function OrgSettingsPage(): JSX.Element {
     );
   }
 
-  if (loadFailed && !loading) {
+  if (loading) {
+    return (
+      <Card>
+        <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
+      </Card>
+    );
+  }
+
+  if (loadFailed) {
     return (
       <Card>
         <p className="mb-4 text-content-muted dark:text-content-muted-dark">

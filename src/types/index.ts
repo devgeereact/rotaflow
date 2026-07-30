@@ -69,9 +69,10 @@ export type DepartmentInsert = Database['public']['Tables']['departments']['Inse
 export type DepartmentUpdate = Database['public']['Tables']['departments']['Update'];
 
 /**
- * Org SMTP: `smtp_pass` is write-only (no select policy/grant on the base
- * table — see 0010_org_smtp_settings.sql). The app only ever reads through
- * the `_safe` view, which omits the password entirely.
+ * Org SMTP: `smtp_pass` is write-only — excluded from the column-level
+ * SELECT grant on the base table (see 0010_org_smtp_settings.sql). The app
+ * only ever reads through the `_safe` view, which omits the password
+ * entirely.
  */
 export type OrgSmtpSettingsSafe =
   Database['public']['Views']['org_smtp_settings_safe']['Row'];

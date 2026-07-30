@@ -7,11 +7,12 @@
 //
 // Auth: the caller's JWT is forwarded (like ai-rota-assistant) so RLS proves
 // org ownership via has_org_role before anything happens. That check alone
-// can't read smtp_pass, though — org_smtp_settings has no select policy at
-// all (0010_org_smtp_settings.sql), by design, so nothing short of
-// service_role can read the password back, including this function's own
-// owner check. A second, service_role-backed client is used only after
-// ownership is confirmed, and only to read/update this one table.
+// can't read smtp_pass, though — it's excluded from the column-level SELECT
+// grant on org_smtp_settings entirely (0010_org_smtp_settings.sql), by
+// design, so nothing short of service_role can read the password back,
+// including this function's own owner check. A second, service_role-backed
+// client is used only after ownership is confirmed, and only to read/update
+// this one table.
 //
 // Deploy: `supabase functions deploy test-smtp`.
 // Secrets: none beyond SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY,
@@ -106,7 +107,13 @@ Deno.serve(async (req: Request) => {
     const transport = nodemailer.createTransport({
       host: settings.smtp_host,
       port: settings.smtp_port,
+      // 465 is implicit TLS; every other port (587 included) starts plain
+      // and upgrades via STARTTLS — secure:true there breaks the handshake.
+      secure: settings.smtp_port === 465,
       auth: { user: settings.smtp_user, pass: settings.smtp_pass },
+      // A bad owner-provided host must fail fast, not hang the function.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
     });
 
     try {
