@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Download,
   FileText,
-  Plus,
-  Search,
+  IdCard,
+  Pencil,
   ShieldOff,
   Siren,
-  UserRoundX,
   UserRoundCheck,
+  UserRoundX,
 } from 'lucide-react';
+import { addDays, format, startOfDay, startOfWeek } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -19,24 +21,48 @@ import {
   reactivateStaffProfile,
   updateStaffProfile,
 } from '@/services/staffService';
-import { listDepartments } from '@/services/locationService';
+import { listDepartments, listLocations } from '@/services/locationService';
+import { listOrgAvailability } from '@/services/availabilityService';
+import { listOrgLeaveRequests } from '@/services/leaveService';
+import { listShiftsForPeriod } from '@/services/shiftService';
+import { listDocuments } from '@/services/documentService';
 import { anonymizeStaffMember, exportStaffData } from '@/services/gdprService';
+import { StaffDirectoryView } from '@/components/staff/StaffDirectoryView';
+import type { StaffFilterSelect } from '@/components/staff/StaffFilterBar';
+import type { StaffSort } from '@/components/staff/StaffTable';
+import {
+  StaffActionsModal,
+  type StaffAction,
+} from '@/components/staff/StaffActionsModal';
 import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModal';
 import { DocumentsModal } from '@/components/staff/DocumentsModal';
+import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
+import {
+  buildStats,
+  onLeaveToday,
+  toDirectoryRow,
+  toStaffDetails,
+} from '@/lib/staffDirectoryMapping';
 import { downloadJson } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
-import type { Department, StaffProfile, StaffProfileInsert } from '@/types';
+import type { StaffDirectoryRow, StaffDirectoryStats } from '@/lib/staffDirectory';
+import type {
+  Availability,
+  Department,
+  LeaveRequest,
+  Location,
+  Shift,
+  StaffDocument as DocumentRow,
+  StaffProfile,
+  StaffProfileInsert,
+} from '@/types';
 
-const CONTRACT_LABELS: Record<string, string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  zero_hours: 'Zero-hours',
-  casual: 'Casual',
+const EMPTY_STATS: StaffDirectoryStats = {
+  totalStaff: 0,
+  onShiftToday: 0,
+  onLeaveToday: 0,
+  unavailableToday: 0,
+  vacancies: 0,
 };
 
 function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
@@ -59,67 +85,237 @@ function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
   };
 }
 
+function compareRows(
+  a: StaffDirectoryRow,
+  b: StaffDirectoryRow,
+  sort: StaffSort,
+): number {
+  const value = (row: StaffDirectoryRow): string | number => {
+    switch (sort.key) {
+      case 'staff':
+        return `${row.lastName} ${row.firstName}`.toLowerCase();
+      case 'role':
+        return row.role.toLowerCase();
+      case 'department':
+        return row.department.toLowerCase();
+      case 'location':
+        return row.location.toLowerCase();
+      case 'skills':
+        return row.skills.length;
+      case 'availability':
+        return row.availabilityPercent;
+      case 'status':
+        return row.status;
+    }
+  };
+  const left = value(a);
+  const right = value(b);
+  const order = left < right ? -1 : left > right ? 1 : 0;
+  return sort.direction === 'asc' ? order : -order;
+}
+
+/**
+ * The Staff Directory (design/staff.png). Everything the screen shows is
+ * derived from Supabase and scoped to the active org; RLS is the real gate,
+ * `usePermissions` only decides which affordances appear.
+ */
 export function StaffPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canManageStaff, canManageOrg } = usePermissions();
+  const navigate = useNavigate();
 
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [availability, setAvailability] = useState<Availability[]>([]);
+  const [leave, setLeave] = useState<LeaveRequest[]>([]);
+  const [shiftsToday, setShiftsToday] = useState<Shift[]>([]);
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState('');
-  const [showInactive, setShowInactive] = useState(false);
+  const [locationId, setLocationId] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [role, setRole] = useState('');
+  const [status, setStatus] = useState('');
+  const [sort, setSort] = useState<StaffSort | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffProfile | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [gdprBusyId, setGdprBusyId] = useState<string | null>(null);
+  const [actionsFor, setActionsFor] = useState<StaffProfile | null>(null);
   const [emergencyContactsFor, setEmergencyContactsFor] = useState<StaffProfile | null>(
     null,
   );
   const [documentsFor, setDocumentsFor] = useState<StaffProfile | null>(null);
+  const [gdprBusyId, setGdprBusyId] = useState<string | null>(null);
+
+  const today = useMemo(() => new Date(), []);
+  const todayIso = format(today, 'yyyy-MM-dd');
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [staffRows, deptRows] = await Promise.all([
-        listStaff(orgId, { includeInactive: true }),
-        listDepartments(orgId),
-      ]);
+      const [staffRows, deptRows, locationRows, availabilityRows, leaveRows, shiftRows] =
+        await Promise.all([
+          listStaff(orgId, { includeInactive: true }),
+          listDepartments(orgId),
+          listLocations(orgId),
+          listOrgAvailability(orgId),
+          listOrgLeaveRequests(orgId),
+          listShiftsForPeriod({
+            orgId,
+            fromIso: startOfDay(today).toISOString(),
+            toIso: addDays(startOfDay(today), 1).toISOString(),
+          }),
+        ]);
       setStaff(staffRows);
       setDepartments(deptRows);
+      setLocations(locationRows);
+      setAvailability(availabilityRows);
+      setLeave(leaveRows);
+      setShiftsToday(shiftRows);
     } catch (err) {
       reportError(err, { area: 'staff:load' });
+      setError('Could not load the staff directory.');
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, today]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Live updates: refetch when someone else changes this data.
   useRealtimeRefresh({
     tables: ['staff_profiles', 'departments'],
     scope: { column: 'org_id', value: orgId },
     onChange: () => void load(),
   });
 
-  const departmentName = (id: string | null): string =>
-    departments.find((d) => d.id === id)?.name ?? '—';
+  const onLeave = useMemo(() => onLeaveToday(leave, todayIso), [leave, todayIso]);
+
+  const context = useMemo(
+    () => ({ departments, locations, availability, onLeaveIds: onLeave }),
+    [departments, locations, availability, onLeave],
+  );
+
+  const allRows = useMemo(
+    () => staff.map((person) => toDirectoryRow(person, context)),
+    [staff, context],
+  );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return staff
-      .filter((s) => showInactive || s.active)
-      .filter((s) =>
-        term
-          ? `${s.first_name} ${s.last_name} ${s.job_title ?? ''}`
-              .toLowerCase()
-              .includes(term)
-          : true,
-      );
-  }, [staff, showInactive, search]);
+    const rows = allRows.filter((row) => {
+      if (term) {
+        const haystack =
+          `${row.firstName} ${row.lastName} ${row.role} ${row.skills.join(' ')}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      if (locationId && row.location !== locationId) return false;
+      if (departmentId && row.department !== departmentId) return false;
+      if (role && row.role !== role) return false;
+      if (status && row.status !== status) return false;
+      return true;
+    });
+    return sort ? [...rows].sort((a, b) => compareRows(a, b, sort)) : rows;
+  }, [allRows, search, locationId, departmentId, role, status, sort]);
+
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * pageSize, page * pageSize),
+    [filtered, page, pageSize],
+  );
+
+  // Keep a selection alive across filtering so the panel never blanks out.
+  const selected = useMemo(
+    () =>
+      staff.find((person) => person.id === selectedId) ??
+      staff.find((person) => person.id === pageRows[0]?.id) ??
+      null,
+    [staff, selectedId, pageRows],
+  );
+
+  useEffect(() => {
+    if (!orgId || !selected) {
+      setDocuments([]);
+      return;
+    }
+    let cancelled = false;
+    void listDocuments(orgId, selected.id)
+      .then((rows) => {
+        if (!cancelled) setDocuments(rows);
+      })
+      .catch((err: unknown) => {
+        reportError(err, { area: 'staff:documents' });
+        if (!cancelled) setDocuments([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, selected]);
+
+  const stats = useMemo(
+    () =>
+      staff.length === 0
+        ? EMPTY_STATS
+        : buildStats(staff, shiftsToday, onLeave, availability, today),
+    [staff, shiftsToday, onLeave, availability, today],
+  );
+
+  const details = useMemo(() => {
+    if (!selected) return null;
+    return toStaffDetails(
+      selected,
+      context,
+      documents,
+      selected.payroll_id ?? '—',
+      startOfWeek(today, { weekStartsOn: 1 }),
+      today,
+    );
+  }, [selected, context, documents, today]);
+
+  const selects: StaffFilterSelect[] = [
+    {
+      id: 'locations',
+      allLabel: 'All Locations',
+      value: locationId,
+      onChange: setLocationId,
+      options: locations.map((l) => ({ value: l.name, label: l.name })),
+    },
+    {
+      id: 'departments',
+      allLabel: 'All Departments',
+      value: departmentId,
+      onChange: setDepartmentId,
+      widthClass: 'w-44',
+      options: departments.map((d) => ({ value: d.name, label: d.name })),
+    },
+    {
+      id: 'roles',
+      allLabel: 'All Roles',
+      value: role,
+      onChange: setRole,
+      options: [...new Set(allRows.map((row) => row.role))]
+        .filter((title) => title !== '—')
+        .map((title) => ({ value: title, label: title })),
+    },
+    {
+      id: 'statuses',
+      allLabel: 'All Statuses',
+      value: status,
+      onChange: setStatus,
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'on_leave', label: 'On Leave' },
+        { value: 'inactive', label: 'Inactive' },
+      ],
+    },
+  ];
 
   const handleSubmit = async (values: StaffFormValues): Promise<void> => {
     if (!orgId) return;
@@ -130,16 +326,6 @@ export function StaffPage(): JSX.Element {
       const created = await createStaffProfile(toInsert(orgId, values));
       setStaff((prev) => [...prev, created]);
     }
-  };
-
-  const openCreate = (): void => {
-    setEditingStaff(null);
-    setModalOpen(true);
-  };
-
-  const openEdit = (person: StaffProfile): void => {
-    setEditingStaff(person);
-    setModalOpen(true);
   };
 
   const toggleActive = async (person: StaffProfile): Promise<void> => {
@@ -204,45 +390,100 @@ export function StaffPage(): JSX.Element {
     }
   };
 
+  const actionsFrom = (person: StaffProfile): StaffAction[] => {
+    const actions: StaffAction[] = [
+      {
+        id: 'profile',
+        label: 'View full profile',
+        icon: IdCard,
+        onSelect: () => navigate(`/app/staff/${person.id}`),
+      },
+      {
+        id: 'edit',
+        label: 'Edit details',
+        icon: Pencil,
+        onSelect: () => {
+          setEditingStaff(person);
+          setModalOpen(true);
+        },
+      },
+      {
+        id: 'emergency',
+        label: 'Emergency contacts',
+        icon: Siren,
+        onSelect: () => setEmergencyContactsFor(person),
+      },
+      {
+        id: 'documents',
+        label: 'Documents',
+        icon: FileText,
+        onSelect: () => setDocumentsFor(person),
+      },
+      {
+        id: 'active',
+        label: person.active ? 'Deactivate' : 'Reactivate',
+        description: person.active
+          ? 'Hides them from rotas without deleting history'
+          : undefined,
+        icon: person.active ? UserRoundX : UserRoundCheck,
+        onSelect: () => void toggleActive(person),
+      },
+    ];
+
+    if (canManageOrg) {
+      actions.push(
+        {
+          id: 'export',
+          label: 'Export their data',
+          description: 'GDPR subject-access request',
+          icon: Download,
+          disabled: gdprBusyId === person.id,
+          onSelect: () => void handleExportData(person),
+        },
+        {
+          id: 'erase',
+          label: 'Erase personal data',
+          description: 'GDPR erasure — cannot be undone',
+          icon: ShieldOff,
+          tone: 'danger',
+          disabled: gdprBusyId === person.id,
+          onSelect: () => void handleAnonymize(person),
+        },
+      );
+    }
+
+    return actions;
+  };
+
+  const openActions = (id: string): void => {
+    if (!canManageStaff) return;
+    setActionsFor(staff.find((person) => person.id === id) ?? null);
+  };
+
+  const clearFilters = (): void => {
+    setSearch('');
+    setLocationId('');
+    setDepartmentId('');
+    setRole('');
+    setStatus('');
+    setPage(1);
+  };
+
+  const editSelected = (): void => {
+    if (!selected) return;
+    setEditingStaff(selected);
+    setModalOpen(true);
+  };
+
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-3xl text-content dark:text-content-dark">
+      <div className="mb-10">
+        <h1 className="font-display text-3xl font-bold text-content dark:text-content-dark">
           Staff
         </h1>
-        {canManageStaff && (
-          <Button size="sm" onClick={openCreate}>
-            <Plus size={16} aria-hidden="true" className="mr-1.5" />
-            Add staff
-          </Button>
-        )}
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative max-w-xs flex-1">
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-muted dark:text-content-muted-dark"
-          />
-          <Input
-            className="pl-9"
-            placeholder="Search staff…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowInactive((v) => !v)}
-          className={cn(
-            'rounded-full border px-3 py-1.5 text-sm',
-            showInactive
-              ? 'border-primary text-primary'
-              : 'border-surface-border text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark',
-          )}
-        >
-          Show inactive
-        </button>
+        <p className="mt-1.5 text-sm text-content-muted dark:text-content-muted-dark">
+          Manage your team, roles, departments and availability.
+        </p>
       </div>
 
       {error && (
@@ -252,132 +493,55 @@ export function StaffPage(): JSX.Element {
       )}
 
       {loading ? (
-        <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
-      ) : filtered.length === 0 ? (
-        <Card className="text-center text-content-muted dark:text-content-muted-dark">
-          No staff match this view yet.
-        </Card>
+        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          Loading…
+        </p>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-surface-border text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Job title</th>
-                <th className="px-4 py-3 font-medium">Department</th>
-                <th className="px-4 py-3 font-medium">Contract</th>
-                <th className="px-4 py-3 font-medium">Weekly hours</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                {canManageStaff && <th className="px-4 py-3" />}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((person) => (
-                <tr
-                  key={person.id}
-                  className="border-b border-surface-border last:border-0 hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
-                >
-                  <td
-                    className={cn(
-                      'px-4 py-3 font-medium text-content dark:text-content-dark',
-                      canManageStaff && 'cursor-pointer',
-                    )}
-                    onClick={() => canManageStaff && openEdit(person)}
-                  >
-                    {person.first_name} {person.last_name}
-                  </td>
-                  <td className="px-4 py-3 text-content-muted dark:text-content-muted-dark">
-                    {person.job_title || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-content-muted dark:text-content-muted-dark">
-                    {departmentName(person.department_id)}
-                  </td>
-                  <td className="px-4 py-3 text-content-muted dark:text-content-muted-dark">
-                    {person.contract_type
-                      ? (CONTRACT_LABELS[person.contract_type] ?? person.contract_type)
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-content-muted dark:text-content-muted-dark">
-                    {person.weekly_hours ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                        person.active
-                          ? 'bg-success/10 text-success'
-                          : 'bg-secondary/10 text-secondary dark:text-secondary-dark',
-                      )}
-                    >
-                      {person.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  {canManageStaff && (
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        {canManageOrg && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => void handleExportData(person)}
-                              disabled={gdprBusyId === person.id}
-                              aria-label={`Export data for ${person.first_name} ${person.last_name}`}
-                              title="Export their data (GDPR)"
-                              className="text-content-muted hover:text-primary disabled:opacity-50 dark:text-content-muted-dark"
-                            >
-                              <Download size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleAnonymize(person)}
-                              disabled={gdprBusyId === person.id}
-                              aria-label={`Erase personal data for ${person.first_name} ${person.last_name}`}
-                              title="Erase their personal data (GDPR)"
-                              className="text-content-muted hover:text-danger disabled:opacity-50 dark:text-content-muted-dark"
-                            >
-                              <ShieldOff size={16} />
-                            </button>
-                          </>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setEmergencyContactsFor(person)}
-                          aria-label={`Emergency contacts for ${person.first_name} ${person.last_name}`}
-                          title="Emergency contacts"
-                          className="text-content-muted hover:text-primary dark:text-content-muted-dark"
-                        >
-                          <Siren size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDocumentsFor(person)}
-                          aria-label={`Documents for ${person.first_name} ${person.last_name}`}
-                          title="Documents"
-                          className="text-content-muted hover:text-primary dark:text-content-muted-dark"
-                        >
-                          <FileText size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void toggleActive(person)}
-                          aria-label={person.active ? 'Deactivate' : 'Reactivate'}
-                          className="text-content-muted hover:text-primary dark:text-content-muted-dark"
-                        >
-                          {person.active ? (
-                            <UserRoundX size={16} />
-                          ) : (
-                            <UserRoundCheck size={16} />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <StaffDirectoryView
+          stats={stats}
+          rows={pageRows}
+          total={filtered.length}
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          selects={selects}
+          sort={sort}
+          onSortChange={setSort}
+          selectedId={selected?.id ?? null}
+          onSelect={setSelectedId}
+          onOpenActions={openActions}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          details={details}
+          onMoreFilters={clearFilters}
+          onAddStaff={
+            canManageStaff
+              ? () => {
+                  setEditingStaff(null);
+                  setModalOpen(true);
+                }
+              : undefined
+          }
+          onEditDetails={editSelected}
+          onViewSkills={editSelected}
+          onViewCalendar={() => navigate('/app/availability')}
+          onViewDocuments={() => selected && setDocumentsFor(selected)}
+        />
       )}
+
+      <StaffActionsModal
+        open={Boolean(actionsFor)}
+        staffName={actionsFor ? `${actionsFor.first_name} ${actionsFor.last_name}` : ''}
+        actions={actionsFor ? actionsFrom(actionsFor) : []}
+        onClose={() => setActionsFor(null)}
+      />
 
       <StaffFormModal
         open={modalOpen}
