@@ -107,7 +107,22 @@ export default defineConfig({
 
   build: {
     outDir: 'dist',
-    sourcemap: true, // required for readable Sentry stack traces
+
+    // 'hidden', not true. Maps are still emitted so Sentry can de-minify a stack
+    // trace, but the `//# sourceMappingURL=` comment is left out of the bundle.
+    //
+    // With `true`, every shipped .js pointed at its .map and the production host
+    // served them: https://rota.gakinz.com/assets/index-*.js.map returned 200 and
+    // handed out the app's complete original TypeScript. That is not a secret leak
+    // — VITE_* values are inlined into the bundle regardless, and the anon key is
+    // public by design — but it does publish the exact shape of every Supabase
+    // query, every RLS assumption and every role check to anyone probing a
+    // multi-tenant app that holds staff PII. docs/DEPLOYMENT.md §4 already said not
+    // to ship them; nothing enforced it.
+    //
+    // Defence in depth: .htaccess also refuses to serve *.map, so a future deploy
+    // that copies them up is still safe.
+    sourcemap: 'hidden',
     target: 'es2020',
     rollupOptions: {
       output: {

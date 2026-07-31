@@ -68,6 +68,21 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: vite-plugin-pwa
         update-types: ['version-update:semver-major']
+      # tailwind-merge's major track is coupled to Tailwind's: v2 = Tailwind 3,
+      # v3 = Tailwind 4.0-4.3 ("if you use Tailwind v3, use tailwind-merge
+      # v2.6.0" — its own README). This is a *runtime* dependency, so the rule
+      # above would normally let its majors through; the exception is here
+      # because the failure mode is silent.
+      #
+      # PR #45 (tailwind-merge 2.6.1 -> 3.6.0) was opened against Tailwind
+      # 3.4.19 and would have passed typecheck, lint, format and build — v3
+      # exports the same `twMerge` with the same signature. It would simply
+      # resolve conflicting classes against a v4 class table at runtime, so
+      # `cn()` starts returning the wrong winner in arbitrary places across the
+      # app, with no error anywhere. Re-allow this only in the same PR that
+      # moves the project to Tailwind 4.
+      - dependency-name: tailwind-merge
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: 'chore(deps)'
       prefix-development: 'chore(dev-deps)'

@@ -7,25 +7,80 @@ screen using the tables below.
 Chrome tab against the local Vite dev server (`http://localhost:5173`) and screenshots
 that, not `xcrun simctl`.
 
+## How to read the status column
+
+`docs/SCREENS.md` answers "does the feature exist". **This file answers "does it
+match its mockup"** — they are different questions and a screen is regularly ✅ in
+one and not the other.
+
+- **Matched** — a design-match pass has landed on `main`. Only reopen for a
+  regression.
+- **Not matched** — the feature is built and working, but nothing has ever
+  compared it to its reference. **This is where the remaining work is.**
+- **Not built** — no route, no component. Design-match is not the right tool yet;
+  it needs a feature build first (schema, service, page), then a match pass.
+
+## Preview routes — read this before screenshotting
+
+Most matched screens live behind auth and need a real Supabase session, an org and
+seeded rows, which the loop cannot produce. The pattern already in use is a
+**`*-preview` route** carrying fixed mock data that reproduces the reference's exact
+numbers: `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
+`/timesheets-preview`, `/clockin-preview`, `/onboarding-preview`, `/appboot`.
+
+Two things about them that have caused re-work:
+
+1. **Preview pages render page content only — no `AppShell`.** Every reference PNG
+   shows the sidebar and top bar, because that is how the screen looks in the
+   product. The preview deliberately omits them. Do not "fix" the missing sidebar;
+   compare the content region and ignore the chrome.
+2. They are **currently reachable in production** and should be `import.meta.env.DEV`-gated —
+   see `docs/audit01.md` P1-4. When that lands, the loop is unaffected: it drives
+   the dev server, where they still exist.
+
 ## Screens with a design reference
 
-| `<SCREEN>`          | route                             | `<REF>`                              | notes                                                                                                                                                                                                                                                                                                                                          |
-| ------------------- | --------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| splash              | `/splash`                         | `design/splashscreen.png`            | Built (`src/components/SplashScreen.tsx`) — refine pass                                                                                                                                                                                                                                                                                        |
-| appboot             | `/splash` (2nd state)             | `design/appboot.png`                 | Not built. Second visual state of the same route — the org-provisioning checklist (Secure connection → Loading data → Setting up organisation → Preparing features → Finalising) shown after auth resolves, before splashscreen's plain logo view hands off to `/app/dashboard`. Confirm the exact trigger/transition while building this one. |
-| login               | `/login`                          | `design/signin.png`                  | Built (`src/pages/LoginPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                                |
-| signup              | `/signup`                         | `design/signup.png`                  | Gap — today it's a toggle inside `LoginPage.tsx`, not a standalone route. Build the route.                                                                                                                                                                                                                                                     |
-| onboarding-org      | `/onboarding` step 1/5            | `design/Organisation-Onboarding.png` | Gap — `OnboardingPage.tsx` is a single-step stub today; this is the first step of a 5-step wizard                                                                                                                                                                                                                                              |
-| onboarding-about    | `/onboarding` step 2/5            | `design/Organisation-about.png`      | Gap                                                                                                                                                                                                                                                                                                                                            |
-| onboarding-team     | `/onboarding` step 3/5            | `design/Team-onboarding.png`         | Gap                                                                                                                                                                                                                                                                                                                                            |
-| onboarding-plan     | `/onboarding` step 4/5            | `design/Plan-Selection.png`          | Gap                                                                                                                                                                                                                                                                                                                                            |
-| onboarding-complete | `/onboarding` step 5/5            | `design/Onboarding-Complete.png`     | Gap                                                                                                                                                                                                                                                                                                                                            |
-| dashboard           | `/app/dashboard`                  | `design/Workforce-Dashboard.png`     | Built (`src/pages/app/DashboardPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                        |
-| staff               | `/app/staff`                      | `design/staff.png`                   | Built (`src/pages/app/StaffPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                            |
-| rotabuilder         | `/app/rota`                       | `design/Rota-Builder.png`            | Built (`src/pages/app/RotaBuilderPage.tsx`) — refine pass                                                                                                                                                                                                                                                                                      |
-| schedule            | `/app/schedule` (default)         | `design/Schedule-dashboard.png`      | Gap — new route (per `docs/SCREENS.md` §4/§5). Manager's default view/manage-published-rotas state.                                                                                                                                                                                                                                            |
-| schedule-live       | `/app/schedule` (live state)      | `design/live-schedule.png`           | Same route as `schedule` — the staff-facing "Live" state with the green live badge and open-requests panel                                                                                                                                                                                                                                     |
-| schedule-published  | `/app/schedule` (published state) | `design/published-schedule.png`      | Same route as `schedule` — post-publish confirmation state (unpublish action, publish history)                                                                                                                                                                                                                                                 |
+| `<SCREEN>`          | route                                 | `<REF>`                              | status                                                                                     |
+| ------------------- | ------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| marketing-home      | `/`                                   | `design/marketting.png`              | **Not matched.** Hero/features/industries/footer exist; the ref also specifies a product shot, "Why Teams Choose", logo row, testimonials, CTA banner and a 5-item nav with Book a Demo. Needs feature build + match together |
+| splash              | `/splash`                             | `design/splash-screen.png`           | Matched                                                                                    |
+| appboot             | `/appboot` (preview)                  | `design/appboot.png`                 | **Not matched.** Renders, but not as the ref's 5-step checklist (Secure connection → Loading data → Setting up organisation → Preparing features → Finalising) |
+| login               | `/login`                              | `design/signin.png`                  | Matched (#27)                                                                              |
+| signup              | `/signup`                             | `design/signup.png`                  | Matched — standalone route, carries an invite token through                                |
+| onboarding-org      | `/onboarding-preview?step=1`          | `design/Organisation-Onboarding.png` | Matched                                                                                    |
+| onboarding-about    | `/onboarding-preview?step=2`          | `design/Organisation-about.png`      | Matched                                                                                    |
+| onboarding-team     | `/onboarding-preview?step=3`          | `design/Team-onboarding.png`         | Matched (#26)                                                                              |
+| onboarding-plan     | `/onboarding-preview?step=4`          | `design/Plan-Selection.png`          | Matched (#28)                                                                              |
+| onboarding-complete | `/onboarding-preview?step=5`          | `design/Onboarding-Complete.png`     | Matched — swaps two dead mockup links for real ones                                        |
+| dashboard           | `/dashboard-preview`                  | `design/Workforce-Dashboard.png`     | Matched (#31)                                                                              |
+| rotabuilder         | `/rota-builder-preview`               | `design/Rota-Builder.png`            | Matched (#33, #40)                                                                         |
+| schedule            | `/schedule-preview`                   | `design/Schedule-dashboard.png`      | Matched (#42)                                                                              |
+| schedule-live       | `/schedule-preview` (live state)      | `design/live-schedule.png`           | Matched (#42)                                                                              |
+| schedule-published  | `/schedule-preview` (published state) | `design/published-schedule.png`      | Matched (#42)                                                                              |
+| timesheets          | `/timesheets-preview`                 | `design/Timesheets-Dashboard.png`    | Matched (#44)                                                                              |
+| clockin             | `/clockin-preview`                    | `design/clockin.png`                 | Matched (#43)                                                                              |
+| staff               | `/app/staff`                          | `design/staff.png`                   | **In flight** — branch `design-staff-match`. Do not start a second pass on this            |
+| staff-profile       | `/app/staff/:id`                      | `design/Staff-Profile.png`           | **In flight** — same branch. Needs the `:id` route built, not just styled                  |
+| availability        | `/app/availability`                   | `design/Availability.png`            | **Not matched** — next up                                                                  |
+| leave               | `/app/leave`                          | `design/Leave.png`                   | **Not matched** — next up                                                                  |
+| swaps               | `/app/swaps`                          | `design/Swap-Request.png`            | **Not matched** — next up                                                                  |
+| reports             | `/app/reports`                        | `design/Reports-Dashboard.png`       | **Not matched** — next up                                                                  |
+| announcements       | `/app/announcements`                  | `design/Announcements-Dashboard.png` | **Not matched** — next up                                                                  |
+| locations           | `/app/locations`                      | `design/Locations-Management.png`    | **Not matched** — next up                                                                  |
+| locations-depts     | `/app/locations` (dept view)          | `design/Location-department.png`     | **Not matched** — `DepartmentManager`, same route                                          |
+| settings-org        | `/app/settings`                       | `design/SettingsOrganisation.png`    | **Not matched, and mostly not built** — ref adds ~12 fields, an Industry Pack, org preferences, role labels, sites summary and Platform Support Access |
+| settings-integr     | `/app/integrations`                   | `design/SettingsIntegrations.png`    | **Not matched.** Built, but as a top-level route; the ref makes it a Settings tab          |
+| profile             | `/app/account`                        | `design/ProfileSettings.png`         | **Not matched, partly built** — see `docs/SCREENS.md` §4                                   |
+| profile-prefs       | `/app/account`                        | `design/profileprefrence.png`        | **Not matched, mostly not built** — `app_settings` holds 2 of the ~20 fields specified     |
+| settings-policy     | —                                     | `design/Settingspolicy.png`          | **Not built.** No route, no component, no table. ~55 policies across 10 categories         |
+| settings-audit      | —                                     | `design/Settingsaudit.png`           | **Not built.** `audit_logs` exists but only `anonymize_staff_member` writes to it          |
+| settings-billing    | —                                     | `design/Settingsbilling.png`         | **Not built.** `subscriptions` is an empty seam; no payment provider                       |
+| settings-notifs     | —                                     | `design/SettingsNotifications.png`   | **Not built.** Template administration — no table. Distinct from `/app/notifications`      |
+| profile-security    | —                                     | `design/ProfileSecurity.png`         | **Not built.** Needs MFA/TOTP, backup codes, trusted devices, session controls             |
+
+**Before starting any "Not built" row**, read `docs/SCREENS.md` §3/§4 — several need
+a migration and a tab-bar component that does not exist yet, so a design-match loop
+alone cannot finish them.
 
 | tokens only | `design/designsystem.png` |
 
@@ -37,8 +92,9 @@ ref for surface/type/radius fidelity only — do **not** try to make them identi
 
 | `<SCREEN>`    | route                  | closest ref (inferred from)                         |
 | ------------- | ---------------------- | --------------------------------------------------- |
-| home          | `/`                    | `design/signin.png` (marketing panel/left column)   |
-| locations     | `/app/locations`       | `design/staff.png` (table/list + filter bar layout) |
+| clock-manual  | `/app/clock`           | `design/clockin.png` (the GPS state is referenced)  |
+| team          | `/app/team`            | `design/staff.png` (table/list + filter bar layout) |
+| notifications | `/app/notifications`   | `design/Announcements-Dashboard.png` (feed layout)  |
 | notfound      | `*` (bad route)        | `design/designsystem.png` (tokens only)             |
 | errorboundary | thrown render          | `design/designsystem.png` (tokens only)             |
 | offlinebanner | global, offline        | `design/designsystem.png` (status pill styles)      |
