@@ -12,10 +12,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { PublishedScheduleChip } from '@/components/schedule/PublishedScheduleChip';
-import type {
-  ScheduleDayTotal,
-  ScheduleLocationGroup,
-} from '@/lib/publishedSchedule';
+import type { ScheduleDayTotal, ScheduleLocationGroup } from '@/lib/publishedSchedule';
 
 /**
  * Staff column, seven day columns, then the trailing per-row menu column. The
@@ -68,7 +65,10 @@ export function PublishedScheduleGrid({
     <div className="min-w-[62rem]">
       {/* ---- Column header: day, plus that day's staff and shift counts ---- */}
       <div
-        className={cn(GRID_COLS, 'border-b border-surface-border dark:border-surface-border-dark')}
+        className={cn(
+          GRID_COLS,
+          'border-b border-surface-border dark:border-surface-border-dark',
+        )}
       >
         <div className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-semibold text-content dark:text-content-dark">
           Staff

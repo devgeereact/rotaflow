@@ -63,7 +63,9 @@ export function ScheduleViewBar({
 
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <div className={cn(CONTROL, 'relative pr-8')}>
-          <span className="text-content-muted dark:text-content-muted-dark">Group by:</span>
+          <span className="text-content-muted dark:text-content-muted-dark">
+            Group by:
+          </span>
           <select
             value={grouping}
             onChange={(event) => onGroupingChange(event.target.value as ScheduleGrouping)}

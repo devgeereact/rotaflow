@@ -18,12 +18,12 @@ import {
   ScheduleViewBar,
   type ScheduleGrouping,
 } from '@/components/schedule/ScheduleViewBar';
-import { ShiftDetailsPanel, type ShiftDetails } from '@/components/schedule/ShiftDetailsPanel';
+import {
+  ShiftDetailsPanel,
+  type ShiftDetails,
+} from '@/components/schedule/ShiftDetailsPanel';
 import type { ScheduleView } from '@/lib/schedulePeriod';
-import type {
-  ScheduleDayTotal,
-  ScheduleLocationGroup,
-} from '@/lib/publishedSchedule';
+import type { ScheduleDayTotal, ScheduleLocationGroup } from '@/lib/publishedSchedule';
 import type { ScheduleLocationOption } from '@/components/schedule/ScheduleToolbar';
 import type { ScheduleRequest } from '@/components/schedule/OpenRequestsCard';
 import type { ScheduleAnnouncement } from '@/components/schedule/ScheduleAnnouncementsCard';
@@ -143,7 +143,9 @@ export function PublishedScheduleView(props: PublishedScheduleViewProps): JSX.El
               icon={PieChart}
               tint="text-primary"
               label="Average Coverage"
-              value={summary.averageCoverage === null ? '—' : `${summary.averageCoverage}%`}
+              value={
+                summary.averageCoverage === null ? '—' : `${summary.averageCoverage}%`
+              }
               hint="Slots filled"
             />
             <ScheduleStatCard
@@ -158,7 +160,9 @@ export function PublishedScheduleView(props: PublishedScheduleViewProps): JSX.El
               tint="text-warning"
               label="Overtime (This Week)"
               value={summary.overtime ?? '—'}
-              hint={summary.overtime === null ? 'Week view only' : 'Beyond contracted hours'}
+              hint={
+                summary.overtime === null ? 'Week view only' : 'Beyond contracted hours'
+              }
             />
             <ScheduleStatCard
               icon={MessageSquareMore}

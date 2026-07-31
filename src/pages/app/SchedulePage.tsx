@@ -42,7 +42,14 @@ import type { ShiftDetails } from '@/components/schedule/ShiftDetailsPanel';
 import type { ScheduleRequest } from '@/components/schedule/OpenRequestsCard';
 import type { ScheduleAnnouncement } from '@/components/schedule/ScheduleAnnouncementsCard';
 import type { PublishEvent } from '@/components/schedule/PublishingHistoryCard';
-import type { Announcement, Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
+import type {
+  Announcement,
+  Location,
+  Rota,
+  Shift,
+  ShiftType,
+  StaffProfile,
+} from '@/types';
 
 const VIEWS: { value: ScheduleView; label: string }[] = [
   { value: 'day', label: 'Day' },
@@ -307,12 +314,12 @@ export function SchedulePage(): JSX.Element {
     const assigned = group
       .map((s) => (s.staff_profile_id ? staffById.get(s.staff_profile_id) : undefined))
       .filter((s): s is StaffProfile => s !== undefined);
-    const zone =
-      locations.find((l) => l.id === shift.location_id)?.timezone ?? timezone;
+    const zone = locations.find((l) => l.id === shift.location_id)?.timezone ?? timezone;
     const start = toZonedTime(new Date(shift.starts_at), zone);
     const end = toZonedTime(new Date(shift.ends_at), zone);
     const hours = Math.round(
-      (new Date(shift.ends_at).getTime() - new Date(shift.starts_at).getTime()) / 3_600_000,
+      (new Date(shift.ends_at).getTime() - new Date(shift.starts_at).getTime()) /
+        3_600_000,
     );
     const type = shiftTypes.find((t) => t.id === shift.shift_type_id);
 
@@ -365,7 +372,9 @@ export function SchedulePage(): JSX.Element {
   const history = useMemo<PublishEvent[]>(
     () =>
       rotas
-        .filter((rota): rota is Rota & { published_at: string } => rota.published_at !== null)
+        .filter(
+          (rota): rota is Rota & { published_at: string } => rota.published_at !== null,
+        )
         .sort((a, b) => b.published_at.localeCompare(a.published_at))
         .slice(0, 3)
         .map((rota) => ({

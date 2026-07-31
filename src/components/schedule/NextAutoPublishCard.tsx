@@ -7,7 +7,9 @@ interface NextAutoPublishCardProps {
 }
 
 /** "Next auto-publish" tile at the top of the schedule rail (design/live-schedule.png). */
-export function NextAutoPublishCard({ whenLabel }: NextAutoPublishCardProps): JSX.Element {
+export function NextAutoPublishCard({
+  whenLabel,
+}: NextAutoPublishCardProps): JSX.Element {
   return (
     <Card className="flex items-center gap-2.5 bg-surface-subtle p-3 dark:bg-surface-subtle-dark">
       <span

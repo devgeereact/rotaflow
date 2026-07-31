@@ -51,10 +51,20 @@ export function ScheduleToolbar({
 }: ScheduleToolbarProps): JSX.Element {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button type="button" onClick={onPrev} aria-label="Previous period" className={cn(CONTROL, 'w-10 justify-center px-0')}>
+      <button
+        type="button"
+        onClick={onPrev}
+        aria-label="Previous period"
+        className={cn(CONTROL, 'w-10 justify-center px-0')}
+      >
         <ChevronLeft size={18} aria-hidden="true" />
       </button>
-      <button type="button" onClick={onNext} aria-label="Next period" className={cn(CONTROL, 'w-10 justify-center px-0')}>
+      <button
+        type="button"
+        onClick={onNext}
+        aria-label="Next period"
+        className={cn(CONTROL, 'w-10 justify-center px-0')}
+      >
         <ChevronRight size={18} aria-hidden="true" />
       </button>
       <button type="button" onClick={onToday} className={cn(CONTROL, 'px-4')}>

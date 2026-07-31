@@ -1,4 +1,12 @@
-import { AlarmClock, CalendarDays, CheckCircle2, Copy, Lock, Users, X } from 'lucide-react';
+import {
+  AlarmClock,
+  CalendarDays,
+  CheckCircle2,
+  Copy,
+  Lock,
+  Users,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import { Badge } from '@/components/ui/Badge';
@@ -44,7 +52,8 @@ interface ShiftDetailsPanelProps {
   onEditNotes?: () => void;
 }
 
-const SECTION_RULE = 'my-4 border-t border-dashed border-surface-border dark:border-surface-border-dark';
+const SECTION_RULE =
+  'my-4 border-t border-dashed border-surface-border dark:border-surface-border-dark';
 
 /**
  * The expandable shift-details rail beside the grid
@@ -231,24 +240,24 @@ export function ShiftDetailsPanel({
 
       <div className="mt-4 space-y-2">
         {onCopy && (
-        <button
-          type="button"
-          onClick={onCopy}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-semibold text-primary transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
-        >
-          <Copy size={16} aria-hidden="true" />
-          Copy Shift
-        </button>
+          <button
+            type="button"
+            onClick={onCopy}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-surface-border text-sm font-semibold text-primary transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
+          >
+            <Copy size={16} aria-hidden="true" />
+            Copy Shift
+          </button>
         )}
         {onUnpublish && (
-        <button
-          type="button"
-          onClick={onUnpublish}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/10 text-sm font-semibold text-danger transition-colors hover:bg-danger/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
-        >
-          <Lock size={16} aria-hidden="true" />
-          Unpublish Shift
-        </button>
+          <button
+            type="button"
+            onClick={onUnpublish}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/10 text-sm font-semibold text-danger transition-colors hover:bg-danger/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+          >
+            <Lock size={16} aria-hidden="true" />
+            Unpublish Shift
+          </button>
         )}
       </div>
     </Card>

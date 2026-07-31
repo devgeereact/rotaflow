@@ -61,7 +61,11 @@ function localTime(iso: string, timezone: string): string {
   return format(toZonedTime(new Date(iso), timezone), 'HH:mm');
 }
 
-function toChip(shift: Shift, type: ShiftType | undefined, timezone: string): ScheduleChip {
+function toChip(
+  shift: Shift,
+  type: ShiftType | undefined,
+  timezone: string,
+): ScheduleChip {
   return {
     id: shift.id,
     startTime: localTime(shift.starts_at, timezone),
@@ -114,7 +118,11 @@ export function buildScheduleGroups(input: {
     const date = localDate(shift.starts_at, timezone);
     row.cells[date] = [
       ...(row.cells[date] ?? []),
-      toChip(shift, shift.shift_type_id ? typeById.get(shift.shift_type_id) : undefined, timezone),
+      toChip(
+        shift,
+        shift.shift_type_id ? typeById.get(shift.shift_type_id) : undefined,
+        timezone,
+      ),
     ];
     rows.set(person.id, row);
     byLocation.set(locationId, rows);

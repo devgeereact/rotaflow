@@ -152,12 +152,54 @@ const SELECTED_SHIFT: ShiftDetails = {
   skills: ['Nursing', 'Manual Handling'],
   notes: 'Busy morning due to appointment clinic.',
   assigned: [
-    { id: '1', firstName: 'Sarah', lastName: 'Johnson', photoUrl: null, roleCode: 'RN', confirmed: true },
-    { id: '2', firstName: 'Emily', lastName: 'Davis', photoUrl: null, roleCode: 'CA', confirmed: true },
-    { id: '3', firstName: 'Aisha', lastName: 'Patel', photoUrl: null, roleCode: 'RN', confirmed: true },
-    { id: '4', firstName: 'James', lastName: 'Wilson', photoUrl: null, roleCode: 'CA', confirmed: true },
-    { id: '5', firstName: 'Grace', lastName: 'Thompson', photoUrl: null, roleCode: 'CA', confirmed: true },
-    { id: '6', firstName: 'Liam', lastName: "O'Connor", photoUrl: null, roleCode: 'CA', confirmed: true },
+    {
+      id: '1',
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      photoUrl: null,
+      roleCode: 'RN',
+      confirmed: true,
+    },
+    {
+      id: '2',
+      firstName: 'Emily',
+      lastName: 'Davis',
+      photoUrl: null,
+      roleCode: 'CA',
+      confirmed: true,
+    },
+    {
+      id: '3',
+      firstName: 'Aisha',
+      lastName: 'Patel',
+      photoUrl: null,
+      roleCode: 'RN',
+      confirmed: true,
+    },
+    {
+      id: '4',
+      firstName: 'James',
+      lastName: 'Wilson',
+      photoUrl: null,
+      roleCode: 'CA',
+      confirmed: true,
+    },
+    {
+      id: '5',
+      firstName: 'Grace',
+      lastName: 'Thompson',
+      photoUrl: null,
+      roleCode: 'CA',
+      confirmed: true,
+    },
+    {
+      id: '6',
+      firstName: 'Liam',
+      lastName: "O'Connor",
+      photoUrl: null,
+      roleCode: 'CA',
+      confirmed: true,
+    },
   ],
 };
 
@@ -219,9 +261,7 @@ export function SchedulePreviewPage(): JSX.Element {
   const [view, setView] = useState<ScheduleView>('week');
   const [grouping, setGrouping] = useState<ScheduleGrouping>('location');
   const [locationId, setLocationId] = useState<string | null>(null);
-  const [selectedChipId, setSelectedChipId] = useState<string | null>(
-    'sarah-2025-05-27',
-  );
+  const [selectedChipId, setSelectedChipId] = useState<string | null>('sarah-2025-05-27');
 
   const locations = useMemo(
     () => GROUPS.map((group) => ({ id: group.id, name: group.name })),
@@ -288,7 +328,8 @@ export function SchedulePreviewPage(): JSX.Element {
                 <>
                   Target: 90%
                   <Badge tone="success">
-                    <ArrowUp size={11} aria-hidden="true" />2%
+                    <ArrowUp size={11} aria-hidden="true" />
+                    2%
                   </Badge>
                 </>
               }
@@ -302,7 +343,8 @@ export function SchedulePreviewPage(): JSX.Element {
                 <>
                   12% vs last week
                   <Badge tone="danger">
-                    <ArrowUp size={11} aria-hidden="true" />2%
+                    <ArrowUp size={11} aria-hidden="true" />
+                    2%
                   </Badge>
                 </>
               }
@@ -316,7 +358,8 @@ export function SchedulePreviewPage(): JSX.Element {
                 <>
                   Budget: £13,500
                   <Badge tone="success">
-                    <ArrowDown size={11} aria-hidden="true" />8%
+                    <ArrowDown size={11} aria-hidden="true" />
+                    8%
                   </Badge>
                 </>
               }
