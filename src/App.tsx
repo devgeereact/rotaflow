@@ -17,6 +17,7 @@ import { OnboardingPreviewPage } from '@/pages/OnboardingPreviewPage';
 import { RotaBuilderPreviewPage } from '@/pages/RotaBuilderPreviewPage';
 import { SchedulePreviewPage } from '@/pages/SchedulePreviewPage';
 import { TimesheetsPreviewPage } from '@/pages/TimesheetsPreviewPage';
+import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
 import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
 import { SignupPage } from '@/pages/SignupPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -88,6 +89,10 @@ export function App(): JSX.Element {
                     Supabase session and clock events. Fixed mock data
                     reproduces design/Timesheets-Dashboard.png's numbers. */}
                 <Route path="/timesheets-preview" element={<TimesheetsPreviewPage />} />
+                {/* Design-loop preview only — /app/clock-in needs a real
+                    Supabase session, a staff profile and a scheduled shift.
+                    Fixed mock data reproduces design/clockin.png. */}
+                <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
