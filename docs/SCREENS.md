@@ -28,7 +28,7 @@ separate `is_platform_admin` flag, not a fourth role.
 | ✅     | `signin.png`                  | Sign in — password, magic link, OAuth     | `/login`                                                                                                                                                                                                                                                                                                                                                                |
 | ✅     | `signup.png`                  | Sign up — carries an invite token through | `/signup`                                                                                                                                                                                                                                                                                                                                                               |
 | ✅     | `splash-screen.png`           | Cold-start splash                         | `/splash`, also inline while auth resolves                                                                                                                                                                                                                                                                                                                              |
-| 🟡     | `appboot.png`                 | App boot / "setting up organisation"      | Real (`AppBootScreen`, rendered by `ProtectedRoute`) but does not yet match the mockup's 5-step checklist UI — see `docs/LOOP.md`                                                                                                                                                                                                                                       |
+| 🟡     | `appboot.png`                 | App boot / "setting up organisation"      | In production this renders **inline** from `ProtectedRoute` while auth/org resolve — it has no production URL. `/appboot` is a design-loop **preview route only**, with fixed props, existing so the state can be screenshotted. Real either way, but it does not yet match the mockup's 5-step checklist UI — see `docs/LOOP.md`                                       |
 | ✅     | `Organisation-Onboarding.png` | Onboarding 1 — create org                 | `/onboarding`                                                                                                                                                                                                                                                                                                                                                           |
 | ✅     | `Organisation-about.png`      | Onboarding 2 — about your org             | `/onboarding`                                                                                                                                                                                                                                                                                                                                                           |
 | ✅     | `Team-onboarding.png`         | Onboarding 3 — invite team                | `/onboarding`. Department/location fields on this step stage locally and are never persisted — a real, self-documented schema gap                                                                                                                                                                                                                                       |
@@ -55,11 +55,15 @@ separate `is_platform_admin` flag, not a fourth role.
 | ✅     | `Locations-Management.png`    | Locations                                  | `/app/locations`                                                                                                  |
 | ✅     | `Location-department.png`     | Departments within a location              | `/app/locations` (`DepartmentManager`)                                                                            |
 
-## 3. Settings area — designed as 8 tabs, 1 of 8 exists
+## 3. Settings area — 8 designed tabs, 2 have code, 0 are tabs
 
-The mockups specify a tabbed **Settings** area: Organisation · Permissions · Roles ·
-Policies · Notifications · Integrations · Billing · Audit. The app has two flat,
-untabbed pages instead, and no tab bar exists anywhere.
+Counting **designed tabs**: the mockups specify Organisation · Permissions · Roles ·
+Policies · Notifications · Integrations · Billing · Audit.
+
+Of those 8: **1 is fully built** (Integrations), **1 is partial** (Organisation), and
+**6 have no code at all**. Neither built one is actually a _tab_ — they are two
+separate flat routes (`/app/settings`, `/app/integrations`), and no tab bar exists
+anywhere in the app.
 
 | Status | Design                      | Tab           | Reality                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------ | --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -72,11 +76,15 @@ untabbed pages instead, and no tab bar exists anywhere.
 | ❌     | —                           | Permissions   | No design file, no code, no table. Referenced only as a tab in the other mockups                                                                                                                                                                                                                                                                                                                                      |
 | ❌     | —                           | Roles         | No design file, no code. Roles are a fixed 3-value CHECK on `memberships.role`; the custom roles shown in `SettingsOrganisation.png` (Team Leader, Scheduler, HR Advisor…) cannot be represented                                                                                                                                                                                                                      |
 
-## 4. My Profile area — designed as 6–7 tabs, ~1 partial
+## 4. My Profile area — 6 designed tabs, 2 partial, 0 are tabs
 
-The mockups specify a tabbed **My Profile** area: Profile · Preferences · Security ·
-Sessions · API Tokens · Activity (a Connected Accounts tab also appears). The app has
-one flat `/app/account` page, reachable only from the user menu.
+Counting **designed tabs**: Profile · Preferences · Security · Sessions · API Tokens ·
+Activity (a Connected Accounts tab also appears in one mockup's tab bar).
+
+Of those 6: **0 are fully built**, **2 are partial** (Profile, Preferences — both
+served by fragments of one page), and **4 have no code at all**. As with Settings,
+none of it is a tab: it's a single flat `/app/account` page, reachable only from the
+user menu.
 
 | Status | Design                 | Tab         | Reality                                                                                                                                                                                                                                                                                                                       |
 | ------ | ---------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -132,12 +140,20 @@ Differences that are decisions, not bugs — worth settling before building Sett
 
 ## 8. Tables with no UI
 
-Provisioned but unread by any screen — each a seam someone deliberately left, but
-none of them do anything today:
-
 `audit_logs` · `subscriptions` · `overtime_requests` · `shift_templates`
 
-Verified by grepping `src/` for `from('<table>')` — zero hits for all four.
+No screen **reads** any of these — verified by grepping `src/` for
+`from('<table>')`, zero hits for all four. Each is a seam someone deliberately left.
+
+"No UI reads" is not the same as "inert", and the difference matters if you build
+against them:
+
+- **`audit_logs` is written to**, server-side, by the `anonymize_staff_member` RPC
+  (`0011`). So it accumulates rows for exactly one event type and nothing else — no
+  logins, rota publishes, shift edits or role changes. Treat it as provisioned but
+  effectively empty, not as a populated log waiting for a viewer.
+- **`subscriptions`, `overtime_requests`, `shift_templates`** have no reader _and_ no
+  writer anywhere — client or server. They are empty structure.
 
 ## 9. GDPR — built, deliberately narrower than "delete everything"
 
@@ -183,5 +199,7 @@ The remaining work is concentrated almost entirely in **Settings**, **My Profile
 and the **marketing site** — the core scheduling product is built.
 
 > Counts verified by parsing this file's own tables against `ls design/`, not by
-> hand. If you add a mockup, the check is: every `.png` on disk appears in exactly
-> one status row here.
+> hand. The invariant, if you add a mockup: every **screen** `.png` in `design/`
+> appears in exactly one status row here. Reference assets are excluded from that
+> rule — `designsystem.png`, `rotaflowui.png`, `logo.png`, `logo-1.png`,
+> `logo-2.png` are tokens and brand marks, not screens, and have no status row.
