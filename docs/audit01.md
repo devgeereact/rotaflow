@@ -1,9 +1,14 @@
 # RotaFlow — Audit 01
 
-**Date:** 2026-07-31 · **Branch audited:** `main` @ `d3173cf` → `a075208`
-**Live:** https://rota.gakinz.com (HTTP 200, SW + manifest serving, deep routes resolving)
+**Date:** 2026-07-31 · **Audited:** `main` @ `d3173cf` · **Shipped as:** `#52` (`314cd13`)
+**Live:** https://rota.gakinz.com — rebuilt and redeployed from merged `main` at the end
+of this session; `/`, `/login`, `/app/dashboard`, `/sw.js`, `/manifest.webmanifest` all 200.
 **Scope:** whole repository — 198 TS/TSX files, 28,241 LOC, 26 tables, 12 migrations,
-4 Edge Functions, 40 design references, 45 PRs of history.
+4 Edge Functions, 40 design references, 52 PRs of history.
+
+> One finding in this report was **wrong and is corrected in place** — the source-map
+> leak (§2). It is left visible rather than deleted, because the reason it was wrong
+> turned out to matter more than the finding: see **P1-7**.
 
 ---
 
@@ -76,16 +81,38 @@ reviewer are not the same thing as a test.**
 
 ### Fixed and deployed (commit `a075208`)
 
-| Fix                              | Before                                      | After                                               |
-| -------------------------------- | ------------------------------------------- | --------------------------------------------------- |
-| Source maps public on production | `index-*.js.map` → **HTTP 200**             | not emitted into the bundle, refused by `.htaccess` |
-| `logo.png` in the precache       | 1024×1024, **1.2 MB**, rendered at 24–56 px | 256×256, **29 KB**                                  |
-| Total precache                   | 2682 KiB                                    | **1495 KiB (−44%)**                                 |
-| Design mockups tracked in git    | 22 of 40                                    | **40 of 40**                                        |
-| `.claude/worktrees/`             | 84 MB untracked in the project root         | ignored                                             |
-| Security headers                 | 3                                           | 5 (+ HSTS, Permissions-Policy)                      |
-| `docs/LOOP.md`                   | 14 screens, 6 rows factually wrong          | 35 screens, status per screen                       |
-| `docs/SCREENS.md` count          | 34 (violated its own invariant)             | 35, corrected                                       |
+| Fix                           | Before                                          | After                                                                      |
+| ----------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| Source maps on production     | not actually exposed — see the correction below | belt-and-braces anyway: not linked from the bundle, refused by `.htaccess` |
+| `logo.png` in the precache    | 1024×1024, **1.2 MB**, rendered at 24–56 px     | 256×256, **29 KB**                                                         |
+| Total precache                | 2682 KiB                                        | **1495 KiB (−44%)**                                                        |
+| Design mockups tracked in git | 22 of 40                                        | **40 of 40**                                                               |
+| `.claude/worktrees/`          | 84 MB untracked in the project root             | ignored                                                                    |
+| Security headers              | 3                                               | 5 (+ HSTS, Permissions-Policy)                                             |
+| `docs/LOOP.md`                | 14 screens, 6 rows factually wrong              | 35 screens, status per screen                                              |
+| `docs/SCREENS.md` count       | 34 (violated its own invariant)                 | 35, corrected                                                              |
+| Design-preview routes (P1-1)  | 7 answered 200 unauthenticated in production    | `import.meta.env.DEV`-gated and tree-shaken out                            |
+| `main` was red (P0-4)         | `npm ci` failed with ERESOLVE                   | pinned; `main` green                                                       |
+
+### Correction — the source-map finding was wrong
+
+This audit originally reported that production was serving source maps, on the
+evidence that `https://rota.gakinz.com/assets/index-*.js.map` returned **HTTP 200**.
+That conclusion was wrong, and the commit message and PR description for `a075208`
+repeat the error.
+
+There are **zero `.map` files on the server** — confirmed by
+`find ~/rota.gakinz.com -name "*.map" | wc -l` → `0`. The deploy tooling has always
+excluded them. The 200 came from `.htaccess`'s SPA rewrite: any path that is not an
+existing file is rewritten to `index.html`, so a request for a map that does not
+exist returns `index.html` with a 200. Requesting
+`/assets/definitely-not-a-real-file-xyz.js` returns exactly the same thing.
+
+The change shipped in `a075208` is still worth having — `sourcemap: 'hidden'` plus an
+`.htaccess` deny means a map can never leak even if the deploy exclusion is changed
+or a file is copied up by hand — but it closed a **latent** hole, not an open one.
+
+**And the reason the probe lied is a genuine finding in its own right — see P1-7.**
 
 ---
 
@@ -196,17 +223,51 @@ the live project, confirm the row, the push and the email. Record the result in
 `docs/ARCHITECTURE.md` and delete the disclaimers, or convert them into a known-issues
 list. Until then treat notifications as **unproven**, not shipped.
 
-### P1-1 — Seven design-preview routes are public in production
+### P0-4 — `main` was red, and the group filter could not have caught it — FIXED
+
+Found and fixed during this session. Recorded because the _mechanism_ will recur.
+
+PR #5 (`chore(dev-deps): bump the dev-dependencies group`) bumped
+`eslint-plugin-react-refresh` **0.4.26 → 0.5.3**, which requires `eslint ^9 || ^10`.
+This project is on `eslint 8.57.1`. Every `npm ci` on `main` after it merged failed
+with `ERESOLVE` — including the Staff PR (#51). `main` was broken for roughly an hour.
+
+The `dependabot.yml` guard rails were already thoughtful and still missed it:
+
+- The `dev-dependencies` group is scoped `update-types: [minor, patch]`.
+- The `eslint-plugin-*` rule ignores **majors**.
+- But `eslint-plugin-react-refresh` is **0.x**, where the _minor_ slot carries the
+  breaking change. Dependabot classified `0.4 → 0.5` as a minor, the group waved it
+  through, and the major rule never applied.
+
+Pinned back to `^0.4.26` with an explicit minor **and** major ignore for that package,
+to be lifted in the same PR that moves to ESLint 9.
+
+**The general rule, worth applying across the file:** for any `0.x` dependency, treat
+minor as major. `dependabot.yml` currently has one other 0.x runtime dependency in
+this position — audit them when adding to the group.
+
+Note what did work: **CI caught this.** It is the one gate that is not a shape check —
+`npm ci` verifies the dependency graph actually resolves. That is also why this
+audit's P0-2 asks for tests rather than more linting.
+
+### P1-1 — Seven design-preview routes are public in production — FIXED
 
 `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
 `/timesheets-preview`, `/clockin-preview`, `/onboarding-preview`, `/appboot` — all
-return **HTTP 200 unauthenticated on rota.gakinz.com**. Verified live.
+rendered unauthenticated on rota.gakinz.com, plus `/staff-preview` and
+`/staff-preview/:staffId` after #51.
 
 They exist for the design-match loop and render fabricated staff names and metrics
 chosen to reproduce the mockups' numbers. No real data, no auth bypass — but a
-prospect, a crawler or a client hitting `/dashboard-preview` sees an unbranded page
-of invented staff, and every preview page and its mock dataset is carried in the
+prospect, a crawler or a client hitting `/dashboard-preview` saw an unbranded page
+of invented staff, and every preview page and its mock dataset was carried in the
 production bundle.
+
+(Unlike the source-map probe, this one was real: these are client-side routes, so
+the SPA fallback in P1-7 is irrelevant — the bundle genuinely contained and rendered
+them. Confirmed by finding their strings in `dist/assets/index-*.js` before the fix
+and not after.)
 
 **Fix** (one edit, `src/App.tsx`, above the route table):
 
@@ -229,12 +290,16 @@ Vite statically replaces `import.meta.env.DEV` with `false` in a production buil
 Rollup drops the branch _and_ tree-shakes every preview page and mock module behind
 it. The design loop is unaffected — it drives the dev server, where they still exist.
 
-**Not applied tonight on purpose.** Two other agent sessions were editing
-`src/App.tsx` live while this audit ran (see §7), one of them adding two more preview
-routes on `design-staff-match`. Landing a competing edit on the exact file and exact
-region they were mid-flight in would have cost them a conflict resolution for no
-urgency. Apply this once that branch merges — and include their new
-`StaffPreviewPage` / `StaffProfilePreviewPage` routes in the same block.
+**Applied and deployed.** This was initially deferred: two other agent sessions were
+editing `src/App.tsx` live while this audit ran (see §7), one adding two more preview
+routes on `design-staff-match`. That branch merged as #51 mid-audit, which freed the
+file — so the gate went in and now also covers its two `/staff-preview` routes. Nine
+routes gated in total.
+
+Verified against the built output rather than the route table: no preview route
+string survives in `dist/assets/index-*.js`, while `app/dashboard` still does. Keep
+new preview routes inside that block — there is no lint rule enforcing it, which is a
+reasonable thing to add later.
 
 ### P1-2 — `react-router-dom` has two open advisories and no fix on 6.x
 
@@ -334,6 +399,51 @@ Rota Builder, Reports and Timesheets. `AppShell` already renders a loading state
 can serve as the fallback. Expect the entry chunk to roughly halve. This matters more
 than usual here: the target user is on a phone, on ward wifi, opening one screen.
 
+### P1-7 — Every missing file returns HTTP 200 with HTML
+
+`.htaccess` rewrites **any** non-existent path to `index.html`:
+
+```apache
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+```
+
+That is correct and necessary for SPA **navigations** — `/app/dashboard` is not a
+file and must resolve to the app. It is wrong for **assets**. A request for
+`/assets/index-abc123.js` that is missing gets `index.html`, `content-type:
+text/html`, and a **200**.
+
+This fooled this audit into reporting a source-map leak that does not exist. It will
+fool anything else that probes the site — uptime monitors, link checkers, a CI
+smoke test asserting an asset deployed, and any future agent verifying its own
+deploy. "200 OK" from this origin does not mean the file is there.
+
+It is also the _exact_ failure mode `vite.config.ts` warns about in its `base: '/'`
+comment: a script request that receives HTML back, failing the MIME check and
+leaving a blank page. Absolute base paths fixed the cause; this rewrite still hides
+the symptom, so the next time it happens it will present as a blank screen with a
+200 in the access log and nothing in Sentry.
+
+**Fix** — exclude real asset directories from the fallback so they 404 honestly:
+
+```apache
+# Assets are real files. If one is missing that is a broken deploy, and it must
+# look like one — not like a page. Only navigations fall through to index.html.
+RewriteRule ^(assets|icons)/ - [L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+```
+
+Also reconsider `ErrorDocument 404 /index.html` at the foot of the file — it makes
+genuine 404s serve the app shell, which is reasonable for routes and misleading for
+everything else.
+
+Not shipped tonight: it is a live-traffic rewrite change and this session had
+already deployed once. It wants its own deploy with a verification pass.
+
 ### P2 — worth fixing, no user-visible harm yet
 
 | #    | Finding                                                                                                                                                                                                                                                                                                                                                                                 | Where                                                                                                                   |
@@ -422,10 +532,18 @@ screens) → audit events → billing → policy engine.
 | `as any`                            | 2                                                                                                                                                             |
 | `console.*` in `src/`               | 2, both in logging infrastructure                                                                                                                             |
 | Live site                           | 200; SW, manifest and deep routes all resolving                                                                                                               |
-| Source maps on production           | **was 200 — now fixed**                                                                                                                                       |
+| Source maps on production           | **none present** — `find ~/rota.gakinz.com -name "*.map"` → 0. Now doubly guarded regardless                                                                  |
+| Design-preview routes on production | **gone** — verified no preview route string survives in `dist/assets/index-*.js` while real routes do                                                         |
+| Post-deploy smoke                   | `/`, `/login`, `/app/dashboard`, `/sw.js`, `/manifest.webmanifest` all 200                                                                                    |
 
 **Read this table carefully.** Everything in it is a _static_ property. Not one line
 of it says the app computes a correct timesheet. That is the point of P0-2.
+
+And one line of it was wrong for most of this audit. "Source maps on production"
+originally read **200 — exposed**, because that is what `curl` returned. It was the
+SPA fallback (P1-7), not a map. The lesson generalises past this repo: **on this
+origin, a 200 is not evidence a file exists.** Verify deploys against content, or
+against the filesystem over SSH — never against a status code alone.
 
 ---
 
