@@ -18,6 +18,8 @@ import { RotaBuilderPreviewPage } from '@/pages/RotaBuilderPreviewPage';
 import { SchedulePreviewPage } from '@/pages/SchedulePreviewPage';
 import { TimesheetsPreviewPage } from '@/pages/TimesheetsPreviewPage';
 import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
+import { StaffPreviewPage } from '@/pages/StaffPreviewPage';
+import { StaffProfilePreviewPage } from '@/pages/StaffProfilePreviewPage';
 import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
 import { SignupPage } from '@/pages/SignupPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -38,6 +40,7 @@ import { AccountSettingsPage } from '@/pages/app/AccountSettingsPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { DashboardPreviewPage } from '@/pages/app/DashboardPreviewPage';
 import { StaffPage } from '@/pages/app/StaffPage';
+import { StaffProfilePage } from '@/pages/app/StaffProfilePage';
 import { LocationsPage } from '@/pages/app/LocationsPage';
 import { RotaBuilderPage } from '@/pages/app/RotaBuilderPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -93,6 +96,14 @@ export function App(): JSX.Element {
                     Supabase session, a staff profile and a scheduled shift.
                     Fixed mock data reproduces design/clockin.png. */}
                 <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
+                {/* Design-loop preview only — /app/staff needs a real Supabase
+                    session and a seeded roster. Fixed mock data reproduces
+                    design/staff.png and design/Staff-Profile.png. */}
+                <Route path="/staff-preview" element={<StaffPreviewPage />} />
+                <Route
+                  path="/staff-preview/:staffId"
+                  element={<StaffProfilePreviewPage />}
+                />
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
@@ -116,6 +127,7 @@ export function App(): JSX.Element {
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="staff" element={<StaffPage />} />
+                  <Route path="staff/:staffId" element={<StaffProfilePage />} />
                   <Route path="team" element={<TeamPage />} />
                   <Route path="locations" element={<LocationsPage />} />
                   <Route path="rota" element={<RotaBuilderPage />} />

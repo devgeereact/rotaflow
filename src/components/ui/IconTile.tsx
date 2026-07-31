@@ -1,0 +1,46 @@
+import type { LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export type IconTileTone = 'primary' | 'success' | 'warning' | 'violet' | 'info';
+
+interface IconTileProps {
+  icon: LucideIcon;
+  tone?: IconTileTone;
+  size?: 'sm' | 'md';
+  className?: string;
+}
+
+/**
+ * A rounded, tinted square holding one outline icon — the summary-tile and
+ * activity-row motif in design/staff.png and design/Staff-Profile.png.
+ * Purely decorative: the label beside it carries the meaning.
+ */
+const TONES: Record<IconTileTone, string> = {
+  primary: 'bg-primary/10 text-primary',
+  success: 'bg-success/10 text-success',
+  warning: 'bg-warning/15 text-warning',
+  violet: 'bg-shift-violet/15 text-shift-violet',
+  info: 'bg-info/10 text-info',
+};
+
+const SIZES: Record<NonNullable<IconTileProps['size']>, { box: string; icon: number }> = {
+  sm: { box: 'h-8 w-8 rounded-lg', icon: 16 },
+  md: { box: 'h-11 w-11 rounded-xl', icon: 20 },
+};
+
+export function IconTile({
+  icon: Icon,
+  tone = 'primary',
+  size = 'md',
+  className,
+}: IconTileProps): JSX.Element {
+  const spec = SIZES[size];
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('grid shrink-0 place-items-center', spec.box, TONES[tone], className)}
+    >
+      <Icon size={spec.icon} strokeWidth={2} />
+    </span>
+  );
+}
