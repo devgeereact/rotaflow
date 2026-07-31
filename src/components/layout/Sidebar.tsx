@@ -51,8 +51,11 @@ const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
 const LINK_INACTIVE =
   'text-content-muted hover:bg-surface hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark';
-const LINK_ACTIVE =
-  'border-l-2 border-primary bg-surface text-primary dark:bg-surface-dark';
+// Soft-tint highlight, not the old white-pill/left-border treatment — same
+// bg-X/10 text-X idiom already used for status badges elsewhere in the app
+// (e.g. AvailabilityPage, LeavePage), so the active nav item reads as "this
+// app's highlight colour", not a one-off style.
+const LINK_ACTIVE = 'bg-primary/10 text-primary dark:bg-primary/15';
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';

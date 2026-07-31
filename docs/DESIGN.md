@@ -157,6 +157,14 @@ fallback when Framer Motion isn't warranted.
   transparent, `text-primary`, no border — text-only affordance.
 - Density matters: the rota builder is information-dense by design; keep chrome
   quiet so the schedule itself is the focus.
+- **Sidebar nav, active item:** soft-tint highlight — `bg-primary/10
+text-primary` (`dark:bg-primary/15`), same `bg-X/10 text-X` idiom already
+  used for status badges (`AvailabilityPage`, `LeavePage`, `SwapsPage`). Not a
+  white pill and not a left-border accent — both were tried earlier and
+  replaced (2026-07-31) for reading as one-off rather than "this app's
+  highlight colour." `src/components/layout/Sidebar.tsx`'s `LINK_ACTIVE` is
+  the single source of truth; don't reintroduce a different active-state
+  treatment there without updating this note.
 
 ## 7. Reference assets
 
