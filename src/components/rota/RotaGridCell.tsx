@@ -9,26 +9,31 @@ import type { Shift, ShiftType } from '@/types';
 interface RotaGridCellProps {
   staffProfileId: string | null;
   date: string;
+  locationId: string;
   timezone: string;
   shifts: Shift[];
   shiftTypes: ShiftType[];
   previewSuggestions: AiShiftSuggestion[];
+  selectedShiftId: string | null;
   onAddShift: () => void;
-  onEditShift: (shift: Shift) => void;
+  onSelectShift: (shift: Shift) => void;
 }
 
 export function RotaGridCell({
   staffProfileId,
   date,
+  locationId,
   timezone,
   shifts,
   shiftTypes,
   previewSuggestions,
+  selectedShiftId,
   onAddShift,
-  onEditShift,
+  onSelectShift,
 }: RotaGridCellProps): JSX.Element {
   const { setNodeRef, isOver } = useDroppable({
     id: `cell:${shiftCellKey(staffProfileId, date)}`,
+    data: { locationId, date, staffProfileId },
   });
   const isEmpty = shifts.length === 0 && previewSuggestions.length === 0;
 
@@ -64,7 +69,8 @@ export function RotaGridCell({
               shiftType={shiftType}
               startTime={startTime}
               endTime={endTime}
-              onClick={() => onEditShift(shift)}
+              selected={shift.id === selectedShiftId}
+              onClick={() => onSelectShift(shift)}
             />
           );
         })}
