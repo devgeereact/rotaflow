@@ -105,3 +105,116 @@ export function totalScheduledMinutes(shifts: Shift[]): number {
 export function unfilledShiftCount(shifts: Shift[]): number {
   return shifts.filter((s) => !s.staff_profile_id).length;
 }
+
+export type DailyStatus = 'optimal' | 'understaffed' | 'empty';
+
+export interface DailyTotal {
+  date: string;
+  staffCount: number;
+  shiftCount: number;
+  openCount: number;
+  status: DailyStatus;
+}
+
+/**
+ * Per-day staff/shift counts for the totals row — "Optimal" means every shift
+ * that day has someone assigned; "Understaffed" means at least one is still
+ * `open`. There is no schema-backed target headcount to compare against, so
+ * this deliberately doesn't fabricate an "Overstaffed" signal or a coverage
+ * percentage — see rota-log.md.
+ */
+export function computeDailyTotals(
+  shifts: Shift[],
+  dates: string[],
+  timezone: string,
+): DailyTotal[] {
+  const byDate = new Map<string, Shift[]>();
+  for (const shift of shifts) {
+    const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
+    byDate.set(date, [...(byDate.get(date) ?? []), shift]);
+  }
+
+  return dates.map((date) => {
+    const dayShifts = byDate.get(date) ?? [];
+    const staffCount = new Set(
+      dayShifts.map((s) => s.staff_profile_id).filter((id): id is string => id !== null),
+    ).size;
+    const openCount = dayShifts.filter((s) => !s.staff_profile_id).length;
+    const status: DailyStatus =
+      dayShifts.length === 0 ? 'empty' : openCount > 0 ? 'understaffed' : 'optimal';
+    return { date, staffCount, shiftCount: dayShifts.length, openCount, status };
+  });
+}
+
+/**
+ * The other shifts that belong to the same rostered "shift" as `target` — same
+ * location, date, shift type and time window, whoever is assigned to each.
+ * `open` rows in the group are unfilled slots for that shift, so
+ * `assigned / (assigned + open)` is a real, schema-backed coverage ratio —
+ * never a fabricated headcount target.
+ */
+export function shiftGroup(shifts: Shift[], target: Shift): Shift[] {
+  return shifts.filter(
+    (s) =>
+      s.location_id === target.location_id &&
+      s.shift_type_id === target.shift_type_id &&
+      s.starts_at === target.starts_at &&
+      s.ends_at === target.ends_at &&
+      s.status !== 'cancelled',
+  );
+}
+
+export interface RotaWarning {
+  date: string;
+  locationId: string | null;
+  shiftTypeId: string | null;
+  startsAt: string;
+  endsAt: string;
+  openCount: number;
+}
+
+/** One warning per (date, location, shift-window) group that still has an open, unfilled shift. */
+export function computeWarnings(shifts: Shift[], timezone: string): RotaWarning[] {
+  const groups = new Map<string, Shift[]>();
+  for (const shift of shifts) {
+    if (shift.status === 'cancelled') continue;
+    const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
+    const key = [
+      date,
+      shift.location_id,
+      shift.shift_type_id,
+      shift.starts_at,
+      shift.ends_at,
+    ].join('|');
+    groups.set(key, [...(groups.get(key) ?? []), shift]);
+  }
+
+  const warnings: RotaWarning[] = [];
+  for (const group of groups.values()) {
+    const openCount = group.filter((s) => !s.staff_profile_id).length;
+    if (openCount === 0) continue;
+    const first = group[0];
+    if (!first) continue;
+    const date = format(toZonedTime(new Date(first.starts_at), timezone), 'yyyy-MM-dd');
+    warnings.push({
+      date,
+      locationId: first.location_id,
+      shiftTypeId: first.shift_type_id,
+      startsAt: first.starts_at,
+      endsAt: first.ends_at,
+      openCount,
+    });
+  }
+  return warnings.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Short badge from a real job title ("Senior Nurse" → "SN") — never an invented code. */
+export function jobTitleInitials(jobTitle: string | null): string | null {
+  if (!jobTitle) return null;
+  const initials = jobTitle
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase())
+    .join('');
+  return initials.slice(0, 3) || null;
+}
