@@ -84,9 +84,7 @@ export function WeeklySummaryCard({
             <dd
               className={cn(
                 'text-xl font-bold',
-                stat.positive
-                  ? 'text-clock'
-                  : 'text-content dark:text-content-dark',
+                stat.positive ? 'text-clock' : 'text-content dark:text-content-dark',
               )}
             >
               {stat.value}
@@ -106,7 +104,9 @@ export function WeeklySummaryCard({
         aria-valuemax={100}
         aria-label={progressLabel}
       >
-        <div className={cn('h-full rounded-full bg-brand', widthClass(completedPercent))} />
+        <div
+          className={cn('h-full rounded-full bg-brand', widthClass(completedPercent))}
+        />
       </div>
       <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
         {progressLabel}

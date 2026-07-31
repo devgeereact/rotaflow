@@ -52,9 +52,7 @@ export function RecentActivityCard({
               )}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-content dark:text-content-dark">
-                {entry.label}
-              </p>
+              <p className="text-sm text-content dark:text-content-dark">{entry.label}</p>
               <p className="mt-0.5 text-sm text-content-muted dark:text-content-muted-dark">
                 {entry.timeLabel}
               </p>

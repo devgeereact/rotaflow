@@ -15,7 +15,11 @@ export function ClockSecurityFooter({
   return (
     <div className="flex items-center justify-between gap-6 rounded-xl bg-primary/5 px-5 py-4 dark:bg-primary/10">
       <div className="flex items-start gap-3">
-        <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
+        <ShieldCheck
+          size={20}
+          aria-hidden="true"
+          className="mt-0.5 shrink-0 text-primary"
+        />
         <div>
           <p className="text-base font-semibold text-content dark:text-content-dark">
             Your data is secure and protected

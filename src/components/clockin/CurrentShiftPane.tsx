@@ -44,14 +44,18 @@ function MetaRow({
         aria-hidden="true"
         className="shrink-0 text-content-muted dark:text-content-muted-dark"
       />
-      <span className="text-base text-content dark:text-content-dark">
-        {label}
-      </span>
+      <span className="text-base text-content dark:text-content-dark">{label}</span>
     </li>
   );
 }
 
-function Detail({ label, children }: { label: string; children: JSX.Element }): JSX.Element {
+function Detail({
+  label,
+  children,
+}: {
+  label: string;
+  children: JSX.Element;
+}): JSX.Element {
   return (
     <div>
       <p className="text-sm font-medium text-content dark:text-content-dark">{label}</p>
