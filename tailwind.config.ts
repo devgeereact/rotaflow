@@ -85,6 +85,38 @@ const config: Config = {
           muted: '#6B7280', // captions, hints (light)
           'muted-dark': '#94A3B8', // captions, hints (dark)
         },
+        // Availability matrix cell washes (design/Availability.png). Four
+        // states, each a pale fill + its own readable ink, following the same
+        // `-fg` pairing `shift-tint` already uses. The fills are sampled off
+        // the PNG rather than derived: they sit at different effective
+        // opacities (the green wash is much lighter than the amber), so a
+        // single `success/10`-style rule cannot reproduce the set.
+        //
+        // The INKS are deliberately NOT the sampled values. Measured against
+        // their own wash, the reference's inks land at 4.11 / 3.53 / 4.17 : 1 —
+        // under the 4.5:1 DESIGN.md §5 requires, on the densest text on the
+        // screen. Each `-fg` is the sampled hue darkened just far enough to
+        // clear 4.5 (now 4.67 / 4.67 / 4.61); at 12px the shift is not visible
+        // side by side. `-fg-dark` are brightened for the dark washes, where
+        // the light inks measured 2.6–3.9 : 1. See design/.loop/availability-log.md.
+        avail: {
+          free: '#F3FBF5',
+          'free-fg': '#1C8056',
+          'free-dark': '#0F2E20',
+          'free-fg-dark': '#6EE7A8',
+          partial: '#FEF8EC',
+          'partial-fg': '#A55F1A',
+          'partial-dark': '#332714',
+          'partial-fg-dark': '#F5BE72',
+          off: '#FEEFEF',
+          'off-fg': '#CE302A',
+          'off-dark': '#361B1B',
+          'off-fg-dark': '#FCA5A5',
+          pref: '#F3F7FE',
+          'pref-fg': '#3055E8',
+          'pref-dark': '#16224A',
+          'pref-fg-dark': '#9DB8FD',
+        },
         // Shift-type chip palette (8) — see docs/DESIGN.md §2. Same in both
         // themes; org shift_types.colour should be seeded from these.
         shift: {
