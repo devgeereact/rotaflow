@@ -37,23 +37,24 @@ separate `is_platform_admin` flag, not a fourth role.
 
 ## 2. Core scheduling & workforce
 
-| Status | Design                        | Screen                                     | Route                                                                                                             |
-| ------ | ----------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| ✅     | `Workforce-Dashboard.png`     | Manager dashboard                          | `/app/dashboard`                                                                                                  |
-| ✅     | `Rota-Builder.png`            | Rota builder — drag/drop, AI fill, publish | `/app/rota`                                                                                                       |
-| ✅     | `Schedule-dashboard.png`      | Schedule — manager default view            | `/app/schedule`                                                                                                   |
-| ✅     | `live-schedule.png`           | Schedule — staff "live" agenda state       | `/app/schedule`                                                                                                   |
-| ✅     | `published-schedule.png`      | Schedule — post-publish state              | `/app/schedule`                                                                                                   |
-| ✅     | `staff.png`                   | Staff directory                            | `/app/staff`                                                                                                      |
-| 🟡     | `Staff-Profile.png`           | Staff profile detail                       | `/app/staff` — an edit modal plus emergency-contacts/documents modals over the list, not a `/app/staff/:id` route |
-| ✅     | `Availability.png`            | Availability — staff pattern + team view   | `/app/availability`                                                                                               |
-| ✅     | `Leave.png`                   | Leave — requests, entitlement, approvals   | `/app/leave`                                                                                                      |
-| ✅     | `Swap-Request.png`            | Shift swaps — request, respond, approve    | `/app/swaps`                                                                                                      |
-| ✅     | `Timesheets-Dashboard.png`    | Timesheets — real hours from clock events  | `/app/timesheets`                                                                                                 |
-| ✅     | `Reports-Dashboard.png`       | Reports — CSV export                       | `/app/reports`                                                                                                    |
-| ✅     | `Announcements-Dashboard.png` | Announcements — feed + composer            | `/app/announcements`                                                                                              |
-| ✅     | `Locations-Management.png`    | Locations                                  | `/app/locations`                                                                                                  |
-| ✅     | `Location-department.png`     | Departments within a location              | `/app/locations` (`DepartmentManager`)                                                                            |
+| Status | Design                        | Screen                                      | Route                                                                                                             |
+| ------ | ----------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| ✅     | `Workforce-Dashboard.png`     | Manager dashboard                           | `/app/dashboard`                                                                                                  |
+| ✅     | `Rota-Builder.png`            | Rota builder — drag/drop, AI fill, publish  | `/app/rota`                                                                                                       |
+| ✅     | `Schedule-dashboard.png`      | Schedule — manager default view             | `/app/schedule`                                                                                                   |
+| ✅     | `live-schedule.png`           | Schedule — staff "live" agenda state        | `/app/schedule`                                                                                                   |
+| ✅     | `published-schedule.png`      | Schedule — post-publish state               | `/app/schedule`                                                                                                   |
+| ✅     | `staff.png`                   | Staff directory                             | `/app/staff`                                                                                                      |
+| 🟡     | `Staff-Profile.png`           | Staff profile detail                        | `/app/staff` — an edit modal plus emergency-contacts/documents modals over the list, not a `/app/staff/:id` route |
+| ✅     | `Availability.png`            | Availability — staff pattern + team view    | `/app/availability`                                                                                               |
+| ✅     | `Leave.png`                   | Leave — requests, entitlement, approvals    | `/app/leave`                                                                                                      |
+| ✅     | `Swap-Request.png`            | Shift swaps — request, respond, approve     | `/app/swaps`                                                                                                      |
+| ✅     | `Timesheets-Dashboard.png`    | Timesheets — real hours from clock events   | `/app/timesheets`                                                                                                 |
+| ✅     | `Reports-Dashboard.png`       | Reports — CSV export                        | `/app/reports`                                                                                                    |
+| ✅     | `Announcements-Dashboard.png` | Announcements — feed + composer             | `/app/announcements`                                                                                              |
+| ✅     | `Locations-Management.png`    | Locations                                   | `/app/locations`                                                                                                  |
+| ✅     | `Location-department.png`     | Departments within a location               | `/app/locations` (`DepartmentManager`)                                                                            |
+| ✅     | `clockin.png`                 | Clock in/out — GPS + manual, offline-queued | `/app/clock`                                                                                                      |
 
 ## 3. Settings area — 8 designed tabs, 2 have code, 0 are tabs
 
@@ -97,15 +98,14 @@ user menu.
 
 ## 5. Built with no design mockup
 
-| Status | Screen                                      | Route                                 |
-| ------ | ------------------------------------------- | ------------------------------------- |
-| ✅     | Clock in/out — GPS + manual, offline-queued | `/app/clock`                          |
-| ✅     | Team management — issue/revoke invites      | `/app/team`                           |
-| ✅     | Notifications inbox — read, push opt-in     | `/app/notifications`                  |
-| ✅     | Account settings                            | `/app/account` (see §4)               |
-| ✅     | Forgot / reset password                     | `/forgot-password`, `/reset-password` |
-| ✅     | Accept invite — public, pre-signup          | `/invite/:token`                      |
-| ✅     | 404                                         | `*`                                   |
+| Status | Screen                                  | Route                                 |
+| ------ | --------------------------------------- | ------------------------------------- |
+| ✅     | Team management — issue/revoke invites  | `/app/team`                           |
+| ✅     | Notifications inbox — read, push opt-in | `/app/notifications`                  |
+| ✅     | Account settings                        | `/app/account` (see §4)               |
+| ✅     | Forgot / reset password                 | `/forgot-password`, `/reset-password` |
+| ✅     | Accept invite — public, pre-signup      | `/invite/:token`                      |
+| ✅     | 404                                     | `*`                                   |
 
 ## 6. Navigation — the designs restructure it
 
@@ -190,10 +190,17 @@ column out in a change payload.
 
 ## Counts
 
-34 screen mockups in `design/`: **23 ✅ built · 6 🟡 partial · 5 ❌ not built.**
-Plus 7 built screens with no mockup, and 6 designed tabs (Permissions, Roles,
+35 screen mockups in `design/`: **24 ✅ built · 6 🟡 partial · 5 ❌ not built.**
+Plus 6 built screens with no mockup, and 6 designed tabs (Permissions, Roles,
 Sessions, API Tokens, Activity, Connected Accounts) specified by the tab bars but
 having no mockup file of their own.
+
+> Corrected 2026-07-31 (`docs/audit01.md`). This previously read 34/23/7 and listed
+> Clock in under §5 "built with no design mockup" — but `design/clockin.png` exists
+> and the screen was matched to it in #43, so §5 was the wrong section and the total
+> was one short. The cause: `clockin.png` was one of 18 mockups sitting **untracked**
+> when this file was written, so `git ls-files design/` disagreed with `ls design/`.
+> All 40 are now tracked. Count against the working tree, not the index.
 
 The remaining work is concentrated almost entirely in **Settings**, **My Profile**
 and the **marketing site** — the core scheduling product is built.

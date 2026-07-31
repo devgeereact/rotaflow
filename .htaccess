@@ -12,6 +12,17 @@
   RewriteCond %{HTTPS} off
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+  # Never serve source maps. vite.config.ts uses `sourcemap: 'hidden'` so nothing
+  # links to them and the deploy excludes *.map — this is the last line of
+  # defence for a map copied up by hand or by a future CI step. A .map
+  # de-minifies to the full original TypeScript of a multi-tenant app holding
+  # staff PII; it belongs in Sentry, not on the public web.
+  #
+  # Done with mod_rewrite rather than <FilesMatch>/Require: this block is already
+  # proven to load on this host, whereas a Require directive on a server without
+  # mod_authz_core 500s the entire site.
+  RewriteRule \.map$ - [F,L]
+
   # Send every non-file, non-directory request to index.html
   # so React Router can resolve client-side routes.
   RewriteCond %{REQUEST_FILENAME} !-f
@@ -54,6 +65,16 @@
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # HSTS. Safe here because rota.gakinz.com is HTTPS-only behind Cloudflare and
+  # the RewriteRule above already 301s any plaintext request. No `preload` and no
+  # includeSubDomains: gakinz.com has sibling hosts this deploy does not own, and
+  # preload is effectively irreversible.
+  Header always set Strict-Transport-Security "max-age=31536000"
+
+  # Deny hardware/API surface the app never uses. Geolocation is NOT in this list
+  # — /app/clock reads GPS for clock-in, so revoking it would break attendance.
+  Header set Permissions-Policy "camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()"
 </IfModule>
 
 # ---- Pretty error handling ------------------------------------
