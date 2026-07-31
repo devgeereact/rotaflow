@@ -43,7 +43,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     to: '/app/leave',
     tint: 'text-warning',
   },
-  { icon: BarChart3, label: 'View Reports', tint: 'text-shift-indigo' },
+  { icon: BarChart3, label: 'View Reports', to: '/app/reports', tint: 'text-shift-indigo' },
   {
     icon: Megaphone,
     label: 'Send Announcement',
