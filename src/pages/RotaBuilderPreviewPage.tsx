@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
-  Plus,
   Search,
   Settings2,
   Sparkles,
@@ -31,7 +30,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
-import { ShiftTypePalette } from '@/components/rota/ShiftTypePalette';
 import { ShiftInspectorPanel } from '@/components/rota/ShiftInspectorPanel';
 import { RotaActionRail } from '@/components/rota/RotaActionRail';
 import type { Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
@@ -67,6 +65,7 @@ function mkStaff(
   firstName: string,
   lastName: string,
   jobTitle: string,
+  skills: string[] = [],
 ): StaffProfile {
   return {
     id,
@@ -79,7 +78,7 @@ function mkStaff(
     contract_type: 'full_time',
     weekly_hours: 37.5,
     holiday_allowance: 28,
-    skills: [],
+    skills,
     payroll_id: null,
     start_date: null,
     phone: null,
@@ -115,6 +114,7 @@ function mkShift(input: {
   start: string;
   end: string;
   status?: string;
+  notes?: string;
 }): Shift {
   shiftSeq += 1;
   return {
@@ -128,9 +128,9 @@ function mkShift(input: {
     starts_at: stamp(monday, input.day, input.start),
     ends_at: stamp(monday, input.day, input.end),
     break_minutes: 30,
-    status: input.status ?? (input.staffProfileId ? 'assigned' : 'open'),
+    status: input.status ?? (input.staffProfileId ? 'confirmed' : 'open'),
     colour: null,
-    notes: null,
+    notes: input.notes ?? null,
     created_at: ISO(now),
     updated_at: ISO(now),
   };
@@ -144,22 +144,27 @@ const LOCATIONS = [
 ];
 
 const SUNSHINE_STAFF = [
-  mkStaff('staff-sarah', 'Sarah', 'Johnson', 'Senior Nurse'),
-  mkStaff('staff-michael', 'Michael', 'Brown', 'Care Assistant'),
-  mkStaff('staff-emily', 'Emily', 'Davis', 'Care Assistant'),
+  mkStaff('staff-sarah', 'Sarah', 'Johnson', 'Senior Nurse', [
+    'Nursing',
+    'Manual Handling',
+  ]),
+  mkStaff('staff-michael', 'Michael', 'Brown', 'Care Assistant', ['Manual Handling']),
+  mkStaff('staff-emily', 'Emily', 'Davis', 'Care Assistant', ['Manual Handling']),
   mkStaff('staff-daniel', 'Daniel', 'Lee', 'Care Assistant'),
 ];
 const RIVERSIDE_STAFF = [
-  mkStaff('staff-aisha', 'Aisha', 'Patel', 'Senior Nurse'),
+  mkStaff('staff-aisha', 'Aisha', 'Patel', 'Senior Nurse', ['Nursing']),
   mkStaff('staff-james', 'James', 'Wilson', 'Care Assistant'),
   mkStaff('staff-olivia', 'Olivia', 'Garcia', 'Care Assistant'),
 ];
 const STAFF = [...SUNSHINE_STAFF, ...RIVERSIDE_STAFF];
 
+// Morning/Evening/Night map to moss/violet/indigo so the chips render the
+// green/purple/blue wash design/Rota-Builder.png shows.
 const SHIFT_TYPES = [
-  mkShiftType('type-morning', 'Morning', '#6CA0EB'),
+  mkShiftType('type-morning', 'Morning', '#86AC6A'),
   mkShiftType('type-evening', 'Evening', '#C48FD6'),
-  mkShiftType('type-night', 'Night', '#C69A45'),
+  mkShiftType('type-night', 'Night', '#6CA0EB'),
 ];
 
 const ROTA_SUNSHINE: Rota = {
@@ -194,6 +199,9 @@ function buildShifts(): Shift[] {
           day,
           start: '07:00',
           end: '15:00',
+          ...(staffId === 'staff-sarah' && day === 0
+            ? { notes: 'Busy morning due to appointment clinic.' }
+            : {}),
         }),
       );
     }
@@ -304,18 +312,6 @@ function buildShifts(): Shift[] {
       }),
     );
   }
-  shifts.push(
-    mkShift({
-      locationId: 'loc-riverside',
-      staffProfileId: null,
-      shiftTypeId: 'type-morning',
-      rotaId: ROTA_RIVERSIDE.id,
-      day: 5,
-      start: '07:00',
-      end: '15:00',
-    }),
-  );
-
   return shifts;
 }
 
@@ -367,29 +363,27 @@ export function RotaBuilderPreviewPage(): JSX.Element {
         <div>
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-content dark:text-content-dark">
+              <h1 className="font-display text-2xl font-bold text-content dark:text-content-dark">
                 Rota Builder
-                <Info
-                  size={16}
-                  aria-hidden="true"
-                  className="text-content-muted dark:text-content-muted-dark"
-                />
               </h1>
-              <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              <p className="flex items-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">
                 Build fair, balanced rotas in minutes.
+                <Info size={14} aria-hidden="true" />
               </p>
             </div>
             <div className="relative">
               <Search
                 size={16}
                 aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-muted"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
               />
               <input
-                placeholder="Search staff…"
-
-                className="w-64 rounded-xl border border-surface-border bg-surface py-2 pl-9 pr-3 text-sm text-content outline-none dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+                placeholder="Search staff, skills, shifts…"
+                className="w-80 rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
               />
+              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+                ⌘ K
+              </kbd>
             </div>
           </div>
 
@@ -452,7 +446,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               </button>
               <div className="flex">
                 <Button size="sm" className="rounded-r-none">
-                  Publish (12 changes)
+                  Publish (3 changes)
                 </Button>
                 <button
                   type="button"
@@ -485,67 +479,64 @@ export function RotaBuilderPreviewPage(): JSX.Element {
 
             <Button
               size="sm"
-              variant="secondary"
-              className="ml-auto border-success/30 text-success hover:bg-success/5"
+              className="ml-auto bg-success/10 text-success hover:bg-success/15"
             >
-              <Sparkles size={14} aria-hidden="true" className="mr-1.5" />
+              <Sparkles size={14} aria-hidden="true" />
               Auto-assign
             </Button>
-            <Button size="sm">
-              <Plus size={14} aria-hidden="true" className="mr-1.5" />
-              Add Shift
+            <Button size="sm" variant="secondary">
+              Actions
+              <ChevronDown size={14} aria-hidden="true" />
             </Button>
           </div>
 
-          <div className="mb-4">
-            <ShiftTypePalette shiftTypes={SHIFT_TYPES} onManage={() => {}} />
-          </div>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+            <Card className="grid min-w-0 flex-1 grid-cols-1 gap-0 overflow-hidden p-0 xl:grid-cols-[minmax(0,1fr)_19rem]">
+              <div className="overflow-x-auto border-b border-surface-border p-5 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
+                <RotaGrid
+                  dates={dates}
+                  groups={groups}
+                  totalStaff={totalStaff}
+                  totalShifts={SHIFTS.length}
+                  shiftMapByLocation={shiftMapByLocation}
+                  shiftTypes={SHIFT_TYPES}
+                  previewMap={new Map()}
+                  dailyTotals={dailyTotals}
+                  selectedShiftId={selectedShiftId}
+                  onAddShift={() => {}}
+                  onSelectShift={(shift) => setSelectedShiftId(shift.id)}
+                />
+              </div>
 
-          <Card className="grid grid-cols-1 gap-0 overflow-hidden p-0 xl:grid-cols-[minmax(0,1fr)_20rem_5.5rem]">
-            <div className="overflow-x-auto border-b border-surface-border p-5 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
-              <RotaGrid
-                dates={dates}
-                groups={groups}
-                totalStaff={totalStaff}
-                totalShifts={SHIFTS.length}
-                shiftMapByLocation={shiftMapByLocation}
-                shiftTypes={SHIFT_TYPES}
-                previewMap={new Map()}
-                dailyTotals={dailyTotals}
-                selectedShiftId={selectedShiftId}
-                onAddShift={() => {}}
-                onSelectShift={(shift) => setSelectedShiftId(shift.id)}
-              />
-            </div>
+              <div className="p-4">
+                <ShiftInspectorPanel
+                  selectedShift={selectedShift}
+                  shifts={SHIFTS}
+                  staff={STAFF}
+                  shiftTypes={SHIFT_TYPES}
+                  locations={LOCATIONS}
+                  dailyTotals={dailyTotals}
+                  warnings={warnings}
+                  timezone={DEFAULT_TZ}
+                  rotaStatusForLocation={() => 'published'}
+                  onEdit={() => {}}
+                  onDuplicate={() => {}}
+                  onDelete={() => {}}
+                />
+              </div>
+            </Card>
 
-            <div className="border-b border-surface-border p-4 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
-              <ShiftInspectorPanel
-                selectedShift={selectedShift}
-                shifts={SHIFTS}
-                staff={STAFF}
-                shiftTypes={SHIFT_TYPES}
-                locations={LOCATIONS}
-                dailyTotals={dailyTotals}
-                warnings={warnings}
-                timezone={DEFAULT_TZ}
-                rotaStatusForLocation={() => 'draft'}
-                onEdit={() => {}}
-                onDuplicate={() => {}}
-                onDelete={() => {}}
-              />
-            </div>
-
-            <div className="flex flex-row items-start gap-1 overflow-x-auto p-3 xl:flex-col xl:overflow-visible">
+            <Card className="shrink-0 p-2 xl:w-[5.5rem]">
               <RotaActionRail onAutoFill={() => {}} onComingSoon={() => {}} />
-            </div>
-          </Card>
+            </Card>
+          </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
             <span className="flex items-center gap-1.5 text-content-muted dark:text-content-muted-dark">
               <CalendarCheck size={14} aria-hidden="true" className="text-success" />
               All changes saved
             </span>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-content-muted dark:text-content-muted-dark">
+            <div className="flex flex-wrap items-center gap-5 text-xs text-content-muted dark:text-content-muted-dark">
               <span className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-success" /> Optimal
               </span>
@@ -553,10 +544,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                 <span className="h-2 w-2 rounded-full bg-danger" /> Understaffed
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-warning" /> Draft
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-info" /> Published
+                <span className="h-2 w-2 rounded-full bg-warning" /> Unpublished
               </span>
             </div>
           </div>

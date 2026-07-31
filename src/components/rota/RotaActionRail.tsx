@@ -50,13 +50,13 @@ export function RotaActionRail({
   ];
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-row gap-1 overflow-x-auto xl:flex-col xl:overflow-visible">
       {actions.map((action) => (
         <button
           key={action.label}
           type="button"
           onClick={action.onClick}
-          className="flex flex-col items-center gap-1 rounded-xl px-3 py-2.5 text-center text-[0.65rem] font-medium text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+          className="flex w-full flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center text-[0.65rem] font-medium leading-tight text-content-muted transition-colors hover:bg-surface-subtle hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark"
         >
           <action.icon size={18} aria-hidden="true" />
           {action.label}
