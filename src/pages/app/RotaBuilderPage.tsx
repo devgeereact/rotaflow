@@ -49,13 +49,11 @@ import {
   getMonday,
   getWeekDates,
   shiftCellKey,
-  totalScheduledMinutes,
 } from '@/lib/rotaGrid';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
-import { ShiftTypePalette } from '@/components/rota/ShiftTypePalette';
 import { ShiftInspectorPanel } from '@/components/rota/ShiftInspectorPanel';
 import { RotaActionRail } from '@/components/rota/RotaActionRail';
 import {
@@ -112,6 +110,7 @@ export function RotaBuilderPage(): JSX.Element {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishMenuOpen, setPublishMenuOpen] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const [locationFilter, setLocationFilter] = useState<string>('all');
@@ -638,30 +637,29 @@ export function RotaBuilderPage(): JSX.Element {
         {/* ---- Page header ---- */}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-content dark:text-content-dark">
+            <h1 className="font-display text-2xl font-bold text-content dark:text-content-dark">
               Rota Builder
-              <Info
-                size={16}
-                aria-hidden="true"
-                className="text-content-muted dark:text-content-muted-dark"
-              />
             </h1>
-            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            <p className="flex items-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">
               Build fair, balanced rotas in minutes.
+              <Info size={14} aria-hidden="true" />
             </p>
           </div>
           <div className="relative">
             <Search
               size={16}
               aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-muted"
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
             />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search staff…"
-              className="w-64 rounded-xl border border-surface-border bg-surface py-2 pl-9 pr-3 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+              placeholder="Search staff, skills, shifts…"
+              className="w-80 rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
             />
+            <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+              ⌘ K
+            </kbd>
           </div>
         </div>
 
@@ -849,111 +847,136 @@ export function RotaBuilderPage(): JSX.Element {
 
           <Button
             size="sm"
-            variant="secondary"
-            className="ml-auto border-success/30 text-success hover:bg-success/5"
+            className="ml-auto bg-success/10 text-success hover:bg-success/15"
             onClick={handleAutoFillClick}
           >
-            <Sparkles size={14} aria-hidden="true" className="mr-1.5" />
+            <Sparkles size={14} aria-hidden="true" />
             Auto-assign
           </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              const loc = filteredLocations[0] ?? locations[0];
-              if (!loc) return;
-              setAssignModal({
-                open: true,
-                context: {
-                  staffProfileId: null,
-                  date: dates[0] ?? weekStart,
-                  locationId: loc.id,
-                },
-                shift: null,
-              });
-            }}
-          >
-            <Plus size={14} aria-hidden="true" className="mr-1.5" />
-            Add Shift
-          </Button>
-        </div>
 
-        <div className="mb-4">
-          <ShiftTypePalette
-            shiftTypes={shiftTypes}
-            onManage={() => setShiftTypeModalOpen(true)}
-          />
-        </div>
-
-        <div className="mb-4 flex gap-6 text-sm text-content-muted dark:text-content-muted-dark">
-          <span>
-            <strong className="font-mono text-content dark:text-content-dark">
-              {(totalScheduledMinutes(shiftsForDisplay) / 60).toFixed(1)}h
-            </strong>{' '}
-            scheduled
-          </span>
+          {/* The reference collapses the per-shift actions behind one
+              "Actions" menu; Add Shift and shift-type management live here
+              rather than as separate toolbar buttons. */}
+          <div className="relative">
+            <Button
+              size="sm"
+              variant="secondary"
+              aria-haspopup="menu"
+              aria-expanded={actionsMenuOpen}
+              onClick={() => setActionsMenuOpen((v) => !v)}
+            >
+              Actions
+              <ChevronDown size={14} aria-hidden="true" />
+            </Button>
+            {actionsMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-10 mt-1 w-52 rounded-xl border border-surface-border bg-surface p-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    const loc = filteredLocations[0] ?? locations[0];
+                    if (!loc) return;
+                    setAssignModal({
+                      open: true,
+                      context: {
+                        staffProfileId: null,
+                        date: dates[0] ?? weekStart,
+                        locationId: loc.id,
+                      },
+                      shift: null,
+                    });
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <Plus size={14} aria-hidden="true" />
+                  Add shift
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    setShiftTypeModalOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <Settings2 size={14} aria-hidden="true" />
+                  Manage shift types
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ---- Main: grid | inspector | action rail ---- */}
         {loading || orgDataLoading ? (
           <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
         ) : (
-          <Card className="grid grid-cols-1 gap-0 overflow-hidden p-0 xl:grid-cols-[minmax(0,1fr)_20rem_5.5rem]">
-            <div className="overflow-x-auto border-b border-surface-border p-5 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
-              {groups.length === 0 ? (
-                <p className="text-content-muted dark:text-content-muted-dark">
-                  No staff rostered for this filter yet. Select a single location above to
-                  see its full team.
-                </p>
-              ) : (
-                <RotaGrid
-                  dates={dates}
-                  groups={groups}
-                  totalStaff={totalStaff}
-                  totalShifts={shiftsInScope.length}
-                  shiftMapByLocation={shiftMapByLocation}
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+            <Card className="grid min-w-0 flex-1 grid-cols-1 gap-0 overflow-hidden p-0 xl:grid-cols-[minmax(0,1fr)_19rem]">
+              <div className="overflow-x-auto border-b border-surface-border p-5 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
+                {groups.length === 0 ? (
+                  <p className="text-content-muted dark:text-content-muted-dark">
+                    No staff rostered for this filter yet. Select a single location above
+                    to see its full team.
+                  </p>
+                ) : (
+                  <RotaGrid
+                    dates={dates}
+                    groups={groups}
+                    totalStaff={totalStaff}
+                    totalShifts={shiftsInScope.length}
+                    shiftMapByLocation={shiftMapByLocation}
+                    shiftTypes={shiftTypes}
+                    previewMap={previewMap}
+                    dailyTotals={dailyTotals}
+                    selectedShiftId={selectedShiftId}
+                    onAddShift={(staffProfileId, date, locationId) =>
+                      setAssignModal({
+                        open: true,
+                        context: { staffProfileId, date, locationId },
+                        shift: null,
+                      })
+                    }
+                    onSelectShift={(shift) => setSelectedShiftId(shift.id)}
+                  />
+                )}
+              </div>
+
+              <div className="p-4">
+                <ShiftInspectorPanel
+                  selectedShift={selectedShift}
+                  shifts={shifts}
+                  staff={staff}
                   shiftTypes={shiftTypes}
-                  previewMap={previewMap}
+                  locations={locations}
                   dailyTotals={dailyTotals}
-                  selectedShiftId={selectedShiftId}
-                  onAddShift={(staffProfileId, date, locationId) =>
-                    setAssignModal({
-                      open: true,
-                      context: { staffProfileId, date, locationId },
-                      shift: null,
-                    })
+                  warnings={warnings}
+                  timezone={DEFAULT_TZ}
+                  rotaStatusForLocation={(locationId) =>
+                    (locationId ? rotasByLocation.get(locationId)?.status : null) as
+                      'draft' | 'published' | null
                   }
-                  onSelectShift={(shift) => setSelectedShiftId(shift.id)}
+                  onEdit={(shift) => setAssignModal({ open: true, context: null, shift })}
+                  onDuplicate={handleDuplicateShift}
+                  onDelete={handleDeleteSelectedShift}
                 />
-              )}
-            </div>
+              </div>
+            </Card>
 
-            <div className="border-b border-surface-border p-4 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
-              <ShiftInspectorPanel
-                selectedShift={selectedShift}
-                shifts={shifts}
-                staff={staff}
-                shiftTypes={shiftTypes}
-                locations={locations}
-                dailyTotals={dailyTotals}
-                warnings={warnings}
-                timezone={DEFAULT_TZ}
-                rotaStatusForLocation={(locationId) =>
-                  (locationId ? rotasByLocation.get(locationId)?.status : null) as
-                    'draft' | 'published' | null
-                }
-                onEdit={(shift) => setAssignModal({ open: true, context: null, shift })}
-                onDuplicate={handleDuplicateShift}
-                onDelete={handleDeleteSelectedShift}
-              />
-            </div>
-
-            <div className="flex flex-row items-start gap-1 overflow-x-auto p-3 xl:flex-col xl:overflow-visible">
+            {/* The rail is its own card in the reference, not a third column
+              inside the grid card. */}
+            <Card className="shrink-0 p-2 xl:w-[5.5rem]">
               <RotaActionRail
                 onAutoFill={handleAutoFillClick}
                 onComingSoon={(label) => showError(`${label} is coming soon.`)}
               />
-            </div>
-          </Card>
+            </Card>
+          </div>
         )}
 
         {/* ---- Status bar ---- */}
@@ -964,7 +987,10 @@ export function RotaBuilderPage(): JSX.Element {
               ? `All changes saved · Last saved ${format(lastSavedAt, 'HH:mm')}`
               : 'All changes saved'}
           </span>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-content-muted dark:text-content-muted-dark">
+          {/* Only the three states the grid can actually render. The
+              reference also lists "Overstaffed", but no required-headcount
+              column exists to compute it — see design/.loop/rota-log.md. */}
+          <div className="flex flex-wrap items-center gap-5 text-xs text-content-muted dark:text-content-muted-dark">
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-success" /> Optimal
             </span>
@@ -972,10 +998,7 @@ export function RotaBuilderPage(): JSX.Element {
               <span className="h-2 w-2 rounded-full bg-danger" /> Understaffed
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-warning" /> Draft
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-info" /> Published
+              <span className="h-2 w-2 rounded-full bg-warning" /> Unpublished
             </span>
           </div>
         </div>

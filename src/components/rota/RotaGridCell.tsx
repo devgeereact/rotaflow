@@ -38,11 +38,13 @@ export function RotaGridCell({
   const isEmpty = shifts.length === 0 && previewSuggestions.length === 0;
 
   const containerClassName = cn(
-    'min-h-[64px] rounded-lg border border-transparent p-1 transition-colors',
+    'min-h-[44px] rounded-lg border border-transparent p-0.5 transition-colors',
     isOver && 'border-primary bg-primary/5',
     isEmpty && 'cursor-pointer hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
   );
 
+  // An empty cell shows a muted en-dash rather than blank space, matching
+  // design/Rota-Builder.png — it reads as "no shift" instead of "not loaded".
   if (isEmpty) {
     return (
       <button
@@ -50,8 +52,13 @@ export function RotaGridCell({
         ref={setNodeRef}
         onClick={onAddShift}
         aria-label="Add shift"
-        className={cn(containerClassName, 'block w-full text-left')}
-      />
+        className={cn(
+          containerClassName,
+          'flex w-full items-center justify-center text-sm text-content-muted/50 dark:text-content-muted-dark/50',
+        )}
+      >
+        <span aria-hidden="true">–</span>
+      </button>
     );
   }
 

@@ -85,6 +85,45 @@ const config: Config = {
           violet: '#C48FD6',
           rose: '#E888AB',
         },
+        // Tinted counterpart to `shift` — the rota-grid chip in
+        // design/Rota-Builder.png is a pale wash with saturated ink, NOT the
+        // solid `shift` fill (that stays the Schedule screen's chip style).
+        // A plain `/10` of the solid swatch lands too grey-olive to match, so
+        // the three swatches the reference actually shows — moss (Morning),
+        // violet (Evening), indigo (Night) — are sampled straight off the PNG.
+        // The other five are interpolated to the same lightness/chroma so the
+        // set stays coherent. See design/.loop/rota-log.md.
+        'shift-tint': {
+          clay: '#FDF3F1',
+          'clay-fg': '#B0432F',
+          amber: '#FDF7EC',
+          'amber-fg': '#8A6320',
+          moss: '#F1FBF5', // sampled
+          'moss-fg': '#12714C', // sampled
+          teal: '#EFFAF7',
+          'teal-fg': '#10705E',
+          sky: '#EFF7FC',
+          'sky-fg': '#1A6B8E',
+          indigo: '#F3F7FE', // sampled
+          'indigo-fg': '#1B3FD4', // sampled
+          violet: '#F8F5FE', // sampled
+          'violet-fg': '#5535C4', // sampled
+          rose: '#FDF3F7',
+          'rose-fg': '#AE3A62',
+        },
+        // Dark-mode chip washes — the tints above are near-white and would
+        // blow out on the dark canvas. Same hue, pulled down to sit just above
+        // `surface-dark`.
+        'shift-deep': {
+          clay: '#3A211C',
+          amber: '#352A14',
+          moss: '#12301F',
+          teal: '#0F2E28',
+          sky: '#122A36',
+          indigo: '#16224A',
+          violet: '#2A1D45',
+          rose: '#381B27',
+        },
       },
       fontFamily: {
         // "Inter Variable" per docs/DESIGN.md — loaded as the full variable

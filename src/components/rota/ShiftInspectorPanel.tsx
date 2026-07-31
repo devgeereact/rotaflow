@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { Calendar, Check, MapPin, Pencil, Users as UsersIcon } from 'lucide-react';
+import {
+  Calendar,
+  CalendarClock,
+  CheckCircle2,
+  Copy,
+  MapPin,
+  Pencil,
+  TrendingUp,
+  Trash2,
+  Users as UsersIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   fromIsoInTimezone,
@@ -61,17 +71,17 @@ export function ShiftInspectorPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-3 flex gap-1 border-b border-surface-border pb-2 dark:border-surface-border-dark">
+      <div className="mb-4 flex gap-4 border-b border-surface-border dark:border-surface-border-dark">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
             className={cn(
-              'rounded-lg px-2.5 py-1.5 text-xs font-semibold',
+              '-mb-px border-b-2 pb-2.5 text-xs font-semibold transition-colors',
               tab === t.key
-                ? 'bg-primary/10 text-primary'
-                : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
+                ? 'border-primary text-primary'
+                : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
             )}
           >
             {t.label}
@@ -145,26 +155,43 @@ function ShiftDetails({
   );
   const status = rotaStatusForLocation(shift.location_id);
 
-  const group = shiftGroup(shifts, shift).filter((s) => s.staff_profile_id);
-  const groupTotal = shiftGroup(shifts, shift).length;
+  const wholeGroup = shiftGroup(shifts, shift);
+  const group = wholeGroup.filter((s) => s.staff_profile_id);
+  const groupTotal = wholeGroup.length;
+  // Filled slots ÷ total slots for this shift — derived from rows that exist,
+  // not a target-vs-actual figure (the schema carries no required headcount).
+  const coveragePct = groupTotal > 0 ? Math.round((group.length / groupTotal) * 100) : 0;
+
+  // `shifts` has no required-skills column, so this is the union of skills the
+  // assigned staff actually hold — hence "Skills on Shift", not the
+  // reference's "Required Skills". See design/.loop/rota-log.md.
+  const skills = [
+    ...new Set(
+      group.flatMap((s) =>
+        s.staff_profile_id ? (staffById.get(s.staff_profile_id)?.skills ?? []) : [],
+      ),
+    ),
+  ];
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mb-3 flex items-start justify-between">
-        <div>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                'h-2.5 w-2.5 rounded-full',
+                'grid h-6 w-6 shrink-0 place-items-center rounded-md text-white',
                 paletteTokenForColour(type?.colour),
               )}
-            />
-            <h3 className="font-display text-base font-semibold text-content dark:text-content-dark">
-              {type?.name ?? 'Shift'}
+            >
+              <CalendarClock size={13} aria-hidden="true" />
+            </span>
+            <h3 className="truncate font-display text-base font-bold text-content dark:text-content-dark">
+              {type?.name ?? 'Shift'} Shift
             </h3>
           </div>
           {location && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-content-muted dark:text-content-muted-dark">
+            <p className="mt-1.5 flex items-center gap-1.5 pl-0.5 text-xs text-content-muted dark:text-content-muted-dark">
               <MapPin size={12} aria-hidden="true" />
               {location.name}
             </p>
@@ -173,7 +200,7 @@ function ShiftDetails({
         {status && (
           <span
             className={cn(
-              'rounded-full px-2 py-0.5 text-[0.65rem] font-medium',
+              'shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold',
               status === 'published'
                 ? 'bg-success/10 text-success'
                 : 'bg-warning/10 text-warning',
@@ -184,7 +211,7 @@ function ShiftDetails({
         )}
       </div>
 
-      <p className="mb-1 flex items-center gap-1.5 text-sm text-content dark:text-content-dark">
+      <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-content dark:text-content-dark">
         <Calendar size={14} aria-hidden="true" className="text-content-muted" />
         {new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', {
           weekday: 'short',
@@ -193,17 +220,51 @@ function ShiftDetails({
           year: 'numeric',
         })}
       </p>
-      <p className="mb-4 font-mono text-sm text-content-muted dark:text-content-muted-dark">
+      <p className="mb-4 pl-[1.4rem] font-mono text-sm text-content-muted dark:text-content-muted-dark">
         {startTime} – {endTime} ({durationHours}h)
       </p>
 
-      <p className="mb-4 flex items-center gap-1.5 text-sm text-content dark:text-content-dark">
-        <UsersIcon size={14} aria-hidden="true" className="text-content-muted" />
-        {group.length} / {groupTotal} staff
-      </p>
+      {/* Staffing and coverage sit side by side, split by a hairline. */}
+      <div className="mb-4 flex items-center border-y border-surface-border py-3 dark:border-surface-border-dark">
+        <p className="flex flex-1 items-center gap-1.5 text-sm font-medium text-content dark:text-content-dark">
+          <UsersIcon size={14} aria-hidden="true" className="text-content-muted" />
+          {group.length} / {groupTotal} Staff
+        </p>
+        <span
+          aria-hidden="true"
+          className="h-8 w-px bg-surface-border dark:bg-surface-border-dark"
+        />
+        <div className="flex-1 pl-4">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
+            <TrendingUp size={14} aria-hidden="true" />
+            {coveragePct}%
+          </p>
+          <p className="text-xs text-content-muted dark:text-content-muted-dark">
+            Coverage
+          </p>
+        </div>
+      </div>
 
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
+      {skills.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-semibold text-content dark:text-content-dark">
+            Skills on Shift
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {skills.map((skill) => (
+              <span
+                key={skill}
+                className="rounded-md bg-primary/10 px-2 py-1 text-[0.7rem] font-medium text-primary"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs font-semibold text-content dark:text-content-dark">
           Assigned Staff ({group.length})
         </p>
         <button
@@ -215,7 +276,7 @@ function ShiftDetails({
           Edit
         </button>
       </div>
-      <ul className="mb-4 space-y-2">
+      <ul className="mb-4 space-y-2.5">
         {group.map((s) => {
           const person = s.staff_profile_id
             ? staffById.get(s.staff_profile_id)
@@ -230,16 +291,16 @@ function ShiftDetails({
                 photoUrl={person.photo_url}
                 size="sm"
               />
-              <span className="flex-1 text-sm text-content dark:text-content-dark">
+              <span className="flex-1 truncate text-sm font-medium text-content dark:text-content-dark">
                 {person.first_name} {person.last_name}
               </span>
               {badge && (
-                <span className="rounded-full bg-surface-subtle px-1.5 py-0.5 text-[0.65rem] font-medium text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
+                <span className="rounded-md border border-surface-border px-1.5 py-0.5 text-[0.6rem] font-semibold text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
                   {badge}
                 </span>
               )}
               {s.status === 'confirmed' && (
-                <Check size={14} aria-hidden="true" className="text-success" />
+                <CheckCircle2 size={15} aria-hidden="true" className="text-success" />
               )}
             </li>
           );
@@ -249,7 +310,7 @@ function ShiftDetails({
       {shift.notes && (
         <div className="mb-4">
           <div className="mb-1 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
+            <p className="text-xs font-semibold text-content dark:text-content-dark">
               Notes
             </p>
             <button
@@ -260,19 +321,22 @@ function ShiftDetails({
               Edit
             </button>
           </div>
-          <p className="text-sm text-content dark:text-content-dark">{shift.notes}</p>
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            {shift.notes}
+          </p>
         </div>
       )}
 
       <div className="mt-auto space-y-2 pt-4">
         <Button variant="secondary" className="w-full" onClick={() => onDuplicate(shift)}>
+          <Copy size={15} aria-hidden="true" className="text-primary" />
           Duplicate Shift
         </Button>
         <Button
-          variant="secondary"
-          className="w-full border-danger/30 text-danger hover:bg-danger/5"
+          className="w-full bg-danger/10 text-danger hover:bg-danger/15"
           onClick={() => onDelete(shift)}
         >
+          <Trash2 size={15} aria-hidden="true" />
           Delete Shift
         </Button>
       </div>

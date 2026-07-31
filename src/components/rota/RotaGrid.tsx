@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  AlertTriangle,
+  Check,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -10,7 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatDayLabel, shiftCellKey, type DailyTotal } from '@/lib/rotaGrid';
 import { todayIso } from '@/lib/schedulePeriod';
-import { RotaGridRow } from '@/components/rota/RotaGridRow';
+import { RotaGridRow, ROTA_GRID_COLS } from '@/components/rota/RotaGridRow';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
 import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
 
@@ -58,24 +60,33 @@ export function RotaGrid({
   const totalByDate = new Map(dailyTotals.map((t) => [t.date, t]));
 
   return (
-    <div className="min-w-[1000px]">
+    <div className="min-w-[860px]">
       {/* ---- Header: org-wide totals + per-day mini counts ---- */}
-      <div className="grid grid-cols-[8rem_8rem_repeat(7,1fr)] gap-2 border-b border-surface-border pb-3 dark:border-surface-border-dark">
-        <div>
-          <p className="text-xs text-content-muted dark:text-content-muted-dark">
-            Total Staff
-          </p>
-          <p className="font-mono text-lg font-semibold text-content dark:text-content-dark">
-            {totalStaff}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-content-muted dark:text-content-muted-dark">
-            Total Shifts
-          </p>
-          <p className="font-mono text-lg font-semibold text-content dark:text-content-dark">
-            {totalShifts}
-          </p>
+      <div
+        className={cn(
+          ROTA_GRID_COLS,
+          'border-b border-surface-border pb-3 dark:border-surface-border-dark',
+        )}
+      >
+        {/* Both org-wide totals share the staff column so the day columns
+            line up with the rows beneath them. */}
+        <div className="flex items-start gap-8 px-2">
+          <div>
+            <p className="text-xs text-content-muted dark:text-content-muted-dark">
+              Total Staff
+            </p>
+            <p className="text-xl font-bold text-content dark:text-content-dark">
+              {totalStaff}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-content-muted dark:text-content-muted-dark">
+              Total Shifts
+            </p>
+            <p className="text-xl font-bold text-content dark:text-content-dark">
+              {totalShifts}
+            </p>
+          </div>
         </div>
         {dates.map((date) => {
           const { weekday, day } = formatDayLabel(date);
@@ -84,38 +95,42 @@ export function RotaGrid({
           return (
             <div
               key={date}
-              className={cn('rounded-lg px-1 py-1 text-center', isToday && 'bg-primary')}
+              className={cn(
+                'rounded-lg px-1 py-1.5 text-center',
+                isToday && 'bg-primary',
+              )}
             >
-              <p
-                className={cn(
-                  'text-xs font-semibold uppercase',
-                  isToday
-                    ? 'text-white'
-                    : 'text-content-muted dark:text-content-muted-dark',
-                )}
-              >
-                {weekday}
-              </p>
-              <p
-                className={cn(
-                  'text-sm font-medium',
-                  isToday ? 'text-white' : 'text-content dark:text-content-dark',
-                )}
-              >
-                {day}
+              <p className="text-[0.8rem] leading-5">
+                <span
+                  className={cn(
+                    'font-semibold',
+                    isToday ? 'text-white' : 'text-content dark:text-content-dark',
+                  )}
+                >
+                  {weekday}
+                </span>{' '}
+                <span
+                  className={cn(
+                    isToday
+                      ? 'text-white/90'
+                      : 'text-content-muted dark:text-content-muted-dark',
+                  )}
+                >
+                  {day}
+                </span>
               </p>
               {total && (
                 <p
                   className={cn(
-                    'mt-1 flex items-center justify-center gap-1.5 font-mono text-[0.7rem]',
+                    'mt-0.5 flex items-center justify-center gap-2 text-[0.7rem]',
                     isToday ? 'text-white' : statusColour(total.status),
                   )}
                 >
-                  <span className="inline-flex items-center gap-0.5">
+                  <span className="inline-flex items-center gap-1">
                     <UsersIcon size={11} aria-hidden="true" />
                     {total.staffCount}
                   </span>
-                  <span className="inline-flex items-center gap-0.5">
+                  <span className="inline-flex items-center gap-1">
                     <FileText size={11} aria-hidden="true" />
                     {total.shiftCount}
                   </span>
@@ -124,6 +139,7 @@ export function RotaGrid({
             </div>
           );
         })}
+        <div />
       </div>
 
       {/* ---- Location groups ---- */}
@@ -193,50 +209,72 @@ export function RotaGrid({
                     onSelectShift={onSelectShift}
                   />
                 )}
-
-                <Link
-                  to="/app/staff"
-                  className="mt-1 flex items-center gap-1.5 px-2 py-1.5 text-sm font-medium text-primary hover:underline"
-                >
-                  <Plus size={14} aria-hidden="true" />
-                  Add staff
-                </Link>
               </>
             )}
           </div>
         );
       })}
 
+      {/* One bordered "Add staff" affordance under the whole grid, as in
+          design/Rota-Builder.png — not one per location group. */}
+      <Link
+        to="/app/staff"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
+      >
+        <Plus size={14} aria-hidden="true" />
+        Add staff
+      </Link>
+
       {/* ---- Daily totals footer ---- */}
-      <div className="mt-4 grid grid-cols-[8rem_8rem_repeat(7,1fr)] gap-2 border-t border-surface-border pt-3 dark:border-surface-border-dark">
-        <div className="col-span-2 text-xs font-medium text-content-muted dark:text-content-muted-dark">
+      <div
+        className={cn(
+          ROTA_GRID_COLS,
+          'mt-4 border-t border-surface-border pt-3 dark:border-surface-border-dark',
+        )}
+      >
+        <div className="px-2 text-xs font-medium text-content dark:text-content-dark">
           Daily Totals
-          <br />
-          (Staff / Shifts)
+          <span className="block text-content-muted dark:text-content-muted-dark">
+            (Staff / Shifts)
+          </span>
         </div>
         {dates.map((date) => {
           const total = totalByDate.get(date);
           if (!total) return <div key={date} />;
+          const understaffed = total.status === 'understaffed';
+          const empty = total.status === 'empty';
           return (
             <div key={date} className="text-center">
-              <p className="font-mono text-sm font-semibold text-content dark:text-content-dark">
+              <p
+                className={cn(
+                  'text-sm font-bold',
+                  understaffed ? 'text-danger' : 'text-content dark:text-content-dark',
+                )}
+              >
                 {total.staffCount} / {total.shiftCount}
               </p>
               <p
                 className={cn(
-                  'text-[0.7rem] font-medium',
-                  total.status === 'understaffed' ? 'text-danger' : 'text-success',
+                  'flex items-center justify-center gap-1 text-[0.7rem] font-medium',
+                  understaffed
+                    ? 'text-danger'
+                    : empty
+                      ? 'text-content-muted dark:text-content-muted-dark'
+                      : 'text-success',
                 )}
               >
-                {total.status === 'understaffed'
-                  ? 'Understaffed'
-                  : total.status === 'empty'
-                    ? '—'
-                    : 'Optimal'}
+                {!empty &&
+                  (understaffed ? (
+                    <AlertTriangle size={11} aria-hidden="true" />
+                  ) : (
+                    <Check size={11} aria-hidden="true" />
+                  ))}
+                {understaffed ? 'Understaffed' : empty ? '—' : 'Optimal'}
               </p>
             </div>
           );
         })}
+        <div />
       </div>
     </div>
   );
