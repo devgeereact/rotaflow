@@ -55,7 +55,10 @@ export function LoginPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const redirectTo = env.appUrl || window.location.origin;
+  // OAuth/magic-link both bounce through Supabase and back — send them
+  // straight at the app, not the bare origin, or a signed-in user lands back
+  // on the marketing homepage instead of the dashboard/onboarding.
+  const redirectTo = `${(env.appUrl || window.location.origin).replace(/\/$/, '')}/app/dashboard`;
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -191,7 +194,7 @@ export function LoginPage(): JSX.Element {
           type="button"
           disabled={busy || !email.trim()}
           onClick={() => void signInWithMagicLink()}
-          className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-brand transition-transform duration-150 ease-in-out hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:text-brand-light dark:hover:bg-surface-subtle-dark"
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-brand transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:text-brand-light dark:hover:bg-surface-subtle-dark"
         >
           <Mail size={18} aria-hidden="true" />
           Sign in with magic link

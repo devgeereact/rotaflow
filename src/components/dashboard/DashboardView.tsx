@@ -484,7 +484,7 @@ export function DashboardView({
                 <Link
                   key={label}
                   to={to}
-                  className="flex flex-col items-center gap-2 rounded-xl border border-surface-border p-4 text-center transition-transform duration-150 ease-in-out hover:scale-[1.02] hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
+                  className="flex flex-col items-center gap-2 rounded-xl border border-surface-border p-4 text-center transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
                 >
                   <Icon size={22} aria-hidden="true" className={tint} />
                   <span className="text-xs font-medium text-content dark:text-content-dark">
