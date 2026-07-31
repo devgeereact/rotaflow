@@ -14,20 +14,24 @@ client demos and end-to-end manual testing.
 
 ## Running it
 
-Paste the file into the Supabase SQL editor and run it as one unit, or POST it to
-the Management API:
+**First, set `c_password` near the top of `demo_seed.sql`.** It ships as
+`CHANGE-ME-BEFORE-SEEDING` and the seed raises an exception until you change it —
+see [Accounts](#accounts) for why.
+
+Then paste the file into the Supabase SQL editor and run it as one unit, or POST it
+to the Management API:
 
 ```bash
-TOKEN=$(security find-generic-password -s "Supabase CLI" -w)
-python3 - <<'PY'
+# PROJECT_REF is deliberately not hard-coded here — pass the project you mean.
+PROJECT_REF=<your-project-ref> python3 - <<'PY'
 import json, os, subprocess, urllib.request
 sql = open('supabase/seed/demo_seed.sql').read()
 tok = subprocess.check_output(['security','find-generic-password','-s','Supabase CLI','-w'], text=True).strip()
 req = urllib.request.Request(
-    'https://api.supabase.com/v1/projects/vwqqbdvlskngrqrejzxi/database/query',
+    f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
     data=json.dumps({'query': sql}).encode(),
     headers={'Authorization': f'Bearer {tok}', 'Content-Type': 'application/json',
-             'User-Agent': 'rotaflow-seed/1.0'})
+             'User-Agent': 'rotaflow-seed/1.0'})   # Cloudflare 403s the default UA
 print(urllib.request.urlopen(req).read().decode()[:2000])
 PY
 ```
@@ -47,7 +51,15 @@ It never reads or writes organisations created through the app.
 
 ## Accounts
 
-Password for all demo accounts: **`RotaFlowDemo!2026`**
+**This repository is public.** These are real, email-confirmed accounts on a live
+Supabase project, so a password committed here would be a working public credential —
+anyone could sign in and mutate the demo data. `c_password` therefore ships as a
+placeholder and the seed refuses to run until you set it. Keep the value you choose
+out of the repo (a password manager, or your shell history at worst).
+
+The blast radius is bounded even so: these accounts are members of the demo
+organisations only, so RLS keeps them out of any real tenant. The worst case is a
+scribbled-on demo, which a re-run repairs.
 
 | Sign in as | Email | Role |
 | ---------- | ----- | ---- |

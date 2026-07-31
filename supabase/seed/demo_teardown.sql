@@ -28,7 +28,17 @@ where id in (
 );
 
 -- Demo accounts. profiles + app_settings cascade from auth.users.
-delete from auth.users where email like 'gakinz101+demo.%@gmail.com';
+-- Listed exactly, not matched with LIKE: a pattern would also delete a real
+-- account that happened to use the same plus-address shape.
+delete from auth.users where email in (
+  'gakinz101+demo.owner@gmail.com',
+  'gakinz101+demo.manager1@gmail.com',
+  'gakinz101+demo.manager2@gmail.com',
+  'gakinz101+demo.staff1@gmail.com',
+  'gakinz101+demo.staff2@gmail.com',
+  'gakinz101+demo.staff3@gmail.com',
+  'gakinz101+demo.staff4@gmail.com'
+);
 
 -- Hand the platform-admin flag back.
 update public.profiles set is_platform_admin = false

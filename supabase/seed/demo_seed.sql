@@ -50,7 +50,11 @@ where id in (
 do $seed$
 declare
   -- ---------- demo login accounts ----------------------------------
-  c_password  constant text := 'RotaFlowDemo!2026';
+  -- SET THIS BEFORE RUNNING. It is deliberately not a real value: this
+  -- repository is public, so any password committed here is a public
+  -- credential for real, email-confirmed accounts on the live project.
+  -- The seed refuses to run until it is changed.
+  c_password  constant text := 'CHANGE-ME-BEFORE-SEEDING';
   c_admin_email constant text := 'gakinz101@gmail.com';
 
   -- Plus-addressed on the owner's real mailbox: deliverable (so password
@@ -257,7 +261,15 @@ declare
   v_uid       uuid;
   v_new       uuid;
   v_has_pid   boolean;
+  v_live_staff uuid;
+  v_live_shift uuid;
+  v_live_start timestamptz;
 begin
+  if c_password = 'CHANGE-ME-BEFORE-SEEDING' or length(c_password) < 12 then
+    raise exception
+      'Set c_password to your own strong value before seeding. This repository is public, so a committed password would be a public credential for real accounts.';
+  end if;
+
   -- =================================================================
   -- 1. Accounts. The platform admin plus seven role accounts.
   -- =================================================================
@@ -662,6 +674,10 @@ begin
       where s.org_id = v_org
         and s.staff_profile_id is not null
         and s.starts_at > now()
+      -- The ORDER BY must be here as well as in the window: LIMIT without it
+      -- keeps an arbitrary five rows, so rn could be any value and
+      -- swap_status[rn] would be NULL against a NOT NULL column.
+      order by s.starts_at, s.id
       limit 5
     ) c;
   end loop;
@@ -705,17 +721,31 @@ begin
   -- One person per org left mid-shift, so Clock In always has a live state
   -- to show no matter what time of day the demo runs.
   for i in 1..5 loop
+    -- Prefer whoever is genuinely mid-shift, so the event ties to a real shift.
+    -- Shifts run Mon-Fri, so at a weekend (or overnight) nobody is: fall back to
+    -- a fixed person with no shift link, because the live state has to exist
+    -- whatever day and hour the demo runs.
+    select s.staff_profile_id, s.id, s.starts_at
+      into v_live_staff, v_live_shift, v_live_start
+    from public.shifts s
+    where s.org_id = pg_temp.demo_uuid('org:' || i)
+      and s.staff_profile_id is not null
+      and s.starts_at <= now() and s.ends_at > now()
+    order by s.starts_at, s.id
+    limit 1;
+
+    if v_live_staff is null then
+      v_live_staff := pg_temp.demo_uuid(format('stf:%s:%s', i, 4));
+      v_live_shift := null;
+      v_live_start := null;
+    end if;
+
     insert into public.clock_events (id, org_id, staff_profile_id, shift_id, type, event_at,
                                      latitude, longitude, accuracy, method, location_name, synced)
     values (
       pg_temp.demo_uuid(format('clk:live:%s', i)), pg_temp.demo_uuid('org:' || i),
-      pg_temp.demo_uuid(format('stf:%s:%s', i, 4)),
-      (select s.id from public.shifts s
-        where s.org_id = pg_temp.demo_uuid('org:' || i)
-          and s.staff_profile_id = pg_temp.demo_uuid(format('stf:%s:%s', i, 4))
-          and s.starts_at <= now() and s.ends_at > now()
-        order by s.starts_at limit 1),
-      'in', now() - interval '2 hours',
+      v_live_staff, v_live_shift, 'in',
+      coalesce(v_live_start + interval '4 minutes', now() - interval '2 hours'),
       loc_lat[i][1], loc_lon[i][1], 11.0, 'gps', loc_names[i][1], true);
   end loop;
 
