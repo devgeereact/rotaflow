@@ -74,7 +74,10 @@ export function App(): JSX.Element {
                 {/* Design-loop preview only — /app/rota needs a real
                     Supabase session, org and shifts. Mirrors RotaBuilderPage's
                     render tree against local mock data. */}
-                <Route path="/rota-builder-preview" element={<RotaBuilderPreviewPage />} />
+                <Route
+                  path="/rota-builder-preview"
+                  element={<RotaBuilderPreviewPage />}
+                />
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}

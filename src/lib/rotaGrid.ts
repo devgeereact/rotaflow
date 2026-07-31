@@ -123,7 +123,11 @@ export interface DailyTotal {
  * this deliberately doesn't fabricate an "Overstaffed" signal or a coverage
  * percentage — see rota-log.md.
  */
-export function computeDailyTotals(shifts: Shift[], dates: string[], timezone: string): DailyTotal[] {
+export function computeDailyTotals(
+  shifts: Shift[],
+  dates: string[],
+  timezone: string,
+): DailyTotal[] {
   const byDate = new Map<string, Shift[]>();
   for (const shift of shifts) {
     const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
@@ -175,9 +179,13 @@ export function computeWarnings(shifts: Shift[], timezone: string): RotaWarning[
   for (const shift of shifts) {
     if (shift.status === 'cancelled') continue;
     const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
-    const key = [date, shift.location_id, shift.shift_type_id, shift.starts_at, shift.ends_at].join(
-      '|',
-    );
+    const key = [
+      date,
+      shift.location_id,
+      shift.shift_type_id,
+      shift.starts_at,
+      shift.ends_at,
+    ].join('|');
     groups.set(key, [...(groups.get(key) ?? []), shift]);
   }
 

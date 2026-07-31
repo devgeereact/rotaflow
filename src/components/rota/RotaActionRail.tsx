@@ -27,11 +27,22 @@ interface RotaActionRailProps {
  * broken rather than not-yet-built) but every click reports "coming soon"
  * instead of doing nothing silently. See rota-log.md.
  */
-export function RotaActionRail({ onAutoFill, onComingSoon }: RotaActionRailProps): JSX.Element {
+export function RotaActionRail({
+  onAutoFill,
+  onComingSoon,
+}: RotaActionRailProps): JSX.Element {
   const actions: RailAction[] = [
     { icon: FileStack, label: 'Templates', onClick: () => onComingSoon('Templates') },
-    { icon: ClipboardCopy, label: 'Copy Shifts', onClick: () => onComingSoon('Copy Shifts') },
-    { icon: ClipboardPaste, label: 'Paste Shifts', onClick: () => onComingSoon('Paste Shifts') },
+    {
+      icon: ClipboardCopy,
+      label: 'Copy Shifts',
+      onClick: () => onComingSoon('Copy Shifts'),
+    },
+    {
+      icon: ClipboardPaste,
+      label: 'Paste Shifts',
+      onClick: () => onComingSoon('Paste Shifts'),
+    },
     { icon: Sparkles, label: 'Auto-fill', onClick: onAutoFill },
     { icon: Trash2, label: 'Clear Shifts', onClick: () => onComingSoon('Clear Shifts') },
     { icon: Printer, label: 'Print', onClick: () => onComingSoon('Print') },

@@ -202,11 +202,17 @@ export function RotaBuilderPage(): JSX.Element {
     };
   }, [orgId, locations, weekStart, weekEnd, showError]);
 
-  const locationById = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
+  const locationById = useMemo(
+    () => new Map(locations.map((l) => [l.id, l])),
+    [locations],
+  );
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
 
   const filteredLocations = useMemo(
-    () => (locationFilter === 'all' ? locations : locations.filter((l) => l.id === locationFilter)),
+    () =>
+      locationFilter === 'all'
+        ? locations
+        : locations.filter((l) => l.id === locationFilter),
     [locations, locationFilter],
   );
 
@@ -224,10 +230,13 @@ export function RotaBuilderPage(): JSX.Element {
 
   const staffFiltered = useMemo(() => {
     let rows = staff;
-    if (departmentFilter !== 'all') rows = rows.filter((s) => s.department_id === departmentFilter);
+    if (departmentFilter !== 'all')
+      rows = rows.filter((s) => s.department_id === departmentFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      rows = rows.filter((s) => `${s.first_name} ${s.last_name}`.toLowerCase().includes(q));
+      rows = rows.filter((s) =>
+        `${s.first_name} ${s.last_name}`.toLowerCase().includes(q),
+      );
     }
     return rows;
   }, [staff, departmentFilter, search]);
@@ -567,13 +576,13 @@ export function RotaBuilderPage(): JSX.Element {
   };
 
   const reloadShifts = (): void => {
-    void Promise.all(
-      [...rotasByLocation.values()].map((r) => listShiftsForRota(r.id)),
-    )
+    void Promise.all([...rotasByLocation.values()].map((r) => listShiftsForRota(r.id)))
       .then((rows) => setShifts(rows.flat()))
       .catch((err) => {
         reportError(err, { area: 'rota:reload-shifts' });
-        showError('Could not refresh the grid. Reload the page to see the latest shifts.');
+        showError(
+          'Could not refresh the grid. Reload the page to see the latest shifts.',
+        );
       });
   };
 
@@ -683,7 +692,11 @@ export function RotaBuilderPage(): JSX.Element {
             >
               <ChevronRight size={16} />
             </button>
-            <Button size="sm" variant="secondary" onClick={() => setWeekStart(getMonday(new Date()))}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setWeekStart(getMonday(new Date()))}
+            >
               Today
             </Button>
             <span className="flex items-center gap-1 text-sm font-semibold text-content dark:text-content-dark">
@@ -850,7 +863,11 @@ export function RotaBuilderPage(): JSX.Element {
               if (!loc) return;
               setAssignModal({
                 open: true,
-                context: { staffProfileId: null, date: dates[0] ?? weekStart, locationId: loc.id },
+                context: {
+                  staffProfileId: null,
+                  date: dates[0] ?? weekStart,
+                  locationId: loc.id,
+                },
                 shift: null,
               });
             }}
@@ -922,9 +939,7 @@ export function RotaBuilderPage(): JSX.Element {
                 timezone={DEFAULT_TZ}
                 rotaStatusForLocation={(locationId) =>
                   (locationId ? rotasByLocation.get(locationId)?.status : null) as
-                    | 'draft'
-                    | 'published'
-                    | null
+                    'draft' | 'published' | null
                 }
                 onEdit={(shift) => setAssignModal({ open: true, context: null, shift })}
                 onDuplicate={handleDuplicateShift}

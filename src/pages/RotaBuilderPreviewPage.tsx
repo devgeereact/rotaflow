@@ -138,7 +138,10 @@ function mkShift(input: {
 
 const monday = new Date(`${getMonday(now)}T00:00:00`);
 
-const LOCATIONS = [mkLocation('loc-sunshine', 'Sunshine Care Home'), mkLocation('loc-riverside', 'Riverside House')];
+const LOCATIONS = [
+  mkLocation('loc-sunshine', 'Sunshine Care Home'),
+  mkLocation('loc-riverside', 'Riverside House'),
+];
 
 const SUNSHINE_STAFF = [
   mkStaff('staff-sarah', 'Sarah', 'Johnson', 'Senior Nurse'),
@@ -171,7 +174,11 @@ const ROTA_SUNSHINE: Rota = {
   created_at: ISO(now),
   updated_at: ISO(now),
 };
-const ROTA_RIVERSIDE: Rota = { ...ROTA_SUNSHINE, id: 'rota-riverside', location_id: 'loc-riverside' };
+const ROTA_RIVERSIDE: Rota = {
+  ...ROTA_SUNSHINE,
+  id: 'rota-riverside',
+  location_id: 'loc-riverside',
+};
 
 function buildShifts(): Shift[] {
   const shifts: Shift[] = [];
@@ -346,7 +353,10 @@ export function RotaBuilderPreviewPage(): JSX.Element {
     { location: LOCATIONS[1]!, staff: RIVERSIDE_STAFF },
   ];
 
-  const dailyTotals = useMemo(() => computeDailyTotals(SHIFTS, dates, DEFAULT_TZ), [dates]);
+  const dailyTotals = useMemo(
+    () => computeDailyTotals(SHIFTS, dates, DEFAULT_TZ),
+    [dates],
+  );
   const warnings = useMemo(() => computeWarnings(SHIFTS, DEFAULT_TZ), []);
   const selectedShift = SHIFTS.find((s) => s.id === selectedShiftId) ?? null;
   const totalStaff = new Set(SHIFTS.map((s) => s.staff_profile_id).filter(Boolean)).size;
@@ -359,7 +369,11 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             <div>
               <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-content dark:text-content-dark">
                 Rota Builder
-                <Info size={16} aria-hidden="true" className="text-content-muted dark:text-content-muted-dark" />
+                <Info
+                  size={16}
+                  aria-hidden="true"
+                  className="text-content-muted dark:text-content-muted-dark"
+                />
               </h1>
               <p className="text-sm text-content-muted dark:text-content-muted-dark">
                 Build fair, balanced rotas in minutes.
@@ -373,7 +387,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               />
               <input
                 placeholder="Search staff…"
-               
+
                 className="w-64 rounded-xl border border-surface-border bg-surface py-2 pl-9 pr-3 text-sm text-content outline-none dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
               />
             </div>
@@ -400,7 +414,11 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               </Button>
               <span className="flex items-center gap-1 text-sm font-semibold text-content dark:text-content-dark">
                 {formatWeekRange(dates)}
-                <ChevronDown size={14} aria-hidden="true" className="text-content-muted" />
+                <ChevronDown
+                  size={14}
+                  aria-hidden="true"
+                  className="text-content-muted"
+                />
               </span>
             </div>
 

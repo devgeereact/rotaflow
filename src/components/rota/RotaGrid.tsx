@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Plus, Users as UsersIcon, FileText } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Users as UsersIcon,
+  FileText,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDayLabel, shiftCellKey, type DailyTotal } from '@/lib/rotaGrid';
 import { todayIso } from '@/lib/schedulePeriod';

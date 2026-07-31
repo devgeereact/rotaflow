@@ -53,7 +53,10 @@ export function ShiftInspectorPanel({
   const tabs: { key: Tab; label: string }[] = [
     { key: 'details', label: 'Shift Details' },
     { key: 'coverage', label: 'Coverage' },
-    { key: 'warnings', label: `Warnings${warnings.length ? ` (${warnings.length})` : ''}` },
+    {
+      key: 'warnings',
+      label: `Warnings${warnings.length ? ` (${warnings.length})` : ''}`,
+    },
   ];
 
   return (
@@ -214,7 +217,9 @@ function ShiftDetails({
       </div>
       <ul className="mb-4 space-y-2">
         {group.map((s) => {
-          const person = s.staff_profile_id ? staffById.get(s.staff_profile_id) : undefined;
+          const person = s.staff_profile_id
+            ? staffById.get(s.staff_profile_id)
+            : undefined;
           if (!person) return null;
           const badge = jobTitleInitials(person.job_title);
           return (
@@ -300,7 +305,11 @@ function CoverageList({ dailyTotals }: { dailyTotals: DailyTotal[] }): JSX.Eleme
                 t.status === 'understaffed' ? 'text-danger' : 'text-success',
               )}
             >
-              {t.status === 'understaffed' ? 'Understaffed' : t.status === 'empty' ? '—' : 'Optimal'}
+              {t.status === 'understaffed'
+                ? 'Understaffed'
+                : t.status === 'empty'
+                  ? '—'
+                  : 'Optimal'}
             </span>
           </span>
         </li>

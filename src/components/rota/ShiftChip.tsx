@@ -37,7 +37,8 @@ export function ShiftChip({
       className={cn(
         'w-full rounded-lg px-2 py-1 text-left text-xs font-medium text-white shadow-sm transition-opacity',
         paletteTokenForColour(shiftType?.colour),
-        selected && 'ring-2 ring-primary ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+        selected &&
+          'ring-2 ring-primary ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
         isDragging && 'opacity-40',
       )}
     >
