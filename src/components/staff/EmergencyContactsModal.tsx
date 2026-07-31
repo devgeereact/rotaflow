@@ -49,14 +49,14 @@ export function EmergencyContactsModal({
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
-      setContacts(await listEmergencyContacts(staffProfileId));
+      setContacts(await listEmergencyContacts(orgId, staffProfileId));
     } catch (err) {
       reportError(err, { area: 'staff:emergency-contacts-load' });
       setError('Could not load emergency contacts.');
     } finally {
       setLoading(false);
     }
-  }, [staffProfileId]);
+  }, [orgId, staffProfileId]);
 
   useEffect(() => {
     if (open) {
@@ -93,7 +93,7 @@ export function EmergencyContactsModal({
   const handleDelete = async (contact: EmergencyContact): Promise<void> => {
     if (!window.confirm(`Remove ${contact.name} as an emergency contact?`)) return;
     try {
-      await deleteEmergencyContact(contact.id);
+      await deleteEmergencyContact(orgId, contact.id);
       setContacts((prev) => prev.filter((c) => c.id !== contact.id));
     } catch (err) {
       reportError(err, { area: 'staff:emergency-contacts-delete' });

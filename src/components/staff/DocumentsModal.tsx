@@ -46,14 +46,14 @@ export function DocumentsModal({
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
-      setDocuments(await listDocuments(staffProfileId));
+      setDocuments(await listDocuments(orgId, staffProfileId));
     } catch (err) {
       reportError(err, { area: 'staff:documents-load' });
       setError('Could not load documents.');
     } finally {
       setLoading(false);
     }
-  }, [staffProfileId]);
+  }, [orgId, staffProfileId]);
 
   useEffect(() => {
     if (open) {
@@ -65,6 +65,16 @@ export function DocumentsModal({
 
   const handleAdd = async (): Promise<void> => {
     if (!form.type.trim() || !form.name.trim() || !form.fileUrl.trim()) return;
+    const fileUrl = form.fileUrl.trim();
+    // The "Add document" button is type="button" with a direct onClick, not
+    // a form submit, so the input's type="url" constraint validation never
+    // runs — and even when it does, it accepts any scheme, javascript:
+    // included. This is rendered as a real <a href> below, so an
+    // unvalidated scheme here is a stored-XSS vector, not just bad data.
+    if (!/^https?:\/\//i.test(fileUrl)) {
+      setError('Enter a link starting with http:// or https://.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -73,7 +83,7 @@ export function DocumentsModal({
         org_id: orgId,
         type: form.type.trim(),
         name: form.name.trim(),
-        file_url: form.fileUrl.trim(),
+        file_url: fileUrl,
         issued_at: form.issuedAt || null,
         expires_at: form.expiresAt || null,
       });
@@ -95,7 +105,7 @@ export function DocumentsModal({
     )
       return;
     try {
-      await deleteDocument(doc.id);
+      await deleteDocument(orgId, doc.id);
       setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
     } catch (err) {
       reportError(err, { area: 'staff:documents-delete' });

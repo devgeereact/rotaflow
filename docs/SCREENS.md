@@ -43,7 +43,7 @@ role — it gates the `/admin` console only.
 
 | Screen                         | Status             | Notes                                                                                                                                                                               |
 | ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dashboard                      | `[Built, partial]` | `src/pages/DashboardPage.tsx` — minimal vs. the full spec (today's shifts, absences, pending requests, shortages)                                                                   |
+| Dashboard                      | `[Built, partial]` | `src/pages/app/DashboardPage.tsx` — minimal vs. the full spec (today's shifts, absences, pending requests, shortages)                                                               |
 | Notifications inbox / center   | `[Built]`          | `/app/notifications` — read + mark-read; genuinely empty until `send-notification` is deployed (manual, out-of-repo step)                                                           |
 | Announcements feed (read view) | `[Built]`          | `/app/announcements`                                                                                                                                                                |
 | Account / profile settings     | `[Built]`          | `/app/account` — name, password change, notification preference. Email change and avatar upload deliberately deferred (need Supabase's confirmation flow / ImageKit, neither wired) |
