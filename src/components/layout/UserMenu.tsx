@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LogOut, Settings } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOrg } from '@/hooks/useOrg';
 
@@ -57,6 +58,15 @@ export function UserMenu(): JSX.Element {
             role="menu"
             className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-xl border border-surface-border bg-surface py-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
           >
+            <Link
+              to="/app/account"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+            >
+              <Settings size={16} aria-hidden="true" />
+              Account settings
+            </Link>
             <button
               type="button"
               role="menuitem"

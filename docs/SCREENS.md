@@ -41,31 +41,31 @@ role — it gates the `/admin` console only.
 
 ## 3. Shared app shell (post-login, role varies content)
 
-| Screen                         | Status             | Notes                                                                                                                            |
-| ------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| Dashboard                      | `[Built, partial]` | `src/pages/DashboardPage.tsx` — minimal vs. the full spec (today's shifts, absences, pending requests, shortages)                |
-| Notifications inbox / center   | `[Built]`          | `/app/notifications` — read + mark-read; genuinely empty until `send-notification` is deployed (manual, out-of-repo step)        |
-| Announcements feed (read view) | `[Built]`          | `/app/announcements`                                                                                                             |
-| Account / profile settings     | `[V1]`             | `profiles` table, no dedicated screen yet                                                                                        |
-| Org settings                   | `[Built]`          | `/app/settings` — name, industry, org type, country, timezone, working week                                                      |
-| Notification preferences       | `[V1]`             | Toggle exists on Dashboard, belongs in Settings                                                                                  |
-| Theme (light/dark) control     | `[Built]`          | `ThemeContext` + toggle                                                                                                          |
-| Logout                         | `[Built]`          | `useSupabaseAuth().signOut()` in `DashboardPage.tsx` — consider a brief "Signed out" confirmation before redirecting to `/login` |
+| Screen                         | Status             | Notes                                                                                                                                                                               |
+| ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard                      | `[Built, partial]` | `src/pages/app/DashboardPage.tsx` — minimal vs. the full spec (today's shifts, absences, pending requests, shortages)                                                               |
+| Notifications inbox / center   | `[Built]`          | `/app/notifications` — read + mark-read; genuinely empty until `send-notification` is deployed (manual, out-of-repo step)                                                           |
+| Announcements feed (read view) | `[Built]`          | `/app/announcements`                                                                                                                                                                |
+| Account / profile settings     | `[Built]`          | `/app/account` — name, password change, notification preference. Email change and avatar upload deliberately deferred (need Supabase's confirmation flow / ImageKit, neither wired) |
+| Org settings                   | `[Built]`          | `/app/settings` — name, industry, org type, country, timezone, working week                                                                                                         |
+| Notification preferences       | `[Built]`          | Moved to `/app/account` from Dashboard, where it never belonged                                                                                                                     |
+| Theme (light/dark) control     | `[Built]`          | `ThemeContext` + toggle                                                                                                                                                             |
+| Logout                         | `[Built]`          | `UserMenu.tsx` (header dropdown), `useSupabaseAuth().signOut()` — consider a brief "Signed out" confirmation before redirecting to `/login`                                         |
 
 ## 4. Staff-facing screens
 
-| Screen                              | Status                | Notes                                                                                                                                                                              |
-| ----------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| My schedule (rota view)             | `[V1]`                | `/app/schedule` — month/week/day, ICS subscribe/download                                                                                                                           |
-| Availability submission             | `[Built]`             | `/app/availability` (staff mode) — recurring weekly pattern; a one-off date is representable in the schema but not exposed yet, closer to a leave request                          |
-| Leave request + tracking            | `[Built]`             | `/app/leave` (staff mode) — includes entitlement (`holiday_allowance` − approved days used this calendar year)                                                                     |
-| Overtime request/offer              | `[Gap]`               | `overtime_requests` table exists, no named route — still deferred, no route was ever named in `ARCHITECTURE.md` unlike availability/leave/swaps                                    |
-| Shift swap request + status         | `[Built]`             | `/app/swaps` (staff mode) — request an owned upcoming shift, optionally targeting a colleague; approving here does not move the shift, see manager row below                       |
-| Clock in/out                        | `[Built, GPS+manual]` | `/app/clock` — GPS + manual, offline-queued via `useSyncQueue`. QR deferred: nothing generates a per-location code to scan yet                                                     |
-| My timesheets / hours               | `[Built]`             | `/app/timesheets` (staff mode) — real hours computed from `clock_events`, not the `timesheets` table's submit/approve workflow (unspecified business rules; see PROJECT-MEMORY.md) |
-| My documents                        | `[Phase 2]`           | `documents` table exists, automation deferred                                                                                                                                      |
-| Emergency contact management        | `[Gap]`               | `emergency_contacts` table exists, no route                                                                                                                                        |
-| AI Rota Assistant (restricted view) | `[Built]`             | Staff/non-managers see a restriction message on `/app/rota` instead of the builder                                                                                                 |
+| Screen                              | Status                   | Notes                                                                                                                                                                                                 |
+| ----------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| My schedule (rota view)             | `[V1]`                   | `/app/schedule` — month/week/day, ICS subscribe/download                                                                                                                                              |
+| Availability submission             | `[Built]`                | `/app/availability` (staff mode) — recurring weekly pattern; a one-off date is representable in the schema but not exposed yet, closer to a leave request                                             |
+| Leave request + tracking            | `[Built]`                | `/app/leave` (staff mode) — includes entitlement (`holiday_allowance` − approved days used this calendar year)                                                                                        |
+| Overtime request/offer              | `[Gap]`                  | `overtime_requests` table exists, no named route — still deferred, no route was ever named in `ARCHITECTURE.md` unlike availability/leave/swaps                                                       |
+| Shift swap request + status         | `[Built]`                | `/app/swaps` (staff mode) — request an owned upcoming shift, optionally targeting a colleague; approving here does not move the shift, see manager row below                                          |
+| Clock in/out                        | `[Built, GPS+manual]`    | `/app/clock` — GPS + manual, offline-queued via `useSyncQueue`. QR deferred: nothing generates a per-location code to scan yet                                                                        |
+| My timesheets / hours               | `[Built]`                | `/app/timesheets` (staff mode) — real hours computed from `clock_events`, not the `timesheets` table's submit/approve workflow (unspecified business rules; see PROJECT-MEMORY.md)                    |
+| My documents                        | `[Built, manager-added]` | `documents` table — a manager/owner adds records via `/app/staff` (link to wherever the file already lives, no upload — no storage integration exists in this repo). No staff self-service upload yet |
+| Emergency contact management        | `[Built, manager-added]` | `emergency_contacts` table — same access pattern as documents, via `/app/staff`                                                                                                                       |
+| AI Rota Assistant (restricted view) | `[Built]`                | Staff/non-managers see a restriction message on `/app/rota` instead of the builder                                                                                                                    |
 
 ## 5. Manager-facing screens
 
@@ -268,8 +268,25 @@ Migration `0011_gdpr_anonymize.sql` is written but **not yet applied** to
 the live database — same status every new migration has before the user
 runs it. The GDPR actions on `/app/staff` will fail until it is.
 
+**Phase 10 — account settings & staff records — is built**, to the scope below:
+
+| Screen                         | Now                                                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account settings               | `[Built]` — `/app/account`: name, password change, notification preference. Linked from the header user menu, replacing the toggle that lived on Dashboard |
+| Emergency contacts / documents | `[Built, manager-added]` — per-staff modals on `/app/staff` (add + delete, no edit — see below). `documents.file_url` is a pasted link, not an upload      |
+
+Both new record types deliberately ship **add + delete, no edit** — the
+same call `locationService.ts` already made for locations ("edit-only is
+the safe scope" there; here it's the opposite trade-off, but the same
+reasoning: a wrong entry is faster to remove and re-add than to build a
+full edit flow for). Both are manager/owner-only for now (`canManageStaff`)
+— no staff self-service to add their own emergency contact or upload their
+own document yet, which is a reasonable V1 boundary but a real gap if the
+product ever wants staff onboarding to be self-serve.
+
 Not yet built, still genuinely deferred: an audit log viewer (platform-wide,
 `[Phase 2]` per §7 — `audit_logs` is written to but nothing reads it back in
-the product yet), overtime requests, emergency contacts/documents screens
-(the tables exist and the GDPR export now reads them, but there's still no
-UI to create or edit one), and the Super Admin console.
+the product yet), overtime requests (`overtime_requests` table exists, but
+no route was ever named in `ARCHITECTURE.md`, unlike everything built so
+far), email change and avatar upload on Account settings, and the Super
+Admin console.

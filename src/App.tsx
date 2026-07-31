@@ -30,6 +30,7 @@ import { NotificationsPage } from '@/pages/app/NotificationsPage';
 import { IntegrationsPage } from '@/pages/app/IntegrationsPage';
 import { OrgSettingsPage } from '@/pages/app/OrgSettingsPage';
 import { ReportsPage } from '@/pages/app/ReportsPage';
+import { AccountSettingsPage } from '@/pages/app/AccountSettingsPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { DashboardPreviewPage } from '@/pages/app/DashboardPreviewPage';
 import { StaffPage } from '@/pages/app/StaffPage';
@@ -106,6 +107,7 @@ export function App(): JSX.Element {
                   <Route path="integrations" element={<IntegrationsPage />} />
                   <Route path="settings" element={<OrgSettingsPage />} />
                   <Route path="reports" element={<ReportsPage />} />
+                  <Route path="account" element={<AccountSettingsPage />} />
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
