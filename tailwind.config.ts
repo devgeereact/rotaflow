@@ -64,6 +64,18 @@ const config: Config = {
         // alone). Same hex in both themes — must stay recognisable regardless
         // of mode.
         success: { DEFAULT: '#1EA06B' }, // published / valid / confirmed / available
+        // Attendance green — the Clock In CTA, its "ready" ring, and the
+        // on-shift status washes in design/clockin.png. Sampled off that PNG:
+        // it runs markedly deeper than `success` (#1EA06B), which reads too
+        // mint next to a solid fill at this size. Kept as its own namespace so
+        // restyling attendance never shifts every "published" chip in the rota.
+        // See design/.loop/clockin-log.md.
+        clock: {
+          DEFAULT: '#068D41', // CTA fill + ready ring stroke
+          tint: '#D6F4E1', // status badge wash (Starts in / Day Shift / Upcoming)
+          fg: '#0A5522', // ink on `tint`
+          wash: '#EDFAF2', // larger panel wash (Attendance "On Track")
+        },
         warning: { DEFAULT: '#E0A030' }, // pending / needs attention / expiring
         danger: { DEFAULT: '#D94A3A' }, // conflict / rejected / absent / error
         info: { DEFAULT: '#388FD4' }, // informational / neutral status
