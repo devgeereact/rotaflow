@@ -93,8 +93,12 @@ export function LoginPage(): JSX.Element {
       if (oauthError) throw oauthError;
     });
 
-  const signInWithMagicLink = (): Promise<void> =>
-    withBusy(async () => {
+  const signInWithMagicLink = (): Promise<void> => {
+    if (!email.trim()) {
+      setError('Enter your email address first.');
+      return Promise.resolve();
+    }
+    return withBusy(async () => {
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: { emailRedirectTo: redirectTo },
@@ -102,6 +106,7 @@ export function LoginPage(): JSX.Element {
       if (otpError) throw otpError;
       setMessage('Magic link sent — check your inbox.');
     });
+  };
 
   const canSubmit = !busy && email.trim().length > 0 && password.length > 0;
 
@@ -192,7 +197,7 @@ export function LoginPage(): JSX.Element {
 
         <button
           type="button"
-          disabled={busy || !email.trim()}
+          disabled={busy}
           onClick={() => void signInWithMagicLink()}
           className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-brand transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:text-brand-light dark:hover:bg-surface-subtle-dark"
         >
