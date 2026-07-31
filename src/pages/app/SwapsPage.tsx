@@ -8,6 +8,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import {
@@ -72,6 +73,13 @@ export function SwapsPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['shift_swaps', 'shifts'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => setReloadKey((k) => k + 1),
+  });
 
   const [shiftId, setShiftId] = useState('');
   const [targetId, setTargetId] = useState('');

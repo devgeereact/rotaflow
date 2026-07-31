@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
   createStaffProfile,
   deactivateStaffProfile,
@@ -96,6 +97,13 @@ export function StaffPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['staff_profiles', 'departments'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => void load(),
+  });
 
   const departmentName = (id: string | null): string =>
     departments.find((d) => d.id === id)?.name ?? '—';

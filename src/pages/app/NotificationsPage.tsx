@@ -4,6 +4,7 @@ import { Bell, BellOff, Check } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useWebPush } from '@/hooks/useWebPush';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
   listMyNotifications,
   markAllNotificationsRead,
@@ -31,6 +32,13 @@ export function NotificationsPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['notifications'],
+    scope: { column: 'user_id', value: user?.id ?? null },
+    onChange: () => setReloadKey((k) => k + 1),
+  });
 
   useEffect(() => {
     if (!user) return;

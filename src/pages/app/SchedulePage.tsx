@@ -14,6 +14,7 @@ import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { listLocations } from '@/services/locationService';
 import { listActiveStaff, getMyStaffProfile } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
@@ -76,6 +77,13 @@ export function SchedulePage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['shifts', 'rotas'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => setReloadKey((k) => k + 1),
+  });
 
   // Every location may have its own zone; the selected one wins, else the org's
   // first. Falls back to London rather than the browser zone (RULES.md §9).

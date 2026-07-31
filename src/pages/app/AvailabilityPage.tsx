@@ -4,6 +4,7 @@ import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
 import {
   createAvailability,
@@ -68,6 +69,13 @@ export function AvailabilityPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['availability', 'staff_profiles'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => setReloadKey((k) => k + 1),
+  });
 
   const [weekday, setWeekday] = useState('1');
   const [status, setStatus] = useState<AvailabilityStatus>('available');

@@ -3,6 +3,7 @@ import { Copy, Plus, X } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { createInvite, listPendingInvites, revokeInvite } from '@/services/inviteService';
 import { reportError } from '@/lib/sentry';
 import { isValidEmail } from '@/lib/email';
@@ -43,6 +44,13 @@ export function TeamPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['invites'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => setReloadKey((k) => k + 1),
+  });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [email, setEmail] = useState('');
