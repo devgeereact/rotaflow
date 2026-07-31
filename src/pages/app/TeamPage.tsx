@@ -5,6 +5,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
 import { createInvite, listPendingInvites, revokeInvite } from '@/services/inviteService';
 import { reportError } from '@/lib/sentry';
+import { isValidEmail } from '@/lib/email';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -78,6 +79,10 @@ export function TeamPage(): JSX.Element {
 
   const handleInvite = useCallback(async (): Promise<void> => {
     if (!orgId || !email.trim()) return;
+    if (!isValidEmail(email)) {
+      setFormError('That does not look like a valid email address.');
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
     try {

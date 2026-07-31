@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { env } from '@/lib/env';
+import { isValidEmail } from '@/lib/email';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { EmailSuggestion } from '@/components/auth/EmailSuggestion';
 
 /**
  * `/forgot-password` — sends a recovery link.
@@ -22,6 +24,10 @@ export function ForgotPasswordPage(): JSX.Element {
   const [busy, setBusy] = useState(false);
 
   const handleSend = async (): Promise<void> => {
+    if (!isValidEmail(email)) {
+      setError('That does not look like a valid email address.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -64,15 +70,17 @@ export function ForgotPasswordPage(): JSX.Element {
             </p>
 
             <Label htmlFor="forgot-email">Email</Label>
-            <Input
-              id="forgot-email"
-              className="mb-5"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-            />
+            <div className="mb-5">
+              <Input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+              <EmailSuggestion email={email} onAccept={setEmail} />
+            </div>
 
             <Button
               className="w-full"

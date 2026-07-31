@@ -11,6 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isValidEmail } from '@/lib/email';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
@@ -80,6 +81,7 @@ export function StepInviteTeam({
   locationNames,
 }: StepInviteTeamProps): JSX.Element {
   const [emails, setEmails] = useState('');
+  const [invalidCount, setInvalidCount] = useState(0);
   const [role, setRole] = useState<MembershipRole>('staff');
   const [department, setDepartment] = useState('');
   const [location, setLocation] = useState('');
@@ -91,8 +93,17 @@ export function StepInviteTeam({
       .filter(Boolean);
     if (parsed.length === 0) return;
 
+    // Anything malformed is held back rather than staged — it would only be
+    // rejected later by create_invite's regex, after the wizard had moved on,
+    // where the failure is invisible.
+    const [valid, invalid] = parsed.reduce<[string[], string[]]>(
+      ([ok, bad], candidate) =>
+        isValidEmail(candidate) ? [[...ok, candidate], bad] : [ok, [...bad, candidate]],
+      [[], []],
+    );
+
     const existing = new Set(staged.map((s) => s.email));
-    const additions = parsed
+    const additions = valid
       .filter((e) => !existing.has(e))
       .map((email) => ({
         email,
@@ -102,7 +113,8 @@ export function StepInviteTeam({
       }));
 
     onStage([...staged, ...additions]);
-    setEmails('');
+    setEmails(invalid.join(' '));
+    setInvalidCount(invalid.length);
   }, [emails, role, department, location, staged, onStage]);
 
   const remove = useCallback(
@@ -145,7 +157,10 @@ export function StepInviteTeam({
               <textarea
                 id="invite-emails"
                 value={emails}
-                onChange={(e) => setEmails(e.target.value)}
+                onChange={(e) => {
+                  setEmails(e.target.value);
+                  setInvalidCount(0);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -159,6 +174,13 @@ export function StepInviteTeam({
               <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
                 Add one or more email addresses, separated by commas, then press Enter.
               </p>
+              {invalidCount > 0 && (
+                <p className="mt-1 text-xs text-danger" role="alert">
+                  {invalidCount === 1
+                    ? "That address doesn't look valid — it's been left above so you can correct it."
+                    : `${invalidCount} addresses don't look valid — they've been left above so you can correct them.`}
+                </p>
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
