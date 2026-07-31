@@ -30,6 +30,7 @@ import { NotificationsPage } from '@/pages/app/NotificationsPage';
 import { IntegrationsPage } from '@/pages/app/IntegrationsPage';
 import { OrgSettingsPage } from '@/pages/app/OrgSettingsPage';
 import { DashboardPage } from '@/pages/app/DashboardPage';
+import { DashboardPreviewPage } from '@/pages/app/DashboardPreviewPage';
 import { StaffPage } from '@/pages/app/StaffPage';
 import { LocationsPage } from '@/pages/app/LocationsPage';
 import { RotaBuilderPage } from '@/pages/app/RotaBuilderPage';
@@ -63,6 +64,10 @@ export function App(): JSX.Element {
                     reproduces the reference-designed steps against mock
                     local state. */}
                 <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
+                {/* Design-loop preview only — /app/dashboard needs a real
+                    Supabase session and a seeded organisation. Fixed mock
+                    data reproduces design/Workforce-Dashboard.png's numbers. */}
+                <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}

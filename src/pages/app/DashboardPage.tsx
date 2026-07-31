@@ -1,86 +1,134 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useInngestDispatch } from '@/hooks/useInngestDispatch';
-import { getSettings, updateSettings } from '@/services/settingsService';
+import { useToast } from '@/hooks/useToast';
 import { getProfile } from '@/services/profileService';
+import { listShiftsForPeriod } from '@/services/shiftService';
+import {
+  getPendingRequests,
+  groupShifts,
+  loadDashboardOverview,
+  type DashboardOverview,
+  type PendingRequest,
+  type ShiftGroup,
+} from '@/services/dashboardService';
+import { resolvePeriod, stepPeriod, todayIso } from '@/lib/schedulePeriod';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import type { AppSettings, Profile } from '@/types';
+import { DashboardView } from '@/components/dashboard/DashboardView';
 
+const DEFAULT_TZ = 'Europe/London';
+
+/** `/app/dashboard` — real data wiring; see DashboardView for the markup. */
 export function DashboardPage(): JSX.Element {
+  const { orgId } = useOrg();
   const { user } = useSupabaseAuth();
-  const { send } = useInngestDispatch();
+  const { showError } = useToast();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [pending, setPending] = useState<PendingRequest[]>([]);
+  const [dayAnchor, setDayAnchor] = useState(todayIso);
+  const [dayGroups, setDayGroups] = useState<ShiftGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dayLoading, setDayLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const timezone = overview?.locations[0]?.timezone ?? DEFAULT_TZ;
 
   const load = useCallback(async (): Promise<void> => {
-    if (!user) return;
+    if (!orgId || !user) return;
+    setLoading(true);
+    setLoadFailed(false);
     try {
-      const [p, s] = await Promise.all([getProfile(user.id), getSettings(user.id)]);
-      setProfile(p);
-      setSettings(s);
+      const [profile, data] = await Promise.all([
+        getProfile(user.id),
+        loadDashboardOverview(orgId, DEFAULT_TZ, todayIso()),
+      ]);
+      setFirstName(profile?.full_name?.split(' ')[0] ?? null);
+      setOverview(data);
+
+      const staffById = new Map(data.staff.map((s) => [s.id, s]));
+      setPending(await getPendingRequests(orgId, staffById));
     } catch (error) {
       reportError(error, { area: 'dashboard:load' });
+      setLoadFailed(true);
+      showError('Could not load the dashboard. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [orgId, user, showError]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const toggleNotifications = useCallback(async (): Promise<void> => {
-    if (!user || !settings) return;
-    const next = !settings.notifications_enabled;
-    setSettings({ ...settings, notifications_enabled: next }); // optimistic
-    try {
-      await updateSettings(user.id, { notifications_enabled: next });
-      // Fire a background event (fire-and-forget).
-      void send('settings/updated', { userId: user.id, notifications_enabled: next });
-    } catch (error) {
-      setSettings({ ...settings, notifications_enabled: !next }); // rollback
-      reportError(error, { area: 'dashboard:toggle' });
-    }
-  }, [user, settings, send]);
+  // Re-fetched separately so stepping through days doesn't reload the whole page.
+  useEffect(() => {
+    if (!orgId || !overview) return;
+    let cancelled = false;
+    setDayLoading(true);
+    const period = resolvePeriod('day', dayAnchor, timezone);
+    listShiftsForPeriod({ orgId, fromIso: period.fromIso, toIso: period.toIso })
+      .then((shifts) => {
+        if (cancelled) return;
+        setDayGroups(groupShifts(shifts, overview.shiftTypes, overview.locations));
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        reportError(error, { area: 'dashboard:day-shifts' });
+        showError('Could not load the schedule for that day.');
+      })
+      .finally(() => {
+        if (!cancelled) setDayLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, overview, dayAnchor, timezone, showError]);
+
+  const dayLabel = useMemo(
+    () => format(new Date(`${dayAnchor}T00:00:00`), 'EEEE, d MMMM yyyy'),
+    [dayAnchor],
+  );
+
+  if (loading) {
+    return <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>;
+  }
+
+  if (loadFailed && !overview) {
+    return (
+      <Card className="max-w-sm">
+        <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
+          Something went wrong loading the dashboard.
+        </p>
+        <Button onClick={() => void load()}>Retry</Button>
+      </Card>
+    );
+  }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="mb-8 font-display text-3xl text-content dark:text-content-dark">
-        Dashboard
-      </h1>
-
-      {loading ? (
-        <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
-      ) : (
-        <div className="space-y-6">
-          <Card>
-            <h2 className="mb-2 text-lg font-semibold text-content dark:text-content-dark">
-              Profile
-            </h2>
-            <p className="text-content-muted dark:text-content-muted-dark">
-              {profile?.full_name ?? 'No name set'} · {profile?.email ?? user?.email}
-            </p>
-          </Card>
-
-          <Card className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-content dark:text-content-dark">
-                Notifications
-              </h2>
-              <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                {settings?.notifications_enabled ? 'Enabled' : 'Disabled'}
-              </p>
-            </div>
-            <Button size="sm" onClick={() => void toggleNotifications()}>
-              {settings?.notifications_enabled ? 'Turn off' : 'Turn on'}
-            </Button>
-          </Card>
-        </div>
-      )}
-    </div>
+    <DashboardView
+      firstName={firstName}
+      overview={overview!}
+      pending={pending}
+      dayGroups={dayGroups}
+      dayLoading={dayLoading}
+      dayLabel={dayLabel}
+      timezone={timezone}
+      now={now}
+      onPrevDay={() => setDayAnchor((d) => stepPeriod('day', d, -1))}
+      onNextDay={() => setDayAnchor((d) => stepPeriod('day', d, 1))}
+      onToday={() => setDayAnchor(todayIso())}
+      onSelectDate={setDayAnchor}
+    />
   );
 }
