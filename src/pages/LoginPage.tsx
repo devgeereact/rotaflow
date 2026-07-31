@@ -12,12 +12,14 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
+import { isValidEmail } from '@/lib/email';
 import { env, type OAuthProvider } from '@/lib/env';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { AuthSplitLayout, type AuthFeature } from '@/components/auth/AuthSplitLayout';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
+import { EmailSuggestion } from '@/components/auth/EmailSuggestion';
 
 const FEATURES: AuthFeature[] = [
   {
@@ -98,10 +100,23 @@ export function LoginPage(): JSX.Element {
       setError('Enter your email address first.');
       return Promise.resolve();
     }
+    if (!isValidEmail(email)) {
+      setError('That does not look like a valid email address.');
+      return Promise.resolve();
+    }
     return withBusy(async () => {
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
-        options: { emailRedirectTo: redirectTo },
+        options: {
+          emailRedirectTo: redirectTo,
+          // This is the sign-IN page: never create an account from a typo.
+          // The client default is `true` (verified in auth-js
+          // GoTrueClient.js: `create_user: options?.shouldCreateUser ?? true`),
+          // which silently registered an orphan user for every mistyped
+          // address AND mailed a hard-bouncing mailbox. Signing up via magic
+          // link is still possible — on /signup, where it's intended.
+          shouldCreateUser: false,
+        },
       });
       if (otpError) throw otpError;
       setMessage('Magic link sent — check your inbox.');
@@ -136,6 +151,7 @@ export function LoginPage(): JSX.Element {
             onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
             placeholder="Enter your email"
           />
+          <EmailSuggestion email={email} onAccept={setEmail} />
         </div>
 
         <div className="mb-2">

@@ -21,7 +21,9 @@ import { Label } from '@/components/ui/Label';
 import { AuthSplitLayout, type AuthFeature } from '@/components/auth/AuthSplitLayout';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { EmailSuggestion } from '@/components/auth/EmailSuggestion';
 import { evaluatePassword } from '@/lib/password';
+import { isValidEmail } from '@/lib/email';
 
 const FEATURES: AuthFeature[] = [
   {
@@ -128,6 +130,12 @@ export function SignupPage(): JSX.Element {
       setError('Enter your email address first.');
       return Promise.resolve();
     }
+    if (!isValidEmail(email)) {
+      setError('That does not look like a valid email address.');
+      return Promise.resolve();
+    }
+    // shouldCreateUser is left at its default (true) here, unlike on
+    // /login — this is the signup page, so creating the account is the point.
     return withBusy(async () => {
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
@@ -152,7 +160,7 @@ export function SignupPage(): JSX.Element {
     !busy &&
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
-    email.trim().length > 0 &&
+    isValidEmail(email) &&
     passwordValid;
 
   return (
@@ -213,6 +221,7 @@ export function SignupPage(): JSX.Element {
             // edited here would only produce a confusing rejection at redemption.
             readOnly={emailLocked}
           />
+          {!emailLocked && <EmailSuggestion email={email} onAccept={setEmail} />}
           {emailLocked && (
             <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
               This invitation can only be accepted with this address.
