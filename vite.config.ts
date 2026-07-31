@@ -6,8 +6,14 @@ import pkg from './package.json';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Relative base so the static bundle works from any cPanel sub-directory.
-  base: './',
+  // Absolute base: rota.gakinz.com serves this bundle from its domain root,
+  // not a cPanel sub-directory. A relative base ('./') resolves asset/manifest
+  // URLs against the CURRENT route path, not the site root — so landing
+  // directly on any nested route (e.g. /app/dashboard after sign-in) requests
+  // assets from e.g. /app/assets/*, 404s, and gets index.html's HTML back for
+  // a script/stylesheet request, which fails MIME-type checks and leaves a
+  // blank page. Absolute paths resolve correctly regardless of route depth.
+  base: '/',
 
   // Single source of truth for the version the splash/about surfaces show.
   define: {
@@ -40,8 +46,8 @@ export default defineConfig({
         background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'portrait',
-        scope: './',
-        start_url: './',
+        scope: '/',
+        start_url: '/',
         icons: [
           { src: 'icons/pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/pwa-512.png', sizes: '512x512', type: 'image/png' },
