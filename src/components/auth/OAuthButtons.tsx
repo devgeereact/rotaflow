@@ -47,7 +47,7 @@ export function OAuthButtons({
             type="button"
             disabled={busy}
             onClick={() => onSelect(provider)}
-            className="flex h-12 items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-content transition-transform duration-150 ease-in-out hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+            className="flex h-12 items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-content transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
           >
             <Icon className="h-5 w-5" />
             {PROVIDER_LABEL[provider]}
