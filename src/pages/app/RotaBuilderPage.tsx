@@ -686,8 +686,9 @@ export function RotaBuilderPage(): JSX.Element {
             <Button size="sm" variant="secondary" onClick={() => setWeekStart(getMonday(new Date()))}>
               Today
             </Button>
-            <span className="text-sm font-semibold text-content dark:text-content-dark">
+            <span className="flex items-center gap-1 text-sm font-semibold text-content dark:text-content-dark">
               {formatWeekRange(dates)}
+              <ChevronDown size={14} aria-hidden="true" className="text-content-muted" />
             </span>
           </div>
 
@@ -701,13 +702,15 @@ export function RotaBuilderPage(): JSX.Element {
                 <button
                   key={tab}
                   type="button"
-                  disabled={tab !== 'Week'}
                   title={tab !== 'Week' ? `${tab} view — coming soon` : undefined}
+                  onClick={() => {
+                    if (tab !== 'Week') showError(`${tab} view is coming soon.`);
+                  }}
                   className={cn(
                     'rounded-lg px-3 py-1.5 text-sm font-medium',
                     tab === 'Week'
                       ? 'bg-primary text-white'
-                      : 'cursor-not-allowed text-content-muted/50 dark:text-content-muted-dark/50',
+                      : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
                   )}
                 >
                   {tab}
@@ -823,9 +826,9 @@ export function RotaBuilderPage(): JSX.Element {
           </Select>
           <button
             type="button"
-            disabled
             title="More filters — coming soon"
-            className="flex cursor-not-allowed items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content-muted/50 dark:border-surface-border-dark dark:text-content-muted-dark/50"
+            onClick={() => showError('More filters are coming soon.')}
+            className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
           >
             More filters
             <ChevronDown size={14} aria-hidden="true" />
@@ -930,7 +933,10 @@ export function RotaBuilderPage(): JSX.Element {
             </div>
 
             <div className="flex flex-row items-start gap-1 overflow-x-auto p-3 xl:flex-col xl:overflow-visible">
-              <RotaActionRail onAutoFill={handleAutoFillClick} />
+              <RotaActionRail
+                onAutoFill={handleAutoFillClick}
+                onComingSoon={(label) => showError(`${label} is coming soon.`)}
+              />
             </div>
           </Card>
         )}

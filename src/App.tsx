@@ -14,6 +14,7 @@ import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
 import { OnboardingPreviewPage } from '@/pages/OnboardingPreviewPage';
+import { RotaBuilderPreviewPage } from '@/pages/RotaBuilderPreviewPage';
 import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
 import { SignupPage } from '@/pages/SignupPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -70,6 +71,10 @@ export function App(): JSX.Element {
                     Supabase session and a seeded organisation. Fixed mock
                     data reproduces design/Workforce-Dashboard.png's numbers. */}
                 <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
+                {/* Design-loop preview only — /app/rota needs a real
+                    Supabase session, org and shifts. Mirrors RotaBuilderPage's
+                    render tree against local mock data. */}
+                <Route path="/rota-builder-preview" element={<RotaBuilderPreviewPage />} />
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
