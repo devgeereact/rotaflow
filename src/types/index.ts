@@ -69,7 +69,11 @@ export type DepartmentInsert = Database['public']['Tables']['departments']['Inse
 export type DepartmentUpdate = Database['public']['Tables']['departments']['Update'];
 
 export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row'];
+export type EmergencyContactInsert =
+  Database['public']['Tables']['emergency_contacts']['Insert'];
+
 export type StaffDocument = Database['public']['Tables']['documents']['Row'];
+export type StaffDocumentInsert = Database['public']['Tables']['documents']['Insert'];
 
 /**
  * Org SMTP: `smtp_pass` is write-only — excluded from the column-level

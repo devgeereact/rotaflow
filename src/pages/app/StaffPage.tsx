@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Download,
+  FileText,
   Plus,
   Search,
   ShieldOff,
+  Siren,
   UserRoundX,
   UserRoundCheck,
 } from 'lucide-react';
@@ -18,6 +20,8 @@ import {
 } from '@/services/staffService';
 import { listDepartments } from '@/services/locationService';
 import { anonymizeStaffMember, exportStaffData } from '@/services/gdprService';
+import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModal';
+import { DocumentsModal } from '@/components/staff/DocumentsModal';
 import { downloadJson } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
@@ -67,6 +71,10 @@ export function StaffPage(): JSX.Element {
   const [editingStaff, setEditingStaff] = useState<StaffProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gdprBusyId, setGdprBusyId] = useState<string | null>(null);
+  const [emergencyContactsFor, setEmergencyContactsFor] = useState<StaffProfile | null>(
+    null,
+  );
+  const [documentsFor, setDocumentsFor] = useState<StaffProfile | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId) return;
@@ -325,6 +333,24 @@ export function StaffPage(): JSX.Element {
                         )}
                         <button
                           type="button"
+                          onClick={() => setEmergencyContactsFor(person)}
+                          aria-label={`Emergency contacts for ${person.first_name} ${person.last_name}`}
+                          title="Emergency contacts"
+                          className="text-content-muted hover:text-primary dark:text-content-muted-dark"
+                        >
+                          <Siren size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDocumentsFor(person)}
+                          aria-label={`Documents for ${person.first_name} ${person.last_name}`}
+                          title="Documents"
+                          className="text-content-muted hover:text-primary dark:text-content-muted-dark"
+                        >
+                          <FileText size={16} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => void toggleActive(person)}
                           aria-label={person.active ? 'Deactivate' : 'Reactivate'}
                           className="text-content-muted hover:text-primary dark:text-content-muted-dark"
@@ -352,6 +378,26 @@ export function StaffPage(): JSX.Element {
         departments={departments}
         initial={editingStaff}
       />
+
+      {orgId && emergencyContactsFor && (
+        <EmergencyContactsModal
+          open={Boolean(emergencyContactsFor)}
+          onClose={() => setEmergencyContactsFor(null)}
+          orgId={orgId}
+          staffProfileId={emergencyContactsFor.id}
+          staffName={`${emergencyContactsFor.first_name} ${emergencyContactsFor.last_name}`}
+        />
+      )}
+
+      {orgId && documentsFor && (
+        <DocumentsModal
+          open={Boolean(documentsFor)}
+          onClose={() => setDocumentsFor(null)}
+          orgId={orgId}
+          staffProfileId={documentsFor.id}
+          staffName={`${documentsFor.first_name} ${documentsFor.last_name}`}
+        />
+      )}
     </div>
   );
 }
