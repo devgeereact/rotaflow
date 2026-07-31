@@ -59,6 +59,17 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: 'eslint-plugin-*'
         update-types: ['version-update:semver-major']
+      # eslint-plugin-react-refresh is 0.x, where the MINOR slot carries the
+      # breaking change — so the major rule above cannot protect it and the
+      # dev-dependencies group's `update-types: [minor, patch]` waves it
+      # straight through. That is exactly what happened: PR #5 bumped it
+      # 0.4.26 -> 0.5.3, which requires eslint ^9 || ^10 against this project's
+      # eslint 8.57.1. It merged and `npm ci` on main started failing with
+      # ERESOLVE — main was red until #52. Pinned back to ^0.4.26; lift this
+      # in the same PR that moves to ESLint 9.
+      - dependency-name: eslint-plugin-react-refresh
+        update-types:
+          ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: '@typescript-eslint/*'
         update-types: ['version-update:semver-major']
       - dependency-name: prettier

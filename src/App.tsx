@@ -60,50 +60,68 @@ export function App(): JSX.Element {
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/splash" element={<SplashScreen />} />
-                {/* Design-loop preview only — the real screen only ever
-                    renders inline from ProtectedRoute/AppShell while auth or
-                    org membership is resolving. Fixed props reproduce the
-                    "setting up organisation" mid-boot state in design/appboot.png. */}
-                <Route
-                  path="/appboot"
-                  element={<AppBootScreen authResolved orgResolved={false} />}
-                />
-                {/* Design-loop preview only — /onboarding needs a real
-                    Supabase session and writes real rows. ?step=1|2|5
-                    reproduces the reference-designed steps against mock
-                    local state. */}
-                <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
-                {/* Design-loop preview only — /app/dashboard needs a real
-                    Supabase session and a seeded organisation. Fixed mock
-                    data reproduces design/Workforce-Dashboard.png's numbers. */}
-                <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
-                {/* Design-loop preview only — /app/rota needs a real
-                    Supabase session, org and shifts. Mirrors RotaBuilderPage's
-                    render tree against local mock data. */}
-                <Route
-                  path="/rota-builder-preview"
-                  element={<RotaBuilderPreviewPage />}
-                />
-                {/* Design-loop preview only — /app/schedule needs a real
-                    Supabase session and a published rota. Fixed mock data
-                    reproduces design/published-schedule.png's numbers. */}
-                <Route path="/schedule-preview" element={<SchedulePreviewPage />} />
-                {/* Design-loop preview only — /app/timesheets needs a real
-                    Supabase session and clock events. Fixed mock data
-                    reproduces design/Timesheets-Dashboard.png's numbers. */}
-                <Route path="/timesheets-preview" element={<TimesheetsPreviewPage />} />
-                {/* Design-loop preview only — /app/clock-in needs a real
-                    Supabase session, a staff profile and a scheduled shift.
-                    Fixed mock data reproduces design/clockin.png. */}
-                <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
-                {/* Design-loop preview only — /app/staff needs a real Supabase
-                    session and a seeded roster. Fixed mock data reproduces
-                    design/staff.png and design/Staff-Profile.png. */}
-                <Route path="/staff-preview" element={<StaffPreviewPage />} />
-                <Route
-                  path="/staff-preview/:staffId"
-                  element={<StaffProfilePreviewPage />}
-                />
+                {/* ---------------------------------------------------------
+                    Design-loop preview routes — DEV ONLY.
+
+                    Every screen below lives behind auth in the real product and
+                    needs a Supabase session, an org and seeded rows that the
+                    design loop cannot produce, so each preview renders the same
+                    component tree against fixed mock data chosen to reproduce
+                    its reference PNG's exact numbers. See docs/LOOP.md.
+
+                    They shipped to production unguarded until 2026-07-31: all
+                    seven answered 200 unauthenticated on rota.gakinz.com, so
+                    anyone who guessed a URL got a page of invented staff names
+                    and metrics with no branding and no way back into the app.
+                    Every preview page and its mock dataset was also carried in
+                    the production bundle.
+
+                    `import.meta.env.DEV` is statically replaced with `false` at
+                    build time, so Rollup drops this whole branch AND tree-shakes
+                    the preview pages and their mock modules out of the bundle.
+                    The loop is unaffected — it drives the dev server, where DEV
+                    is true. Keep new preview routes inside this block.
+                    --------------------------------------------------------- */}
+                {import.meta.env.DEV && (
+                  <>
+                    {/* The real screen only ever renders inline from
+                        ProtectedRoute/AppShell while auth or org membership is
+                        resolving. Fixed props reproduce the "setting up
+                        organisation" mid-boot state in design/appboot.png. */}
+                    <Route
+                      path="/appboot"
+                      element={<AppBootScreen authResolved orgResolved={false} />}
+                    />
+                    {/* /onboarding writes real rows. ?step=1|2|5 reproduces the
+                        reference-designed steps against mock local state. */}
+                    <Route
+                      path="/onboarding-preview"
+                      element={<OnboardingPreviewPage />}
+                    />
+                    {/* design/Workforce-Dashboard.png's numbers. */}
+                    <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
+                    {/* Mirrors RotaBuilderPage's render tree against mock data. */}
+                    <Route
+                      path="/rota-builder-preview"
+                      element={<RotaBuilderPreviewPage />}
+                    />
+                    {/* design/published-schedule.png's numbers. */}
+                    <Route path="/schedule-preview" element={<SchedulePreviewPage />} />
+                    {/* design/Timesheets-Dashboard.png's numbers. */}
+                    <Route
+                      path="/timesheets-preview"
+                      element={<TimesheetsPreviewPage />}
+                    />
+                    {/* design/clockin.png. */}
+                    <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
+                    {/* design/staff.png and design/Staff-Profile.png. */}
+                    <Route path="/staff-preview" element={<StaffPreviewPage />} />
+                    <Route
+                      path="/staff-preview/:staffId"
+                      element={<StaffProfilePreviewPage />}
+                    />
+                  </>
+                )}
                 {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
