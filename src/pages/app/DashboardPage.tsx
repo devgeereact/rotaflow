@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getProfile } from '@/services/profileService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import {
@@ -70,6 +71,13 @@ export function DashboardPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['shifts', 'leave_requests', 'shift_swaps', 'announcements'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => void load(),
+  });
 
   // Re-fetched separately so stepping through days doesn't reload the whole page.
   useEffect(() => {

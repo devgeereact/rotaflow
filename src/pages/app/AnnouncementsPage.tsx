@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
   createAnnouncement,
   deleteAnnouncement,
@@ -40,6 +41,13 @@ export function AnnouncementsPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['announcements'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => setReloadKey((k) => k + 1),
+  });
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');

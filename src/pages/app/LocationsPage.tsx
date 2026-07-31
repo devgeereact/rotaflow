@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { MapPin, Plus, Pencil } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
   createLocation,
   listLocations,
@@ -57,6 +58,13 @@ export function LocationsPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Live updates: refetch when someone else changes this data.
+  useRealtimeRefresh({
+    tables: ['locations', 'departments'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => void load(),
+  });
 
   const handleSubmit = async (values: LocationFormValues): Promise<void> => {
     if (!orgId) return;

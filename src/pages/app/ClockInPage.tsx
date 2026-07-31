@@ -6,6 +6,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 import { useToast } from '@/hooks/useToast';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile } from '@/services/staffService';
 import { listLocations } from '@/services/locationService';
 import { getLatestClockEvent, recordClockEvent } from '@/services/clockService';
@@ -84,6 +85,16 @@ export function ClockInPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Live updates: a manager correcting a clock event, or this person clocking
+  // in on another device, should be reflected here rather than leaving two
+  // screens disagreeing about whether they are on shift.
+  useRealtimeRefresh({
+    tables: ['clock_events'],
+    scope: { column: 'org_id', value: orgId },
+    onChange: () => setReloadKey((k) => k + 1),
+  });
 
   useEffect(() => {
     if (!orgId || !user) return;
@@ -115,7 +126,7 @@ export function ClockInPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [orgId, user]);
+  }, [orgId, user, reloadKey]);
 
   const currentStatus = toClockEventType(latest?.type);
   const nextAction = NEXT_ACTION[currentStatus];

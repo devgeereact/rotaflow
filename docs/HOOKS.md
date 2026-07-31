@@ -186,6 +186,60 @@ export function useToast(): UseToast;
 > the rota builder silently dropped drag-and-drop shift assignments that way.
 > Errors render with `role="alert"` and an 8s dwell; success uses `role="status"`.
 
+### 11. `useRealtimeRefresh`
+
+`src/hooks/useRealtimeRefresh.ts`
+Subscribes to Supabase Realtime `postgres_changes` and calls back (debounced)
+when data behind the current screen changes, so a published rota or an approved
+request appears without a manual reload.
+
+```ts
+type RealtimeTable =
+  | 'shifts'
+  | 'rotas'
+  | 'leave_requests'
+  | 'shift_swaps'
+  | 'notifications'
+  | 'announcements'
+  | 'clock_events'
+  | 'availability'
+  | 'staff_profiles'
+  | 'invites'
+  | 'locations'
+  | 'departments'
+  | 'shift_types';
+interface RealtimeScope {
+  column: 'org_id' | 'user_id';
+  value: string | null; // null disables the subscription
+}
+interface UseRealtimeRefreshOptions {
+  tables: RealtimeTable[];
+  scope: RealtimeScope;
+  onChange: () => void;
+  enabled?: boolean;
+}
+interface UseRealtimeRefresh {
+  connected: boolean;
+}
+export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRefresh;
+```
+
+> **Rule: treat an event as a signal, never as data.** The payload is
+> deliberately ignored; `onChange` re-queries through the screen's normal
+> RLS-protected path. Realtime does apply RLS to `postgres_changes`, but DELETE
+> payloads carry only the primary key and cannot be filtered the way
+> INSERT/UPDATE are — so rendering a payload is the one way a row the viewer
+> could not otherwise read could reach the screen. Re-querying means the data
+> always arrives through a query the database has already authorised.
+
+> **Rule: live updates are an enhancement, never a dependency.** If the socket
+> never connects, every screen still loads and refetches exactly as before.
+> `connected` is exposed for diagnostics; no screen gates its rendering on it.
+
+Tables must also be in the `supabase_realtime` publication —
+`0012_realtime.sql`. Adding a table to `RealtimeTable` without adding it there
+silently produces a subscription that never fires.
+
 ## Conventions
 
 - Every hook is fully typed with an explicit return interface.
