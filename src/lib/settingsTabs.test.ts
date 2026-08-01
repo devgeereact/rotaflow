@@ -18,13 +18,25 @@ describe('settingsTabsForRole', () => {
     expect(settingsTabsForRole('owner')).toHaveLength(SETTINGS_TABS.length);
   });
 
-  it('hides Billing and Permissions from a manager', () => {
-    // Billing spends money; Permissions can grant someone the ability to.
+  it('hides Billing, Permissions and Audit from a manager', () => {
+    // Billing spends money; Permissions can grant someone the ability to;
+    // Audit is owner-only in RLS (0002_rotaflow.sql).
     const routes = settingsTabsForRole('manager').map((t) => t.to);
     expect(routes).not.toContain('/app/settings/billing');
     expect(routes).not.toContain('/app/settings/permissions');
     expect(routes).toContain('/app/settings/organisation');
-    expect(routes).toContain('/app/settings/audit');
+  });
+
+  it('hides Audit from a manager, matching the RLS in 0002', () => {
+    // `audit_logs_select` is owner-only in the database. If this tab were
+    // shown to a manager the screen would render an empty trail and look
+    // broken, which is worse than not offering it.
+    expect(settingsTabsForRole('manager').map((t) => t.to)).not.toContain(
+      '/app/settings/audit',
+    );
+    expect(settingsTabsForRole('owner').map((t) => t.to)).toContain(
+      '/app/settings/audit',
+    );
   });
 
   it('shows staff nothing at all', () => {
