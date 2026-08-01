@@ -121,7 +121,7 @@ export function StaffDirectoryView({
             onSearchChange={onSearchChange}
             selects={selects}
             onMoreFilters={onMoreFilters}
-            onAddStaff={onAddStaff}
+            onAdd={onAddStaff}
           />
         </div>
 

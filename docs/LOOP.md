@@ -27,7 +27,8 @@ seeded rows, which the loop cannot produce. The pattern already in use is a
 **`*-preview` route** carrying fixed mock data that reproduces the reference's exact
 numbers: `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
 `/timesheets-preview`, `/clockin-preview`, `/onboarding-preview`, `/appboot`,
-`/staff-preview`, `/locations-preview`, `/swaps-preview`, `/leave-preview`.
+`/staff-preview`, `/staff-preview/invitations`, `/locations-preview`,
+`/swaps-preview`, `/leave-preview`.
 
 **The references are not 1:1 CSS pixels — check the export scale before measuring
 anything.** Several mockups are large designs exported smaller, and two separate
@@ -80,8 +81,9 @@ Two things about them that have caused re-work:
 | schedule-published  | `/schedule-preview` (published state) | `design/published-schedule.png`      | Matched (#42)                                                                                                                                                                                                                 |
 | timesheets          | `/timesheets-preview`                 | `design/Timesheets-Dashboard.png`    | Matched (#44)                                                                                                                                                                                                                 |
 | clockin             | `/clockin-preview`                    | `design/clockin.png`                 | Matched (#43)                                                                                                                                                                                                                 |
-| staff               | `/app/staff`                          | `design/staff.png`                   | **In flight** — branch `design-staff-match`. Do not start a second pass on this                                                                                                                                               |
-| staff-profile       | `/app/staff/:id`                      | `design/Staff-Profile.png`           | **In flight** — same branch. Needs the `:id` route built, not just styled                                                                                                                                                     |
+| staff               | `/staff-preview`                      | `design/staff.png`                   | Matched — now the Directory tab of the merged Staff workspace. Capture at 1688 wide and scale by `1672/1920`; narrower crowds the columns                                                                                     |
+| staff-invitations   | `/staff-preview/invitations`          | — (no reference)                     | Built — the old Team screen, merged in as the second tab. Inferred from `design/staff.png` + `design/designsystem.png`; see `design/.loop/staff-invitations-log.md`. `?state=empty` / `?state=link` render its other states   |
+| staff-profile       | `/app/staff/:id`                      | `design/Staff-Profile.png`           | Matched                                                                                                                                                                                                                       |
 | availability        | `/app/availability`                   | `design/Availability.png`            | **Not matched** — next up                                                                                                                                                                                                     |
 | leave               | `/leave-preview`                      | `design/Leave.png`                   | Matched. Capture at 1656×1300 and scale by `1672/1920`; see `design/.loop/leave-log.md`                                                                                                                                       |
 | swaps               | `/swaps-preview`                      | `design/Swap-Request.png`            | Matched — `/app/swaps` renders the same `SwapsView`, minus the Swap Rules card (no policy store). See `design/.loop/swaps-log.md`                                                                                             |
@@ -111,16 +113,15 @@ No mockup exists for these; layout is **inferred** from the nearest built/refere
 screen plus the tokens in `design/designsystem.png`. Run the loop against the closest
 ref for surface/type/radius fidelity only — do **not** try to make them identical to it.
 
-| `<SCREEN>`    | route                  | closest ref (inferred from)                         |
-| ------------- | ---------------------- | --------------------------------------------------- |
-| clock-manual  | `/app/clock`           | `design/clockin.png` (the GPS state is referenced)  |
-| team          | `/app/team`            | `design/staff.png` (table/list + filter bar layout) |
-| notifications | `/app/notifications`   | `design/Announcements-Dashboard.png` (feed layout)  |
-| notfound      | `*` (bad route)        | `design/designsystem.png` (tokens only)             |
-| errorboundary | thrown render          | `design/designsystem.png` (tokens only)             |
-| offlinebanner | global, offline        | `design/designsystem.png` (status pill styles)      |
-| installprompt | global, installable    | `design/designsystem.png` (card + button styles)    |
-| updateprompt  | global, new SW waiting | `design/designsystem.png` (card + button styles)    |
+| `<SCREEN>`    | route                  | closest ref (inferred from)                        |
+| ------------- | ---------------------- | -------------------------------------------------- |
+| clock-manual  | `/app/clock`           | `design/clockin.png` (the GPS state is referenced) |
+| notifications | `/app/notifications`   | `design/Announcements-Dashboard.png` (feed layout) |
+| notfound      | `*` (bad route)        | `design/designsystem.png` (tokens only)            |
+| errorboundary | thrown render          | `design/designsystem.png` (tokens only)            |
+| offlinebanner | global, offline        | `design/designsystem.png` (status pill styles)     |
+| installprompt | global, installable    | `design/designsystem.png` (card + button styles)   |
+| updateprompt  | global, new SW waiting | `design/designsystem.png` (card + button styles)   |
 
 ## The prompt
 

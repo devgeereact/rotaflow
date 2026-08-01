@@ -37,6 +37,7 @@ import {
 import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModal';
 import { DocumentsModal } from '@/components/staff/DocumentsModal';
 import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
+import { StaffWorkspaceHeader } from '@/components/staff/StaffWorkspaceHeader';
 import {
   buildStats,
   onLeaveToday,
@@ -115,9 +116,10 @@ function compareRows(
 }
 
 /**
- * The Staff Directory (design/staff.png). Everything the screen shows is
- * derived from Supabase and scoped to the active org; RLS is the real gate,
- * `usePermissions` only decides which affordances appear.
+ * The Staff Directory (design/staff.png) — the first tab of the Staff
+ * workspace, whose second is `StaffInvitationsPage`. Everything the screen
+ * shows is derived from Supabase and scoped to the active org; RLS is the real
+ * gate, `usePermissions` only decides which affordances appear.
  */
 export function StaffPage(): JSX.Element {
   const { orgId } = useOrg();
@@ -477,14 +479,11 @@ export function StaffPage(): JSX.Element {
 
   return (
     <div>
-      <div className="mb-10">
-        <h1 className="font-display text-3xl font-bold text-content dark:text-content-dark">
-          Staff
-        </h1>
-        <p className="mt-1.5 text-sm text-content-muted dark:text-content-muted-dark">
-          Manage your team, roles, departments and availability.
-        </p>
-      </div>
+      <StaffWorkspaceHeader
+        tab="directory"
+        basePath="/app/staff"
+        canInvite={canManageStaff}
+      />
 
       {error && (
         <p className="mb-4 text-sm text-danger" role="alert">

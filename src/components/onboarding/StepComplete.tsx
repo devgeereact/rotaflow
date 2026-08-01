@@ -42,7 +42,7 @@ const NEXT_STEPS = [
     tint: 'bg-shift-violet/15 text-shift-violet',
     title: 'Add more team members',
     body: 'Invite more colleagues to join your organisation.',
-    to: '/app/team',
+    to: '/app/staff/invitations',
     cta: 'Invite team',
   },
   {

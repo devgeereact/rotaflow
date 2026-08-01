@@ -24,8 +24,14 @@ interface StaffFilterBarProps {
   search: string;
   onSearchChange: (value: string) => void;
   selects: StaffFilterSelect[];
-  onMoreFilters: () => void;
-  onAddStaff?: () => void;
+  /** Omitted on the Invitations tab, which has nothing further to filter by. */
+  onMoreFilters?: () => void;
+  onAdd?: () => void;
+  /** Label on the primary action. Defaults to the directory's "Add Staff". */
+  addLabel?: string;
+  searchPlaceholder?: string;
+  /** Accessible name for the search field; defaults to the placeholder's noun. */
+  searchLabel?: string;
 }
 
 const CONTROL =
@@ -35,14 +41,18 @@ const CONTROL =
 
 /**
  * Search + scope selects + actions, sitting between the summary tiles and the
- * staff table (design/staff.png).
+ * table (design/staff.png). Shared by both tabs of the Staff workspace, so the
+ * labels are parameterised; the defaults are the directory's.
  */
 export function StaffFilterBar({
   search,
   onSearchChange,
   selects,
   onMoreFilters,
-  onAddStaff,
+  onAdd,
+  addLabel = 'Add Staff',
+  searchPlaceholder = 'Search staff...',
+  searchLabel = 'Search staff',
 }: StaffFilterBarProps): JSX.Element {
   return (
     <div className="flex flex-wrap items-center gap-4">
@@ -51,8 +61,8 @@ export function StaffFilterBar({
           type="search"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search staff..."
-          aria-label="Search staff"
+          placeholder={searchPlaceholder}
+          aria-label={searchLabel}
           className={cn(CONTROL, 'w-full pl-3.5 pr-9 placeholder:text-content-muted')}
         />
         <Search
@@ -90,27 +100,29 @@ export function StaffFilterBar({
       ))}
 
       <div className="ml-auto flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onMoreFilters}
-          className={cn(
-            CONTROL,
-            'flex items-center gap-2 px-3.5 font-medium transition-colors hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
-          )}
-        >
-          <ListFilter size={16} aria-hidden="true" />
-          More Filters
-          <ChevronDown size={16} aria-hidden="true" />
-        </button>
-
-        {onAddStaff && (
+        {onMoreFilters && (
           <button
             type="button"
-            onClick={onAddStaff}
+            onClick={onMoreFilters}
+            className={cn(
+              CONTROL,
+              'flex items-center gap-2 px-3.5 font-medium transition-colors hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
+            )}
+          >
+            <ListFilter size={16} aria-hidden="true" />
+            More Filters
+            <ChevronDown size={16} aria-hidden="true" />
+          </button>
+        )}
+
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
             className="flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Plus size={16} aria-hidden="true" />
-            Add Staff
+            {addLabel}
           </button>
         )}
       </div>

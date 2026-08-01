@@ -106,7 +106,6 @@ const ResetPasswordPage = lazyPage(
   'ResetPasswordPage',
   () => import('@/pages/ResetPasswordPage'),
 );
-const TeamPage = lazyPage('TeamPage', () => import('@/pages/app/TeamPage'));
 const SchedulePage = lazyPage('SchedulePage', () => import('@/pages/app/SchedulePage'));
 const ClockInPage = lazyPage('ClockInPage', () => import('@/pages/app/ClockInPage'));
 const TimesheetsPage = lazyPage(
@@ -149,6 +148,10 @@ const DashboardPreviewPage = lazyPage(
   () => import('@/pages/app/DashboardPreviewPage'),
 );
 const StaffPage = lazyPage('StaffPage', () => import('@/pages/app/StaffPage'));
+const StaffInvitationsPage = lazyPage(
+  'StaffInvitationsPage',
+  () => import('@/pages/app/StaffInvitationsPage'),
+);
 const StaffProfilePage = lazyPage(
   'StaffProfilePage',
   () => import('@/pages/app/StaffProfilePage'),
@@ -238,8 +241,14 @@ export function App(): JSX.Element {
                       />
                       {/* design/clockin.png. */}
                       <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
-                      {/* design/staff.png and design/Staff-Profile.png. */}
+                      {/* design/staff.png and design/Staff-Profile.png. The
+                        Invitations tab has no reference; it is inferred from
+                        design/staff.png and design/designsystem.png. */}
                       <Route path="/staff-preview" element={<StaffPreviewPage />} />
+                      <Route
+                        path="/staff-preview/invitations"
+                        element={<StaffPreviewPage />}
+                      />
                       <Route
                         path="/staff-preview/:staffId"
                         element={<StaffProfilePreviewPage />}
@@ -291,8 +300,19 @@ export function App(): JSX.Element {
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<DashboardPage />} />
                     <Route path="staff" element={<StaffPage />} />
+                    {/* Second half of the same workspace, on its own URL so it
+                      can be linked and refreshed into. Declared before the
+                      `:staffId` route it would otherwise look like — the
+                      router ranks the static segment higher either way, but
+                      the order documents the intent. */}
+                    <Route path="staff/invitations" element={<StaffInvitationsPage />} />
                     <Route path="staff/:staffId" element={<StaffProfilePage />} />
-                    <Route path="team" element={<TeamPage />} />
+                    {/* Team was a separate screen until the two merged; keep
+                      old links, and the onboarding email, working. */}
+                    <Route
+                      path="team"
+                      element={<Navigate to="/app/staff/invitations" replace />}
+                    />
                     <Route path="locations" element={<LocationsPage />} />
                     {/* Second half of the same workspace, on its own URL so it
                       can be linked and refreshed into. */}

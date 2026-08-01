@@ -100,7 +100,7 @@ user menu.
 
 | Status | Screen                                  | Route                                 |
 | ------ | --------------------------------------- | ------------------------------------- |
-| ✅     | Team management — issue/revoke invites  | `/app/team`                           |
+| ✅     | Invitations — issue/revoke, Staff tab 2 | `/app/staff/invitations`              |
 | ✅     | Notifications inbox — read, push opt-in | `/app/notifications`                  |
 | ✅     | Account settings                        | `/app/account` (see §4)               |
 | ✅     | Forgot / reset password                 | `/forgot-password`, `/reset-password` |
@@ -113,14 +113,16 @@ The mockups' sidebar reads: Dashboard · Rota Builder · Schedule · Staff ·
 Availability · Leave · Swaps · Timesheets · Reports · Announcements · Locations ·
 **Settings** (expandable, 8 sub-items), with **My Profile** as its own sub-nav group.
 
-The built sidebar is a flat 15-item list: Dashboard · Rota · Schedule · Clock in ·
-Staff · Team · Locations · Availability · Leave · Swaps · Timesheets ·
-Announcements · Reports · Integrations · Settings.
+The built sidebar is a flat 14-item list: Dashboard · Rota · Schedule · Clock in ·
+Staff · Locations · Availability · Leave · Swaps · Timesheets · Announcements ·
+Reports · Integrations · Settings.
 
 Differences that are decisions, not bugs — worth settling before building Settings:
 
-- The designs have **no Clock in and no Team** in the sidebar. Both are built and
-  routed; if the design is authoritative they need a new home.
+- The designs have **no Clock in** in the sidebar. It is built and routed; if the
+  design is authoritative it needs a new home. **Team is settled** — it was the
+  same question Staff answers, so it is now the Invitations tab of the Staff
+  workspace and `/app/team` redirects there.
 - **Integrations** is a top-level nav item today but a Settings tab in the design.
 - **Notifications** has no sidebar entry in either; it's reached via the bell.
 - No collapsible nav group or tab-bar component exists yet — the Settings and
@@ -170,7 +172,7 @@ operational rows) on `/app/staff`, owner-only, via `anonymize_staff_member`
 12 screens live-update via `useRealtimeRefresh` (`docs/HOOKS.md` §11) against the 13
 tables published in `0012_realtime.sql`: Dashboard, Schedule, Leave, Swaps,
 Timesheets, Clock in, Availability, Announcements, Notifications, Staff, Locations,
-Team.
+Staff Invitations.
 
 **Rota Builder is deliberately excluded.** Its load path calls
 `getOrCreateRotaForPeriod`, which INSERTs, so a naive subscription creates a

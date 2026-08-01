@@ -5,7 +5,6 @@ import {
   CalendarDays,
   CalendarRange,
   Users,
-  UserPlus,
   MapPin,
   Clock3,
   LogIn,
@@ -34,8 +33,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Rota', icon: CalendarDays, to: '/app/rota' },
   { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
   { label: 'Clock in', icon: LogIn, to: '/app/clock' },
+  // Staff and Team were two entries answering the same question. Team is now
+  // the Invitations tab inside this one; /app/team still redirects there.
   { label: 'Staff', icon: Users, to: '/app/staff' },
-  { label: 'Team', icon: UserPlus, to: '/app/team' },
   { label: 'Locations', icon: MapPin, to: '/app/locations' },
   { label: 'Availability', icon: Clock3, to: '/app/availability' },
   { label: 'Leave', icon: Umbrella, to: '/app/leave' },
