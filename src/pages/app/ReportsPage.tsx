@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarRange, Download, Timer, Users } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -57,6 +57,14 @@ export function ReportsPage(): JSX.Element {
   const [runs, setRuns] = useState<ReportRunRecord[]>(() =>
     orgId ? readRuns(orgId) : [],
   );
+
+  // `useState` initialisers run once, but `orgId` is null until OrgContext
+  // resolves and changes again when the user switches organisation — without
+  // this, one org's starred reports and run log would show under another.
+  useEffect(() => {
+    setFavourites(orgId ? readFavourites(orgId) : []);
+    setRuns(orgId ? readRuns(orgId) : []);
+  }, [orgId]);
 
   const rangeLabel =
     REPORT_RANGES.find((range) => range.id === rangeId)?.label ?? 'This Month';
@@ -211,6 +219,15 @@ export function ReportsPage(): JSX.Element {
     ];
   }, [periodRuns]);
 
+  const categoryOptions = useMemo(
+    () =>
+      [...new Set(REPORT_CATALOGUE.map((report) => report.category))].map((name) => ({
+        value: name,
+        label: name,
+      })),
+    [],
+  );
+
   const recent: RecentReport[] = useMemo(
     () =>
       runs.slice(0, 4).map((run) => ({
@@ -280,10 +297,7 @@ export function ReportsPage(): JSX.Element {
       onTabChange={setActiveTab}
       search={search}
       onSearchChange={setSearch}
-      categories={REPORT_CATALOGUE.map((report) => ({
-        value: report.category,
-        label: report.category,
-      }))}
+      categories={categoryOptions}
       category={category}
       onCategoryChange={setCategory}
       formats={[{ value: 'CSV', label: 'CSV' }]}

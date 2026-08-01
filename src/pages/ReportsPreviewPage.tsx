@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BarChart3, CalendarDays, Download, Settings } from 'lucide-react';
 import { ReportsView } from '@/components/reports/ReportsView';
 import { DEMO_OVERVIEW, DEMO_RECENT_REPORTS, DEMO_REPORTS } from '@/lib/reportsDemo';
+import type { ReportRow } from '@/lib/reportRows';
 import type { ReportsTab } from '@/components/reports/ReportsTabs';
 import type { ReportQuickAction } from '@/components/reports/ReportsQuickActionsCard';
 
@@ -53,6 +54,25 @@ export function ReportsPreviewPage(): JSX.Element {
   const [format, setFormat] = useState('');
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [range, setRange] = useState('month');
+  const [favourites, setFavourites] = useState<string[]>(() =>
+    DEMO_REPORTS.filter((report) => report.favourite).map((report) => report.id),
+  );
+
+  // The controls really filter, so the preview exercises the empty state and
+  // the starred/unstarred rows rather than only re-rendering its own chrome.
+  // Defaults are wide open, so the first paint is the reference exactly.
+  const rows: ReportRow[] = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return DEMO_REPORTS.filter((report) => {
+      if (activeTab === 'favourites' && !favourites.includes(report.id)) return false;
+      if (favouritesOnly && !favourites.includes(report.id)) return false;
+      if (category && report.category !== category) return false;
+      if (format && report.format !== format) return false;
+      if (term && !`${report.name} ${report.description}`.toLowerCase().includes(term))
+        return false;
+      return true;
+    }).map((report) => ({ ...report, favourite: favourites.includes(report.id) }));
+  }, [activeTab, favourites, favouritesOnly, category, format, search]);
 
   return (
     <div className="min-h-screen bg-background px-6 py-7 dark:bg-background-dark">
@@ -70,9 +90,9 @@ export function ReportsPreviewPage(): JSX.Element {
         search={search}
         onSearchChange={setSearch}
         categories={[
-          { value: 'scheduling', label: 'Scheduling' },
-          { value: 'staffing', label: 'Staffing' },
-          { value: 'finance', label: 'Finance' },
+          { value: 'Scheduling', label: 'Scheduling' },
+          { value: 'Staffing', label: 'Staffing' },
+          { value: 'Finance', label: 'Finance' },
         ]}
         category={category}
         onCategoryChange={setCategory}
@@ -83,15 +103,21 @@ export function ReportsPreviewPage(): JSX.Element {
         location={location}
         onLocationChange={setLocation}
         formats={[
-          { value: 'pdf', label: 'PDF' },
-          { value: 'excel', label: 'Excel' },
+          { value: 'PDF', label: 'PDF' },
+          { value: 'Excel', label: 'Excel' },
         ]}
         format={format}
         onFormatChange={setFormat}
         favouritesOnly={favouritesOnly}
         onFavouritesOnlyChange={setFavouritesOnly}
-        rows={DEMO_REPORTS}
-        onToggleFavourite={noop}
+        rows={rows}
+        onToggleFavourite={(id) =>
+          setFavourites((current) =>
+            current.includes(id)
+              ? current.filter((value) => value !== id)
+              : [...current, id],
+          )
+        }
         onRun={noop}
         onDownload={noop}
         onRowMenu={noop}

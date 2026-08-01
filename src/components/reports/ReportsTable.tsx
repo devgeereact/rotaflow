@@ -157,6 +157,7 @@ export function ReportsTable({
                     type="button"
                     onClick={() => onRun(row.id)}
                     disabled={!row.runnable || runningId !== null}
+                    aria-busy={runningId === row.id}
                     aria-label={`Run ${row.name}`}
                     title={row.runnable ? `Run ${row.name}` : 'Not available yet'}
                     className={cn(ACTION, 'text-primary')}

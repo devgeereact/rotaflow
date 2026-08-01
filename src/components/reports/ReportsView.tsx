@@ -9,7 +9,7 @@ import { ReportsQuickActionsCard } from '@/components/reports/ReportsQuickAction
 import { ReportsTable } from '@/components/reports/ReportsTable';
 import { ReportsTabs } from '@/components/reports/ReportsTabs';
 import { ReportsTipBanner } from '@/components/reports/ReportsTipBanner';
-import type { ReportRow } from '@/lib/reportRows';
+import { reportsTabId, type ReportRow } from '@/lib/reportRows';
 import type { ReportsTab, ReportsTabDef } from '@/components/reports/ReportsTabs';
 import type { ReportFilterOption } from '@/components/reports/ReportsFilterBar';
 import type { ReportsOverviewSegment } from '@/components/reports/ReportsOverviewCard';
@@ -67,6 +67,8 @@ export interface ReportsViewProps {
   onTipAction: () => void;
 }
 
+const PANEL_ID = 'reports-panel';
+
 /**
  * `/app/reports` — the reporting workspace: the report catalogue with its
  * filters and per-row run/download actions, plus a rail of overview, recent
@@ -95,37 +97,44 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
             tabs={props.tabs}
             active={props.activeTab}
             onChange={props.onTabChange}
+            panelId={PANEL_ID}
           />
 
-          <div className="mb-5 mt-6">
-            <ReportsFilterBar
-              search={props.search}
-              onSearchChange={props.onSearchChange}
-              categories={props.categories}
-              category={props.category}
-              onCategoryChange={props.onCategoryChange}
-              locations={props.locations}
-              location={props.location}
-              onLocationChange={props.onLocationChange}
-              formats={props.formats}
-              format={props.format}
-              onFormatChange={props.onFormatChange}
-              favouritesOnly={props.favouritesOnly}
-              onFavouritesOnlyChange={props.onFavouritesOnlyChange}
-            />
-          </div>
+          <div
+            id={PANEL_ID}
+            role="tabpanel"
+            aria-labelledby={reportsTabId(props.activeTab)}
+          >
+            <div className="mb-5 mt-6">
+              <ReportsFilterBar
+                search={props.search}
+                onSearchChange={props.onSearchChange}
+                categories={props.categories}
+                category={props.category}
+                onCategoryChange={props.onCategoryChange}
+                locations={props.locations}
+                location={props.location}
+                onLocationChange={props.onLocationChange}
+                formats={props.formats}
+                format={props.format}
+                onFormatChange={props.onFormatChange}
+                favouritesOnly={props.favouritesOnly}
+                onFavouritesOnlyChange={props.onFavouritesOnlyChange}
+              />
+            </div>
 
-          <Card className="p-0">
-            <ReportsTable
-              rows={props.rows}
-              onToggleFavourite={props.onToggleFavourite}
-              onRun={props.onRun}
-              onDownload={props.onDownload}
-              onRowMenu={props.onRowMenu}
-              runningId={props.runningId}
-              emptyMessage={props.emptyMessage}
-            />
-          </Card>
+            <Card className="p-0">
+              <ReportsTable
+                rows={props.rows}
+                onToggleFavourite={props.onToggleFavourite}
+                onRun={props.onRun}
+                onDownload={props.onDownload}
+                onRowMenu={props.onRowMenu}
+                runningId={props.runningId}
+                emptyMessage={props.emptyMessage}
+              />
+            </Card>
+          </div>
 
           <div className="mt-4">
             <ReportsTipBanner

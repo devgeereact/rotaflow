@@ -52,6 +52,11 @@ const GREEN = 'bg-success/10 text-success';
 const NEUTRAL =
   'bg-divider text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark';
 
+/** `id` of a tab button in the reports tab bar, and the panel's `aria-labelledby`. */
+export function reportsTabId(tab: string): string {
+  return `reports-tab-${tab}`;
+}
+
 export const REPORT_CATEGORY_TONE: Record<ReportCategory, string> = {
   Scheduling: VIOLET,
   Staffing: BLUE,

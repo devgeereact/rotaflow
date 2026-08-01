@@ -40,7 +40,7 @@ export function ReportsOverviewCard({
         <h2 className="text-base font-semibold text-content dark:text-content-dark">
           Reports Overview
         </h2>
-        <div className="relative flex h-8 items-center rounded-lg border border-surface-border px-3 dark:border-surface-border-dark">
+        <div className="relative flex h-8 items-center rounded-lg border border-surface-border px-3 focus-within:ring-2 focus-within:ring-primary dark:border-surface-border-dark">
           <select
             value={range}
             onChange={(event) => onRangeChange(event.target.value)}

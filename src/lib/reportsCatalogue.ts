@@ -161,9 +161,16 @@ export function resolveRange(id: ReportRangeId, now: Date): ResolvedRange {
   }
 }
 
+/** Local calendar date — `toISOString()` would shift east-of-UTC midnights back a day. */
+function isoDate(date: Date): string {
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 /** `2025-05-01_2025-05-31` — the suffix on every generated filename. */
 export function rangeFileSuffix({ from, to }: ResolvedRange): string {
   const lastDay = new Date(to);
   lastDay.setDate(lastDay.getDate() - 1);
-  return `${from.toISOString().slice(0, 10)}_${lastDay.toISOString().slice(0, 10)}`;
+  return `${isoDate(from)}_${isoDate(lastDay)}`;
 }

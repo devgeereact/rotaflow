@@ -204,7 +204,7 @@ export const DEMO_RECENT_REPORTS: RecentReport[] = [
     id: 'recent-timesheet',
     name: 'Timesheet Summary',
     icon: Clock3,
-    category: 'Compliance',
+    category: 'Timesheets',
     scope: 'All Locations',
     runLabel: 'Today, 08:45',
     format: 'Excel',
