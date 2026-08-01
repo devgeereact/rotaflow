@@ -343,7 +343,7 @@ customer data should not share an RLS boundary — RLS is the _only_ thing separ
 them, and it is also the thing most likely to be changed while building the remaining
 Settings screens.
 
-### P1-4 — No Content-Security-Policy
+### P1-4 — No Content-Security-Policy — **FIXED** (#70)
 
 `.htaccess` now sets five headers; CSP is not one of them. For an app that renders
 user-supplied content (announcements, staff notes, document links) and holds session
@@ -364,9 +364,33 @@ Header set Content-Security-Policy "default-src 'self'; \
   frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
 ```
 
-Two traps: `style-src` needs `'unsafe-inline'` while framer-motion writes inline
-styles, and `connect-src` must include the **wss://** Supabase origin or every
-Realtime screen silently stops live-updating — which is 12 of them.
+**Shipped and verified 2026-08-01.** Derived from the code, then verified by
+serving the real production build behind the exact policy and driving a headless
+browser over it — twice, because the interesting failure only appears on the
+second load.
+
+Two traps, and testing found both:
+
+1. **`worker-src` needs `blob:`.** Sentry's `replayIntegration` compresses
+   payloads in a Worker created from a blob URL. Without it every route logs a
+   violation.
+2. **`connect-src` needs the Google Fonts origins** — even though fonts are a
+   _stylesheet_ and `style-src` already allows them. On the first visit the page
+   fetches the stylesheet and `style-src` governs it. On every visit after, the
+   service worker's `StaleWhileRevalidate` handler fetches it, and a `fetch()`
+   is governed by `connect-src`. Miss this and fonts break on the second load
+   and every load after — never the first, which is exactly the shape of bug
+   nobody manages to reproduce.
+
+The `wss://` trap called out above was real and is covered.
+
+`img-src` allows any `https:` deliberately: staff photos are arbitrary pasted
+URLs today (P2-3), so locking it to ImageKit would break real avatars. Images
+cannot execute. Tighten when uploads land. `openrouter.ai` is deliberately
+absent — the AI key never reaches the browser.
+
+Verified against **production** after deploy: all routes mount, no CSP
+violations, no network failures across an SW-controlled second navigation.
 
 ### P1-5 — `audit_logs` is provisioned but effectively empty
 
