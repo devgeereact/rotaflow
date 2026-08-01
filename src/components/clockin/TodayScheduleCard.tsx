@@ -2,27 +2,23 @@ import { CalendarDays, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { ClockCardHeading } from '@/components/clockin/ClockCardHeading';
 import { cn } from '@/lib/utils';
-
-export type ScheduleEntryTone = 'upcoming' | 'break';
-
-export interface TodayScheduleEntry {
-  id: string;
-  timeRange: string;
-  title: string;
-  /** Only the shift rows carry a location in the reference; breaks do not. */
-  locationName?: string;
-  badgeLabel: string;
-  tone: ScheduleEntryTone;
-}
+import type { ScheduleEntryTone, TodayScheduleEntry } from '@/lib/clockRows';
 
 interface TodayScheduleCardProps {
   entries: TodayScheduleEntry[];
   onViewFull?: () => void;
 }
 
+/**
+ * The reference only illustrates `upcoming` and `break`. `active` reuses the
+ * same green so a shift under way does not change colour mid-day; `done` drops
+ * to neutral so a finished shift stops competing for attention.
+ */
 const TONES: Record<ScheduleEntryTone, string> = {
   upcoming: 'bg-clock-tint text-clock-fg dark:bg-clock/20 dark:text-clock-tint',
+  active: 'bg-clock-tint text-clock-fg dark:bg-clock/20 dark:text-clock-tint',
   break: 'bg-info/15 text-primary dark:bg-info/20',
+  done: 'bg-surface-subtle text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark',
 };
 
 /** "Today's Schedule" rail card — the day's shift plus its unpaid break. */
@@ -31,7 +27,7 @@ export function TodayScheduleCard({
   onViewFull,
 }: TodayScheduleCardProps): JSX.Element {
   return (
-    <Card className="rounded-xl p-5">
+    <Card className="rounded-xl p-6">
       <ClockCardHeading
         icon={CalendarDays}
         title="Today's Schedule"

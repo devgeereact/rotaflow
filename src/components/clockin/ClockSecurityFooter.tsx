@@ -39,13 +39,15 @@ export function ClockSecurityFooter({
             {contactLine}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onReportIssue}
-          className="inline-flex h-10 shrink-0 items-center rounded-lg border border-surface-border bg-surface px-4 text-sm font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
-        >
-          Report an Issue
-        </button>
+        {onReportIssue && (
+          <button
+            type="button"
+            onClick={onReportIssue}
+            className="inline-flex h-10 shrink-0 items-center rounded-lg border border-surface-border bg-surface px-4 text-sm font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+          >
+            Report an Issue
+          </button>
+        )}
       </div>
     </div>
   );
