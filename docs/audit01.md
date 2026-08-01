@@ -301,7 +301,7 @@ string survives in `dist/assets/index-*.js`, while `app/dashboard` still does. K
 new preview routes inside that block — there is no lint rule enforcing it, which is a
 reasonable thing to add later.
 
-### P1-2 — `react-router-dom` has two open advisories and no fix on 6.x
+### P1-2 — `react-router-dom` has two open advisories and no fix on 6.x — **FIXED** (#64)
 
 Installed: **6.30.4** (the last 6.x release — verified against the registry).
 
@@ -392,7 +392,7 @@ absent — the AI key never reaches the browser.
 Verified against **production** after deploy: all routes mount, no CSP
 violations, no network failures across an SW-controlled second navigation.
 
-### P1-5 — `audit_logs` is provisioned but effectively empty
+### P1-5 — `audit_logs` is provisioned but effectively empty — **WRITTEN, NOT MERGED** (#71, draft)
 
 The table exists, is RLS-enabled, and has exactly one writer in the entire system:
 the `anonymize_staff_member` RPC. No login, rota publish, shift edit, role change,
@@ -409,7 +409,7 @@ publish/unpublish, GDPR export, invite issued/revoked, login. The mockup also ne
 `ip_address`, `severity` and an "area" column the table does not have — one migration,
 and it should land before the Audit screen is designed against it.
 
-### P1-6 — No route-level code splitting
+### P1-6 — No route-level code splitting — **FIXED** (#69)
 
 `dist/assets/index-*.js` is **802 kB (215 kB gzip)** in a single chunk. Vendor
 splitting exists (`react-vendor`, `supabase`, `motion`) but every application route is
@@ -824,6 +824,39 @@ between the designed sidebar (12 items) and the built one (15):
 
 Net: managers get the designed 12-item sidebar, staff get 11 plus Clock in.
 `docs/SCREENS.md` §6 should be updated when this lands.
+
+---
+
+## 7d. P1 status — 2026-08-01
+
+|                                      | Status                                                            |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| **P1-1** preview routes public       | ✅ fixed (#52)                                                    |
+| **P1-2** react-router advisories     | ✅ fixed (#64) — v7.18.2, verified in a browser                   |
+| **P1-3** demo accounts in production | ⏸ **needs an owner decision** — see below                         |
+| **P1-4** no CSP                      | ✅ fixed (#70) — verified against production                      |
+| **P1-5** empty audit trail           | 🟡 written (#71) but **held as draft**: unverifiable this session |
+| **P1-6** no code splitting           | ✅ fixed (#69) — entry 802 → 319 kB                               |
+| **P1-7** missing files return 200    | ✅ fixed (#60)                                                    |
+
+**P1-5 is deliberately not merged.** `Supabase Preview` reports `skipping`, so no
+preview database was created and the migration has been applied nowhere. Static
+checking against the migration files caught two real bugs in it — `invites` has
+no `status` column, and the first draft widened `audit_logs_select` from
+owner-only — but it cannot tell you that the triggers fire, that
+`request.headers` parses on this Postgres version, or that `0013` applies
+cleanly on top of the live `0012`. It hits **production** on merge. Merging it
+unverified is the pattern this report exists to stop.
+
+**P1-3 needs a decision, not an engineer.** Five demo organisations and eight
+sign-in-able accounts share one password in the production database, alongside
+whatever real customer data arrives next. RLS is the only thing separating
+them, and it is also the thing most likely to change while the Settings screens
+get built. The options are (a) run `supabase/seed/demo_teardown.sql` when the
+current demos are done, or (b) move the demo to its own Supabase project.
+(b) is the better answer if client demos are ongoing. Either way it should
+happen **before the first real tenant onboards**, and nobody but the owner knows
+which it is.
 
 ---
 
