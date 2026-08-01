@@ -1,4 +1,12 @@
-import { Award, BarChart3, CalendarDays, MapPin, Star, Timer, TimerReset } from 'lucide-react';
+import {
+  Award,
+  BarChart3,
+  CalendarDays,
+  MapPin,
+  Star,
+  Timer,
+  TimerReset,
+} from 'lucide-react';
 import type { QuickAction } from '@/components/timesheets/QuickActionsCard';
 import type { SwapActivityEntry } from '@/components/swaps/SwapActivityCard';
 import type { SwapRule } from '@/components/swaps/SwapRulesCard';
@@ -26,7 +34,12 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
       jobTitle: 'Care Assistant',
       photoUrl: null,
     },
-    to: { firstName: 'Aisha', lastName: 'Patel', jobTitle: 'Senior Nurse', photoUrl: null },
+    to: {
+      firstName: 'Aisha',
+      lastName: 'Patel',
+      jobTitle: 'Senior Nurse',
+      photoUrl: null,
+    },
     shift: {
       dateLabel: 'Tue 27 May 2025',
       timeLabel: '07:00 – 15:00',
@@ -90,7 +103,12 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
   },
   {
     id: 'swap-4',
-    from: { firstName: 'Aisha', lastName: 'Patel', jobTitle: 'Senior Nurse', photoUrl: null },
+    from: {
+      firstName: 'Aisha',
+      lastName: 'Patel',
+      jobTitle: 'Senior Nurse',
+      photoUrl: null,
+    },
     to: {
       firstName: 'Grace',
       lastName: 'Thompson',
