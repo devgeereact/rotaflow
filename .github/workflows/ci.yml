@@ -68,6 +68,24 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      # The first gate in this file that checks BEHAVIOUR rather than shape.
+      #
+      # Typecheck, lint, format and build all pass on an app that computes
+      # overtime wrong, publishes a rota to the wrong tenant, or silently drops
+      # a day's clock-ins. This job covers the paths where being wrong costs
+      # someone money: clock events -> hours, the regular/overtime split, leave
+      # entitlement, the schedule window, and the offline write outbox.
+      #
+      # NOTE the zone. The `TZ: UTC` on this job is deliberate and stays (see
+      # the comment at the top), but UTC has no DST, so a UTC-only run cannot
+      # see day-arithmetic bugs that only exist when the clocks change —
+      # `resolvePeriod` was returning a zero-length window on 25 Oct 2026 in
+      # Europe/London and every CI run here was green. vitest.config.ts pins
+      # the suite to Europe/London for exactly that reason. Two zones, two
+      # different bug classes; neither one covers the other.
+      - name: Test
+        run: npm test
+
       - name: Build (no .env — must survive missing VITE_* vars)
         run: npm run build
 

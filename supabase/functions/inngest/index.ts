@@ -30,9 +30,20 @@
 // After deploying: Inngest dashboard → Apps → Sync new app, pointed at
 // <SUPABASE_URL>/functions/v1/inngest
 //
-// NOT VERIFIED END TO END — this session can deploy it but has no way to
-// trigger a real Inngest sync or a real event delivery. Confirm in the
-// Inngest dashboard (Apps, Functions, Runs) after deploying.
+// VERIFICATION STATUS (2026-08-01, docs/audit01.md P0-3)
+//
+// Deployed and ACTIVE (version 1, verify_jwt: false — correct, since Inngest
+// cannot present a Supabase JWT). The thing that matters given the platform
+// gate is off is verified against the live project: an unsigned POST to
+// /functions/v1/inngest returns **401 {"message":"Unauthorized"}**, so the
+// Inngest SDK's request-signature check is genuinely enforcing, and this
+// publicly-reachable endpoint is not open. INNGEST_EVENT_KEY and
+// INNGEST_SIGNING_KEY are both set on the project.
+//
+// STILL UNVERIFIED: a real event actually flowing client -> Inngest -> here ->
+// send-notification. That needs a signed event from the Inngest side; confirm
+// in the Inngest dashboard (Apps, Functions, Runs). Until then the transport is
+// unproven even though the endpoint is correctly locked down.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { Inngest } from 'npm:inngest@4';

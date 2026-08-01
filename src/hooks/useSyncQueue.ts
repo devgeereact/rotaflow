@@ -1,39 +1,48 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
+  discardDeadLetteredWrite,
   enqueueWrite,
   flushQueuedWrites,
+  listDeadLetteredWrites,
   listQueuedWrites,
   type FlushResult,
 } from '@/services/syncQueue';
 import { reportError } from '@/lib/sentry';
-import type { OutboxKind } from '@/lib/offlineOutbox';
+import type { DeadLetterRecord, OutboxKind, OutboxRecord } from '@/lib/offlineOutbox';
 
-export interface QueuedItem {
-  id: string;
-  kind: OutboxKind;
-  payload: unknown;
-  queuedAt: string;
-}
+export type QueuedItem = OutboxRecord;
 
 export interface UseSyncQueue {
+  /** Writes still waiting to reach Supabase. */
   pending: QueuedItem[];
-  enqueue: (kind: QueuedItem['kind'], payload: unknown) => Promise<void>;
+  /**
+   * Writes that will never send themselves — permanently rejected, or out of
+   * retries. These need a human: the action did not happen, and the person who
+   * took it still believes it did.
+   */
+  deadLettered: DeadLetterRecord[];
+  enqueue: (kind: OutboxKind, payload: unknown) => Promise<void>;
   flush: () => Promise<FlushResult>;
+  /** Acknowledge a failed write and remove it from the review list. */
+  discard: (id: string) => Promise<void>;
   syncing: boolean;
 }
 
 /**
  * Consumer of the IndexedDB write outbox — see docs/HOOKS.md §8 for the
- * approved contract this implements, and services/syncQueue.ts for the
- * replay logic. No screen calls `enqueue` yet: clock-in, leave and swap
- * requests are Phase 5/6. This hook exists now so those phases have a tested,
- * working outbox to write against on day one rather than building one
- * alongside the first screen that needs it.
+ * approved contract this implements, and services/syncQueue.ts for the replay
+ * logic. Used by the clock-in, leave and swap screens.
+ *
+ * `deadLettered` is not optional decoration. The outbox's failure mode is that
+ * a write is accepted into IndexedDB, reported to the user as done, and then
+ * never lands. If nothing renders this list the app is back to failing
+ * silently, which was the original bug — see `flushQueuedWrites`.
  */
 export function useSyncQueue(): UseSyncQueue {
   const online = useOnlineStatus();
   const [pending, setPending] = useState<QueuedItem[]>([]);
+  const [deadLettered, setDeadLettered] = useState<DeadLetterRecord[]>([]);
   const [syncing, setSyncing] = useState(false);
   // Guards against overlapping flushes — e.g. the reconnect effect firing
   // while a manually-triggered flush from the UI is still in flight.
@@ -41,7 +50,12 @@ export function useSyncQueue(): UseSyncQueue {
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      setPending(await listQueuedWrites());
+      const [queued, dead] = await Promise.all([
+        listQueuedWrites(),
+        listDeadLetteredWrites(),
+      ]);
+      setPending(queued);
+      setDeadLettered(dead);
     } catch (err) {
       reportError(err, { area: 'syncQueue:list' });
     }
@@ -52,7 +66,7 @@ export function useSyncQueue(): UseSyncQueue {
   }, [refresh]);
 
   const flush = useCallback(async (): Promise<FlushResult> => {
-    if (flushing.current) return { synced: 0, failed: 0 };
+    if (flushing.current) return { synced: 0, failed: 0, deadLettered: 0 };
     flushing.current = true;
     setSyncing(true);
     try {
@@ -77,12 +91,20 @@ export function useSyncQueue(): UseSyncQueue {
   }, [online, flush]);
 
   const enqueue = useCallback(
-    async (kind: QueuedItem['kind'], payload: unknown): Promise<void> => {
+    async (kind: OutboxKind, payload: unknown): Promise<void> => {
       await enqueueWrite(kind, payload);
       await refresh();
     },
     [refresh],
   );
 
-  return { pending, enqueue, flush, syncing };
+  const discard = useCallback(
+    async (id: string): Promise<void> => {
+      await discardDeadLetteredWrite(id);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  return { pending, deadLettered, enqueue, flush, discard, syncing };
 }

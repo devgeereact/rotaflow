@@ -121,7 +121,7 @@ or a file is copied up by hand — but it closed a **latent** hole, not an open 
 Severity is about **consequence**, not effort. P0 = can produce a wrong outcome for
 a real person (wrong pay, wrong shift, exposed data) or blocks everything after it.
 
-### P0-1 — The offline outbox deadlocks permanently and silently
+### P0-1 — The offline outbox deadlocks permanently and silently — **FIXED** (#56)
 
 **`src/services/syncQueue.ts:68-89`, `src/lib/offlineOutbox.ts:16-21`**
 
@@ -166,7 +166,7 @@ Not implemented tonight deliberately: it needs a schema migration in IndexedDB a
 real UX decision about what a staff member sees when their clock-in is rejected. That
 belongs in a reviewed PR, not an audit sweep.
 
-### P0-2 — Zero automated tests
+### P0-2 — Zero automated tests — **FIXED** (#56)
 
 No test files. No runner. No `npm test`. 28,241 lines.
 
@@ -200,7 +200,7 @@ because it is the sentence the product is sold on, and nothing verifies it.
 
 Wire `npm test` into `ci.yml` between lint and build.
 
-### P0-3 — The server-side half has never been verified end to end
+### P0-3 — The server-side half has never been verified end to end — **PARTLY RESOLVED** (#56)
 
 Two Edge Functions carry a self-written disclaimer:
 
@@ -591,18 +591,111 @@ worth naming:
 
 ---
 
-## 8. The three things to do next
+## 7b. P0 resolution — 2026-08-01 (#56)
 
-1. **Fix the outbox (P0-1).** It is the only finding here that can cost someone their
-   correct pay, and it is invisible when it happens.
-2. **Put a test floor under the four money paths (P0-2).** ~30 Vitest tests plus one
-   Playwright smoke path. Wire into `ci.yml`. Everything after this lands safer.
-3. **Settle the navigation structure**, then build the tab-bar primitive (P2-1). It is
-   one product conversation and it unblocks five of the eleven remaining screens.
+All three P0s were taken on directly. What follows is what shipped and, as
+importantly, what the work turned up that this audit had not predicted.
 
-Then Tier 1's seven design-match passes, which are the fastest visible progress
-available and need none of the above.
+### Three real bugs, found by the tests written to look for them
+
+**A schedule that renders empty one day a year.** `resolvePeriod` computed the
+end of its query window as local-midnight `+ 86_400_000 ms`. A fall-back day is
+25 hours long, so midnight + 24h landed at 23:00 the _same_ day and formatted
+back to the same date — `toIso === fromIso`, a zero-length window, and **no
+shifts at all** on 25 Oct 2026 in Europe/London. Worse, the arithmetic ran in
+the _browser's_ zone, so a New York location's window also collapsed on the UK's
+transition date. CI could never have caught it: `ci.yml` pins `TZ=UTC` and UTC
+has no DST. The suite now runs in Europe/London for exactly this reason —
+**two zones, two bug classes, neither covers the other.** Fixed with `addDays`.
+
+**A forgotten clock-out silently deleted a day's work.** In `pairClockEvents` a
+second `in` while one was still open overwrote the first, so Monday's shift
+vanished with no error and no trace: a full day worked and never paid. The
+abandoned segment is now emitted with `reviewReason: 'missing_clock_out'` and
+zero minutes — visible and flagged, not invented and not deleted.
+
+**An unclosed break was paid in full.** `break_start` with no `break_end`
+deducted nothing. Now deducted to the clock-out and flagged.
+
+The governing rule added to that module: **where the events are ambiguous, do
+not guess silently.** Produce the reading the evidence supports _and_ set
+`reviewReason`, so `/app/timesheets` shows a badge and a human decides. A
+timesheet row feeds someone's pay; it must not present a guess as a fact.
+
+### P0-1 — the outbox
+
+`flushQueuedWrites` now classifies each failure. Permanent (RLS denial,
+constraint violation, deleted shift) → moved to a new `dead_letters` store and
+**the loop continues**. Transient (offline, 5xx, rate limited, expired JWT) →
+attempt counted, flush stops, dead-lettered after `MAX_ATTEMPTS = 5`. Unknown
+defaults to _transient_ on purpose: a transient item is still bounded, so it is
+never lost, whereas defaulting to permanent would set aside a write a retry
+would have delivered.
+
+Nothing is ever deleted on failure, and `FailedWritesNotice` renders what did
+not send on the clock, leave and swap screens — wording that corrects a belief
+(_"They did not happen"_), because the person was already told it worked.
+Setting the write aside fixes the deadlock; only showing it fixes the silence.
+
+IndexedDB goes to v2 with an in-place migration that backfills `attempts` on v1
+rows — without it `undefined + 1` is `NaN`, `NaN >= MAX` is false, and the
+ceiling never trips for exactly the users who were mid-queue during the upgrade.
+
+### P0-2 — the test floor
+
+**95 tests, ~0.7s**, wired into `ci.yml` between format-check and build.
+Coverage is deliberately the money paths only: clock events → hours, the
+regular/overtime split, leave entitlement, the schedule window, and the outbox.
+
+They were checked against the old code rather than assumed useful: **9 of the 24
+outbox tests fail** on the previous implementation, and 3 of the hours tests and
+3 of the schedule tests fail on theirs. A test that cannot fail is decoration.
+
+One behaviour is pinned but deliberately _not_ fixed: leave spanning new year is
+counted in full against **both** entitlement years (14 days for a 7-day
+holiday). Clamping is the obvious fix, but it changes every existing entitlement
+figure the moment it ships and "which year does a straddling day belong to" is a
+product decision. The test locks current behaviour so it cannot drift before
+that call is made.
+
+### P0-3 — partly resolved, and honest about the rest
+
+All four Edge Functions are deployed and ACTIVE, and every secret they read is
+set. The **auth boundaries are now verified against the live project** rather
+than assumed:
+
+| Probe                                                    | Result                            |
+| -------------------------------------------------------- | --------------------------------- |
+| `send-notification`, no Authorization header             | 401 `UNAUTHORIZED_NO_AUTH_HEADER` |
+| `send-notification`, valid anon JWT, no shared secret    | 401 `{"error":"Unauthorized"}`    |
+| `send-notification`, valid anon JWT, wrong shared secret | 401 `{"error":"Unauthorized"}`    |
+| `ai-rota-assistant`, no auth                             | 401                               |
+| `inngest`, unsigned POST (`verify_jwt: false`)           | 401 `{"message":"Unauthorized"}`  |
+
+So the shared-secret guard is real, holding the public anon key is not enough to
+write into someone's notification inbox, and the one function with the platform
+JWT gate disabled is genuinely protected by Inngest's request signing.
+
+**Delivery is still unproven.** Nobody has watched a push arrive on a device or
+an email land in a mailbox, and proving it needs an owner session and sends real
+messages to real people — a deliberate manual step, not something to fire from a
+dev session. Both function headers now state precisely this instead of a blanket
+"NOT VERIFIED END TO END". **Treat notifications as unproven; the auth path is
+not the whole journey.**
 
 ---
 
-_Audit 01 · 2026-07-31 · next audit after the Settings area lands._
+## 8. The three things to do next
+
+_Updated 2026-08-01, after #56 closed P0-1 and P0-2 and narrowed P0-3._
+
+1. **Prove delivery (rest of P0-3).** Sign in as an owner, trigger each
+   notification-producing event, and confirm the row, the push and the email.
+   Until someone watches one arrive, a core feature is unproven.
+2. **Settle the navigation structure, then build the tab-bar primitive (P2-1).**
+   One product conversation; it unblocks five of the eleven remaining screens.
+3. **Tier 1's seven design-match passes** (§4) — the fastest visible progress
+   available, and they now land on a suite that can catch a regression.
+
+Then P1-1's remaining siblings: the CSP (P1-4), the SPA-fallback 404 fix (P1-7),
+and planning the react-router v7 migration (P1-2).

@@ -6,6 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
+import { FailedWritesNotice } from '@/components/FailedWritesNotice';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -61,7 +62,7 @@ export function SwapsPage(): JSX.Element {
   const { canApprove } = usePermissions();
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
-  const { enqueue } = useSyncQueue();
+  const { enqueue, deadLettered, discard } = useSyncQueue();
   const { send } = useInngestDispatch();
   const { showError, showSuccess } = useToast();
 
@@ -268,6 +269,7 @@ export function SwapsPage(): JSX.Element {
 
   return (
     <div>
+      <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mb-6" />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-2xl text-content dark:text-content-dark">
           {teamMode ? 'Swap approvals' : 'Shift swaps'}
