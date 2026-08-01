@@ -203,16 +203,24 @@ The 43 existing ad-hoc sites are **not yet migrated** — see P2-1.
 Fifteen items against the designs' twelve. Resolved along Audit 01 §7c's
 recommendation, which was correct and had simply never been executed:
 
-| Item             | Action                                                                                                                                                                        |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Integrations** | Moved into Settings, as every reference shows. `/app/integrations` redirects.                                                                                                 |
-| **Team**         | Folded into Settings → Permissions — it is invite/revoke, i.e. org administration. Fills a designed tab that had no content. `/app/team` redirects.                           |
-| **Clock in**     | **Kept, role-conditional.** Absent from the mockups, but the mockups are a _manager's_ view. Clock-in is what a carer opens twice a day. Shown to staff, hidden for managers. |
+| Item             | Action                                                                                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Integrations** | Moved into Settings, as every reference shows. `/app/integrations` redirects.                                                                       |
+| **Team**         | Folded into Settings → Permissions — it is invite/revoke, i.e. org administration. Fills a designed tab that had no content. `/app/team` redirects. |
+| **Clock in**     | **Kept, and shown to every role.** Absent from the mockups, but the mockups are a _manager's_ view. Clock-in is what a carer opens twice a day.     |
 
-A manager now sees the designed twelve. A staff member sees the eight that concern
-them, plus Clock in, with Settings replaced by My Profile —
-`settingsTabsForRole('staff')` is empty, so a Settings link would have bounced them off
-a redirect every time.
+A manager now sees the designed twelve plus Clock in. A staff member sees the nine that
+concern them, with Settings replaced by My Profile — `settingsTabsForRole('staff')` is
+empty, so a Settings link would have bounced them off a redirect every time.
+
+**One deviation from Audit 01's recommendation, made deliberately.** §7c proposed making
+Clock in role-conditional — staff only — which is the obvious reading of the mockups. It
+is wrong for this product. In a small care home the owner and the manager are usually
+_on the rota themselves_. Hiding the control costs a working manager the thing they open
+twice a day and gives them no route to it; showing it to a manager who never clocks in
+costs one row of navigation they can ignore. That asymmetry decides it. Gating on "has a
+`staff_profile`" would be more precise, but the sidebar has no such query and adding one
+to render navigation is a poor trade for a row.
 
 ### P1-4 — `organisations.settings` is an untyped jsonb written by six screens — **MITIGATED** (`943d62f`)
 

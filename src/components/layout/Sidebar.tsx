@@ -44,14 +44,26 @@ interface NavItem {
  *   invite and revoke — is organisation administration, so it folded into
  *   Settings → Permissions, filling a designed tab that had no content.
  * - **Clock in** is absent from every mockup, but the mockups are a *manager's*
- *   view (they are all signed in as Sarah Manager). Clock-in is the single
- *   most-used screen a carer has — twice a day, often on a phone on ward wifi
- *   — and burying it to match a manager-view mockup would be a real usability
- *   loss for the majority of users. So it is role-conditional rather than
- *   removed.
+ *   view — they are all signed in as Sarah Manager. Clock-in is the single
+ *   most-used screen a carer has: twice a day, usually on a phone on ward
+ *   wifi. Burying it to match a manager-view mockup would be a real usability
+ *   loss for most of the user base.
  *
- * Net: a manager sees the designed twelve. A staff member sees the eight that
- * concern them, plus Clock in, and Settings is replaced by My Profile —
+ * ## Why Clock in is shown to managers too, and not made role-conditional
+ *
+ * The obvious reading of the mockups is "staff only", and that is what
+ * audit01 §7c recommended. It is wrong for this product, because of how the
+ * risk is shaped: in a small care home the owner and the manager are usually
+ * *on the rota themselves*. Hiding the control costs a working manager the
+ * thing they open twice a day and gives them no way to find it; showing it to
+ * a manager who never clocks in costs one row of nav they can ignore.
+ *
+ * That asymmetry decides it. Gating on "has a staff_profile" would be more
+ * precise, but the sidebar has no such query and adding one to render
+ * navigation is a poor trade for a row.
+ *
+ * Net: a manager sees the designed twelve plus Clock in; a staff member sees
+ * the nine that concern them, with Settings replaced by My Profile —
  * `settingsTabsForRole('staff')` is empty, so a Settings link would land them
  * on a redirect every time.
  */
@@ -66,11 +78,10 @@ function navItemsForRole(role: MembershipRole | null): NavItem[] {
     items.push({ label: 'Rota', icon: CalendarDays, to: '/app/rota' });
   }
 
-  items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });
-
-  if (!isManager) {
-    items.push({ label: 'Clock in', icon: LogIn, to: '/app/clock' });
-  }
+  items.push(
+    { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
+    { label: 'Clock in', icon: LogIn, to: '/app/clock' },
+  );
 
   if (isManager) {
     items.push(
