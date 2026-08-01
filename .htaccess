@@ -23,6 +23,26 @@
   # mod_authz_core 500s the entire site.
   RewriteRule \.map$ - [F,L]
 
+  # Build output is REAL FILES. If one is missing that is a broken deploy, and
+  # it has to look like one — so these paths are excluded from the SPA fallback
+  # below and are allowed to 404 honestly.
+  #
+  # Without this, the fallback swallowed every miss: a request for
+  # /assets/index-abc123.js that did not exist returned index.html with
+  # `content-type: text/html` and **HTTP 200**. Consequences, all real:
+  #
+  #   * It defeats verification. Uptime monitors, link checkers, CI steps
+  #     asserting an asset deployed, and any agent checking its own deploy all
+  #     read 200 as "present". This audit was itself fooled into reporting a
+  #     source-map leak that did not exist (docs/audit01.md §2, P1-7).
+  #   * It is the exact failure vite.config.ts warns about under `base: '/'` —
+  #     a script request answered with HTML, failing the MIME check, leaving a
+  #     blank page with a 200 in the access log and nothing in Sentry.
+  #
+  # Scoped deliberately to the two directories the build emits. Everything else
+  # still falls through, so SPA deep links are untouched.
+  RewriteRule ^(assets|icons)/ - [L]
+
   # Send every non-file, non-directory request to index.html
   # so React Router can resolve client-side routes.
   RewriteCond %{REQUEST_FILENAME} !-f
@@ -78,4 +98,13 @@
 </IfModule>
 
 # ---- Pretty error handling ------------------------------------
+# Kept, but note it is now nearly dead code: the SPA fallback above already
+# resolves every unknown NON-file path to index.html with a 200, so the only
+# thing that reaches here is a miss under assets/ or icons/.
+#
+# For those it serves the app shell as the *body* of a 404. That is deliberate:
+# the status line is what matters (it is what makes a broken deploy detectable),
+# and a browser fetching a missing chunk sees 404 and fails correctly regardless
+# of the body. Do NOT "fix" this by removing the exclusion above — that trades a
+# cosmetic oddity for an undetectable outage.
 ErrorDocument 404 /index.html
