@@ -27,13 +27,27 @@ seeded rows, which the loop cannot produce. The pattern already in use is a
 **`*-preview` route** carrying fixed mock data that reproduces the reference's exact
 numbers: `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
 `/timesheets-preview`, `/clockin-preview`, `/onboarding-preview`, `/appboot`,
-`/staff-preview`, `/locations-preview`, `/swaps-preview`.
+`/staff-preview`, `/locations-preview`, `/swaps-preview`, `/leave-preview`.
 
-**The references are not 1:1 CSS pixels.** Measured on both locations mockups, the
-panel body text is ~0.7× `text-sm` — they are downscaled renders of a much wider
-design. Match _proportions and structure_ at the project's real type scale; do not
-chase the reference's literal font sizes or container widths. Working shown in
-`design/.loop/locations-log.md`.
+**The references are not 1:1 CSS pixels — check the export scale before measuring
+anything.** Several mockups are large designs exported smaller, and two separate
+passes lost an iteration to this independently (locations, leave). So:
+
+1. Divide the PNG's width and height by a plausible design size (start with
+   1920×1080). **If both ratios agree, that is the export scale.** `Leave.png` is
+   1672×941 — `1672/1920 = 0.8708` and `941/1080 = 0.8713`.
+2. Then either divide every measurement you take off the PNG by that scale before
+   comparing it to a CSS pixel, or capture at the design size and scale your own
+   screenshot down to match.
+
+Skip this and correct type reads 15–30% too large, and you will spend an iteration
+shrinking a type scale that was already right. Where the scale cannot be recovered
+(the locations mockups' body text is ~0.7× `text-sm` and no clean ratio fits),
+match _proportions and structure_ at the project's real type scale rather than the
+reference's literal font sizes or container widths. `design/.loop/` carries
+`shot.sh`, `compare.py` and `diff.py` from the leave pass, which do the scaling and
+produce a registered red/green overlay. Working shown in
+`design/.loop/locations-log.md` and `design/.loop/leave-log.md`.
 
 Two things about them that have caused re-work:
 
@@ -69,7 +83,7 @@ Two things about them that have caused re-work:
 | staff               | `/app/staff`                          | `design/staff.png`                   | **In flight** — branch `design-staff-match`. Do not start a second pass on this                                                                                                                                               |
 | staff-profile       | `/app/staff/:id`                      | `design/Staff-Profile.png`           | **In flight** — same branch. Needs the `:id` route built, not just styled                                                                                                                                                     |
 | availability        | `/app/availability`                   | `design/Availability.png`            | **Not matched** — next up                                                                                                                                                                                                     |
-| leave               | `/app/leave`                          | `design/Leave.png`                   | **Not matched** — next up                                                                                                                                                                                                     |
+| leave               | `/leave-preview`                      | `design/Leave.png`                   | Matched. Capture at 1656×1300 and scale by `1672/1920`; see `design/.loop/leave-log.md`                                                                                                                                       |
 | swaps               | `/swaps-preview`                      | `design/Swap-Request.png`            | Matched — `/app/swaps` renders the same `SwapsView`, minus the Swap Rules card (no policy store). See `design/.loop/swaps-log.md`                                                                                             |
 | reports             | `/app/reports`                        | `design/Reports-Dashboard.png`       | **Not matched** — next up                                                                                                                                                                                                     |
 | announcements       | `/announcements-preview`              | `design/Announcements-Dashboard.png` | Matched — `design/.loop/announcements-log.md`                                                                                                                                                                                 |

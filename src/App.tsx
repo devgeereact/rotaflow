@@ -89,6 +89,10 @@ const ReportsPreviewPage = lazyPage(
   'ReportsPreviewPage',
   () => import('@/pages/ReportsPreviewPage'),
 );
+const LeavePreviewPage = lazyPage(
+  'LeavePreviewPage',
+  () => import('@/pages/LeavePreviewPage'),
+);
 const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
@@ -260,6 +264,8 @@ export function App(): JSX.Element {
                       <Route path="/swaps-preview" element={<SwapsPreviewPage />} />
                       {/* design/Reports-Dashboard.png's catalogue and figures. */}
                       <Route path="/reports-preview" element={<ReportsPreviewPage />} />
+                      {/* design/Leave.png's numbers. */}
+                      <Route path="/leave-preview" element={<LeavePreviewPage />} />
                     </>
                   )}
                   {/* Public on purpose: an invitee has no account yet, and
