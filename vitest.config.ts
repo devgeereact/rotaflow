@@ -14,8 +14,8 @@ import path from 'node:path';
  * matter are arithmetic and timezone bugs in a handful of pure modules, not
  * render bugs — a mis-rendered button is visible, a shift silently missing from
  * a schedule is not. So this is a Node-environment unit suite over `src/lib`
- * and the pure parts of `src/services`, plus the offline outbox. No jsdom, no
- * component rendering; add those when there is a reason, not by default.
+ * and the offline outbox. No jsdom, no component rendering; add those when
+ * there is a reason, not by default.
  */
 export default defineConfig({
   resolve: {
@@ -27,32 +27,34 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
 
-    // NOT the developer's zone, and NOT UTC either.
-    //
-    // .github/workflows/ci.yml pins TZ=UTC for the build because a predecessor
-    // repo shipped a timezone bug that was invisible on a UK machine. The
-    // inverse is just as real and is what these tests actually caught: UTC has
-    // no DST, so a UTC-only test run cannot see a day-arithmetic bug that only
-    // exists when the clocks change. `resolvePeriod` was returning a
-    // zero-length window on 25 Oct 2026 in Europe/London and no CI run would
-    // ever have reproduced it.
-    //
-    // Europe/London is the default because it is RotaFlow's primary market and
-    // it has DST. Individual tests that care about a specific zone set it
-    // explicitly with `vi.stubEnv`/`process.env.TZ` rather than relying on this.
     env: {
+      // NOT the developer's zone, and NOT UTC either.
+      //
+      // .github/workflows/ci.yml pins TZ=UTC for the build because a
+      // predecessor repo shipped a timezone bug that was invisible on a UK
+      // machine. The inverse is just as real and is what these tests actually
+      // caught: UTC has no DST, so a UTC-only run cannot see a day-arithmetic
+      // bug that only exists when the clocks change. `resolvePeriod` was
+      // returning a zero-length window on 25 Oct 2026 in Europe/London and
+      // every CI run was green.
+      //
+      // Europe/London is the default because it is RotaFlow's primary market
+      // and it has DST. Two zones, two bug classes; neither covers the other.
       TZ: 'Europe/London',
 
-      // src/lib/supabase.ts calls createClient() at module scope, and
-      // createClient throws on an empty URL — so importing ANY module in
-      // src/services (even for a pure, exported helper like
-      // sumApprovedLeaveDays) would fail at import time without these.
+      // src/lib/supabase.ts calls createClient() at module scope and throws on
+      // an empty URL, so any test that transitively reaches it needs these.
+      // Deliberately fake and obviously so — no test here makes a network call,
+      // and if one ever did it would fail against this host, which is what we
+      // want. A unit suite that silently talked to the real project is worse.
       //
-      // Deliberately fake and obviously so. Nothing in the suite makes a
-      // network call; the client is constructed and never used. If a test ever
-      // does hit the network it will fail against this host, which is the
-      // outcome we want — a unit suite that silently talked to a real project
-      // would be far worse.
+      // These are a backstop, NOT a licence to import `src/services` in a test.
+      // Constructing a Supabase client also initialises Realtime, which needs a
+      // global WebSocket — Node 20 (what CI runs) has none, and the whole file
+      // dies with "Node.js detected but native WebSocket not found". That is
+      // exactly why `sumApprovedLeaveDays` now lives in
+      // `src/lib/leaveEntitlement.ts`. Keep pure logic out of `src/services`
+      // and this never comes up; if you must import a service, mock it.
       VITE_SUPABASE_URL: 'http://localhost:54321',
       VITE_SUPABASE_ANON_KEY: 'test-anon-key-not-a-real-credential',
     },

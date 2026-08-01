@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sumApprovedLeaveDays } from '@/services/leaveService';
+import { sumApprovedLeaveDays } from '@/lib/leaveEntitlement';
 import type { LeaveRequest } from '@/types';
 
 /**
@@ -7,8 +7,9 @@ import type { LeaveRequest } from '@/types';
  * under-counting hands out leave the org has not budgeted for. Both are
  * arguments with a real person, and neither surfaces as an error.
  *
- * Only the pure aggregate is covered here — the Supabase calls in this module
- * are integration surface, not arithmetic.
+ * The aggregate lives in `src/lib/leaveEntitlement.ts` rather than in
+ * `leaveService.ts` precisely so this file can import it without constructing a
+ * Supabase client — see that module's header.
  */
 
 let seq = 0;

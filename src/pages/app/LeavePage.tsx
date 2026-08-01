@@ -5,6 +5,7 @@ import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { sumApprovedLeaveDays } from '@/lib/leaveEntitlement';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 import { FailedWritesNotice } from '@/components/FailedWritesNotice';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
@@ -17,7 +18,6 @@ import {
   listMyLeaveRequests,
   listOrgLeaveRequests,
   reviewLeaveRequest,
-  sumApprovedLeaveDays,
 } from '@/services/leaveService';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
