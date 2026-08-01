@@ -399,7 +399,7 @@ Rota Builder, Reports and Timesheets. `AppShell` already renders a loading state
 can serve as the fallback. Expect the entry chunk to roughly halve. This matters more
 than usual here: the target user is on a phone, on ward wifi, opening one screen.
 
-### P1-7 — Every missing file returns HTTP 200 with HTML
+### P1-7 — Every missing file returns HTTP 200 with HTML — **FIXED** (#60)
 
 `.htaccess` rewrites **any** non-existent path to `index.html`:
 
@@ -441,8 +441,23 @@ Also reconsider `ErrorDocument 404 /index.html` at the foot of the file — it m
 genuine 404s serve the app shell, which is reasonable for routes and misleading for
 everything else.
 
-Not shipped tonight: it is a live-traffic rewrite change and this session had
-already deployed once. It wants its own deploy with a verification pass.
+**Shipped and verified 2026-08-01.** Deployed on its own, after backing up the
+live `.htaccess` to `~/private_backups/`, and checked immediately:
+
+| Check                                                               | Before              | After               |
+| ------------------------------------------------------------------- | ------------------- | ------------------- |
+| `/assets/does-not-exist.js`                                         | **200** `text/html` | **404**             |
+| `/icons/nope.png`                                                   | 200                 | **404**             |
+| Real assets (`index-*.js`, `.css`, `.png`, `sw.js`, manifest)       | 200                 | 200, MIME unchanged |
+| SPA deep links (`/app/dashboard`, `/invite/:token`, unknown routes) | 200                 | 200                 |
+| Source maps                                                         | 403                 | 403                 |
+| HSTS, Permissions-Policy, cache rules, HTTP→HTTPS                   | present             | unchanged           |
+
+`ErrorDocument 404 /index.html` was kept. It is now nearly dead code — the SPA
+fallback resolves every unknown non-file path before it — so the only thing
+reaching it is a miss under `assets/` or `icons/`, where it serves the app shell
+as the _body_ of a 404. The status line is what matters, and a browser fetching
+a missing chunk sees 404 and fails correctly regardless of the body.
 
 ### P2 — worth fixing, no user-visible harm yet
 
