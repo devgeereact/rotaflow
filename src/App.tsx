@@ -21,6 +21,7 @@ import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
 import { StaffPreviewPage } from '@/pages/StaffPreviewPage';
 import { StaffProfilePreviewPage } from '@/pages/StaffProfilePreviewPage';
 import { LocationsPreviewPage } from '@/pages/LocationsPreviewPage';
+import { AnnouncementsPreviewPage } from '@/pages/AnnouncementsPreviewPage';
 import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
 import { SignupPage } from '@/pages/SignupPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -128,6 +129,11 @@ export function App(): JSX.Element {
                     <Route
                       path="/locations-preview/departments"
                       element={<LocationsPreviewPage />}
+                    />
+                    {/* design/Announcements-Dashboard.png's rows and metrics. */}
+                    <Route
+                      path="/announcements-preview"
+                      element={<AnnouncementsPreviewPage />}
                     />
                   </>
                 )}

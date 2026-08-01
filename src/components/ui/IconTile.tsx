@@ -2,12 +2,20 @@ import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type IconTileTone =
-  'primary' | 'success' | 'warning' | 'violet' | 'info' | 'rose' | 'teal';
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | 'violet'
+  | 'info'
+  | 'rose'
+  | 'teal'
+  | 'danger'
+  | 'indigo';
 
 interface IconTileProps {
   icon: LucideIcon;
   tone?: IconTileTone;
-  size?: 'sm' | 'base' | 'md' | 'lg';
+  size?: 'sm' | 'base' | 'md' | 'lg' | 'xl';
   className?: string;
 }
 
@@ -26,6 +34,11 @@ const TONES: Record<IconTileTone, string> = {
   // text-X` idiom as `violet`, over the shift palette's rose and teal.
   rose: 'bg-shift-rose/15 text-shift-rose',
   teal: 'bg-shift-teal/15 text-shift-teal',
+  danger: 'bg-danger/10 text-danger',
+  // Blue-violet, not the pink `shift-violet` — the announcement megaphone and
+  // rota tiles in design/Announcements-Dashboard.png sit in the indigo family.
+  indigo:
+    'bg-shift-tint-violet text-shift-tint-violet-fg dark:bg-shift-deep-violet dark:text-shift-violet',
 };
 
 const SIZES: Record<NonNullable<IconTileProps['size']>, { box: string; icon: number }> = {
@@ -35,6 +48,8 @@ const SIZES: Record<NonNullable<IconTileProps['size']>, { box: string; icon: num
   base: { box: 'h-10 w-10 rounded-lg', icon: 20 },
   md: { box: 'h-11 w-11 rounded-xl', icon: 20 },
   lg: { box: 'h-12 w-12 rounded-xl', icon: 24 },
+  // 56px — the announcement preview rail's tile, the largest on any screen.
+  xl: { box: 'h-14 w-14 rounded-xl', icon: 26 },
 };
 
 export function IconTile({

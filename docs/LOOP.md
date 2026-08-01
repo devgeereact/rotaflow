@@ -31,7 +31,7 @@ numbers: `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
 
 **The references are not 1:1 CSS pixels.** Measured on both locations mockups, the
 panel body text is ~0.7× `text-sm` — they are downscaled renders of a much wider
-design. Match *proportions and structure* at the project's real type scale; do not
+design. Match _proportions and structure_ at the project's real type scale; do not
 chase the reference's literal font sizes or container widths. Working shown in
 `design/.loop/locations-log.md`.
 
@@ -72,7 +72,7 @@ Two things about them that have caused re-work:
 | leave               | `/app/leave`                          | `design/Leave.png`                   | **Not matched** — next up                                                                                                                                                                                                     |
 | swaps               | `/app/swaps`                          | `design/Swap-Request.png`            | **Not matched** — next up                                                                                                                                                                                                     |
 | reports             | `/app/reports`                        | `design/Reports-Dashboard.png`       | **Not matched** — next up                                                                                                                                                                                                     |
-| announcements       | `/app/announcements`                  | `design/Announcements-Dashboard.png` | **Not matched** — next up                                                                                                                                                                                                     |
+| announcements       | `/announcements-preview`              | `design/Announcements-Dashboard.png` | Matched — `design/.loop/announcements-log.md`                                                                                                                                                                                 |
 | locations           | `/locations-preview`                  | `design/Locations-Management.png`    | Matched — merged with the Departments screen into one tabbed workspace                                                                                                                                                        |
 | locations-depts     | `/locations-preview/departments`      | `design/Location-department.png`     | Matched — second tab of the same workspace. `DepartmentManager` now opens as a dialog                                                                                                                                         |
 | settings-org        | `/app/settings`                       | `design/SettingsOrganisation.png`    | **Not matched, and mostly not built** — ref adds ~12 fields, an Industry Pack, org preferences, role labels, sites summary and Platform Support Access                                                                        |

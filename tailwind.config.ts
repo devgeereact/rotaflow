@@ -158,6 +158,10 @@ const config: Config = {
         // 266px — the splash logo mark at its reference size; sits between
         // Tailwind's w-64 (256) and w-72 (288).
         66: '16.625rem',
+        // 272px — the announcements search field measures exactly between
+        // Tailwind's w-64 (256) and w-72 (288) in
+        // design/Announcements-Dashboard.png. See design/.loop/announcements-log.md.
+        68: '17rem',
       },
       letterSpacing: {
         // Splash subtitle caps — measured at 0.0625em on
