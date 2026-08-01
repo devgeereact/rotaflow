@@ -200,7 +200,7 @@ because it is the sentence the product is sold on, and nothing verifies it.
 
 Wire `npm test` into `ci.yml` between lint and build.
 
-### P0-3 — The server-side half has never been verified end to end — **PARTLY RESOLVED** (#56)
+### P0-3 — The server-side half has never been verified end to end — **PARTLY RESOLVED** (#56, #58)
 
 Two Edge Functions carry a self-written disclaimer:
 
@@ -676,26 +676,96 @@ So the shared-secret guard is real, holding the public anon key is not enough to
 write into someone's notification inbox, and the one function with the platform
 JWT gate disabled is genuinely protected by Inngest's request signing.
 
-**Delivery is still unproven.** Nobody has watched a push arrive on a device or
-an email land in a mailbox, and proving it needs an owner session and sends real
-messages to real people — a deliberate manual step, not something to fire from a
-dev session. Both function headers now state precisely this instead of a blanket
-"NOT VERIFIED END TO END". **Treat notifications as unproven; the auth path is
-not the whole journey.**
+### P0-3 continued — the delivery legs, 2026-08-01
+
+The auth work above left the actual question open: _does anything arrive?_ This
+is what is now positively verified, and what is still not.
+
+**The two silent killers are both ruled out.** These are the failures that
+present as "nobody has opted in" or "the email must be in spam", and neither
+surfaces an error anywhere:
+
+| Check                                            | Method                                                                                             | Result                                                                      |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| VAPID keypair is genuinely a **pair**            | Derived the public point from the private scalar (P-256) and compared to the configured public key | **MATCH** — 65-byte public, 32-byte private, `web-push` accepts the details |
+| The **deployed** private key is that same key    | sha256 of the local value vs the digest Supabase reports                                           | identical                                                                   |
+| The client subscribes with the paired public key | same digest comparison on `VITE_VAPID_PUBLIC_KEY`                                                  | identical                                                                   |
+| SMTP credentials actually authenticate           | `transport.verify()` against `premium17.web-hosting.com`                                           | **ok**                                                                      |
+| SMTP actually **delivers**                       | real `sendMail` to the owner's own mailbox                                                         | **250 OK**, `accepted: [gakinz101@gmail.com]`, `rejected: []`               |
+
+A mismatched VAPID pair would have made _every_ push 403 forever while looking
+like an empty subscriber list. It isn't mismatched.
+
+**Inngest is synced — which was a real unknown.** Before this session
+`GET /v1/events` returned **zero events, ever**: the notification path had never
+run once in production. A probe event (`announcement/published`) was accepted and
+produced a **function run 0.6s later**, so the app is registered, the signing key
+works, and Inngest can reach the Edge Function. That single fact rules out the
+"deployed but never synced, so nothing was ever going to fire" failure.
+
+The probe was deliberately unroutable — `orgId` and `userIds` set to the nil
+UUID, which satisfies no foreign key — so it exercised
+ingest → sync → invocation → shared-secret auth → the `notifications` insert and
+could not deliver anything to anyone. It ended `Failed`, as designed.
+
+**Two secrets diverge between local and deployed, and one matters.** Nine of ten
+compared digests are identical. The exception is `SMTP_PORT`: the deployed value
+is **587**, the developer's `.env` says **465**. `.env.example` says 587, so it
+is the local file that is the outlier. This is not cosmetic — the function does
+`secure: smtpConfig.port === 465`, so **local testing exercises implicit TLS and
+production exercises STARTTLS: different code paths.** Both were tested against
+this host and both connect, authenticate and deliver, so nothing is broken — but
+a local "it works" proves the wrong branch. Align `.env` to 587.
+
+#### What is still NOT verified
+
+- **A push arriving on a real device.** The signing keys are provably correct,
+  but no browser subscription has been exercised. Needs a device that has opted
+  in.
+- **The `notifications` row and the function's own `sendMail`.** The SMTP
+  _transport_ is proven with the function's exact nodemailer config and both
+  ports; the function running that code against a real recipient is not.
+- **The probe run's error text.** Inngest's free API exposes run status but not
+  output (`/runs/{id}/jobs` returns empty, `/output` 404s). The failure is
+  consistent with the deliberate FK violation, and a shared-secret 401 is
+  structurally impossible here — both functions read the _same_
+  `NOTIFICATION_FUNCTION_SECRET` from the same project, and it is set — but the
+  message was inferred, not read. The Inngest dashboard shows it.
+
+#### The one step that closes this, and why it was not taken
+
+Sign in as an org owner, publish an announcement, and confirm the row, the push
+and the email. It needs a real account password, which is in a password manager
+and not something to request or handle here, and it sends real notifications to
+real staff on the demo orgs. That is the owner's call to make, not a dev
+session's.
+
+**Revised posture:** notification _infrastructure_ is verified — keys pair,
+credentials authenticate, mail delivers, Inngest reaches the function. The
+_application_ leg (row written, real recipient notified) remains unproven.
+That is a materially smaller gap than "nobody has watched anything work", and
+the remaining risk is concentrated in code, not configuration.
 
 ---
 
 ## 8. The three things to do next
 
-_Updated 2026-08-01, after #56 closed P0-1 and P0-2 and narrowed P0-3._
+_Updated 2026-08-01, after #56 (P0-1, P0-2), #57 (outbox migration coverage) and
+#58 (P0-3 delivery verification)._
 
-1. **Prove delivery (rest of P0-3).** Sign in as an owner, trigger each
-   notification-producing event, and confirm the row, the push and the email.
-   Until someone watches one arrive, a core feature is unproven.
+1. **Close the last of P0-3 — one owner-driven pass.** Sign in as an org owner,
+   publish an announcement, confirm the `notifications` row, the push on a real
+   device and the email. Everything underneath it is now proven: keys pair,
+   SMTP delivers, Inngest reaches the function. What is left is the application
+   leg, and it needs a real account.
 2. **Settle the navigation structure, then build the tab-bar primitive (P2-1).**
    One product conversation; it unblocks five of the eleven remaining screens.
 3. **Tier 1's seven design-match passes** (§4) — the fastest visible progress
    available, and they now land on a suite that can catch a regression.
 
-Then P1-1's remaining siblings: the CSP (P1-4), the SPA-fallback 404 fix (P1-7),
-and planning the react-router v7 migration (P1-2).
+Then the remaining P1s: the SPA-fallback 404 fix (P1-7 — cheap, and every other
+deploy verification depends on it), the CSP (P1-4), and planning the
+react-router v7 migration (P1-2).
+
+Housekeeping worth doing at the same time: set `SMTP_PORT=587` in the local
+`.env` so local testing exercises the same TLS branch as production.
