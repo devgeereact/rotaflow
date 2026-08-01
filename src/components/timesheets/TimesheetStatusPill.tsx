@@ -18,7 +18,7 @@ export function TimesheetStatusPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center whitespace-nowrap rounded-lg px-1.5 py-1 text-[0.66rem] font-semibold',
+        'inline-flex items-center whitespace-nowrap rounded-lg px-1.5 py-0.5 text-[0.66rem] font-semibold leading-4',
         STATUS_TONE[status],
         className,
       )}

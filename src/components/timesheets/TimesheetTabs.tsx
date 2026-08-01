@@ -25,7 +25,7 @@ export function TimesheetTabs({
     <div
       role="tablist"
       aria-label="Timesheet status"
-      className="flex flex-wrap items-center gap-6 border-b border-surface-border dark:border-surface-border-dark"
+      className="flex flex-wrap items-center gap-2 border-b border-surface-border pb-2.5 dark:border-surface-border-dark"
     >
       {tabs.map((tab) => {
         const isActive = tab.value === active;
@@ -37,7 +37,7 @@ export function TimesheetTabs({
             aria-selected={isActive}
             onClick={() => onChange(tab.value)}
             className={cn(
-              '-mb-px flex items-center gap-2 border-b-2 pb-3 pt-1 text-sm transition-colors',
+              'flex items-center gap-2 border-b-[3px] px-3.5 pb-2.5 pt-4 text-[0.79rem] transition-colors',
               isActive
                 ? 'border-primary font-semibold text-primary'
                 : 'border-transparent font-medium text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',

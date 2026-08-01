@@ -26,8 +26,8 @@ export function TimesheetStatCard({
   hint,
 }: TimesheetStatCardProps): JSX.Element {
   return (
-    <Card className="p-3">
-      <div className="flex items-start gap-1.5">
+    <Card className="flex-auto p-3.5">
+      <div className="flex items-start gap-2.5">
         <span
           aria-hidden="true"
           className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg', tint)}
@@ -44,7 +44,7 @@ export function TimesheetStatCard({
         </div>
       </div>
       {hint !== undefined && (
-        <div className="mt-1 flex items-center gap-1 whitespace-nowrap text-[0.62rem] leading-4 text-content-muted dark:text-content-muted-dark">
+        <div className="mt-1 flex items-center justify-center gap-1 whitespace-nowrap text-[0.58rem] leading-4 text-content-muted dark:text-content-muted-dark">
           {hint}
         </div>
       )}

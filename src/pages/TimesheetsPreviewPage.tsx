@@ -222,7 +222,7 @@ export function TimesheetsPreviewPage(): JSX.Element {
     );
 
   return (
-    <div className="min-h-screen bg-background px-5 py-6 dark:bg-background-dark">
+    <div className="min-h-screen bg-background px-6 py-6 dark:bg-background-dark">
       <TimesheetsView
         statCards={
           <>
