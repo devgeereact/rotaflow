@@ -32,6 +32,32 @@ function lazyPage<K extends string>(
   return lazy(() => loader().then((m) => ({ default: m[name] })));
 }
 
+/**
+ * A preview page — DEV only, and **absent from the production bundle**.
+ *
+ * The routes below were already gated behind `import.meta.env.DEV`, which
+ * correctly made them unreachable in production. But the `lazyPage(...)` calls
+ * that defined them sat at module top level, outside the gate, so Rollup still
+ * saw thirteen live `import()` expressions and emitted a chunk for each. Those
+ * chunks were written to `dist/assets/`, listed in the service worker's
+ * precache manifest, and therefore **downloaded by every user on first visit**
+ * — 87 kB of fabricated staff names, invented metrics and mock organisations,
+ * on the phone of a carer on ward wifi.
+ *
+ * Gating the definition rather than only the usage is what actually removes
+ * them. Vite replaces `import.meta.env.DEV` with the literal `false`, so the
+ * whole ternary folds to the stub and Rollup drops the `import()` along with
+ * every preview page and mock dataset behind it.
+ *
+ * Verify with `grep -c PreviewPage dist/sw.js` after a build: it must be 0.
+ */
+function devPage<K extends string>(
+  name: K,
+  loader: () => Promise<Record<K, ComponentType>>,
+): ComponentType {
+  return import.meta.env.DEV ? lazyPage(name, loader) : NotFoundPage;
+}
+
 /*
  * Route-level code splitting.
  *
@@ -46,51 +72,51 @@ function lazyPage<K extends string>(
  * precached every chunk, so those loads come from cache and offline still works.
  */
 const OnboardingPage = lazyPage('OnboardingPage', () => import('@/pages/OnboardingPage'));
-const OnboardingPreviewPage = lazyPage(
+const OnboardingPreviewPage = devPage(
   'OnboardingPreviewPage',
   () => import('@/pages/OnboardingPreviewPage'),
 );
-const RotaBuilderPreviewPage = lazyPage(
+const RotaBuilderPreviewPage = devPage(
   'RotaBuilderPreviewPage',
   () => import('@/pages/RotaBuilderPreviewPage'),
 );
-const SchedulePreviewPage = lazyPage(
+const SchedulePreviewPage = devPage(
   'SchedulePreviewPage',
   () => import('@/pages/SchedulePreviewPage'),
 );
-const TimesheetsPreviewPage = lazyPage(
+const TimesheetsPreviewPage = devPage(
   'TimesheetsPreviewPage',
   () => import('@/pages/TimesheetsPreviewPage'),
 );
-const ClockInPreviewPage = lazyPage(
+const ClockInPreviewPage = devPage(
   'ClockInPreviewPage',
   () => import('@/pages/ClockInPreviewPage'),
 );
-const StaffPreviewPage = lazyPage(
+const StaffPreviewPage = devPage(
   'StaffPreviewPage',
   () => import('@/pages/StaffPreviewPage'),
 );
-const StaffProfilePreviewPage = lazyPage(
+const StaffProfilePreviewPage = devPage(
   'StaffProfilePreviewPage',
   () => import('@/pages/StaffProfilePreviewPage'),
 );
-const LocationsPreviewPage = lazyPage(
+const LocationsPreviewPage = devPage(
   'LocationsPreviewPage',
   () => import('@/pages/LocationsPreviewPage'),
 );
-const AnnouncementsPreviewPage = lazyPage(
+const AnnouncementsPreviewPage = devPage(
   'AnnouncementsPreviewPage',
   () => import('@/pages/AnnouncementsPreviewPage'),
 );
-const SwapsPreviewPage = lazyPage(
+const SwapsPreviewPage = devPage(
   'SwapsPreviewPage',
   () => import('@/pages/SwapsPreviewPage'),
 );
-const ReportsPreviewPage = lazyPage(
+const ReportsPreviewPage = devPage(
   'ReportsPreviewPage',
   () => import('@/pages/ReportsPreviewPage'),
 );
-const LeavePreviewPage = lazyPage(
+const LeavePreviewPage = devPage(
   'LeavePreviewPage',
   () => import('@/pages/LeavePreviewPage'),
 );
@@ -132,7 +158,7 @@ const DashboardPage = lazyPage(
   'DashboardPage',
   () => import('@/pages/app/DashboardPage'),
 );
-const DashboardPreviewPage = lazyPage(
+const DashboardPreviewPage = devPage(
   'DashboardPreviewPage',
   () => import('@/pages/app/DashboardPreviewPage'),
 );
