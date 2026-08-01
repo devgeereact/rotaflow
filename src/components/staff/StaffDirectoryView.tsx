@@ -5,8 +5,8 @@ import {
   StaffFilterBar,
   type StaffFilterSelect,
 } from '@/components/staff/StaffFilterBar';
-import { StaffPagination } from '@/components/staff/StaffPagination';
 import { StaffStatCard } from '@/components/staff/StaffStatCard';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { StaffTable, type StaffSort } from '@/components/staff/StaffTable';
 import type {
   StaffDetails,
@@ -137,12 +137,13 @@ export function StaffDirectoryView({
             />
           </div>
           <div className="border-t border-surface-border dark:border-surface-border-dark">
-            <StaffPagination
+            <TablePagination
               page={page}
               pageCount={Math.max(1, Math.ceil(total / pageSize))}
               pageSize={pageSize}
               total={total}
               shown={rows.length}
+              noun="staff"
               onPageChange={onPageChange}
               onPageSizeChange={onPageSizeChange}
             />

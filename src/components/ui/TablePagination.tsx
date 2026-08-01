@@ -1,13 +1,15 @@
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface StaffPaginationProps {
+interface TablePaginationProps {
   page: number;
   pageCount: number;
   pageSize: number;
   total: number;
   /** How many rows this page actually shows — the last page is usually short. */
   shown: number;
+  /** Plural noun for the range summary: "…of 12 locations". */
+  noun: string;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
 }
@@ -33,26 +35,31 @@ function pageItems(page: number, pageCount: number): (number | 'gap')[] {
   return items;
 }
 
-/** Footer of the staff table: range summary, pager, rows-per-page. */
-export function StaffPagination({
+/**
+ * Table footer: range summary, pager, rows-per-page. Drawn identically on
+ * design/staff.png, design/Locations-Management.png and
+ * design/Location-department.png — only the noun changes.
+ */
+export function TablePagination({
   page,
   pageCount,
   pageSize,
   total,
   shown,
+  noun,
   onPageChange,
   onPageSizeChange,
-}: StaffPaginationProps): JSX.Element {
+}: TablePaginationProps): JSX.Element {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = from + shown - (shown > 0 ? 1 : 0);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5">
       <p className="text-sm text-content-muted dark:text-content-muted-dark">
-        Showing {from} to {to} of {total} staff
+        Showing {from} to {to} of {total} {noun}
       </p>
 
-      <nav aria-label="Staff pages" className="flex items-center gap-2">
+      <nav aria-label={`${noun} pages`} className="flex items-center gap-2">
         <button
           type="button"
           aria-label="Previous page"
