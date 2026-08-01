@@ -463,7 +463,7 @@ a missing chunk sees 404 and fails correctly regardless of the body.
 
 | #    | Finding                                                                                                                                                                                                                                                                                                                                                                                 | Where                                                                                                                   |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| P2-1 | **Settings and Profile are blocked on a component that doesn't exist.** 11 of the 11 remaining screens are tabs, and there is no tab-bar or collapsible-nav-group primitive anywhere. Build it once, in `src/components/ui`, before the first tab.                                                                                                                                      | `docs/SCREENS.md` §3/§4                                                                                                 |
+| P2-1 | **Settings and Profile were blocked on a component that didn't exist** — 11 of the 11 remaining screens are tabs. `Tabs` (`src/components/ui/Tabs.tsx`) and the tab definitions (`src/lib/settingsTabs.ts`) shipped in #61. The **collapsible sidebar group** is still to build — see §7c.                                                                                              | `docs/SCREENS.md` §3/§4                                                                                                 |
 | P2-2 | **Five destructive actions sit behind `window.confirm`** — delete shift type, remove emergency contact, delete document, disconnect SMTP, anonymize staff. Native, unstyled, unthemeable, untestable, and suppressible by the browser in an installed PWA. The last one is a **GDPR-irreversible** action guarded by a dialog Chrome may decline to show. Needs a real `ConfirmDialog`. | `ShiftTypeManagerModal:112`, `EmergencyContactsModal:94`, `DocumentsModal:102`, `IntegrationsPage:170`, `StaffPage:185` |
 | P2-3 | **No file storage.** `documents.file_url` is a pasted link — staff DBS/RTW/visa documents live on whatever third-party host someone chose. No avatar upload either. ImageKit is in the stack and unused for this. For PII documents this is a privacy problem, not just a missing feature.                                                                                              | `documentService.ts`                                                                                                    |
 | P2-4 | **Roles are a fixed 3-value CHECK** (`owner\|manager\|staff`), but `SettingsOrganisation.png` shows custom roles (Team Leader, Scheduler, HR Advisor). The schema cannot represent the design. Decide before building the Roles tab: a `roles` table + join, or drop custom roles from the design.                                                                                      | `memberships.role`                                                                                                      |
@@ -763,24 +763,66 @@ the remaining risk is concentrated in code, not configuration.
 
 ---
 
+## 7c. Navigation — the decision, and a correction
+
+Building the tab primitive meant reading both mockups closely, and one thing in
+this report's own §6 summary was wrong.
+
+**The correction.** §6 said the designs give Settings "(expandable, 8
+sub-items)" and treated that as the whole story. Both are true at once, and they
+are different components:
+
+- `design/ProfileSettings.png` shows the sidebar with **Settings expanded** into
+  its 8 sub-items — so a collapsible sidebar group is real and still to build.
+- `design/SettingsOrganisation.png` shows the same sidebar with Settings
+  **collapsed**, and the 8 sections instead as a **horizontal in-page tab bar**
+  under the page title.
+
+So the designs use _both_ affordances for the same 8 destinations. That is
+normal (sidebar for navigation, tabs for orientation within the area) and it
+means the tab bar was the piece actually blocking screens — it is what every one
+of the 11 renders. It shipped in #61; the sidebar group did not, and does not
+block anything.
+
+**Why the sidebar was not restructured in the same PR.** Eight worktrees were
+active on design-match branches while this ran. `Sidebar.tsx` is shared by every
+one of them, and a nav restructure is the single highest-conflict change
+available. The primitive is a new file that conflicts with nobody.
+
+**The recommendation, so this stops being an open question.** Three differences
+between the designed sidebar (12 items) and the built one (15):
+
+| Item             | Design                        | Recommendation                                                                                                                                                                                                                                                                                               |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Integrations** | a Settings tab, not top-level | Move it. `settingsTabs.ts` already lists it at `/app/settings/integrations`; the existing page moves under that route                                                                                                                                                                                        |
+| **Clock in**     | absent                        | **Keep it, role-conditional.** The mockups are a manager's view (Sarah Manager). Clock-in is the single most-used screen a _staff_ member has, and burying the thing someone opens twice a day to satisfy a manager-view mockup would be a real usability loss. Show for `staff`, hide for `owner`/`manager` |
+| **Team**         | absent                        | Fold into Settings → **Permissions**. It is invite/revoke — org administration, which is exactly what that tab is for. Removes an item and fills a designed tab that currently has no content                                                                                                                |
+
+Net: managers get the designed 12-item sidebar, staff get 11 plus Clock in.
+`docs/SCREENS.md` §6 should be updated when this lands.
+
+---
+
 ## 8. The three things to do next
 
-_Updated 2026-08-01, after #56 (P0-1, P0-2), #57 (outbox migration coverage) and
-#58 (P0-3 delivery verification)._
+_Updated 2026-08-01, after #56–#61._
 
-1. **Close the last of P0-3 — one owner-driven pass.** Sign in as an org owner,
-   publish an announcement, confirm the `notifications` row, the push on a real
-   device and the email. Everything underneath it is now proven: keys pair,
-   SMTP delivers, Inngest reaches the function. What is left is the application
-   leg, and it needs a real account.
-2. **Settle the navigation structure, then build the tab-bar primitive (P2-1).**
-   One product conversation; it unblocks five of the eleven remaining screens.
-3. **Tier 1's seven design-match passes** (§4) — the fastest visible progress
-   available, and they now land on a suite that can catch a regression.
+1. **Close the last of P0-3** — one owner-driven pass: sign in, publish an
+   announcement, confirm the row, the push on a real device and the email.
+   Everything underneath is proven (keys pair, SMTP delivers, Inngest reaches
+   the function); what is left is the application leg and it needs a real
+   account.
+2. **Build the first Settings tab against `Tabs`** — Organisation is the
+   obvious one, since `/app/settings` already covers part of it. That converts
+   the flat route into `/app/settings/organisation` and proves the pattern for
+   the other seven.
+3. **Tier 1's remaining design-match passes** (§4) — several are already in
+   flight across parallel branches.
 
-Then the remaining P1s: the SPA-fallback 404 fix (P1-7 — cheap, and every other
-deploy verification depends on it), the CSP (P1-4), and planning the
-react-router v7 migration (P1-2).
+Remaining P1s in order of cost: **P1-4 CSP** (drafted, needs a `npm run preview`
+pass — `wss://` must be in `connect-src` or all 12 Realtime screens silently
+stop updating), then **P1-2** the react-router v7 migration (now safer: the test
+floor exists, and #48 is open with 7.18.2).
 
-Housekeeping worth doing at the same time: set `SMTP_PORT=587` in the local
-`.env` so local testing exercises the same TLS branch as production.
+Housekeeping: set `SMTP_PORT=587` in the local `.env` so local testing exercises
+the same TLS branch as production.
