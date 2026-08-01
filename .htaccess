@@ -95,6 +95,36 @@
   # Deny hardware/API surface the app never uses. Geolocation is NOT in this list
   # — /app/clock reads GPS for clock-in, so revoking it would break attendance.
   Header set Permissions-Policy "camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()"
+
+  # ---- Content-Security-Policy --------------------------------
+  # Every origin below was derived from the code and then VERIFIED by serving
+  # the real production build behind this exact policy and driving a headless
+  # browser over it. Two things only that testing could have found:
+  #
+  #   1. worker-src needs `blob:`. Sentry's replayIntegration compresses
+  #      payloads in a Worker created from a blob URL. Without it, every route
+  #      logs a CSP violation.
+  #
+  #   2. connect-src needs the Google Fonts origins, even though the fonts are
+  #      a STYLESHEET and style-src already allows them. On the first visit the
+  #      page fetches the stylesheet directly and style-src governs it. On every
+  #      visit after that the service worker's StaleWhileRevalidate handler
+  #      fetches it, and a fetch() is governed by connect-src. Miss this and
+  #      fonts break on the second load and every load after — never the first,
+  #      which is exactly the shape of bug nobody reproduces.
+  #
+  # 'unsafe-inline' in style-src is required: framer-motion and React write
+  # inline styles. It is NOT in script-src, which is where it would matter —
+  # index.html carries no inline script.
+  #
+  # img-src allows any https: on purpose. Staff photos are arbitrary pasted
+  # URLs today (docs/audit01.md P2-3), so locking this to ImageKit would break
+  # real avatars. Images cannot execute; the job here is stopping script
+  # injection, not policing image hosts. Tighten it when uploads land.
+  #
+  # openrouter.ai is deliberately absent — the AI key never reaches the browser;
+  # only the ai-rota-assistant Edge Function talks to it.
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://o4511713747271680.ingest.de.sentry.io https://inn.gs https://ik.imagekit.io https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
 </IfModule>
 
 # ---- Pretty error handling ------------------------------------
