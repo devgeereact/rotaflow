@@ -113,7 +113,7 @@ export function SignupPage(): JSX.Element {
 
       // With email confirmation on, signUp returns a user but no session.
       if (data.session) {
-        navigate(inviteToken ? `/invite/${inviteToken}` : '/app/dashboard', {
+        void navigate(inviteToken ? `/invite/${inviteToken}` : '/app/dashboard', {
           replace: true,
         });
         return;

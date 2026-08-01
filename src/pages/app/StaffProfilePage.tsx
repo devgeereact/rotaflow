@@ -125,9 +125,9 @@ export function StaffProfilePage(): JSX.Element {
 
   const onAction = (action: string): void => {
     if (action === 'edit' || action.startsWith('edit-')) setEditOpen(true);
-    else if (action === 'view-schedule') navigate('/app/schedule');
-    else if (action === 'view-timesheet') navigate('/app/timesheets');
-    else if (action === 'message') navigate('/app/announcements');
+    else if (action === 'view-schedule') void navigate('/app/schedule');
+    else if (action === 'view-timesheet') void navigate('/app/timesheets');
+    else if (action === 'message') void navigate('/app/announcements');
   };
 
   if (loading) {

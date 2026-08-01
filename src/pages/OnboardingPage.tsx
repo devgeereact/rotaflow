@@ -300,7 +300,7 @@ export function OnboardingPage(): JSX.Element {
   // wizard is the thing that just created it.
   useEffect(() => {
     if (!loading && memberships.length > 0 && orgId === null) {
-      navigate('/app/dashboard', { replace: true });
+      void navigate('/app/dashboard', { replace: true });
     }
   }, [loading, memberships, orgId, navigate]);
 
@@ -388,7 +388,7 @@ export function OnboardingPage(): JSX.Element {
         }
         setLocationCount((c) => c + namedLocations.length);
         if (after === 'exit') {
-          navigate('/app/dashboard', { replace: true });
+          void navigate('/app/dashboard', { replace: true });
         } else {
           setStep(3);
         }
@@ -465,7 +465,7 @@ export function OnboardingPage(): JSX.Element {
   );
 
   const finish = useCallback((): void => {
-    navigate('/app/dashboard', { replace: true });
+    void navigate('/app/dashboard', { replace: true });
   }, [navigate]);
 
   if (loading) return <SplashScreen />;
@@ -509,7 +509,7 @@ export function OnboardingPage(): JSX.Element {
           values={createValues}
           onChange={(patch) => setCreateValues((v) => ({ ...v, ...patch }))}
           onContinue={() => void handleCreateOrg()}
-          onCancel={() => navigate('/login')}
+          onCancel={() => void navigate('/login')}
           submitting={submitting}
           error={error}
         />

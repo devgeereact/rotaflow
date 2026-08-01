@@ -83,7 +83,7 @@ export function LoginPage(): JSX.Element {
         password,
       });
       if (signInError) throw signInError;
-      navigate(from, { replace: true });
+      void navigate(from, { replace: true });
     });
 
   const signInWithOAuth = (provider: OAuthProvider): Promise<void> =>

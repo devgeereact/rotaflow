@@ -63,7 +63,7 @@ export function ResetPasswordPage(): JSX.Element {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
       showSuccess('Password updated. You are signed in.');
-      navigate('/app/dashboard', { replace: true });
+      void navigate('/app/dashboard', { replace: true });
     } catch (err) {
       reportError(err, { area: 'auth:reset-password' });
       setError(err instanceof Error ? err.message : 'Could not update the password.');
@@ -89,7 +89,7 @@ export function ResetPasswordPage(): JSX.Element {
               This reset link is invalid or has expired. Request a new one — links are
               valid for one hour.
             </p>
-            <Button className="w-full" onClick={() => navigate('/forgot-password')}>
+            <Button className="w-full" onClick={() => void navigate('/forgot-password')}>
               Request a new link
             </Button>
           </>
