@@ -1,4 +1,4 @@
-import { CheckCircle2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 export interface TimesheetRule {
@@ -24,33 +24,34 @@ export function TimesheetRulesCard({
 }: TimesheetRulesCardProps): JSX.Element {
   return (
     <Card className="p-3.5">
-      <div className="mb-2.5 flex items-center justify-between">
-        <h2 className="text-[0.9rem] font-semibold text-content dark:text-content-dark">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[0.82rem] font-semibold text-content dark:text-content-dark">
           Timesheet Rules
         </h2>
         {onEdit && (
           <button
             type="button"
             onClick={onEdit}
-            className="text-xs font-medium text-primary hover:underline"
+            className="text-[0.7rem] font-semibold text-primary hover:underline"
           >
             Edit
           </button>
         )}
       </div>
 
-      <ul className="space-y-2.5">
+      <ul className="space-y-3">
         {rules.map((rule) => (
           <li key={rule.id} className="flex items-center gap-2.5">
-            <CheckCircle2
-              size={16}
+            <span
               aria-hidden="true"
-              className="shrink-0 text-success"
-            />
-            <span className="min-w-0 flex-1 truncate text-[0.73rem] text-content dark:text-content-dark">
+              className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-success"
+            >
+              <Check size={10} strokeWidth={3.5} className="text-primary-fg" />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[0.69rem] text-content dark:text-content-dark">
               {rule.label}
             </span>
-            <span className="shrink-0 text-[0.73rem] font-medium text-content dark:text-content-dark">
+            <span className="shrink-0 text-[0.69rem] font-semibold text-content dark:text-content-dark">
               {rule.value}
             </span>
           </li>

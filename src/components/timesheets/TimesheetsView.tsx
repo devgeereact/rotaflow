@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Download } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { PendingApprovalCard } from '@/components/timesheets/PendingApprovalCard';
@@ -93,12 +93,12 @@ export function TimesheetsView(props: TimesheetsViewProps): JSX.Element {
         <h1 className="font-display text-2xl font-bold text-content dark:text-content-dark">
           Timesheets
         </h1>
-        <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+        <p className="mt-0.5 text-sm text-content-muted dark:text-content-muted-dark">
           Track worked hours, overtime and approve timesheets.
         </p>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -129,7 +129,7 @@ export function TimesheetsView(props: TimesheetsViewProps): JSX.Element {
             />
           </div>
 
-          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-nowrap">
             {props.statCards}
           </div>
 
@@ -159,7 +159,7 @@ export function TimesheetsView(props: TimesheetsViewProps): JSX.Element {
             )}
           </Card>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <TimesheetTipBanner
               title="Tip: Approve in bulk"
               body="Select multiple timesheets to approve them together, or export for payroll processing."
@@ -169,17 +169,16 @@ export function TimesheetsView(props: TimesheetsViewProps): JSX.Element {
           </div>
         </div>
 
-        <aside className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
+        <aside className="space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2 pb-2">
             <button
               type="button"
               onClick={props.onExport}
-              className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface px-3.5 text-sm font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+              className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface px-4 text-[0.82rem] font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
             >
-              <Download size={16} aria-hidden="true" />
               Export
               <ChevronDown
-                size={14}
+                size={15}
                 aria-hidden="true"
                 className="text-content-muted dark:text-content-muted-dark"
               />
@@ -187,7 +186,7 @@ export function TimesheetsView(props: TimesheetsViewProps): JSX.Element {
             <Button
               onClick={props.onApproveSelected}
               disabled={selectedCount === 0}
-              className="h-11 flex-1 whitespace-nowrap px-3 text-sm"
+              className="h-10 flex-1 whitespace-nowrap px-3 text-[0.82rem]"
             >
               <Check size={16} aria-hidden="true" />
               Approve Selected ({selectedCount})

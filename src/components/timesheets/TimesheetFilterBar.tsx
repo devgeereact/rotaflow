@@ -25,12 +25,12 @@ interface TimesheetFilterBarProps {
 }
 
 const CONTROL =
-  'flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-[0.82rem] font-medium text-content transition-colors hover:bg-surface-subtle ' +
+  'flex h-10 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-[0.78rem] font-semibold text-content transition-colors hover:bg-surface-subtle ' +
   'focus-within:ring-2 focus-within:ring-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
   'dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark';
 
 const SELECT =
-  'w-full appearance-none bg-transparent pr-4 text-[0.82rem] font-medium text-content outline-none dark:text-content-dark';
+  'w-full appearance-none bg-transparent pr-4 text-[0.78rem] font-semibold text-content outline-none dark:text-content-dark';
 
 const STATUSES = [
   { value: 'all', label: 'All Statuses' },
@@ -58,18 +58,14 @@ export function TimesheetFilterBar({
   onFilters,
 }: TimesheetFilterBarProps): JSX.Element {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1.35fr_1fr_1.1fr_1fr_1fr_0.85fr]">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1.55fr_1fr_1.1fr_1fr_1fr_0.8fr]">
       <button type="button" onClick={onPeriodClick} className={cn(CONTROL, 'relative')}>
-        <CalendarDays
-          size={16}
-          aria-hidden="true"
-          className="text-content-muted dark:text-content-muted-dark"
-        />
+        <CalendarDays size={16} aria-hidden="true" className="shrink-0" />
         <span className="truncate">{periodLabel}</span>
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className="ml-auto shrink-0 text-content-muted dark:text-content-muted-dark"
+          className="ml-auto shrink-0 text-content dark:text-content-dark"
         />
       </button>
 
@@ -90,7 +86,7 @@ export function TimesheetFilterBar({
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className="pointer-events-none absolute right-3.5 text-content-muted dark:text-content-muted-dark"
+          className="pointer-events-none absolute right-3 text-content dark:text-content-dark"
         />
       </div>
 
@@ -111,7 +107,7 @@ export function TimesheetFilterBar({
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className="pointer-events-none absolute right-3.5 text-content-muted dark:text-content-muted-dark"
+          className="pointer-events-none absolute right-3 text-content dark:text-content-dark"
         />
       </div>
 
@@ -132,7 +128,7 @@ export function TimesheetFilterBar({
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className="pointer-events-none absolute right-3.5 text-content-muted dark:text-content-muted-dark"
+          className="pointer-events-none absolute right-3 text-content dark:text-content-dark"
         />
       </div>
 
@@ -152,7 +148,7 @@ export function TimesheetFilterBar({
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className="pointer-events-none absolute right-3.5 text-content-muted dark:text-content-muted-dark"
+          className="pointer-events-none absolute right-3 text-content dark:text-content-dark"
         />
       </div>
 
