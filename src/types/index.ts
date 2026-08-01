@@ -51,6 +51,12 @@ export type AnnouncementUpdate = Database['public']['Tables']['announcements']['
 
 export type Notification = Database['public']['Tables']['notifications']['Row'];
 
+export type AuditLog = Database['public']['Tables']['audit_logs']['Row'];
+
+export type Subscription = Database['public']['Tables']['subscriptions']['Row'];
+/** `subscriptions.plan` CHECK — the three plans the schema will accept. */
+export type SubscriptionPlan = 'starter' | 'professional' | 'business';
+
 export type PushSubscriptionRow =
   Database['public']['Tables']['push_subscriptions']['Row'];
 export type PushSubscriptionInsert =

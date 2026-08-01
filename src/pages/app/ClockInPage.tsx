@@ -256,7 +256,7 @@ export function ClockInPage(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-1 font-display text-2xl text-content dark:text-content-dark">
+      <h1 className="mb-1 font-display text-page-title font-semibold text-content dark:text-content-dark">
         Clock in
       </h1>
       <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">

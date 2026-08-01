@@ -71,7 +71,7 @@ export function LeaveView(props: LeaveViewProps): JSX.Element {
   return (
     <div>
       <div className="mb-7">
-        <h1 className="font-display text-section-heading font-bold text-content dark:text-content-dark">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Leave
         </h1>
         <p className="mt-1 text-[0.88rem] text-content-muted dark:text-content-muted-dark">

@@ -160,7 +160,7 @@ export function DashboardView({
   return (
     <div className="max-w-[1600px]">
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-semibold text-content dark:text-content-dark">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Dashboard
         </h1>
         <p className="text-content-muted dark:text-content-muted-dark">

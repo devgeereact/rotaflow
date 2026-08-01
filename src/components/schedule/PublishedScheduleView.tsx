@@ -91,7 +91,7 @@ export function PublishedScheduleView(props: PublishedScheduleViewProps): JSX.El
   return (
     <div>
       <div className="mb-5">
-        <h1 className="flex items-center gap-2.5 font-display text-2xl font-bold text-content dark:text-content-dark">
+        <h1 className="flex items-center gap-2.5 font-display text-page-title font-semibold text-content dark:text-content-dark">
           Published Schedule
           {props.published && (
             <Badge tone="success">

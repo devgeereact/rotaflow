@@ -637,7 +637,7 @@ export function RotaBuilderPage(): JSX.Element {
         {/* ---- Page header ---- */}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl font-bold text-content dark:text-content-dark">
+            <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
               Rota Builder
             </h1>
             <p className="flex items-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">

@@ -35,7 +35,18 @@ function formatExpiry(iso: string): string {
   return days === 1 ? 'expires tomorrow' : `expires in ${days} days`;
 }
 
-export function TeamPage(): JSX.Element {
+/**
+ * Invitation management: create an invite, copy its one-time link, revoke a
+ * pending one.
+ *
+ * This was `/app/team`, a top-level sidebar item. The designed sidebar has no
+ * Team entry, and what this screen actually does — decide who may join the
+ * organisation and at what role — is organisation administration, which is
+ * exactly what Settings → Permissions is for. So it moved in whole rather than
+ * being rebuilt, and `/app/team` now redirects here so existing links and
+ * bookmarks keep working.
+ */
+export function TeamInviteManager(): JSX.Element {
   const { orgId, orgName } = useOrg();
   const { canManageStaff, canManageOrg } = usePermissions();
   const { showError, showSuccess } = useToast();
@@ -159,15 +170,10 @@ export function TeamPage(): JSX.Element {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl text-content dark:text-content-dark">
-            Team
-          </h1>
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            Invite people to {orgName ?? 'your organisation'} and manage pending
-            invitations.
-          </p>
-        </div>
+        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          Invite people to {orgName ?? 'your organisation'} and manage pending
+          invitations.
+        </p>
         <Button size="sm" onClick={() => setModalOpen(true)}>
           <Plus size={14} aria-hidden="true" className="mr-1.5" />
           Invite someone

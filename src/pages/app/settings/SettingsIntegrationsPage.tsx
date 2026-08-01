@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
-import { CheckCircle2, Eye, EyeOff, Lock, Mail, Plug } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
+import { useConfirm } from '@/hooks/useConfirm';
 import {
   deleteOrgSmtpSettings,
   getOrgSmtpSettings,
@@ -25,10 +26,11 @@ import type { OrgSmtpSettingsSafe } from '@/types';
  * 0010_org_smtp_settings.sql) — editing host/username/from-address leaves it
  * untouched, and changing it requires typing a new one.
  */
-export function IntegrationsPage(): JSX.Element {
+export function SettingsIntegrationsPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canManageOrg } = usePermissions();
   const { showError, showSuccess } = useToast();
+  const { confirm } = useConfirm();
 
   const [existing, setExisting] = useState<OrgSmtpSettingsSafe | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,13 +168,14 @@ export function IntegrationsPage(): JSX.Element {
 
   const handleRemove = useCallback(async (): Promise<void> => {
     if (!orgId) return;
-    if (
-      !window.confirm(
-        'Remove these SMTP settings? Notifications will immediately fall back to the shared sender, and the password cannot be recovered — you will need to re-enter it to reconnect.',
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Remove SMTP settings?',
+      message:
+        'Notifications will immediately fall back to the shared sender, and the password cannot be recovered — you will need to re-enter it to reconnect.',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteOrgSmtpSettings(orgId);
       setExisting(null);
@@ -188,7 +191,7 @@ export function IntegrationsPage(): JSX.Element {
       reportError(err, { area: 'integrations:delete' });
       showError('Could not remove SMTP settings.');
     }
-  }, [orgId, showError, showSuccess]);
+  }, [orgId, confirm, showError, showSuccess]);
 
   if (!canManageOrg) {
     return (
@@ -222,14 +225,10 @@ export function IntegrationsPage(): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="mb-2 flex items-center gap-2 font-display text-2xl text-content dark:text-content-dark">
-        <Plug size={22} aria-hidden="true" />
-        Integrations
-      </h1>
+    <div className="max-w-2xl">
       <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
         Connect your own SMTP account so shift, leave and swap notifications arrive from
-        your organisation's own address instead of a shared sender.
+        your organisation&rsquo;s own address instead of a shared sender.
       </p>
 
       <Card>

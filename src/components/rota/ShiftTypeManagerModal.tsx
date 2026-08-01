@@ -12,6 +12,7 @@ import {
   updateShiftType,
 } from '@/services/shiftTypeService';
 import { reportError } from '@/lib/sentry';
+import { useConfirm } from '@/hooks/useConfirm';
 import type { ShiftType } from '@/types';
 
 interface ShiftTypeManagerModalProps {
@@ -47,6 +48,7 @@ export function ShiftTypeManagerModal({
   shiftTypes,
   onChange,
 }: ShiftTypeManagerModalProps): JSX.Element {
+  const { confirm } = useConfirm();
   const [view, setView] = useState<'list' | 'form'>('list');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(BLANK_FORM);
@@ -109,8 +111,13 @@ export function ShiftTypeManagerModal({
   };
 
   const handleDelete = async (id: string, name: string): Promise<void> => {
-    if (!window.confirm(`Delete the "${name}" shift type? This cannot be undone.`))
-      return;
+    const ok = await confirm({
+      title: 'Delete shift type?',
+      message: `"${name}" will be removed from this organisation. Shifts already using it keep their times but lose the type. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteShiftType(id);
       onChange(shiftTypes.filter((t) => t.id !== id));

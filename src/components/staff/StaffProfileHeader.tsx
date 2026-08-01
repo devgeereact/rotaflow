@@ -44,7 +44,7 @@ export function StaffProfileHeader({
           <span className="truncate">{name}</span>
         </p>
 
-        <h1 className="mt-1.5 flex flex-wrap items-center gap-3 font-display text-3xl font-bold text-content dark:text-content-dark">
+        <h1 className="mt-1.5 flex flex-wrap items-center gap-3 font-display text-page-title font-semibold text-content dark:text-content-dark">
           {name}
           <Badge tone={active ? 'success' : 'neutral'} className="px-2.5 py-1">
             <CircleCheck size={13} aria-hidden="true" />
