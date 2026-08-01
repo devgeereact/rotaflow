@@ -83,7 +83,7 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-bold text-content dark:text-content-dark">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Reports
         </h1>
         <p className="mt-1 text-[0.95rem] font-medium text-content-muted dark:text-content-muted-dark">

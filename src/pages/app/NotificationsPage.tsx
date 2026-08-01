@@ -121,7 +121,7 @@ export function NotificationsPage(): JSX.Element {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-2xl text-content dark:text-content-dark">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Notifications
         </h1>
         <div className="flex items-center gap-2">

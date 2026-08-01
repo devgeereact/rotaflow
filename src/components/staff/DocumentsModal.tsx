@@ -10,6 +10,7 @@ import {
   listDocuments,
 } from '@/services/documentService';
 import { reportError } from '@/lib/sentry';
+import { useConfirm } from '@/hooks/useConfirm';
 import type { StaffDocument } from '@/types';
 
 interface DocumentsModalProps {
@@ -37,6 +38,7 @@ export function DocumentsModal({
   staffProfileId,
   staffName,
 }: DocumentsModalProps): JSX.Element {
+  const { confirm } = useConfirm();
   const [documents, setDocuments] = useState<StaffDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(BLANK);
@@ -98,12 +100,13 @@ export function DocumentsModal({
   };
 
   const handleDelete = async (doc: StaffDocument): Promise<void> => {
-    if (
-      !window.confirm(
-        `Remove "${doc.name}"? This only removes the record — not the file itself.`,
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: 'Remove document record?',
+      message: `"${doc.name}" will be removed from this staff member's file. This only removes the record in RotaFlow — the file itself stays wherever it is hosted.`,
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteDocument(orgId, doc.id);
       setDocuments((prev) => prev.filter((d) => d.id !== doc.id));

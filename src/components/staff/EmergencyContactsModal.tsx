@@ -10,6 +10,7 @@ import {
   listEmergencyContacts,
 } from '@/services/emergencyContactService';
 import { reportError } from '@/lib/sentry';
+import { useConfirm } from '@/hooks/useConfirm';
 import type { EmergencyContact } from '@/types';
 
 interface EmergencyContactsModalProps {
@@ -40,6 +41,7 @@ export function EmergencyContactsModal({
   staffProfileId,
   staffName,
 }: EmergencyContactsModalProps): JSX.Element {
+  const { confirm } = useConfirm();
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(BLANK);
@@ -91,7 +93,13 @@ export function EmergencyContactsModal({
   };
 
   const handleDelete = async (contact: EmergencyContact): Promise<void> => {
-    if (!window.confirm(`Remove ${contact.name} as an emergency contact?`)) return;
+    const ok = await confirm({
+      title: 'Remove emergency contact?',
+      message: `${contact.name} will no longer be listed as an emergency contact for this staff member.`,
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteEmergencyContact(orgId, contact.id);
       setContacts((prev) => prev.filter((c) => c.id !== contact.id));

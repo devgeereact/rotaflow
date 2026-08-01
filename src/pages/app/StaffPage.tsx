@@ -14,6 +14,7 @@ import { addDays, format, startOfDay, startOfWeek } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useConfirm } from '@/hooks/useConfirm';
 import {
   createStaffProfile,
   deactivateStaffProfile,
@@ -120,6 +121,7 @@ function compareRows(
  * `usePermissions` only decides which affordances appear.
  */
 export function StaffPage(): JSX.Element {
+  const { confirm } = useConfirm();
   const { orgId } = useOrg();
   const { canManageStaff, canManageOrg } = usePermissions();
   const navigate = useNavigate();
@@ -367,16 +369,17 @@ export function StaffPage(): JSX.Element {
    */
   const handleAnonymize = async (person: StaffProfile): Promise<void> => {
     if (!orgId) return;
-    if (
-      !window.confirm(
-        `Erase ${person.first_name} ${person.last_name}'s personal data from this organisation? ` +
-          `Their name, phone and photo are permanently scrubbed and their emergency contacts and ` +
-          `documents are deleted. Shift, leave and timesheet history is kept but no longer shows who ` +
-          `it belonged to. This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+    // The one irreversible action in the product. It previously sat behind
+    // window.confirm — a dialog the browser is allowed to suppress in an
+    // installed PWA, which is not an acceptable guard for a GDPR erasure.
+    const ok = await confirm({
+      title: `Erase ${person.first_name} ${person.last_name}'s personal data?`,
+      message:
+        'Their name, phone and photo are permanently scrubbed, and their emergency contacts and documents are deleted. Shift, leave and timesheet history is kept but no longer shows who it belonged to. This cannot be undone.',
+      confirmLabel: 'Erase permanently',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setError(null);
     setGdprBusyId(person.id);
     try {
@@ -478,7 +481,7 @@ export function StaffPage(): JSX.Element {
   return (
     <div>
       <div className="mb-10">
-        <h1 className="font-display text-3xl font-bold text-content dark:text-content-dark">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Staff
         </h1>
         <p className="mt-1.5 text-sm text-content-muted dark:text-content-muted-dark">

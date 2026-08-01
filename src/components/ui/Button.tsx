@@ -1,7 +1,18 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-type Variant = 'primary' | 'secondary' | 'ghost';
+type Variant =
+  | 'primary'
+  | 'secondary'
+  | 'ghost'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  // Outlined destructive — the "Revoke Access" treatment in
+  // design/SettingsOrganisation.png. A solid red button next to a neutral one
+  // pulls the eye to the destructive choice; the outline keeps it legible as
+  // dangerous without making it the visual default.
+  | 'danger-outline';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -9,6 +20,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
 }
 
+// `designsystem.png` shows six button styles: Primary, Secondary, Ghost,
+// Success, Warning and Danger. Only the first three existed, so every
+// destructive or confirming action in the app hand-rolled its own colours —
+// 43 elements carrying `bg-danger`/`text-danger` in a className, none of them
+// agreeing on padding, weight or hover.
 const VARIANTS: Record<Variant, string> = {
   primary: 'bg-primary text-primary-fg hover:bg-primary/90',
   secondary:
@@ -16,6 +32,14 @@ const VARIANTS: Record<Variant, string> = {
     'dark:bg-surface-dark dark:text-content-dark dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark',
   ghost:
     'bg-transparent text-primary hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
+  success: 'bg-success text-white hover:bg-success/90',
+  // `warning` is the one fill in the set that fails contrast against white at
+  // its token value (#E0A030), so its ink is the dark content token rather
+  // than white. Same swatch as the reference; readable text on it.
+  warning: 'bg-warning text-content hover:bg-warning/90',
+  danger: 'bg-danger text-white hover:bg-danger/90',
+  'danger-outline':
+    'bg-transparent text-danger border border-danger/40 hover:bg-danger/10',
 };
 
 const SIZES: Record<Size, string> = {

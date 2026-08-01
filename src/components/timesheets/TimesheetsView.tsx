@@ -90,7 +90,7 @@ export function TimesheetsView(props: TimesheetsViewProps): JSX.Element {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="font-display text-2xl font-bold text-content dark:text-content-dark">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Timesheets
         </h1>
         <p className="mt-0.5 text-sm text-content-muted dark:text-content-muted-dark">

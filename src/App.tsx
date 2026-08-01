@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/context/ToastContext';
+import { ConfirmProvider } from '@/context/ConfirmContext';
 import { OrgProvider } from '@/context/OrgContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
@@ -106,7 +107,6 @@ const ResetPasswordPage = lazyPage(
   'ResetPasswordPage',
   () => import('@/pages/ResetPasswordPage'),
 );
-const TeamPage = lazyPage('TeamPage', () => import('@/pages/app/TeamPage'));
 const SchedulePage = lazyPage('SchedulePage', () => import('@/pages/app/SchedulePage'));
 const ClockInPage = lazyPage('ClockInPage', () => import('@/pages/app/ClockInPage'));
 const TimesheetsPage = lazyPage(
@@ -127,19 +127,7 @@ const NotificationsPage = lazyPage(
   'NotificationsPage',
   () => import('@/pages/app/NotificationsPage'),
 );
-const IntegrationsPage = lazyPage(
-  'IntegrationsPage',
-  () => import('@/pages/app/IntegrationsPage'),
-);
-const OrgSettingsPage = lazyPage(
-  'OrgSettingsPage',
-  () => import('@/pages/app/OrgSettingsPage'),
-);
 const ReportsPage = lazyPage('ReportsPage', () => import('@/pages/app/ReportsPage'));
-const AccountSettingsPage = lazyPage(
-  'AccountSettingsPage',
-  () => import('@/pages/app/AccountSettingsPage'),
-);
 const DashboardPage = lazyPage(
   'DashboardPage',
   () => import('@/pages/app/DashboardPage'),
@@ -162,26 +150,99 @@ const RotaBuilderPage = lazyPage(
   () => import('@/pages/app/RotaBuilderPage'),
 );
 
+/*
+ * Settings and My Profile — the fourteen tabbed sections.
+ *
+ * `settingsTabs.ts` has listed these routes since #62 and NOTHING rendered
+ * them: the file was imported only by its own unit test, so every tab in the
+ * bar resolved to the `*` catch-all and produced the 404 page. They are real
+ * routes from here.
+ */
+const SettingsLayout = lazyPage(
+  'SettingsLayout',
+  () => import('@/components/layout/SettingsLayout'),
+);
+const SettingsOrganisationPage = lazyPage(
+  'SettingsOrganisationPage',
+  () => import('@/pages/app/settings/SettingsOrganisationPage'),
+);
+const SettingsPermissionsPage = lazyPage(
+  'SettingsPermissionsPage',
+  () => import('@/pages/app/settings/SettingsPermissionsPage'),
+);
+const SettingsRolesPage = lazyPage(
+  'SettingsRolesPage',
+  () => import('@/pages/app/settings/SettingsRolesPage'),
+);
+const SettingsPoliciesPage = lazyPage(
+  'SettingsPoliciesPage',
+  () => import('@/pages/app/settings/SettingsPoliciesPage'),
+);
+const SettingsNotificationsPage = lazyPage(
+  'SettingsNotificationsPage',
+  () => import('@/pages/app/settings/SettingsNotificationsPage'),
+);
+const SettingsIntegrationsPage = lazyPage(
+  'SettingsIntegrationsPage',
+  () => import('@/pages/app/settings/SettingsIntegrationsPage'),
+);
+const SettingsBillingPage = lazyPage(
+  'SettingsBillingPage',
+  () => import('@/pages/app/settings/SettingsBillingPage'),
+);
+const SettingsAuditPage = lazyPage(
+  'SettingsAuditPage',
+  () => import('@/pages/app/settings/SettingsAuditPage'),
+);
+const ProfileLayout = lazyPage(
+  'ProfileLayout',
+  () => import('@/components/layout/ProfileLayout'),
+);
+const ProfilePage = lazyPage(
+  'ProfilePage',
+  () => import('@/pages/app/account/ProfilePage'),
+);
+const PreferencesPage = lazyPage(
+  'PreferencesPage',
+  () => import('@/pages/app/account/PreferencesPage'),
+);
+const SecurityPage = lazyPage(
+  'SecurityPage',
+  () => import('@/pages/app/account/SecurityPage'),
+);
+const SessionsPage = lazyPage(
+  'SessionsPage',
+  () => import('@/pages/app/account/SessionsPage'),
+);
+const TokensPage = lazyPage('TokensPage', () => import('@/pages/app/account/TokensPage'));
+const ActivityPage = lazyPage(
+  'ActivityPage',
+  () => import('@/pages/app/account/ActivityPage'),
+);
+
 export function App(): JSX.Element {
   return (
     <ThemeProvider>
       {/* Outside AuthProvider so sign-in/sign-out failures can surface too. */}
       <ToastProvider>
-        <AuthProvider>
-          <OrgProvider>
-            <BrowserRouter>
-              {/* Covers the lazy PUBLIC routes (signup, onboarding, invite,
+        {/* Above AuthProvider: a confirmation may be raised from anywhere,
+            including sign-out. */}
+        <ConfirmProvider>
+          <AuthProvider>
+            <OrgProvider>
+              <BrowserRouter>
+                {/* Covers the lazy PUBLIC routes (signup, onboarding, invite,
                   password reset). /app/* has its own boundary inside AppShell
                   so the chrome survives navigation — see there. */}
-              <Suspense fallback={<RouteFallback />}>
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/signup" element={<SignupPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route path="/splash" element={<SplashScreen />} />
-                  {/* ---------------------------------------------------------
+                <Suspense fallback={<RouteFallback />}>
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignupPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/splash" element={<SplashScreen />} />
+                    {/* ---------------------------------------------------------
                     Design-loop preview routes — DEV ONLY.
 
                     Every screen below lives behind auth in the real product and
@@ -203,125 +264,167 @@ export function App(): JSX.Element {
                     The loop is unaffected — it drives the dev server, where DEV
                     is true. Keep new preview routes inside this block.
                     --------------------------------------------------------- */}
-                  {import.meta.env.DEV && (
-                    <>
-                      {/* The real screen only ever renders inline from
+                    {import.meta.env.DEV && (
+                      <>
+                        {/* The real screen only ever renders inline from
                         ProtectedRoute/AppShell while auth or org membership is
                         resolving. Fixed props reproduce the "setting up
                         organisation" mid-boot state in design/appboot.png. */}
-                      <Route
-                        path="/appboot"
-                        element={<AppBootScreen authResolved orgResolved={false} />}
-                      />
-                      {/* /onboarding writes real rows. ?step=1|2|5 reproduces the
+                        <Route
+                          path="/appboot"
+                          element={<AppBootScreen authResolved orgResolved={false} />}
+                        />
+                        {/* /onboarding writes real rows. ?step=1|2|5 reproduces the
                         reference-designed steps against mock local state. */}
-                      <Route
-                        path="/onboarding-preview"
-                        element={<OnboardingPreviewPage />}
-                      />
-                      {/* design/Workforce-Dashboard.png's numbers. */}
-                      <Route
-                        path="/dashboard-preview"
-                        element={<DashboardPreviewPage />}
-                      />
-                      {/* Mirrors RotaBuilderPage's render tree against mock data. */}
-                      <Route
-                        path="/rota-builder-preview"
-                        element={<RotaBuilderPreviewPage />}
-                      />
-                      {/* design/published-schedule.png's numbers. */}
-                      <Route path="/schedule-preview" element={<SchedulePreviewPage />} />
-                      {/* design/Timesheets-Dashboard.png's numbers. */}
-                      <Route
-                        path="/timesheets-preview"
-                        element={<TimesheetsPreviewPage />}
-                      />
-                      {/* design/clockin.png. */}
-                      <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
-                      {/* design/staff.png and design/Staff-Profile.png. */}
-                      <Route path="/staff-preview" element={<StaffPreviewPage />} />
-                      <Route
-                        path="/staff-preview/:staffId"
-                        element={<StaffProfilePreviewPage />}
-                      />
-                      {/* design/Locations-Management.png and
+                        <Route
+                          path="/onboarding-preview"
+                          element={<OnboardingPreviewPage />}
+                        />
+                        {/* design/Workforce-Dashboard.png's numbers. */}
+                        <Route
+                          path="/dashboard-preview"
+                          element={<DashboardPreviewPage />}
+                        />
+                        {/* Mirrors RotaBuilderPage's render tree against mock data. */}
+                        <Route
+                          path="/rota-builder-preview"
+                          element={<RotaBuilderPreviewPage />}
+                        />
+                        {/* design/published-schedule.png's numbers. */}
+                        <Route
+                          path="/schedule-preview"
+                          element={<SchedulePreviewPage />}
+                        />
+                        {/* design/Timesheets-Dashboard.png's numbers. */}
+                        <Route
+                          path="/timesheets-preview"
+                          element={<TimesheetsPreviewPage />}
+                        />
+                        {/* design/clockin.png. */}
+                        <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
+                        {/* design/staff.png and design/Staff-Profile.png. */}
+                        <Route path="/staff-preview" element={<StaffPreviewPage />} />
+                        <Route
+                          path="/staff-preview/:staffId"
+                          element={<StaffProfilePreviewPage />}
+                        />
+                        {/* design/Locations-Management.png and
                         design/Location-department.png, merged into one
                         tabbed workspace. ?tab=departments opens the second. */}
-                      <Route
-                        path="/locations-preview"
-                        element={<LocationsPreviewPage />}
-                      />
-                      <Route
-                        path="/locations-preview/departments"
-                        element={<LocationsPreviewPage />}
-                      />
-                      {/* design/Announcements-Dashboard.png's rows and metrics. */}
-                      <Route
-                        path="/announcements-preview"
-                        element={<AnnouncementsPreviewPage />}
-                      />
-                      {/* design/Swap-Request.png's rows, counts and rail. */}
-                      <Route path="/swaps-preview" element={<SwapsPreviewPage />} />
-                      {/* design/Reports-Dashboard.png's catalogue and figures. */}
-                      <Route path="/reports-preview" element={<ReportsPreviewPage />} />
-                      {/* design/Leave.png's numbers. */}
-                      <Route path="/leave-preview" element={<LeavePreviewPage />} />
-                    </>
-                  )}
-                  {/* Public on purpose: an invitee has no account yet, and
+                        <Route
+                          path="/locations-preview"
+                          element={<LocationsPreviewPage />}
+                        />
+                        <Route
+                          path="/locations-preview/departments"
+                          element={<LocationsPreviewPage />}
+                        />
+                        {/* design/Announcements-Dashboard.png's rows and metrics. */}
+                        <Route
+                          path="/announcements-preview"
+                          element={<AnnouncementsPreviewPage />}
+                        />
+                        {/* design/Swap-Request.png's rows, counts and rail. */}
+                        <Route path="/swaps-preview" element={<SwapsPreviewPage />} />
+                        {/* design/Reports-Dashboard.png's catalogue and figures. */}
+                        <Route path="/reports-preview" element={<ReportsPreviewPage />} />
+                        {/* design/Leave.png's numbers. */}
+                        <Route path="/leave-preview" element={<LeavePreviewPage />} />
+                      </>
+                    )}
+                    {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
-                  <Route path="/invite/:token" element={<AcceptInvitePage />} />
-                  <Route
-                    path="/onboarding"
-                    element={
-                      <ProtectedRoute>
-                        <OnboardingPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/app"
-                    element={
-                      <ProtectedRoute>
-                        <AppShell />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<Navigate to="dashboard" replace />} />
-                    <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="staff" element={<StaffPage />} />
-                    <Route path="staff/:staffId" element={<StaffProfilePage />} />
-                    <Route path="team" element={<TeamPage />} />
-                    <Route path="locations" element={<LocationsPage />} />
-                    {/* Second half of the same workspace, on its own URL so it
+                    <Route path="/invite/:token" element={<AcceptInvitePage />} />
+                    <Route
+                      path="/onboarding"
+                      element={
+                        <ProtectedRoute>
+                          <OnboardingPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/app"
+                      element={
+                        <ProtectedRoute>
+                          <AppShell />
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route index element={<Navigate to="dashboard" replace />} />
+                      <Route path="dashboard" element={<DashboardPage />} />
+                      <Route path="staff" element={<StaffPage />} />
+                      <Route path="staff/:staffId" element={<StaffProfilePage />} />
+                      {/* Team folded into Settings -> Permissions: it is
+                      invite/revoke, i.e. organisation administration, and the
+                      designed sidebar has no Team entry. Redirect kept so
+                      existing links and bookmarks survive. */}
+                      <Route
+                        path="team"
+                        element={<Navigate to="/app/settings/permissions" replace />}
+                      />
+                      <Route path="locations" element={<LocationsPage />} />
+                      {/* Second half of the same workspace, on its own URL so it
                       can be linked and refreshed into. */}
-                    <Route path="locations/departments" element={<LocationsPage />} />
-                    <Route path="rota" element={<RotaBuilderPage />} />
-                    <Route path="schedule" element={<SchedulePage />} />
-                    <Route path="clock" element={<ClockInPage />} />
-                    <Route path="timesheets" element={<TimesheetsPage />} />
-                    <Route path="availability" element={<AvailabilityPage />} />
-                    <Route path="leave" element={<LeavePage />} />
-                    <Route path="swaps" element={<SwapsPage />} />
-                    <Route path="announcements" element={<AnnouncementsPage />} />
-                    <Route path="notifications" element={<NotificationsPage />} />
-                    <Route path="integrations" element={<IntegrationsPage />} />
-                    <Route path="settings" element={<OrgSettingsPage />} />
-                    <Route path="reports" element={<ReportsPage />} />
-                    <Route path="account" element={<AccountSettingsPage />} />
-                  </Route>
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </Suspense>
+                      <Route path="locations/departments" element={<LocationsPage />} />
+                      <Route path="rota" element={<RotaBuilderPage />} />
+                      <Route path="schedule" element={<SchedulePage />} />
+                      <Route path="clock" element={<ClockInPage />} />
+                      <Route path="timesheets" element={<TimesheetsPage />} />
+                      <Route path="availability" element={<AvailabilityPage />} />
+                      <Route path="leave" element={<LeavePage />} />
+                      <Route path="swaps" element={<SwapsPage />} />
+                      <Route path="announcements" element={<AnnouncementsPage />} />
+                      <Route path="notifications" element={<NotificationsPage />} />
+                      <Route path="reports" element={<ReportsPage />} />
+                      {/* Integrations moved under Settings, as the design shows. */}
+                      <Route
+                        path="integrations"
+                        element={<Navigate to="/app/settings/integrations" replace />}
+                      />
+                      <Route path="settings" element={<SettingsLayout />}>
+                        <Route index element={<Navigate to="organisation" replace />} />
+                        <Route
+                          path="organisation"
+                          element={<SettingsOrganisationPage />}
+                        />
+                        <Route path="permissions" element={<SettingsPermissionsPage />} />
+                        <Route path="roles" element={<SettingsRolesPage />} />
+                        <Route path="policies" element={<SettingsPoliciesPage />} />
+                        <Route
+                          path="notifications"
+                          element={<SettingsNotificationsPage />}
+                        />
+                        <Route
+                          path="integrations"
+                          element={<SettingsIntegrationsPage />}
+                        />
+                        <Route path="billing" element={<SettingsBillingPage />} />
+                        <Route path="audit" element={<SettingsAuditPage />} />
+                      </Route>
+                      <Route path="account" element={<ProfileLayout />}>
+                        <Route index element={<Navigate to="profile" replace />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                        <Route path="preferences" element={<PreferencesPage />} />
+                        <Route path="security" element={<SecurityPage />} />
+                        <Route path="sessions" element={<SessionsPage />} />
+                        <Route path="tokens" element={<TokensPage />} />
+                        <Route path="activity" element={<ActivityPage />} />
+                      </Route>
+                    </Route>
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </Suspense>
 
-              {/* Global PWA affordances */}
-              <UpdatePrompt />
-              <InstallPrompt />
-              <OfflineBanner />
-            </BrowserRouter>
-          </OrgProvider>
-        </AuthProvider>
+                {/* Global PWA affordances */}
+                <UpdatePrompt />
+                <InstallPrompt />
+                <OfflineBanner />
+              </BrowserRouter>
+            </OrgProvider>
+          </AuthProvider>
+        </ConfirmProvider>
       </ToastProvider>
     </ThemeProvider>
   );

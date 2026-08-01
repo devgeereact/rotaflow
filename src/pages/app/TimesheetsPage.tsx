@@ -425,7 +425,7 @@ export function TimesheetsPage(): JSX.Element {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl text-content dark:text-content-dark">
+          <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
             My hours
           </h1>
           <p className="text-sm text-content-muted dark:text-content-muted-dark">

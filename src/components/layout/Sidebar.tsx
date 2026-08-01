@@ -5,7 +5,6 @@ import {
   CalendarDays,
   CalendarRange,
   Users,
-  UserPlus,
   MapPin,
   Clock3,
   LogIn,
@@ -15,12 +14,14 @@ import {
   Megaphone,
   BarChart3,
   Settings,
-  Plug,
+  UserCircle,
   Menu,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useOrg } from '@/hooks/useOrg';
+import type { MembershipRole } from '@/types';
 import logo from '@/assets/logo.png';
 
 interface NavItem {
@@ -29,23 +30,74 @@ interface NavItem {
   to?: string; // omitted = not built yet, rendered disabled
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard' },
-  { label: 'Rota', icon: CalendarDays, to: '/app/rota' },
-  { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
-  { label: 'Clock in', icon: LogIn, to: '/app/clock' },
-  { label: 'Staff', icon: Users, to: '/app/staff' },
-  { label: 'Team', icon: UserPlus, to: '/app/team' },
-  { label: 'Locations', icon: MapPin, to: '/app/locations' },
-  { label: 'Availability', icon: Clock3, to: '/app/availability' },
-  { label: 'Leave', icon: Umbrella, to: '/app/leave' },
-  { label: 'Swaps', icon: Repeat2, to: '/app/swaps' },
-  { label: 'Timesheets', icon: Timer, to: '/app/timesheets' },
-  { label: 'Announcements', icon: Megaphone, to: '/app/announcements' },
-  { label: 'Reports', icon: BarChart3, to: '/app/reports' },
-  { label: 'Integrations', icon: Plug, to: '/app/integrations' },
-  { label: 'Settings', icon: Settings, to: '/app/settings' },
-];
+/**
+ * The sidebar, resolved against the signed-in role.
+ *
+ * ## Why this stopped being a flat constant
+ *
+ * The built sidebar had fifteen items against the designs' twelve, and the
+ * three extras were not arbitrary:
+ *
+ * - **Integrations** was top-level; every reference screen shows it as a
+ *   Settings tab. It moved, and `/app/integrations` redirects.
+ * - **Team** was top-level and the designs have no such entry. What it does —
+ *   invite and revoke — is organisation administration, so it folded into
+ *   Settings → Permissions, filling a designed tab that had no content.
+ * - **Clock in** is absent from every mockup, but the mockups are a *manager's*
+ *   view (they are all signed in as Sarah Manager). Clock-in is the single
+ *   most-used screen a carer has — twice a day, often on a phone on ward wifi
+ *   — and burying it to match a manager-view mockup would be a real usability
+ *   loss for the majority of users. So it is role-conditional rather than
+ *   removed.
+ *
+ * Net: a manager sees the designed twelve. A staff member sees the eight that
+ * concern them, plus Clock in, and Settings is replaced by My Profile —
+ * `settingsTabsForRole('staff')` is empty, so a Settings link would land them
+ * on a redirect every time.
+ */
+function navItemsForRole(role: MembershipRole | null): NavItem[] {
+  const isManager = role === 'owner' || role === 'manager';
+
+  const items: NavItem[] = [
+    { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard' },
+  ];
+
+  if (isManager) {
+    items.push({ label: 'Rota', icon: CalendarDays, to: '/app/rota' });
+  }
+
+  items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });
+
+  if (!isManager) {
+    items.push({ label: 'Clock in', icon: LogIn, to: '/app/clock' });
+  }
+
+  if (isManager) {
+    items.push(
+      { label: 'Staff', icon: Users, to: '/app/staff' },
+      { label: 'Locations', icon: MapPin, to: '/app/locations' },
+    );
+  }
+
+  items.push(
+    { label: 'Availability', icon: Clock3, to: '/app/availability' },
+    { label: 'Leave', icon: Umbrella, to: '/app/leave' },
+    { label: 'Swaps', icon: Repeat2, to: '/app/swaps' },
+    { label: 'Timesheets', icon: Timer, to: '/app/timesheets' },
+    { label: 'Announcements', icon: Megaphone, to: '/app/announcements' },
+  );
+
+  if (isManager) {
+    items.push(
+      { label: 'Reports', icon: BarChart3, to: '/app/reports' },
+      { label: 'Settings', icon: Settings, to: '/app/settings' },
+    );
+  } else {
+    items.push({ label: 'My Profile', icon: UserCircle, to: '/app/account' });
+  }
+
+  return items;
+}
 
 const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
@@ -60,10 +112,16 @@ const LINK_ACTIVE = 'bg-primary/10 text-primary dark:bg-primary/15';
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function NavList({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
+function NavList({
+  items,
+  onNavigate,
+}: {
+  items: NavItem[];
+  onNavigate?: () => void;
+}): JSX.Element {
   return (
     <nav className="flex-1 space-y-1 px-3">
-      {NAV_ITEMS.map(({ label, icon: Icon, to }) =>
+      {items.map(({ label, icon: Icon, to }) =>
         to ? (
           <NavLink
             key={label}
@@ -100,6 +158,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
 
 /** Fixed left navigation for the /app/* tenant shell. Only routed items are real links. */
 export function Sidebar(): JSX.Element {
+  const { role } = useOrg();
+  const items = navItemsForRole(role);
   const [mobileOpen, setMobileOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
 
@@ -168,7 +228,7 @@ export function Sidebar(): JSX.Element {
             Rota<span className="text-primary">Flow</span>
           </span>
         </div>
-        <NavList />
+        <NavList items={items} />
       </aside>
 
       {mobileOpen && (
@@ -203,7 +263,7 @@ export function Sidebar(): JSX.Element {
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
-            <NavList onNavigate={() => setMobileOpen(false)} />
+            <NavList items={items} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}

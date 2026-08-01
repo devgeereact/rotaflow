@@ -67,7 +67,7 @@ export function AnnouncementsView(props: AnnouncementsViewProps): JSX.Element {
   return (
     <div>
       <div>
-        <h1 className="font-display text-3xl font-bold text-content dark:text-content-dark">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Announcements
         </h1>
         <p className="mt-1 text-base text-content-muted dark:text-content-muted-dark">

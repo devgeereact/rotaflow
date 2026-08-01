@@ -1,0 +1,172 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
+
+/**
+ * Every tab must point at a route that exists.
+ *
+ * ## The bug this exists to prevent, which already happened once
+ *
+ * `settingsTabs.ts` shipped with fourteen routes and a unit test asserting the
+ * tab *list* was correct. It was — and not one of those fourteen routes was
+ * ever added to `App.tsx`. Nothing imported the module except its own test, so
+ * every entry resolved to the `*` catch-all and rendered the 404 page.
+ *
+ * Typecheck, lint, format, build and the existing suite were all green
+ * throughout, because a route is a string and a `<Route path>` is a string, and
+ * nothing had ever compared the two. That is exactly the class of gap this
+ * repository's audit keeps finding: four shape gates and no test of the thing
+ * that actually breaks.
+ *
+ * So this test reads the real route table out of `App.tsx` and checks the tabs
+ * against it. It is deliberately a source-text parse rather than a render:
+ * mounting the router would need a Supabase session, an org and a role, and
+ * the question here is purely "does this path have a Route" — which the source
+ * answers directly and cannot drift from.
+ */
+
+const APP_TSX = path.join(process.cwd(), 'src/App.tsx');
+
+/**
+ * Pull every routable path out of `App.tsx`, resolving relative children onto
+ * the prefix of the layout route that actually encloses them.
+ *
+ * The nesting is resolved by tracking each `<Route>`'s depth, not by string
+ * prefixing. An earlier draft simply emitted `/app/settings/<segment>` for
+ * every relative segment it saw anywhere, which made two of these assertions
+ * pass against a tree that did not contain the routes at all — the top-level
+ * `/app/notifications` was enough to satisfy `/app/settings/notifications`.
+ * A test that reports success for a route that does not exist is worse than
+ * no test, so the prefix has to come from the real enclosing element.
+ */
+interface RouteTag {
+  index: number;
+  segment: string;
+  selfClosing: boolean;
+}
+
+/**
+ * Find a `<Route …>` tag's own closing bracket.
+ *
+ * Scanning for the first `>` does not work: `element={<SettingsLayout />}` is
+ * an attribute *value*, and its `/>` would be mistaken for the end of the
+ * Route tag — which silently reclassifies every parent layout route as
+ * self-closing and detaches its children. So the scan tracks JSX brace depth
+ * and only accepts a bracket found at depth zero.
+ */
+function readTag(source: string, start: number): RouteTag {
+  let depth = 0;
+  let inString: string | null = null;
+
+  for (let i = start; i < source.length; i += 1) {
+    const char = source[i]!;
+
+    if (inString) {
+      if (char === inString) inString = null;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      inString = char;
+      continue;
+    }
+    if (char === '{') depth += 1;
+    else if (char === '}') depth -= 1;
+    else if (char === '>' && depth === 0) {
+      const tagText = source.slice(start, i);
+      const pathMatch = /\bpath="([^"]*)"/.exec(tagText);
+      return {
+        index: i,
+        segment: pathMatch?.[1] ?? '',
+        selfClosing: source[i - 1] === '/',
+      };
+    }
+  }
+
+  throw new Error(`Unterminated <Route> tag at offset ${start}`);
+}
+
+/**
+ * Pull every routable path out of `App.tsx`, resolving relative children onto
+ * the prefix of the layout route that actually encloses them.
+ *
+ * Nesting is resolved from real tag structure, not string prefixing. An
+ * earlier draft emitted `/app/settings/<segment>` for every relative segment
+ * it saw anywhere, which made two assertions pass against a tree that did not
+ * contain those routes — top-level `/app/notifications` was enough to satisfy
+ * `/app/settings/notifications`. A test that reports success for a route that
+ * does not exist is worse than no test.
+ */
+function routeTable(): string[] {
+  const source = readFileSync(APP_TSX, 'utf8');
+  const routes = new Set<string>();
+  const stack: string[] = [];
+
+  for (let i = 0; i < source.length; i += 1) {
+    if (source.startsWith('</Route>', i)) {
+      stack.pop();
+      i += '</Route>'.length - 1;
+      continue;
+    }
+    if (!source.startsWith('<Route', i)) continue;
+
+    const tag = readTag(source, i);
+    const parent = stack[stack.length - 1] ?? '';
+    const resolved = tag.segment.startsWith('/')
+      ? tag.segment
+      : tag.segment === ''
+        ? parent
+        : `${parent}/${tag.segment}`.replace(/\/{2,}/g, '/');
+
+    if (tag.segment !== '') routes.add(resolved);
+    if (!tag.selfClosing) stack.push(resolved);
+    i = tag.index;
+  }
+
+  return [...routes];
+}
+
+const ROUTES = routeTable();
+
+function isRoutable(target: string): boolean {
+  const wanted = target.replace(/\/$/, '');
+  return ROUTES.some((route) => {
+    const declared = route.replace(/\/$/, '');
+    if (declared === '*') return false;
+    const declaredSegments = declared.split('/');
+    const wantedSegments = wanted.split('/');
+    if (declaredSegments.length !== wantedSegments.length) return false;
+    return declaredSegments.every(
+      (segment, i) => segment.startsWith(':') || segment === wantedSegments[i],
+    );
+  });
+}
+
+describe('navigation targets', () => {
+  it('parses a non-trivial route table out of App.tsx', () => {
+    // Guards the parser itself: if the regex stops matching, every assertion
+    // below would pass vacuously against an empty table.
+    expect(ROUTES.length).toBeGreaterThan(20);
+    expect(ROUTES).toContain('/app/dashboard');
+    expect(ROUTES).toContain('/login');
+  });
+
+  it.each(SETTINGS_TABS.map((tab) => [tab.label, tab.to] as const))(
+    'Settings tab %s (%s) has a route',
+    (_label, to) => {
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
+
+  it.each(PROFILE_TABS.map((tab) => [tab.label, tab.to] as const))(
+    'Profile tab %s (%s) has a route',
+    (_label, to) => {
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
+
+  it('routes the Settings and Profile area roots', () => {
+    expect(isRoutable('/app/settings')).toBe(true);
+    expect(isRoutable('/app/account')).toBe(true);
+  });
+});
