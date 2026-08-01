@@ -231,7 +231,13 @@ export function LocationsPage(): JSX.Element {
     setModalOpen(true);
   };
 
-  const goToStaff = (): void => navigate('/app/staff');
+  // react-router v7's `navigate` returns `void | Promise<void>`; these are
+  // fire-and-forget, so the result is explicitly discarded.
+  const goTo = (path: string): void => {
+    void navigate(path);
+  };
+
+  const goToStaff = (): void => goTo('/app/staff');
 
   /**
    * `DepartmentManager` is per-site inline CRUD and predates this screen. It
@@ -288,7 +294,7 @@ export function LocationsPage(): JSX.Element {
           }
           onFollowMetric={(id) => {
             if (id === 'staff') goToStaff();
-            if (id === 'departments') navigate('/app/locations/departments');
+            if (id === 'departments') goTo('/app/locations/departments');
           }}
           onViewActivity={() => undefined}
           onOpenGuide={() => undefined}
