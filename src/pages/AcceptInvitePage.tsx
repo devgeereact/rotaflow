@@ -73,7 +73,7 @@ export function AcceptInvitePage(): JSX.Element {
       await refresh();
       switchOrg(orgId);
       showSuccess(`You've joined ${preview?.orgName ?? 'the organisation'}.`);
-      navigate('/app/dashboard', { replace: true });
+      void navigate('/app/dashboard', { replace: true });
     } catch (err) {
       reportError(err, { area: 'invite:accept' });
       // The database raises specific, user-safe messages for the cases that

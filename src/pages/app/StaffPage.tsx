@@ -396,7 +396,7 @@ export function StaffPage(): JSX.Element {
         id: 'profile',
         label: 'View full profile',
         icon: IdCard,
-        onSelect: () => navigate(`/app/staff/${person.id}`),
+        onSelect: () => void navigate(`/app/staff/${person.id}`),
       },
       {
         id: 'edit',
@@ -531,7 +531,7 @@ export function StaffPage(): JSX.Element {
           }
           onEditDetails={editSelected}
           onViewSkills={editSelected}
-          onViewCalendar={() => navigate('/app/availability')}
+          onViewCalendar={() => void navigate('/app/availability')}
           onViewDocuments={() => selected && setDocumentsFor(selected)}
         />
       )}
