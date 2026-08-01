@@ -63,6 +63,21 @@ export async function listOrgMemberUserIds(
   return (data ?? []).map((row) => row.user_id);
 }
 
+/**
+ * Every active member's `user_id` → `role`, for labelling who wrote something.
+ * `profiles` is select-own-only under RLS, so a member's *name* comes from
+ * `staff_profiles` (org-readable) and only their role comes from here.
+ */
+export async function listOrgMemberRoles(orgId: string): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('user_id, role')
+    .eq('org_id', orgId)
+    .eq('status', 'active');
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.user_id, row.role]));
+}
+
 export interface CreateOrganisationInput {
   name: string;
   /** Defaults to a slugified name when omitted. */

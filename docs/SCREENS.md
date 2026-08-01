@@ -37,24 +37,24 @@ separate `is_platform_admin` flag, not a fourth role.
 
 ## 2. Core scheduling & workforce
 
-| Status | Design                        | Screen                                      | Route                                                                                                             |
-| ------ | ----------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| ✅     | `Workforce-Dashboard.png`     | Manager dashboard                           | `/app/dashboard`                                                                                                  |
-| ✅     | `Rota-Builder.png`            | Rota builder — drag/drop, AI fill, publish  | `/app/rota`                                                                                                       |
-| ✅     | `Schedule-dashboard.png`      | Schedule — manager default view             | `/app/schedule`                                                                                                   |
-| ✅     | `live-schedule.png`           | Schedule — staff "live" agenda state        | `/app/schedule`                                                                                                   |
-| ✅     | `published-schedule.png`      | Schedule — post-publish state               | `/app/schedule`                                                                                                   |
-| ✅     | `staff.png`                   | Staff directory                             | `/app/staff`                                                                                                      |
-| 🟡     | `Staff-Profile.png`           | Staff profile detail                        | `/app/staff` — an edit modal plus emergency-contacts/documents modals over the list, not a `/app/staff/:id` route |
-| ✅     | `Availability.png`            | Availability — staff pattern + team view    | `/app/availability`                                                                                               |
-| ✅     | `Leave.png`                   | Leave — requests, entitlement, approvals    | `/app/leave`                                                                                                      |
-| ✅     | `Swap-Request.png`            | Shift swaps — request, respond, approve     | `/app/swaps`                                                                                                      |
-| ✅     | `Timesheets-Dashboard.png`    | Timesheets — real hours from clock events   | `/app/timesheets`                                                                                                 |
-| ✅     | `Reports-Dashboard.png`       | Reports — CSV export                        | `/app/reports`                                                                                                    |
-| ✅     | `Announcements-Dashboard.png` | Announcements — feed + composer             | `/app/announcements`                                                                                              |
-| ✅     | `Locations-Management.png`    | Locations                                   | `/app/locations`                                                                                                  |
-| ✅     | `Location-department.png`     | Departments within a location               | `/app/locations` (`DepartmentManager`)                                                                            |
-| ✅     | `clockin.png`                 | Clock in/out — GPS + manual, offline-queued | `/app/clock`                                                                                                      |
+| Status | Design                        | Screen                                        | Route                                                                                                             |
+| ------ | ----------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| ✅     | `Workforce-Dashboard.png`     | Manager dashboard                             | `/app/dashboard`                                                                                                  |
+| ✅     | `Rota-Builder.png`            | Rota builder — drag/drop, AI fill, publish    | `/app/rota`                                                                                                       |
+| ✅     | `Schedule-dashboard.png`      | Schedule — manager default view               | `/app/schedule`                                                                                                   |
+| ✅     | `live-schedule.png`           | Schedule — staff "live" agenda state          | `/app/schedule`                                                                                                   |
+| ✅     | `published-schedule.png`      | Schedule — post-publish state                 | `/app/schedule`                                                                                                   |
+| ✅     | `staff.png`                   | Staff directory                               | `/app/staff`                                                                                                      |
+| 🟡     | `Staff-Profile.png`           | Staff profile detail                          | `/app/staff` — an edit modal plus emergency-contacts/documents modals over the list, not a `/app/staff/:id` route |
+| ✅     | `Availability.png`            | Availability — staff pattern + team view      | `/app/availability`                                                                                               |
+| ✅     | `Leave.png`                   | Leave — requests, entitlement, approvals      | `/app/leave`                                                                                                      |
+| ✅     | `Swap-Request.png`            | Shift swaps — request, respond, approve       | `/app/swaps`                                                                                                      |
+| ✅     | `Timesheets-Dashboard.png`    | Timesheets — real hours from clock events     | `/app/timesheets`                                                                                                 |
+| ✅     | `Reports-Dashboard.png`       | Reports — CSV export                          | `/app/reports`                                                                                                    |
+| ✅     | `Announcements-Dashboard.png` | Announcements — table, preview rail, composer | `/app/announcements`                                                                                              |
+| ✅     | `Locations-Management.png`    | Locations                                     | `/app/locations`                                                                                                  |
+| ✅     | `Location-department.png`     | Departments within a location                 | `/app/locations` (`DepartmentManager`)                                                                            |
+| ✅     | `clockin.png`                 | Clock in/out — GPS + manual, offline-queued   | `/app/clock`                                                                                                      |
 
 ## 3. Settings area — 8 designed tabs, 2 have code, 0 are tabs
 
