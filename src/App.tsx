@@ -81,6 +81,10 @@ const AnnouncementsPreviewPage = lazyPage(
   'AnnouncementsPreviewPage',
   () => import('@/pages/AnnouncementsPreviewPage'),
 );
+const ReportsPreviewPage = lazyPage(
+  'ReportsPreviewPage',
+  () => import('@/pages/ReportsPreviewPage'),
+);
 const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
@@ -248,6 +252,8 @@ export function App(): JSX.Element {
                         path="/announcements-preview"
                         element={<AnnouncementsPreviewPage />}
                       />
+                      {/* design/Reports-Dashboard.png's catalogue and figures. */}
+                      <Route path="/reports-preview" element={<ReportsPreviewPage />} />
                     </>
                   )}
                   {/* Public on purpose: an invitee has no account yet, and
