@@ -1,12 +1,5 @@
 import type { ReactNode } from 'react';
-import {
-  Coffee,
-  Fingerprint,
-  LogOut,
-  MapPinOff,
-  Play,
-  ShieldCheck,
-} from 'lucide-react';
+import { Coffee, Fingerprint, LogOut, MapPinOff, Play, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ClockStage } from '@/lib/clockRows';
 

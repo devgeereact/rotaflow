@@ -55,11 +55,7 @@ export function AttendanceStatusCard({
       <ClockCardHeading icon={ShieldCheck} title="Attendance Status" />
 
       <div className={cn('mt-5 flex items-start gap-3 rounded-lg px-4 py-3', wash)}>
-        <ToneIcon
-          size={22}
-          aria-hidden="true"
-          className={cn('mt-0.5 shrink-0', fill)}
-        />
+        <ToneIcon size={22} aria-hidden="true" className={cn('mt-0.5 shrink-0', fill)} />
         <div>
           <p className="text-base font-semibold text-content dark:text-content-dark">
             {statusTitle}

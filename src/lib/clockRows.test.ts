@@ -168,7 +168,9 @@ describe('breakWindow', () => {
 
   it('is null rather than inverted when the row has ends before starts', () => {
     expect(
-      breakWindow(shift({ starts_at: '2026-05-14T17:00:00', ends_at: '2026-05-14T09:00:00' })),
+      breakWindow(
+        shift({ starts_at: '2026-05-14T17:00:00', ends_at: '2026-05-14T09:00:00' }),
+      ),
     ).toBeNull();
   });
 });
