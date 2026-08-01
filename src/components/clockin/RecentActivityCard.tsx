@@ -2,22 +2,19 @@ import { History, TimerReset } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { ClockCardHeading } from '@/components/clockin/ClockCardHeading';
 import { cn } from '@/lib/utils';
-
-export interface ClockActivityEntry {
-  id: string;
-  /** 'in' renders the green icon, 'out' the red one (design/clockin.png). */
-  kind: 'in' | 'out';
-  label: string;
-  timeLabel: string;
-  locationName: string;
-  /** Shown right-aligned on clock-outs only — the shift length worked. */
-  durationLabel?: string;
-}
+import type { ClockActivityEntry } from '@/lib/clockRows';
 
 interface RecentActivityCardProps {
   entries: ClockActivityEntry[];
   onViewAll?: () => void;
 }
+
+/** Break events are not in the reference; amber keeps them distinct from both. */
+const KINDS: Record<ClockActivityEntry['kind'], string> = {
+  in: 'text-clock',
+  out: 'text-danger',
+  break: 'text-warning',
+};
 
 /** "Recent Activity" rail card — the last few clock events. */
 export function RecentActivityCard({
@@ -25,7 +22,7 @@ export function RecentActivityCard({
   onViewAll,
 }: RecentActivityCardProps): JSX.Element {
   return (
-    <Card className="rounded-xl p-5">
+    <Card className="rounded-xl p-6">
       <ClockCardHeading
         icon={History}
         title="Recent Activity"
@@ -40,34 +37,39 @@ export function RecentActivityCard({
         }
       />
 
-      <ul className="mt-5 space-y-4">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex items-start gap-3">
-            <TimerReset
-              size={18}
-              aria-hidden="true"
-              className={cn(
-                'mt-0.5 shrink-0',
-                entry.kind === 'in' ? 'text-clock' : 'text-danger',
+      {entries.length === 0 ? (
+        <p className="mt-5 text-sm text-content-muted dark:text-content-muted-dark">
+          No clock events yet. Your last few will appear here once you clock in.
+        </p>
+      ) : (
+        <ul className="mt-5 space-y-4">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex items-start gap-3">
+              <TimerReset
+                size={18}
+                aria-hidden="true"
+                className={cn('mt-0.5 shrink-0', KINDS[entry.kind])}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-content dark:text-content-dark">
+                  {entry.label}
+                </p>
+                <p className="mt-0.5 text-sm text-content-muted dark:text-content-muted-dark">
+                  {entry.timeLabel}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-content dark:text-content-dark">
+                  {entry.locationName}
+                </p>
+              </div>
+              {entry.durationLabel && (
+                <span className="shrink-0 text-sm text-content-muted dark:text-content-muted-dark">
+                  {entry.durationLabel}
+                </span>
               )}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-content dark:text-content-dark">{entry.label}</p>
-              <p className="mt-0.5 text-sm text-content-muted dark:text-content-muted-dark">
-                {entry.timeLabel}
-              </p>
-              <p className="mt-0.5 text-sm font-semibold text-content dark:text-content-dark">
-                {entry.locationName}
-              </p>
-            </div>
-            {entry.durationLabel && (
-              <span className="shrink-0 text-sm text-content-muted dark:text-content-muted-dark">
-                {entry.durationLabel}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

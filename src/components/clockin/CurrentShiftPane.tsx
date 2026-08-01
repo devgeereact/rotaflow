@@ -7,26 +7,11 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { ClockCardHeading } from '@/components/clockin/ClockCardHeading';
-
-export interface CurrentShiftInfo {
-  /** "Starts in 12 min" — the pill above the time. */
-  countdownLabel: string;
-  timeRange: string;
-  dateLabel: string;
-  locationName: string;
-  areaName: string;
-  roleName: string;
-  shiftTypeName: string;
-  breakRange: string;
-  /** Rendered muted next to the break range, e.g. "(30 min)". */
-  breakDuration: string;
-  paidHours: string;
-  reminderTitle: string;
-  reminderBody: string;
-}
+import type { CurrentShiftInfo } from '@/lib/clockRows';
 
 interface CurrentShiftPaneProps {
-  shift: CurrentShiftInfo;
+  /** `null` when nothing is rostered today — the reference never shows this. */
+  shift: CurrentShiftInfo | null;
   onViewReminder?: () => void;
 }
 
@@ -69,6 +54,26 @@ export function CurrentShiftPane({
   shift,
   onViewReminder,
 }: CurrentShiftPaneProps): JSX.Element {
+  if (!shift) {
+    return (
+      <div className="flex h-full flex-col p-6">
+        <ClockCardHeading icon={CalendarDays} title="Current Shift" />
+        <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-surface-subtle text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
+            <CalendarDays size={24} aria-hidden="true" />
+          </span>
+          <p className="mt-4 text-base font-semibold text-content dark:text-content-dark">
+            No shift scheduled today
+          </p>
+          <p className="mt-1 max-w-xs text-sm text-content-muted dark:text-content-muted-dark">
+            You can still clock in if you have been asked to cover — it will be recorded
+            against your location.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col p-6">
       <ClockCardHeading icon={CalendarDays} title="Current Shift" />
@@ -79,7 +84,7 @@ export function CurrentShiftPane({
             {shift.countdownLabel}
           </span>
 
-          <p className="mt-4 text-page-title font-bold tracking-tight text-content dark:text-content-dark">
+          <p className="mt-4 text-4xl font-bold tracking-tight text-content dark:text-content-dark">
             {shift.timeRange}
           </p>
           <p className="mt-1 text-base text-content dark:text-content-dark">
@@ -88,20 +93,22 @@ export function CurrentShiftPane({
 
           <ul className="mt-5 space-y-5 border-t border-divider pt-5 dark:border-divider-dark">
             <MetaRow icon={Building2} label={shift.locationName} />
-            <MetaRow icon={MapPin} label={shift.areaName} />
-            <MetaRow icon={Briefcase} label={shift.roleName} />
+            {shift.areaName && <MetaRow icon={MapPin} label={shift.areaName} />}
+            {shift.roleName && <MetaRow icon={Briefcase} label={shift.roleName} />}
           </ul>
         </div>
 
         <div className="w-40 shrink-0 space-y-5 pt-1">
-          <Detail label="Shift Type">
-            <span className="inline-flex items-center rounded-lg bg-clock-tint px-2.5 py-1 text-xs font-semibold text-clock-fg dark:bg-clock/20 dark:text-clock-tint">
-              {shift.shiftTypeName}
-            </span>
-          </Detail>
+          {shift.shiftTypeName && (
+            <Detail label="Shift Type">
+              <span className="inline-flex items-center rounded-lg bg-clock-tint px-2.5 py-1 text-xs font-semibold text-clock-fg dark:bg-clock/20 dark:text-clock-tint">
+                {shift.shiftTypeName}
+              </span>
+            </Detail>
+          )}
           <Detail label="Break">
             <p className="text-sm text-content dark:text-content-dark">
-              {shift.breakRange}{' '}
+              {shift.breakRange ?? 'None'}{' '}
               <span className="text-content-muted dark:text-content-muted-dark">
                 {shift.breakDuration}
               </span>
@@ -115,33 +122,37 @@ export function CurrentShiftPane({
         </div>
       </div>
 
-      <div className="mt-auto border-t border-divider pt-6 dark:border-divider-dark">
-        <div className="flex items-center justify-between gap-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3">
-          <div className="flex items-start gap-3">
-            <TriangleAlert
-              size={18}
-              aria-hidden="true"
-              className="mt-0.5 shrink-0 text-warning"
-            />
-            <div>
-              <p className="text-base font-semibold text-content dark:text-content-dark">
-                {shift.reminderTitle}
-              </p>
-              <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                {shift.reminderBody}
-              </p>
+      {shift.reminder && (
+        <div className="mt-auto border-t border-divider pt-6 dark:border-divider-dark">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <TriangleAlert
+                size={18}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-warning"
+              />
+              <div>
+                <p className="text-base font-semibold text-content dark:text-content-dark">
+                  {shift.reminder.title}
+                </p>
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  {shift.reminder.body}
+                </p>
+              </div>
             </div>
+            {onViewReminder && (
+              <button
+                type="button"
+                onClick={onViewReminder}
+                className="inline-flex shrink-0 items-center gap-1 rounded text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                View Details
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onViewReminder}
-            className="inline-flex shrink-0 items-center gap-1 rounded text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            View Details
-            <ChevronRight size={16} aria-hidden="true" />
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
