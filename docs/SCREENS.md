@@ -47,7 +47,7 @@ separate `is_platform_admin` flag, not a fourth role.
 | ✅     | `staff.png`                   | Staff directory                               | `/app/staff`                                                                                                      |
 | 🟡     | `Staff-Profile.png`           | Staff profile detail                          | `/app/staff` — an edit modal plus emergency-contacts/documents modals over the list, not a `/app/staff/:id` route |
 | ✅     | `Availability.png`            | Availability — staff pattern + team view      | `/app/availability`                                                                                               |
-| ✅     | `Leave.png`                   | Leave — requests, entitlement, approvals      | `/app/leave`                                                                                                      |
+| ✅     | `Leave.png`                   | Leave — requests, entitlement, approvals      | `/app/leave` — Balances shows Annual only (`holiday_allowance` is one number); no overtime queue (P2-7)           |
 | ✅     | `Swap-Request.png`            | Shift swaps — request, respond, approve       | `/app/swaps`                                                                                                      |
 | ✅     | `Timesheets-Dashboard.png`    | Timesheets — real hours from clock events     | `/app/timesheets`                                                                                                 |
 | ✅     | `Reports-Dashboard.png`       | Reports — CSV export                          | `/app/reports`                                                                                                    |

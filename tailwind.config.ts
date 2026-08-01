@@ -123,6 +123,36 @@ const config: Config = {
           rose: '#FDF3F7',
           'rose-fg': '#AE3A62',
         },
+        // Leave-type palette — the chips, balance meters, icon tiles and donut
+        // arcs on design/Leave.png. Sampled off that PNG.
+        //
+        // Deliberately NOT `shift-tint`: that palette is the rota grid's, and
+        // `shift_types.colour` is per-org configurable, so a tenant recolouring
+        // its Night shift must not recolour Sick Leave. Leave types are a fixed,
+        // product-level set. The washes land within a couple of points of the
+        // `shift-tint` family so the two read as one system; the inks are the
+        // reference's, which run brighter — Carer's especially (a true orange,
+        // where `shift-tint.amber-fg` is a brown-gold that reads as "expiring").
+        //
+        // `-deep` is the dark-mode wash: the light washes are near-white and
+        // would blow out on `background-dark`.
+        leave: {
+          annual: '#7C3AED',
+          'annual-wash': '#F5F1FE',
+          'annual-deep': '#2A1D45',
+          sick: '#12874C',
+          'sick-wash': '#ECF8F1',
+          'sick-deep': '#12301F',
+          personal: '#2563EB',
+          'personal-wash': '#F1F6FE',
+          'personal-deep': '#16224A',
+          carer: '#F97316',
+          'carer-wash': '#FEF8EE',
+          'carer-deep': '#352A14',
+          other: '#8A93A8',
+          'other-wash': '#F1F4FB',
+          'other-deep': '#1B2740',
+        },
         // Dark-mode chip washes — the tints above are near-white and would
         // blow out on the dark canvas. Same hue, pulled down to sit just above
         // `surface-dark`.
