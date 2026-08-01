@@ -81,6 +81,10 @@ const AnnouncementsPreviewPage = lazyPage(
   'AnnouncementsPreviewPage',
   () => import('@/pages/AnnouncementsPreviewPage'),
 );
+const SwapsPreviewPage = lazyPage(
+  'SwapsPreviewPage',
+  () => import('@/pages/SwapsPreviewPage'),
+);
 const ReportsPreviewPage = lazyPage(
   'ReportsPreviewPage',
   () => import('@/pages/ReportsPreviewPage'),
@@ -252,6 +256,8 @@ export function App(): JSX.Element {
                         path="/announcements-preview"
                         element={<AnnouncementsPreviewPage />}
                       />
+                      {/* design/Swap-Request.png's rows, counts and rail. */}
+                      <Route path="/swaps-preview" element={<SwapsPreviewPage />} />
                       {/* design/Reports-Dashboard.png's catalogue and figures. */}
                       <Route path="/reports-preview" element={<ReportsPreviewPage />} />
                     </>

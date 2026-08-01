@@ -27,7 +27,7 @@ seeded rows, which the loop cannot produce. The pattern already in use is a
 **`*-preview` route** carrying fixed mock data that reproduces the reference's exact
 numbers: `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
 `/timesheets-preview`, `/clockin-preview`, `/onboarding-preview`, `/appboot`,
-`/staff-preview`, `/locations-preview`.
+`/staff-preview`, `/locations-preview`, `/swaps-preview`.
 
 **The references are not 1:1 CSS pixels.** Measured on both locations mockups, the
 panel body text is ~0.7× `text-sm` — they are downscaled renders of a much wider
@@ -70,7 +70,7 @@ Two things about them that have caused re-work:
 | staff-profile       | `/app/staff/:id`                      | `design/Staff-Profile.png`           | **In flight** — same branch. Needs the `:id` route built, not just styled                                                                                                                                                     |
 | availability        | `/app/availability`                   | `design/Availability.png`            | **Not matched** — next up                                                                                                                                                                                                     |
 | leave               | `/app/leave`                          | `design/Leave.png`                   | **Not matched** — next up                                                                                                                                                                                                     |
-| swaps               | `/app/swaps`                          | `design/Swap-Request.png`            | **Not matched** — next up                                                                                                                                                                                                     |
+| swaps               | `/swaps-preview`                      | `design/Swap-Request.png`            | Matched — `/app/swaps` renders the same `SwapsView`, minus the Swap Rules card (no policy store). See `design/.loop/swaps-log.md`                                                                                             |
 | reports             | `/app/reports`                        | `design/Reports-Dashboard.png`       | **Not matched** — next up                                                                                                                                                                                                     |
 | announcements       | `/announcements-preview`              | `design/Announcements-Dashboard.png` | Matched — `design/.loop/announcements-log.md`                                                                                                                                                                                 |
 | locations           | `/locations-preview`                  | `design/Locations-Management.png`    | Matched — merged with the Departments screen into one tabbed workspace                                                                                                                                                        |
