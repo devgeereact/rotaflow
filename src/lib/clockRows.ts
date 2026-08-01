@@ -161,9 +161,7 @@ export function pickCurrentShift(shifts: Shift[], now: Date): Shift | null {
     (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
   );
   return (
-    byStart.find(
-      (s) => new Date(s.starts_at) <= now && now < new Date(s.ends_at),
-    ) ??
+    byStart.find((s) => new Date(s.starts_at) <= now && now < new Date(s.ends_at)) ??
     byStart.find((s) => now < new Date(s.starts_at)) ??
     byStart[byStart.length - 1] ??
     null
@@ -220,7 +218,8 @@ export function clockWindow(shift: Shift | null, now: Date): ClockWindow {
   if (!shift) return { label: 'No shift scheduled', within: false };
   const start = new Date(shift.starts_at);
   const opensAt = addMinutes(start, -CLOCK_IN_WINDOW_MINUTES);
-  if (now < opensAt) return { label: `Opens at ${format(opensAt, 'HH:mm')}`, within: false };
+  if (now < opensAt)
+    return { label: `Opens at ${format(opensAt, 'HH:mm')}`, within: false };
   if (now >= new Date(shift.ends_at)) return { label: 'Shift has ended', within: false };
   return { label: 'Within time window', within: true };
 }

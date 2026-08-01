@@ -248,10 +248,7 @@ export function ClockInPage(): JSX.Element {
         completedPercent: thisWeek.completedPercent,
         progressLabel: thisWeek.progressLabel,
       },
-      attendance: buildAttendance(
-        thisWeek.attendancePercent,
-        lastWeek.attendancePercent,
-      ),
+      attendance: buildAttendance(thisWeek.attendancePercent, lastWeek.attendancePercent),
       window: clockWindow(shift, now),
     };
   }, [data.shifts, data.events, lookups, now]);
