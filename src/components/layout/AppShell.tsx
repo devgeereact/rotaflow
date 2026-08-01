@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
+import { RouteFallback } from '@/components/RouteFallback';
 import { useOrg } from '@/hooks/useOrg';
 import { AppBootScreen } from '@/components/AppBootScreen';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -47,7 +49,12 @@ export function AppShell(): JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
         <main className="flex-1 overflow-y-auto px-6 py-8 md:px-10">
-          <Outlet />
+          {/* Scoped to the content region on purpose. A Suspense boundary
+              higher up would unmount the sidebar and header while a lazy route
+              chunk loads, so every in-app navigation would flash the chrome. */}
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

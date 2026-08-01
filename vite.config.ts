@@ -41,7 +41,8 @@ export default defineConfig({
       manifest: {
         name: 'RotaFlow',
         short_name: 'RotaFlow',
-        description: 'Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.',
+        description:
+          'Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.',
         theme_color: '#3B6FE0',
         background_color: '#FFFFFF',
         display: 'standalone',
@@ -127,10 +128,28 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Split vendors so the app shell stays tiny and cache-stable.
+        //
+        // The last four entries are not optional. Once routes became lazy
+        // (React.lazy in src/App.tsx), Rollup had no shared parent for the
+        // libraries those routes pull in and emitted a chunk PER ICON and per
+        // date-fns function — 104 chunks and a precache manifest that grew
+        // from 1500 KiB to 1614 KiB on pure per-module boilerplate. For an
+        // offline-first PWA that is the wrong trade: every entry is a request
+        // the service worker must fetch on install, over the same ward wifi
+        // this split exists to be kind to.
+        //
+        // Grouping them keeps the win (a 58% smaller entry chunk) without the
+        // request storm. Tree-shaking still applies inside each group — the
+        // icons chunk holds the icons actually imported, not all of lucide.
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           motion: ['framer-motion'],
+          icons: ['lucide-react'],
+          dates: ['date-fns', 'date-fns-tz'],
+          // Only the rota builder uses drag-and-drop, so this rides along with
+          // that route's chunk rather than the entry.
+          dnd: ['@dnd-kit/core', '@dnd-kit/utilities'],
         },
       },
     },
