@@ -174,14 +174,22 @@ export function AnnouncementsPage(): JSX.Element {
   const handleCreate = useCallback(
     async (input: { title: string; body: string; urgent: boolean }): Promise<void> => {
       if (!orgId || !user) return;
-      const created = await createAnnouncement({
-        org_id: orgId,
-        author_user_id: user.id,
-        title: input.title,
-        body: input.body,
-        urgent: input.urgent,
-        scope: 'org',
-      });
+      // Surfaced here, not just in the modal: a silent failure would leave the
+      // composer open with no explanation. Rethrown so the modal stays open.
+      let created;
+      try {
+        created = await createAnnouncement({
+          org_id: orgId,
+          author_user_id: user.id,
+          title: input.title,
+          body: input.body,
+          urgent: input.urgent,
+          scope: 'org',
+        });
+      } catch (err) {
+        showError('Could not post that announcement. Please try again.');
+        throw err;
+      }
       setRows((prev) => [created, ...prev]);
       setSelectedId(created.id);
       showSuccess('Announcement posted.');
@@ -200,7 +208,7 @@ export function AnnouncementsPage(): JSX.Element {
         });
       }
     },
-    [orgId, user, send, showSuccess],
+    [orgId, user, send, showError, showSuccess],
   );
 
   const handleResend = useCallback(async (): Promise<void> => {
