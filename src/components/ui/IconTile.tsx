@@ -1,12 +1,13 @@
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type IconTileTone = 'primary' | 'success' | 'warning' | 'violet' | 'info';
+export type IconTileTone =
+  'primary' | 'success' | 'warning' | 'violet' | 'info' | 'rose' | 'teal';
 
 interface IconTileProps {
   icon: LucideIcon;
   tone?: IconTileTone;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'base' | 'md' | 'lg';
   className?: string;
 }
 
@@ -21,11 +22,19 @@ const TONES: Record<IconTileTone, string> = {
   warning: 'bg-warning/15 text-warning',
   violet: 'bg-shift-violet/15 text-shift-violet',
   info: 'bg-info/10 text-info',
+  // Department-type tints on design/Location-department.png. Same `bg-X/15
+  // text-X` idiom as `violet`, over the shift palette's rose and teal.
+  rose: 'bg-shift-rose/15 text-shift-rose',
+  teal: 'bg-shift-teal/15 text-shift-teal',
 };
 
 const SIZES: Record<NonNullable<IconTileProps['size']>, { box: string; icon: number }> = {
   sm: { box: 'h-8 w-8 rounded-lg', icon: 16 },
+  // 40px — the summary-tile and department-row square on both locations
+  // references, a step down from the 44px staff tile.
+  base: { box: 'h-10 w-10 rounded-lg', icon: 20 },
   md: { box: 'h-11 w-11 rounded-xl', icon: 20 },
+  lg: { box: 'h-12 w-12 rounded-xl', icon: 24 },
 };
 
 export function IconTile({

@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { PanelTabs, type PanelTabItem } from '@/components/ui/PanelTabs';
 import type { StaffProfileTab } from '@/lib/staffProfile';
 
 interface StaffProfileTabsProps {
@@ -6,7 +6,7 @@ interface StaffProfileTabsProps {
   onChange: (tab: StaffProfileTab) => void;
 }
 
-const TABS: { value: StaffProfileTab; label: string }[] = [
+const TABS: PanelTabItem<StaffProfileTab>[] = [
   { value: 'overview', label: 'Overview' },
   { value: 'availability', label: 'Availability' },
   { value: 'shifts', label: 'Shifts' },
@@ -25,29 +25,11 @@ export function StaffProfileTabs({
   onChange,
 }: StaffProfileTabsProps): JSX.Element {
   return (
-    <div
-      role="tablist"
-      aria-label="Staff profile sections"
-      className="flex flex-wrap items-center gap-10 border-b border-surface-border dark:border-surface-border-dark"
-    >
-      {TABS.map((tab) => (
-        <button
-          key={tab.value}
-          type="button"
-          role="tab"
-          aria-selected={tab.value === active}
-          onClick={() => onChange(tab.value)}
-          className={cn(
-            '-mb-px whitespace-nowrap border-b-2 pb-3 text-sm font-semibold transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-            tab.value === active
-              ? 'border-primary text-primary'
-              : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
-          )}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
+    <PanelTabs
+      items={TABS}
+      active={active}
+      onChange={onChange}
+      label="Staff profile sections"
+    />
   );
 }

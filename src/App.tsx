@@ -20,6 +20,7 @@ import { TimesheetsPreviewPage } from '@/pages/TimesheetsPreviewPage';
 import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
 import { StaffPreviewPage } from '@/pages/StaffPreviewPage';
 import { StaffProfilePreviewPage } from '@/pages/StaffProfilePreviewPage';
+import { LocationsPreviewPage } from '@/pages/LocationsPreviewPage';
 import { AcceptInvitePage } from '@/pages/AcceptInvitePage';
 import { SignupPage } from '@/pages/SignupPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -120,6 +121,14 @@ export function App(): JSX.Element {
                       path="/staff-preview/:staffId"
                       element={<StaffProfilePreviewPage />}
                     />
+                    {/* design/Locations-Management.png and
+                        design/Location-department.png, merged into one
+                        tabbed workspace. ?tab=departments opens the second. */}
+                    <Route path="/locations-preview" element={<LocationsPreviewPage />} />
+                    <Route
+                      path="/locations-preview/departments"
+                      element={<LocationsPreviewPage />}
+                    />
                   </>
                 )}
                 {/* Public on purpose: an invitee has no account yet, and
@@ -148,6 +157,9 @@ export function App(): JSX.Element {
                   <Route path="staff/:staffId" element={<StaffProfilePage />} />
                   <Route path="team" element={<TeamPage />} />
                   <Route path="locations" element={<LocationsPage />} />
+                  {/* Second half of the same workspace, on its own URL so it
+                      can be linked and refreshed into. */}
+                  <Route path="locations/departments" element={<LocationsPage />} />
                   <Route path="rota" element={<RotaBuilderPage />} />
                   <Route path="schedule" element={<SchedulePage />} />
                   <Route path="clock" element={<ClockInPage />} />

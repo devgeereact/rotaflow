@@ -26,7 +26,14 @@ Most matched screens live behind auth and need a real Supabase session, an org a
 seeded rows, which the loop cannot produce. The pattern already in use is a
 **`*-preview` route** carrying fixed mock data that reproduces the reference's exact
 numbers: `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
-`/timesheets-preview`, `/clockin-preview`, `/onboarding-preview`, `/appboot`.
+`/timesheets-preview`, `/clockin-preview`, `/onboarding-preview`, `/appboot`,
+`/staff-preview`, `/locations-preview`.
+
+**The references are not 1:1 CSS pixels.** Measured on both locations mockups, the
+panel body text is ~0.7× `text-sm` — they are downscaled renders of a much wider
+design. Match *proportions and structure* at the project's real type scale; do not
+chase the reference's literal font sizes or container widths. Working shown in
+`design/.loop/locations-log.md`.
 
 Two things about them that have caused re-work:
 
@@ -66,8 +73,8 @@ Two things about them that have caused re-work:
 | swaps               | `/app/swaps`                          | `design/Swap-Request.png`            | **Not matched** — next up                                                                                                                                                                                                     |
 | reports             | `/app/reports`                        | `design/Reports-Dashboard.png`       | **Not matched** — next up                                                                                                                                                                                                     |
 | announcements       | `/app/announcements`                  | `design/Announcements-Dashboard.png` | **Not matched** — next up                                                                                                                                                                                                     |
-| locations           | `/app/locations`                      | `design/Locations-Management.png`    | **Not matched** — next up                                                                                                                                                                                                     |
-| locations-depts     | `/app/locations` (dept view)          | `design/Location-department.png`     | **Not matched** — `DepartmentManager`, same route                                                                                                                                                                             |
+| locations           | `/locations-preview`                  | `design/Locations-Management.png`    | Matched — merged with the Departments screen into one tabbed workspace                                                                                                                                                        |
+| locations-depts     | `/locations-preview/departments`      | `design/Location-department.png`     | Matched — second tab of the same workspace. `DepartmentManager` now opens as a dialog                                                                                                                                         |
 | settings-org        | `/app/settings`                       | `design/SettingsOrganisation.png`    | **Not matched, and mostly not built** — ref adds ~12 fields, an Industry Pack, org preferences, role labels, sites summary and Platform Support Access                                                                        |
 | settings-integr     | `/app/integrations`                   | `design/SettingsIntegrations.png`    | **Not matched.** Built, but as a top-level route; the ref makes it a Settings tab                                                                                                                                             |
 | profile             | `/app/account`                        | `design/ProfileSettings.png`         | **Not matched, partly built** — see `docs/SCREENS.md` §4                                                                                                                                                                      |
