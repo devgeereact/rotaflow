@@ -96,6 +96,14 @@ Measured against the built output, before and after:
 This had silently undone part of #69, whose entire point was that a carer opening
 `/app/clock` should not download the rest of the app.
 
+**Confirmed on the live server, not just in a local build.** Before this deploy,
+`ls ~/rota.gakinz.com/assets | grep -c PreviewPage` returned **13** on the production
+docroot — so the fabricated staff data was genuinely being served from
+rota.gakinz.com, and the service worker was genuinely precaching it onto every
+visitor's device. Audit 01 §7 warned that a 200 from this origin is not evidence a file
+exists; the converse check — asking the filesystem over SSH — is what makes this a fact
+rather than an inference.
+
 **Why it went unnoticed:** #52 verified the right thing (route strings absent) and drew
 a broader conclusion than the evidence supported (the pages are gone). They were not
 gone — they were unreachable and still downloaded. The generalisable rule: **verify a
