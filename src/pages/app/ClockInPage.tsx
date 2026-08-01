@@ -5,6 +5,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
+import { FailedWritesNotice } from '@/components/FailedWritesNotice';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile } from '@/services/staffService';
@@ -75,7 +76,7 @@ export function ClockInPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const geo = useGeolocation();
-  const { pending, enqueue, syncing } = useSyncQueue();
+  const { pending, enqueue, syncing, deadLettered, discard } = useSyncQueue();
   const { showError, showSuccess } = useToast();
 
   const [profile, setProfile] = useState<StaffProfile | null>(null);
@@ -278,6 +279,12 @@ export function ClockInPage(): JSX.Element {
             : `${pending.length} clock event${pending.length === 1 ? '' : 's'} waiting to sync.`}
         </div>
       )}
+
+      {/* Queued-and-waiting (above) and queued-but-rejected are different
+          states and must not look alike. The banner above is reassuring on
+          purpose — those events will send. This one has to correct a belief:
+          the person tapped Clock in, saw it succeed, and is not clocked in. */}
+      <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mb-4" />
 
       <Card className="mb-6 text-center">
         <span

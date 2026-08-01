@@ -26,10 +26,24 @@
 //   (SMTP_HOST/PORT/USER/PASS/FROM optional — email is skipped without them,
 //   unless the recipient org has configured its own SMTP)
 //
-// NOT VERIFIED END TO END. Written and typechecked, but this session has no
-// way to deploy an Edge Function or drive a real Inngest event through it —
-// same constraint as every migration in this repo. Confirm real push/email
-// delivery manually after deploying.
+// VERIFICATION STATUS (2026-08-01, docs/audit01.md P0-3)
+//
+// Deployed and ACTIVE (version 3, verify_jwt: true). Its AUTH is verified
+// against the live project — probed, not assumed:
+//   * no Authorization header        -> 401 UNAUTHORIZED_NO_AUTH_HEADER (platform gate)
+//   * valid anon JWT, no secret      -> 401 {"error":"Unauthorized"}   (this function)
+//   * valid anon JWT, wrong secret   -> 401 {"error":"Unauthorized"}   (this function)
+// So the shared-secret guard genuinely works, and holding the public anon key
+// is not enough to write into anyone's notification inbox. Every secret this
+// function reads (NOTIFICATION_FUNCTION_SECRET, VAPID_*, SMTP_*) is set on the
+// project.
+//
+// STILL UNVERIFIED: **delivery**. Nobody has watched a web-push notification
+// arrive on a device or an email land in a mailbox. Proving that needs an org
+// owner's session and sends real messages to real people, so it is a deliberate
+// manual step, not something to trigger from a dev session. Until someone does
+// it, treat push/email delivery as unproven — the auth path is not the whole
+// journey.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';

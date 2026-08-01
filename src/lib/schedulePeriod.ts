@@ -21,8 +21,6 @@ export interface SchedulePeriod {
   label: string;
 }
 
-const DAY_MS = 86_400_000;
-
 /** The anchor date snapped to the start of its period. */
 export function periodStart(view: ScheduleView, anchor: string): string {
   const date = new Date(`${anchor}T00:00:00`);
@@ -72,10 +70,25 @@ export function resolvePeriod(
 
   const firstDate = dates[0] ?? start;
   const lastDate = dates[dates.length - 1] ?? start;
-  const dayAfterLast = format(
-    new Date(new Date(`${lastDate}T00:00:00`).getTime() + DAY_MS),
-    'yyyy-MM-dd',
-  );
+
+  // `addDays`, NOT `+ 86_400_000`.
+  //
+  // This used to add a fixed 24 hours to local midnight. On the day the clocks
+  // go back that day is 25 hours long, so midnight + 24h landed at 23:00 the
+  // SAME day and formatted back to the same date — `toIso` equalled `fromIso`,
+  // the query window was zero-length, and the schedule rendered empty. One day
+  // a year (25 Oct 2026 in Europe/London), in the primary market, silently:
+  // an empty result set looks exactly like "nobody is rostered".
+  //
+  // It was worse than a UK-only bug. The arithmetic ran in the *browser's*
+  // zone, so a New York location's window also collapsed on the UK's
+  // transition date — a zone that was not even having a DST change.
+  //
+  // CI could never have caught it: .github/workflows/ci.yml pins TZ=UTC, and
+  // UTC has no DST. The test suite deliberately runs in Europe/London instead
+  // (vitest.config.ts). addDays does calendar arithmetic, so it is correct in
+  // every zone regardless of day length.
+  const dayAfterLast = format(addDays(new Date(`${lastDate}T00:00:00`), 1), 'yyyy-MM-dd');
 
   return {
     dates,

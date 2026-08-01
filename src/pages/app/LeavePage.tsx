@@ -5,7 +5,9 @@ import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { sumApprovedLeaveDays } from '@/lib/leaveEntitlement';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
+import { FailedWritesNotice } from '@/components/FailedWritesNotice';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -16,7 +18,6 @@ import {
   listMyLeaveRequests,
   listOrgLeaveRequests,
   reviewLeaveRequest,
-  sumApprovedLeaveDays,
 } from '@/services/leaveService';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
@@ -48,7 +49,7 @@ export function LeavePage(): JSX.Element {
   const { canApprove } = usePermissions();
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
-  const { enqueue } = useSyncQueue();
+  const { enqueue, deadLettered, discard } = useSyncQueue();
   const { send } = useInngestDispatch();
   const { showError, showSuccess } = useToast();
 
@@ -223,6 +224,7 @@ export function LeavePage(): JSX.Element {
 
   return (
     <div>
+      <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mb-6" />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl text-content dark:text-content-dark">

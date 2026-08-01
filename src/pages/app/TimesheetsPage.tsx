@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
+  AlertTriangle,
   BarChart3,
   CalendarDays,
   CheckCircle2,
@@ -551,6 +552,25 @@ export function TimesheetsPage(): JSX.Element {
                           <span className="text-content-muted dark:text-content-muted-dark">
                             {' '}
                             ({Math.round(segment.breakMinutes)}m break)
+                          </span>
+                        )}
+                        {/* An ambiguous event stream. `pairClockEvents` produces
+                            the reading the evidence supports, but only a human
+                            knows what actually happened — and this row feeds
+                            someone's pay, so it must not look like a fact. */}
+                        {segment.reviewReason && (
+                          <span
+                            className="ml-2 inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning"
+                            title={
+                              segment.reviewReason === 'missing_clock_out'
+                                ? 'No clock-out was recorded for this shift, so no hours can be counted. Correct the clock events to pay it.'
+                                : 'A break was started and never ended, so it has been deducted up to the clock-out. Check this is right.'
+                            }
+                          >
+                            <AlertTriangle size={11} aria-hidden="true" />
+                            {segment.reviewReason === 'missing_clock_out'
+                              ? 'No clock-out'
+                              : 'Unclosed break'}
                           </span>
                         )}
                       </span>

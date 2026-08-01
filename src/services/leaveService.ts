@@ -66,28 +66,3 @@ export async function cancelLeaveRequest(id: string): Promise<void> {
     .eq('id', id);
   if (error) throw error;
 }
-
-/**
- * Approved leave days used within [fromDate, toDate) — for the entitlement
- * summary against `staff_profiles.holiday_allowance`. Counts inclusive
- * calendar days per request (end_date - start_date + 1), not working days:
- * the schema has no working-pattern data to exclude weekends/off-days
- * correctly, so a coarser count is honest where a precise one would be a
- * guess dressed up as precision.
- */
-export function sumApprovedLeaveDays(
-  requests: LeaveRequest[],
-  fromDate: string,
-  toDate: string,
-): number {
-  return requests
-    .filter(
-      (r) => r.status === 'approved' && r.start_date < toDate && r.end_date >= fromDate,
-    )
-    .reduce((total, r) => {
-      const start = new Date(r.start_date).getTime();
-      const end = new Date(r.end_date).getTime();
-      const days = Math.round((end - start) / 86_400_000) + 1;
-      return total + Math.max(0, days);
-    }, 0);
-}
