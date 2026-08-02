@@ -56,6 +56,40 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/**
+ * Wall-clock minutes since the epoch, in a given IANA zone.
+ *
+ * Overlap has to be judged in the zone the rota is written in: the model
+ * returns a local date and "HH:MM", while stored shifts are UTC instants, and
+ * comparing those two directly is wrong by the offset. `h23` matters — some
+ * engines render midnight as "24" under `hour12: false`.
+ */
+function zonedMinutes(iso: string, timeZone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  ) as Record<string, string>;
+  return (
+    Math.floor(Date.parse(`${parts.year}-${parts.month}-${parts.day}T00:00:00Z`) / 60_000) +
+    Number(parts.hour) * 60 +
+    Number(parts.minute)
+  );
+}
+
+function localMinutes(date: string, hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return Math.floor(Date.parse(`${date}T00:00:00Z`) / 60_000) + (h ?? 0) * 60 + (m ?? 0);
+}
+
 function extractJson(content: string): unknown {
   const fenced = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const raw = fenced ? fenced[1] : content;
@@ -76,6 +110,8 @@ Hard rules, in priority order. Breaking one makes the whole suggestion useless:
 5. Prefer people whose scheduledHours are below their weeklyHours, and prefer zero-hours staff \
 (weeklyHours 0) for extra cover over pushing a contracted person into overtime.
 6. Prefer people who already work the same shiftTypeId at the same location — they know the pattern.
+7. Never give the same person two shifts on the same date, and never give one person every open shift — spread the work across the roster.
+8. When you set a shiftTypeId, use that type's defaultStart and defaultEnd as startTime and endTime unless the manager explicitly asked for different hours. The shift type owns its times.
 
 Respond with ONLY a single JSON object (no markdown, no commentary outside the JSON) matching exactly:
 {
@@ -208,7 +244,7 @@ Deno.serve(async (req: Request) => {
         .select('staff_profile_id, weekday, date, status, recurring')
         .eq('org_id', orgId)
         .eq('status', 'unavailable'),
-      supabase.from('locations').select('id, name').eq('org_id', orgId),
+      supabase.from('locations').select('id, name, timezone').eq('org_id', orgId),
     ]);
 
     if (!staff || staff.length === 0) {
@@ -355,42 +391,133 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Defensive: only trust suggestions referencing real staff/shift-type ids.
-    // The model is told the rules, but "told" is not "verified" — an id that
-    // does not exist would fail at insert time with a foreign-key error the
-    // manager cannot act on, so it is dropped here instead.
-    const suggestions = ((parsed.suggestions as RawSuggestion[] | undefined) ?? [])
-      .filter(
-        (
-          s,
-        ): s is Required<
-          Pick<RawSuggestion, 'staffProfileId' | 'date' | 'startTime' | 'endTime'>
-        > &
-          RawSuggestion =>
-          !!s.staffProfileId &&
-          staffById.has(s.staffProfileId) &&
-          !!s.date &&
-          !!s.startTime &&
-          !!s.endTime,
-      )
-      .map((s) => {
-        const staffMember = staffById.get(s.staffProfileId!)!;
-        const shiftType = s.shiftTypeId ? shiftTypeById.get(s.shiftTypeId) : undefined;
-        return {
-          staffProfileId: s.staffProfileId!,
-          staffName: `${staffMember.first_name} ${staffMember.last_name}`,
-          shiftTypeId: shiftType ? s.shiftTypeId! : null,
-          shiftTypeName: shiftType?.name ?? null,
-          date: s.date!,
-          startTime: s.startTime!,
-          endTime: s.endTime!,
-          reasoning: s.reasoning ?? '',
-        };
-      });
+    // ---- Verify, then repair, then drop. -------------------------------
+    // The model is *told* the rules in ROTA_SYSTEM_PROMPT, but "told" is not
+    // "verified". Observed in testing against real data: gpt-4o-mini put one
+    // person on an overlapping Night and Twilight on the same day, and invented
+    // 20:45-06:15 for a Night pattern whose real hours are 21:45-07:15. Both
+    // would have gone straight onto a manager's grid.
+    //
+    // So: ids are checked against real rows, times are snapped to the chosen
+    // shift type's own defaults, and anything that still overlaps an existing
+    // shift or an already-accepted suggestion is dropped. What was dropped is
+    // reported in the summary rather than silently disappearing — a suggestion
+    // list that quietly shrinks is indistinguishable from a model that had
+    // less to say.
+    const timezone = locations?.[0]?.timezone || 'Europe/London';
 
+    // Wall-clock minute ranges of what each person is already working.
+    const busyByStaff = new Map<string, { start: number; end: number }[]>();
+    for (const shift of shifts) {
+      if (!shift.staff_profile_id) continue;
+      busyByStaff.set(shift.staff_profile_id, [
+        ...(busyByStaff.get(shift.staff_profile_id) ?? []),
+        {
+          start: zonedMinutes(shift.starts_at, timezone),
+          end: zonedMinutes(shift.ends_at, timezone),
+        },
+      ]);
+    }
+
+    const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+    const accepted: {
+      staffProfileId: string;
+      staffName: string;
+      shiftTypeId: string | null;
+      shiftTypeName: string | null;
+      date: string;
+      startTime: string;
+      endTime: string;
+      reasoning: string;
+    }[] = [];
+    let droppedUnknown = 0;
+    let droppedOutOfPeriod = 0;
+    let droppedOverlapping = 0;
+    let retimed = 0;
+
+    const raw = ((parsed.suggestions as RawSuggestion[] | undefined) ?? [])
+      .filter((s) => s.date && s.startTime && s.endTime)
+      .sort((a, b) =>
+        `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`),
+      );
+
+    for (const s of raw) {
+      const staffMember = s.staffProfileId ? staffById.get(s.staffProfileId) : undefined;
+      if (!staffMember) {
+        droppedUnknown += 1;
+        continue;
+      }
+      if (s.date! < periodStart || s.date! > periodEnd) {
+        droppedOutOfPeriod += 1;
+        continue;
+      }
+
+      const shiftType = s.shiftTypeId ? shiftTypeById.get(s.shiftTypeId) : undefined;
+
+      // A shift type owns its hours. If the model named one, its defaults win
+      // over whatever times came back — that is also exactly what dragging the
+      // type onto the grid does, so the two routes agree.
+      let startTime = s.startTime!;
+      let endTime = s.endTime!;
+      if (shiftType?.default_start && shiftType?.default_end) {
+        const typeStart = shiftType.default_start.slice(0, 5);
+        const typeEnd = shiftType.default_end.slice(0, 5);
+        if (typeStart !== startTime || typeEnd !== endTime) retimed += 1;
+        startTime = typeStart;
+        endTime = typeEnd;
+      }
+      if (!HHMM.test(startTime) || !HHMM.test(endTime) || startTime === endTime) {
+        droppedUnknown += 1;
+        continue;
+      }
+
+      const start = localMinutes(s.date!, startTime);
+      // A night shift ending "07:15" ends the following morning.
+      const end = localMinutes(s.date!, endTime) + (endTime <= startTime ? 1440 : 0);
+
+      const busy = busyByStaff.get(s.staffProfileId!) ?? [];
+      if (busy.some((b) => start < b.end && b.start < end)) {
+        droppedOverlapping += 1;
+        continue;
+      }
+
+      accepted.push({
+        staffProfileId: s.staffProfileId!,
+        staffName: `${staffMember.first_name} ${staffMember.last_name}`,
+        shiftTypeId: shiftType ? s.shiftTypeId! : null,
+        shiftTypeName: shiftType?.name ?? null,
+        date: s.date!,
+        startTime,
+        endTime,
+        reasoning: s.reasoning ?? '',
+      });
+      // Accepted suggestions become "busy" too, so the next one in the same
+      // response cannot double-book the same person.
+      busyByStaff.set(s.staffProfileId!, [...busy, { start, end }]);
+    }
+
+    const notes: string[] = [];
+    if (retimed > 0) {
+      notes.push(
+        `${retimed} suggestion${retimed === 1 ? ' was' : 's were'} re-timed to match the shift type's own hours.`,
+      );
+    }
+    if (droppedOverlapping > 0) {
+      notes.push(
+        `${droppedOverlapping} dropped for clashing with a shift that person already has.`,
+      );
+    }
+    if (droppedOutOfPeriod > 0) {
+      notes.push(`${droppedOutOfPeriod} dropped for falling outside the period.`);
+    }
+    if (droppedUnknown > 0) {
+      notes.push(`${droppedUnknown} dropped for naming staff or times that do not exist.`);
+    }
+
+    const modelSummary = typeof parsed.summary === 'string' ? parsed.summary : '';
     return jsonResponse({
-      summary: typeof parsed.summary === 'string' ? parsed.summary : '',
-      suggestions,
+      summary: notes.length > 0 ? `${modelSummary} ${notes.join(' ')}`.trim() : modelSummary,
+      suggestions: accepted,
     });
   } catch (err) {
     console.error('ai-rota-assistant error', err);
