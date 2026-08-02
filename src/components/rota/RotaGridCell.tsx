@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { fromIsoInTimezone, shiftCellKey } from '@/lib/rotaGrid';
+import { fromIsoInTimezone, shiftCellKey, shiftTimeState } from '@/lib/rotaGrid';
 import { ShiftChip } from '@/components/rota/ShiftChip';
 import { PreviewShiftChip } from '@/components/rota/PreviewShiftChip';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
@@ -14,6 +14,7 @@ interface RotaGridCellProps {
   shifts: Shift[];
   shiftTypes: ShiftType[];
   previewSuggestions: AiShiftSuggestion[];
+  now: number;
   selectedShiftId: string | null;
   onAddShift: () => void;
   onSelectShift: (shift: Shift) => void;
@@ -27,6 +28,7 @@ export function RotaGridCell({
   shifts,
   shiftTypes,
   previewSuggestions,
+  now,
   selectedShiftId,
   onAddShift,
   onSelectShift,
@@ -76,6 +78,7 @@ export function RotaGridCell({
               shiftType={shiftType}
               startTime={startTime}
               endTime={endTime}
+              timeState={shiftTimeState(shift.starts_at, shift.ends_at, now)}
               selected={shift.id === selectedShiftId}
               onClick={() => onSelectShift(shift)}
             />

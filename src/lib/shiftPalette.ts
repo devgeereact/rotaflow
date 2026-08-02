@@ -70,6 +70,22 @@ export const SHIFT_PALETTE = [
   },
 ] as const;
 
+/**
+ * The neutral wash a finished shift wears instead of its shift-type colour.
+ *
+ * A rota is read forwards: colour is what draws the eye to the work still to
+ * come, so spending it on shifts that have already been worked competes with
+ * the part a manager can still act on. Past shifts stay fully legible — same
+ * layout, same times — but drop out of the colour system. This is a *token*
+ * swap rather than a `grayscale`/`opacity` filter so the result is a
+ * deliberate colour in both themes, not a washed-out approximation of one.
+ */
+export const PAST_SHIFT_TINT =
+  'bg-surface-subtle text-content-muted ring-surface-border dark:bg-surface-subtle-dark dark:text-content-muted-dark dark:ring-surface-border-dark';
+
+/** Solid-fill counterpart of PAST_SHIFT_TINT, for the chips that fill rather than wash. */
+export const PAST_SHIFT_SOLID = 'bg-content-muted/45 dark:bg-content-muted-dark/35';
+
 export function paletteTokenForColour(hex: string | null | undefined): string {
   const match = SHIFT_PALETTE.find((p) => p.hex.toLowerCase() === hex?.toLowerCase());
   return match?.bgClass ?? 'bg-secondary';

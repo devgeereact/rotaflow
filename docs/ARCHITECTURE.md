@@ -170,16 +170,50 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 - `.htaccess` adds HTTPS redirect + `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`.
 
-## 9. AI rota assistant (OpenRouter)
+## 9. Rota assistant
 
-A first slice of NL scheduling (PRD §5, pulled forward from V2): a manager describes
-staffing needs in plain English and gets shift suggestions grounded in real data.
+Surfaced as the rota builder's "AI assistant" action (`RotaAssistantPanel`), not a
+standalone page. Three tabs, in the order a manager works:
 
-Surfaced as the rota builder's "Auto Fill" action (`AutoFillPanel`), not a
-standalone page — it needs an open rota to apply into.
+| Tab           | What it does                                                  | Needs a network? |
+| ------------- | ------------------------------------------------------------- | ---------------- |
+| **Review**    | Every problem the visible rota is about to cause, worst first | No               |
+| **Fill gaps** | Ranked cover for each open shift, with the reasoning shown    | No               |
+| **Ask AI**    | Free-text drafting via OpenRouter                             | Yes              |
+
+### 9a. The deterministic half — `src/lib/rotaInsights.ts`
+
+Review and Fill gaps are **pure functions over rows the org already has**, so they
+work offline, with no API key, and cannot invent a name or a date. They are the
+assistant's judgement; the model is only ever allowed to phrase things.
+
+`computeRotaInsights` flags: unfilled shifts (escalating inside a week), staff
+rostered inside approved leave, staff rostered against declared unavailability,
+overlapping shifts, rest gaps under the WTR's 11 hours, weeks scheduled over
+contracted hours, and documents expiring while their holder is still on the rota.
+
+`suggestCoverForShift` ranks who could work an open shift. Approved leave, an
+overlapping shift and a declared unavailability are **hard blockers** — they remove
+a candidate rather than costing points, because no amount of good fit makes it
+legal to roster someone who is on holiday. Contract overrun and a tight rest gap
+stay visible instead, so a manager can take the decision knowingly.
+
+There is no required-skills column on `shifts`, so "right skills" means overlapping
+with the people who already work that pattern at that site — an observation, not an
+invented rule. Both functions take `now` as a parameter so every rule agrees on one
+instant and the tests can pin it (`src/lib/rotaInsights.test.ts`).
+
+### 9b. The language-model half (OpenRouter)
+
+A first slice of NL scheduling (PRD §5, pulled forward from V2). One Edge Function
+serves two tasks, because both need the same grounding query and the same
+RLS-scoped client: `task: 'rota'` returns shift suggestions, `task: 'announcement'`
+returns a draft announcement for the composer. Without `OPENROUTER_API_KEY` set as
+a project secret it returns a 503 naming the missing secret, and the two
+deterministic tabs carry on working.
 
 ```
-RotaBuilderPage → AutoFillPanel (owner/manager, org-scoped, current rota open)
+RotaBuilderPage → RotaAssistantPanel (owner/manager, org-scoped)
   → aiRotaService.generateRotaSuggestions(orgId, prompt, periodStart, periodEnd)
     → supabase.functions.invoke('ai-rota-assistant', { body })
         // Authorization header = the calling user's JWT, forwarded automatically.
@@ -187,8 +221,9 @@ RotaBuilderPage → AutoFillPanel (owner/manager, org-scoped, current rota open)
           • creates its Supabase client with that JWT (anon key) — RLS scopes every
             query to the caller's org; no service-role key is used or needed
           • checks has_org_role(org, ['owner','manager']) — 403s otherwise
-          • reads staff_profiles, shift_types, existing shifts, approved leave
-            for the period
+          • reads staff_profiles, shift_types, locations, existing and open
+            shifts, approved leave and declared unavailability for the period,
+            plus hours already scheduled per person
           • calls OpenRouter (POST /chat/completions, JSON mode) with that
             context + the manager's prompt; OPENROUTER_API_KEY is a Supabase
             project secret, never in the client bundle

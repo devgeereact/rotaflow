@@ -84,6 +84,27 @@ export function fromIsoInTimezone(
   return { date: format(zoned, 'yyyy-MM-dd'), time: format(zoned, 'HH:mm') };
 }
 
+export type ShiftTimeState = 'past' | 'live' | 'future';
+
+/**
+ * Where a shift sits relative to now: already worked, running right now, or
+ * still ahead. Drives the grid's colour rule — past shifts render in a neutral
+ * token, current and upcoming ones keep their shift-type colour.
+ *
+ * `now` is injected rather than read from the clock inside, so the rule is
+ * testable at a fixed instant and every chip in one render agrees on "now"
+ * instead of each re-reading a clock that may tick between them.
+ */
+export function shiftTimeState(
+  startsAt: string,
+  endsAt: string,
+  now: number,
+): ShiftTimeState {
+  if (new Date(endsAt).getTime() <= now) return 'past';
+  if (new Date(startsAt).getTime() <= now) return 'live';
+  return 'future';
+}
+
 export function formatWeekLabel(weekStartIso: string): string {
   return format(new Date(`${weekStartIso}T00:00:00`), 'd MMMM yyyy');
 }

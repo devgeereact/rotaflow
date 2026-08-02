@@ -21,6 +21,28 @@ export async function listDocuments(
   return data ?? [];
 }
 
+/**
+ * Every document in the org that has already expired or expires before
+ * `beforeDate` ('YYYY-MM-DD').
+ *
+ * Documents with no expiry (a contract, typically) are excluded by the
+ * `expires_at` filter itself — `null` never satisfies `lte`, which is the
+ * behaviour wanted here: a document that cannot lapse cannot be a warning.
+ */
+export async function listExpiringDocuments(
+  orgId: string,
+  beforeDate: string,
+): Promise<StaffDocument[]> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('org_id', orgId)
+    .lte('expires_at', beforeDate)
+    .order('expires_at', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function createDocument(input: StaffDocumentInsert): Promise<StaffDocument> {
   const { data, error } = await supabase
     .from('documents')

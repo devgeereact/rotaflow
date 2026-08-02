@@ -61,7 +61,8 @@ import {
   type AssignShiftFormValues,
 } from '@/components/rota/AssignShiftModal';
 import { ShiftTypeManagerModal } from '@/components/rota/ShiftTypeManagerModal';
-import { AutoFillPanel } from '@/components/rota/AutoFillPanel';
+import { RotaAssistantPanel } from '@/components/rota/RotaAssistantPanel';
+import { ShiftPatternLegend } from '@/components/rota/ShiftPatternLegend';
 import type { Department, Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
 
 const DEFAULT_TZ = 'Europe/London';
@@ -125,7 +126,7 @@ export function RotaBuilderPage(): JSX.Element {
     shift: null,
   });
   const [shiftTypeModalOpen, setShiftTypeModalOpen] = useState(false);
-  const [autoFillOpen, setAutoFillOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [previewSuggestions, setPreviewSuggestions] = useState<AiShiftSuggestion[]>([]);
 
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
@@ -219,7 +220,7 @@ export function RotaBuilderPage(): JSX.Element {
     () => shifts.filter((s) => filteredLocations.some((l) => l.id === s.location_id)),
     [shifts, filteredLocations],
   );
-  const shiftsForDisplay = useMemo(
+  const shiftsByType = useMemo(
     () =>
       shiftTypeFilter === 'all'
         ? shiftsInScope
@@ -227,18 +228,72 @@ export function RotaBuilderPage(): JSX.Element {
     [shiftsInScope, shiftTypeFilter],
   );
 
-  const staffFiltered = useMemo(() => {
-    let rows = staff;
-    if (departmentFilter !== 'all')
-      rows = rows.filter((s) => s.department_id === departmentFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      rows = rows.filter((s) =>
-        `${s.first_name} ${s.last_name}`.toLowerCase().includes(q),
-      );
+  /** How many shifts of each type are on screen — the legend's counts. */
+  const countsByType = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const shift of shiftsInScope) {
+      if (!shift.shift_type_id) continue;
+      counts.set(shift.shift_type_id, (counts.get(shift.shift_type_id) ?? 0) + 1);
     }
-    return rows;
-  }, [staff, departmentFilter, search]);
+    return counts;
+  }, [shiftsInScope]);
+
+  const query = search.trim().toLowerCase();
+
+  /**
+   * The search box promises "staff, skills, shifts", so it has to reach all
+   * three. Matching a *shift* — by pattern name, by either end of its time
+   * window, or by its note — is what makes "night" and "21:45" both land on
+   * the same chips; matching only names left two thirds of the placeholder
+   * unimplemented.
+   *
+   * Two passes, because the two sides feed each other: find the people who
+   * match outright, keep every shift that matches on its own terms *or*
+   * belongs to one of them, then keep the people who match outright *or* still
+   * have a shift on screen. Doing it in one pass would drop a matching
+   * person's other shifts, or hide the row a matching shift sits in.
+   */
+  const { shiftsForDisplay, staffFiltered } = useMemo(() => {
+    const byDepartment =
+      departmentFilter === 'all'
+        ? staff
+        : staff.filter((s) => s.department_id === departmentFilter);
+
+    if (!query) return { shiftsForDisplay: shiftsByType, staffFiltered: byDepartment };
+
+    const typeById = new Map(shiftTypes.map((t) => [t.id, t]));
+    const directStaff = new Set(
+      byDepartment
+        .filter(
+          (p) =>
+            `${p.first_name} ${p.last_name}`.toLowerCase().includes(query) ||
+            (p.job_title?.toLowerCase().includes(query) ?? false) ||
+            (p.skills ?? []).some((skill) => skill.toLowerCase().includes(query)),
+        )
+        .map((p) => p.id),
+    );
+
+    const keptShifts = shiftsByType.filter((shift) => {
+      if (shift.staff_profile_id && directStaff.has(shift.staff_profile_id)) return true;
+      const type = shift.shift_type_id ? typeById.get(shift.shift_type_id) : undefined;
+      if (type?.name.toLowerCase().includes(query)) return true;
+      if (shift.notes?.toLowerCase().includes(query)) return true;
+      const { time: startTime } = fromIsoInTimezone(shift.starts_at, DEFAULT_TZ);
+      const { time: endTime } = fromIsoInTimezone(shift.ends_at, DEFAULT_TZ);
+      return startTime.includes(query) || endTime.includes(query);
+    });
+
+    const withKeptShift = new Set(
+      keptShifts.map((s) => s.staff_profile_id).filter((id): id is string => Boolean(id)),
+    );
+
+    return {
+      shiftsForDisplay: keptShifts,
+      staffFiltered: byDepartment.filter(
+        (p) => directStaff.has(p.id) || withKeptShift.has(p.id),
+      ),
+    };
+  }, [staff, departmentFilter, query, shiftsByType, shiftTypes]);
 
   /**
    * Grouped by location. A single selected location shows its whole roster
@@ -585,17 +640,36 @@ export function RotaBuilderPage(): JSX.Element {
       });
   };
 
-  const autoFillLocation =
-    locationFilter !== 'all' ? (locationById.get(locationFilter) ?? null) : null;
-  const autoFillRota = autoFillLocation ? rotasByLocation.get(autoFillLocation.id) : null;
+  /**
+   * Where an AI draft would be written. The assistant's Review and Fill-gaps
+   * tabs work across every location on screen, so the panel itself is never
+   * gated — only writing a generated draft needs one specific rota, because a
+   * shift has to belong to a single site.
+   */
+  const applyTarget = useMemo(() => {
+    const location = locationFilter !== 'all' ? locationById.get(locationFilter) : null;
+    const rota = location ? rotasByLocation.get(location.id) : null;
+    return location && rota ? { locationId: location.id, rotaId: rota.id } : null;
+  }, [locationFilter, locationById, rotasByLocation]);
 
-  const handleAutoFillClick = (): void => {
-    if (!autoFillLocation || !autoFillRota) {
-      showError('Select a single location above to auto-fill its rota.');
-      return;
-    }
-    setAutoFillOpen(true);
-  };
+  /** Fill an open shift from the assistant's ranked suggestions. */
+  const handleAssignOpenShift = useCallback(
+    async (shiftId: string, staffProfileId: string): Promise<void> => {
+      try {
+        const updated = await updateShift(shiftId, {
+          staff_profile_id: staffProfileId,
+          status: 'assigned',
+        });
+        setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+        setLastSavedAt(new Date());
+        showSuccess('Shift assigned.');
+      } catch (err) {
+        reportError(err, { area: 'rota:assistant-assign' });
+        showError('Could not assign that shift. Please try again.');
+      }
+    },
+    [showError, showSuccess],
+  );
 
   if (!canBuildRota) {
     return (
@@ -848,10 +922,10 @@ export function RotaBuilderPage(): JSX.Element {
           <Button
             size="sm"
             className="ml-auto bg-success/10 text-success hover:bg-success/15"
-            onClick={handleAutoFillClick}
+            onClick={() => setAssistantOpen(true)}
           >
             <Sparkles size={14} aria-hidden="true" />
-            Auto-assign
+            AI assistant
           </Button>
 
           {/* The reference collapses the per-shift actions behind one
@@ -911,6 +985,13 @@ export function RotaBuilderPage(): JSX.Element {
             )}
           </div>
         </div>
+
+        <ShiftPatternLegend
+          shiftTypes={shiftTypes}
+          activeId={shiftTypeFilter}
+          countsByType={countsByType}
+          onSelect={setShiftTypeFilter}
+        />
 
         {/* ---- Main: grid | inspector | action rail ---- */}
         {loading || orgDataLoading ? (
@@ -972,7 +1053,7 @@ export function RotaBuilderPage(): JSX.Element {
               inside the grid card. */}
             <Card className="shrink-0 p-2 xl:w-[5.5rem]">
               <RotaActionRail
-                onAutoFill={handleAutoFillClick}
+                onAutoFill={() => setAssistantOpen(true)}
                 onComingSoon={(label) => showError(`${label} is coming soon.`)}
               />
             </Card>
@@ -1033,18 +1114,23 @@ export function RotaBuilderPage(): JSX.Element {
         />
       )}
 
-      {orgId && autoFillLocation && autoFillRota && (
-        <AutoFillPanel
-          open={autoFillOpen}
-          onClose={() => setAutoFillOpen(false)}
+      {orgId && (
+        <RotaAssistantPanel
+          open={assistantOpen}
+          onClose={() => setAssistantOpen(false)}
           orgId={orgId}
-          locationId={autoFillLocation.id}
-          rotaId={autoFillRota.id}
+          shifts={shiftsInScope}
+          staff={staff}
+          shiftTypes={shiftTypes}
+          locations={filteredLocations}
           weekStart={weekStart}
           weekEnd={weekEnd}
-          timezone={autoFillLocation.timezone}
+          timezone={DEFAULT_TZ}
+          applyTarget={applyTarget}
           onPreview={setPreviewSuggestions}
           onApplied={reloadShifts}
+          onAssign={handleAssignOpenShift}
+          onSelectShift={setSelectedShiftId}
         />
       )}
     </DndContext>

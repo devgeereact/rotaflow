@@ -1,8 +1,12 @@
 # RotaFlow demo dataset
 
-A reusable showcase dataset: **five fully-populated organisations, five items in
-every section**, plus eight sign-in-able accounts covering every role. Built for
-client demos and end-to-end manual testing.
+A reusable showcase dataset: five organisations carrying a **rolling three-month
+rota** — this month plus the two after it, with three weeks of completed history
+behind it — plus nine sign-in-able accounts covering every role.
+
+Built for client demos and for end-to-end manual testing, which is why it is not
+a tidy rota: a set of problems is planted on purpose so the warnings, conflict
+and shortage paths get exercised, not just the happy one.
 
 | File | What it does |
 | ---- | ------------ |
@@ -18,8 +22,8 @@ client demos and end-to-end manual testing.
 `CHANGE-ME-BEFORE-SEEDING` and the seed raises an exception until you change it —
 see [Accounts](#accounts) for why.
 
-Then paste the file into the Supabase SQL editor and run it as one unit, or POST it
-to the Management API:
+Then paste the file into the Supabase SQL editor and run it as one unit, or POST
+it to the Management API:
 
 ```bash
 # PROJECT_REF is deliberately not hard-coded here — pass the project you mean.
@@ -31,31 +35,37 @@ req = urllib.request.Request(
     f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
     data=json.dumps({'query': sql}).encode(),
     headers={'Authorization': f'Bearer {tok}', 'Content-Type': 'application/json',
-             'User-Agent': 'rotaflow-seed/1.0'})   # Cloudflare 403s the default UA
+             'User-Agent': 'rotaflow-seed/2.0'})   # Cloudflare 403s the default UA
 print(urllib.request.urlopen(req).read().decode()[:2000])
 PY
 ```
 
-The seed ends with a verification `SELECT` that prints a row per organisation with
-a count for every section — all fives is a healthy run.
+If you substitute the password programmatically, replace **only the assignment**
+(`constant text := '…'`), never every occurrence — a blanket find-and-replace also
+rewrites the guard's comparison, which makes it true again and aborts the run.
+
+The seed ends with a verification `SELECT` printing a row per organisation with a
+count for every section and the rota date range it built.
 
 ## Re-run it before every demo
 
-Every id is derived deterministically (`md5('rotaflow-demo-v1:' || key)`), and every
-date is relative to `current_date`. So re-running **deletes the five demo orgs and
-rebuilds them centred on the current week** — the rota always looks live, shifts in
-the past are already clocked, shifts ahead are still to come. Re-running is the
-supported refresh; it is not an error.
+Every id is derived deterministically (`md5('rotaflow-demo-v1:' || key)`) and every
+date is relative to `current_date`, so re-running **deletes the demo organisations
+and rebuilds the whole three months centred on today**. History stays worked and
+clocked, the future stays open. Re-running is the supported refresh, not an error.
 
 It never reads or writes organisations created through the app.
 
 ## Accounts
 
 **This repository is public.** These are real, email-confirmed accounts on a live
-Supabase project, so a password committed here would be a working public credential —
-anyone could sign in and mutate the demo data. `c_password` therefore ships as a
-placeholder and the seed refuses to run until you set it. Keep the value you choose
-out of the repo (a password manager, or your shell history at worst).
+Supabase project, so a password committed here would be a working public
+credential. `c_password` therefore ships as a placeholder and the seed refuses to
+run until you set it. Keep the value you choose out of the repo.
+
+Unlike v1, **the seed rotates the password of accounts that already exist**, so
+whatever you set in `c_password` is always the live value — no guessing whether an
+older run set something different.
 
 The blast radius is bounded even so: these accounts are members of the demo
 organisations only, so RLS keeps them out of any real tenant. The worst case is a
@@ -71,46 +81,90 @@ scribbled-on demo, which a re-run repairs.
 | Sofia Marchetti | `gakinz101+demo.staff2@gmail.com` | Staff — Northgate |
 | Tomas Nowak | `gakinz101+demo.staff3@gmail.com` | Staff — Harbour View |
 | Grace Adeyemi | `gakinz101+demo.staff4@gmail.com` | Staff — Harbour View |
+| **Maya Whitfield** | `gakinz101+demo.worker@gmail.com` | **Staff — the worker test account** |
 
 The demo addresses are plus-addressed on the owner's real mailbox, so password
 resets and magic links genuinely arrive and **nothing can bounce** — a fake domain
 would hard-bounce, and Supabase has already warned this project about bounce rate.
 
-Accounts are created with the password pre-set and the email pre-confirmed. Existing
-accounts are reused, never overwritten, so a password you change by hand survives a
-re-seed.
+### The worker account
+
+`+demo.worker` (Maya Whitfield, Northgate House) exists to be signed into as an
+ordinary member of staff. She is on the six-pattern roster's alternating
+early/late rotation — Saturday to Wednesday, swapping pattern week by week — so
+her Schedule shows a real rhythm rather than five identical days. She carries
+worked history with clock events, shifts across all three months, and four unread
+notifications so the bell has a badge on first sign-in.
 
 ## The five organisations
 
-| Org | Sector | Plan | Logins |
+| Org | Sector | Plan | Roster |
 | --- | ------ | ---- | ------ |
-| Northgate Care Group | Healthcare | business | All 5 staff have logins — the flagship demo |
-| Harbour View Hotels | Hospitality | professional | Separate owner; proves tenant isolation |
-| Brightside Retail | Retail | professional | Record-only staff + head-office logins |
-| Clearway Logistics | Logistics | starter | Record-only staff + head-office logins |
-| Meridian Security | Security | business | Record-only staff + head-office logins |
+| Northgate Care Group | Healthcare | business | **30 staff on six rotating patterns** — the flagship |
+| Harbour View Hotels | Hospitality | professional | 15 on three patterns; separate owner, proves tenant isolation |
+| Brightside Retail | Retail | professional | 15 on three patterns; head-office logins only |
+| Clearway Logistics | Logistics | starter | 15 on three patterns; head-office logins only |
+| Meridian Security | Security | business | 15 on three patterns; head-office logins only |
 
-Each has 5 locations, 5 departments, 5 staff, 5 shift types, 5 templates, 5 rotas,
-~93 shifts, 5 of each request type, 5 timesheets, 5 documents, 5 announcements,
-5 notifications, 5 pending invites, 5 audit entries and a subscription.
+Each has 5 locations, 5 departments, 6 shift types, 18 templates, **85 rotas (one
+per site per week for 17 weeks)** and 1,200–2,500 shifts, plus leave, overtime,
+swaps, timesheets, availability, documents, announcements, notifications, invites,
+audit entries and a subscription.
 
-Orgs 3–5 have record-only staff (no `user_id`), which is the real state of an
-organisation that has added its people but not yet invited them. Their five Team
-members are head-office logins with app access but no rota presence.
+### Why a rota per site per week
 
-## What a demo can show
+`RotaBuilderPage` calls `getOrCreateRotaForPeriod(org, location, Monday..Sunday)`
+and then reads shifts **by rota id**. A week with no rota row for a site gets a
+fresh empty draft on open, and seeded shifts attached to some other rota never
+appear. v1 seeded site 1 only, which is why four of five sites looked blank.
 
-- **Rotas** — weeks −2 and −1 completed, this week live, next week published, week +2 a
-  half-built draft. `getOrCreateRotaForPeriod` finds the existing rota rather than making one.
-- **Open shifts** — 5 per org, one at each site, unassigned and needing cover.
-- **Clock in/out** — past shifts already have GPS `in`/`out` pairs with realistic
-  minute-level jitter. One person per org is **clocked in right now**, so the Clock In
-  screen has a live state at any hour.
-- **Requests** — leave, overtime and swaps each seeded across approved / pending /
-  rejected, so approval queues are never empty.
-- **Documents** — expiries staggered on purpose: one already expired, one due in 21 days.
-- **Tenant isolation** — sign in as Amelia Hart and only Harbour View exists. Verified.
-- **Super Admin** — `gakinz101@gmail.com` reads across every tenant.
+### Rotating patterns, not random shifts
+
+Each site gets one person on each pattern, so every site is covered every day of
+the week and the grid reads as a real rolling rota:
+
+| Pattern | Shift | Days |
+| ------- | ----- | ---- |
+| 1 | Early 07:00–15:00 | Mon–Fri |
+| 2 | Late 14:00–22:00 | Mon–Fri |
+| 3 | Night 21:45–07:15 | Wed–Sun |
+| 4 | Long Day 08:00–20:00 | Mon–Wed + weekend |
+| 5 | Twilight 17:00–23:00 | Thu–Sun |
+| 6 | Early/Late, alternating week by week | Sat–Wed |
+
+Shift-type colours come from the **eight-swatch palette in
+`src/lib/shiftPalette.ts`**. Anything outside it falls through
+`paletteTintForColour()` to the grey default — which is exactly why every chip in
+the v1 demo rendered colourless.
+
+## The planted problems
+
+A demo that only shows a healthy rota never exercises the warnings. On purpose:
+
+| # | Problem | Where to find it |
+| - | ------- | ---------------- |
+| a | **Unfilled weekend nights and twilights** | Sites 2 and 4, weeks +2, +4, +6, +9 and +11 — an "Unfilled" row on the grid |
+| b | **Double booking** | One person, two overlapping shifts, next week |
+| c | **Approved leave with shifts still rostered inside it** | Two weeks out |
+| d | **Rest breach** | A late finishing 22:00 followed by an early at 07:00 — 9h, under the WTR's 11 |
+| e | **Unavailability clash** | Someone unavailable every Monday who works Mondays |
+| f | **Documents** | One DBS already expired, one expiring this week, one in three weeks |
+| g | **No-shows** | Two recent past shifts per org with no clock events at all |
+| h | **Missing clock-out** | One shift per org clocked in and never out |
+| i | **Unsynced offline events** | `synced = false`, the offline engine's own state |
+| j | **Over-contract weeks** | Part-time and zero-hours staff are seeded throughout |
+
+The rota assistant's **Review** tab surfaces every one of these, and **Fill gaps**
+proposes ranked cover for (a).
+
+## Attendance
+
+- Every finished shift in the last four weeks has a realistic clock in/out pair
+  with deterministic minute jitter — a repeatable minority run 18–30 minutes late.
+- Long shifts (45+ minute breaks) also carry `break_start` / `break_end` events.
+- **Whoever is genuinely mid-shift right now is clocked in**, so the Clock In
+  screen has a live state whatever hour the demo runs. A fallback covers the case
+  where an org happens to have nobody on shift at that moment.
 
 ## Not seeded, on purpose
 
@@ -123,5 +177,5 @@ members are head-office logins with app access but no rota presence.
 -- supabase/seed/demo_teardown.sql
 ```
 
-Drops the five orgs (everything cascades), deletes the seven demo accounts, and
-clears the Super Admin flag. It never deletes `gakinz101@gmail.com`.
+Drops the demo orgs (everything cascades), deletes the demo accounts, and clears
+the Super Admin flag. It never deletes `gakinz101@gmail.com`.
