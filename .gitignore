@@ -43,3 +43,6 @@ design/.loop/
 .claude/worktrees/
 .claude/settings.local.json
 supabase/.temp/
+
+# Vitest coverage output
+coverage/
