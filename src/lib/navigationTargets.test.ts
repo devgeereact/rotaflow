@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
+import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 
 /**
  * Every tab must point at a route that exists.
@@ -168,5 +169,35 @@ describe('navigation targets', () => {
   it('routes the Settings and Profile area roots', () => {
     expect(isRoutable('/app/settings')).toBe(true);
     expect(isRoutable('/app/account')).toBe(true);
+  });
+
+  /*
+   * The marketing site has exactly the same failure mode the Settings tab bar
+   * had, and it is worse here: a 404 behind a nav item on a *public* page is
+   * seen by prospective customers, not by staff who already signed up. These
+   * links are also the first thing a search crawler follows.
+   */
+  it.each(MARKETING_NAV.map((link) => [link.label, link.to] as const))(
+    'marketing nav item %s (%s) has a route',
+    (_label, to) => {
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
+
+  const footerLinks = FOOTER_COLUMNS.flatMap(({ heading, links }) =>
+    links.map((link) => [`${heading} › ${link.label}`, link.to] as const),
+  );
+
+  it.each(footerLinks)('footer link %s (%s) has a route', (_label, to) => {
+    expect(isRoutable(to)).toBe(true);
+  });
+
+  it('routes every public entry point the marketing pages link to', () => {
+    // Hard-coded rather than derived: these are the CTA destinations written
+    // inline in the hero, the pricing cards and the final call to action. If
+    // one is renamed, this fails rather than the button silently 404ing.
+    for (const target of ['/', '/signup', '/login', '/contact', '/resources']) {
+      expect(isRoutable(target)).toBe(true);
+    }
   });
 });

@@ -71,6 +71,20 @@ function devPage<K extends string>(
  * made. Everything behind auth is lazy; by then the service worker has
  * precached every chunk, so those loads come from cache and offline still works.
  */
+/*
+ * Marketing routes. Lazy for the same reason the app routes are: a visitor
+ * landing on `/` should not download the pricing FAQ and the contact form's
+ * validation before the hero paints. `HomePage` itself stays eager below —
+ * it is the entry point, and on a genuinely first visit (no service worker
+ * yet) lazy-loading it would add a round trip to the first impression.
+ */
+const FeaturesPage = lazyPage('FeaturesPage', () => import('@/pages/FeaturesPage'));
+const SolutionsPage = lazyPage('SolutionsPage', () => import('@/pages/SolutionsPage'));
+const PricingPage = lazyPage('PricingPage', () => import('@/pages/PricingPage'));
+const ResourcesPage = lazyPage('ResourcesPage', () => import('@/pages/ResourcesPage'));
+const AboutPage = lazyPage('AboutPage', () => import('@/pages/AboutPage'));
+const ContactPage = lazyPage('ContactPage', () => import('@/pages/ContactPage'));
+
 const OnboardingPage = lazyPage('OnboardingPage', () => import('@/pages/OnboardingPage'));
 const OnboardingPreviewPage = devPage(
   'OnboardingPreviewPage',
@@ -263,6 +277,16 @@ export function App(): JSX.Element {
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
                     <Route path="/" element={<HomePage />} />
+                    {/* Public marketing site. Every one of these is linked from
+                      PublicNav or PublicFooter, and navigationTargets.test.ts
+                      asserts each link resolves to a Route declared here — the
+                      nav and the route table cannot drift apart silently. */}
+                    <Route path="/features" element={<FeaturesPage />} />
+                    <Route path="/solutions" element={<SolutionsPage />} />
+                    <Route path="/pricing" element={<PricingPage />} />
+                    <Route path="/resources" element={<ResourcesPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
