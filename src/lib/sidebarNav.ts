@@ -9,6 +9,7 @@ import {
   Umbrella,
   Repeat2,
   Timer,
+  TimerReset,
   Megaphone,
   BarChart3,
   Plug,
@@ -92,6 +93,10 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
     { label: 'Availability', icon: Clock3, to: '/app/availability' },
     { label: 'Leave', icon: Umbrella, to: '/app/leave' },
     { label: 'Swaps', icon: Repeat2, to: '/app/swaps' },
+    // §2 lists "Request overtime" among what a staff member can do, so this
+    // sits outside the managerial block. The page's own Team toggle is what
+    // gates the approval queue.
+    { label: 'Overtime', icon: TimerReset, to: '/app/overtime' },
     { label: 'Timesheets', icon: Timer, to: '/app/timesheets' },
     { label: 'Clock In', icon: LogIn, to: '/app/clock' },
   );

@@ -3,11 +3,12 @@ import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 
-/** Tables published to Realtime by `0012_realtime.sql`. */
+/** Tables published to Realtime by `0012_realtime.sql` and `0013_realtime_overtime.sql`. */
 export type RealtimeTable =
   | 'shifts'
   | 'rotas'
   | 'leave_requests'
+  | 'overtime_requests'
   | 'shift_swaps'
   | 'notifications'
   | 'announcements'
