@@ -12,6 +12,7 @@ import {
 } from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listShiftsForPeriod } from '@/services/shiftService';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { DepartmentManager } from '@/components/locations/DepartmentManager';
@@ -106,6 +107,10 @@ export function LocationsPage(): JSX.Element {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
   const [departmentsModalFor, setDepartmentsModalFor] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [withStaffOnly, setWithStaffOnly] = useState(false);
+  const [withShiftsOnly, setWithShiftsOnly] = useState(false);
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId) return;
@@ -161,8 +166,10 @@ export function LocationsPage(): JSX.Element {
     () =>
       locationRows
         .filter((row) => !search || matches(`${row.name} ${row.address}`, search))
+        .filter((row) => !withStaffOnly || row.staff > 0)
+        .filter((row) => !withShiftsOnly || row.upcomingShifts > 0)
         .sort((a, b) => compare(a, b, sort)),
-    [locationRows, search, sort],
+    [locationRows, search, withStaffOnly, withShiftsOnly, sort],
   );
 
   const visibleDepartments = useMemo(() => {
@@ -174,8 +181,18 @@ export function LocationsPage(): JSX.Element {
     return departmentRows
       .filter((row) => !scoped || scoped.has(row.id))
       .filter((row) => !search || matches(`${row.name} ${row.location}`, search))
+      .filter((row) => !withStaffOnly || row.staff > 0)
+      .filter((row) => !withShiftsOnly || row.upcomingShifts > 0)
       .sort((a, b) => compare(a, b, sort));
-  }, [departmentRows, departments, locationFilter, search, sort]);
+  }, [
+    departmentRows,
+    departments,
+    locationFilter,
+    search,
+    withStaffOnly,
+    withShiftsOnly,
+    sort,
+  ]);
 
   const pageOf = <T,>(rows: T[]): T[] =>
     rows.slice((page - 1) * pageSize, page * pageSize);
@@ -287,7 +304,7 @@ export function LocationsPage(): JSX.Element {
             setPage(1);
           }}
           details={locationDetails}
-          onMoreFilters={() => undefined}
+          onMoreFilters={() => setFiltersOpen(true)}
           onAddLocation={canManageStaff ? openCreate : undefined}
           onEditInfo={() =>
             selectedLocationId ? openEdit(selectedLocationId) : undefined
@@ -296,8 +313,8 @@ export function LocationsPage(): JSX.Element {
             if (id === 'staff') goToStaff();
             if (id === 'departments') goTo('/app/locations/departments');
           }}
-          onViewActivity={() => undefined}
-          onOpenGuide={() => undefined}
+          onViewActivity={() => goTo('/app/settings/audit')}
+          onOpenGuide={() => setGuideOpen(true)}
         />
       ) : (
         <DepartmentsView
@@ -324,18 +341,112 @@ export function LocationsPage(): JSX.Element {
             setPage(1);
           }}
           details={departmentDetails}
-          onMoreFilters={() => undefined}
+          onMoreFilters={() => setFiltersOpen(true)}
           onAddDepartment={canManageStaff ? () => openDepartments() : undefined}
           onFollowMetric={(id) => {
             if (id === 'staff') goToStaff();
           }}
-          onViewActivity={() => undefined}
+          onViewActivity={() => goTo('/app/settings/audit')}
           onQuickAction={(action) => {
             if (action === 'directory') goToStaff();
             if (action === 'add' || action === 'settings') openDepartments();
           }}
         />
       )}
+
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="More filters"
+      >
+        <div className="space-y-4">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={withStaffOnly}
+              onChange={(e) => {
+                setWithStaffOnly(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only show ones with staff assigned
+          </label>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={withShiftsOnly}
+              onChange={(e) => {
+                setWithShiftsOnly(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only show ones with upcoming shifts
+          </label>
+          {/* Status, type and region are in the reference but are not columns
+              (docs/SCHEMA.md §3), so they are absent rather than faked. */}
+          <p className="text-xs text-content-muted dark:text-content-muted-dark">
+            Status, site type and region are not recorded against a location, so they
+            cannot be filtered on yet.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setWithStaffOnly(false);
+                setWithShiftsOnly(false);
+                setPage(1);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        title="Locations and departments"
+      >
+        <div className="space-y-4 text-sm text-content dark:text-content-dark">
+          <div>
+            <h3 className="mb-1 font-semibold">How the two relate</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              A location is a physical site with its own address and timezone. A
+              department belongs to one location and is what staff are actually assigned
+              to — so someone&rsquo;s site is inferred from their department.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Why timezone matters</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Shift times are stored as instants and displayed in the location&rsquo;s
+              timezone, not the viewer&rsquo;s. A manager in one country sees a
+              site&rsquo;s 07:00 start as 07:00 local to that site. Set it correctly when
+              adding a location — changing it later moves how every existing shift reads.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Coverage</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Coverage compares assigned shifts against the total scheduled for the
+              period. It does not know a required headcount — no such column exists — so
+              it reports how much of what was planned is filled, not whether the plan was
+              adequate.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Archiving</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Deleting a location detaches its shifts and departments rather than
+              destroying them, so historical rotas and timesheets stay intact.
+            </p>
+          </div>
+        </div>
+      </Modal>
 
       <LocationFormModal
         open={modalOpen}

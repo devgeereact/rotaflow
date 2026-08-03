@@ -122,6 +122,13 @@ export function SwapsPage(): JSX.Element {
 
   const [requestOpen, setRequestOpen] = useState(false);
   const [openSwapId, setOpenSwapId] = useState<string | null>(null);
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [mineOnly, setMineOnly] = useState(false);
+  const [awaitingMe, setAwaitingMe] = useState(false);
   const [shiftId, setShiftId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [note, setNote] = useState('');
@@ -216,9 +223,39 @@ export function SwapsPage(): JSX.Element {
         if (departmentId && swap.shift?.department_id !== departmentId) return false;
         if (shiftTypeId && swap.shift?.shift_type_id !== shiftTypeId) return false;
         if (statusFilter && toDisplayStatus(swap.status) !== statusFilter) return false;
+        if (mineOnly) {
+          const mine =
+            swap.requested_by === myProfile?.id ||
+            swap.target_staff_profile_id === myProfile?.id;
+          if (!mine) return false;
+        }
+        if (awaitingMe && swap.status !== 'pending') return false;
+        if (fromDate || toDate) {
+          /*
+           * Date the swap by the SHIFT it concerns, not by when it was
+           * raised. "Swaps in June" means shifts in June; a request typed in
+           * May about a June shift belongs in June. Only fall back to
+           * `created_at` when the shift row is gone.
+           */
+          const basis = swap.shift?.starts_at ?? swap.created_at;
+          const day = basis.slice(0, 10);
+          if (fromDate && day < fromDate) return false;
+          if (toDate && day > toDate) return false;
+        }
         return true;
       }),
-    [swaps, locationId, departmentId, shiftTypeId, statusFilter],
+    [
+      swaps,
+      locationId,
+      departmentId,
+      shiftTypeId,
+      statusFilter,
+      mineOnly,
+      awaitingMe,
+      myProfile,
+      fromDate,
+      toDate,
+    ],
   );
 
   const allRows = useMemo(
@@ -302,11 +339,25 @@ export function SwapsPage(): JSX.Element {
     },
   ];
 
+  /**
+   * Reflects the window actually applied. This used to print the current week
+   * unconditionally while the list showed every swap ever raised — a label
+   * that describes a filter nothing is applying is worse than no label.
+   */
   const periodLabel = useMemo(() => {
+    if (!fromDate && !toDate) return 'All dates';
+    const pretty = (iso: string): string =>
+      format(new Date(`${iso}T00:00:00`), 'd MMM yyyy');
+    if (fromDate && toDate) return `${pretty(fromDate)} – ${pretty(toDate)}`;
+    return fromDate ? `From ${pretty(fromDate)}` : `Until ${pretty(toDate)}`;
+  }, [fromDate, toDate]);
+
+  /** Sets the window to the current week — the old hard-coded label's range. */
+  const applyThisWeek = useCallback((): void => {
     const now = new Date();
-    const from = startOfWeek(now, { weekStartsOn: 1 });
-    const to = endOfWeek(now, { weekStartsOn: 1 });
-    return `${format(from, 'd MMM')} – ${format(to, 'd MMM yyyy')}`;
+    setFromDate(format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+    setToDate(format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+    setPage(1);
   }, []);
 
   const handleRequest = useCallback(async (): Promise<void> => {
@@ -452,9 +503,9 @@ export function SwapsPage(): JSX.Element {
         onNewRequest={() => setRequestOpen(true)}
         canRequest={Boolean(myProfile)}
         periodLabel={periodLabel}
-        onPeriodClick={() => undefined}
+        onPeriodClick={() => setPeriodOpen(true)}
         selects={selects}
-        onMoreFilters={() => undefined}
+        onMoreFilters={() => setFiltersOpen(true)}
         rows={pageRows}
         onOpenRow={setOpenSwapId}
         onRowMenu={setOpenSwapId}
@@ -472,13 +523,169 @@ export function SwapsPage(): JSX.Element {
           setPage(1);
         }}
         counts={counts}
-        overviewRangeLabel="All time"
-        onOverviewRangeClick={() => undefined}
+        overviewRangeLabel={periodLabel}
+        onOverviewRangeClick={() => setPeriodOpen(true)}
         activity={activity}
         onViewAllActivity={() => setActiveTab('all')}
         quickActions={QUICK_ACTIONS}
-        onViewPolicy={() => undefined}
+        onViewPolicy={() => setPolicyOpen(true)}
       />
+
+      <Modal
+        open={periodOpen}
+        onClose={() => setPeriodOpen(false)}
+        title="Filter by period"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            Swaps are dated by the shift they concern, not by when the request was raised.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="swap-from">From</Label>
+              <Input
+                id="swap-from"
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="swap-to">To</Label>
+              <Input
+                id="swap-to"
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{tabRows.length}</strong> of {swaps.length} swap requests.
+          </p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={applyThisWeek}>
+              This week
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFromDate('');
+                setToDate('');
+                setPage(1);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setPeriodOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="More filters"
+      >
+        <div className="space-y-4">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              disabled={!myProfile}
+              onChange={(e) => {
+                setMineOnly(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40 dark:border-surface-border-dark"
+            />
+            Only swaps I am part of
+          </label>
+          {!myProfile && (
+            <p className="-mt-2 text-xs text-content-muted dark:text-content-muted-dark">
+              You have no staff profile in this organisation, so no swap can name you.
+            </p>
+          )}
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={awaitingMe}
+              onChange={(e) => {
+                setAwaitingMe(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only requests still awaiting a decision
+          </label>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{tabRows.length}</strong> of {swaps.length} swap requests.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setMineOnly(false);
+                setAwaitingMe(false);
+                setPage(1);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={policyOpen}
+        onClose={() => setPolicyOpen(false)}
+        title="How shift swaps work"
+      >
+        <div className="space-y-4 text-sm text-content dark:text-content-dark">
+          <div>
+            <h3 className="mb-1 font-semibold">The sequence</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              You offer one of your own published shifts, optionally naming a colleague.
+              They accept or decline. A manager then approves or declines the accepted
+              swap — both steps are required, so nobody is handed a shift without a
+              manager seeing it.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">What a manager should check</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              That the new person is qualified for the role, that the swap does not break
+              their rest period or push them over their contracted hours, and that the
+              shift they are giving up is still covered.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">What the system does not check for you</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Those checks are not automated yet, so approval is a human judgement here.
+              The screen will not stop you approving a swap that breaks a rest period —
+              read the shift details before approving.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">After approval</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              The shift changes hands on the rota immediately and both people are
+              notified. Approving offline queues the change and applies it when the
+              connection returns.
+            </p>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={requestOpen}
