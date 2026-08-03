@@ -11,7 +11,7 @@ import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
-import { listShiftsForPeriod } from '@/services/shiftService';
+import { listShiftsForPeriod, updateShift } from '@/services/shiftService';
 import { listDepartments, listLocations } from '@/services/locationService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import {
@@ -80,11 +80,11 @@ const EXPORT_COLUMNS: CsvColumn<SwapRow>[] = [
  * `/app/swaps` — the shift-swap queue (design/Swap-Request.png): request as
  * staff, respond as the targeted colleague, approve or decline as a manager.
  *
- * Approving here only marks the row `approved` — it does not reassign the
- * shift on the rota. Actually moving the shift is the same write path as any
- * other reassignment in the rota builder, and folding it into an approval
- * click here would bypass that screen's conflict/coverage context. A manager
- * approves the swap here, then reassigns it in the rota builder.
+ * Approving moves the shift. It used to only mark the row `approved`, leaving
+ * reassignment to the rota builder so that screen's conflict and coverage
+ * context stayed in play — but that left the rota, which is what staff
+ * actually read, disagreeing with the decision both parties had just been
+ * notified about. See `handleReview`.
  *
  * The rail's "Swap Rules" card is deliberately absent here even though the
  * reference shows it: no policy table exists yet, and a card of invented
@@ -427,9 +427,45 @@ export function SwapsPage(): JSX.Element {
       try {
         const swap = swaps.find((s) => s.id === id);
         await reviewShiftSwap(id, status, user.id);
+
+        /*
+         * An approved swap MOVES THE SHIFT (§14: "Approved swaps must update
+         * the rota"; §25: "shift ownership updates").
+         *
+         * This used to stop at marking the row approved, on the reasoning that
+         * reassignment belongs in the rota builder where the conflict and
+         * coverage context lives. That reasoning is wrong in the one way that
+         * matters: it leaves the rota — the thing staff actually read —
+         * disagreeing with the decision they were just notified about. Someone
+         * whose swap was approved still sees the shift on their schedule, and
+         * the colleague who took it does not see it on theirs. The manager
+         * gets no signal that a second step is outstanding.
+         *
+         * Ordered after `reviewShiftSwap` deliberately: if the reassignment
+         * fails, the swap stays approved and the shift stays put, which is
+         * visible and correctable. The reverse order could move a shift for a
+         * swap that was never approved.
+         */
+        if (status === 'approved' && swap?.shift_id && swap.target_staff_profile_id) {
+          try {
+            await updateShift(swap.shift_id, {
+              staff_profile_id: swap.target_staff_profile_id,
+            });
+          } catch (err) {
+            reportError(err, { area: 'swaps:reassign-shift' });
+            showError(
+              'The swap was approved but the shift could not be reassigned. Move it by hand in the Rota Builder.',
+            );
+          }
+        }
+
         setReloadKey((k) => k + 1);
         setOpenSwapId(null);
-        showSuccess(`Swap ${status}.`);
+        showSuccess(
+          status === 'approved'
+            ? 'Swap approved and the shift reassigned.'
+            : 'Swap declined.',
+        );
 
         // Notifies the requester — the swap outcome is theirs, even when the
         // target colleague accepted it first. Fire-and-forget after the write

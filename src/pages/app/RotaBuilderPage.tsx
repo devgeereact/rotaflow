@@ -931,7 +931,7 @@ export function RotaBuilderPage(): JSX.Element {
 
         {/* ---- Toolbar: date nav, view tabs, settings, publish ---- */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() =>
@@ -984,7 +984,7 @@ export function RotaBuilderPage(): JSX.Element {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div
               role="group"
               aria-label="View"

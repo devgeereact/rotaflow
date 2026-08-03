@@ -13,7 +13,9 @@ export function ClockSecurityFooter({
   onReportIssue,
 }: ClockSecurityFooterProps): JSX.Element {
   return (
-    <div className="flex items-center justify-between gap-6 rounded-xl bg-primary/5 px-5 py-4 dark:bg-primary/10">
+    // `flex-wrap`, or the support block and the button push this row past a
+    // phone's viewport and the whole page scrolls sideways.
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-xl bg-primary/5 px-5 py-4 dark:bg-primary/10">
       <div className="flex items-start gap-3">
         <ShieldCheck
           size={20}
@@ -30,8 +32,8 @@ export function ClockSecurityFooter({
         </div>
       </div>
 
-      <div className="flex items-center gap-5">
-        <div className="text-right">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <div className="sm:text-right">
           <p className="text-sm font-semibold text-content dark:text-content-dark">
             {supportLine}
           </p>

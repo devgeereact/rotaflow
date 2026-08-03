@@ -388,7 +388,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
           </div>
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 aria-label="Previous week"
@@ -416,7 +416,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div
                 role="group"
                 aria-label="View"
