@@ -16,6 +16,8 @@ import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
@@ -57,7 +59,7 @@ function toAvailabilityStatus(value: string): AvailabilityStatus {
  * closer to a leave request, which has its own screen).
  */
 export function AvailabilityPage(): JSX.Element {
-  const { orgId } = useOrg();
+  const { orgId, role: membershipRole } = useOrg();
   const { canApprove } = usePermissions();
   const { user } = useSupabaseAuth();
   const { showError, showSuccess } = useToast();
@@ -221,47 +223,47 @@ export function AvailabilityPage(): JSX.Element {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-            {teamMode ? 'Team availability' : 'My availability'}
-          </h1>
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            Your standing weekly pattern — managers schedule around it, it doesn&rsquo;t
-            block a rota being built.
-          </p>
-        </div>
-        {canApprove && (
-          <div className="flex gap-1" role="group" aria-label="Scope">
-            <button
-              type="button"
-              onClick={() => setTeamMode(false)}
-              aria-pressed={!teamMode}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-sm font-medium',
-                !teamMode
-                  ? 'bg-surface text-primary dark:bg-surface-dark'
-                  : 'text-content-muted dark:text-content-muted-dark',
-              )}
-            >
-              My availability
-            </button>
-            <button
-              type="button"
-              onClick={() => setTeamMode(true)}
-              aria-pressed={teamMode}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-sm font-medium',
-                teamMode
-                  ? 'bg-surface text-primary dark:bg-surface-dark'
-                  : 'text-content-muted dark:text-content-muted-dark',
-              )}
-            >
-              Team
-            </button>
-          </div>
-        )}
-      </div>
+      <WorkspaceHeader
+        title="Team"
+        subtitle={
+          teamMode
+            ? 'Who can work when, across the team — managers schedule around this; it does not block a rota being built.'
+            : 'Your standing weekly pattern — managers schedule around it, it doesn’t block a rota being built.'
+        }
+        tabs={teamWorkspaceTabs(membershipRole)}
+        actions={
+          canApprove ? (
+            <div className="flex gap-1" role="group" aria-label="Scope">
+              <button
+                type="button"
+                onClick={() => setTeamMode(false)}
+                aria-pressed={!teamMode}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-sm font-medium',
+                  !teamMode
+                    ? 'bg-surface text-primary dark:bg-surface-dark'
+                    : 'text-content-muted dark:text-content-muted-dark',
+                )}
+              >
+                My availability
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeamMode(true)}
+                aria-pressed={teamMode}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-sm font-medium',
+                  teamMode
+                    ? 'bg-surface text-primary dark:bg-surface-dark'
+                    : 'text-content-muted dark:text-content-muted-dark',
+                )}
+              >
+                Team
+              </button>
+            </div>
+          ) : undefined
+        }
+      />
 
       {!teamMode && (
         <Card className="mb-6">

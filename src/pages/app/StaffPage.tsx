@@ -28,6 +28,8 @@ import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listDocuments } from '@/services/documentService';
 import { anonymizeStaffMember, exportStaffData } from '@/services/gdprService';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { StaffDirectoryView } from '@/components/staff/StaffDirectoryView';
 import type { StaffFilterSelect } from '@/components/staff/StaffFilterBar';
 import type { StaffSort } from '@/components/staff/StaffTable';
@@ -122,7 +124,7 @@ function compareRows(
  */
 export function StaffPage(): JSX.Element {
   const { confirm } = useConfirm();
-  const { orgId } = useOrg();
+  const { orgId, role: membershipRole } = useOrg();
   const { canManageStaff, canManageOrg } = usePermissions();
   const navigate = useNavigate();
 
@@ -480,14 +482,11 @@ export function StaffPage(): JSX.Element {
 
   return (
     <div>
-      <div className="mb-10">
-        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-          Staff
-        </h1>
-        <p className="mt-1.5 text-sm text-content-muted dark:text-content-muted-dark">
-          Manage your team, roles, departments and availability.
-        </p>
-      </div>
+      <WorkspaceHeader
+        title="Team"
+        subtitle="Manage your team members, their roles, departments and availability."
+        tabs={teamWorkspaceTabs(membershipRole)}
+      />
 
       {error && (
         <p className="mb-4 text-sm text-danger" role="alert">

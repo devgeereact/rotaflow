@@ -13,7 +13,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Info,
   Plus,
   Search,
   Settings2,
@@ -61,6 +60,8 @@ import { Card } from '@/components/ui/Card';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { rotaWorkspaceTabs } from '@/lib/workspaceTabs';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
 import { ShiftInspectorPanel } from '@/components/rota/ShiftInspectorPanel';
 import { RotaActionRail } from '@/components/rota/RotaActionRail';
@@ -151,7 +152,7 @@ function formatWeekRange(dates: string[]): string {
 }
 
 export function RotaBuilderPage(): JSX.Element {
-  const { orgId } = useOrg();
+  const { orgId, role } = useOrg();
   const { canBuildRota } = usePermissions();
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
@@ -840,6 +841,48 @@ export function RotaBuilderPage(): JSX.Element {
     [showError],
   );
 
+  /**
+   * Delete straight from the chip's ×.
+   *
+   * Confirmed, because §1 requires it of every destructive action and because
+   * this control now sits *on* the shift rather than behind a panel — the
+   * distance that used to make an accidental delete unlikely is gone by design,
+   * so the guard has to replace it.
+   *
+   * The prompt names the person and the time, since on a full grid the × you
+   * pressed and the shift you meant are one row apart.
+   */
+  const handleDeleteShiftFromChip = useCallback(
+    (shift: Shift): void => {
+      const person = shift.staff_profile_id
+        ? staffById.get(shift.staff_profile_id)
+        : null;
+      const location = shift.location_id ? locationById.get(shift.location_id) : null;
+      const { date, time: startTime } = fromIsoInTimezone(
+        shift.starts_at,
+        location?.timezone ?? DEFAULT_TZ,
+      );
+      const { time: endTime } = fromIsoInTimezone(
+        shift.ends_at,
+        location?.timezone ?? DEFAULT_TZ,
+      );
+      const who = person ? `${person.first_name} ${person.last_name}` : 'the open slot';
+      const when = format(new Date(`${date}T00:00:00`), 'EEEE d MMM');
+
+      void (async () => {
+        const ok = await confirm({
+          title: 'Remove this shift?',
+          message: `${startTime}–${endTime} on ${when} for ${who} will be deleted. This cannot be undone.`,
+          confirmLabel: 'Remove shift',
+          tone: 'danger',
+        });
+        if (!ok) return;
+        handleDeleteSelectedShift(shift);
+      })();
+    },
+    [staffById, locationById, confirm, handleDeleteSelectedShift],
+  );
+
   const handlePublish = async (): Promise<void> => {
     if (draftRotasInScope.length === 0 || !orgId) return;
 
@@ -1226,33 +1269,29 @@ export function RotaBuilderPage(): JSX.Element {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div>
         {/* ---- Page header ---- */}
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-              Rota Builder
-            </h1>
-            <p className="flex items-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">
-              Build fair, balanced rotas in minutes.
-              <Info size={14} aria-hidden="true" />
-            </p>
-          </div>
-          <div className="relative">
-            <Search
-              size={16}
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search staff, skills, shifts…"
-              className="w-80 rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
-            />
-            <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-              ⌘ K
-            </kbd>
-          </div>
-        </div>
+        <WorkspaceHeader
+          title="Rota"
+          subtitle="Build fair, balanced rotas in minutes, then publish them to your team."
+          tabs={rotaWorkspaceTabs(role)}
+          actions={
+            <div className="relative">
+              <Search
+                size={16}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search staff, skills, shifts…"
+                className="w-80 rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+              />
+              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+                ⌘ K
+              </kbd>
+            </div>
+          }
+        />
 
         {/* ---- Toolbar: date nav, view tabs, settings, publish ---- */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1551,6 +1590,7 @@ export function RotaBuilderPage(): JSX.Element {
                       })
                     }
                     onSelectShift={(shift) => setSelectedShiftId(shift.id)}
+                    onDeleteShift={handleDeleteShiftFromChip}
                   />
                 )}
               </div>

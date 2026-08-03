@@ -27,6 +27,7 @@ import {
   todayIso,
   type ScheduleView,
 } from '@/lib/schedulePeriod';
+import { rotaWorkspaceTabs } from '@/lib/workspaceTabs';
 import { downloadIcs } from '@/lib/ics';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
@@ -95,7 +96,7 @@ function timeAgo(iso: string): string {
  */
 export function SchedulePage(): JSX.Element {
   const navigate = useNavigate();
-  const { orgId, orgName } = useOrg();
+  const { orgId, orgName, role } = useOrg();
   const { canBuildRota } = usePermissions();
   const { user } = useSupabaseAuth();
   const { showError } = useToast();
@@ -631,6 +632,7 @@ export function SchedulePage(): JSX.Element {
           published={shifts.length > 0}
           publishedAtLabel={publishedAtLabel}
           onViewHistory={() => setHistoryOpen(true)}
+          tabs={rotaWorkspaceTabs(role)}
           requests={requests}
           announcements={railAnnouncements}
           history={history}

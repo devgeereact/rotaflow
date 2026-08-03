@@ -7,6 +7,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { OpenRequestsCard } from '@/components/schedule/OpenRequestsCard';
 import { PublishStatusBar } from '@/components/schedule/PublishStatusBar';
 import { PublishedScheduleGrid } from '@/components/schedule/PublishedScheduleGrid';
@@ -28,6 +29,7 @@ import type { ScheduleLocationOption } from '@/components/schedule/ScheduleToolb
 import type { ScheduleRequest } from '@/components/schedule/OpenRequestsCard';
 import type { ScheduleAnnouncement } from '@/components/schedule/ScheduleAnnouncementsCard';
 import type { PublishEvent } from '@/components/schedule/PublishingHistoryCard';
+import type { TabItem } from '@/components/ui/Tabs';
 
 export interface ScheduleSummary {
   totalStaff: number;
@@ -70,6 +72,8 @@ interface PublishedScheduleViewProps {
   published: boolean;
   publishedAtLabel: string | null;
   onViewHistory: () => void;
+  /** Workspace section tabs, resolved against the viewer's role. */
+  tabs: TabItem[];
   requests: ScheduleRequest[];
   announcements: ScheduleAnnouncement[];
   history: PublishEvent[];
@@ -90,22 +94,25 @@ export function PublishedScheduleView(props: PublishedScheduleViewProps): JSX.El
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="flex items-center gap-2.5 font-display text-page-title font-semibold text-content dark:text-content-dark">
-          Published Schedule
-          {props.published && (
+      {/* Same workspace as the builder — see WorkspaceHeader. The Live badge
+          rides in the actions slot so it stays beside the title. */}
+      <WorkspaceHeader
+        title="Rota"
+        subtitle={
+          props.published
+            ? 'This rota is published and visible to your team.'
+            : 'Nothing is published for this period yet. Draft rotas stay hidden from your team.'
+        }
+        tabs={props.tabs}
+        actions={
+          props.published ? (
             <Badge tone="success">
               <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-success" />
               Live
             </Badge>
-          )}
-        </h1>
-        <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
-          {props.published
-            ? 'This rota is published and visible to your team.'
-            : 'Nothing is published for this period yet. Draft rotas stay hidden from your team.'}
-        </p>
-      </div>
+          ) : undefined
+        }
+      />
 
       <div className="mb-4">
         <ScheduleToolbar
