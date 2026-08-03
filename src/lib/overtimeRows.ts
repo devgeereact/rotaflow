@@ -13,9 +13,16 @@ import { format, parseISO } from 'date-fns';
 import type { OvertimeRequest, StaffProfile } from '@/types';
 
 /**
- * `overtime_requests.status` is text with a `'pending'` default and no CHECK
- * constraint, so this is a mapping rather than an enum — anything unrecognised
- * lands in `pending` rather than being dropped off the screen.
+ * `overtime_requests.status` is `text` with a CHECK constraint, not a Postgres
+ * enum, so the generated type is plain `string` and this narrows it.
+ *
+ * The four values are exactly what the constraint permits after
+ * `0014_overtime_cancelled_status.sql` — 0002 created the column allowing only
+ * the first three, which would have made the Withdraw control fail.
+ *
+ * The fallback is defensive rather than expected: nothing can currently write
+ * an unrecognised value, but a future migration widening the constraint should
+ * not blank a row out of an approval queue.
  */
 export type OvertimeStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 

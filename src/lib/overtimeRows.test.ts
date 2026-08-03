@@ -55,13 +55,16 @@ describe('overtimeStatus', () => {
     expect(overtimeStatus('cancelled')).toBe('cancelled');
   });
 
-  it('accepts the American spellings the column does not forbid', () => {
+  it('tolerates the American spellings', () => {
+    // Not reachable through the CHECK constraint today; cheap insurance if a
+    // future writer or an import ever uses them.
     expect(overtimeStatus('declined')).toBe('rejected');
     expect(overtimeStatus('canceled')).toBe('cancelled');
   });
 
   it('falls back to pending rather than dropping an unknown value', () => {
-    // The column is free text with no CHECK, so this is reachable.
+    // Defensive: a row that fell out of an approval queue because nobody
+    // recognised its status is a request nobody ever answers.
     expect(overtimeStatus('escalated')).toBe('pending');
     expect(overtimeStatus(null)).toBe('pending');
   });
