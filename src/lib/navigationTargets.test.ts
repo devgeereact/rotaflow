@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
+import { navItemsForRole } from '@/lib/sidebarNav';
 
 /**
  * Every tab must point at a route that exists.
@@ -205,6 +206,36 @@ describe('navigation targets', () => {
       expect(isRoutable(to)).toBe(true);
     },
   );
+
+  /*
+   * The sidebar is the primary navigation, and every one of its targets was
+   * rewritten to NEW_STRUCTURE §4's order and spelling — "Staff" became "Team"
+   * at a new URL, Clock In moved, Integrations was added. A rename that misses
+   * its route is a dead link on the most-used control in the app, so all three
+   * roles are checked, not just the manager's superset.
+   */
+  const sidebarLinks = (['owner', 'manager', 'staff'] as const).flatMap((role) =>
+    navItemsForRole(role).map(
+      (item) => [`${role} › ${item.label}`, item.to] as const,
+    ),
+  );
+
+  it('builds a non-trivial sidebar for every role', () => {
+    expect(navItemsForRole('owner').length).toBeGreaterThan(10);
+    expect(navItemsForRole('staff').length).toBeGreaterThan(5);
+  });
+
+  it.each(sidebarLinks)('sidebar item %s (%s) has a route', (_label, to) => {
+    expect(isRoutable(to)).toBe(true);
+  });
+
+  it('puts the team directory at the spec spelling, with the old one aliased', () => {
+    // §10/§34 name /app/team. /app/staff must keep resolving — links to it
+    // have already been sent to staff.
+    expect(isRoutable('/app/team')).toBe(true);
+    expect(isRoutable('/app/staff')).toBe(true);
+    expect(navItemsForRole('manager').map((i) => i.to)).toContain('/app/team');
+  });
 
   it('routes every public entry point the marketing pages link to', () => {
     // Hard-coded rather than derived: these are the CTA destinations written

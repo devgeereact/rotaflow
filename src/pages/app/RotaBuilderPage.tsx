@@ -213,7 +213,14 @@ export function RotaBuilderPage(): JSX.Element {
   const [viewMode, setViewMode] = useState<RotaViewMode>('Week');
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
-  const [openShiftsOnly, setOpenShiftsOnly] = useState(false);
+  /** All / only unfilled / only filled. Replaces the old open-shifts checkbox. */
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'open' | 'assigned'>(
+    'all',
+  );
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [problemsOnly, setProblemsOnly] = useState(false);
+  /** Drops roster rows with nothing on them this week, to shorten the grid. */
+  const [hideEmptyStaff, setHideEmptyStaff] = useState(false);
   const [jobTitleFilter, setJobTitleFilter] = useState('');
   /**
    * Shifts held by "Copy Shifts", as day offsets from the copied week's
@@ -361,14 +368,86 @@ export function RotaBuilderPage(): JSX.Element {
     () => shifts.filter((s) => filteredLocations.some((l) => l.id === s.location_id)),
     [shifts, filteredLocations],
   );
+  /**
+   * The week's real problems — double-bookings, rest breaches, people rostered
+   * on approved leave or against their availability, contract overruns and
+   * unfilled shifts.
+   *
+   * Before this the Warnings tab ran `computeWarnings`, which counted unfilled
+   * shifts and nothing else, so a rota with someone booked twice in one day
+   * reported no warnings at all. This is the same engine the assistant uses,
+   * so the tab, the assistant and the publish gate can no longer disagree.
+   *
+   * Computed from the shifts in *location* scope rather than the filtered view,
+   * so it matches exactly what Publish would send out.
+   */
+  const warnings = useMemo(
+    () =>
+      computeRotaInsights({
+        shifts: shiftsInScope,
+        staff,
+        shiftTypes,
+        locations: filteredLocations,
+        leave,
+        availability,
+        documents,
+        timezone: DEFAULT_TZ,
+        now: insightsNow,
+      }),
+    [
+      shiftsInScope,
+      staff,
+      shiftTypes,
+      filteredLocations,
+      leave,
+      availability,
+      documents,
+      insightsNow,
+    ],
+  );
+
+  const criticalWarnings = useMemo(
+    () => warnings.filter((w) => w.severity === 'critical'),
+    [warnings],
+  );
+
+  /** Shifts named by at least one warning — powers the "needs attention" filter. */
+  const problemShiftIds = useMemo(
+    () =>
+      new Set(
+        warnings
+          .map((w) => w.shiftId)
+          .filter((id): id is string => id !== null),
+      ),
+    [warnings],
+  );
+
+  /**
+   * Shifts the grid draws, after the view filters.
+   *
+   * Note this is downstream of the warnings, not upstream: filtering the view
+   * must not silence a problem. Hiding a double-booking by ticking "open
+   * shifts only" and then being allowed to publish is exactly the failure this
+   * screen is meant to prevent.
+   */
   const shiftsForDisplay = useMemo(() => {
     let rows =
       shiftTypeFilter === 'all'
         ? shiftsInScope
         : shiftsInScope.filter((s) => s.shift_type_id === shiftTypeFilter);
-    if (openShiftsOnly) rows = rows.filter((s) => s.staff_profile_id === null);
+    if (assignmentFilter === 'open') rows = rows.filter((s) => !s.staff_profile_id);
+    if (assignmentFilter === 'assigned') rows = rows.filter((s) => s.staff_profile_id);
+    if (statusFilter !== 'all') rows = rows.filter((s) => s.status === statusFilter);
+    if (problemsOnly) rows = rows.filter((s) => problemShiftIds.has(s.id));
     return rows;
-  }, [shiftsInScope, shiftTypeFilter, openShiftsOnly]);
+  }, [
+    shiftsInScope,
+    shiftTypeFilter,
+    assignmentFilter,
+    statusFilter,
+    problemsOnly,
+    problemShiftIds,
+  ]);
 
   /** Distinct job titles present in the roster, for the More filters dialog. */
   const jobTitles = useMemo(
@@ -379,7 +458,20 @@ export function RotaBuilderPage(): JSX.Element {
     [staff],
   );
 
-  const extraFilterCount = (openShiftsOnly ? 1 : 0) + (jobTitleFilter ? 1 : 0);
+  const extraFilterCount =
+    (assignmentFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) +
+    (problemsOnly ? 1 : 0) +
+    (hideEmptyStaff ? 1 : 0) +
+    (jobTitleFilter ? 1 : 0);
+
+  const clearExtraFilters = (): void => {
+    setJobTitleFilter('');
+    setAssignmentFilter('all');
+    setStatusFilter('all');
+    setProblemsOnly(false);
+    setHideEmptyStaff(false);
+  };
 
   const staffFiltered = useMemo(() => {
     let rows = staff;
@@ -406,7 +498,18 @@ export function RotaBuilderPage(): JSX.Element {
     if (locationFilter !== 'all') {
       const loc = filteredLocations[0];
       if (!loc) return [];
-      return [{ location: loc, staff: staffFiltered }];
+      // Showing the whole roster is deliberate — it is how you give someone
+      // their first shift at a site. On a 30-person org that is a lot of empty
+      // rows, so "Hide staff with no shifts this week" trims it back.
+      if (!hideEmptyStaff) return [{ location: loc, staff: staffFiltered }];
+      const rostered = new Set(
+        shiftsForDisplay
+          .map((s) => s.staff_profile_id)
+          .filter((id): id is string => Boolean(id)),
+      );
+      return [
+        { location: loc, staff: staffFiltered.filter((p) => rostered.has(p.id)) },
+      ];
     }
     const rosteredByLocation = new Map<string, Set<string>>();
     for (const shift of shiftsForDisplay) {
@@ -421,7 +524,13 @@ export function RotaBuilderPage(): JSX.Element {
         staff: staffFiltered.filter((s) => rosteredByLocation.get(loc.id)?.has(s.id)),
       }))
       .filter((g) => g.staff.length > 0);
-  }, [locationFilter, filteredLocations, staffFiltered, shiftsForDisplay]);
+  }, [
+    locationFilter,
+    filteredLocations,
+    staffFiltered,
+    shiftsForDisplay,
+    hideEmptyStaff,
+  ]);
 
   const shiftMapByLocation = useMemo(() => {
     const map = new Map<string, Map<string, Shift[]>>();
@@ -449,45 +558,6 @@ export function RotaBuilderPage(): JSX.Element {
   const dailyTotals = useMemo(
     () => computeDailyTotals(shiftsForDisplay, dates, DEFAULT_TZ),
     [shiftsForDisplay, dates],
-  );
-  /**
-   * The week's real problems — double-bookings, rest breaches, people rostered
-   * on approved leave or against their availability, contract overruns and
-   * unfilled shifts.
-   *
-   * Before this the Warnings tab ran `computeWarnings`, which counted unfilled
-   * shifts and nothing else, so a rota with someone booked twice in one day
-   * reported no warnings at all. This is the same engine the assistant uses,
-   * so the tab, the assistant and the publish gate can no longer disagree.
-   */
-  const warnings = useMemo(
-    () =>
-      computeRotaInsights({
-        shifts: shiftsForDisplay,
-        staff,
-        shiftTypes,
-        locations: filteredLocations,
-        leave,
-        availability,
-        documents,
-        timezone: DEFAULT_TZ,
-        now: insightsNow,
-      }),
-    [
-      shiftsForDisplay,
-      staff,
-      shiftTypes,
-      filteredLocations,
-      leave,
-      availability,
-      documents,
-      insightsNow,
-    ],
-  );
-
-  const criticalWarnings = useMemo(
-    () => warnings.filter((w) => w.severity === 'critical'),
-    [warnings],
   );
 
   const totalStaff = useMemo(
@@ -668,7 +738,7 @@ export function RotaBuilderPage(): JSX.Element {
           });
       }
     },
-    [locationById, shiftTypes, shifts, placeShift, showError],
+    [locationById, shiftTypes, shifts, placeShift, showError, describeClash],
   );
 
   const handleModalSave = async (values: AssignShiftFormValues): Promise<void> => {
@@ -1105,7 +1175,7 @@ export function RotaBuilderPage(): JSX.Element {
         showError('Could not assign that shift. Please try again.');
       }
     },
-    [showError, showSuccess],
+    [showError, showSuccess, describeClash],
   );
 
   const reloadShifts = (): void => {
@@ -1603,23 +1673,75 @@ export function RotaBuilderPage(): JSX.Element {
               rest of the roster in the way.
             </p>
           </div>
-          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+          <div>
+            <Label htmlFor="rota-assignment">Assignment</Label>
+            <Select
+              id="rota-assignment"
+              value={assignmentFilter}
+              onChange={(e) =>
+                setAssignmentFilter(e.target.value as 'all' | 'open' | 'assigned')
+              }
+            >
+              <option value="all">All shifts</option>
+              <option value="open">Only open shifts (nobody assigned)</option>
+              <option value="assigned">Only shifts with someone on them</option>
+            </Select>
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              Open shifts are the ones still needing cover.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="rota-status">Shift status</Label>
+            <Select
+              id="rota-status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">Any status</option>
+              <option value="open">Open</option>
+              <option value="assigned">Assigned</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+            </Select>
+          </div>
+
+          <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm text-content dark:text-content-dark">
             <input
               type="checkbox"
-              checked={openShiftsOnly}
-              onChange={(e) => setOpenShiftsOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              checked={problemsOnly}
+              onChange={(e) => setProblemsOnly(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
-            Only show open shifts (nobody assigned)
+            <span>
+              Only show shifts that need attention
+              <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                Double-bookings, rest breaches, leave clashes and unfilled cover
+                — everything on the Warnings tab.
+              </span>
+            </span>
           </label>
+
+          <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={hideEmptyStaff}
+              onChange={(e) => setHideEmptyStaff(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            <span>
+              Hide staff with no shifts this week
+              <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                Shortens the grid to the people actually working.
+              </span>
+            </span>
+          </label>
+
           <div className="flex justify-end gap-2">
             <Button
               variant="secondary"
               disabled={extraFilterCount === 0}
-              onClick={() => {
-                setJobTitleFilter('');
-                setOpenShiftsOnly(false);
-              }}
+              onClick={clearExtraFilters}
             >
               Clear
             </Button>

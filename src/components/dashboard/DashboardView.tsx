@@ -40,9 +40,18 @@ interface QuickAction {
   tint: string;
 }
 
+/**
+ * How many shift groups Today's Schedule shows before it stops.
+ *
+ * Six keeps the card roughly level with Pending Requests and Announcements
+ * beside it, which is what makes the three-column row read as one band rather
+ * than one very long column and two short ones.
+ */
+const DAY_GROUP_LIMIT = 6;
+
 const QUICK_ACTIONS: QuickAction[] = [
   { icon: CalendarPlus, label: 'Build Rota', to: '/app/rota', tint: 'text-primary' },
-  { icon: UserPlus, label: 'Add Staff', to: '/app/staff', tint: 'text-shift-violet' },
+  { icon: UserPlus, label: 'Add Staff', to: '/app/team', tint: 'text-shift-violet' },
   { icon: Umbrella, label: 'Request Leave', to: '/app/leave', tint: 'text-success' },
   {
     icon: CheckCircle2,
@@ -163,6 +172,25 @@ export function DashboardView({
   );
   const staffOnShiftPercent =
     todaySlots === 0 ? 0 : Math.round((todayFilled / todaySlots) * 100);
+  const pendingLeaveCount = pending.filter((p) => p.kind === 'leave').length;
+  const pendingSwapCount = pending.filter((p) => p.kind === 'swap').length;
+
+  /**
+   * Today's schedule is capped.
+   *
+   * It renders one row per shift-type-and-location group, so it grows with
+   * both: five sites × six shift types is thirty rows, and the card ran three
+   * times the height of the two beside it, pushing the rest of the dashboard
+   * below the fold. A dashboard is a summary — the full list is one click away
+   * and the remainder is counted rather than dropped silently.
+   */
+  const visibleDayGroups = dayGroups.slice(0, DAY_GROUP_LIMIT);
+  const hiddenDayGroupCount = dayGroups.length - visibleDayGroups.length;
+  // Same reasoning, and worse: this one spans the rest of the week, so it is
+  // six days of every site's every shift type.
+  const visibleUpcomingGroups = overview.upcomingGroups.slice(0, DAY_GROUP_LIMIT);
+  const hiddenUpcomingCount =
+    overview.upcomingGroups.length - visibleUpcomingGroups.length;
 
   return (
     <div className="max-w-[1600px]">
@@ -175,25 +203,37 @@ export function DashboardView({
         </p>
       </div>
 
+      {/* The five metrics NEW_STRUCTURE §7 asks for, in its order. Compliance
+          keeps its place as a hint on Total Staff rather than a card of its
+          own — the spec's set is what a manager opens this screen for. */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          icon={CalendarDays}
+          icon={Users}
           tint="bg-primary/10 text-primary"
-          label="Today's Shifts"
-          value={todaySlots}
+          label="Total Staff"
+          value={overview.staff.length}
+          hint={`${overview.compliancePercent}% with valid documents`}
+        />
+        <StatCard
+          icon={CalendarDays}
+          tint="bg-shift-violet/15 text-shift-violet"
+          label="On Shift Today"
+          value={todayFilled}
           hint={`Across ${overview.locations.length} location${overview.locations.length === 1 ? '' : 's'}`}
         />
         <StatCard
-          icon={Users}
-          tint="bg-shift-violet/15 text-shift-violet"
-          label="Staff On Shift"
-          value={todayFilled}
+          icon={ShieldCheck}
+          tint="bg-success/10 text-success"
+          label="Shift Coverage"
+          value={`${staffOnShiftPercent}%`}
           hint={
             <div>
-              <p className="mb-1.5">{staffOnShiftPercent}% of required</p>
+              <p className="mb-1.5">
+                {todayFilled} of {todaySlots} slots filled
+              </p>
               <div className="h-1.5 overflow-hidden rounded-full bg-surface-border dark:bg-surface-border-dark">
                 <div
-                  className="h-full rounded-full bg-shift-violet"
+                  className="h-full rounded-full bg-success"
                   style={{ width: `${staffOnShiftPercent}%` }}
                 />
               </div>
@@ -202,28 +242,21 @@ export function DashboardView({
         />
         <StatCard
           icon={AlertTriangle}
-          tint="bg-warning/10 text-warning"
-          label="Pending Requests"
-          value={pending.length}
-          hint={`${pending.filter((p) => p.kind === 'leave').length} leave · ${pending.filter((p) => p.kind === 'swap').length} swaps`}
-        />
-        <StatCard
-          icon={ShieldCheck}
-          tint="bg-success/10 text-success"
-          label="Compliance"
-          value={`${overview.compliancePercent}%`}
-          hint="Staff with valid documents"
-        />
-        <StatCard
-          icon={AlertTriangle}
           tint="bg-danger/10 text-danger"
-          label="Shortages"
+          label="Open Shifts"
           value={todayShortages}
           hint={
             todayShortages === 1
               ? '1 shift needs cover'
               : `${todayShortages} shifts need cover`
           }
+        />
+        <StatCard
+          icon={AlertTriangle}
+          tint="bg-warning/10 text-warning"
+          label="Pending Leave"
+          value={pendingLeaveCount}
+          hint={`${pendingSwapCount} swap${pendingSwapCount === 1 ? '' : 's'} also waiting`}
         />
       </div>
 
@@ -273,7 +306,7 @@ export function DashboardView({
             </p>
           ) : (
             <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
-              {dayGroups.map((group) => {
+              {visibleDayGroups.map((group) => {
                 const [start, end] = timeRange(group.startsAt, group.endsAt, timezone);
                 const status = shiftStatusLabel(group, now);
                 return (
@@ -312,6 +345,13 @@ export function DashboardView({
                 );
               })}
             </ul>
+          )}
+
+          {hiddenDayGroupCount > 0 && (
+            <p className="mt-3 border-t border-surface-border pt-3 text-xs text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+              +{hiddenDayGroupCount} more shift
+              {hiddenDayGroupCount === 1 ? '' : 's'} today
+            </p>
           )}
 
           <Link
@@ -448,7 +488,7 @@ export function DashboardView({
             </p>
           ) : (
             <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
-              {overview.upcomingGroups.map((group) => {
+              {visibleUpcomingGroups.map((group) => {
                 const [start, end] = timeRange(group.startsAt, group.endsAt, timezone);
                 return (
                   <li
@@ -478,6 +518,11 @@ export function DashboardView({
                 );
               })}
             </ul>
+          )}
+          {hiddenUpcomingCount > 0 && (
+            <p className="mt-3 border-t border-surface-border pt-3 text-xs text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+              +{hiddenUpcomingCount} more this week
+            </p>
           )}
         </Card>
 

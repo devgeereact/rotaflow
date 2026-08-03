@@ -399,7 +399,7 @@ export function StaffPage(): JSX.Element {
         id: 'profile',
         label: 'View full profile',
         icon: IdCard,
-        onSelect: () => void navigate(`/app/staff/${person.id}`),
+        onSelect: () => void navigate(`/app/team/${person.id}`),
       },
       {
         id: 'edit',

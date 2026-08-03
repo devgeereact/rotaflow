@@ -38,11 +38,17 @@ interface TabItem {
  * reports and settings stay behind `More` for everyone, which keeps the bar
  * stable rather than shifting under a user whose role changes.
  */
+/*
+ * NEW_STRUCTURE §22's five: Home, Schedule, Clock In, Requests, More.
+ * "Requests" lands on Leave because that screen is the requests hub — it holds
+ * the leave queue and links the swap queue beside it — so the label describes
+ * where it goes rather than overpromising a screen that does not exist.
+ */
 const TABS: readonly TabItem[] = [
   { label: 'Home', icon: LayoutDashboard, to: '/app/dashboard' },
   { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
-  { label: 'Clock in', icon: LogIn, to: '/app/clock' },
-  { label: 'Leave', icon: Umbrella, to: '/app/leave' },
+  { label: 'Clock In', icon: LogIn, to: '/app/clock' },
+  { label: 'Requests', icon: Umbrella, to: '/app/leave' },
 ] as const;
 
 interface MobileTabBarProps {
