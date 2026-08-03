@@ -24,6 +24,8 @@ interface RotaGridRowProps {
   shiftMap: Map<string, Shift[]>;
   shiftTypes: ShiftType[];
   previewMap: Map<string, AiShiftSuggestion[]>;
+  /** Shared "now" from the grid, so every chip agrees which shifts are past. */
+  now: number;
   selectedShiftId: string | null;
   onAddShift: (staffProfileId: string | null, date: string) => void;
   onSelectShift: (shift: Shift) => void;
@@ -37,6 +39,7 @@ export function RotaGridRow({
   shiftMap,
   shiftTypes,
   previewMap,
+  now,
   selectedShiftId,
   onAddShift,
   onSelectShift,
@@ -83,6 +86,7 @@ export function RotaGridRow({
             shifts={shiftMap.get(key) ?? []}
             shiftTypes={shiftTypes}
             previewSuggestions={previewMap.get(key) ?? []}
+            now={now}
             selectedShiftId={selectedShiftId}
             onAddShift={() => onAddShift(staffProfileId, date)}
             onSelectShift={onSelectShift}

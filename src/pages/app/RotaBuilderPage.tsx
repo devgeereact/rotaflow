@@ -65,7 +65,7 @@ import {
   type AssignShiftFormValues,
 } from '@/components/rota/AssignShiftModal';
 import { ShiftTypeManagerModal } from '@/components/rota/ShiftTypeManagerModal';
-import { AutoFillPanel } from '@/components/rota/AutoFillPanel';
+import { RotaAssistantPanel } from '@/components/rota/RotaAssistantPanel';
 import type { Department, Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
 
 const DEFAULT_TZ = 'Europe/London';
@@ -844,6 +844,25 @@ export function RotaBuilderPage(): JSX.Element {
     })();
   }, [shiftsForDisplay, draftRotasInScope, dates, confirm, showError, showSuccess]);
 
+  /** Fill an open shift from the assistant's ranked suggestions. */
+  const handleAssistantAssign = useCallback(
+    async (shiftId: string, staffProfileId: string): Promise<void> => {
+      try {
+        const updated = await updateShift(shiftId, {
+          staff_profile_id: staffProfileId,
+          status: 'assigned',
+        });
+        setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+        setLastSavedAt(new Date());
+        showSuccess('Shift assigned.');
+      } catch (err) {
+        reportError(err, { area: 'rota:assistant-assign' });
+        showError('Could not assign that shift. Please try again.');
+      }
+    },
+    [showError, showSuccess],
+  );
+
   const reloadShifts = (): void => {
     void Promise.all([...rotasByLocation.values()].map((r) => listShiftsForRota(r.id)))
       .then((rows) => setShifts(rows.flat()))
@@ -1373,18 +1392,39 @@ export function RotaBuilderPage(): JSX.Element {
         />
       )}
 
-      {orgId && autoFillLocation && autoFillRota && (
-        <AutoFillPanel
+      {/*
+        `AutoFillPanel` was replaced by `RotaAssistantPanel` in the demo branch:
+        the assistant reviews the rota and ranks candidates for a specific open
+        shift, rather than only generating a whole draft.
+
+        Note the gating difference. Auto-fill needed a single location up front,
+        because it WRITES a draft into one rota. The assistant's Review and
+        Fill-gaps tabs read across every location on screen, so the panel opens
+        regardless and `applyTarget` is null until one location is selected —
+        which is what stops a generated draft from silently rostering people at
+        the wrong site.
+      */}
+      {orgId && (
+        <RotaAssistantPanel
           open={autoFillOpen}
           onClose={() => setAutoFillOpen(false)}
           orgId={orgId}
-          locationId={autoFillLocation.id}
-          rotaId={autoFillRota.id}
+          shifts={shiftsForDisplay}
+          staff={staff}
+          shiftTypes={shiftTypes}
+          locations={locations}
           weekStart={weekStart}
           weekEnd={weekEnd}
-          timezone={autoFillLocation.timezone}
+          timezone={autoFillLocation?.timezone ?? DEFAULT_TZ}
+          applyTarget={
+            autoFillLocation && autoFillRota
+              ? { locationId: autoFillLocation.id, rotaId: autoFillRota.id }
+              : null
+          }
           onPreview={setPreviewSuggestions}
           onApplied={reloadShifts}
+          onAssign={handleAssistantAssign}
+          onSelectShift={setSelectedShiftId}
         />
       )}
     </DndContext>

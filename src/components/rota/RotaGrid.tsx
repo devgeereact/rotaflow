@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -56,6 +56,14 @@ export function RotaGrid({
   onSelectShift,
 }: RotaGridProps): JSX.Element {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // One clock for the whole grid. Every chip needs to know whether it is in
+  // the past, and hundreds of cells each running their own timer would be
+  // hundreds of timers — and they would disagree mid-render.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const today = todayIso();
   const totalByDate = new Map(dailyTotals.map((t) => [t.date, t]));
 
@@ -185,6 +193,7 @@ export function RotaGrid({
                     shiftMap={locationShiftMap}
                     shiftTypes={shiftTypes}
                     previewMap={previewMap}
+                    now={now}
                     selectedShiftId={selectedShiftId}
                     onAddShift={(staffProfileId, date) =>
                       onAddShift(staffProfileId, date, group.location.id)
@@ -202,6 +211,7 @@ export function RotaGrid({
                     shiftMap={locationShiftMap}
                     shiftTypes={shiftTypes}
                     previewMap={previewMap}
+                    now={now}
                     selectedShiftId={selectedShiftId}
                     onAddShift={(staffProfileId, date) =>
                       onAddShift(staffProfileId, date, group.location.id)

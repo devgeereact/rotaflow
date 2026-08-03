@@ -29,7 +29,14 @@ import type {
 interface QuickAction {
   icon: typeof CalendarPlus;
   label: string;
-  to?: string; // omitted = not built yet, rendered disabled — same convention as Sidebar
+  /**
+   * Required, for the same reason as `NavItem.to` in `Sidebar.tsx`: all six
+   * actions have had a real route for some time, so the "omitted = rendered
+   * disabled" branch was dead, and leaving the field optional keeps the door
+   * open to shipping a dashboard tile that goes nowhere. A future unrouted
+   * entry is now a typecheck failure rather than something a user clicks twice.
+   */
+  to: string;
   tint: string;
 }
 
