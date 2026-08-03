@@ -258,6 +258,10 @@ const SecurityPage = lazyPage(
   'SecurityPage',
   () => import('@/pages/app/account/SecurityPage'),
 );
+const ConnectedAccountsPage = lazyPage(
+  'ConnectedAccountsPage',
+  () => import('@/pages/app/account/ConnectedAccountsPage'),
+);
 const SessionsPage = lazyPage(
   'SessionsPage',
   () => import('@/pages/app/account/SessionsPage'),
@@ -475,6 +479,18 @@ export function App(): JSX.Element {
                           </RequireRole>
                         }
                       />
+                      {/* §34's location detail. Same workspace with one site
+                      opened rather than a parallel screen — see LocationsPage.
+                      Declared after `locations/departments` so that literal
+                      path is never captured as a :locationId. */}
+                      <Route
+                        path="locations/:locationId"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="locations">
+                            <LocationsPage />
+                          </RequireRole>
+                        }
+                      />
                       <Route
                         path="rota"
                         element={
@@ -538,6 +554,7 @@ export function App(): JSX.Element {
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="preferences" element={<PreferencesPage />} />
                         <Route path="security" element={<SecurityPage />} />
+                        <Route path="accounts" element={<ConnectedAccountsPage />} />
                         <Route path="sessions" element={<SessionsPage />} />
                         <Route path="tokens" element={<TokensPage />} />
                         <Route path="activity" element={<ActivityPage />} />
