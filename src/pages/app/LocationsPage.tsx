@@ -173,7 +173,7 @@ export function LocationsPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, routeLocationId]);
 
   useEffect(() => {
     void load();
