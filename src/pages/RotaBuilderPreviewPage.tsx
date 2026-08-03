@@ -527,7 +527,19 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </Card>
 
             <Card className="shrink-0 p-2 xl:w-[5.5rem]">
-              <RotaActionRail onAutoFill={() => {}} onComingSoon={() => {}} />
+              {/* Design-preview only: the rail is rendered for layout match,
+                  with no rota behind it to act on. */}
+              <RotaActionRail
+                onTemplates={() => {}}
+                onCopyShifts={() => {}}
+                onPasteShifts={() => {}}
+                onCopyPreviousWeek={() => {}}
+                onAutoFill={() => {}}
+                onClearShifts={() => {}}
+                onPrint={() => {}}
+                clipboardCount={0}
+                busyAction={null}
+              />
             </Card>
           </div>
 

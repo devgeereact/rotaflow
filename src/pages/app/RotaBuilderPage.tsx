@@ -23,6 +23,7 @@ import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PermissionDenied } from '@/components/PermissionDenied';
 import { useToast } from '@/hooks/useToast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { listLocations, listDepartments } from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
@@ -53,6 +54,8 @@ import {
 } from '@/lib/rotaGrid';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Label } from '@/components/ui/Label';
+import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
 import { ShiftInspectorPanel } from '@/components/rota/ShiftInspectorPanel';
@@ -66,12 +69,44 @@ import { AutoFillPanel } from '@/components/rota/AutoFillPanel';
 import type { Department, Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
 
 const DEFAULT_TZ = 'Europe/London';
-/** "Day" and "Month" would each open a *different* rota (rotas key on exact
- * period_start/period_end — see rotaService.ts), fragmenting one week's
- * shifts across incompatible rota rows. Only "Week" is safe to make
- * editable; the rest stay visible but inert, like every other stub in this
- * page. See rota-log.md. */
-const VIEW_TABS = ['Day', 'Week', '2 Weeks', 'Month'] as const;
+
+/**
+ * The two views §8 of the build prompt actually asks for: "Weekly view" and
+ * "Daily view".
+ *
+ * There used to be four. "2 Weeks" and "Month" were rendered but inert, and
+ * for a real reason: rotas key on an exact `period_start`/`period_end` pair
+ * (rotaService.ts), so a fortnight or a month is a *different rota row* from
+ * the week inside it, and editing across one would fragment a week's shifts
+ * over incompatible rotas.
+ *
+ * They are removed rather than made to work. The alternative — loading five
+ * weekly rotas behind a "Month" tab — creates rota rows as a side effect of
+ * looking at a calendar, and the publish button then means something different
+ * depending on which tab is open. Two honest views beat four where half are
+ * decoration.
+ *
+ * "Day" is safe because it is only a *display scope*: the same week's rota
+ * stays loaded and editable, and the grid renders one of its columns.
+ */
+const VIEW_TABS = ['Day', 'Week'] as const;
+type RotaViewMode = (typeof VIEW_TABS)[number];
+
+/**
+ * One shift on the clipboard, stored relative to its week rather than on an
+ * absolute date. `dayOffset` is 0–6 from that week's Monday, so pasting into
+ * a different week keeps Tuesday on Tuesday.
+ */
+interface CopiedShift {
+  dayOffset: number;
+  staffProfileId: string | null;
+  shiftTypeId: string | null;
+  locationId: string;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  notes: string | null;
+}
 
 interface AssignModalState {
   open: boolean;
@@ -95,6 +130,7 @@ export function RotaBuilderPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canBuildRota } = usePermissions();
   const { showError, showSuccess } = useToast();
+  const { confirm } = useConfirm();
   const { send } = useInngestDispatch();
 
   const [locations, setLocations] = useState<Location[]>([]);
@@ -129,8 +165,33 @@ export function RotaBuilderPage(): JSX.Element {
   const [autoFillOpen, setAutoFillOpen] = useState(false);
   const [previewSuggestions, setPreviewSuggestions] = useState<AiShiftSuggestion[]>([]);
 
+  const [viewMode, setViewMode] = useState<RotaViewMode>('Week');
+  const [focusedDate, setFocusedDate] = useState<string | null>(null);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const [openShiftsOnly, setOpenShiftsOnly] = useState(false);
+  const [jobTitleFilter, setJobTitleFilter] = useState('');
+  /**
+   * Shifts held by "Copy Shifts", as day offsets from the copied week's
+   * Monday. Storing offsets rather than absolute dates is what lets the same
+   * clipboard paste into any week.
+   */
+  const [clipboard, setClipboard] = useState<CopiedShift[] | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const weekEnd = dates[6] ?? weekStart;
+
+  /**
+   * The columns the grid draws. Day view narrows the *display* only — the
+   * week's rota stays loaded, so publishing and the coverage totals continue
+   * to mean "this week".
+   */
+  const visibleDates = useMemo(() => {
+    if (viewMode !== 'Day') return dates;
+    const chosen = focusedDate && dates.includes(focusedDate) ? focusedDate : null;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return [chosen ?? (dates.includes(today) ? today : (dates[0] ?? weekStart))];
+  }, [viewMode, focusedDate, dates, weekStart]);
 
   // Org-level data: locations, departments, staff, shift types.
   useEffect(() => {
@@ -220,18 +281,31 @@ export function RotaBuilderPage(): JSX.Element {
     () => shifts.filter((s) => filteredLocations.some((l) => l.id === s.location_id)),
     [shifts, filteredLocations],
   );
-  const shiftsForDisplay = useMemo(
-    () =>
+  const shiftsForDisplay = useMemo(() => {
+    let rows =
       shiftTypeFilter === 'all'
         ? shiftsInScope
-        : shiftsInScope.filter((s) => s.shift_type_id === shiftTypeFilter),
-    [shiftsInScope, shiftTypeFilter],
+        : shiftsInScope.filter((s) => s.shift_type_id === shiftTypeFilter);
+    if (openShiftsOnly) rows = rows.filter((s) => s.staff_profile_id === null);
+    return rows;
+  }, [shiftsInScope, shiftTypeFilter, openShiftsOnly]);
+
+  /** Distinct job titles present in the roster, for the More filters dialog. */
+  const jobTitles = useMemo(
+    () =>
+      [
+        ...new Set(staff.map((s) => s.job_title).filter((t): t is string => Boolean(t))),
+      ].sort((a, b) => a.localeCompare(b)),
+    [staff],
   );
+
+  const extraFilterCount = (openShiftsOnly ? 1 : 0) + (jobTitleFilter ? 1 : 0);
 
   const staffFiltered = useMemo(() => {
     let rows = staff;
     if (departmentFilter !== 'all')
       rows = rows.filter((s) => s.department_id === departmentFilter);
+    if (jobTitleFilter) rows = rows.filter((s) => s.job_title === jobTitleFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       rows = rows.filter((s) =>
@@ -239,7 +313,7 @@ export function RotaBuilderPage(): JSX.Element {
       );
     }
     return rows;
-  }, [staff, departmentFilter, search]);
+  }, [staff, departmentFilter, jobTitleFilter, search]);
 
   /**
    * Grouped by location. A single selected location shows its whole roster
@@ -575,6 +649,201 @@ export function RotaBuilderPage(): JSX.Element {
     }
   };
 
+  /**
+   * Copy every shift currently in scope onto the clipboard.
+   *
+   * Reads `shiftsForDisplay`, so the location, department and shift-type
+   * filters above the grid decide what is copied. Copying rows the manager
+   * has filtered out would paste work they cannot see.
+   */
+  const handleCopyShifts = useCallback((): void => {
+    if (shiftsForDisplay.length === 0) {
+      showError('There are no shifts in view to copy.');
+      return;
+    }
+    const copied: CopiedShift[] = [];
+    for (const shift of shiftsForDisplay) {
+      const location = shift.location_id ? locationById.get(shift.location_id) : null;
+      if (!location) continue;
+      const { date, time: startTime } = fromIsoInTimezone(
+        shift.starts_at,
+        location.timezone,
+      );
+      const { time: endTime } = fromIsoInTimezone(shift.ends_at, location.timezone);
+      const dayOffset = dates.indexOf(date);
+      if (dayOffset < 0) continue;
+      copied.push({
+        dayOffset,
+        staffProfileId: shift.staff_profile_id,
+        shiftTypeId: shift.shift_type_id,
+        locationId: location.id,
+        startTime,
+        endTime,
+        breakMinutes: shift.break_minutes,
+        notes: shift.notes,
+      });
+    }
+    setClipboard(copied);
+    showSuccess(
+      `${copied.length} ${copied.length === 1 ? 'shift' : 'shifts'} copied. Move to another week and choose Paste Shifts.`,
+    );
+  }, [shiftsForDisplay, locationById, dates, showError, showSuccess]);
+
+  const pasteShifts = useCallback(
+    async (source: CopiedShift[], label: string): Promise<void> => {
+      setBusyAction(label);
+      try {
+        // Sequential on purpose. Each createShift is a separate round trip and
+        // a whole week can be 50+ rows; firing them all at once is how you
+        // trip Supabase's rate limiter halfway through and leave a rota
+        // half-pasted with no record of where it stopped.
+        let created = 0;
+        for (const item of source) {
+          const date = dates[item.dayOffset];
+          if (!date) continue;
+          await placeShift({
+            staffProfileId: item.staffProfileId,
+            date,
+            shiftTypeId: item.shiftTypeId,
+            locationId: item.locationId,
+            startTime: item.startTime,
+            endTime: item.endTime,
+            breakMinutes: item.breakMinutes,
+            notes: item.notes,
+          });
+          created += 1;
+        }
+        showSuccess(
+          `${created} ${created === 1 ? 'shift' : 'shifts'} added to ${formatWeekRange(dates)}.`,
+        );
+      } catch (err) {
+        reportError(err, { area: 'rota:paste-shifts' });
+        showError(
+          'Could not paste every shift. The ones already added have been kept — check the grid before retrying.',
+        );
+      } finally {
+        setBusyAction(null);
+      }
+    },
+    [dates, placeShift, showError, showSuccess],
+  );
+
+  const handlePasteShifts = useCallback((): void => {
+    if (!clipboard || clipboard.length === 0) {
+      showError('Nothing is copied yet. Use Copy Shifts on a week first.');
+      return;
+    }
+    void pasteShifts(clipboard, 'paste');
+  }, [clipboard, pasteShifts, showError]);
+
+  /**
+   * Copy the previous week's shifts into this one (§8 "Copy previous week").
+   *
+   * Fetches that week's rotas rather than reusing whatever is in state, since
+   * only the visible week is ever loaded.
+   */
+  const handleCopyPreviousWeek = useCallback((): void => {
+    if (!orgId) return;
+    setBusyAction('previous-week');
+    void (async () => {
+      try {
+        const previousStart = getMonday(
+          new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() - 7)),
+        );
+        const previousDates = getWeekDates(previousStart);
+        const previousEnd = previousDates[6] ?? previousStart;
+
+        const collected: CopiedShift[] = [];
+        for (const location of filteredLocations) {
+          const rota = await getOrCreateRotaForPeriod({
+            orgId,
+            name: `Week of ${previousStart}`,
+            periodStart: previousStart,
+            periodEnd: previousEnd,
+            locationId: location.id,
+          });
+          const rows = await listShiftsForRota(rota.id);
+          for (const shift of rows) {
+            const { date, time: startTime } = fromIsoInTimezone(
+              shift.starts_at,
+              location.timezone,
+            );
+            const { time: endTime } = fromIsoInTimezone(shift.ends_at, location.timezone);
+            const dayOffset = previousDates.indexOf(date);
+            if (dayOffset < 0) continue;
+            collected.push({
+              dayOffset,
+              staffProfileId: shift.staff_profile_id,
+              shiftTypeId: shift.shift_type_id,
+              locationId: location.id,
+              startTime,
+              endTime,
+              breakMinutes: shift.break_minutes,
+              notes: shift.notes,
+            });
+          }
+        }
+
+        if (collected.length === 0) {
+          showError('The previous week has no shifts to copy.');
+          setBusyAction(null);
+          return;
+        }
+        await pasteShifts(collected, 'previous-week');
+      } catch (err) {
+        reportError(err, { area: 'rota:copy-previous-week' });
+        showError('Could not read the previous week. Please try again.');
+        setBusyAction(null);
+      }
+    })();
+  }, [orgId, weekStart, filteredLocations, pasteShifts, showError]);
+
+  /**
+   * Delete every DRAFT shift in scope (§8 "Clear rota").
+   *
+   * Published shifts are skipped deliberately: staff have already been told
+   * they are working them, and a bulk clear must not silently unschedule
+   * somebody's Saturday. Unpublish first if that is genuinely the intent.
+   */
+  const handleClearShifts = useCallback((): void => {
+    const draftShiftIds = shiftsForDisplay
+      .filter((s) => draftRotasInScope.some((r) => r.id === s.rota_id))
+      .map((s) => s.id);
+
+    if (draftShiftIds.length === 0) {
+      showError(
+        'There are no draft shifts in view to clear. Published shifts are left alone — unpublish the rota first.',
+      );
+      return;
+    }
+
+    void (async () => {
+      const ok = await confirm({
+        title: 'Clear these shifts?',
+        message: `This permanently deletes ${draftShiftIds.length} draft ${
+          draftShiftIds.length === 1 ? 'shift' : 'shifts'
+        } from ${formatWeekRange(dates)}. Published shifts are not touched. This cannot be undone.`,
+        confirmLabel: 'Delete shifts',
+        tone: 'danger',
+      });
+      if (!ok) return;
+
+      setBusyAction('clear');
+      try {
+        for (const id of draftShiftIds) await deleteShift(id);
+        setShifts((prev) => prev.filter((s) => !draftShiftIds.includes(s.id)));
+        setSelectedShiftId(null);
+        setLastSavedAt(new Date());
+        showSuccess(`${draftShiftIds.length} draft shifts deleted.`);
+      } catch (err) {
+        reportError(err, { area: 'rota:clear-shifts' });
+        showError('Could not delete every shift. Reload to see what remains.');
+      } finally {
+        setBusyAction(null);
+      }
+    })();
+  }, [shiftsForDisplay, draftRotasInScope, dates, confirm, showError, showSuccess]);
+
   const reloadShifts = (): void => {
     void Promise.all([...rotasByLocation.values()].map((r) => listShiftsForRota(r.id)))
       .then((rows) => setShifts(rows.flat()))
@@ -694,10 +963,25 @@ export function RotaBuilderPage(): JSX.Element {
             >
               Today
             </Button>
-            <span className="flex items-center gap-1 text-sm font-semibold text-content dark:text-content-dark">
+            <span className="text-sm font-semibold text-content dark:text-content-dark">
               {formatWeekRange(dates)}
-              <ChevronDown size={14} aria-hidden="true" className="text-content-muted" />
             </span>
+            {/* Day view needs a way to say *which* day. In week view the grid
+                shows all seven, so the control would have nothing to do. */}
+            {viewMode === 'Day' && (
+              <Select
+                className="w-auto py-1.5"
+                aria-label="Day to show"
+                value={visibleDates[0] ?? ''}
+                onChange={(e) => setFocusedDate(e.target.value)}
+              >
+                {dates.map((date) => (
+                  <option key={date} value={date}>
+                    {format(new Date(`${date}T00:00:00`), 'EEEE d MMM')}
+                  </option>
+                ))}
+              </Select>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -710,13 +994,11 @@ export function RotaBuilderPage(): JSX.Element {
                 <button
                   key={tab}
                   type="button"
-                  title={tab !== 'Week' ? `${tab} view — coming soon` : undefined}
-                  onClick={() => {
-                    if (tab !== 'Week') showError(`${tab} view is coming soon.`);
-                  }}
+                  aria-pressed={viewMode === tab}
+                  onClick={() => setViewMode(tab)}
                   className={cn(
                     'rounded-lg px-3 py-1.5 text-sm font-medium',
-                    tab === 'Week'
+                    viewMode === tab
                       ? 'bg-primary text-white'
                       : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
                   )}
@@ -834,11 +1116,15 @@ export function RotaBuilderPage(): JSX.Element {
           </Select>
           <button
             type="button"
-            title="More filters — coming soon"
-            onClick={() => showError('More filters are coming soon.')}
+            onClick={() => setMoreFiltersOpen(true)}
             className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
           >
             More filters
+            {extraFilterCount > 0 && (
+              <span className="ml-0.5 rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-fg">
+                {extraFilterCount}
+              </span>
+            )}
             <ChevronDown size={14} aria-hidden="true" />
           </button>
 
@@ -923,7 +1209,7 @@ export function RotaBuilderPage(): JSX.Element {
                   </p>
                 ) : (
                   <RotaGrid
-                    dates={dates}
+                    dates={visibleDates}
                     groups={groups}
                     totalStaff={totalStaff}
                     totalShifts={shiftsInScope.length}
@@ -969,8 +1255,15 @@ export function RotaBuilderPage(): JSX.Element {
               inside the grid card. */}
             <Card className="shrink-0 p-2 xl:w-[5.5rem]">
               <RotaActionRail
+                onTemplates={() => setShiftTypeModalOpen(true)}
+                onCopyShifts={handleCopyShifts}
+                onPasteShifts={handlePasteShifts}
+                onCopyPreviousWeek={handleCopyPreviousWeek}
                 onAutoFill={handleAutoFillClick}
-                onComingSoon={(label) => showError(`${label} is coming soon.`)}
+                onClearShifts={handleClearShifts}
+                onPrint={() => window.print()}
+                clipboardCount={clipboard?.length ?? 0}
+                busyAction={busyAction}
               />
             </Card>
           </div>
@@ -1019,6 +1312,56 @@ export function RotaBuilderPage(): JSX.Element {
         onSave={handleModalSave}
         onDelete={handleModalDelete}
       />
+
+      <Modal
+        open={moreFiltersOpen}
+        onClose={() => setMoreFiltersOpen(false)}
+        title="More filters"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="rota-job-title">Job title</Label>
+            <Select
+              id="rota-job-title"
+              value={jobTitleFilter}
+              onChange={(e) => setJobTitleFilter(e.target.value)}
+            >
+              <option value="">All job titles</option>
+              {jobTitles.map((title) => (
+                <option key={title} value={title}>
+                  {title}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              Narrows the staff rows, so you can build one role&rsquo;s cover without the
+              rest of the roster in the way.
+            </p>
+          </div>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={openShiftsOnly}
+              onChange={(e) => setOpenShiftsOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only show open shifts (nobody assigned)
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              disabled={extraFilterCount === 0}
+              onClick={() => {
+                setJobTitleFilter('');
+                setOpenShiftsOnly(false);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setMoreFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
 
       {orgId && (
         <ShiftTypeManagerModal
