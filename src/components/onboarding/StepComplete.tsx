@@ -58,7 +58,7 @@ const NEXT_STEPS = [
     tint: 'bg-shift-amber/20 text-shift-amber',
     title: 'Add your staff',
     body: 'Build the staff directory your rotas are assigned to.',
-    to: '/app/staff',
+    to: '/app/team',
     cta: 'Go to staff',
   },
 ];

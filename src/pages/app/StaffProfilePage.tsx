@@ -150,7 +150,7 @@ export function StaffProfilePage(): JSX.Element {
         profile={profile}
         tab={tab}
         onTabChange={setTab}
-        backTo="/app/staff"
+        backTo="/app/team"
         onAction={onAction}
       />
 

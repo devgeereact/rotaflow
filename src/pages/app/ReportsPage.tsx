@@ -273,7 +273,7 @@ export function ReportsPage(): JSX.Element {
       icon: Users,
       label: 'Staff Directory',
       description: 'People and documents',
-      to: '/app/staff',
+      to: '/app/team',
     },
   ];
 

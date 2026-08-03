@@ -4,7 +4,7 @@ Paste the block under **"The prompt"** into `/loop`. Swap `<SCREEN>` and `<REF>`
 screen using the tables below.
 
 **This is a web PWA, not a mobile app** — there's no simulator. The loop drives a real
-Chrome tab against the local Vite dev server (`http://localhost:5173`) and screenshots
+Chrome tab against the local Vite dev server (`http://localhost:5042`) and screenshots
 that, not `xcrun simctl`.
 
 ## How to read the status column
@@ -175,7 +175,7 @@ Each iteration:
 3. Screenshot the running dev server:
    - Load the Chrome tools if not already loaded (ToolSearch:
      `"select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__computer,mcp__claude-in-chrome__read_page,mcp__claude-in-chrome__tabs_create_mcp"`).
-   - Navigate to `http://localhost:5173<ROUTE>` and take a screenshot. Save/compare
+   - Navigate to `http://localhost:5042<ROUTE>` and take a screenshot. Save/compare
      iterations under `design/.loop/<SCREEN>-<N>.png` (`<N>` = iteration number,
      starting at 1; create `design/.loop/` if absent).
 4. **Read your own screenshot back** with the Read tool, side by side with `<REF>`.

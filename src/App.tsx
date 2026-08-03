@@ -21,7 +21,7 @@ import { RouteFallback } from '@/components/RouteFallback';
 import {
   AuthCallbackPage,
   ProfileRedirect,
-  TeamMemberRedirect,
+  StaffMemberRedirect,
 } from '@/components/RouteAliases';
 
 /**
@@ -433,33 +433,29 @@ export function App(): JSX.Element {
                         a new page cannot forget. RLS is still the real
                         boundary; this only turns a wrong turn into an
                         explanation. See `RequireRole`. */}
+                      {/* NEW_STRUCTURE §10/§34: the workforce directory lives
+                      at /app/team, and the sidebar entry is "Team". It was
+                      built at /app/staff, so that spelling now redirects here
+                      rather than the other way round — every bookmark and
+                      every link already sent to staff still resolves. */}
                       <Route
-                        path="staff"
+                        path="team"
                         element={
-                          <RequireRole allow={MANAGERIAL} area="the staff directory">
+                          <RequireRole allow={MANAGERIAL} area="the team directory">
                             <StaffPage />
                           </RequireRole>
                         }
                       />
                       <Route
-                        path="staff/:staffId"
+                        path="team/:staffId"
                         element={
                           <RequireRole allow={MANAGERIAL} area="staff profiles">
                             <StaffProfilePage />
                           </RequireRole>
                         }
                       />
-                      {/* Team folded into Settings -> Permissions: it is
-                      invite/revoke, i.e. organisation administration, and the
-                      designed sidebar has no Team entry. Redirect kept so
-                      existing links and bookmarks survive. */}
-                      <Route
-                        path="team"
-                        element={<Navigate to="/app/settings/permissions" replace />}
-                      />
-                      {/* The spec's spelling of a staff profile. See
-                        RouteAliases for why both resolve. */}
-                      <Route path="team/:staffId" element={<TeamMemberRedirect />} />
+                      <Route path="staff" element={<Navigate to="/app/team" replace />} />
+                      <Route path="staff/:staffId" element={<StaffMemberRedirect />} />
                       <Route
                         path="locations"
                         element={

@@ -7,17 +7,17 @@ import { AppBootScreen } from '@/components/AppBootScreen';
  * app was built on.
  *
  * The spec's route table asks for `/app/team/:staffId`, `/app/clock-in` and
- * `/app/profile/*`; the app has `/app/staff/:staffId`, `/app/clock` and
- * `/app/account/*`. Renaming the built routes would break every existing
- * bookmark, every link already sent to staff, and the `navigationTargets` test
- * that pins the nav to the route table. Aliasing costs nothing and means both
- * spellings resolve.
+ * `/app/profile/*`; the app was built on `/app/staff/:staffId`, `/app/clock`
+ * and `/app/account/*`. The directory has since moved to the spec's spelling,
+ * so `staff` redirects to `team`; the other two still alias the other way.
+ * Either way both spellings resolve, and no bookmark or link already sent to
+ * staff breaks.
  */
 
-/** `/app/team/:staffId` → `/app/staff/:staffId`. */
-export function TeamMemberRedirect(): JSX.Element {
+/** `/app/staff/:staffId` → `/app/team/:staffId`, the spec's spelling. */
+export function StaffMemberRedirect(): JSX.Element {
   const { staffId } = useParams<{ staffId: string }>();
-  return <Navigate to={`/app/staff/${staffId ?? ''}`} replace />;
+  return <Navigate to={`/app/team/${staffId ?? ''}`} replace />;
 }
 
 /** `/app/profile/<tab>` → `/app/account/<tab>`, preserving the tab. */

@@ -228,7 +228,7 @@ export function RotaGrid({
       {/* One bordered "Add staff" affordance under the whole grid, as in
           design/Rota-Builder.png — not one per location group. */}
       <Link
-        to="/app/staff"
+        to="/app/team"
         className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
       >
         <Plus size={14} aria-hidden="true" />

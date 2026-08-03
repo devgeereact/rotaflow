@@ -1,125 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  CalendarDays,
-  CalendarRange,
-  Users,
-  MapPin,
-  Clock3,
-  LogIn,
-  Umbrella,
-  Repeat2,
-  Timer,
-  Megaphone,
-  BarChart3,
-  Settings,
-  UserCircle,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrg } from '@/hooks/useOrg';
 import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
 import { SidebarFooter } from '@/components/layout/SidebarFooter';
-import type { MembershipRole } from '@/types';
+import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
 import logo from '@/assets/logo.png';
-
-interface NavItem {
-  label: string;
-  icon: LucideIcon;
-  /**
-   * Required, deliberately.
-   *
-   * This was optional, and an item without it rendered greyed out with a
-   * "Soon" chip. Every item has had a real route since #75, so the branch was
-   * dead — but leaving the field optional keeps the door open to shipping a
-   * navigation item that goes nowhere, which is the one thing a sidebar must
-   * never do. Making it required means a future unrouted entry is a
-   * typecheck failure rather than a chip a user clicks twice and gives up on.
-   */
-  to: string;
-}
-
-/**
- * The sidebar, resolved against the signed-in role.
- *
- * ## Why this stopped being a flat constant
- *
- * The built sidebar had fifteen items against the designs' twelve, and the
- * three extras were not arbitrary:
- *
- * - **Integrations** was top-level; every reference screen shows it as a
- *   Settings tab. It moved, and `/app/integrations` redirects.
- * - **Team** was top-level and the designs have no such entry. What it does —
- *   invite and revoke — is organisation administration, so it folded into
- *   Settings → Permissions, filling a designed tab that had no content.
- * - **Clock in** is absent from every mockup, but the mockups are a *manager's*
- *   view — they are all signed in as Sarah Manager. Clock-in is the single
- *   most-used screen a carer has: twice a day, usually on a phone on ward
- *   wifi. Burying it to match a manager-view mockup would be a real usability
- *   loss for most of the user base.
- *
- * ## Why Clock in is shown to managers too, and not made role-conditional
- *
- * The obvious reading of the mockups is "staff only", and that is what
- * audit01 §7c recommended. It is wrong for this product, because of how the
- * risk is shaped: in a small care home the owner and the manager are usually
- * *on the rota themselves*. Hiding the control costs a working manager the
- * thing they open twice a day and gives them no way to find it; showing it to
- * a manager who never clocks in costs one row of nav they can ignore.
- *
- * That asymmetry decides it. Gating on "has a staff_profile" would be more
- * precise, but the sidebar has no such query and adding one to render
- * navigation is a poor trade for a row.
- *
- * Net: a manager sees the designed twelve plus Clock in; a staff member sees
- * the nine that concern them, with Settings replaced by My Profile —
- * `settingsTabsForRole('staff')` is empty, so a Settings link would land them
- * on a redirect every time.
- */
-function navItemsForRole(role: MembershipRole | null): NavItem[] {
-  const isManager = role === 'owner' || role === 'manager';
-
-  const items: NavItem[] = [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard' },
-  ];
-
-  if (isManager) {
-    items.push({ label: 'Rota', icon: CalendarDays, to: '/app/rota' });
-  }
-
-  items.push(
-    { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
-    { label: 'Clock in', icon: LogIn, to: '/app/clock' },
-  );
-
-  if (isManager) {
-    items.push(
-      { label: 'Staff', icon: Users, to: '/app/staff' },
-      { label: 'Locations', icon: MapPin, to: '/app/locations' },
-    );
-  }
-
-  items.push(
-    { label: 'Availability', icon: Clock3, to: '/app/availability' },
-    { label: 'Leave', icon: Umbrella, to: '/app/leave' },
-    { label: 'Swaps', icon: Repeat2, to: '/app/swaps' },
-    { label: 'Timesheets', icon: Timer, to: '/app/timesheets' },
-    { label: 'Announcements', icon: Megaphone, to: '/app/announcements' },
-  );
-
-  if (isManager) {
-    items.push(
-      { label: 'Reports', icon: BarChart3, to: '/app/reports' },
-      { label: 'Settings', icon: Settings, to: '/app/settings' },
-    );
-  } else {
-    items.push({ label: 'My Profile', icon: UserCircle, to: '/app/account' });
-  }
-
-  return items;
-}
 
 const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';

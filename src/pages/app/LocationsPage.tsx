@@ -254,7 +254,7 @@ export function LocationsPage(): JSX.Element {
     void navigate(path);
   };
 
-  const goToStaff = (): void => goTo('/app/staff');
+  const goToStaff = (): void => goTo('/app/team');
 
   /**
    * `DepartmentManager` is per-site inline CRUD and predates this screen. It

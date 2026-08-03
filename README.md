@@ -93,7 +93,7 @@ else in the app depends on it.
 
 ### 5. Develop
 ```bash
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5042  (strictPort — fails loudly if taken)
 ```
 
 ### 6. Verify before shipping

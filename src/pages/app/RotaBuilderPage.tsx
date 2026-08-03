@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -28,6 +28,9 @@ import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { listLocations, listDepartments } from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
+import { listOrgLeaveRequests } from '@/services/leaveService';
+import { listOrgAvailability } from '@/services/availabilityService';
+import { listExpiringDocuments } from '@/services/documentService';
 import {
   getOrCreateRotaForPeriod,
   publishRota,
@@ -46,12 +49,13 @@ import {
   buildShiftMap,
   computeDailyTotals,
   computeShiftIsoRange,
-  computeWarnings,
   fromIsoInTimezone,
   getMonday,
   getWeekDates,
   shiftCellKey,
 } from '@/lib/rotaGrid';
+import { findClashingShift, ShiftClashError } from '@/lib/shiftConflicts';
+import { computeRotaInsights } from '@/lib/rotaInsights';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Label } from '@/components/ui/Label';
@@ -66,7 +70,17 @@ import {
 } from '@/components/rota/AssignShiftModal';
 import { ShiftTypeManagerModal } from '@/components/rota/ShiftTypeManagerModal';
 import { RotaAssistantPanel } from '@/components/rota/RotaAssistantPanel';
-import type { Department, Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
+import type {
+  Availability,
+  Department,
+  LeaveRequest,
+  Location,
+  Rota,
+  Shift,
+  ShiftType,
+  StaffDocument,
+  StaffProfile,
+} from '@/types';
 
 const DEFAULT_TZ = 'Europe/London';
 
@@ -108,6 +122,16 @@ interface CopiedShift {
   notes: string | null;
 }
 
+/**
+ * Outcome of trying to write one shift. `clash` is the shift already in the
+ * diary that the new one would have overlapped; `unavailable` means the org,
+ * location or rota context was not ready and nothing was attempted.
+ */
+type PlaceResult =
+  | { ok: true; shift: Shift }
+  | { ok: false; reason: 'clash'; clash: Shift }
+  | { ok: false; reason: 'unavailable' };
+
 interface AssignModalState {
   open: boolean;
   context: { staffProfileId: string | null; date: string; locationId: string } | null;
@@ -140,6 +164,27 @@ export function RotaBuilderPage(): JSX.Element {
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [rotasByLocation, setRotasByLocation] = useState<Map<string, Rota>>(new Map());
   const [shifts, setShifts] = useState<Shift[]>([]);
+  // The clash guard has to see every shift already written this tick. A bulk
+  // paste awaits one insert at a time and React will not have re-rendered
+  // between them, so reading `shifts` from the closure would check each new
+  // shift against a snapshot taken before the loop started — and let the whole
+  // batch through.
+  const shiftsRef = useRef<Shift[]>([]);
+  useEffect(() => {
+    shiftsRef.current = shifts;
+  }, [shifts]);
+
+  // Inputs the warning rules need beyond the shifts themselves.
+  const [leave, setLeave] = useState<LeaveRequest[]>([]);
+  const [availability, setAvailability] = useState<Availability[]>([]);
+  const [documents, setDocuments] = useState<StaffDocument[]>([]);
+  // One clock for every rule, ticked once a minute. Reading Date.now() inside
+  // the memo would make "is this shift in the past" depend on render timing.
+  const [insightsNow, setInsightsNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setInsightsNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [orgDataLoading, setOrgDataLoading] = useState(true);
   const [orgDataFailed, setOrgDataFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -168,7 +213,14 @@ export function RotaBuilderPage(): JSX.Element {
   const [viewMode, setViewMode] = useState<RotaViewMode>('Week');
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
-  const [openShiftsOnly, setOpenShiftsOnly] = useState(false);
+  /** All / only unfilled / only filled. Replaces the old open-shifts checkbox. */
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'open' | 'assigned'>(
+    'all',
+  );
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [problemsOnly, setProblemsOnly] = useState(false);
+  /** Drops roster rows with nothing on them this week, to shorten the grid. */
+  const [hideEmptyStaff, setHideEmptyStaff] = useState(false);
   const [jobTitleFilter, setJobTitleFilter] = useState('');
   /**
    * Shifts held by "Copy Shifts", as day offsets from the copied week's
@@ -263,6 +315,38 @@ export function RotaBuilderPage(): JSX.Element {
     };
   }, [orgId, locations, weekStart, weekEnd, showError]);
 
+  /**
+   * Leave, availability and documents for the warning rules.
+   *
+   * Deliberately non-fatal: if this fails the grid still loads and the
+   * shift-only rules (double-booked, rest, open shifts) still fire. Losing the
+   * whole builder because a document lookup timed out would be the worse
+   * trade.
+   */
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const horizon = format(new Date(Date.now() + 90 * 86_400_000), 'yyyy-MM-dd');
+        const [leaveRows, availabilityRows, documentRows] = await Promise.all([
+          listOrgLeaveRequests(orgId),
+          listOrgAvailability(orgId),
+          listExpiringDocuments(orgId, horizon),
+        ]);
+        if (!active) return;
+        setLeave(leaveRows);
+        setAvailability(availabilityRows);
+        setDocuments(documentRows);
+      } catch (err) {
+        reportError(err, { area: 'rota:load-warning-inputs' });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId, reloadKey]);
+
   const locationById = useMemo(
     () => new Map(locations.map((l) => [l.id, l])),
     [locations],
@@ -281,14 +365,82 @@ export function RotaBuilderPage(): JSX.Element {
     () => shifts.filter((s) => filteredLocations.some((l) => l.id === s.location_id)),
     [shifts, filteredLocations],
   );
+  /**
+   * The week's real problems — double-bookings, rest breaches, people rostered
+   * on approved leave or against their availability, contract overruns and
+   * unfilled shifts.
+   *
+   * Before this the Warnings tab ran `computeWarnings`, which counted unfilled
+   * shifts and nothing else, so a rota with someone booked twice in one day
+   * reported no warnings at all. This is the same engine the assistant uses,
+   * so the tab, the assistant and the publish gate can no longer disagree.
+   *
+   * Computed from the shifts in *location* scope rather than the filtered view,
+   * so it matches exactly what Publish would send out.
+   */
+  const warnings = useMemo(
+    () =>
+      computeRotaInsights({
+        shifts: shiftsInScope,
+        staff,
+        shiftTypes,
+        locations: filteredLocations,
+        leave,
+        availability,
+        documents,
+        timezone: DEFAULT_TZ,
+        now: insightsNow,
+      }),
+    [
+      shiftsInScope,
+      staff,
+      shiftTypes,
+      filteredLocations,
+      leave,
+      availability,
+      documents,
+      insightsNow,
+    ],
+  );
+
+  const criticalWarnings = useMemo(
+    () => warnings.filter((w) => w.severity === 'critical'),
+    [warnings],
+  );
+
+  /** Shifts named by at least one warning — powers the "needs attention" filter. */
+  const problemShiftIds = useMemo(
+    () =>
+      new Set(warnings.map((w) => w.shiftId).filter((id): id is string => id !== null)),
+    [warnings],
+  );
+
+  /**
+   * Shifts the grid draws, after the view filters.
+   *
+   * Note this is downstream of the warnings, not upstream: filtering the view
+   * must not silence a problem. Hiding a double-booking by ticking "open
+   * shifts only" and then being allowed to publish is exactly the failure this
+   * screen is meant to prevent.
+   */
   const shiftsForDisplay = useMemo(() => {
     let rows =
       shiftTypeFilter === 'all'
         ? shiftsInScope
         : shiftsInScope.filter((s) => s.shift_type_id === shiftTypeFilter);
-    if (openShiftsOnly) rows = rows.filter((s) => s.staff_profile_id === null);
+    if (assignmentFilter === 'open') rows = rows.filter((s) => !s.staff_profile_id);
+    if (assignmentFilter === 'assigned') rows = rows.filter((s) => s.staff_profile_id);
+    if (statusFilter !== 'all') rows = rows.filter((s) => s.status === statusFilter);
+    if (problemsOnly) rows = rows.filter((s) => problemShiftIds.has(s.id));
     return rows;
-  }, [shiftsInScope, shiftTypeFilter, openShiftsOnly]);
+  }, [
+    shiftsInScope,
+    shiftTypeFilter,
+    assignmentFilter,
+    statusFilter,
+    problemsOnly,
+    problemShiftIds,
+  ]);
 
   /** Distinct job titles present in the roster, for the More filters dialog. */
   const jobTitles = useMemo(
@@ -299,7 +451,20 @@ export function RotaBuilderPage(): JSX.Element {
     [staff],
   );
 
-  const extraFilterCount = (openShiftsOnly ? 1 : 0) + (jobTitleFilter ? 1 : 0);
+  const extraFilterCount =
+    (assignmentFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) +
+    (problemsOnly ? 1 : 0) +
+    (hideEmptyStaff ? 1 : 0) +
+    (jobTitleFilter ? 1 : 0);
+
+  const clearExtraFilters = (): void => {
+    setJobTitleFilter('');
+    setAssignmentFilter('all');
+    setStatusFilter('all');
+    setProblemsOnly(false);
+    setHideEmptyStaff(false);
+  };
 
   const staffFiltered = useMemo(() => {
     let rows = staff;
@@ -326,7 +491,16 @@ export function RotaBuilderPage(): JSX.Element {
     if (locationFilter !== 'all') {
       const loc = filteredLocations[0];
       if (!loc) return [];
-      return [{ location: loc, staff: staffFiltered }];
+      // Showing the whole roster is deliberate — it is how you give someone
+      // their first shift at a site. On a 30-person org that is a lot of empty
+      // rows, so "Hide staff with no shifts this week" trims it back.
+      if (!hideEmptyStaff) return [{ location: loc, staff: staffFiltered }];
+      const rostered = new Set(
+        shiftsForDisplay
+          .map((s) => s.staff_profile_id)
+          .filter((id): id is string => Boolean(id)),
+      );
+      return [{ location: loc, staff: staffFiltered.filter((p) => rostered.has(p.id)) }];
     }
     const rosteredByLocation = new Map<string, Set<string>>();
     for (const shift of shiftsForDisplay) {
@@ -341,7 +515,13 @@ export function RotaBuilderPage(): JSX.Element {
         staff: staffFiltered.filter((s) => rosteredByLocation.get(loc.id)?.has(s.id)),
       }))
       .filter((g) => g.staff.length > 0);
-  }, [locationFilter, filteredLocations, staffFiltered, shiftsForDisplay]);
+  }, [
+    locationFilter,
+    filteredLocations,
+    staffFiltered,
+    shiftsForDisplay,
+    hideEmptyStaff,
+  ]);
 
   const shiftMapByLocation = useMemo(() => {
     const map = new Map<string, Map<string, Shift[]>>();
@@ -370,10 +550,6 @@ export function RotaBuilderPage(): JSX.Element {
     () => computeDailyTotals(shiftsForDisplay, dates, DEFAULT_TZ),
     [shiftsForDisplay, dates],
   );
-  const warnings = useMemo(
-    () => computeWarnings(shiftsForDisplay, DEFAULT_TZ),
-    [shiftsForDisplay],
-  );
 
   const totalStaff = useMemo(
     () => new Set(shiftsInScope.map((s) => s.staff_profile_id).filter(Boolean)).size,
@@ -392,26 +568,43 @@ export function RotaBuilderPage(): JSX.Element {
   ).length;
 
   const placeShift = useCallback(
-    async (input: {
-      staffProfileId: string | null;
-      date: string;
-      shiftTypeId: string | null;
-      locationId: string;
-      startTime: string;
-      endTime: string;
-      breakMinutes?: number;
-      notes?: string | null;
-    }): Promise<void> => {
-      if (!orgId) return;
+    async (
+      input: {
+        staffProfileId: string | null;
+        date: string;
+        shiftTypeId: string | null;
+        locationId: string;
+        startTime: string;
+        endTime: string;
+        breakMinutes?: number;
+        notes?: string | null;
+      },
+      /**
+       * Shifts to check the new one against. Bulk callers pass their own
+       * running list so shifts created earlier in the same loop still count.
+       */
+      against?: readonly Shift[],
+    ): Promise<PlaceResult> => {
+      if (!orgId) return { ok: false, reason: 'unavailable' };
       const location = locationById.get(input.locationId);
       const rota = rotasByLocation.get(input.locationId);
-      if (!location || !rota) return;
+      if (!location || !rota) return { ok: false, reason: 'unavailable' };
       const { startsAt, endsAt } = computeShiftIsoRange(
         input.date,
         input.startTime,
         input.endTime,
         location.timezone,
       );
+
+      // NEW_STRUCTURE §41: never silently allow an invalid assignment. One
+      // person cannot be in two places at once, so an overlapping shift is
+      // refused outright rather than written and warned about afterwards.
+      const clash = findClashingShift(
+        { staffProfileId: input.staffProfileId, startsAt, endsAt },
+        against ?? shiftsRef.current,
+      );
+      if (clash) return { ok: false, reason: 'clash', clash };
+
       const created = await createShift({
         org_id: orgId,
         rota_id: rota.id,
@@ -426,8 +619,30 @@ export function RotaBuilderPage(): JSX.Element {
       });
       setShifts((prev) => [...prev, created]);
       setLastSavedAt(new Date());
+      return { ok: true, shift: created };
     },
     [orgId, locationById, rotasByLocation],
+  );
+
+  /** Plain-English "who is already on what", for the refusal toast. */
+  const describeClash = useCallback(
+    (clash: Shift): string => {
+      const location = clash.location_id ? locationById.get(clash.location_id) : null;
+      const timezone = location?.timezone ?? DEFAULT_TZ;
+      const { date, time: start } = fromIsoInTimezone(clash.starts_at, timezone);
+      const { time: end } = fromIsoInTimezone(clash.ends_at, timezone);
+      const person = clash.staff_profile_id
+        ? staffById.get(clash.staff_profile_id)
+        : null;
+      const who = person ? `${person.first_name} ${person.last_name}` : 'That person';
+      const day = new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
+      return `${who} is already rostered ${start}–${end} on ${day}.`;
+    },
+    [locationById, staffById],
   );
 
   const sensors = useSensors(
@@ -460,10 +675,16 @@ export function RotaBuilderPage(): JSX.Element {
           locationId: cellLocationId,
           startTime: type?.default_start?.slice(0, 5) ?? '09:00',
           endTime: type?.default_end?.slice(0, 5) ?? '17:00',
-        }).catch((err) => {
-          reportError(err, { area: 'rota:drag-create' });
-          showError('Could not add that shift. Please try again.');
-        });
+        })
+          .then((result) => {
+            if (!result.ok && result.reason === 'clash') {
+              showError(`Not added — ${describeClash(result.clash)}`);
+            }
+          })
+          .catch((err) => {
+            reportError(err, { area: 'rota:drag-create' });
+            showError('Could not add that shift. Please try again.');
+          });
         return;
       }
 
@@ -479,6 +700,20 @@ export function RotaBuilderPage(): JSX.Element {
           endTime,
           location.timezone,
         );
+
+        // Dragging a shift onto someone who is already working that window is
+        // the same double-booking as creating one there, so it is refused the
+        // same way — the shift stays where it was.
+        const moveClash = findClashingShift(
+          { staffProfileId: cellStaffProfileId ?? null, startsAt, endsAt },
+          shiftsRef.current,
+          { ignoreShiftId: shiftId },
+        );
+        if (moveClash) {
+          showError(`Not moved — ${describeClash(moveClash)}`);
+          return;
+        }
+
         void updateShift(shiftId, {
           staff_profile_id: cellStaffProfileId ?? null,
           starts_at: startsAt,
@@ -494,7 +729,7 @@ export function RotaBuilderPage(): JSX.Element {
           });
       }
     },
-    [locationById, shiftTypes, shifts, placeShift, showError],
+    [locationById, shiftTypes, shifts, placeShift, showError, describeClash],
   );
 
   const handleModalSave = async (values: AssignShiftFormValues): Promise<void> => {
@@ -508,6 +743,14 @@ export function RotaBuilderPage(): JSX.Element {
       location.timezone,
     );
     if (assignModal.shift) {
+      const editClash = findClashingShift(
+        { staffProfileId: values.staffProfileId, startsAt, endsAt },
+        shiftsRef.current,
+        { ignoreShiftId: assignModal.shift.id },
+      );
+      if (editClash) {
+        throw new ShiftClashError(describeClash(editClash), editClash);
+      }
       const updated = await updateShift(assignModal.shift.id, {
         staff_profile_id: values.staffProfileId,
         shift_type_id: values.shiftTypeId,
@@ -518,7 +761,7 @@ export function RotaBuilderPage(): JSX.Element {
       });
       setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
     } else {
-      await placeShift({
+      const result = await placeShift({
         staffProfileId: values.staffProfileId,
         date: values.date,
         shiftTypeId: values.shiftTypeId,
@@ -528,6 +771,9 @@ export function RotaBuilderPage(): JSX.Element {
         breakMinutes: Number(values.breakMinutes) || 0,
         notes: values.notes || null,
       });
+      if (!result.ok && result.reason === 'clash') {
+        throw new ShiftClashError(describeClash(result.clash), result.clash);
+      }
     }
     setLastSavedAt(new Date());
   };
@@ -542,24 +788,33 @@ export function RotaBuilderPage(): JSX.Element {
   const handleDuplicateShift = useCallback(
     (shift: Shift): void => {
       if (!orgId) return;
+      // A copy of an assigned shift is the same person in the same hours —
+      // always a double-booking. Duplicating is still useful, though: it is
+      // how a manager adds a second slot on a busy shift. So the copy is made
+      // open, and the toast says so rather than quietly changing the meaning.
+      const assigned = shift.staff_profile_id !== null;
       void createShift({
         org_id: orgId,
         rota_id: shift.rota_id,
         location_id: shift.location_id,
         department_id: shift.department_id,
-        staff_profile_id: shift.staff_profile_id,
+        staff_profile_id: null,
         shift_type_id: shift.shift_type_id,
         starts_at: shift.starts_at,
         ends_at: shift.ends_at,
         break_minutes: shift.break_minutes,
-        status: shift.status,
+        status: 'open',
         notes: shift.notes,
       })
         .then((created) => {
           setShifts((prev) => [...prev, created]);
           setSelectedShiftId(created.id);
           setLastSavedAt(new Date());
-          showSuccess('Shift duplicated.');
+          showSuccess(
+            assigned
+              ? 'Duplicated as an open shift — one person cannot work the same hours twice. Assign someone to cover it.'
+              : 'Shift duplicated.',
+          );
         })
         .catch((err) => {
           reportError(err, { area: 'rota:duplicate-shift' });
@@ -587,6 +842,19 @@ export function RotaBuilderPage(): JSX.Element {
 
   const handlePublish = async (): Promise<void> => {
     if (draftRotasInScope.length === 0 || !orgId) return;
+
+    // §41: a critical issue "cannot publish without resolution". Publishing is
+    // what tells staff the week is real, so sending out a rota that has
+    // somebody in two places at once — or working through approved leave — is
+    // the one thing worth stopping outright rather than warning about.
+    if (criticalWarnings.length > 0) {
+      const [first] = criticalWarnings;
+      setPublishError(
+        `${criticalWarnings.length} critical ${criticalWarnings.length === 1 ? 'issue' : 'issues'} must be resolved before publishing — ${first?.title ?? ''}. See the Warnings tab.`,
+      );
+      return;
+    }
+
     setPublishing(true);
     setPublishError(null);
     try {
@@ -698,24 +966,46 @@ export function RotaBuilderPage(): JSX.Element {
         // trip Supabase's rate limiter halfway through and leave a rota
         // half-pasted with no record of where it stopped.
         let created = 0;
+        let skipped = 0;
+        // Running list, so a shift written on one pass is visible to the next.
+        // Without it a paste can only see the week as it was before the loop
+        // began, and duplicates inside the same batch slip through.
+        const working: Shift[] = [...shiftsRef.current];
         for (const item of source) {
           const date = dates[item.dayOffset];
           if (!date) continue;
-          await placeShift({
-            staffProfileId: item.staffProfileId,
-            date,
-            shiftTypeId: item.shiftTypeId,
-            locationId: item.locationId,
-            startTime: item.startTime,
-            endTime: item.endTime,
-            breakMinutes: item.breakMinutes,
-            notes: item.notes,
-          });
-          created += 1;
+          const result = await placeShift(
+            {
+              staffProfileId: item.staffProfileId,
+              date,
+              shiftTypeId: item.shiftTypeId,
+              locationId: item.locationId,
+              startTime: item.startTime,
+              endTime: item.endTime,
+              breakMinutes: item.breakMinutes,
+              notes: item.notes,
+            },
+            working,
+          );
+          if (result.ok) {
+            working.push(result.shift);
+            created += 1;
+          } else if (result.reason === 'clash') {
+            skipped += 1;
+          }
         }
-        showSuccess(
-          `${created} ${created === 1 ? 'shift' : 'shifts'} added to ${formatWeekRange(dates)}.`,
-        );
+        // Saying what was skipped matters more than the success count: a paste
+        // that silently dropped half its rows looks identical to one that
+        // worked, and that is how the rota quietly drifts from what a manager
+        // thinks they built.
+        const summary = `${created} ${created === 1 ? 'shift' : 'shifts'} added to ${formatWeekRange(dates)}.`;
+        if (skipped > 0) {
+          showSuccess(
+            `${summary} ${skipped} skipped — ${skipped === 1 ? 'that person was' : 'those people were'} already rostered at the same time.`,
+          );
+        } else {
+          showSuccess(summary);
+        }
       } catch (err) {
         reportError(err, { area: 'rota:paste-shifts' });
         showError(
@@ -848,6 +1138,22 @@ export function RotaBuilderPage(): JSX.Element {
   const handleAssistantAssign = useCallback(
     async (shiftId: string, staffProfileId: string): Promise<void> => {
       try {
+        const target = shiftsRef.current.find((s) => s.id === shiftId);
+        if (target) {
+          const clash = findClashingShift(
+            {
+              staffProfileId,
+              startsAt: target.starts_at,
+              endsAt: target.ends_at,
+            },
+            shiftsRef.current,
+            { ignoreShiftId: shiftId },
+          );
+          if (clash) {
+            showError(`Not assigned — ${describeClash(clash)}`);
+            return;
+          }
+        }
         const updated = await updateShift(shiftId, {
           staff_profile_id: staffProfileId,
           status: 'assigned',
@@ -860,7 +1166,7 @@ export function RotaBuilderPage(): JSX.Element {
         showError('Could not assign that shift. Please try again.');
       }
     },
-    [showError, showSuccess],
+    [showError, showSuccess, describeClash],
   );
 
   const reloadShifts = (): void => {
@@ -1266,6 +1572,7 @@ export function RotaBuilderPage(): JSX.Element {
                   onEdit={(shift) => setAssignModal({ open: true, context: null, shift })}
                   onDuplicate={handleDuplicateShift}
                   onDelete={handleDeleteSelectedShift}
+                  onSelectShiftId={setSelectedShiftId}
                 />
               </div>
             </Card>
@@ -1357,23 +1664,75 @@ export function RotaBuilderPage(): JSX.Element {
               rest of the roster in the way.
             </p>
           </div>
-          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+          <div>
+            <Label htmlFor="rota-assignment">Assignment</Label>
+            <Select
+              id="rota-assignment"
+              value={assignmentFilter}
+              onChange={(e) =>
+                setAssignmentFilter(e.target.value as 'all' | 'open' | 'assigned')
+              }
+            >
+              <option value="all">All shifts</option>
+              <option value="open">Only open shifts (nobody assigned)</option>
+              <option value="assigned">Only shifts with someone on them</option>
+            </Select>
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              Open shifts are the ones still needing cover.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="rota-status">Shift status</Label>
+            <Select
+              id="rota-status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">Any status</option>
+              <option value="open">Open</option>
+              <option value="assigned">Assigned</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+            </Select>
+          </div>
+
+          <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm text-content dark:text-content-dark">
             <input
               type="checkbox"
-              checked={openShiftsOnly}
-              onChange={(e) => setOpenShiftsOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              checked={problemsOnly}
+              onChange={(e) => setProblemsOnly(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
-            Only show open shifts (nobody assigned)
+            <span>
+              Only show shifts that need attention
+              <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                Double-bookings, rest breaches, leave clashes and unfilled cover —
+                everything on the Warnings tab.
+              </span>
+            </span>
           </label>
+
+          <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={hideEmptyStaff}
+              onChange={(e) => setHideEmptyStaff(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            <span>
+              Hide staff with no shifts this week
+              <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                Shortens the grid to the people actually working.
+              </span>
+            </span>
+          </label>
+
           <div className="flex justify-end gap-2">
             <Button
               variant="secondary"
               disabled={extraFilterCount === 0}
-              onClick={() => {
-                setJobTitleFilter('');
-                setOpenShiftsOnly(false);
-              }}
+              onClick={clearExtraFilters}
             >
               Clear
             </Button>

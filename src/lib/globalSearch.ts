@@ -115,7 +115,7 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
   {
     label: 'Staff directory',
     keywords: 'people team employees members roles departments',
-    to: '/app/staff',
+    to: '/app/team',
     group: 'People',
     icon: Users,
     roles: MANAGERIAL,
