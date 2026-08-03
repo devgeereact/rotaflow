@@ -29,6 +29,8 @@ export interface TimesheetsViewProps {
   onTabChange: (tab: TimesheetTab) => void;
   onExport: () => void;
   onApproveSelected: () => void;
+  /** Disables the button and swaps its label while the write is in flight. */
+  approving?: boolean;
 
   periodLabel: string;
   onPeriodClick: () => void;
@@ -185,11 +187,11 @@ export function TimesheetsView(props: TimesheetsViewProps): JSX.Element {
             </button>
             <Button
               onClick={props.onApproveSelected}
-              disabled={selectedCount === 0}
+              disabled={selectedCount === 0 || props.approving}
               className="h-10 flex-1 whitespace-nowrap px-3 text-[0.82rem]"
             >
               <Check size={16} aria-hidden="true" />
-              Approve Selected ({selectedCount})
+              {props.approving ? 'Approving…' : `Approve Selected (${selectedCount})`}
             </Button>
           </div>
 

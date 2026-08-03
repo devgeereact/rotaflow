@@ -1,13 +1,7 @@
 import { BarChart3 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
-
-export interface WeeklySummaryStat {
-  label: string;
-  value: string;
-  /** The variance figure is the only one the reference tints green. */
-  positive?: boolean;
-}
+import type { WeeklySummaryStat } from '@/lib/clockRows';
 
 interface WeeklySummaryCardProps {
   periodLabel: string;
@@ -54,7 +48,7 @@ export function WeeklySummaryCard({
   onViewTimesheet,
 }: WeeklySummaryCardProps): JSX.Element {
   return (
-    <Card className="h-full rounded-xl p-5">
+    <Card className="h-full rounded-xl p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary dark:bg-primary/15">

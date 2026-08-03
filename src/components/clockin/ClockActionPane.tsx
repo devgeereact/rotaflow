@@ -1,34 +1,115 @@
-import { Fingerprint, QrCode, ShieldCheck } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Coffee, Fingerprint, LogOut, MapPinOff, Play, ShieldCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { ClockStage } from '@/lib/clockRows';
+
+interface StageCopy {
+  heading: string;
+  primaryLabel: string;
+  primaryIcon: typeof Fingerprint;
+  secondaryLabel: string;
+  secondaryIcon: typeof Fingerprint;
+}
+
+/**
+ * `ready` is the state design/clockin.png shows. The other three are the same
+ * pane once the shift is under way — the reference never illustrates them, so
+ * only the labels and the ring tint change; every dimension is shared.
+ */
+const STAGES: Record<ClockStage, StageCopy> = {
+  ready: {
+    heading: 'Ready to Clock In?',
+    primaryLabel: 'Clock In Now',
+    primaryIcon: Fingerprint,
+    secondaryLabel: 'Clock In Manually',
+    secondaryIcon: MapPinOff,
+  },
+  working: {
+    heading: "You're Clocked In",
+    primaryLabel: 'Clock Out',
+    primaryIcon: LogOut,
+    secondaryLabel: 'Start Break',
+    secondaryIcon: Coffee,
+  },
+  break: {
+    heading: "You're On Break",
+    primaryLabel: 'End Break',
+    primaryIcon: Play,
+    secondaryLabel: 'Clock Out',
+    secondaryIcon: LogOut,
+  },
+  done: {
+    heading: 'Shift Complete',
+    primaryLabel: 'Clock In Now',
+    primaryIcon: Fingerprint,
+    secondaryLabel: 'Clock In Manually',
+    secondaryIcon: MapPinOff,
+  },
+};
+
+/** Ring stroke and status dot: green on shift, amber on break, grey when done. */
+const RING: Record<ClockStage, { border: string; dot: string }> = {
+  ready: { border: 'border-clock', dot: 'bg-clock' },
+  working: { border: 'border-clock', dot: 'bg-clock' },
+  break: { border: 'border-warning', dot: 'bg-warning' },
+  done: {
+    border: 'border-surface-border dark:border-surface-border-dark',
+    dot: 'bg-content-muted dark:bg-content-muted-dark',
+  },
+};
 
 interface ClockActionPaneProps {
+  stage: ClockStage;
   /** Ticking wall clock, pre-formatted, e.g. "08:48:37". */
   clockTime: string;
   dateLabel: string;
   windowLabel: string;
-  onClockIn?: () => void;
-  onScanQr?: () => void;
-  onUsePin?: () => void;
+  onPrimary?: () => void;
+  onSecondary?: () => void;
+  /** Disables both actions while a write is in flight. */
+  busy?: boolean;
+  /** Slot under the actions — the location picker on the live screen. */
+  children?: ReactNode;
 }
 
 /**
  * Right half of the clock-in hero card — the live clock and the actions that
  * actually start a shift.
+ *
+ * The reference's second action is "Scan QR Code" and it carries a third,
+ * "Clock in using PIN". Neither method exists in the product: `clock_events`
+ * records `gps | qr | manual`, nothing generates the per-location code a scan
+ * would read, and there is no PIN anywhere in the schema. The slot is given to
+ * manual clock-in instead — the real second method — rather than shipping a
+ * button that cannot work. See design/.loop/clockin-log.md.
  */
 export function ClockActionPane({
+  stage,
   clockTime,
   dateLabel,
   windowLabel,
-  onClockIn,
-  onScanQr,
-  onUsePin,
+  onPrimary,
+  onSecondary,
+  busy = false,
+  children,
 }: ClockActionPaneProps): JSX.Element {
+  const copy = STAGES[stage];
+  const ring = RING[stage];
+  const PrimaryIcon = copy.primaryIcon;
+  const SecondaryIcon = copy.secondaryIcon;
+
   return (
     <div className="flex flex-col items-center p-6">
       <h2 className="text-card-heading font-semibold text-content dark:text-content-dark">
-        Ready to Clock In?
+        {copy.heading}
       </h2>
 
-      <div className="mt-6 grid h-56 w-56 place-items-center rounded-full border-4 border-clock text-center">
+      <div
+        className={cn(
+          'mt-6 grid h-56 w-56 place-items-center rounded-full border-4 text-center',
+          ring.border,
+        )}
+      >
         <div>
           <p className="text-page-title font-bold tracking-tight text-content dark:text-content-dark">
             {clockTime}
@@ -39,7 +120,7 @@ export function ClockActionPane({
           <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">
             <span
               aria-hidden="true"
-              className="inline-block h-2 w-2 rounded-full bg-clock"
+              className={cn('inline-block h-2 w-2 rounded-full', ring.dot)}
             />
             {windowLabel}
           </p>
@@ -48,11 +129,12 @@ export function ClockActionPane({
 
       <button
         type="button"
-        onClick={onClockIn}
-        className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-lg bg-clock text-base font-semibold text-primary-fg transition-transform duration-150 ease-in-out hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clock focus-visible:ring-offset-2"
+        onClick={onPrimary}
+        disabled={busy}
+        className="mt-8 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-lg bg-clock text-base font-semibold text-primary-fg transition-transform duration-150 ease-in-out hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clock focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
       >
-        <Fingerprint size={20} aria-hidden="true" />
-        Clock In Now
+        <PrimaryIcon size={20} aria-hidden="true" />
+        {copy.primaryLabel}
       </button>
 
       <div className="mt-5 flex w-full items-center gap-4">
@@ -65,11 +147,12 @@ export function ClockActionPane({
 
       <button
         type="button"
-        onClick={onScanQr}
-        className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-lg border border-surface-border bg-surface text-base font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+        onClick={onSecondary}
+        disabled={busy}
+        className="mt-5 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-lg border border-surface-border bg-surface text-base font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-60 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
       >
-        <QrCode size={20} aria-hidden="true" />
-        Scan QR Code
+        <SecondaryIcon size={20} aria-hidden="true" />
+        {copy.secondaryLabel}
       </button>
 
       <p className="mt-4 flex items-center gap-1.5 text-xs text-content-muted dark:text-content-muted-dark">
@@ -77,13 +160,7 @@ export function ClockActionPane({
         Your location will be recorded for accuracy
       </p>
 
-      <button
-        type="button"
-        onClick={onUsePin}
-        className="mt-4 rounded text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        Clock in using PIN
-      </button>
+      {children}
     </div>
   );
 }

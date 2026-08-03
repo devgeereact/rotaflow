@@ -19,8 +19,13 @@ import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
 import { listClockEventsForOrg, listClockEventsForStaff } from '@/services/clockService';
-import { listLocations } from '@/services/locationService';
+import { listDepartments, listLocations } from '@/services/locationService';
 import { listShiftsForPeriod } from '@/services/shiftService';
+import {
+  approveTimesheets,
+  listTimesheets,
+  type Timesheet,
+} from '@/services/timesheetService';
 import {
   pairClockEvents,
   totalWorkedMinutes,
@@ -39,15 +44,19 @@ import {
   todayIso,
   type ScheduleView,
 } from '@/lib/schedulePeriod';
+import { downloadCsv } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Modal } from '@/components/ui/Modal';
 import { TimesheetStatCard } from '@/components/timesheets/TimesheetStatCard';
 import { TimesheetsView } from '@/components/timesheets/TimesheetsView';
 import type { TimesheetTab } from '@/components/timesheets/TimesheetTabs';
 import type { QuickAction } from '@/components/timesheets/QuickActionsCard';
-import type { ClockEvent, Location, Shift, StaffProfile } from '@/types';
+import type { ClockEvent, Department, Location, Shift, StaffProfile } from '@/types';
 
 const VIEWS: { value: ScheduleView; label: string }[] = [
   { value: 'week', label: 'Week' },
@@ -106,6 +115,18 @@ export function TimesheetsPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentId, setDepartmentId] = useState<string | null>(null);
+  /** Manager sign-off rows for the visible period, keyed by staff profile. */
+  const [signOffs, setSignOffs] = useState<Map<string, Timesheet>>(new Map());
+  const [approving, setApproving] = useState(false);
+  const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  /** Minimum worked hours a row must have to be listed. Blank = no minimum. */
+  const [minHours, setMinHours] = useState('');
+  const [overtimeOnly, setOvertimeOnly] = useState(false);
 
   // Live updates: refetch when someone else changes this data.
   useRealtimeRefresh({
@@ -169,17 +190,25 @@ export function TimesheetsPage(): JSX.Element {
     let active = true;
     void (async () => {
       try {
-        const [shiftRows, locationRows] = await Promise.all([
+        const [shiftRows, locationRows, departmentRows, signOffRows] = await Promise.all([
           listShiftsForPeriod({
             orgId,
             fromIso: period.fromIso,
             toIso: period.toIso,
           }),
           listLocations(orgId),
+          listDepartments(orgId),
+          listTimesheets(
+            orgId,
+            period.dates[0] ?? todayIso(),
+            period.dates[period.dates.length - 1] ?? todayIso(),
+          ),
         ]);
         if (!active) return;
         setShifts(shiftRows);
         setLocations(locationRows);
+        setDepartments(departmentRows);
+        setSignOffs(new Map(signOffRows.map((row) => [row.staff_profile_id, row])));
       } catch (err) {
         if (!active) return;
         // Non-fatal: the hours are the screen, these only decorate it.
@@ -189,7 +218,7 @@ export function TimesheetsPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [orgId, teamMode, period.fromIso, period.toIso, reloadKey]);
+  }, [orgId, teamMode, period.fromIso, period.toIso, period.dates, reloadKey]);
 
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
 
@@ -248,14 +277,64 @@ export function TimesheetsPage(): JSX.Element {
           totalHours: decimalHours(worked),
           // No pay-rate column exists anywhere to cost these hours with.
           totalCost: null,
-          // `timesheets.status` has no automation writing to it, so nothing
-          // here is approved or rejected yet — every row is simply worked
-          // hours awaiting the (unbuilt) approval workflow.
-          status: 'submitted' as const,
+          /*
+           * Derived hours are always "submitted" until a manager signs the
+           * period off. `signOffs` holds the real decision (see
+           * timesheetService.ts) — the hours themselves are recomputed from
+           * clock events on every render and can never be "approved" on
+           * their own.
+           */
+          status:
+            signOffs.get(staffId)?.status === 'approved'
+              ? ('approved' as const)
+              : ('submitted' as const),
         };
       })
       .sort((a, b) => a.lastName.localeCompare(b.lastName));
-  }, [segmentsByStaff, staffById, myProfile, teamMode, shifts, period.label]);
+  }, [segmentsByStaff, staffById, myProfile, teamMode, shifts, period.label, signOffs]);
+
+  /** Worked minutes per staff id — what an approval snapshots. */
+  const workedMinutesByStaff = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [staffId, segments] of segmentsByStaff.entries()) {
+      map.set(staffId, totalWorkedMinutes(segments));
+    }
+    return map;
+  }, [segmentsByStaff]);
+
+  const handleApproveSelected = useCallback(async (): Promise<void> => {
+    if (!orgId || selectedIds.length === 0) {
+      showError('Select at least one timesheet to approve.');
+      return;
+    }
+    setApproving(true);
+    try {
+      const updated = await approveTimesheets(
+        orgId,
+        period.dates[0] ?? todayIso(),
+        period.dates[period.dates.length - 1] ?? todayIso(),
+        selectedIds.map((staffProfileId) => ({
+          staffProfileId,
+          totalMinutes: workedMinutesByStaff.get(staffProfileId) ?? 0,
+        })),
+      );
+      setSignOffs((prev) => {
+        const next = new Map(prev);
+        for (const row of updated) next.set(row.staff_profile_id, row);
+        return next;
+      });
+      setSelectedIds([]);
+      showToast(
+        'success',
+        `${updated.length} ${updated.length === 1 ? 'timesheet' : 'timesheets'} approved.`,
+      );
+    } catch (err) {
+      reportError(err, { area: 'timesheets:approve' });
+      showError('Could not approve those timesheets. Please try again.');
+    } finally {
+      setApproving(false);
+    }
+  }, [orgId, selectedIds, period.dates, workedMinutesByStaff, showError, showToast]);
 
   const visibleRows = useMemo(() => {
     let filtered = rows;
@@ -263,8 +342,49 @@ export function TimesheetsPage(): JSX.Element {
     if (statusFilter !== 'all') {
       filtered = filtered.filter((row) => row.status === statusFilter);
     }
+    if (departmentId) {
+      filtered = filtered.filter(
+        (row) => staffById.get(row.id)?.department_id === departmentId,
+      );
+    }
+    const floor = Number(minHours);
+    if (minHours.trim() !== '' && Number.isFinite(floor)) {
+      filtered = filtered.filter((row) => Number(row.totalHours) >= floor);
+    }
+    if (overtimeOnly) filtered = filtered.filter((row) => Number(row.overtimeHours) > 0);
     return filtered;
-  }, [rows, staffFilterId, statusFilter]);
+  }, [
+    rows,
+    staffFilterId,
+    statusFilter,
+    departmentId,
+    staffById,
+    minHours,
+    overtimeOnly,
+  ]);
+
+  /**
+   * The approval queue: every row for the period that has not been signed off.
+   * Derived from `rows`, not `visibleRows` — the queue is what still needs a
+   * decision, and a department filter applied to the table should not make
+   * outstanding work appear to have been dealt with.
+   */
+  const pendingRows = useMemo(
+    () => rows.filter((row) => row.status !== 'approved'),
+    [rows],
+  );
+  const pendingPreview = useMemo(
+    () =>
+      pendingRows.slice(0, 4).map((row) => ({
+        id: row.id,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        photoUrl: row.photoUrl,
+        submittedLabel: `Worked ${row.weekLabel}`,
+        hoursLabel: `${row.totalHours} hours`,
+      })),
+    [pendingRows],
+  );
 
   const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
   const pageRows = useMemo(
@@ -283,9 +403,32 @@ export function TimesheetsPage(): JSX.Element {
     [rows],
   );
 
+  /**
+   * Payroll CSV for the visible period (§16 "Export payroll data", §47
+   * "Exports must use current filters").
+   *
+   * `visibleRows` rather than `rows`, so the file is what the manager filtered
+   * to. Approval state is a column: a payroll run needs to know which of these
+   * lines a human has actually signed off, and a file that hides that
+   * distinction is how unapproved hours get paid.
+   */
   const handleExport = useCallback((): void => {
-    showToast('info', 'Timesheet export lives on the Reports screen.');
-  }, [showToast]);
+    if (visibleRows.length === 0) {
+      showError('There are no hours in this period to export.');
+      return;
+    }
+    downloadCsv(`rotaflow-timesheets-${period.dates[0] ?? todayIso()}`, visibleRows, [
+      { label: 'Staff member', value: (r) => `${r.firstName} ${r.lastName}` },
+      { label: 'Job title', value: (r) => r.jobTitle ?? '' },
+      { label: 'Period', value: (r) => r.weekLabel },
+      { label: 'Shifts', value: (r) => r.shifts },
+      { label: 'Regular hours', value: (r) => r.regularHours },
+      { label: 'Overtime hours', value: (r) => r.overtimeHours },
+      { label: 'Total hours', value: (r) => r.totalHours },
+      { label: 'Approval status', value: (r) => r.status },
+    ]);
+    showToast('success', `Exported ${visibleRows.length} timesheet rows.`);
+  }, [visibleRows, period.dates, showError, showToast]);
 
   if (loadFailed && !loading) {
     return (
@@ -299,6 +442,211 @@ export function TimesheetsPage(): JSX.Element {
       </Card>
     );
   }
+
+  const detailRow = detailStaffId
+    ? (rows.find((row) => row.id === detailStaffId) ?? null)
+    : null;
+  const detailSegments = detailStaffId ? (segmentsByStaff.get(detailStaffId) ?? []) : [];
+
+  /**
+   * Rendered by both the team and the personal branch. Declared once rather
+   * than duplicated: three dialogs copy-pasted into two returns is three
+   * chances for them to drift apart.
+   */
+  const dialogs = (
+    <>
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="More filters"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="ts-min-hours">Minimum total hours</Label>
+            <Input
+              id="ts-min-hours"
+              type="number"
+              min="0"
+              step="0.5"
+              inputMode="decimal"
+              placeholder="No minimum"
+              value={minHours}
+              onChange={(e) => {
+                setMinHours(e.target.value);
+                setPage(1);
+              }}
+            />
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              Hides anyone below this many worked hours in the period — useful for
+              spotting short weeks before they reach payroll.
+            </p>
+          </div>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={overtimeOnly}
+              onChange={(e) => {
+                setOvertimeOnly(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only show rows with overtime
+          </label>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{visibleRows.length}</strong> of {rows.length} rows.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setMinHours('');
+                setOvertimeOnly(false);
+                setDepartmentId(null);
+                setStatusFilter('all');
+                setStaffFilterId(null);
+                setPage(1);
+              }}
+            >
+              Clear all
+            </Button>
+            <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={detailRow !== null}
+        onClose={() => setDetailStaffId(null)}
+        title={
+          detailRow
+            ? `${detailRow.firstName} ${detailRow.lastName} — ${detailRow.weekLabel}`
+            : ''
+        }
+      >
+        {detailRow && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <dt className="text-content-muted dark:text-content-muted-dark">
+                  Regular
+                </dt>
+                <dd className="font-semibold tabular-nums text-content dark:text-content-dark">
+                  {detailRow.regularHours} h
+                </dd>
+              </div>
+              <div>
+                <dt className="text-content-muted dark:text-content-muted-dark">
+                  Overtime
+                </dt>
+                <dd className="font-semibold tabular-nums text-content dark:text-content-dark">
+                  {detailRow.overtimeHours} h
+                </dd>
+              </div>
+              <div>
+                <dt className="text-content-muted dark:text-content-muted-dark">Total</dt>
+                <dd className="font-semibold tabular-nums text-content dark:text-content-dark">
+                  {detailRow.totalHours} h
+                </dd>
+              </div>
+            </dl>
+
+            <div>
+              <h3 className="mb-2 text-sm font-semibold text-content dark:text-content-dark">
+                Worked segments
+              </h3>
+              {detailSegments.length === 0 ? (
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  No paired clock events in this period.
+                </p>
+              ) : (
+                <ul className="max-h-64 space-y-2 overflow-y-auto">
+                  {detailSegments.map((segment) => (
+                    <li
+                      key={segment.clockIn.id}
+                      className="rounded-lg border border-surface-border p-3 text-sm dark:border-surface-border-dark"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-content dark:text-content-dark">
+                          {format(new Date(segment.clockIn.event_at), 'EEE d MMM, HH:mm')}
+                          {' – '}
+                          {segment.clockOut
+                            ? format(new Date(segment.clockOut.event_at), 'HH:mm')
+                            : 'still clocked in'}
+                        </span>
+                        <span className="shrink-0 font-semibold tabular-nums text-content dark:text-content-dark">
+                          {formatHours(segment.minutes)} h
+                        </span>
+                      </div>
+                      {/* The honest-ambiguity flag from lib/hours.ts — a
+                          forgotten clock-out must be visible, never guessed. */}
+                      {segment.reviewReason && (
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-warning">
+                          <AlertTriangle size={13} aria-hidden="true" />
+                          {segment.reviewReason === 'missing_clock_out'
+                            ? 'No clock-out recorded — needs review before pay.'
+                            : 'Break not closed — deducted to clock-out.'}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        title="How these hours are worked out"
+      >
+        <div className="space-y-4 text-sm text-content dark:text-content-dark">
+          <p>
+            Every figure here is recomputed from <strong>clock in and out events</strong>{' '}
+            each time the screen loads. Nothing is typed in, and nothing is stored as a
+            number that could drift from the events behind it.
+          </p>
+          <div>
+            <h3 className="mb-1 font-semibold">Regular and overtime</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Worked minutes up to the person&rsquo;s contracted weekly hours are regular;
+              anything beyond is overtime. Someone with no contracted hours recorded has
+              all their time counted as regular, because there is no threshold to measure
+              against.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Breaks</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Break start and end events are deducted from the segment they fall in. A
+              break that was started and never ended is deducted up to the clock-out and
+              flagged, rather than paid in full.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Flagged rows</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Where the events are ambiguous — most often a forgotten clock-out — the
+              segment is shown with a warning and zero minutes instead of a guess. Open
+              the row to see which segment needs attention. A timesheet feeds
+              someone&rsquo;s pay, so an estimate is never presented as a fact.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Approval</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Approving a period records a sign-off with a snapshot of the agreed hours.
+              If a clock event is corrected afterwards the derived figure moves and the
+              snapshot does not — that disagreement is deliberate, and worth
+              investigating.
+            </p>
+          </div>
+        </div>
+      </Modal>
+    </>
+  );
 
   // ---- Manager / whole-team view -------------------------------------------
   if (teamMode && canApprove) {
@@ -362,17 +710,16 @@ export function TimesheetsPage(): JSX.Element {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onExport={handleExport}
-          onApproveSelected={() =>
-            showToast('info', 'Timesheet approval is not built yet.')
-          }
+          onApproveSelected={() => void handleApproveSelected()}
+          approving={approving}
           periodLabel={period.label}
           onPeriodClick={() => setAnchor(todayIso())}
           locations={locations.map((l) => ({ id: l.id, name: l.name }))}
           locationId={locationId}
           onLocationChange={setLocationId}
-          departments={[]}
-          departmentId={null}
-          onDepartmentChange={() => {}}
+          departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+          departmentId={departmentId}
+          onDepartmentChange={setDepartmentId}
           staff={rows.map((row) => ({
             id: row.id,
             name: `${row.firstName} ${row.lastName}`,
@@ -381,7 +728,7 @@ export function TimesheetsPage(): JSX.Element {
           onStaffChange={setStaffFilterId}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          onFilters={() => showToast('info', 'More filters are coming soon.')}
+          onFilters={() => setFiltersOpen(true)}
           rows={pageRows}
           selectedIds={selectedIds}
           onToggleRow={(id) =>
@@ -394,8 +741,8 @@ export function TimesheetsPage(): JSX.Element {
               prev.length === pageRows.length ? [] : pageRows.map((row) => row.id),
             )
           }
-          onOpenRow={() => showToast('info', 'Timesheet detail is not built yet.')}
-          onRowMenu={() => showToast('info', 'Timesheet detail is not built yet.')}
+          onOpenRow={setDetailStaffId}
+          onRowMenu={setDetailStaffId}
           showCost={false}
           showDoubleTime={false}
           emptyMessage={loading ? 'Loading…' : 'No clock events in this period.'}
@@ -410,12 +757,16 @@ export function TimesheetsPage(): JSX.Element {
           counts={counts}
           summaryRangeLabel={period.label}
           onSummaryRangeClick={() => setAnchor(todayIso())}
-          pending={[]}
-          pendingMoreCount={0}
-          onViewAllPending={() => {}}
+          pending={pendingPreview}
+          pendingMoreCount={Math.max(0, pendingRows.length - pendingPreview.length)}
+          onViewAllPending={() => {
+            setStatusFilter('submitted');
+            setPage(1);
+          }}
           quickActions={QUICK_ACTIONS}
-          onViewGuide={() => showToast('info', 'The timesheet guide is coming soon.')}
+          onViewGuide={() => setGuideOpen(true)}
         />
+        {dialogs}
       </div>
     );
   }
@@ -591,6 +942,7 @@ export function TimesheetsPage(): JSX.Element {
           })}
         </div>
       )}
+      {dialogs}
     </div>
   );
 }

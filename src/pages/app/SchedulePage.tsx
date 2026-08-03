@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
@@ -7,7 +8,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
-import { listLocations } from '@/services/locationService';
+import { listDepartments, listLocations } from '@/services/locationService';
 import { listActiveStaff, getMyStaffProfile } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import { listShiftsForPeriod } from '@/services/shiftService';
@@ -31,6 +32,8 @@ import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Label } from '@/components/ui/Label';
+import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { ScheduleAgenda } from '@/components/schedule/ScheduleAgenda';
 import {
@@ -44,6 +47,7 @@ import type { ScheduleAnnouncement } from '@/components/schedule/ScheduleAnnounc
 import type { PublishEvent } from '@/components/schedule/PublishingHistoryCard';
 import type {
   Announcement,
+  Department,
   Location,
   Rota,
   Shift,
@@ -90,10 +94,11 @@ function timeAgo(iso: string): string {
  * there is no personal schedule to show them.
  */
 export function SchedulePage(): JSX.Element {
+  const navigate = useNavigate();
   const { orgId, orgName } = useOrg();
   const { canBuildRota } = usePermissions();
   const { user } = useSupabaseAuth();
-  const { showError, showToast } = useToast();
+  const { showError } = useToast();
 
   const [view, setView] = useState<ScheduleView>('week');
   const [grouping, setGrouping] = useState<ScheduleGrouping>('location');
@@ -106,7 +111,7 @@ export function SchedulePage(): JSX.Element {
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([]);
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
-  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [allShifts, setAllShifts] = useState<Shift[]>([]);
   const [rotas, setRotas] = useState<Rota[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
@@ -114,6 +119,13 @@ export function SchedulePage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [shiftTypeFilter, setShiftTypeFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [openOnly, setOpenOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Live updates: refetch when someone else changes this data.
   useRealtimeRefresh({
@@ -140,17 +152,19 @@ export function SchedulePage(): JSX.Element {
     let active = true;
     void (async () => {
       try {
-        const [locs, staffRows, types, mine] = await Promise.all([
+        const [locs, staffRows, types, mine, depts] = await Promise.all([
           listLocations(orgId),
           listActiveStaff(orgId),
           listShiftTypes(orgId),
           getMyStaffProfile(orgId, user.id),
+          listDepartments(orgId),
         ]);
         if (!active) return;
         setLocations(locs);
         setStaff(staffRows);
         setShiftTypes(types);
         setMyProfile(mine);
+        setDepartments(depts);
         // Staff land on their own schedule; managers on the whole org.
         setPersonalOnly(mine !== null && !canBuildRota);
       } catch (err) {
@@ -181,11 +195,11 @@ export function SchedulePage(): JSX.Element {
           staffProfileId: personalOnly ? myProfile?.id : null,
         });
         if (!active) return;
-        setShifts(rows);
+        setAllShifts(rows);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'schedule:load-shifts' });
-        setShifts([]);
+        setAllShifts([]);
         setLoadFailed(true);
         showError('Could not load shifts for this period.');
       } finally {
@@ -233,6 +247,22 @@ export function SchedulePage(): JSX.Element {
       active = false;
     };
   }, [orgId, personalOnly, staff, reloadKey]);
+
+  /**
+   * What the screen actually shows, after the Filters dialog.
+   *
+   * Deliberately derived once here rather than applied inside each consumer:
+   * the grid, the coverage totals, the summary tiles and the ICS export all
+   * read `shifts`, and a filter that moved the grid without moving the
+   * coverage percentage beside it would be reporting on rows nobody can see.
+   */
+  const shifts = useMemo(() => {
+    let rows = allShifts;
+    if (shiftTypeFilter) rows = rows.filter((s) => s.shift_type_id === shiftTypeFilter);
+    if (departmentFilter) rows = rows.filter((s) => s.department_id === departmentFilter);
+    if (openOnly) rows = rows.filter((s) => s.staff_profile_id === null);
+    return rows;
+  }, [allShifts, shiftTypeFilter, departmentFilter, openOnly]);
 
   const shiftsByDate = useMemo(() => {
     const map = new Map<string, Shift[]>();
@@ -387,6 +417,22 @@ export function SchedulePage(): JSX.Element {
     [rotas],
   );
 
+  /** Every publication, for the dialog. `history` is the rail's top three. */
+  const fullHistory = useMemo<PublishEvent[]>(
+    () =>
+      rotas
+        .filter(
+          (rota): rota is Rota & { published_at: string } => rota.published_at !== null,
+        )
+        .sort((a, b) => b.published_at.localeCompare(a.published_at))
+        .map((rota) => ({
+          id: rota.id,
+          label: `${rota.name} published`,
+          timeLabel: format(new Date(rota.published_at), 'd MMM yyyy, HH:mm'),
+        })),
+    [rotas],
+  );
+
   const requests = useMemo<ScheduleRequest[]>(
     () =>
       pending.slice(0, 3).map((request) => ({
@@ -440,49 +486,164 @@ export function SchedulePage(): JSX.Element {
     );
   }
 
+  const activeFilterCount =
+    (shiftTypeFilter ? 1 : 0) + (departmentFilter ? 1 : 0) + (openOnly ? 1 : 0);
+
+  /** Shared by the grid and the agenda branch — declared once. */
+  const dialogs = (
+    <>
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Filter this schedule"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="sched-type">Shift type</Label>
+            <Select
+              id="sched-type"
+              value={shiftTypeFilter}
+              onChange={(e) => setShiftTypeFilter(e.target.value)}
+            >
+              <option value="">All shift types</option>
+              {shiftTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="sched-dept">Department</Label>
+            <Select
+              id="sched-dept"
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+            >
+              <option value="">All departments</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={openOnly}
+              onChange={(e) => setOpenOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only show open shifts (nobody assigned)
+          </label>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{shifts.length}</strong> of {allShifts.length} published
+            shifts. Coverage and the summary tiles follow this filter.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              disabled={activeFilterCount === 0}
+              onClick={() => {
+                setShiftTypeFilter('');
+                setDepartmentFilter('');
+                setOpenOnly(false);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        title="Publishing history"
+      >
+        {fullHistory.length === 0 ? (
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            Nothing has been published for this organisation yet. Publishing a rota from
+            the Rota Builder records an entry here.
+          </p>
+        ) : (
+          <ul className="max-h-96 space-y-2 overflow-y-auto">
+            {fullHistory.map((event) => (
+              <li
+                key={event.id}
+                className="rounded-lg border border-surface-border p-3 dark:border-surface-border-dark"
+              >
+                <p className="text-sm font-semibold text-content dark:text-content-dark">
+                  {event.label}
+                </p>
+                <p className="text-xs text-content-muted dark:text-content-muted-dark">
+                  {event.timeLabel}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        {/* `rotas` has no published_by column. Saying so beats an invented name. */}
+        <p className="mt-4 border-t border-surface-border pt-3 text-xs text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+          Rotas record when they were published, but not by whom, so no author is shown.
+        </p>
+      </Modal>
+    </>
+  );
+
   // ---- Manager / whole-organisation view -----------------------------------
   // The month view stays an agenda: 30+ columns cannot be a readable grid.
   if (!personalOnly && view !== 'month') {
     return (
-      <PublishedScheduleView
-        periodLabel={period.label}
-        view={view}
-        onViewChange={setView}
-        grouping={grouping}
-        onGroupingChange={setGrouping}
-        locations={locations.map((l) => ({ id: l.id, name: l.name }))}
-        locationId={locationId}
-        onLocationChange={setLocationId}
-        onPrev={() => setAnchor((a) => stepPeriod(view, a, -1))}
-        onNext={() => setAnchor((a) => stepPeriod(view, a, 1))}
-        onToday={() => setAnchor(todayIso())}
-        onExport={handleExport}
-        onPrint={() => window.print()}
-        onFilters={() => showToast('info', 'Filters are coming soon.')}
-        onSettings={() => showToast('info', 'Display settings are coming soon.')}
-        summary={summary}
-        dates={period.dates}
-        today={todayIso()}
-        groups={groups}
-        totals={totals}
-        selectedChipId={selectedShiftId}
-        onSelectChip={setSelectedShiftId}
-        selectedShift={selectedShift}
-        onCloseShift={() => setSelectedShiftId(null)}
-        published={shifts.length > 0}
-        publishedAtLabel={publishedAtLabel}
-        onViewHistory={() => showToast('info', 'Change history is coming soon.')}
-        requests={requests}
-        announcements={railAnnouncements}
-        history={history}
-        gridPlaceholder={
-          loading
-            ? 'Loading…'
-            : shifts.length === 0
-              ? `No published shifts in this period.${canBuildRota ? ' Build and publish a rota from the Rota Builder.' : ''}`
-              : undefined
-        }
-      />
+      <>
+        <PublishedScheduleView
+          periodLabel={period.label}
+          view={view}
+          onViewChange={setView}
+          grouping={grouping}
+          onGroupingChange={setGrouping}
+          locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+          locationId={locationId}
+          onLocationChange={setLocationId}
+          onPrev={() => setAnchor((a) => stepPeriod(view, a, -1))}
+          onNext={() => setAnchor((a) => stepPeriod(view, a, 1))}
+          onToday={() => setAnchor(todayIso())}
+          onExport={handleExport}
+          onPrint={() => window.print()}
+          onFilters={() => setFiltersOpen(true)}
+          // Display preferences are a person's own settings and already have a
+          // screen (§21). A second, screen-local copy of them would be two
+          // sources of truth for the same choice.
+          onSettings={() => {
+            void navigate('/app/account/preferences');
+          }}
+          summary={summary}
+          dates={period.dates}
+          today={todayIso()}
+          groups={groups}
+          totals={totals}
+          selectedChipId={selectedShiftId}
+          onSelectChip={setSelectedShiftId}
+          selectedShift={selectedShift}
+          onCloseShift={() => setSelectedShiftId(null)}
+          published={shifts.length > 0}
+          publishedAtLabel={publishedAtLabel}
+          onViewHistory={() => setHistoryOpen(true)}
+          requests={requests}
+          announcements={railAnnouncements}
+          history={history}
+          gridPlaceholder={
+            loading
+              ? 'Loading…'
+              : shifts.length === 0
+                ? `No published shifts in this period.${canBuildRota ? ' Build and publish a rota from the Rota Builder.' : ''}`
+                : undefined
+          }
+        />
+        {dialogs}
+      </>
     );
   }
 

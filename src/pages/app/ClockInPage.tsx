@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Clock, LogIn, LogOut, MapPin, MapPinOff, WifiOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { addDays, addWeeks, format, isSameDay, startOfWeek, subWeeks } from 'date-fns';
+import { LifeBuoy, ScanLine, ShieldQuestion, WifiOff } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -9,15 +11,44 @@ import { FailedWritesNotice } from '@/components/FailedWritesNotice';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile } from '@/services/staffService';
-import { listLocations } from '@/services/locationService';
-import { getLatestClockEvent, recordClockEvent } from '@/services/clockService';
+import { listDepartments, listLocations } from '@/services/locationService';
+import { listShiftTypes } from '@/services/shiftTypeService';
+import { listShiftsForPeriod } from '@/services/shiftService';
+import {
+  getLatestClockEvent,
+  listClockEventsForStaff,
+  recordClockEvent,
+} from '@/services/clockService';
 import { checkGeofence } from '@/lib/geo';
+import { pairClockEvents } from '@/lib/hours';
 import { reportError } from '@/lib/sentry';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
+import {
+  CLOCK_IN_WINDOW_MINUTES,
+  buildAttendance,
+  buildCurrentShift,
+  buildRecentActivity,
+  buildTodaySchedule,
+  buildWeeklySummary,
+  clockStage,
+  clockWindow,
+  pickCurrentShift,
+  segmentsInRange,
+} from '@/lib/clockRows';
 import { Card } from '@/components/ui/Card';
+import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
-import type { ClockEvent, ClockEventInsert, Location, StaffProfile } from '@/types';
+import { ClockInView } from '@/components/clockin/ClockInView';
+import type { ClockLookups } from '@/lib/clockRows';
+import type { HelpLink } from '@/components/clockin/NeedHelpCard';
+import type {
+  ClockEvent,
+  ClockEventInsert,
+  Department,
+  Location,
+  Shift,
+  ShiftType,
+  StaffProfile,
+} from '@/types';
 
 /**
  * The `clock_events.type` column is `text` + a check constraint, not a
@@ -26,67 +57,90 @@ import type { ClockEvent, ClockEventInsert, Location, StaffProfile } from '@/typ
  * view of that same constraint.
  */
 type ClockEventType = 'in' | 'break_start' | 'break_end' | 'out';
-type NextAction = ClockEventType;
 
-function toClockEventType(value: string | undefined): ClockEventType | 'none' {
-  return value === 'in' ||
-    value === 'break_start' ||
-    value === 'break_end' ||
-    value === 'out'
-    ? value
-    : 'none';
-}
-
-const NEXT_ACTION: Record<ClockEventType | 'none', NextAction> = {
-  none: 'in',
-  in: 'break_start',
-  break_start: 'break_end',
-  break_end: 'out',
-  out: 'in',
-};
-
-const ACTION_LABEL: Record<NextAction, string> = {
+const ACTION_LABEL: Record<ClockEventType, string> = {
   in: 'Clock in',
   break_start: 'Start break',
   break_end: 'End break',
   out: 'Clock out',
 };
 
-const STATUS_LABEL: Record<ClockEventType | 'none', string> = {
-  none: 'Not clocked in',
-  in: 'Clocked in',
-  break_start: 'On break',
-  break_end: 'Clocked in',
-  out: 'Clocked out',
+type HelpTopic = 'policy' | 'trouble' | 'support';
+
+const HELP_TITLE: Record<HelpTopic, string> = {
+  policy: 'Clock In / Out Policy',
+  trouble: 'Troubleshooting',
+  support: 'Contact Support',
 };
 
+interface LoadedData {
+  profile: StaffProfile | null;
+  locations: Location[];
+  departments: Department[];
+  shiftTypes: ShiftType[];
+  shifts: Shift[];
+  events: ClockEvent[];
+  latest: ClockEvent | null;
+}
+
+const EMPTY: LoadedData = {
+  profile: null,
+  locations: [],
+  departments: [],
+  shiftTypes: [],
+  shifts: [],
+  events: [],
+  latest: null,
+};
+
+function nameById<T extends { id: string }>(
+  rows: T[],
+  name: (row: T) => string,
+): Record<string, string> {
+  return Object.fromEntries(rows.map((row) => [row.id, name(row)]));
+}
+
 /**
- * `/app/clock` — staff clock in/out. GPS + manual only; QR is deferred (it
- * needs a per-location code to scan, which nothing in the product generates
- * yet — building the scan side without the generation side would be a screen
- * with no way to actually use it).
+ * `/app/clock` — the live clock-in screen, matching design/clockin.png.
+ *
+ * Everything on it is computed from real rows: the shift and its break from
+ * `shifts`, the day's schedule from the same, recent activity and both weeks'
+ * hours from `clock_events` paired through `@/lib/hours`. The mapping lives in
+ * `@/lib/clockRows` so `/clockin-preview` drives the identical component tree
+ * from fixtures — the design loop screenshots what actually ships.
+ *
+ * GPS + manual only; QR and PIN are deferred — see `ClockActionPane`.
  *
  * The offline path is the point of this screen existing in Phase 5: a failed
  * insert — network genuinely down, not a server rejection — queues via
- * useSyncQueue's 'clock' kind instead of failing the action outright. That
- * queue was built in Phase 4 with no consumer; this is its first one.
+ * useSyncQueue's 'clock' kind instead of failing the action outright.
  */
 export function ClockInPage(): JSX.Element {
   const { orgId } = useOrg();
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const geo = useGeolocation();
-  const { pending, enqueue, syncing, deadLettered, discard } = useSyncQueue();
+  const { enqueue, deadLettered, discard } = useSyncQueue();
   const { showError, showSuccess } = useToast();
+  const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<StaffProfile | null>(null);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [locationId, setLocationId] = useState<string | null>(null);
-  const [latest, setLatest] = useState<ClockEvent | null>(null);
+  const [data, setData] = useState<LoadedData>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [locationId, setLocationId] = useState<string | null>(null);
+  const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
+
+  // The hero clock ticks every second, exactly as the reference shows it. Held
+  // in state rather than read inline so every derived label — the countdown
+  // pill, the time-window caption, "Today" — re-renders with it instead of
+  // going stale on a screen someone leaves open across their whole shift.
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Live updates: a manager correcting a clock event, or this person clocking
   // in on another device, should be reflected here rather than leaving two
@@ -102,20 +156,34 @@ export function ClockInPage(): JSX.Element {
     let active = true;
     void (async () => {
       try {
-        const [myProfile, locs] = await Promise.all([
+        // One window covering last week, this week and today, partitioned in
+        // memory below — one range query rather than three overlapping ones.
+        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const fromIso = subWeeks(weekStart, 1).toISOString();
+        const toIso = addWeeks(weekStart, 1).toISOString();
+
+        const [profile, locations, departments, shiftTypes] = await Promise.all([
           getMyStaffProfile(orgId, user.id),
           listLocations(orgId),
+          listDepartments(orgId),
+          listShiftTypes(orgId),
         ]);
         if (!active) return;
-        setProfile(myProfile);
-        setLocations(locs);
-        setLocationId((current) => current ?? locs[0]?.id ?? null);
 
-        if (myProfile) {
-          const lastEvent = await getLatestClockEvent(myProfile.id);
-          if (!active) return;
-          setLatest(lastEvent);
+        if (!profile) {
+          setData({ ...EMPTY, locations, departments, shiftTypes });
+          return;
         }
+
+        const [shifts, events, latest] = await Promise.all([
+          listShiftsForPeriod({ orgId, fromIso, toIso, staffProfileId: profile.id }),
+          listClockEventsForStaff({ staffProfileId: profile.id, fromIso, toIso }),
+          getLatestClockEvent(profile.id),
+        ]);
+        if (!active) return;
+
+        setData({ profile, locations, departments, shiftTypes, shifts, events, latest });
+        setLocationId((current) => current ?? locations[0]?.id ?? null);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'clock:load' });
@@ -129,16 +197,76 @@ export function ClockInPage(): JSX.Element {
     };
   }, [orgId, user, reloadKey]);
 
-  const currentStatus = toClockEventType(latest?.type);
-  const nextAction = NEXT_ACTION[currentStatus];
-  const selectedLocation = useMemo(
-    () => locations.find((l) => l.id === locationId) ?? null,
-    [locations, locationId],
+  const lookups = useMemo<ClockLookups>(
+    () => ({
+      locationNames: nameById(data.locations, (l) => l.name),
+      departmentNames: nameById(data.departments, (d) => d.name),
+      shiftTypeNames: nameById(data.shiftTypes, (t) => t.name),
+      jobTitle: data.profile?.job_title ?? null,
+    }),
+    [data.locations, data.departments, data.shiftTypes, data.profile],
   );
 
-  const handleClock = useCallback(
-    async (method: 'gps' | 'manual'): Promise<void> => {
-      if (!orgId || !profile) return;
+  const view = useMemo(() => {
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const nextWeekStart = addWeeks(weekStart, 1);
+    const lastWeekStart = subWeeks(weekStart, 1);
+
+    const startedIn = (shift: Shift, from: Date, to: Date): boolean => {
+      const at = new Date(shift.starts_at);
+      return at >= from && at < to;
+    };
+
+    const todayShifts = data.shifts.filter((s) => isSameDay(new Date(s.starts_at), now));
+    const thisWeekShifts = data.shifts.filter((s) =>
+      startedIn(s, weekStart, nextWeekStart),
+    );
+    const lastWeekShifts = data.shifts.filter((s) =>
+      startedIn(s, lastWeekStart, weekStart),
+    );
+
+    const segments = pairClockEvents(data.events, now);
+    const thisWeek = buildWeeklySummary(
+      thisWeekShifts,
+      segmentsInRange(segments, weekStart, nextWeekStart),
+    );
+    const lastWeek = buildWeeklySummary(
+      lastWeekShifts,
+      segmentsInRange(segments, lastWeekStart, weekStart),
+    );
+
+    const shift = pickCurrentShift(todayShifts, now);
+
+    return {
+      shift,
+      currentShift: shift ? buildCurrentShift(shift, lookups, now) : null,
+      schedule: buildTodaySchedule(todayShifts, lookups, now),
+      activity: buildRecentActivity(data.events, now),
+      weekly: {
+        periodLabel: `${format(weekStart, 'd MMM')} – ${format(addDays(weekStart, 6), 'd MMM yyyy')}`,
+        stats: thisWeek.stats,
+        completedPercent: thisWeek.completedPercent,
+        progressLabel: thisWeek.progressLabel,
+      },
+      attendance: buildAttendance(thisWeek.attendancePercent, lastWeek.attendancePercent),
+      window: clockWindow(shift, now),
+    };
+  }, [data.shifts, data.events, lookups, now]);
+
+  const stage = clockStage(data.latest);
+
+  /**
+   * Which site the event is recorded against: the rostered shift's, else the
+   * one picked below. Geofencing is only meaningful against a real location.
+   */
+  const activeLocation = useMemo<Location | null>(() => {
+    const id = view.shift?.location_id ?? locationId;
+    return data.locations.find((l) => l.id === id) ?? null;
+  }, [view.shift, locationId, data.locations]);
+
+  const submit = useCallback(
+    async (type: ClockEventType, method: 'gps' | 'manual'): Promise<void> => {
+      if (!orgId || !data.profile) return;
       setSubmitting(true);
       try {
         let position: { latitude: number; longitude: number; accuracy: number } | null =
@@ -156,20 +284,21 @@ export function ClockInPage(): JSX.Element {
             setSubmitting(false);
             return;
           }
-          if (selectedLocation) {
-            const check = checkGeofence(position, selectedLocation);
+          if (activeLocation) {
+            const check = checkGeofence(position, activeLocation);
             if (!check.withinFence) {
-              geofenceNote = `${Math.round(check.distanceM)}m from ${selectedLocation.name} (outside the ${selectedLocation.geofence_radius_m}m geofence)`;
+              geofenceNote = `${Math.round(check.distanceM)}m from ${activeLocation.name} (outside the ${activeLocation.geofence_radius_m}m geofence)`;
             }
           }
         }
 
         const input: ClockEventInsert = {
           org_id: orgId,
-          staff_profile_id: profile.id,
-          type: nextAction,
+          staff_profile_id: data.profile.id,
+          type,
           method,
-          location_name: selectedLocation?.name ?? null,
+          shift_id: view.shift?.id ?? null,
+          location_name: activeLocation?.name ?? null,
           latitude: position?.latitude ?? null,
           longitude: position?.longitude ?? null,
           accuracy: position?.accuracy ?? null,
@@ -177,52 +306,99 @@ export function ClockInPage(): JSX.Element {
 
         if (!online) {
           await enqueue('clock', input);
-          // Reflects the action locally so the button/status updates
-          // immediately — the row itself does not exist in Postgres until the
-          // outbox flushes, so this is a client-only optimistic event, not
-          // read back from the server.
-          setLatest({
-            id: `pending-${Date.now()}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            event_at: new Date().toISOString(),
-            shift_id: null,
+          // Reflects the action locally so the button and status update
+          // immediately — the row does not exist in Postgres until the outbox
+          // flushes, so this is a client-only optimistic event, never read back
+          // from the server.
+          const stamp = new Date().toISOString();
+          const optimistic = {
+            id: `pending-${stamp}`,
+            created_at: stamp,
+            updated_at: stamp,
+            event_at: stamp,
             synced: false,
             ...input,
-          } as ClockEvent);
+          } as ClockEvent;
+          setData((current) => ({
+            ...current,
+            latest: optimistic,
+            events: [...current.events, optimistic],
+          }));
           showSuccess(
-            `${ACTION_LABEL[nextAction]} saved offline — it will sync automatically when you're back online.`,
+            `${ACTION_LABEL[type]} saved offline — it will sync automatically when you're back online.`,
           );
           return;
         }
 
         const created = await recordClockEvent(input);
-        setLatest(created);
+        setData((current) => ({
+          ...current,
+          latest: created,
+          events: [...current.events, created],
+        }));
         showSuccess(
           geofenceNote
-            ? `${ACTION_LABEL[nextAction]} recorded — ${geofenceNote}.`
-            : `${ACTION_LABEL[nextAction]} recorded.`,
+            ? `${ACTION_LABEL[type]} recorded — ${geofenceNote}.`
+            : `${ACTION_LABEL[type]} recorded.`,
         );
       } catch (err) {
         reportError(err, { area: 'clock:submit' });
-        showError(
-          `Could not ${ACTION_LABEL[nextAction].toLowerCase()}. Please try again.`,
-        );
+        showError(`Could not ${ACTION_LABEL[type].toLowerCase()}. Please try again.`);
       } finally {
         setSubmitting(false);
       }
     },
     [
       orgId,
-      profile,
-      nextAction,
+      data.profile,
+      view.shift,
       online,
-      selectedLocation,
+      activeLocation,
       geo,
       enqueue,
       showError,
       showSuccess,
     ],
+  );
+
+  // Primary moves the shift forward; secondary is the alternate route to the
+  // same place — manual instead of GPS before the shift, breaks once it is
+  // under way. Clocking out is reachable from both 'working' and 'break', so
+  // nobody is trapped on a break they forgot to end.
+  const onPrimary = useCallback((): void => {
+    if (stage === 'working') void submit('out', 'gps');
+    else if (stage === 'break') void submit('break_end', 'manual');
+    else void submit('in', 'gps');
+  }, [stage, submit]);
+
+  const onSecondary = useCallback((): void => {
+    if (stage === 'working') void submit('break_start', 'manual');
+    else if (stage === 'break') void submit('out', 'gps');
+    else void submit('in', 'manual');
+  }, [stage, submit]);
+
+  const help = useMemo<HelpLink[]>(
+    () => [
+      {
+        id: 'policy',
+        icon: ShieldQuestion,
+        label: HELP_TITLE.policy,
+        onSelect: () => setHelpTopic('policy'),
+      },
+      {
+        id: 'trouble',
+        icon: ScanLine,
+        label: HELP_TITLE.trouble,
+        onSelect: () => setHelpTopic('trouble'),
+      },
+      {
+        id: 'support',
+        icon: LifeBuoy,
+        label: HELP_TITLE.support,
+        onSelect: () => setHelpTopic('support'),
+      },
+    ],
+    [],
   );
 
   if (loading) {
@@ -243,7 +419,7 @@ export function ClockInPage(): JSX.Element {
     );
   }
 
-  if (!profile) {
+  if (!data.profile) {
     return (
       <Card>
         <p className="text-content-muted dark:text-content-muted-dark">
@@ -254,120 +430,137 @@ export function ClockInPage(): JSX.Element {
     );
   }
 
-  return (
-    <div className="mx-auto max-w-lg">
-      <h1 className="mb-1 font-display text-page-title font-semibold text-content dark:text-content-dark">
-        Clock in
-      </h1>
-      <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
-        {profile.first_name}, here&rsquo;s your status.
-      </p>
-
+  const notices = (
+    <>
       {!online && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+        <div className="mt-6 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
           <WifiOff size={16} aria-hidden="true" />
           You&rsquo;re offline. Clock actions are saved on this device and will sync
           automatically once you&rsquo;re back online.
         </div>
       )}
+      {/* Queued-and-waiting and queued-but-rejected are different states and
+          must not look alike. The banner above is reassuring on purpose — those
+          events will send. This one has to correct a belief: the person tapped
+          Clock in, saw it succeed, and is not clocked in. */}
+      <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mt-6" />
+    </>
+  );
 
-      {pending.length > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-          <Clock size={16} aria-hidden="true" />
-          {syncing
-            ? 'Syncing queued clock events…'
-            : `${pending.length} clock event${pending.length === 1 ? '' : 's'} waiting to sync.`}
-        </div>
-      )}
-
-      {/* Queued-and-waiting (above) and queued-but-rejected are different
-          states and must not look alike. The banner above is reassuring on
-          purpose — those events will send. This one has to correct a belief:
-          the person tapped Clock in, saw it succeed, and is not clocked in. */}
-      <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mb-4" />
-
-      <Card className="mb-6 text-center">
-        <span
-          className={cn(
-            'mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full',
-            currentStatus === 'in' || currentStatus === 'break_end'
-              ? 'bg-success/10 text-success'
-              : currentStatus === 'break_start'
-                ? 'bg-warning/10 text-warning'
-                : 'bg-surface-border/40 text-content-muted dark:bg-surface-border-dark/40 dark:text-content-muted-dark',
-          )}
+  // Only needed when no rostered shift names the site — otherwise the shift's
+  // own location is authoritative and a picker would only invite a wrong answer.
+  const picker =
+    !view.shift && data.locations.length > 1 ? (
+      <div className="mt-4 w-full">
+        <Select
+          aria-label="Location"
+          value={locationId ?? ''}
+          onChange={(e) => setLocationId(e.target.value || null)}
         >
-          <Clock size={28} aria-hidden="true" />
-        </span>
-        <p className="font-display text-xl font-semibold text-content dark:text-content-dark">
-          {STATUS_LABEL[currentStatus]}
-        </p>
-        {latest && (
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            since{' '}
-            {new Date(latest.event_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
-        )}
-      </Card>
-
-      {locations.length > 1 && (
-        <div className="mb-4">
-          <Select
-            aria-label="Location"
-            value={locationId ?? ''}
-            onChange={(e) => setLocationId(e.target.value || null)}
-          >
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Button
-          size="lg"
-          onClick={() => void handleClock('gps')}
-          disabled={submitting}
-          className="w-full"
-        >
-          {nextAction === 'out' || nextAction === 'break_start' ? (
-            <LogOut size={18} aria-hidden="true" className="mr-1.5" />
-          ) : (
-            <LogIn size={18} aria-hidden="true" className="mr-1.5" />
-          )}
-          {ACTION_LABEL[nextAction]} with GPS
-        </Button>
-        <Button
-          size="lg"
-          variant="secondary"
-          onClick={() => void handleClock('manual')}
-          disabled={submitting}
-          className="w-full"
-        >
-          {ACTION_LABEL[nextAction]} manually
-        </Button>
+          {data.locations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </Select>
       </div>
+    ) : null;
 
-      <p className="mt-4 flex items-center gap-1.5 text-xs text-content-muted dark:text-content-muted-dark">
-        {geo.status === 'denied' ? (
-          <>
-            <MapPinOff size={12} aria-hidden="true" />
-            Location access denied — GPS clock-in will ask again each time.
-          </>
-        ) : (
-          <>
-            <MapPin size={12} aria-hidden="true" />
-            GPS is checked against your location&rsquo;s geofence when one is configured;
-            it never blocks manual clock-in.
-          </>
-        )}
-      </p>
-    </div>
+  return (
+    <>
+      <ClockInView
+        policy={{
+          title: 'Important',
+          body: `Please clock in within ${CLOCK_IN_WINDOW_MINUTES} minutes of your scheduled start time.`,
+        }}
+        shift={view.currentShift}
+        stage={stage}
+        clockTime={format(now, 'HH:mm:ss')}
+        clockDateLabel={format(now, 'EEEE, d MMM yyyy')}
+        windowLabel={view.window.label}
+        onPrimaryAction={onPrimary}
+        onSecondaryAction={onSecondary}
+        busy={submitting}
+        actionExtra={picker}
+        schedule={view.schedule}
+        onViewFullSchedule={() => void navigate('/app/schedule')}
+        activity={view.activity}
+        onViewAllActivity={() => void navigate('/app/timesheets')}
+        weekly={view.weekly}
+        onViewTimesheet={() => void navigate('/app/timesheets')}
+        attendance={view.attendance}
+        onViewAttendanceReport={() => void navigate('/app/reports')}
+        help={help}
+        footer={{
+          supportLine: 'Having issues clocking in?',
+          contactLine: 'Your manager can correct any clock event from Timesheets.',
+          onReportIssue: () => setHelpTopic('trouble'),
+        }}
+        notices={notices}
+      />
+
+      <Modal
+        open={helpTopic !== null}
+        onClose={() => setHelpTopic(null)}
+        title={helpTopic ? HELP_TITLE[helpTopic] : ''}
+      >
+        <div className="space-y-3 text-sm text-content-muted dark:text-content-muted-dark">
+          {helpTopic === 'policy' && (
+            <>
+              <p>
+                Clock in from {CLOCK_IN_WINDOW_MINUTES} minutes before your shift starts
+                until the moment it ends. A late clock-in is recorded but never blocked —
+                an hour you worked must not go unpaid because a screen refused you.
+              </p>
+              <p>
+                {activeLocation?.geofence_radius_m
+                  ? `${activeLocation.name} has a ${activeLocation.geofence_radius_m}m geofence. Clocking in from outside it still succeeds; the distance is recorded on the event for your manager to see.`
+                  : 'Your position is recorded with each GPS event when you allow it. No site here has a geofence configured, so nothing is checked against one.'}
+              </p>
+              <p>Breaks are unpaid and are deducted from your worked hours.</p>
+            </>
+          )}
+          {helpTopic === 'trouble' && (
+            <>
+              <p>
+                <span className="font-semibold text-content dark:text-content-dark">
+                  Location denied or unavailable?
+                </span>{' '}
+                Use Clock In Manually. It records the same event without a position, and
+                your manager can see which method was used.
+              </p>
+              <p>
+                <span className="font-semibold text-content dark:text-content-dark">
+                  No connection?
+                </span>{' '}
+                Clock in anyway. The event is saved on this device and sent automatically
+                the moment you are back online.
+              </p>
+              <p>
+                <span className="font-semibold text-content dark:text-content-dark">
+                  Wrong shift showing?
+                </span>{' '}
+                Only published rotas appear here. If yours is still a draft, ask your
+                manager to publish it.
+              </p>
+            </>
+          )}
+          {helpTopic === 'support' && (
+            <>
+              <p>
+                Clock events are your organisation&rsquo;s records, so corrections go
+                through them rather than RotaFlow: your manager or organisation owner can
+                edit any event from Timesheets.
+              </p>
+              <p>
+                Nothing you do here is lost — an event that could not be sent is queued on
+                this device and retried, and one that was rejected is shown to you rather
+                than silently dropped.
+              </p>
+            </>
+          )}
+        </div>
+      </Modal>
+    </>
   );
 }

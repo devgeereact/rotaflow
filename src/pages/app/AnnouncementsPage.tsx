@@ -27,9 +27,25 @@ import { AnnouncementsView } from '@/components/announcements/AnnouncementsView'
 import { AnnouncementComposerModal } from '@/components/announcements/AnnouncementComposerModal';
 import type { AnnouncementFilterSelect } from '@/components/announcements/AnnouncementFilterBar';
 import type { AnnouncementQuickAction } from '@/components/announcements/AnnouncementPreviewPanel';
+import { downloadCsv } from '@/lib/csv';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Label } from '@/components/ui/Label';
+import { Modal } from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Select';
 import type { Announcement, Department, Location } from '@/types';
+
+/** Mirrors the `AnnouncementCategory` union in lib/announcements.ts. */
+const CATEGORY_OPTIONS = [
+  { value: 'general', label: 'General' },
+  { value: 'training', label: 'Training' },
+  { value: 'event', label: 'Event' },
+  { value: 'policy', label: 'Policy' },
+  { value: 'system', label: 'System' },
+  { value: 'rota', label: 'Rota' },
+  { value: 'health', label: 'Health & safety' },
+  { value: 'pay', label: 'Pay' },
+] as const;
 
 const TABS = [
   { value: 'all', label: 'All Announcements' },
@@ -75,6 +91,10 @@ export function AnnouncementsPage(): JSX.Element {
   const [pageSize, setPageSize] = useState(10);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerSeed, setComposerSeed] = useState<Announcement | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [category, setCategory] = useState('');
+  const [pinnedOnly, setPinnedOnly] = useState(false);
 
   // Live updates: refetch when someone else changes this data.
   useRealtimeRefresh({
@@ -140,6 +160,8 @@ export function AnnouncementsPage(): JSX.Element {
           if (name && !row.audience.startsWith(name)) return false;
         }
         if (audience && row.audience !== audience) return false;
+        if (category && row.category !== category) return false;
+        if (pinnedOnly && !row.pinned) return false;
         return true;
       }),
     [
@@ -150,6 +172,8 @@ export function AnnouncementsPage(): JSX.Element {
       locationId,
       departmentId,
       audience,
+      category,
+      pinnedOnly,
       locations,
       departments,
     ],
@@ -329,6 +353,30 @@ export function AnnouncementsPage(): JSX.Element {
     );
   }
 
+  /** CSV of the filtered feed — §47 requires exports to honour the filters. */
+  const handleExport = (): void => {
+    if (filtered.length === 0) {
+      showError('There are no announcements matching these filters to export.');
+      return;
+    }
+    downloadCsv(
+      `rotaflow-announcements-${new Date().toISOString().slice(0, 10)}`,
+      filtered,
+      [
+        { label: 'Title', value: (r) => r.title },
+        { label: 'Summary', value: (r) => r.excerpt },
+        { label: 'Category', value: (r) => r.category },
+        { label: 'Audience', value: (r) => r.audience },
+        { label: 'Locations', value: (r) => r.audienceScope },
+        { label: 'Status', value: (r) => r.status },
+        { label: 'Pinned', value: (r) => (r.pinned ? 'yes' : 'no') },
+        { label: 'When', value: (r) => r.when ?? '' },
+        { label: 'Author', value: (r) => r.authorName },
+      ],
+    );
+    showSuccess(`Exported ${filtered.length} announcements.`);
+  };
+
   const emptyMessage = loading
     ? 'Loading announcements…'
     : activeTab === 'archived'
@@ -337,6 +385,107 @@ export function AnnouncementsPage(): JSX.Element {
 
   return (
     <>
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="More filters"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="ann-category">Category</Label>
+            <Select
+              id="ann-category"
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All categories</option>
+              {CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            {/* Derived, not stored — `announcements` has no category column. */}
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              Categories are worked out from each announcement&rsquo;s wording, not stored
+              against it.
+            </p>
+          </div>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={pinnedOnly}
+              onChange={(e) => {
+                setPinnedOnly(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only show pinned announcements
+          </label>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{filtered.length}</strong> of {mapped.length} announcements.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setCategory('');
+                setPinnedOnly(false);
+                setPage(1);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        title="Writing a good announcement"
+      >
+        <div className="space-y-4 text-sm text-content dark:text-content-dark">
+          <div>
+            <h3 className="mb-1 font-semibold">Who receives it</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Audience narrows by location and department. Choosing both sends only to
+              people who match both — a department at one site, not that department
+              everywhere.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Delivery</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Publishing writes an in-app notification for every recipient immediately.
+              Email and push go out through the notification service where the recipient
+              has opted in and a channel is configured.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Read tracking</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Read counts come from recipients opening the notification. Somebody who
+              reads an announcement over a colleague&rsquo;s shoulder will not be counted,
+              so treat these as a floor rather than an exact figure.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Pinning</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Pinned announcements stay at the top of everyone&rsquo;s feed. Reserve it
+              for things that stay true for a while — pinning everything is the same as
+              pinning nothing.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
       <AnnouncementsView
         tabs={[...TABS]}
         activeTab={activeTab}
@@ -351,7 +500,7 @@ export function AnnouncementsPage(): JSX.Element {
           setPage(1);
         }}
         selects={selects}
-        onFilters={() => showSuccess('More filters are coming in a later release.')}
+        onFilters={() => setFiltersOpen(true)}
         rows={visible}
         selectedId={selectedId}
         onSelect={setSelectedId}
@@ -371,10 +520,8 @@ export function AnnouncementsPage(): JSX.Element {
         }}
         preview={preview}
         quickActions={quickActions}
-        onDownload={() => undefined}
-        onViewGuide={() =>
-          showSuccess('The announcement guide is coming in a later release.')
-        }
+        onDownload={handleExport}
+        onViewGuide={() => setGuideOpen(true)}
       />
 
       {canManageStaff && (

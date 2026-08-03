@@ -28,7 +28,17 @@ import logo from '@/assets/logo.png';
 interface NavItem {
   label: string;
   icon: LucideIcon;
-  to?: string; // omitted = not built yet, rendered disabled
+  /**
+   * Required, deliberately.
+   *
+   * This was optional, and an item without it rendered greyed out with a
+   * "Soon" chip. Every item has had a real route since #75, so the branch was
+   * dead — but leaving the field optional keeps the door open to shipping a
+   * navigation item that goes nowhere, which is the one thing a sidebar must
+   * never do. Making it required means a future unrouted entry is a
+   * typecheck failure rather than a chip a user clicks twice and gives up on.
+   */
+  to: string;
 }
 
 /**
@@ -135,46 +145,28 @@ function NavList({
 }): JSX.Element {
   return (
     <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3">
-      {items.map(({ label, icon: Icon, to }) =>
-        to ? (
-          <NavLink
-            key={label}
-            to={to}
-            onClick={onNavigate}
-            // `title` is the tooltip when collapsed. The label also stays in
-            // the accessibility tree via `sr-only` rather than being dropped —
-            // a collapsed sidebar of eleven unlabelled icons is unusable with
-            // a screen reader, and `title` alone is not reliably announced.
-            title={collapsed ? label : undefined}
-            className={({ isActive }) =>
-              cn(
-                LINK_BASE,
-                isActive ? LINK_ACTIVE : LINK_INACTIVE,
-                collapsed && 'justify-center px-0',
-              )
-            }
-          >
-            <Icon size={18} aria-hidden="true" />
-            {collapsed ? <span className="sr-only">{label}</span> : label}
-          </NavLink>
-        ) : (
-          <div
-            key={label}
-            aria-disabled="true"
-            tabIndex={-1}
-            className={cn(
+      {items.map(({ label, icon: Icon, to }) => (
+        <NavLink
+          key={label}
+          to={to}
+          onClick={onNavigate}
+          // `title` is the tooltip when collapsed. The label also stays in
+          // the accessibility tree via `sr-only` rather than being dropped —
+          // a collapsed sidebar of eleven unlabelled icons is unusable with
+          // a screen reader, and `title` alone is not reliably announced.
+          title={collapsed ? label : undefined}
+          className={({ isActive }) =>
+            cn(
               LINK_BASE,
-              'cursor-not-allowed justify-between text-content-muted/60 dark:text-content-muted-dark/60',
-            )}
-          >
-            <span className="flex items-center gap-3">
-              <Icon size={18} aria-hidden="true" />
-              {label}
-            </span>
-            <span className="text-xs">Soon</span>
-          </div>
-        ),
-      )}
+              isActive ? LINK_ACTIVE : LINK_INACTIVE,
+              collapsed && 'justify-center px-0',
+            )
+          }
+        >
+          <Icon size={18} aria-hidden="true" />
+          {collapsed ? <span className="sr-only">{label}</span> : label}
+        </NavLink>
+      ))}
     </nav>
   );
 }

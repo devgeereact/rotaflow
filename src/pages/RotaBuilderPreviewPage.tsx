@@ -388,7 +388,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
           </div>
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 aria-label="Previous week"
@@ -416,7 +416,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div
                 role="group"
                 aria-label="View"
@@ -527,7 +527,19 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </Card>
 
             <Card className="shrink-0 p-2 xl:w-[5.5rem]">
-              <RotaActionRail onAutoFill={() => {}} onComingSoon={() => {}} />
+              {/* Design-preview only: the rail is rendered for layout match,
+                  with no rota behind it to act on. */}
+              <RotaActionRail
+                onTemplates={() => {}}
+                onCopyShifts={() => {}}
+                onPasteShifts={() => {}}
+                onCopyPreviousWeek={() => {}}
+                onAutoFill={() => {}}
+                onClearShifts={() => {}}
+                onPrint={() => {}}
+                clipboardCount={0}
+                busyAction={null}
+              />
             </Card>
           </div>
 

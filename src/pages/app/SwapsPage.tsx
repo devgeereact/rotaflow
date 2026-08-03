@@ -11,7 +11,7 @@ import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
-import { listShiftsForPeriod } from '@/services/shiftService';
+import { listShiftsForPeriod, updateShift } from '@/services/shiftService';
 import { listDepartments, listLocations } from '@/services/locationService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import {
@@ -80,11 +80,11 @@ const EXPORT_COLUMNS: CsvColumn<SwapRow>[] = [
  * `/app/swaps` — the shift-swap queue (design/Swap-Request.png): request as
  * staff, respond as the targeted colleague, approve or decline as a manager.
  *
- * Approving here only marks the row `approved` — it does not reassign the
- * shift on the rota. Actually moving the shift is the same write path as any
- * other reassignment in the rota builder, and folding it into an approval
- * click here would bypass that screen's conflict/coverage context. A manager
- * approves the swap here, then reassigns it in the rota builder.
+ * Approving moves the shift. It used to only mark the row `approved`, leaving
+ * reassignment to the rota builder so that screen's conflict and coverage
+ * context stayed in play — but that left the rota, which is what staff
+ * actually read, disagreeing with the decision both parties had just been
+ * notified about. See `handleReview`.
  *
  * The rail's "Swap Rules" card is deliberately absent here even though the
  * reference shows it: no policy table exists yet, and a card of invented
@@ -122,6 +122,13 @@ export function SwapsPage(): JSX.Element {
 
   const [requestOpen, setRequestOpen] = useState(false);
   const [openSwapId, setOpenSwapId] = useState<string | null>(null);
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [mineOnly, setMineOnly] = useState(false);
+  const [awaitingMe, setAwaitingMe] = useState(false);
   const [shiftId, setShiftId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [note, setNote] = useState('');
@@ -216,9 +223,39 @@ export function SwapsPage(): JSX.Element {
         if (departmentId && swap.shift?.department_id !== departmentId) return false;
         if (shiftTypeId && swap.shift?.shift_type_id !== shiftTypeId) return false;
         if (statusFilter && toDisplayStatus(swap.status) !== statusFilter) return false;
+        if (mineOnly) {
+          const mine =
+            swap.requested_by === myProfile?.id ||
+            swap.target_staff_profile_id === myProfile?.id;
+          if (!mine) return false;
+        }
+        if (awaitingMe && swap.status !== 'pending') return false;
+        if (fromDate || toDate) {
+          /*
+           * Date the swap by the SHIFT it concerns, not by when it was
+           * raised. "Swaps in June" means shifts in June; a request typed in
+           * May about a June shift belongs in June. Only fall back to
+           * `created_at` when the shift row is gone.
+           */
+          const basis = swap.shift?.starts_at ?? swap.created_at;
+          const day = basis.slice(0, 10);
+          if (fromDate && day < fromDate) return false;
+          if (toDate && day > toDate) return false;
+        }
         return true;
       }),
-    [swaps, locationId, departmentId, shiftTypeId, statusFilter],
+    [
+      swaps,
+      locationId,
+      departmentId,
+      shiftTypeId,
+      statusFilter,
+      mineOnly,
+      awaitingMe,
+      myProfile,
+      fromDate,
+      toDate,
+    ],
   );
 
   const allRows = useMemo(
@@ -302,11 +339,25 @@ export function SwapsPage(): JSX.Element {
     },
   ];
 
+  /**
+   * Reflects the window actually applied. This used to print the current week
+   * unconditionally while the list showed every swap ever raised — a label
+   * that describes a filter nothing is applying is worse than no label.
+   */
   const periodLabel = useMemo(() => {
+    if (!fromDate && !toDate) return 'All dates';
+    const pretty = (iso: string): string =>
+      format(new Date(`${iso}T00:00:00`), 'd MMM yyyy');
+    if (fromDate && toDate) return `${pretty(fromDate)} – ${pretty(toDate)}`;
+    return fromDate ? `From ${pretty(fromDate)}` : `Until ${pretty(toDate)}`;
+  }, [fromDate, toDate]);
+
+  /** Sets the window to the current week — the old hard-coded label's range. */
+  const applyThisWeek = useCallback((): void => {
     const now = new Date();
-    const from = startOfWeek(now, { weekStartsOn: 1 });
-    const to = endOfWeek(now, { weekStartsOn: 1 });
-    return `${format(from, 'd MMM')} – ${format(to, 'd MMM yyyy')}`;
+    setFromDate(format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+    setToDate(format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+    setPage(1);
   }, []);
 
   const handleRequest = useCallback(async (): Promise<void> => {
@@ -376,9 +427,45 @@ export function SwapsPage(): JSX.Element {
       try {
         const swap = swaps.find((s) => s.id === id);
         await reviewShiftSwap(id, status, user.id);
+
+        /*
+         * An approved swap MOVES THE SHIFT (§14: "Approved swaps must update
+         * the rota"; §25: "shift ownership updates").
+         *
+         * This used to stop at marking the row approved, on the reasoning that
+         * reassignment belongs in the rota builder where the conflict and
+         * coverage context lives. That reasoning is wrong in the one way that
+         * matters: it leaves the rota — the thing staff actually read —
+         * disagreeing with the decision they were just notified about. Someone
+         * whose swap was approved still sees the shift on their schedule, and
+         * the colleague who took it does not see it on theirs. The manager
+         * gets no signal that a second step is outstanding.
+         *
+         * Ordered after `reviewShiftSwap` deliberately: if the reassignment
+         * fails, the swap stays approved and the shift stays put, which is
+         * visible and correctable. The reverse order could move a shift for a
+         * swap that was never approved.
+         */
+        if (status === 'approved' && swap?.shift_id && swap.target_staff_profile_id) {
+          try {
+            await updateShift(swap.shift_id, {
+              staff_profile_id: swap.target_staff_profile_id,
+            });
+          } catch (err) {
+            reportError(err, { area: 'swaps:reassign-shift' });
+            showError(
+              'The swap was approved but the shift could not be reassigned. Move it by hand in the Rota Builder.',
+            );
+          }
+        }
+
         setReloadKey((k) => k + 1);
         setOpenSwapId(null);
-        showSuccess(`Swap ${status}.`);
+        showSuccess(
+          status === 'approved'
+            ? 'Swap approved and the shift reassigned.'
+            : 'Swap declined.',
+        );
 
         // Notifies the requester — the swap outcome is theirs, even when the
         // target colleague accepted it first. Fire-and-forget after the write
@@ -452,9 +539,9 @@ export function SwapsPage(): JSX.Element {
         onNewRequest={() => setRequestOpen(true)}
         canRequest={Boolean(myProfile)}
         periodLabel={periodLabel}
-        onPeriodClick={() => undefined}
+        onPeriodClick={() => setPeriodOpen(true)}
         selects={selects}
-        onMoreFilters={() => undefined}
+        onMoreFilters={() => setFiltersOpen(true)}
         rows={pageRows}
         onOpenRow={setOpenSwapId}
         onRowMenu={setOpenSwapId}
@@ -472,13 +559,169 @@ export function SwapsPage(): JSX.Element {
           setPage(1);
         }}
         counts={counts}
-        overviewRangeLabel="All time"
-        onOverviewRangeClick={() => undefined}
+        overviewRangeLabel={periodLabel}
+        onOverviewRangeClick={() => setPeriodOpen(true)}
         activity={activity}
         onViewAllActivity={() => setActiveTab('all')}
         quickActions={QUICK_ACTIONS}
-        onViewPolicy={() => undefined}
+        onViewPolicy={() => setPolicyOpen(true)}
       />
+
+      <Modal
+        open={periodOpen}
+        onClose={() => setPeriodOpen(false)}
+        title="Filter by period"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            Swaps are dated by the shift they concern, not by when the request was raised.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="swap-from">From</Label>
+              <Input
+                id="swap-from"
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="swap-to">To</Label>
+              <Input
+                id="swap-to"
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{tabRows.length}</strong> of {swaps.length} swap requests.
+          </p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={applyThisWeek}>
+              This week
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFromDate('');
+                setToDate('');
+                setPage(1);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setPeriodOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="More filters"
+      >
+        <div className="space-y-4">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              disabled={!myProfile}
+              onChange={(e) => {
+                setMineOnly(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40 dark:border-surface-border-dark"
+            />
+            Only swaps I am part of
+          </label>
+          {!myProfile && (
+            <p className="-mt-2 text-xs text-content-muted dark:text-content-muted-dark">
+              You have no staff profile in this organisation, so no swap can name you.
+            </p>
+          )}
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
+            <input
+              type="checkbox"
+              checked={awaitingMe}
+              onChange={(e) => {
+                setAwaitingMe(e.target.checked);
+                setPage(1);
+              }}
+              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+            />
+            Only requests still awaiting a decision
+          </label>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{tabRows.length}</strong> of {swaps.length} swap requests.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setMineOnly(false);
+                setAwaitingMe(false);
+                setPage(1);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={policyOpen}
+        onClose={() => setPolicyOpen(false)}
+        title="How shift swaps work"
+      >
+        <div className="space-y-4 text-sm text-content dark:text-content-dark">
+          <div>
+            <h3 className="mb-1 font-semibold">The sequence</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              You offer one of your own published shifts, optionally naming a colleague.
+              They accept or decline. A manager then approves or declines the accepted
+              swap — both steps are required, so nobody is handed a shift without a
+              manager seeing it.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">What a manager should check</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              That the new person is qualified for the role, that the swap does not break
+              their rest period or push them over their contracted hours, and that the
+              shift they are giving up is still covered.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">What the system does not check for you</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              Those checks are not automated yet, so approval is a human judgement here.
+              The screen will not stop you approving a swap that breaks a rest period —
+              read the shift details before approving.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">After approval</h3>
+            <p className="text-content-muted dark:text-content-muted-dark">
+              The shift changes hands on the rota immediately and both people are
+              notified. Approving offline queues the change and applies it when the
+              connection returns.
+            </p>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={requestOpen}

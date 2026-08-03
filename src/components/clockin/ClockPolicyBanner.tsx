@@ -3,6 +3,11 @@ import { ExternalLink, Info } from 'lucide-react';
 interface ClockPolicyBannerProps {
   title: string;
   body: string;
+  /**
+   * Omitted on `/app/clock`: the reference's "View Policy" opens a policy
+   * screen that does not exist (docs/LOOP.md lists settings-policy as not
+   * built), and a button that goes nowhere is worse than no button.
+   */
   onViewPolicy?: () => void;
 }
 
@@ -27,14 +32,16 @@ export function ClockPolicyBanner({
           </p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onViewPolicy}
-        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-surface-border bg-surface px-3 text-sm font-semibold text-primary transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
-      >
-        View Policy
-        <ExternalLink size={14} aria-hidden="true" />
-      </button>
+      {onViewPolicy && (
+        <button
+          type="button"
+          onClick={onViewPolicy}
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-surface-border bg-surface px-3 text-sm font-semibold text-primary transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
+        >
+          View Policy
+          <ExternalLink size={14} aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }

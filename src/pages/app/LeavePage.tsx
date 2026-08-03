@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { BarChart3, CalendarDays, Settings } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
@@ -22,8 +23,12 @@ import {
   reviewLeaveRequest,
 } from '@/services/leaveService';
 import { reportError } from '@/lib/sentry';
+import { downloadCsv } from '@/lib/csv';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Modal } from '@/components/ui/Modal';
 import { LeaveRequestModal } from '@/components/leave/LeaveRequestModal';
 import { LeaveReviewModal } from '@/components/leave/LeaveReviewModal';
 import { LeaveView } from '@/components/leave/LeaveView';
@@ -105,6 +110,7 @@ function statusNoteFor(request: LeaveRequest, viewerId: string | null): string |
  *   representable.
  */
 export function LeavePage(): JSX.Element {
+  const navigate = useNavigate();
   const { orgId } = useOrg();
   const { canApprove } = usePermissions();
   const { user } = useSupabaseAuth();
@@ -136,6 +142,20 @@ export function LeavePage(): JSX.Element {
   const [submitting, setSubmitting] = useState(false);
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  /**
+   * The period window, as ISO dates. Empty means unbounded on that side, so
+   * the default (both empty) shows everything and the filter costs nothing
+   * until someone sets it.
+   *
+   * A request is kept when it *overlaps* the window rather than when it starts
+   * inside it — a fortnight of leave beginning in March is still March leave
+   * when you ask for April, and dropping it would hide someone who is away.
+   */
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [balancesOpen, setBalancesOpen] = useState(false);
 
   // Live updates: refetch when someone else changes this data.
   useRealtimeRefresh({
@@ -263,6 +283,9 @@ export function LeavePage(): JSX.Element {
       if (statusFilter && row.status !== statusFilter) return false;
       if (typeFilter && row.type !== typeFilter) return false;
       if (scopedStaffIds && !scopedStaffIds.has(request.staff_profile_id)) return false;
+      // Overlap, not containment — see the `fromDate`/`toDate` note above.
+      if (fromDate && request.end_date < fromDate) return false;
+      if (toDate && request.start_date > toDate) return false;
       return true;
     });
 
@@ -277,7 +300,7 @@ export function LeavePage(): JSX.Element {
       const field = sort.key === 'dates' ? 'start_date' : 'created_at';
       return direction * a.request[field].localeCompare(b.request[field]);
     });
-  }, [allRows, tab, statusFilter, typeFilter, scopedStaffIds, sort]);
+  }, [allRows, tab, statusFilter, typeFilter, scopedStaffIds, sort, fromDate, toDate]);
 
   const total = filtered.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -464,10 +487,76 @@ export function LeavePage(): JSX.Element {
     [showError],
   );
 
-  const notBuilt = useCallback(
-    (what: string) => () => showError(`${what} is not built yet.`),
-    [showError],
-  );
+  /**
+   * CSV of what is on screen, not of the whole table.
+   *
+   * `filtered` is post-tab, post-filter and post-sort but pre-pagination, so
+   * the file matches the rows the manager is looking at rather than page one
+   * of them. §47 of the build prompt requires exports to honour the current
+   * filters; exporting `requests` would quietly ignore every one.
+   */
+  const handleExport = useCallback((): void => {
+    if (filtered.length === 0) {
+      showError('There are no leave requests matching these filters to export.');
+      return;
+    }
+    downloadCsv(`rotaflow-leave-${new Date().toISOString().slice(0, 10)}`, filtered, [
+      { label: 'Staff member', value: (e) => `${e.row.firstName} ${e.row.lastName}` },
+      { label: 'Job title', value: (e) => e.row.jobTitle ?? '' },
+      { label: 'Leave type', value: (e) => LEAVE_TYPE_LABEL[e.row.type] },
+      { label: 'Start date', value: (e) => e.request.start_date },
+      { label: 'End date', value: (e) => e.request.end_date },
+      { label: 'Days', value: (e) => e.row.durationLabel },
+      { label: 'Status', value: (e) => e.row.status },
+      { label: 'Reason', value: (e) => e.request.reason ?? '' },
+      { label: 'Requested', value: (e) => e.request.created_at },
+    ]);
+    showSuccess(`Exported ${filtered.length} leave requests.`);
+  }, [filtered, showError, showSuccess]);
+
+  /**
+   * Annual-leave balances for everyone the viewer can see.
+   *
+   * Same arithmetic as `balances` above, applied per staff profile instead of
+   * only to the signed-in user. Staff with no `holiday_allowance` recorded are
+   * omitted rather than shown as zero — zero remaining is a very different
+   * statement from "nobody has entered an allowance".
+   */
+  /**
+   * What the period control reads. Reflects the actual window rather than
+   * always printing today's month, which is what it used to do — a label that
+   * never changes while the data behind it does is worse than no label.
+   */
+  const periodLabel = useMemo(() => {
+    if (!fromDate && !toDate) return 'All dates';
+    const pretty = (iso: string): string =>
+      format(new Date(`${iso}T00:00:00`), 'd MMM yyyy');
+    if (fromDate && toDate) return `${pretty(fromDate)} – ${pretty(toDate)}`;
+    return fromDate ? `From ${pretty(fromDate)}` : `Until ${pretty(toDate)}`;
+  }, [fromDate, toDate]);
+
+  const allBalances = useMemo(() => {
+    const year = new Date().getFullYear();
+    return [...staffById.values()]
+      .filter((person) => (person.holiday_allowance ?? 0) > 0)
+      .map((person) => {
+        const allowance = Number(person.holiday_allowance);
+        const used = sumApprovedLeaveDays(
+          requests.filter((r) => r.staff_profile_id === person.id),
+          `${year}-01-01`,
+          `${year + 1}-01-01`,
+        );
+        return {
+          id: person.id,
+          name: `${person.first_name} ${person.last_name}`,
+          jobTitle: person.job_title,
+          allowance: days(allowance),
+          used: days(used),
+          remaining: days(Math.max(0, allowance - used)),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [staffById, requests]);
 
   if (loadFailed && !loading) {
     return (
@@ -508,12 +597,12 @@ export function LeavePage(): JSX.Element {
           setTab(next);
           setPage(1);
         }}
-        onExport={notBuilt('Leave export')}
+        onExport={handleExport}
         onRequestLeave={() => setRequestOpen(true)}
-        periodLabel={format(new Date(), 'MMMM yyyy')}
-        onPeriodClick={notBuilt('Choosing a period')}
+        periodLabel={periodLabel}
+        onPeriodClick={() => setFiltersOpen(true)}
         selects={selects}
-        onFilters={notBuilt('Advanced filters')}
+        onFilters={() => setFiltersOpen(true)}
         rows={pageRows}
         sort={sort}
         onSortChange={setSort}
@@ -538,10 +627,10 @@ export function LeavePage(): JSX.Element {
           setPage(1);
         }}
         counts={counts}
-        overviewRangeLabel={String(new Date().getFullYear())}
-        onOverviewRangeClick={notBuilt('Choosing a range')}
+        overviewRangeLabel={periodLabel}
+        onOverviewRangeClick={() => setFiltersOpen(true)}
         balances={balances}
-        onViewAllBalances={notBuilt('The full balance sheet')}
+        onViewAllBalances={() => setBalancesOpen(true)}
         approvalQueues={approvalQueues}
         onViewAllApprovals={() => setTab('pending')}
         onOpenQueue={(id) => {
@@ -562,7 +651,9 @@ export function LeavePage(): JSX.Element {
             to: '/app/settings',
           },
         ]}
-        onViewTeamCalendar={notBuilt('The team calendar view')}
+        onViewTeamCalendar={() => {
+          void navigate('/app/schedule');
+        }}
       />
 
       <LeaveRequestModal
@@ -582,6 +673,127 @@ export function LeavePage(): JSX.Element {
         busy={busy}
         reason={open?.request.reason ?? null}
       />
+
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Filter by period"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            Shows any request that overlaps this window, so leave running across the
+            boundary is still listed. Leave a field blank to leave that side open.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="leave-from">From</Label>
+              <Input
+                id="leave-from"
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="leave-to">To</Label>
+              <Input
+                id="leave-to"
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-content dark:text-content-dark">
+            Showing <strong>{total}</strong> {total === 1 ? 'request' : 'requests'} for{' '}
+            {periodLabel.toLowerCase()}.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFromDate('');
+                setToDate('');
+                setPage(1);
+              }}
+            >
+              Clear
+            </Button>
+            <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={balancesOpen}
+        onClose={() => setBalancesOpen(false)}
+        title="Annual leave balances"
+      >
+        {allBalances.length === 0 ? (
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            No holiday allowance has been recorded for anyone yet. Set{' '}
+            <strong>Holiday allowance</strong> on a staff member&rsquo;s profile and their
+            balance will appear here.
+          </p>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-surface text-left dark:bg-surface-dark">
+                <tr className="border-b border-surface-border dark:border-surface-border-dark">
+                  <th className="py-2 pr-3 font-semibold text-content dark:text-content-dark">
+                    Staff member
+                  </th>
+                  <th className="py-2 px-3 text-right font-semibold text-content dark:text-content-dark">
+                    Allowance
+                  </th>
+                  <th className="py-2 px-3 text-right font-semibold text-content dark:text-content-dark">
+                    Taken
+                  </th>
+                  <th className="py-2 pl-3 text-right font-semibold text-content dark:text-content-dark">
+                    Remaining
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {allBalances.map((entry) => (
+                  <tr
+                    key={entry.id}
+                    className="border-b border-divider last:border-0 dark:border-divider-dark"
+                  >
+                    <td className="py-2 pr-3">
+                      <span className="block text-content dark:text-content-dark">
+                        {entry.name}
+                      </span>
+                      {entry.jobTitle && (
+                        <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                          {entry.jobTitle}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-content-muted dark:text-content-muted-dark">
+                      {entry.allowance}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-content-muted dark:text-content-muted-dark">
+                      {entry.used}
+                    </td>
+                    <td className="py-2 pl-3 text-right font-semibold tabular-nums text-content dark:text-content-dark">
+                      {entry.remaining}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

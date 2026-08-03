@@ -18,6 +18,11 @@ import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RouteFallback } from '@/components/RouteFallback';
+import {
+  AuthCallbackPage,
+  ProfileRedirect,
+  TeamMemberRedirect,
+} from '@/components/RouteAliases';
 
 /**
  * `React.lazy` for a module that uses a NAMED export. Every page in this
@@ -301,6 +306,10 @@ export function App(): JSX.Element {
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/splash" element={<SplashScreen />} />
+                    {/* Where an OAuth provider or magic link may return. See
+                      RouteAliases for why this exists when sign-in already
+                      redirects straight to the dashboard. */}
+                    <Route path="/auth/callback" element={<AuthCallbackPage />} />
                     {/* ---------------------------------------------------------
                     Design-loop preview routes — DEV ONLY.
 
@@ -448,6 +457,9 @@ export function App(): JSX.Element {
                         path="team"
                         element={<Navigate to="/app/settings/permissions" replace />}
                       />
+                      {/* The spec's spelling of a staff profile. See
+                        RouteAliases for why both resolve. */}
+                      <Route path="team/:staffId" element={<TeamMemberRedirect />} />
                       <Route
                         path="locations"
                         element={
@@ -476,6 +488,11 @@ export function App(): JSX.Element {
                       />
                       <Route path="schedule" element={<SchedulePage />} />
                       <Route path="clock" element={<ClockInPage />} />
+                      {/* The spec's spelling. See RouteAliases. */}
+                      <Route
+                        path="clock-in"
+                        element={<Navigate to="/app/clock" replace />}
+                      />
                       <Route path="timesheets" element={<TimesheetsPage />} />
                       <Route path="availability" element={<AvailabilityPage />} />
                       <Route path="leave" element={<LeavePage />} />
@@ -524,6 +541,9 @@ export function App(): JSX.Element {
                         <Route path="tokens" element={<TokensPage />} />
                         <Route path="activity" element={<ActivityPage />} />
                       </Route>
+                      {/* The spec calls this area "My Profile" at
+                        /app/profile/*. See RouteAliases. */}
+                      <Route path="profile/*" element={<ProfileRedirect />} />
                     </Route>
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>

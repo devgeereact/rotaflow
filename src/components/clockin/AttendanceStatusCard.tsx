@@ -1,8 +1,12 @@
-import { CircleCheck, ShieldCheck } from 'lucide-react';
+import { CircleAlert, CircleCheck, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { ClockCardHeading } from '@/components/clockin/ClockCardHeading';
+import { cn } from '@/lib/utils';
+import type { AttendanceTone } from '@/lib/clockRows';
 
 interface AttendanceStatusCardProps {
+  /** The reference only shows `good`; the other two reuse its geometry. */
+  tone: AttendanceTone;
   statusTitle: string;
   statusBody: string;
   thisWeekLabel: string;
@@ -12,8 +16,30 @@ interface AttendanceStatusCardProps {
   onViewReport?: () => void;
 }
 
+const TONES: Record<
+  AttendanceTone,
+  { wash: string; icon: typeof CircleCheck; fill: string }
+> = {
+  good: {
+    wash: 'bg-clock-wash dark:bg-clock/15',
+    icon: CircleCheck,
+    fill: 'fill-clock text-surface dark:text-surface-dark',
+  },
+  warning: {
+    wash: 'bg-warning/10 dark:bg-warning/15',
+    icon: TriangleAlert,
+    fill: 'text-warning',
+  },
+  bad: {
+    wash: 'bg-danger/10 dark:bg-danger/15',
+    icon: CircleAlert,
+    fill: 'text-danger',
+  },
+};
+
 /** "Attendance Status" card — the reassurance panel plus two-week accuracy. */
 export function AttendanceStatusCard({
+  tone,
   statusTitle,
   statusBody,
   thisWeekLabel,
@@ -22,16 +48,14 @@ export function AttendanceStatusCard({
   lastWeekValue,
   onViewReport,
 }: AttendanceStatusCardProps): JSX.Element {
+  const { wash, icon: ToneIcon, fill } = TONES[tone];
+
   return (
-    <Card className="flex h-full flex-col rounded-xl p-5">
+    <Card className="flex h-full flex-col rounded-xl p-6">
       <ClockCardHeading icon={ShieldCheck} title="Attendance Status" />
 
-      <div className="mt-5 flex items-start gap-3 rounded-lg bg-clock-wash px-4 py-3 dark:bg-clock/15">
-        <CircleCheck
-          size={22}
-          aria-hidden="true"
-          className="mt-0.5 shrink-0 fill-clock text-surface dark:text-surface-dark"
-        />
+      <div className={cn('mt-5 flex items-start gap-3 rounded-lg px-4 py-3', wash)}>
+        <ToneIcon size={22} aria-hidden="true" className={cn('mt-0.5 shrink-0', fill)} />
         <div>
           <p className="text-base font-semibold text-content dark:text-content-dark">
             {statusTitle}
@@ -42,7 +66,7 @@ export function AttendanceStatusCard({
         </div>
       </div>
 
-      <dl className="mt-5 flex gap-10">
+      <dl className="mt-5 flex gap-24">
         <div>
           <dt className="text-sm text-content-muted dark:text-content-muted-dark">
             {thisWeekLabel}
