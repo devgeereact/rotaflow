@@ -68,9 +68,9 @@ export const TAGLINE = 'Smarter Rota. Stronger Teams.';
  *
  * A personal address is deliberately not used — publishing one on a live
  * marketing site is a privacy decision for the owner, not a default. Set up
- * `hello@` as an alias in cPanel (or change this constant) as part of launch.
+ * `info@` as an alias in cPanel (or change this constant) as part of launch.
  */
-export const CONTACT_EMAIL = 'hello@rota.gakinz.com';
+export const CONTACT_EMAIL = 'info@rota.gakinz.com';
 
 export const HERO = {
   headline: ['Smart Schedules.', 'Stronger Teams.', 'Better Business.'],
