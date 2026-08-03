@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
+import { SEARCH_ENTRIES } from '@/lib/globalSearch';
 
 /**
  * Every tab must point at a route that exists.
@@ -191,6 +192,19 @@ describe('navigation targets', () => {
   it.each(footerLinks)('footer link %s (%s) has a route', (_label, to) => {
     expect(isRoutable(to)).toBe(true);
   });
+
+  /*
+   * Global search is navigation with no visible list to proofread: an entry
+   * pointing at a dead route looks perfectly normal until someone picks it and
+   * lands on the 404. That is the same failure the Settings tab bar shipped
+   * with, so it gets the same guard.
+   */
+  it.each(SEARCH_ENTRIES.map((entry) => [entry.label, entry.to] as const))(
+    'search entry %s (%s) has a route',
+    (_label, to) => {
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
 
   it('routes every public entry point the marketing pages link to', () => {
     // Hard-coded rather than derived: these are the CTA destinations written

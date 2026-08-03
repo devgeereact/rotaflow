@@ -1,9 +1,10 @@
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { RouteFallback } from '@/components/RouteFallback';
 import { useOrg } from '@/hooks/useOrg';
 import { AppBootScreen } from '@/components/AppBootScreen';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { MobileTabBar } from '@/components/layout/MobileTabBar';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -15,6 +16,7 @@ import { Card } from '@/components/ui/Card';
  */
 export function AppShell(): JSX.Element {
   const { loading, loadFailed, memberships, refresh } = useOrg();
+  const [navOpen, setNavOpen] = useState(false);
 
   // Auth already resolved to reach AppShell; only the org query is outstanding.
   if (loading) return <AppBootScreen authResolved orgResolved={false} />;
@@ -45,10 +47,15 @@ export function AppShell(): JSX.Element {
 
   return (
     <div className="flex min-h-screen bg-background dark:bg-background-dark">
-      <Sidebar />
+      {/* Drawer state lives here rather than inside Sidebar so the mobile tab
+          bar's `More` opens the same drawer. Two components owning one panel
+          is the alternative, and it desyncs the moment either can close it. */}
+      <Sidebar mobileOpen={navOpen} onMobileOpenChange={setNavOpen} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
-        <main className="flex-1 overflow-y-auto px-6 py-8 md:px-10">
+        {/* `pb-20` on mobile clears the fixed tab bar; without it the last row
+            of every table sits underneath it and cannot be reached. */}
+        <main className="flex-1 overflow-y-auto px-6 pb-20 pt-8 md:px-10 md:pb-8">
           {/* Scoped to the content region on purpose. A Suspense boundary
               higher up would unmount the sidebar and header while a lazy route
               chunk loads, so every in-app navigation would flash the chrome. */}
@@ -57,6 +64,7 @@ export function AppShell(): JSX.Element {
           </Suspense>
         </main>
       </div>
+      <MobileTabBar onOpenMore={() => setNavOpen(true)} />
     </div>
   );
 }

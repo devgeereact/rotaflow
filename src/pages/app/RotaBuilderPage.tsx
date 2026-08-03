@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
+import { PermissionDenied } from '@/components/PermissionDenied';
 import { useToast } from '@/hooks/useToast';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { listLocations, listDepartments } from '@/services/locationService';
@@ -597,14 +598,10 @@ export function RotaBuilderPage(): JSX.Element {
     setAutoFillOpen(true);
   };
 
+  // Belt and braces behind the route's own `RequireRole` gate — see the
+  // equivalent note in ReportsPage.
   if (!canBuildRota) {
-    return (
-      <Card>
-        <p className="text-content-muted dark:text-content-muted-dark">
-          Only owners and managers can build the rota.
-        </p>
-      </Card>
-    );
+    return <PermissionDenied area="the rota builder" allowed={['owner', 'manager']} />;
   }
 
   if (orgDataFailed && !orgDataLoading) {

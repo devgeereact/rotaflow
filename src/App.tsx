@@ -6,6 +6,8 @@ import { ToastProvider } from '@/context/ToastContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
 import { OrgProvider } from '@/context/OrgContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { RequireRole } from '@/components/RequireRole';
+import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
@@ -260,6 +262,13 @@ const ActivityPage = lazyPage(
   () => import('@/pages/app/account/ActivityPage'),
 );
 
+/**
+ * Roles that may reach the manager-only routes. Named once so the route table
+ * cannot drift into allowing `['owner']` on one screen and
+ * `['owner','manager']` on the next by a copy-paste.
+ */
+const MANAGERIAL: readonly MembershipRole[] = ['owner', 'manager'];
+
 export function App(): JSX.Element {
   return (
     <ThemeProvider>
@@ -404,8 +413,33 @@ export function App(): JSX.Element {
                     >
                       <Route index element={<Navigate to="dashboard" replace />} />
                       <Route path="dashboard" element={<DashboardPage />} />
-                      <Route path="staff" element={<StaffPage />} />
-                      <Route path="staff/:staffId" element={<StaffProfilePage />} />
+                      {/* Manager-only areas.
+
+                        The gate used to live inside whichever page remembered
+                        it — as a one-line card, worded differently each time —
+                        and the staff directory, staff profiles and locations
+                        had none at all, so a staff member who deep-linked to
+                        them got the full manager interface with every write
+                        failing silently on RLS. Declaring it on the Route means
+                        a new page cannot forget. RLS is still the real
+                        boundary; this only turns a wrong turn into an
+                        explanation. See `RequireRole`. */}
+                      <Route
+                        path="staff"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="the staff directory">
+                            <StaffPage />
+                          </RequireRole>
+                        }
+                      />
+                      <Route
+                        path="staff/:staffId"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="staff profiles">
+                            <StaffProfilePage />
+                          </RequireRole>
+                        }
+                      />
                       {/* Team folded into Settings -> Permissions: it is
                       invite/revoke, i.e. organisation administration, and the
                       designed sidebar has no Team entry. Redirect kept so
@@ -414,11 +448,32 @@ export function App(): JSX.Element {
                         path="team"
                         element={<Navigate to="/app/settings/permissions" replace />}
                       />
-                      <Route path="locations" element={<LocationsPage />} />
+                      <Route
+                        path="locations"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="locations">
+                            <LocationsPage />
+                          </RequireRole>
+                        }
+                      />
                       {/* Second half of the same workspace, on its own URL so it
                       can be linked and refreshed into. */}
-                      <Route path="locations/departments" element={<LocationsPage />} />
-                      <Route path="rota" element={<RotaBuilderPage />} />
+                      <Route
+                        path="locations/departments"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="locations">
+                            <LocationsPage />
+                          </RequireRole>
+                        }
+                      />
+                      <Route
+                        path="rota"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="the rota builder">
+                            <RotaBuilderPage />
+                          </RequireRole>
+                        }
+                      />
                       <Route path="schedule" element={<SchedulePage />} />
                       <Route path="clock" element={<ClockInPage />} />
                       <Route path="timesheets" element={<TimesheetsPage />} />
@@ -427,7 +482,14 @@ export function App(): JSX.Element {
                       <Route path="swaps" element={<SwapsPage />} />
                       <Route path="announcements" element={<AnnouncementsPage />} />
                       <Route path="notifications" element={<NotificationsPage />} />
-                      <Route path="reports" element={<ReportsPage />} />
+                      <Route
+                        path="reports"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="reports">
+                            <ReportsPage />
+                          </RequireRole>
+                        }
+                      />
                       {/* Integrations moved under Settings, as the design shows. */}
                       <Route
                         path="integrations"
