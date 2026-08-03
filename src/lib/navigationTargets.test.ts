@@ -5,6 +5,7 @@ import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
 import { navItemsForRole } from '@/lib/sidebarNav';
+import { ADMIN_NAV } from '@/lib/adminNav';
 
 /**
  * Every tab must point at a route that exists.
@@ -233,6 +234,40 @@ describe('navigation targets', () => {
     expect(isRoutable('/app/team')).toBe(true);
     expect(isRoutable('/app/staff')).toBe(true);
     expect(navItemsForRole('manager').map((i) => i.to)).toContain('/app/team');
+  });
+
+  /*
+   * Platform administration is seven routes nobody outside the team ever
+   * clicks, which is exactly why a dead one could sit there unnoticed. Same
+   * guard as the sidebar.
+   */
+  it.each(ADMIN_NAV.map((item) => [item.label, item.to] as const))(
+    'platform admin item %s (%s) has a route',
+    (_label, to) => {
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
+
+  it('routes all seven platform administration screens §34 names', () => {
+    for (const path of [
+      '/admin',
+      '/admin/organisations',
+      '/admin/users',
+      '/admin/billing',
+      '/admin/support',
+      '/admin/audit',
+      '/admin/feature-flags',
+    ]) {
+      expect(isRoutable(path)).toBe(true);
+    }
+  });
+
+  it('keeps platform administration out of the tenant sidebar', () => {
+    // §2: Super Admin is a platform-level permission, not a membership role.
+    // An /admin entry in the org sidebar would imply otherwise to every owner.
+    for (const role of ['owner', 'manager', 'staff'] as const) {
+      expect(navItemsForRole(role).some((i) => i.to.startsWith('/admin'))).toBe(false);
+    }
   });
 
   it('routes every public entry point the marketing pages link to', () => {
