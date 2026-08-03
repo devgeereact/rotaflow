@@ -1,18 +1,32 @@
 import { useEffect, useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { reportError } from '@/lib/sentry';
+import { draftAnnouncement } from '@/services/aiRotaService';
 import type { Announcement } from '@/types';
 
 interface AnnouncementComposerModalProps {
   open: boolean;
   /** Prefills the form — used by "Duplicate" and by the row edit button. */
   seed: Announcement | null;
+  /** Enables AI drafting. Omitted for anyone who cannot manage the org. */
+  orgId?: string | null;
   onClose: () => void;
   onSubmit: (input: { title: string; body: string; urgent: boolean }) => Promise<void>;
+}
+
+/** The fortnight the draft is grounded in — this week plus the next. */
+function draftPeriod(): { periodStart: string; periodEnd: string } {
+  const today = new Date();
+  const end = new Date(today);
+  end.setDate(today.getDate() + 14);
+  return {
+    periodStart: today.toISOString().slice(0, 10),
+    periodEnd: end.toISOString().slice(0, 10),
+  };
 }
 
 /**
@@ -24,6 +38,7 @@ interface AnnouncementComposerModalProps {
 export function AnnouncementComposerModal({
   open,
   seed,
+  orgId,
   onClose,
   onSubmit,
 }: AnnouncementComposerModalProps): JSX.Element | null {
@@ -31,6 +46,10 @@ export function AnnouncementComposerModal({
   const [body, setBody] = useState('');
   const [urgent, setUrgent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [drafting, setDrafting] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Re-seed whenever the dialog opens, so "Duplicate" on a second row does not
   // show the first row's text.
@@ -39,7 +58,40 @@ export function AnnouncementComposerModal({
     setTitle(seed ? `${seed.title} (copy)` : '');
     setBody(seed?.body ?? '');
     setUrgent(seed?.urgent ?? false);
+    setAiPrompt('');
+    setAiNote(null);
+    setAiError(null);
   }, [open, seed]);
+
+  /**
+   * Fills the form; it never posts. The manager still reads, edits and presses
+   * Post — so a draft that gets a fact wrong costs an edit, not a push
+   * notification to everyone on the rota.
+   */
+  const handleDraft = async (): Promise<void> => {
+    if (!orgId || !aiPrompt.trim()) return;
+    setDrafting(true);
+    setAiError(null);
+    setAiNote(null);
+    try {
+      const draft = await draftAnnouncement({
+        orgId,
+        prompt: aiPrompt.trim(),
+        ...draftPeriod(),
+      });
+      setTitle(draft.title);
+      setBody(draft.body);
+      setUrgent(draft.urgent);
+      setAiNote(draft.reasoning || 'Draft ready — read it through before posting.');
+    } catch (err) {
+      reportError(err, { area: 'announcements:ai-draft' });
+      setAiError(
+        'AI drafting is unavailable right now. Write the announcement below as normal.',
+      );
+    } finally {
+      setDrafting(false);
+    }
+  };
 
   const canSubmit = title.trim().length > 0 && body.trim().length > 0 && !submitting;
 
@@ -61,6 +113,43 @@ export function AnnouncementComposerModal({
   return (
     <Modal open={open} onClose={onClose} title="New announcement">
       <div className="space-y-4">
+        {orgId && (
+          <div className="rounded-xl border border-surface-border bg-surface-subtle p-3 dark:border-surface-border-dark dark:bg-surface-subtle-dark">
+            <Label htmlFor="ann-ai">Draft it with AI</Label>
+            <div className="flex gap-2">
+              <Input
+                id="ann-ai"
+                value={aiPrompt}
+                onChange={(event) => setAiPrompt(event.target.value)}
+                placeholder="e.g. Ask for cover on the unfilled weekend nights"
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={drafting || !aiPrompt.trim()}
+                onClick={() => void handleDraft()}
+              >
+                <Wand2 size={15} aria-hidden="true" />
+                {drafting ? 'Drafting…' : 'Draft'}
+              </Button>
+            </div>
+            <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
+              Grounded in the next fortnight&rsquo;s real rota. It fills the form below —
+              nothing is posted until you press Post.
+            </p>
+            {aiNote && (
+              <p className="mt-1.5 text-xs text-success" role="status">
+                {aiNote}
+              </p>
+            )}
+            {aiError && (
+              <p className="mt-1.5 text-xs text-warning" role="status">
+                {aiError}
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
           <Label htmlFor="ann-title">Title</Label>
           <Input

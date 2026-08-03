@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { shiftCellKey } from '@/lib/rotaGrid';
@@ -37,6 +37,12 @@ export function ScheduleGrid({
   shiftTypes,
   timezone,
 }: ScheduleGridProps): JSX.Element {
+  // One clock for the whole grid — see RotaGrid for why this is not per-chip.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const typeById = new Map(shiftTypes.map((t) => [t.id, t]));
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -151,6 +157,7 @@ export function ScheduleGrid({
                                     : undefined
                                 }
                                 timezone={timezone}
+                                now={now}
                               />
                             ))}
                           </div>

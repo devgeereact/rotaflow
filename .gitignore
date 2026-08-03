@@ -42,3 +42,7 @@ design/.loop/
 # committed into the repo it is a copy of.
 .claude/worktrees/
 .claude/settings.local.json
+supabase/.temp/
+
+# Vitest coverage output
+coverage/

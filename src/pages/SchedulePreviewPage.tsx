@@ -80,6 +80,9 @@ function chipsFor(
         ...spec,
         unfilled: false,
         confirmed: index === confirmedIndex,
+        // This page reproduces a static reference PNG, in which every chip is
+        // coloured — so nothing here is "past", whatever today's date is.
+        timeState: 'future',
       },
     ];
   });

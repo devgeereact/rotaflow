@@ -528,6 +528,7 @@ export function AnnouncementsPage(): JSX.Element {
         <AnnouncementComposerModal
           open={composerOpen}
           seed={composerSeed}
+          orgId={orgId}
           onClose={() => setComposerOpen(false)}
           onSubmit={handleCreate}
         />

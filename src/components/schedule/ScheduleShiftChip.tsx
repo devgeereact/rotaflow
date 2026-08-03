@@ -1,12 +1,14 @@
 import { cn } from '@/lib/utils';
-import { paletteTokenForColour } from '@/lib/shiftPalette';
-import { fromIsoInTimezone } from '@/lib/rotaGrid';
+import { PAST_SHIFT_SOLID, paletteTokenForColour } from '@/lib/shiftPalette';
+import { fromIsoInTimezone, shiftTimeState } from '@/lib/rotaGrid';
 import type { Shift, ShiftType } from '@/types';
 
 interface ScheduleShiftChipProps {
   shift: Shift;
   shiftType?: ShiftType;
   timezone: string;
+  /** Shared clock from the grid, so every chip agrees which shifts are past. */
+  now: number;
   className?: string;
 }
 
@@ -21,16 +23,21 @@ export function ScheduleShiftChip({
   shift,
   shiftType,
   timezone,
+  now,
   className,
 }: ScheduleShiftChipProps): JSX.Element {
   const { time: start } = fromIsoInTimezone(shift.starts_at, timezone);
   const { time: end } = fromIsoInTimezone(shift.ends_at, timezone);
+  const timeState = shiftTimeState(shift.starts_at, shift.ends_at, now);
 
   return (
     <div
       className={cn(
         'rounded-lg px-2 py-1 text-xs font-medium text-white shadow-sm',
-        paletteTokenForColour(shiftType?.colour),
+        timeState === 'past'
+          ? PAST_SHIFT_SOLID
+          : paletteTokenForColour(shiftType?.colour),
+        timeState === 'live' && 'ring-2 ring-success ring-offset-1',
         className,
       )}
     >

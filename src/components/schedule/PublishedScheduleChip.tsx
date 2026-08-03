@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { paletteTintForColour } from '@/lib/shiftPalette';
+import { PAST_SHIFT_TINT, paletteTintForColour } from '@/lib/shiftPalette';
 import type { ScheduleChip } from '@/lib/publishedSchedule';
 
 interface PublishedScheduleChipProps {
@@ -31,7 +31,8 @@ export function PublishedScheduleChip({
       className={cn(
         'relative w-full rounded-lg px-1.5 py-1 text-center ring-1 transition-shadow',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-        paletteTintForColour(chip.colour),
+        chip.timeState === 'past' ? PAST_SHIFT_TINT : paletteTintForColour(chip.colour),
+        chip.timeState === 'live' && 'ring-2 ring-success',
         selected && 'ring-2 ring-primary',
       )}
     >

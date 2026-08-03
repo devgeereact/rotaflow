@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { shiftTimeState, type ShiftTimeState } from '@/lib/rotaGrid';
 import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
 
 /**
@@ -25,6 +26,12 @@ export interface ScheduleChip {
   unfilled: boolean;
   /** The assigned person has acknowledged the shift (live-schedule.png tick). */
   confirmed: boolean;
+  /**
+   * Whether the shift has been worked, is running now, or is still ahead.
+   * Past shifts render in a neutral token so colour stays on the work a
+   * person can still act on.
+   */
+  timeState: ShiftTimeState;
 }
 
 export interface ScheduleRow {
@@ -65,6 +72,7 @@ function toChip(
   shift: Shift,
   type: ShiftType | undefined,
   timezone: string,
+  now: number,
 ): ScheduleChip {
   return {
     id: shift.id,
@@ -74,6 +82,7 @@ function toChip(
     colour: shift.colour ?? type?.colour ?? null,
     unfilled: shift.staff_profile_id === null,
     confirmed: shift.status === 'confirmed',
+    timeState: shiftTimeState(shift.starts_at, shift.ends_at, now),
   };
 }
 
@@ -90,8 +99,11 @@ export function buildScheduleGroups(input: {
   locations: Location[];
   shiftTypes: ShiftType[];
   fallbackTimezone: string;
+  /** Injectable so the past/live/future split is testable at a fixed instant. */
+  now?: number;
 }): ScheduleLocationGroup[] {
   const { shifts, staff, locations, shiftTypes, fallbackTimezone } = input;
+  const now = input.now ?? Date.now();
   const staffById = new Map(staff.map((s) => [s.id, s]));
   const typeById = new Map(shiftTypes.map((t) => [t.id, t]));
   const locationById = new Map(locations.map((l) => [l.id, l]));
@@ -122,6 +134,7 @@ export function buildScheduleGroups(input: {
         shift,
         shift.shift_type_id ? typeById.get(shift.shift_type_id) : undefined,
         timezone,
+        now,
       ),
     ];
     rows.set(person.id, row);

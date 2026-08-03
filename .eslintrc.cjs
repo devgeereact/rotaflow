@@ -18,6 +18,13 @@ module.exports = {
   ignorePatterns: [
     'dist',
     'dev-dist',
+    // Vitest's HTML coverage report ships its own un-typed helper scripts
+    // (prettify.js, sorter.js, block-navigation.js). Without this, running
+    // `npm run test:coverage` makes the very next `npm run lint` fail with
+    // three parser errors about files nobody wrote — and `--max-warnings 0`
+    // turns that into a red build for a reason that has nothing to do with
+    // the code.
+    'coverage',
     'node_modules',
     '.eslintrc.cjs',
     'postcss.config.js',
