@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarRange, Download, Timer, Users } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
+import { PermissionDenied } from '@/components/PermissionDenied';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
-import { Card } from '@/components/ui/Card';
 import { ReportsView } from '@/components/reports/ReportsView';
 import {
   REPORT_CATALOGUE,
@@ -277,14 +277,12 @@ export function ReportsPage(): JSX.Element {
     },
   ];
 
+  // Belt and braces behind the route's own `RequireRole` gate: this page is
+  // also reachable by a future route that forgets to declare one. `RequireRole`
+  // renders the full explanation (role held, role required, way back) — this
+  // just makes sure the manager UI never renders for a non-manager.
   if (!canManageStaff) {
-    return (
-      <Card>
-        <p className="text-content-muted dark:text-content-muted-dark">
-          Only owners and managers can export reports.
-        </p>
-      </Card>
-    );
+    return <PermissionDenied area="reports" allowed={['owner', 'manager']} />;
   }
 
   return (

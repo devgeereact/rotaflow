@@ -1,13 +1,51 @@
 # RotaFlow demo dataset
 
-A reusable showcase dataset: **five fully-populated organisations, five items in
-every section**, plus eight sign-in-able accounts covering every role. Built for
-client demos and end-to-end manual testing.
+Two independent datasets, for two different jobs.
 
 | File | What it does |
 | ---- | ------------ |
-| `demo_seed.sql` | Builds (or rebuilds) the whole demo |
+| `demo_seed.sql` | Builds (or rebuilds) the five-org demo |
 | `demo_teardown.sql` | Removes it again |
+| `sunnyvale_seed.sql` | Builds (or rebuilds) **Sunnyvale Care Group** — one org, 248 staff |
+| `sunnyvale_teardown.sql` | Removes it again |
+
+**`demo_seed.sql`** is the *breadth* dataset: five organisations across five
+sectors, five items in every section, eight sign-in-able accounts covering every
+role. Everything is small enough to read at a glance on a client call.
+
+**`sunnyvale_seed.sql`** is the *depth* dataset: a single multi-site care group
+with **248 staff, 3 sites and 8 departments**, sized so pagination, filters,
+coverage arithmetic and the staff directory are under realistic load. It is the
+organisation every reference screen in `design/` is drawn against, and Sarah
+Manager is the persona they are signed in as.
+
+The two use **different id namespaces** (`rotaflow-demo-v1:` and
+`rotaflow-sunnyvale-v1:`), so neither can read or write the other's rows. Run
+either, both, or neither.
+
+> ⚠️ **`sunnyvale_seed.sql` has never been run.** It is written and statically
+> reviewed but has not been executed against any database — there was no
+> Postgres available to validate it, and running it needs the seed password,
+> which lives in a password manager. Run it in the Supabase SQL editor, where a
+> syntax error surfaces immediately and harmlessly; do not assume it is correct
+> because it is committed. `demo_seed.sql`, by contrast, has been run many times.
+
+### Why Sunnyvale's dashboard will not match the mockup's tiles exactly
+
+`design/Workforce-Dashboard.png` shows 248 staff and **41 on shift today**.
+Those two numbers are not consistent with each other: 248 staff working a normal
+four-day rota puts roughly 140 people on shift on any given day, and 41 would
+mean 83% of the workforce is unscheduled all week. The mockup's tile figures are
+illustrative, not a specification.
+
+The seed therefore builds a **realistic** rota — four shifts per active staff
+member per week, spread by a per-person offset — so "on shift today" lands near
+140. Open shifts (23) and pending leave (7) do match the mockup, because those
+are independent of rota density and there was no reason to diverge.
+
+The alternative — scheduling only 41 of 248 people so one tile matches a
+screenshot — would have produced a dataset that is useless for the thing this
+seed exists to test.
 
 > These are **not migrations** and deliberately live outside `supabase/migrations/`.
 > Migrations auto-apply on merge to `main`; demo data must never ship that way.
@@ -117,10 +155,45 @@ members are head-office logins with app access but no rota presence.
 - `org_smtp_settings` — a fake SMTP row would break the real "Test SMTP" button.
 - `push_subscriptions` — device-bound; only a real browser can create a valid one.
 
+## Sunnyvale Care Group
+
+One organisation, built to the product brief's demonstration scenario.
+
+| | |
+| --- | --- |
+| Sites | Sunnyvale Care Home (primary) · Westview Care Home · Riverside Support Centre |
+| Departments | Care Home Floors 1–3 · Nursing · Kitchen · Maintenance · Administration · Head Office |
+| Staff | 248 (236 active, 12 leavers) |
+| Sign-ins | Helen Braithwaite (Owner) · **Sarah Manager** (Manager) |
+| Rota | This week, published, per site — plus 23 open shifts needing cover |
+| Attendance | Clock in/out pairs on every finished shift, with minute-level jitter |
+
+Staff are distributed **60/25/15** across the three sites rather than evenly, so
+per-site filters and coverage figures actually differ from one another — an
+evenly split workforce makes every site look identical and hides exactly the
+bugs a multi-site dataset exists to expose.
+
+Two deliberate imperfections in the attendance data:
+
+- **One in forty finished shifts has no clock-out.** That is the "forgot to
+  clock out" case, and `pairClockEvents` must flag it for review rather than
+  silently dropping the day — a bug this repository has already shipped once.
+- **Clock times carry ±4 minute jitter.** A dataset where everyone clocks in
+  exactly on time makes the timesheet variance column look broken.
+
+Only Sarah Manager and the owner have logins; the other 246 are record-only,
+which is the real state of a large organisation that has added its people but
+not yet invited them all.
+
+Accounts follow the same rules as the five-org demo — plus-addressed on the
+owner's real mailbox so nothing can hard-bounce, and `c_password` must be set
+before the seed will run.
+
 ## Removing it
 
 ```sql
--- supabase/seed/demo_teardown.sql
+-- supabase/seed/demo_teardown.sql       -- the five-org demo
+-- supabase/seed/sunnyvale_teardown.sql  -- Sunnyvale Care Group
 ```
 
 Drops the five orgs (everything cascades), deletes the seven demo accounts, and

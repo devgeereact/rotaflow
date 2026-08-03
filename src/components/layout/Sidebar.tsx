@@ -15,12 +15,13 @@ import {
   BarChart3,
   Settings,
   UserCircle,
-  Menu,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrg } from '@/hooks/useOrg';
+import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
+import { SidebarFooter } from '@/components/layout/SidebarFooter';
 import type { MembershipRole } from '@/types';
 import logo from '@/assets/logo.png';
 
@@ -125,25 +126,36 @@ const FOCUSABLE_SELECTOR =
 
 function NavList({
   items,
+  collapsed = false,
   onNavigate,
 }: {
   items: NavItem[];
+  collapsed?: boolean;
   onNavigate?: () => void;
 }): JSX.Element {
   return (
-    <nav className="flex-1 space-y-1 px-3">
+    <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3">
       {items.map(({ label, icon: Icon, to }) =>
         to ? (
           <NavLink
             key={label}
             to={to}
             onClick={onNavigate}
+            // `title` is the tooltip when collapsed. The label also stays in
+            // the accessibility tree via `sr-only` rather than being dropped —
+            // a collapsed sidebar of eleven unlabelled icons is unusable with
+            // a screen reader, and `title` alone is not reliably announced.
+            title={collapsed ? label : undefined}
             className={({ isActive }) =>
-              cn(LINK_BASE, isActive ? LINK_ACTIVE : LINK_INACTIVE)
+              cn(
+                LINK_BASE,
+                isActive ? LINK_ACTIVE : LINK_INACTIVE,
+                collapsed && 'justify-center px-0',
+              )
             }
           >
             <Icon size={18} aria-hidden="true" />
-            {label}
+            {collapsed ? <span className="sr-only">{label}</span> : label}
           </NavLink>
         ) : (
           <div
@@ -167,12 +179,42 @@ function NavList({
   );
 }
 
+const COLLAPSED_STORAGE_KEY = 'rotaflow.sidebar.collapsed';
+
+interface SidebarProps {
+  /**
+   * Drawer open state, owned by `AppShell`.
+   *
+   * It used to be local state here, which was fine until the mobile tab bar
+   * needed a `More` button that opens this same drawer. Two components each
+   * holding their own copy of one panel's open state desyncs the first time
+   * either of them closes it, so the shell owns it and both read from there.
+   */
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+}
+
 /** Fixed left navigation for the /app/* tenant shell. Only routed items are real links. */
-export function Sidebar(): JSX.Element {
+export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.Element {
   const { role } = useOrg();
   const items = navItemsForRole(role);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const setMobileOpen = onMobileOpenChange;
   const drawerRef = useRef<HTMLDivElement | null>(null);
+
+  // Read once on mount rather than in an effect: restoring the collapsed state
+  // after the first paint makes the whole page jump sideways on every load for
+  // anyone who collapsed it.
+  const [collapsed, setCollapsed] = useState(
+    () => window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true',
+  );
+
+  const toggleCollapsed = (): void => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -217,29 +259,45 @@ export function Sidebar(): JSX.Element {
       if (appContent) appContent.removeAttribute('aria-hidden');
       previouslyFocused?.focus();
     };
-  }, [mobileOpen]);
+  }, [mobileOpen, setMobileOpen]);
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        aria-label="Open navigation menu"
-        aria-expanded={mobileOpen}
-        tabIndex={mobileOpen ? -1 : 0}
-        className="fixed left-3 top-3 z-40 rounded-lg border border-surface-border bg-surface p-2 text-content shadow-sm dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark md:hidden"
+      {/*
+        The floating hamburger is gone. It sat `fixed left-3 top-3` over the
+        page content on every mobile screen, and the bottom tab bar's `More`
+        now opens this same drawer from a place a thumb already is. One opener,
+        no button parked on top of the content.
+      */}
+      <aside
+        className={cn(
+          'hidden shrink-0 flex-col border-r border-surface-border bg-surface-subtle transition-[width] duration-200 md:flex',
+          'dark:border-surface-border-dark dark:bg-surface-subtle-dark',
+          collapsed ? 'w-[4.5rem]' : 'w-64',
+        )}
       >
-        <Menu size={20} aria-hidden="true" />
-      </button>
-
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark md:flex">
-        <div className="flex items-center gap-2 px-5 py-6">
-          <img src={logo} alt="" className="h-8 w-8" />
-          <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-            Rota<span className="text-primary">Flow</span>
-          </span>
+        <div
+          className={cn(
+            'flex items-center gap-2 px-5 py-6',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <img src={logo} alt="" aria-hidden="true" className="h-8 w-8 shrink-0" />
+          {!collapsed && (
+            <span className="min-w-0">
+              <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
+                Rota<span className="text-primary">Flow</span>
+              </span>
+              <span className="block text-[10px] font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
+                Workforce scheduling
+              </span>
+            </span>
+          )}
         </div>
-        <NavList items={items} />
+
+        <SidebarOrgSwitcher collapsed={collapsed} />
+        <NavList items={items} collapsed={collapsed} />
+        <SidebarFooter collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
 
       {mobileOpen && (
@@ -260,9 +318,14 @@ export function Sidebar(): JSX.Element {
           >
             <div className="flex items-center justify-between gap-2 px-5 py-6">
               <div className="flex items-center gap-2">
-                <img src={logo} alt="" className="h-8 w-8" />
-                <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-                  Rota<span className="text-primary">Flow</span>
+                <img src={logo} alt="" aria-hidden="true" className="h-8 w-8" />
+                <span>
+                  <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
+                    Rota<span className="text-primary">Flow</span>
+                  </span>
+                  <span className="block text-[10px] font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
+                    Workforce scheduling
+                  </span>
                 </span>
               </div>
               <button
@@ -274,7 +337,10 @@ export function Sidebar(): JSX.Element {
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
+            {/* The drawer is always full width, so it never renders collapsed. */}
+            <SidebarOrgSwitcher collapsed={false} />
             <NavList items={items} onNavigate={() => setMobileOpen(false)} />
+            <SidebarFooter collapsed={false} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}

@@ -6,6 +6,8 @@ import { ToastProvider } from '@/context/ToastContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
 import { OrgProvider } from '@/context/OrgContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { RequireRole } from '@/components/RequireRole';
+import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
@@ -71,6 +73,20 @@ function devPage<K extends string>(
  * made. Everything behind auth is lazy; by then the service worker has
  * precached every chunk, so those loads come from cache and offline still works.
  */
+/*
+ * Marketing routes. Lazy for the same reason the app routes are: a visitor
+ * landing on `/` should not download the pricing FAQ and the contact form's
+ * validation before the hero paints. `HomePage` itself stays eager below —
+ * it is the entry point, and on a genuinely first visit (no service worker
+ * yet) lazy-loading it would add a round trip to the first impression.
+ */
+const FeaturesPage = lazyPage('FeaturesPage', () => import('@/pages/FeaturesPage'));
+const SolutionsPage = lazyPage('SolutionsPage', () => import('@/pages/SolutionsPage'));
+const PricingPage = lazyPage('PricingPage', () => import('@/pages/PricingPage'));
+const ResourcesPage = lazyPage('ResourcesPage', () => import('@/pages/ResourcesPage'));
+const AboutPage = lazyPage('AboutPage', () => import('@/pages/AboutPage'));
+const ContactPage = lazyPage('ContactPage', () => import('@/pages/ContactPage'));
+
 const OnboardingPage = lazyPage('OnboardingPage', () => import('@/pages/OnboardingPage'));
 const OnboardingPreviewPage = devPage(
   'OnboardingPreviewPage',
@@ -246,6 +262,13 @@ const ActivityPage = lazyPage(
   () => import('@/pages/app/account/ActivityPage'),
 );
 
+/**
+ * Roles that may reach the manager-only routes. Named once so the route table
+ * cannot drift into allowing `['owner']` on one screen and
+ * `['owner','manager']` on the next by a copy-paste.
+ */
+const MANAGERIAL: readonly MembershipRole[] = ['owner', 'manager'];
+
 export function App(): JSX.Element {
   return (
     <ThemeProvider>
@@ -263,6 +286,16 @@ export function App(): JSX.Element {
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
                     <Route path="/" element={<HomePage />} />
+                    {/* Public marketing site. Every one of these is linked from
+                      PublicNav or PublicFooter, and navigationTargets.test.ts
+                      asserts each link resolves to a Route declared here — the
+                      nav and the route table cannot drift apart silently. */}
+                    <Route path="/features" element={<FeaturesPage />} />
+                    <Route path="/solutions" element={<SolutionsPage />} />
+                    <Route path="/pricing" element={<PricingPage />} />
+                    <Route path="/resources" element={<ResourcesPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -380,8 +413,33 @@ export function App(): JSX.Element {
                     >
                       <Route index element={<Navigate to="dashboard" replace />} />
                       <Route path="dashboard" element={<DashboardPage />} />
-                      <Route path="staff" element={<StaffPage />} />
-                      <Route path="staff/:staffId" element={<StaffProfilePage />} />
+                      {/* Manager-only areas.
+
+                        The gate used to live inside whichever page remembered
+                        it — as a one-line card, worded differently each time —
+                        and the staff directory, staff profiles and locations
+                        had none at all, so a staff member who deep-linked to
+                        them got the full manager interface with every write
+                        failing silently on RLS. Declaring it on the Route means
+                        a new page cannot forget. RLS is still the real
+                        boundary; this only turns a wrong turn into an
+                        explanation. See `RequireRole`. */}
+                      <Route
+                        path="staff"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="the staff directory">
+                            <StaffPage />
+                          </RequireRole>
+                        }
+                      />
+                      <Route
+                        path="staff/:staffId"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="staff profiles">
+                            <StaffProfilePage />
+                          </RequireRole>
+                        }
+                      />
                       {/* Team folded into Settings -> Permissions: it is
                       invite/revoke, i.e. organisation administration, and the
                       designed sidebar has no Team entry. Redirect kept so
@@ -390,11 +448,32 @@ export function App(): JSX.Element {
                         path="team"
                         element={<Navigate to="/app/settings/permissions" replace />}
                       />
-                      <Route path="locations" element={<LocationsPage />} />
+                      <Route
+                        path="locations"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="locations">
+                            <LocationsPage />
+                          </RequireRole>
+                        }
+                      />
                       {/* Second half of the same workspace, on its own URL so it
                       can be linked and refreshed into. */}
-                      <Route path="locations/departments" element={<LocationsPage />} />
-                      <Route path="rota" element={<RotaBuilderPage />} />
+                      <Route
+                        path="locations/departments"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="locations">
+                            <LocationsPage />
+                          </RequireRole>
+                        }
+                      />
+                      <Route
+                        path="rota"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="the rota builder">
+                            <RotaBuilderPage />
+                          </RequireRole>
+                        }
+                      />
                       <Route path="schedule" element={<SchedulePage />} />
                       <Route path="clock" element={<ClockInPage />} />
                       <Route path="timesheets" element={<TimesheetsPage />} />
@@ -403,7 +482,14 @@ export function App(): JSX.Element {
                       <Route path="swaps" element={<SwapsPage />} />
                       <Route path="announcements" element={<AnnouncementsPage />} />
                       <Route path="notifications" element={<NotificationsPage />} />
-                      <Route path="reports" element={<ReportsPage />} />
+                      <Route
+                        path="reports"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="reports">
+                            <ReportsPage />
+                          </RequireRole>
+                        }
+                      />
                       {/* Integrations moved under Settings, as the design shows. */}
                       <Route
                         path="integrations"

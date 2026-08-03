@@ -1,100 +1,107 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Button } from '@/components/ui/Button';
-import { PublicNav } from '@/components/marketing/PublicNav';
-import { FeatureGrid } from '@/components/marketing/FeatureGrid';
-import { IndustryStrip } from '@/components/marketing/IndustryStrip';
-import { PublicFooter } from '@/components/marketing/PublicFooter';
+import { MarketingLayout } from '@/components/marketing/MarketingLayout';
+import { ProductPreview } from '@/components/marketing/ProductPreview';
+import { BenefitGrid } from '@/components/marketing/BenefitGrid';
+import { SectorGrid } from '@/components/marketing/SectorGrid';
+import { StatsBand } from '@/components/marketing/StatsBand';
+import { WhyChooseBand } from '@/components/marketing/WhyChooseBand';
+import { TestimonialBand } from '@/components/marketing/TestimonialBand';
+import { FinalCta } from '@/components/marketing/FinalCta';
+import { HERO, TAGLINE } from '@/lib/marketing';
 
 /**
  * `/` — the public marketing homepage.
  *
- * Replaces the pwa-forge scaffold placeholder ("Ship a PWA today", a link to
- * raw github.com). Copy here is deliberately conservative: RotaFlow is a real,
- * pre-launch product, and this is the first thing a prospective organisation
- * sees. No fabricated stats, testimonials, or customer logos — none exist
- * yet, and inventing them is worse than a page that undersells slightly.
- * FeatureGrid lists only shipped capability; see its own comment for the rule.
+ * Copy is deliberately conservative: RotaFlow is a real, pre-launch product and
+ * this is the first thing a prospective organisation sees. No fabricated stats,
+ * testimonials or customer logos — none exist yet, and inventing them is both
+ * worse than a page that undersells slightly and a CAP Code breach on a live
+ * site. `src/lib/marketing.ts` holds every word of copy and states the rule.
  */
 export function HomePage(): JSX.Element {
   const { user } = useSupabaseAuth();
 
   return (
-    <div className="min-h-screen bg-background dark:bg-background-dark">
-      <PublicNav />
+    <MarketingLayout title={TAGLINE}>
+      <section className="overflow-hidden pb-28 pt-16 md:pt-24">
+        {/*
+          Entrance animation is the CSS `fade-up` keyframe, not framer-motion.
+          framer starts the element at `opacity: 0` and only reveals it once its
+          animation runs, so anything that stops that — a slow parse on a phone,
+          blocked JS, a crawler that does not execute it, or a headless render —
+          leaves the single most important block of copy on the site invisible.
+          That is exactly what happened here, and it was caught by screenshotting
+          the page rather than by any gate.
 
-      <main>
-        <section className="mx-auto max-w-4xl px-6 pb-16 pt-20 text-center md:pt-28">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-          >
-            <p className="mb-4 inline-block rounded-full border border-surface-border bg-surface px-3 py-1 text-sm text-content-muted dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark">
-              Offline-first · Installable · Multi-tenant
-            </p>
-            <h1 className="font-display text-4xl font-extrabold tracking-tight text-content sm:text-5xl md:text-6xl dark:text-content-dark">
-              Build and share staff rotas
-              <span className="text-primary"> in minutes</span>
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-content-muted dark:text-content-muted-dark">
-              RotaFlow replaces the spreadsheet, the WhatsApp group and the printed notice
-              board with one place to build a rota, publish it, and let your team see
-              exactly what they&rsquo;re working — on any device.
-            </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              {user ? (
-                <Link to="/app/dashboard">
-                  <Button size="lg">
-                    Go to dashboard
-                    <ArrowRight size={18} aria-hidden="true" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link to="/signup">
-                  <Button size="lg">
-                    Get started free
-                    <ArrowRight size={18} aria-hidden="true" />
-                  </Button>
-                </Link>
-              )}
-              <Link
-                to="/login"
-                className="text-content-muted underline-offset-4 hover:underline dark:text-content-muted-dark"
-              >
-                Sign in
-              </Link>
-            </div>
-          </motion.div>
-        </section>
+          The Tailwind keyframe uses `both` fill mode, so the browser paints the
+          final state with no JS at all, and `motion-reduce` drops it entirely
+          for anyone who has asked for less movement.
+        */}
+        <div className="mx-auto max-w-3xl animate-fade-up px-6 text-center motion-reduce:animate-none">
+          <p className="mb-5 inline-block rounded-full border border-surface-border bg-surface px-3.5 py-1.5 text-sm text-content-muted dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark">
+            {TAGLINE}
+          </p>
+          <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-content sm:text-5xl md:text-6xl dark:text-content-dark">
+            {HERO.headline.map((line, i) => (
+              <span key={line} className="block">
+                {i === HERO.headline.length - 1 ? (
+                  <span className="text-primary">{line}</span>
+                ) : (
+                  line
+                )}
+              </span>
+            ))}
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-content-muted dark:text-content-muted-dark">
+            {HERO.body}
+          </p>
 
-        <IndustryStrip />
-        <FeatureGrid />
-
-        <section className="mx-auto max-w-4xl px-6 pb-24 text-center">
-          <div className="rounded-3xl border border-surface-border bg-surface p-10 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark md:p-14">
-            <h2 className="font-display text-2xl font-bold text-content dark:text-content-dark md:text-3xl">
-              Set up your organisation today
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-content-muted dark:text-content-muted-dark">
-              Create an organisation, add your first location, and build your first rota —
-              no credit card, no sales call.
-            </p>
-            <div className="mt-8 flex justify-center">
-              <Link to={user ? '/app/dashboard' : '/signup'}>
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            {user ? (
+              <Link to="/app/dashboard">
                 <Button size="lg">
-                  {user ? 'Go to dashboard' : 'Create your organisation'}
+                  Go to dashboard
                   <ArrowRight size={18} aria-hidden="true" />
                 </Button>
               </Link>
-            </div>
+            ) : (
+              <>
+                <Link to="/signup">
+                  <Button size="lg">
+                    Start free trial
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Button>
+                </Link>
+                <Link to="/contact">
+                  <Button size="lg" variant="secondary">
+                    Book a demo
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
-        </section>
-      </main>
 
-      <PublicFooter />
-    </div>
+          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-content-muted dark:text-content-muted-dark">
+            {HERO.trust.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-16">
+          <ProductPreview />
+        </div>
+      </section>
+
+      <StatsBand />
+      <BenefitGrid />
+      <SectorGrid variant="compact" />
+      <WhyChooseBand />
+      <TestimonialBand />
+      <FinalCta />
+    </MarketingLayout>
   );
 }

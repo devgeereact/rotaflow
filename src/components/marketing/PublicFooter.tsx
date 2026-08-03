@@ -1,34 +1,75 @@
 import { Link } from 'react-router-dom';
+import { FOOTER_COLUMNS, TAGLINE } from '@/lib/marketing';
 import logo from '@/assets/logo.png';
 
 /**
- * Deliberately minimal. No social links, press mentions, or contact address —
- * none of those exist yet, and an unmonitored mailto or a link to a
- * nonexistent Twitter is worse than not having the row at all.
+ * Site footer.
+ *
+ * Still no social row, press mentions or postal address — none of those exist,
+ * and an unmonitored mailto or a link to a nonexistent account is worse than
+ * omitting the row. What changed since the minimal version is that there are
+ * now real destinations to link: `/features`, `/solutions`, `/pricing`,
+ * `/resources`, `/about` and `/contact` are routed pages, and
+ * `navigationTargets.test.ts` asserts every link in `FOOTER_COLUMNS` resolves
+ * so this cannot quietly rot back into pointing at 404s.
+ *
+ * Legal links are deliberately absent rather than stubbed: a "Privacy" link to
+ * a page that does not exist is worse for a product handling staff PII under
+ * UK GDPR than no link at all. They go in with the documents.
  */
 export function PublicFooter(): JSX.Element {
   return (
-    <footer className="border-t border-surface-border py-10 dark:border-surface-border-dark">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 text-center sm:flex-row sm:justify-between sm:text-left">
-        <div className="flex items-center gap-2">
-          <img src={logo} alt="" className="h-6 w-6" aria-hidden="true" />
-          <span className="text-sm font-medium text-content dark:text-content-dark">
-            RotaFlow
-          </span>
+    <footer className="border-t border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
+      <div className="mx-auto max-w-6xl px-6 py-14">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-1">
+            <Link to="/" className="flex items-center gap-2">
+              <img src={logo} alt="" aria-hidden="true" className="h-8 w-8" />
+              <span className="font-display text-lg font-bold text-content dark:text-content-dark">
+                Rota<span className="text-primary">Flow</span>
+              </span>
+            </Link>
+            <p className="mt-3 max-w-xs text-sm text-content-muted dark:text-content-muted-dark">
+              {TAGLINE}
+            </p>
+          </div>
+
+          {FOOTER_COLUMNS.map(({ heading, links }) => (
+            <nav key={heading} aria-label={heading}>
+              <h2 className="mb-3 text-sm font-semibold text-content dark:text-content-dark">
+                {heading}
+              </h2>
+              <ul className="space-y-2.5">
+                {links.map(({ label, to }) => (
+                  <li key={`${heading}-${label}`}>
+                    <Link
+                      to={to}
+                      className="rounded text-sm text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
 
-        <nav className="flex items-center gap-6 text-sm text-content-muted dark:text-content-muted-dark">
-          <Link to="/login" className="hover:text-content dark:hover:text-content-dark">
-            Sign in
-          </Link>
-          <Link to="/signup" className="hover:text-content dark:hover:text-content-dark">
-            Get started
-          </Link>
-        </nav>
-
-        <p className="text-xs text-content-muted dark:text-content-muted-dark">
-          &copy; {new Date().getFullYear()} RotaFlow
-        </p>
+        <div className="mt-12 flex flex-col gap-3 border-t border-surface-border pt-6 sm:flex-row sm:items-center sm:justify-between dark:border-surface-border-dark">
+          <p className="text-xs text-content-muted dark:text-content-muted-dark">
+            &copy; {new Date().getFullYear()} RotaFlow. Built in the UK.
+          </p>
+          <p className="text-xs text-content-muted dark:text-content-muted-dark">
+            RotaFlow is in active development — see{' '}
+            <Link
+              to="/resources"
+              className="rounded underline underline-offset-2 hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-content-dark"
+            >
+              what is built today
+            </Link>
+            .
+          </p>
+        </div>
       </div>
     </footer>
   );
