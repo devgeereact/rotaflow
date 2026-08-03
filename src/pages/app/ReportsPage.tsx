@@ -6,6 +6,7 @@ import { PermissionDenied } from '@/components/PermissionDenied';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
 import { ReportsView } from '@/components/reports/ReportsView';
+import { ReportsAnalyticsCard } from '@/components/reports/ReportsAnalyticsCard';
 import {
   REPORT_CATALOGUE,
   REPORT_RANGES,
@@ -50,6 +51,17 @@ export function ReportsPage(): JSX.Element {
   const [format, setFormat] = useState('');
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [rangeId, setRangeId] = useState<ReportRangeId>('this-month');
+
+  /**
+   * The window the charts read. Recomputed only when the range or the org
+   * changes — `new Date()` inside the memo would give it a new identity on
+   * every render and refetch the charts in a loop.
+   */
+  const analyticsPeriod = useMemo<ReportPeriod | null>(() => {
+    if (!orgId) return null;
+    const { from, to } = resolveRange(rangeId, new Date());
+    return { orgId, fromIso: from.toISOString(), toIso: to.toISOString() };
+  }, [orgId, rangeId]);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [favourites, setFavourites] = useState<string[]>(() =>
     orgId ? readFavourites(orgId) : [],
@@ -287,6 +299,9 @@ export function ReportsPage(): JSX.Element {
 
   return (
     <ReportsView
+      analytics={
+        <ReportsAnalyticsCard period={analyticsPeriod} rangeLabel={scopeLabel} />
+      }
       tabs={[
         { value: 'all', label: 'All Reports' },
         { value: 'favourites', label: 'Favourites', count: favourites.length },
