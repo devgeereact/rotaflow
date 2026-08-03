@@ -29,6 +29,8 @@ interface RotaGridRowProps {
   selectedShiftId: string | null;
   onAddShift: (staffProfileId: string | null, date: string) => void;
   onSelectShift: (shift: Shift) => void;
+  /** Omitted where the viewer cannot edit — that is what hides the chip's ×. */
+  onDeleteShift?: (shift: Shift) => void;
 }
 
 export function RotaGridRow({
@@ -43,6 +45,7 @@ export function RotaGridRow({
   selectedShiftId,
   onAddShift,
   onSelectShift,
+  onDeleteShift,
 }: RotaGridRowProps): JSX.Element {
   const staffProfileId = staff?.id ?? null;
 
@@ -90,6 +93,7 @@ export function RotaGridRow({
             selectedShiftId={selectedShiftId}
             onAddShift={() => onAddShift(staffProfileId, date)}
             onSelectShift={onSelectShift}
+            onDeleteShift={onDeleteShift}
           />
         );
       })}

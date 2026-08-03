@@ -34,6 +34,8 @@ interface RotaGridProps {
   selectedShiftId: string | null;
   onAddShift: (staffProfileId: string | null, date: string, locationId: string) => void;
   onSelectShift: (shift: Shift) => void;
+  /** Omitted where the viewer cannot edit — that is what hides the chip's ×. */
+  onDeleteShift?: (shift: Shift) => void;
 }
 
 function statusColour(status: DailyTotal['status']): string {
@@ -54,6 +56,7 @@ export function RotaGrid({
   selectedShiftId,
   onAddShift,
   onSelectShift,
+  onDeleteShift,
 }: RotaGridProps): JSX.Element {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // One clock for the whole grid. Every chip needs to know whether it is in
@@ -199,6 +202,7 @@ export function RotaGrid({
                       onAddShift(staffProfileId, date, group.location.id)
                     }
                     onSelectShift={onSelectShift}
+                    onDeleteShift={onDeleteShift}
                   />
                 ))}
 
@@ -217,6 +221,7 @@ export function RotaGrid({
                       onAddShift(staffProfileId, date, group.location.id)
                     }
                     onSelectShift={onSelectShift}
+                    onDeleteShift={onDeleteShift}
                   />
                 )}
               </>

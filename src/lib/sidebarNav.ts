@@ -12,7 +12,6 @@ import {
   TimerReset,
   Megaphone,
   BarChart3,
-  Plug,
   Settings,
   UserCircle,
   type LucideIcon,
@@ -48,13 +47,18 @@ export interface NavItem {
  * Schedule, Team, Availability, Leave, Swaps, Timesheets, Clock In, Reports,
  * Announcements, Locations, Settings, Integrations.
  *
- * Two earlier deviations are now resolved in the spec's favour. **Team** had
- * been folded into Settings → Permissions on the reasoning that invite/revoke
- * is administration and the designs showed no Team entry; §10 and §34 are
- * explicit that `/app/team` is the workforce directory, so it is top-level
- * again and the directory moved to that URL. **Integrations** had been demoted
- * to a Settings tab; §4 lists it in the sidebar, so it appears in both places
- * and points at the same tab.
+ * **Team** had been folded into Settings → Permissions on the reasoning that
+ * invite/revoke is administration and the designs showed no Team entry; §10 and
+ * §34 are explicit that `/app/team` is the workforce directory, so it is
+ * top-level again and the directory moved to that URL.
+ *
+ * **Integrations is deliberately NOT here**, against §4's list. It briefly
+ * appeared in both the sidebar and the Settings tab bar, pointing at the same
+ * `/app/settings/integrations` route — so the identical destination had two
+ * entries in the navigation, and the sidebar row lit up as "active" while the
+ * Settings tab bar simultaneously showed you were inside Settings. One
+ * destination, one home: it is a Settings tab, which is also where every
+ * reference screen puts it.
  *
  * ## Why Clock In is shown to managers too
  *
@@ -79,18 +83,29 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
     { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard' },
   ];
 
-  if (isManager) {
-    items.push({ label: 'Rota Builder', icon: CalendarDays, to: '/app/rota' });
-  }
-
-  items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });
-
-  if (isManager) {
-    items.push({ label: 'Team', icon: Users, to: '/app/team' });
-  }
+  /*
+   * Two merged workspaces, one entry each.
+   *
+   * **Rota** was "Rota Builder" + "Schedule": building a week and reading the
+   * published result, with no way across but the sidebar. **Team** was "Team" +
+   * "Availability": who works here, and when they can work. Each pair is now
+   * one destination with section tabs (see `workspaceTabs.ts`), which is four
+   * sidebar rows collapsed into two without losing a screen.
+   *
+   * A manager lands on the half they act on — the builder, the directory. Staff
+   * cannot open either of those, so their entry points straight at the half
+   * they can use and the tab bar does not render at all.
+   */
+  items.push(
+    isManager
+      ? { label: 'Rota', icon: CalendarDays, to: '/app/rota' }
+      : { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
+    isManager
+      ? { label: 'Team', icon: Users, to: '/app/team' }
+      : { label: 'Availability', icon: Clock3, to: '/app/availability' },
+  );
 
   items.push(
-    { label: 'Availability', icon: Clock3, to: '/app/availability' },
     { label: 'Leave', icon: Umbrella, to: '/app/leave' },
     { label: 'Swaps', icon: Repeat2, to: '/app/swaps' },
     // §2 lists "Request overtime" among what a staff member can do, so this
@@ -111,7 +126,6 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
     items.push(
       { label: 'Locations', icon: MapPin, to: '/app/locations' },
       { label: 'Settings', icon: Settings, to: '/app/settings' },
-      { label: 'Integrations', icon: Plug, to: '/app/settings/integrations' },
     );
   } else {
     items.push({ label: 'My Profile', icon: UserCircle, to: '/app/account' });

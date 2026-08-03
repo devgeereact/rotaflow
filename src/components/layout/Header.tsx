@@ -23,8 +23,10 @@ import logo from '@/assets/logo.png';
  * only always-visible brand anchor and as a link home.
  */
 export function Header(): JSX.Element {
+  // `shrink-0` below: the header is a flex child of AppShell's fixed-height
+  // column, so without it the browser compresses it as the content region grows.
   return (
-    <header className="flex h-16 items-center justify-between gap-4 border-b border-surface-border bg-surface px-4 md:px-6 dark:border-surface-border-dark dark:bg-surface-dark">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-surface-border bg-surface px-4 md:px-6 dark:border-surface-border-dark dark:bg-surface-dark">
       <Link to="/app/dashboard" className="flex shrink-0 items-center gap-2 md:hidden">
         <img src={logo} alt="" aria-hidden="true" className="h-8 w-8" />
         <span className="font-display text-base font-bold text-content dark:text-content-dark">

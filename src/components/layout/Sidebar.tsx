@@ -148,9 +148,16 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
         now opens this same drawer from a place a thumb already is. One opener,
         no button parked on top of the content.
       */}
+      {/*
+        `h-full` against AppShell's viewport-height row, so the sidebar is
+        pinned and never scrolls with the page. If the nav list outgrows the
+        space, `NavList`'s own `overflow-y-auto` scrolls just the links — the
+        logo, organisation switcher and profile footer stay put, which is the
+        point of pinning it at all.
+      */}
       <aside
         className={cn(
-          'hidden shrink-0 flex-col border-r border-surface-border bg-surface-subtle transition-[width] duration-200 md:flex',
+          'hidden h-full shrink-0 flex-col border-r border-surface-border bg-surface-subtle transition-[width] duration-200 md:flex',
           'dark:border-surface-border-dark dark:bg-surface-subtle-dark',
           collapsed ? 'w-[4.5rem]' : 'w-64',
         )}

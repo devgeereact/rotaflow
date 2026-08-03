@@ -522,6 +522,9 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                   selectedShiftId={selectedShiftId}
                   onAddShift={() => {}}
                   onSelectShift={(shift) => setSelectedShiftId(shift.id)}
+                  // Passed so the design loop sees the chip's × exactly as the
+                  // live grid renders it. No-op: there is no rota behind this.
+                  onDeleteShift={() => {}}
                 />
               </div>
 

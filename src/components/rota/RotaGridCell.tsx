@@ -18,6 +18,8 @@ interface RotaGridCellProps {
   selectedShiftId: string | null;
   onAddShift: () => void;
   onSelectShift: (shift: Shift) => void;
+  /** Omitted where the viewer cannot edit — that is what hides the chip's ×. */
+  onDeleteShift?: (shift: Shift) => void;
 }
 
 export function RotaGridCell({
@@ -32,6 +34,7 @@ export function RotaGridCell({
   selectedShiftId,
   onAddShift,
   onSelectShift,
+  onDeleteShift,
 }: RotaGridCellProps): JSX.Element {
   const { setNodeRef, isOver } = useDroppable({
     id: `cell:${shiftCellKey(staffProfileId, date)}`,
@@ -81,6 +84,7 @@ export function RotaGridCell({
               timeState={shiftTimeState(shift.starts_at, shift.ends_at, now)}
               selected={shift.id === selectedShiftId}
               onClick={() => onSelectShift(shift)}
+              onDelete={onDeleteShift ? () => onDeleteShift(shift) : undefined}
             />
           );
         })}

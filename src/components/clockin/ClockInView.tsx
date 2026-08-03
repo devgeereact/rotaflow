@@ -121,11 +121,27 @@ export function ClockInView({
         />
       </div>
 
+      {/*
+        Both rows are 12-column grids on the SAME column track, and every cell
+        is `h-full`.
+
+        Neither was true before, and the screen showed it: the right rail
+        (Today's Schedule + Recent Activity) is naturally taller than the shift
+        card beside it, so the grid row grew to the rail's height while the
+        shift card kept its own — leaving the two columns ending 60px apart. The
+        row-2 cards had the same latent problem, held together only by their
+        content happening to be the same height.
+
+        `h-full` on each cell plus `h-full` inside each card is what makes a
+        row end on one line regardless of what is in it. The grid's default
+        `items-stretch` stretches the *cell*; without the card also filling that
+        cell, the card just sits at its natural height inside a taller box.
+      */}
       <div className="mt-5 grid gap-5 lg:grid-cols-12">
         <div className="lg:col-span-8">
           {/* 7/5 split, not 50/50 — the reference gives Current Shift ~55% so
               "09:00 – 17:00" and the location rows each stay on one line. */}
-          <div className="grid divide-y divide-surface-border overflow-hidden rounded-xl border border-surface-border bg-surface shadow-sm dark:divide-surface-border-dark dark:border-surface-border-dark dark:bg-surface-dark md:grid-cols-12 md:divide-x md:divide-y-0">
+          <div className="grid h-full divide-y divide-surface-border overflow-hidden rounded-xl border border-surface-border bg-surface shadow-sm dark:divide-surface-border-dark dark:border-surface-border-dark dark:bg-surface-dark md:grid-cols-12 md:divide-x md:divide-y-0">
             <div className="md:col-span-7">
               <CurrentShiftPane shift={shift} onViewReminder={onViewReminder} />
             </div>
@@ -145,14 +161,20 @@ export function ClockInView({
           </div>
         </div>
 
-        <div className="space-y-5 lg:col-span-4">
+        {/* `flex` + `flex-1` on the last card rather than `space-y-5`: the rail
+            has to fill the row exactly, and Recent Activity is the item that
+            should absorb the slack — it is a list, so extra height shows more
+            of it rather than stretching a fixed layout. */}
+        <div className="flex flex-col gap-5 lg:col-span-4">
           <TodayScheduleCard entries={schedule} onViewFull={onViewFullSchedule} />
-          <RecentActivityCard entries={activity} onViewAll={onViewAllActivity} />
+          <div className="flex-1">
+            <RecentActivityCard entries={activity} onViewAll={onViewAllActivity} />
+          </div>
         </div>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-12">
-        <div className="lg:col-span-5">
+        <div className="h-full lg:col-span-5">
           <WeeklySummaryCard
             periodLabel={weekly.periodLabel}
             stats={weekly.stats}
@@ -161,7 +183,7 @@ export function ClockInView({
             onViewTimesheet={onViewTimesheet}
           />
         </div>
-        <div className="lg:col-span-3">
+        <div className="h-full lg:col-span-3">
           <AttendanceStatusCard
             tone={attendance.tone}
             statusTitle={attendance.statusTitle}
@@ -173,7 +195,7 @@ export function ClockInView({
             onViewReport={onViewAttendanceReport}
           />
         </div>
-        <div className="lg:col-span-4">
+        <div className="h-full lg:col-span-4">
           <NeedHelpCard links={help} />
         </div>
       </div>

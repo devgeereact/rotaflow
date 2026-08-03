@@ -46,12 +46,28 @@ export function AppShell(): JSX.Element {
   if (memberships.length === 0) return <Navigate to="/onboarding" replace />;
 
   return (
-    <div className="flex min-h-screen bg-background dark:bg-background-dark">
+    /*
+     * The shell is exactly one viewport tall and does not scroll. Only `main`
+     * does.
+     *
+     * This was `min-h-screen`, which grows with its content — so `main`'s
+     * `overflow-y-auto` had no bounded parent to scroll inside, the whole
+     * document scrolled instead, and the sidebar and header slid away with it.
+     * On a long rota you lost the navigation entirely and had to scroll back up
+     * to change screen.
+     *
+     * `100dvh` rather than `100vh`: on mobile Safari and Chrome `vh` is fixed to
+     * the *largest* viewport, so with the address bar showing, `h-screen` is
+     * taller than what you can see and the bottom of the sidebar — the profile
+     * block and collapse control — sits below the fold with no way to reach it.
+     * `dvh` tracks the visible height as the browser chrome moves.
+     */
+    <div className="flex h-[100dvh] overflow-hidden bg-background dark:bg-background-dark">
       {/* Drawer state lives here rather than inside Sidebar so the mobile tab
           bar's `More` opens the same drawer. Two components owning one panel
           is the alternative, and it desyncs the moment either can close it. */}
       <Sidebar mobileOpen={navOpen} onMobileOpenChange={setNavOpen} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
         {/* `pb-20` on mobile clears the fixed tab bar; without it the last row
             of every table sits underneath it and cannot be reached. */}
