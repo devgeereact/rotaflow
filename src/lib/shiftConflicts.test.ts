@@ -75,7 +75,11 @@ describe('windowsOverlap', () => {
 
 describe('findClashingShift', () => {
   const existing = [
-    shift({ id: 's-1', starts_at: '2026-08-19T06:00:00Z', ends_at: '2026-08-19T14:00:00Z' }),
+    shift({
+      id: 's-1',
+      starts_at: '2026-08-19T06:00:00Z',
+      ends_at: '2026-08-19T14:00:00Z',
+    }),
   ];
 
   it('blocks a duplicate of a shift the person already has', () => {
@@ -146,8 +150,16 @@ describe('findClashingShift', () => {
 
   it('returns the earliest clash when several overlap', () => {
     const many = [
-      shift({ id: 'late', starts_at: '2026-08-19T10:00:00Z', ends_at: '2026-08-19T18:00:00Z' }),
-      shift({ id: 'early', starts_at: '2026-08-19T05:00:00Z', ends_at: '2026-08-19T12:00:00Z' }),
+      shift({
+        id: 'late',
+        starts_at: '2026-08-19T10:00:00Z',
+        ends_at: '2026-08-19T18:00:00Z',
+      }),
+      shift({
+        id: 'early',
+        starts_at: '2026-08-19T05:00:00Z',
+        ends_at: '2026-08-19T12:00:00Z',
+      }),
     ];
     expect(
       findClashingShift(
@@ -165,16 +177,32 @@ describe('findClashingShift', () => {
 describe('findExistingClashes', () => {
   it('flags the later half of each overlapping pair', () => {
     const rows = [
-      shift({ id: 'a', starts_at: '2026-08-19T06:00:00Z', ends_at: '2026-08-19T14:00:00Z' }),
-      shift({ id: 'b', starts_at: '2026-08-19T06:00:00Z', ends_at: '2026-08-19T14:00:00Z' }),
+      shift({
+        id: 'a',
+        starts_at: '2026-08-19T06:00:00Z',
+        ends_at: '2026-08-19T14:00:00Z',
+      }),
+      shift({
+        id: 'b',
+        starts_at: '2026-08-19T06:00:00Z',
+        ends_at: '2026-08-19T14:00:00Z',
+      }),
     ];
     expect(findExistingClashes(rows).map((s) => s.id)).toEqual(['b']);
   });
 
   it('is clean for a healthy rota of back-to-back shifts', () => {
     const rows = [
-      shift({ id: 'a', starts_at: '2026-08-19T06:00:00Z', ends_at: '2026-08-19T14:00:00Z' }),
-      shift({ id: 'b', starts_at: '2026-08-19T14:00:00Z', ends_at: '2026-08-19T22:00:00Z' }),
+      shift({
+        id: 'a',
+        starts_at: '2026-08-19T06:00:00Z',
+        ends_at: '2026-08-19T14:00:00Z',
+      }),
+      shift({
+        id: 'b',
+        starts_at: '2026-08-19T14:00:00Z',
+        ends_at: '2026-08-19T22:00:00Z',
+      }),
     ];
     expect(findExistingClashes(rows)).toEqual([]);
   });

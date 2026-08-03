@@ -409,7 +409,8 @@ const INSIGHT_SEVERITY: Record<
   },
   info: {
     icon: Info,
-    className: 'border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark',
+    className:
+      'border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark',
     label: 'For information',
   },
 };
@@ -430,8 +431,8 @@ function WarningsList({
   if (warnings.length === 0) {
     return (
       <p className="text-sm text-content-muted dark:text-content-muted-dark">
-        No problems found. Nobody is double-booked, rostered on leave or short
-        of rest this week.
+        No problems found. Nobody is double-booked, rostered on leave or short of rest
+        this week.
       </p>
     );
   }

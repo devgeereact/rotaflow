@@ -328,10 +328,7 @@ export function RotaBuilderPage(): JSX.Element {
     let active = true;
     void (async () => {
       try {
-        const horizon = format(
-          new Date(Date.now() + 90 * 86_400_000),
-          'yyyy-MM-dd',
-        );
+        const horizon = format(new Date(Date.now() + 90 * 86_400_000), 'yyyy-MM-dd');
         const [leaveRows, availabilityRows, documentRows] = await Promise.all([
           listOrgLeaveRequests(orgId),
           listOrgAvailability(orgId),
@@ -414,11 +411,7 @@ export function RotaBuilderPage(): JSX.Element {
   /** Shifts named by at least one warning — powers the "needs attention" filter. */
   const problemShiftIds = useMemo(
     () =>
-      new Set(
-        warnings
-          .map((w) => w.shiftId)
-          .filter((id): id is string => id !== null),
-      ),
+      new Set(warnings.map((w) => w.shiftId).filter((id): id is string => id !== null)),
     [warnings],
   );
 
@@ -507,9 +500,7 @@ export function RotaBuilderPage(): JSX.Element {
           .map((s) => s.staff_profile_id)
           .filter((id): id is string => Boolean(id)),
       );
-      return [
-        { location: loc, staff: staffFiltered.filter((p) => rostered.has(p.id)) },
-      ];
+      return [{ location: loc, staff: staffFiltered.filter((p) => rostered.has(p.id)) }];
     }
     const rosteredByLocation = new Map<string, Set<string>>();
     for (const shift of shiftsForDisplay) {
@@ -1716,8 +1707,8 @@ export function RotaBuilderPage(): JSX.Element {
             <span>
               Only show shifts that need attention
               <span className="block text-xs text-content-muted dark:text-content-muted-dark">
-                Double-bookings, rest breaches, leave clashes and unfilled cover
-                — everything on the Warnings tab.
+                Double-bookings, rest breaches, leave clashes and unfilled cover —
+                everything on the Warnings tab.
               </span>
             </span>
           </label>

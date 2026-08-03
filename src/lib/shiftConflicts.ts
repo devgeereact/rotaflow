@@ -101,9 +101,7 @@ export function findClashingShift<T extends ShiftLike>(
     });
   });
 
-  return (
-    clashes.sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null
-  );
+  return clashes.sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
 }
 
 /**
@@ -130,8 +128,16 @@ export function findExistingClashes<T extends ShiftLike>(shifts: readonly T[]): 
         if (!a || !b) continue;
         if (
           windowsOverlap(
-            { staffProfileId: a.staff_profile_id, startsAt: a.starts_at, endsAt: a.ends_at },
-            { staffProfileId: b.staff_profile_id, startsAt: b.starts_at, endsAt: b.ends_at },
+            {
+              staffProfileId: a.staff_profile_id,
+              startsAt: a.starts_at,
+              endsAt: a.ends_at,
+            },
+            {
+              staffProfileId: b.staff_profile_id,
+              startsAt: b.starts_at,
+              endsAt: b.ends_at,
+            },
           )
         ) {
           clashed.push(b);

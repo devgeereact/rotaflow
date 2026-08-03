@@ -215,9 +215,7 @@ describe('navigation targets', () => {
    * roles are checked, not just the manager's superset.
    */
   const sidebarLinks = (['owner', 'manager', 'staff'] as const).flatMap((role) =>
-    navItemsForRole(role).map(
-      (item) => [`${role} › ${item.label}`, item.to] as const,
-    ),
+    navItemsForRole(role).map((item) => [`${role} › ${item.label}`, item.to] as const),
   );
 
   it('builds a non-trivial sidebar for every role', () => {
