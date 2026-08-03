@@ -90,9 +90,13 @@ export function OvertimePage(): JSX.Element {
     setLoadFailed(false);
     void (async () => {
       try {
+        // The roster is only needed to put names against other people's
+        // requests, which only the Team view shows. Fetching it for a staff
+        // member reads the whole directory to render one column they never
+        // see — the same reason AvailabilityPage skips it.
         const [mine, staffRows] = await Promise.all([
           getMyStaffProfile(orgId, user.id),
-          listActiveStaff(orgId),
+          teamMode ? listActiveStaff(orgId) : Promise.resolve<StaffProfile[]>([]),
         ]);
         if (!active) return;
         setMyProfile(mine);
@@ -119,7 +123,17 @@ export function OvertimePage(): JSX.Element {
     };
   }, [orgId, user, teamMode, reloadKey, showError]);
 
-  const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
+  /**
+   * Own profile included explicitly, so a row always resolves to a real person
+   * even in the personal view where `staff` is deliberately empty. Relying on
+   * "that column is not rendered here" would make the view model correct only
+   * by accident.
+   */
+  const staffById = useMemo(() => {
+    const map = new Map(staff.map((s) => [s.id, s]));
+    if (myProfile) map.set(myProfile.id, myProfile);
+    return map;
+  }, [staff, myProfile]);
 
   const rows = useMemo(
     () =>
