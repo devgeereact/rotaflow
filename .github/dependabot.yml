@@ -53,6 +53,22 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: autoprefixer
         update-types: ['version-update:semver-major']
+      # @vitest/coverage-v8's major is LOCKED to vitest's: v4 declares a hard
+      # `peer vitest@4.1.10`, so bumping it alone makes `npm ci` fail with
+      # ERESOLVE on a clean checkout. PR #78 proposed exactly that.
+      #
+      # It is worth naming why this nearly got through. Locally it looked fine:
+      # typecheck, lint, the 254 tests and even `npm run test:coverage` all
+      # passed — because `npm install` had already rewritten the lockfile to a
+      # resolution `npm ci` will not accept. **`npm install` succeeding proves
+      # nothing about `npm ci`.** CI caught it, as it did for
+      # eslint-plugin-react-refresh below.
+      #
+      # Same shape as the tailwind-merge/tailwind coupling in audit01 §2: a
+      # package whose major is meaningless except in lockstep with its host.
+      # Lift this only in the same PR that moves vitest itself to 4.
+      - dependency-name: '@vitest/coverage-v8'
+        update-types: ['version-update:semver-major']
       # Lint and format. An ESLint major means a config-format migration, and
       # its plugins move in lockstep with it.
       - dependency-name: eslint
