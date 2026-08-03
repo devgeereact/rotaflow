@@ -51,7 +51,16 @@ export const PROFILE_TABS: readonly TabItem[] = [
 export function settingsTabsForRole(role: MembershipRole | null): TabItem[] {
   if (role !== 'owner' && role !== 'manager') return [];
 
-  const ownerOnly = new Set(['/app/settings/billing', '/app/settings/permissions']);
+  // Audit is owner-only because `audit_logs_select` in 0002_rotaflow.sql is
+  // owner-only. The tab bar follows RLS, never the other way round — the first
+  // draft of 0013 widened the policy to match this list instead, which had it
+  // backwards. Widening access to a trail of who changed whose role is a
+  // security decision, and 0002 already made it.
+  const ownerOnly = new Set([
+    '/app/settings/billing',
+    '/app/settings/permissions',
+    '/app/settings/audit',
+  ]);
   return SETTINGS_TABS.filter((tab) => role === 'owner' || !ownerOnly.has(tab.to)).map(
     (tab) => ({ ...tab }),
   );
