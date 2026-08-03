@@ -22,7 +22,7 @@ export function RecentActivityCard({
   onViewAll,
 }: RecentActivityCardProps): JSX.Element {
   return (
-    <Card className="rounded-xl p-6">
+    <Card className="flex h-full flex-col rounded-xl p-6">
       <ClockCardHeading
         icon={History}
         title="Recent Activity"
