@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, ShieldCheck } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOrg } from '@/hooks/useOrg';
 
@@ -16,7 +16,7 @@ function initialsFor(label: string): string {
 /** Avatar + name/role, dropdown with sign out. */
 export function UserMenu(): JSX.Element {
   const { user, signOut } = useSupabaseAuth();
-  const { role } = useOrg();
+  const { role, isPlatformAdmin } = useOrg();
   const [open, setOpen] = useState(false);
 
   const displayName =
@@ -56,8 +56,28 @@ export function UserMenu(): JSX.Element {
           />
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-xl border border-surface-border bg-surface py-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
+            className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-surface-border bg-surface py-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
           >
+            {/* The only route into `/admin` anywhere in the product. Until
+                this existed a platform administrator had to type the URL.
+                It belongs here rather than in the sidebar: the sidebar is
+                the *organisation's* navigation, and `navigationTargets.test`
+                asserts no `/admin` target appears in it for any role —
+                correctly, since platform administration sits above the org
+                whose context that sidebar is rendering. Tinted `danger` to
+                match AdminShell's accent, so the change of altitude is
+                visible before the click, not after. */}
+            {isPlatformAdmin && (
+              <Link
+                to="/admin"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex w-full items-center gap-2 border-b border-surface-border px-4 py-2 text-left text-sm font-medium text-danger hover:bg-danger/5 dark:border-surface-border-dark"
+              >
+                <ShieldCheck size={16} aria-hidden="true" />
+                Platform console
+              </Link>
+            )}
             <Link
               to="/app/account"
               role="menuitem"

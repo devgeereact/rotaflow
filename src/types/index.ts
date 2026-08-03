@@ -17,6 +17,19 @@ export type OrganisationUpdate = Database['public']['Tables']['organisations']['
 export type MembershipRole = 'owner' | 'manager' | 'staff';
 export type Membership = Database['public']['Tables']['memberships']['Row'];
 
+/**
+ * Platform administration roles (0015_platform_roles.sql).
+ *
+ * Deliberately a separate union from `MembershipRole`, not an extension of it.
+ * Organisation permissions control access to one customer's workspace;
+ * platform permissions control RotaFlow-wide administration. Conflating them
+ * would hand every customer's owner the keys to every other customer's data —
+ * which is why Super Admin has never been a fourth membership role.
+ */
+export type PlatformRole =
+  'platform_owner' | 'platform_admin' | 'platform_support' | 'platform_finance';
+export type PlatformAdmin = Database['public']['Tables']['platform_admins']['Row'];
+
 export type StaffProfile = Database['public']['Tables']['staff_profiles']['Row'];
 export type StaffProfileInsert = Database['public']['Tables']['staff_profiles']['Insert'];
 export type StaffProfileUpdate = Database['public']['Tables']['staff_profiles']['Update'];

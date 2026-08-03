@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrg } from '@/hooks/useOrg';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
 import { SidebarFooter } from '@/components/layout/SidebarFooter';
 import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
@@ -17,9 +18,6 @@ const LINK_INACTIVE =
 // (e.g. AvailabilityPage, LeavePage), so the active nav item reads as "this
 // app's highlight colour", not a one-off style.
 const LINK_ACTIVE = 'bg-primary/10 text-primary dark:bg-primary/15';
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function NavList({
   items,
@@ -95,50 +93,10 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
     });
   };
 
-  useEffect(() => {
-    if (!mobileOpen) return;
-
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const drawer = drawerRef.current;
-    const focusable = drawer?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    (focusable?.[0] ?? drawer)?.focus();
-
-    const appContent = document.querySelector('main');
-    if (appContent) appContent.setAttribute('aria-hidden', 'true');
-
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        setMobileOpen(false);
-        return;
-      }
-      if (e.key !== 'Tab' || !drawer) return;
-
-      const focusableEls = Array.from(
-        drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      );
-      if (focusableEls.length === 0) {
-        e.preventDefault();
-        return;
-      }
-
-      const first = focusableEls[0]!;
-      const last = focusableEls[focusableEls.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      if (appContent) appContent.removeAttribute('aria-hidden');
-      previouslyFocused?.focus();
-    };
-  }, [mobileOpen, setMobileOpen]);
+  // Extracted to `useFocusTrap` so the platform console's drawer runs the same
+  // code rather than a second, subtly different copy of it.
+  const closeDrawer = useCallback(() => setMobileOpen(false), [setMobileOpen]);
+  useFocusTrap(drawerRef, mobileOpen, closeDrawer);
 
   return (
     <>

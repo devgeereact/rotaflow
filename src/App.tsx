@@ -8,6 +8,8 @@ import { OrgProvider } from '@/context/OrgContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RequireRole } from '@/components/RequireRole';
 import { RequirePlatformAdmin } from '@/components/RequirePlatformAdmin';
+import { RequirePlatformRole } from '@/components/RequirePlatformRole';
+import { PLATFORM_BILLING_ROLES, PLATFORM_CONFIG_ROLES } from '@/lib/platformRoles';
 import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { InstallPrompt } from '@/components/InstallPrompt';
@@ -616,10 +618,37 @@ export function App(): JSX.Element {
                       <Route index element={<AdminOverviewPage />} />
                       <Route path="organisations" element={<AdminOrganisationsPage />} />
                       <Route path="users" element={<AdminUsersPage />} />
-                      <Route path="billing" element={<AdminBillingPage />} />
+                      {/* Billing and feature flags are narrower than the area
+                      itself: `adminNavForRole` hides them from a support
+                      administrator, and §34 is explicit that restricted routes
+                      "must not rely only on hidden navigation". So the route
+                      gates too — a hidden link that still renders when typed is
+                      not a permission, it is a decoration. The role lists mirror
+                      the `has_platform_role(...)` predicates in the migrations. */}
+                      <Route
+                        path="billing"
+                        element={
+                          <RequirePlatformRole
+                            allow={PLATFORM_BILLING_ROLES}
+                            area="Platform billing"
+                          >
+                            <AdminBillingPage />
+                          </RequirePlatformRole>
+                        }
+                      />
                       <Route path="support" element={<AdminSupportPage />} />
                       <Route path="audit" element={<AdminAuditPage />} />
-                      <Route path="feature-flags" element={<AdminFeatureFlagsPage />} />
+                      <Route
+                        path="feature-flags"
+                        element={
+                          <RequirePlatformRole
+                            allow={PLATFORM_CONFIG_ROLES}
+                            area="Feature flags"
+                          >
+                            <AdminFeatureFlagsPage />
+                          </RequirePlatformRole>
+                        }
+                      />
                     </Route>
 
                     <Route path="*" element={<NotFoundPage />} />
