@@ -10,6 +10,7 @@ import {
   Repeat2,
   Settings,
   Timer,
+  TimerReset,
   Umbrella,
   UserCircle,
   Users,
@@ -111,6 +112,13 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/swaps',
     group: 'Scheduling',
     icon: Repeat2,
+  },
+  {
+    label: 'Overtime',
+    keywords: 'overtime extra hours additional beyond contract request approve',
+    to: '/app/overtime',
+    group: 'Scheduling',
+    icon: TimerReset,
   },
   {
     label: 'Staff directory',

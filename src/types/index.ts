@@ -42,6 +42,10 @@ export type ClockEventInsert = Database['public']['Tables']['clock_events']['Ins
 export type LeaveRequest = Database['public']['Tables']['leave_requests']['Row'];
 export type LeaveRequestInsert = Database['public']['Tables']['leave_requests']['Insert'];
 
+export type OvertimeRequest = Database['public']['Tables']['overtime_requests']['Row'];
+export type OvertimeRequestInsert =
+  Database['public']['Tables']['overtime_requests']['Insert'];
+
 export type ShiftSwap = Database['public']['Tables']['shift_swaps']['Row'];
 export type ShiftSwapInsert = Database['public']['Tables']['shift_swaps']['Insert'];
 

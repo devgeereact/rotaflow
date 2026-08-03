@@ -29,6 +29,8 @@ export const PROFILE_TABS: readonly TabItem[] = [
   { to: '/app/account/profile', label: 'Profile' },
   { to: '/app/account/preferences', label: 'Preferences' },
   { to: '/app/account/security', label: 'Security' },
+  // §21's "Connected Accounts", between Security and Sessions as listed there.
+  { to: '/app/account/accounts', label: 'Connected Accounts' },
   { to: '/app/account/sessions', label: 'Sessions' },
   { to: '/app/account/tokens', label: 'API Tokens' },
   { to: '/app/account/activity', label: 'Activity' },

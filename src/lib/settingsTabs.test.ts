@@ -73,10 +73,13 @@ describe('profileTabs', () => {
   });
 
   it('keeps the designed order', () => {
+    // NEW_STRUCTURE §21 lists Connected Accounts between Security and
+    // Sessions; the rest is the order the reference screens show.
     expect(profileTabs().map((t) => t.label)).toEqual([
       'Profile',
       'Preferences',
       'Security',
+      'Connected Accounts',
       'Sessions',
       'API Tokens',
       'Activity',

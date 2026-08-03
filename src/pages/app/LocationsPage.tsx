@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { addDays } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -98,7 +98,16 @@ export function LocationsPage(): JSX.Element {
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SiteSort | null>(null);
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  /**
+   * `/app/locations/:locationId` (NEW_STRUCTURE §34) is the same workspace with
+   * one site opened, not a second implementation of it. Reusing the page keeps
+   * one set of tabs, one data load and one place to fix a bug; a parallel
+   * detail screen would drift from this one within a release.
+   */
+  const { locationId: routeLocationId } = useParams<{ locationId: string }>();
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    routeLocationId ?? null,
+  );
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -111,6 +120,22 @@ export function LocationsPage(): JSX.Element {
   const [guideOpen, setGuideOpen] = useState(false);
   const [withStaffOnly, setWithStaffOnly] = useState(false);
   const [withShiftsOnly, setWithShiftsOnly] = useState(false);
+
+  /**
+   * Picking a different site keeps the URL honest, but only when the URL was
+   * already naming one. On `/app/locations` the selection is a panel, not a
+   * destination, and pushing a history entry per click would make Back walk
+   * the list instead of leaving the screen.
+   */
+  const handleSelectLocation = useCallback(
+    (id: string): void => {
+      setSelectedLocationId(id);
+      if (routeLocationId && id !== routeLocationId) {
+        void navigate(`/app/locations/${id}`, { replace: true });
+      }
+    },
+    [routeLocationId, navigate],
+  );
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId) return;
@@ -132,14 +157,23 @@ export function LocationsPage(): JSX.Element {
       setDepartments(departmentRows);
       setStaff(staffRows);
       setShifts(shiftRows);
-      setSelectedLocationId((current) => current ?? locationRows[0]?.id ?? null);
+      // A URL-named site wins over "first in the list": arriving on
+      // /app/locations/<id> must open that site, not whichever sorts first.
+      // Falls back to the first row when the id is unknown — a stale bookmark
+      // to a deleted site should still land somewhere usable.
+      setSelectedLocationId((current) => {
+        if (routeLocationId && locationRows.some((l) => l.id === routeLocationId)) {
+          return routeLocationId;
+        }
+        return current ?? locationRows[0]?.id ?? null;
+      });
       setSelectedDepartmentId((current) => current ?? departmentRows[0]?.id ?? null);
     } catch (err) {
       reportError(err, { area: 'locations:load' });
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, routeLocationId]);
 
   useEffect(() => {
     void load();
@@ -292,8 +326,13 @@ export function LocationsPage(): JSX.Element {
           sort={sort}
           onSortChange={setSort}
           selectedId={selectedLocationId}
-          onSelect={setSelectedLocationId}
-          onCloseDetails={() => setSelectedLocationId(null)}
+          onSelect={handleSelectLocation}
+          onCloseDetails={() => {
+            setSelectedLocationId(null);
+            // Leaving the detail route when its subject is dismissed, so the
+            // URL never names a site that is no longer open.
+            if (routeLocationId) void navigate('/app/locations');
+          }}
           onEdit={openEdit}
           onOpenActions={openEdit}
           page={page}

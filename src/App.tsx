@@ -7,6 +7,7 @@ import { ConfirmProvider } from '@/context/ConfirmContext';
 import { OrgProvider } from '@/context/OrgContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RequireRole } from '@/components/RequireRole';
+import { RequirePlatformAdmin } from '@/components/RequirePlatformAdmin';
 import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { InstallPrompt } from '@/components/InstallPrompt';
@@ -166,6 +167,7 @@ const AvailabilityPage = lazyPage(
 );
 const LeavePage = lazyPage('LeavePage', () => import('@/pages/app/LeavePage'));
 const SwapsPage = lazyPage('SwapsPage', () => import('@/pages/app/SwapsPage'));
+const OvertimePage = lazyPage('OvertimePage', () => import('@/pages/app/OvertimePage'));
 const AnnouncementsPage = lazyPage(
   'AnnouncementsPage',
   () => import('@/pages/app/AnnouncementsPage'),
@@ -256,6 +258,42 @@ const PreferencesPage = lazyPage(
 const SecurityPage = lazyPage(
   'SecurityPage',
   () => import('@/pages/app/account/SecurityPage'),
+);
+const ConnectedAccountsPage = lazyPage(
+  'ConnectedAccountsPage',
+  () => import('@/pages/app/account/ConnectedAccountsPage'),
+);
+
+// Platform administration. Lazy like every other area, so a tenant user never
+// downloads the cross-tenant screens they cannot open.
+const AdminShell = lazyPage('AdminShell', () => import('@/components/layout/AdminShell'));
+const AdminOverviewPage = lazyPage(
+  'AdminOverviewPage',
+  () => import('@/pages/admin/AdminOverviewPage'),
+);
+const AdminOrganisationsPage = lazyPage(
+  'AdminOrganisationsPage',
+  () => import('@/pages/admin/AdminOrganisationsPage'),
+);
+const AdminUsersPage = lazyPage(
+  'AdminUsersPage',
+  () => import('@/pages/admin/AdminUsersPage'),
+);
+const AdminBillingPage = lazyPage(
+  'AdminBillingPage',
+  () => import('@/pages/admin/AdminBillingPage'),
+);
+const AdminSupportPage = lazyPage(
+  'AdminSupportPage',
+  () => import('@/pages/admin/AdminSupportPage'),
+);
+const AdminAuditPage = lazyPage(
+  'AdminAuditPage',
+  () => import('@/pages/admin/AdminAuditPage'),
+);
+const AdminFeatureFlagsPage = lazyPage(
+  'AdminFeatureFlagsPage',
+  () => import('@/pages/admin/AdminFeatureFlagsPage'),
 );
 const SessionsPage = lazyPage(
   'SessionsPage',
@@ -474,6 +512,18 @@ export function App(): JSX.Element {
                           </RequireRole>
                         }
                       />
+                      {/* §34's location detail. Same workspace with one site
+                      opened rather than a parallel screen — see LocationsPage.
+                      Declared after `locations/departments` so that literal
+                      path is never captured as a :locationId. */}
+                      <Route
+                        path="locations/:locationId"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="locations">
+                            <LocationsPage />
+                          </RequireRole>
+                        }
+                      />
                       <Route
                         path="rota"
                         element={
@@ -493,6 +543,10 @@ export function App(): JSX.Element {
                       <Route path="availability" element={<AvailabilityPage />} />
                       <Route path="leave" element={<LeavePage />} />
                       <Route path="swaps" element={<SwapsPage />} />
+                      {/* Open to every member: a staff member raises their own
+                      overtime here, and the page's Team toggle is what gates
+                      the approval queue behind `canApprove`. */}
+                      <Route path="overtime" element={<OvertimePage />} />
                       <Route path="announcements" element={<AnnouncementsPage />} />
                       <Route path="notifications" element={<NotificationsPage />} />
                       <Route
@@ -533,6 +587,7 @@ export function App(): JSX.Element {
                         <Route path="profile" element={<ProfilePage />} />
                         <Route path="preferences" element={<PreferencesPage />} />
                         <Route path="security" element={<SecurityPage />} />
+                        <Route path="accounts" element={<ConnectedAccountsPage />} />
                         <Route path="sessions" element={<SessionsPage />} />
                         <Route path="tokens" element={<TokensPage />} />
                         <Route path="activity" element={<ActivityPage />} />
@@ -541,6 +596,32 @@ export function App(): JSX.Element {
                         /app/profile/*. See RouteAliases. */}
                       <Route path="profile/*" element={<ProfileRedirect />} />
                     </Route>
+
+                    {/* Platform administration (NEW_STRUCTURE §34). Outside
+                    `/app` deliberately: this area sits above organisations, and
+                    it is gated on `profiles.is_platform_admin` rather than on a
+                    membership role — §2 is explicit that Super Admin is not one.
+                    `ProtectedRoute` still applies, so an anonymous visitor is
+                    sent to sign in rather than told the area exists. */}
+                    <Route
+                      path="/admin"
+                      element={
+                        <ProtectedRoute>
+                          <RequirePlatformAdmin>
+                            <AdminShell />
+                          </RequirePlatformAdmin>
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route index element={<AdminOverviewPage />} />
+                      <Route path="organisations" element={<AdminOrganisationsPage />} />
+                      <Route path="users" element={<AdminUsersPage />} />
+                      <Route path="billing" element={<AdminBillingPage />} />
+                      <Route path="support" element={<AdminSupportPage />} />
+                      <Route path="audit" element={<AdminAuditPage />} />
+                      <Route path="feature-flags" element={<AdminFeatureFlagsPage />} />
+                    </Route>
+
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>
