@@ -18,6 +18,7 @@ import {
   type CoverCandidate,
   type RotaInsight,
 } from '@/lib/rotaInsights';
+import { findClashingShift, type ShiftLike } from '@/lib/shiftConflicts';
 import {
   generateRotaSuggestions,
   type AiShiftSuggestion,
@@ -280,14 +281,31 @@ export function RotaAssistantPanel({
     setApplying(true);
     setError(null);
     try {
-      const inserts: ShiftInsert[] = suggestions.map((s) => {
+      // The model proposes; it does not get to double-book. Each suggestion is
+      // checked against the real rota *and* against the ones accepted earlier
+      // in this same batch, so a plausible-looking draft cannot roster one
+      // person twice in a single apply.
+      const accepted: ShiftInsert[] = [];
+      const placed: ShiftLike[] = shifts.map((s) => s);
+      let skipped = 0;
+
+      for (const s of suggestions) {
         const { startsAt, endsAt } = computeShiftIsoRange(
           s.date,
           s.startTime,
           s.endTime,
           timezone,
         );
-        return {
+        if (
+          findClashingShift(
+            { staffProfileId: s.staffProfileId, startsAt, endsAt },
+            placed,
+          )
+        ) {
+          skipped += 1;
+          continue;
+        }
+        accepted.push({
           org_id: orgId,
           rota_id: applyTarget.rotaId,
           location_id: applyTarget.locationId,
@@ -297,12 +315,34 @@ export function RotaAssistantPanel({
           ends_at: endsAt,
           status: 'assigned',
           notes: s.reasoning || null,
-        };
-      });
-      await createShifts(inserts);
+        });
+        placed.push({
+          id: `pending:${accepted.length}`,
+          staff_profile_id: s.staffProfileId,
+          starts_at: startsAt,
+          ends_at: endsAt,
+          status: 'assigned',
+        });
+      }
+
+      if (accepted.length === 0) {
+        setError(
+          'Every suggestion clashed with a shift already on the rota. Nothing was added.',
+        );
+        return;
+      }
+
+      await createShifts(accepted);
+      if (skipped > 0) {
+        // Reuses the panel's status line: the apply succeeded, but a manager
+        // needs to know it did not do everything the preview showed.
+        setError(
+          `${accepted.length} added. ${skipped} skipped — those people were already rostered at the same time.`,
+        );
+      }
       onPreview([]);
       onApplied();
-      handleClose();
+      if (skipped === 0) handleClose();
     } catch (err) {
       reportError(err, { area: 'rota:assistant-apply' });
       setError('Could not save these shifts. Please try again.');

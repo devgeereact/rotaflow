@@ -185,49 +185,14 @@ export function shiftGroup(shifts: Shift[], target: Shift): Shift[] {
   );
 }
 
-export interface RotaWarning {
-  date: string;
-  locationId: string | null;
-  shiftTypeId: string | null;
-  startsAt: string;
-  endsAt: string;
-  openCount: number;
-}
-
-/** One warning per (date, location, shift-window) group that still has an open, unfilled shift. */
-export function computeWarnings(shifts: Shift[], timezone: string): RotaWarning[] {
-  const groups = new Map<string, Shift[]>();
-  for (const shift of shifts) {
-    if (shift.status === 'cancelled') continue;
-    const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
-    const key = [
-      date,
-      shift.location_id,
-      shift.shift_type_id,
-      shift.starts_at,
-      shift.ends_at,
-    ].join('|');
-    groups.set(key, [...(groups.get(key) ?? []), shift]);
-  }
-
-  const warnings: RotaWarning[] = [];
-  for (const group of groups.values()) {
-    const openCount = group.filter((s) => !s.staff_profile_id).length;
-    if (openCount === 0) continue;
-    const first = group[0];
-    if (!first) continue;
-    const date = format(toZonedTime(new Date(first.starts_at), timezone), 'yyyy-MM-dd');
-    warnings.push({
-      date,
-      locationId: first.location_id,
-      shiftTypeId: first.shift_type_id,
-      startsAt: first.starts_at,
-      endsAt: first.ends_at,
-      openCount,
-    });
-  }
-  return warnings.sort((a, b) => a.date.localeCompare(b.date));
-}
+/*
+ * `computeWarnings` used to live here. It grouped shifts and reported only the
+ * unfilled ones, which meant the builder's Warnings tab stayed silent while a
+ * person was rostered twice in the same hour. It has been deleted rather than
+ * deprecated so nothing can quietly bind to it again — `computeRotaInsights`
+ * in `@/lib/rotaInsights` is the single source of rota warnings, and it covers
+ * open shifts alongside clashes, rest breaches, leave and availability.
+ */
 
 /** Short badge from a real job title ("Senior Nurse" → "SN") — never an invented code. */
 export function jobTitleInitials(jobTitle: string | null): string | null {

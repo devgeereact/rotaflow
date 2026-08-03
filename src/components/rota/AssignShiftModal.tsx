@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
 import { fromIsoInTimezone, formatDayLabel } from '@/lib/rotaGrid';
+import { isShiftClashError } from '@/lib/shiftConflicts';
 import type { Shift, ShiftType, StaffProfile } from '@/types';
 
 export interface AssignShiftFormValues {
@@ -101,8 +102,15 @@ export function AssignShiftModal({
     try {
       await onSave(values);
       onClose();
-    } catch {
-      setError('Could not save this shift. Please try again.');
+    } catch (err) {
+      // A clash is a decision the manager can act on, so it is worth saying
+      // out loud. Anything else stays generic — §45 keeps database errors off
+      // the screen.
+      setError(
+        isShiftClashError(err)
+          ? err.message
+          : 'Could not save this shift. Please try again.',
+      );
     } finally {
       setSubmitting(false);
     }

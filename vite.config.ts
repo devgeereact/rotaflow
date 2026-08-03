@@ -26,6 +26,23 @@ export default defineConfig({
     },
   },
 
+  // Project block 04 in the workspace port scheme (see ~/CLAUDE.md §4).
+  // strictPort so a clash fails loudly instead of drifting to a random port —
+  // a drifted port silently breaks Supabase redirect URLs and CORS allowlists.
+  //
+  // Deliberately the SAME port as the main rotaflow checkout: this is a branch
+  // of the same repo, so a diverging port here would land on main at merge.
+  // To run both checkouts at once, override the copy you care less about:
+  //   npm run dev -- --port 5043
+  server: {
+    port: 5042,
+    strictPort: true,
+  },
+  preview: {
+    port: 5042,
+    strictPort: true,
+  },
+
   plugins: [
     react(),
 

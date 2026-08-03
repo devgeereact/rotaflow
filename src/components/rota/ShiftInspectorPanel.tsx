@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import {
+  AlertTriangle,
   Calendar,
   CalendarClock,
   CheckCircle2,
+  CircleAlert,
   Copy,
+  Info,
   MapPin,
   Pencil,
   TrendingUp,
@@ -16,8 +19,8 @@ import {
   jobTitleInitials,
   shiftGroup,
   type DailyTotal,
-  type RotaWarning,
 } from '@/lib/rotaGrid';
+import type { RotaInsight } from '@/lib/rotaInsights';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import { Button } from '@/components/ui/Button';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
@@ -32,12 +35,19 @@ interface ShiftInspectorPanelProps {
   shiftTypes: ShiftType[];
   locations: Location[];
   dailyTotals: DailyTotal[];
-  warnings: RotaWarning[];
+  /**
+   * Everything wrong with the visible rota, worst first — not just unfilled
+   * shifts. Comes from `computeRotaInsights`, which is the same engine the
+   * assistant and the publish gate read, so all three agree.
+   */
+  warnings: RotaInsight[];
   timezone: string;
   rotaStatusForLocation: (locationId: string | null) => 'draft' | 'published' | null;
   onEdit: (shift: Shift) => void;
   onDuplicate: (shift: Shift) => void;
   onDelete: (shift: Shift) => void;
+  /** Jump the grid to the shift a warning is about. */
+  onSelectShiftId: (shiftId: string) => void;
 }
 
 /** Right rail: the currently selected shift, or the week's coverage/warnings. */
@@ -54,6 +64,7 @@ export function ShiftInspectorPanel({
   onEdit,
   onDuplicate,
   onDelete,
+  onSelectShiftId,
 }: ShiftInspectorPanelProps): JSX.Element {
   const [tab, setTab] = useState<Tab>('details');
   const staffById = new Map(staff.map((s) => [s.id, s]));
@@ -112,12 +123,7 @@ export function ShiftInspectorPanel({
       {tab === 'coverage' && <CoverageList dailyTotals={dailyTotals} />}
 
       {tab === 'warnings' && (
-        <WarningsList
-          warnings={warnings}
-          locationById={locationById}
-          typeById={typeById}
-          timezone={timezone}
-        />
+        <WarningsList warnings={warnings} onSelectShiftId={onSelectShiftId} />
       )}
     </div>
   );
@@ -382,51 +388,118 @@ function CoverageList({ dailyTotals }: { dailyTotals: DailyTotal[] }): JSX.Eleme
   );
 }
 
+/**
+ * Severity is carried by an icon and a word as well as by colour, so the
+ * distinction survives for anyone who cannot rely on the red/amber difference
+ * (§26, and §3's "colour to support meaning, not as the only method").
+ */
+const INSIGHT_SEVERITY: Record<
+  RotaInsight['severity'],
+  { icon: typeof AlertTriangle; className: string; label: string }
+> = {
+  critical: {
+    icon: CircleAlert,
+    className: 'border-danger/30 bg-danger/5',
+    label: 'Critical',
+  },
+  warning: {
+    icon: AlertTriangle,
+    className: 'border-warning/30 bg-warning/5',
+    label: 'Warning',
+  },
+  info: {
+    icon: Info,
+    className: 'border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark',
+    label: 'For information',
+  },
+};
+
+const SEVERITY_TEXT: Record<RotaInsight['severity'], string> = {
+  critical: 'text-danger',
+  warning: 'text-warning',
+  info: 'text-content-muted dark:text-content-muted-dark',
+};
+
 function WarningsList({
   warnings,
-  locationById,
-  typeById,
-  timezone,
+  onSelectShiftId,
 }: {
-  warnings: RotaWarning[];
-  locationById: Map<string, Location>;
-  typeById: Map<string, ShiftType>;
-  timezone: string;
+  warnings: RotaInsight[];
+  onSelectShiftId: (shiftId: string) => void;
 }): JSX.Element {
   if (warnings.length === 0) {
     return (
       <p className="text-sm text-content-muted dark:text-content-muted-dark">
-        No unfilled shifts this week.
+        No problems found. Nobody is double-booked, rostered on leave or short
+        of rest this week.
       </p>
     );
   }
 
+  const counts = warnings.reduce<Record<string, number>>((acc, w) => {
+    acc[w.severity] = (acc[w.severity] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <ul className="space-y-2">
-      {warnings.map((w, i) => {
-        const location = w.locationId ? locationById.get(w.locationId) : undefined;
-        const type = w.shiftTypeId ? typeById.get(w.shiftTypeId) : undefined;
-        const { time: startTime } = fromIsoInTimezone(w.startsAt, timezone);
-        const { time: endTime } = fromIsoInTimezone(w.endsAt, timezone);
-        return (
-          <li
-            key={i}
-            className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm"
-          >
-            <p className="font-medium text-content dark:text-content-dark">
-              {type?.name ?? 'Shift'} · {location?.name ?? 'Unassigned location'}
-            </p>
-            <p className="text-xs text-content-muted dark:text-content-muted-dark">
-              {new Date(`${w.date}T00:00:00`).toLocaleDateString('en-GB', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-              })}{' '}
-              · {startTime}–{endTime} · {w.openCount} unfilled
-            </p>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="space-y-3">
+      <p className="text-xs text-content-muted dark:text-content-muted-dark">
+        {[
+          counts.critical ? `${counts.critical} critical` : null,
+          counts.warning ? `${counts.warning} warning` : null,
+          counts.info ? `${counts.info} for information` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
+      <ul className="space-y-2">
+        {warnings.map((w) => {
+          const style = INSIGHT_SEVERITY[w.severity];
+          const Icon = style.icon;
+          const shiftId = w.shiftId;
+          const body = (
+            <>
+              <p className="flex items-start gap-1.5 font-medium text-content dark:text-content-dark">
+                <Icon
+                  size={14}
+                  className={cn('mt-0.5 shrink-0', SEVERITY_TEXT[w.severity])}
+                  aria-hidden="true"
+                />
+                <span>
+                  <span className="sr-only">{style.label}: </span>
+                  {w.title}
+                </span>
+              </p>
+              <p className="mt-0.5 pl-[1.375rem] text-xs text-content-muted dark:text-content-muted-dark">
+                {w.detail}
+              </p>
+            </>
+          );
+
+          return (
+            <li key={w.id}>
+              {shiftId ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectShiftId(shiftId)}
+                  className={cn(
+                    'w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:brightness-95',
+                    style.className,
+                  )}
+                >
+                  {body}
+                </button>
+              ) : (
+                <div
+                  className={cn('rounded-lg border px-3 py-2 text-sm', style.className)}
+                >
+                  {body}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

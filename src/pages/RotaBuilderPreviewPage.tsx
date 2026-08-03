@@ -15,10 +15,10 @@ import { cn } from '@/lib/utils';
 import {
   buildShiftMap,
   computeDailyTotals,
-  computeWarnings,
   getMonday,
   getWeekDates,
 } from '@/lib/rotaGrid';
+import { computeRotaInsights } from '@/lib/rotaInsights';
 
 function formatWeekRange(dates: string[]): string {
   const first = dates[0];
@@ -353,7 +353,24 @@ export function RotaBuilderPreviewPage(): JSX.Element {
     () => computeDailyTotals(SHIFTS, dates, DEFAULT_TZ),
     [dates],
   );
-  const warnings = useMemo(() => computeWarnings(SHIFTS, DEFAULT_TZ), []);
+  // Design preview only: the fixture has no leave, availability or documents
+  // behind it, so the rules that need them would be misleading here. The live
+  // builder computes the real set.
+  const warnings = useMemo(
+    () =>
+      computeRotaInsights({
+        shifts: SHIFTS,
+        staff: STAFF,
+        shiftTypes: SHIFT_TYPES,
+        locations: LOCATIONS,
+        leave: [],
+        availability: [],
+        documents: [],
+        timezone: DEFAULT_TZ,
+        now: Date.now(),
+      }),
+    [],
+  );
   const selectedShift = SHIFTS.find((s) => s.id === selectedShiftId) ?? null;
   const totalStaff = new Set(SHIFTS.map((s) => s.staff_profile_id).filter(Boolean)).size;
 
@@ -522,6 +539,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                   onEdit={() => {}}
                   onDuplicate={() => {}}
                   onDelete={() => {}}
+                  onSelectShiftId={() => {}}
                 />
               </div>
             </Card>
