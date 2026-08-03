@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { BarChart3, CalendarDays, Download, Settings } from 'lucide-react';
 import { ReportsView } from '@/components/reports/ReportsView';
 import { DEMO_OVERVIEW, DEMO_RECENT_REPORTS, DEMO_REPORTS } from '@/lib/reportsDemo';
+import { Card } from '@/components/ui/Card';
+import { BarChart } from '@/components/ui/BarChart';
 import type { ReportRow } from '@/lib/reportRows';
 import type { ReportsTab } from '@/components/reports/ReportsTabs';
 import type { ReportQuickAction } from '@/components/reports/ReportsQuickActionsCard';
@@ -77,6 +79,48 @@ export function ReportsPreviewPage(): JSX.Element {
   return (
     <div className="min-h-screen bg-background px-6 py-7 dark:bg-background-dark">
       <ReportsView
+        // Design-loop only: the live card fetches from Supabase, which a
+        // preview route has no session for. Fixed figures so the chart's
+        // geometry, legend and tooltip can be compared to a reference.
+        analytics={
+          <Card className="mb-4 p-5">
+            <h2 className="mb-4 text-card-heading font-semibold text-content dark:text-content-dark">
+              Workforce trends
+            </h2>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <BarChart
+                title="Hours worked per day"
+                unit="h"
+                series={[{ id: 'hours', label: 'Hours worked' }]}
+                groups={[
+                  { label: '1 Aug', values: [182.5] },
+                  { label: '2 Aug', values: [201] },
+                  { label: '3 Aug', values: [164.5] },
+                  { label: '4 Aug', values: [220] },
+                  { label: '5 Aug', values: [198] },
+                  { label: '6 Aug', values: [176.5] },
+                  { label: '7 Aug', values: [143] },
+                ]}
+              />
+              <BarChart
+                title="Shifts by status"
+                series={[
+                  { id: 'assigned', label: 'Assigned' },
+                  { id: 'open', label: 'Open' },
+                ]}
+                groups={[
+                  { label: '1 Aug', values: [24, 3] },
+                  { label: '2 Aug', values: [26, 1] },
+                  { label: '3 Aug', values: [21, 5] },
+                  { label: '4 Aug', values: [28, 2] },
+                  { label: '5 Aug', values: [25, 4] },
+                  { label: '6 Aug', values: [22, 6] },
+                  { label: '7 Aug', values: [18, 7] },
+                ]}
+              />
+            </div>
+          </Card>
+        }
         tabs={[
           { value: 'all', label: 'All Reports' },
           { value: 'favourites', label: 'Favourites' },

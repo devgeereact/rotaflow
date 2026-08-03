@@ -1,4 +1,5 @@
 import { ListFilter, Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -17,6 +18,8 @@ import type { RecentReport } from '@/components/reports/RecentReportsCard';
 import type { ReportQuickAction } from '@/components/reports/ReportsQuickActionsCard';
 
 export interface ReportsViewProps {
+  /** The workforce-trends charts, rendered above the report catalogue. */
+  analytics?: ReactNode;
   tabs: ReportsTabDef[];
   activeTab: ReportsTab;
   onTabChange: (tab: ReportsTab) => void;
@@ -105,6 +108,10 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
             role="tabpanel"
             aria-labelledby={reportsTabId(props.activeTab)}
           >
+            {/* Charts sit above the catalogue: §17 asks for summary cards,
+                charts, tables and downloads, and the trend is the thing a
+                manager reads before deciding which export to run. */}
+            <div className="mt-6">{props.analytics}</div>
             <div className="mb-5 mt-6">
               <ReportsFilterBar
                 search={props.search}
