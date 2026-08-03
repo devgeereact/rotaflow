@@ -22,18 +22,20 @@ separate `is_platform_admin` flag, not a fourth role.
 
 ## 1. Public, auth, onboarding & launch
 
-| Status | Design                        | Screen                                    | Route                                                                                                                                                                                                                                                                                                                                                                   |
-| ------ | ----------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🟡     | `marketting.png`              | Marketing home                            | `/` — hero, feature grid, industry strip and footer are built. The design also specifies a product screenshot, a "Why Teams Choose" block, a trusted-by logo row, a testimonial carousel, a CTA banner, and Features/Solutions/**Pricing**/Resources/Contact nav with "Book a Demo". None of those exist, and there are no `/pricing`, `/features` or `/contact` routes |
-| ✅     | `signin.png`                  | Sign in — password, magic link, OAuth     | `/login`                                                                                                                                                                                                                                                                                                                                                                |
-| ✅     | `signup.png`                  | Sign up — carries an invite token through | `/signup`                                                                                                                                                                                                                                                                                                                                                               |
-| ✅     | `splash-screen.png`           | Cold-start splash                         | `/splash`, also inline while auth resolves                                                                                                                                                                                                                                                                                                                              |
-| 🟡     | `appboot.png`                 | App boot / "setting up organisation"      | In production this renders **inline** from `ProtectedRoute` while auth/org resolve — it has no production URL. `/appboot` is a design-loop **preview route only**, with fixed props, existing so the state can be screenshotted. Real either way, but it does not yet match the mockup's 5-step checklist UI — see `docs/LOOP.md`                                       |
-| ✅     | `Organisation-Onboarding.png` | Onboarding 1 — create org                 | `/onboarding`                                                                                                                                                                                                                                                                                                                                                           |
-| ✅     | `Organisation-about.png`      | Onboarding 2 — about your org             | `/onboarding`                                                                                                                                                                                                                                                                                                                                                           |
-| ✅     | `Team-onboarding.png`         | Onboarding 3 — invite team                | `/onboarding`. Department/location fields on this step stage locally and are never persisted — a real, self-documented schema gap                                                                                                                                                                                                                                       |
-| ✅     | `Plan-Selection.png`          | Onboarding 4 — choose plan                | `/onboarding`. Records intent only; no charging exists (see §3 Billing)                                                                                                                                                                                                                                                                                                 |
-| ✅     | `Onboarding-Complete.png`     | Onboarding 5 — done                       | `/onboarding`. Deliberately swaps two dead mockup links for real ones                                                                                                                                                                                                                                                                                                   |
+| Status | Design                        | Screen                                    | Route                                                                                                                                                                                                                                                                                                                                                          |
+| ------ | ----------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | `marketting.png`              | Marketing home                            | `/` — hero, product shot, 8-benefit grid, sector cards, stats band, "Why teams choose", social-proof slot, CTA banner and a 5-column footer. Full nav: `/features` `/solutions` `/pricing` `/resources` `/about` `/contact`, all routed and asserted by `navigationTargets.test.ts`. **Traction figures and testimonials are deliberately absent** — see below |
+| ✅     | —                             | Features · Solutions · Pricing            | `/features`, `/solutions`, `/pricing`. Pricing states plainly that billing is not live, because `subscriptions` is an empty seam and nothing can charge anyone (§3 Billing)                                                                                                                                                                                    |
+| ✅     | —                             | Resources · About · Contact               | `/resources` publishes a built / partial / not-built breakdown of the product. `/contact` validates and composes an email — there is no contact table or form endpoint, and a fake "we'll be in touch" is worse than none. See `ContactPage`                                                                                                                   |
+| ✅     | `signin.png`                  | Sign in — password, magic link, OAuth     | `/login`                                                                                                                                                                                                                                                                                                                                                       |
+| ✅     | `signup.png`                  | Sign up — carries an invite token through | `/signup`                                                                                                                                                                                                                                                                                                                                                      |
+| ✅     | `splash-screen.png`           | Cold-start splash                         | `/splash`, also inline while auth resolves                                                                                                                                                                                                                                                                                                                     |
+| 🟡     | `appboot.png`                 | App boot / "setting up organisation"      | In production this renders **inline** from `ProtectedRoute` while auth/org resolve — it has no production URL. `/appboot` is a design-loop **preview route only**, with fixed props, existing so the state can be screenshotted. Real either way, but it does not yet match the mockup's 5-step checklist UI — see `docs/LOOP.md`                              |
+| ✅     | `Organisation-Onboarding.png` | Onboarding 1 — create org                 | `/onboarding`                                                                                                                                                                                                                                                                                                                                                  |
+| ✅     | `Organisation-about.png`      | Onboarding 2 — about your org             | `/onboarding`                                                                                                                                                                                                                                                                                                                                                  |
+| ✅     | `Team-onboarding.png`         | Onboarding 3 — invite team                | `/onboarding`. Department/location fields on this step stage locally and are never persisted — a real, self-documented schema gap                                                                                                                                                                                                                              |
+| ✅     | `Plan-Selection.png`          | Onboarding 4 — choose plan                | `/onboarding`. Records intent only; no charging exists (see §3 Billing)                                                                                                                                                                                                                                                                                        |
+| ✅     | `Onboarding-Complete.png`     | Onboarding 5 — done                       | `/onboarding`. Deliberately swaps two dead mockup links for real ones                                                                                                                                                                                                                                                                                          |
 
 ## 2. Core scheduling & workforce
 
@@ -56,75 +58,90 @@ separate `is_platform_admin` flag, not a fourth role.
 | ✅     | `Location-department.png`     | Departments within a location                 | `/app/locations` (`DepartmentManager`)                                                                            |
 | ✅     | `clockin.png`                 | Clock in/out — GPS + manual, offline-queued   | `/app/clock`                                                                                                      |
 
-## 3. Settings area — 8 designed tabs, 2 have code, 0 are tabs
+## 3. Settings area — 8 designed tabs, all 8 built as tabs
 
-Counting **designed tabs**: the mockups specify Organisation · Permissions · Roles ·
-Policies · Notifications · Integrations · Billing · Audit.
+`/app/settings` is a layout route with the tab bar in the layout, so a new
+section is one `<Route>` plus a `SETTINGS_TABS` entry, and a missing half is
+immediately visible. `navigationTargets.test.ts` asserts every tab resolves.
 
-Of those 8: **1 is fully built** (Integrations), **1 is partial** (Organisation), and
-**6 have no code at all**. Neither built one is actually a _tab_ — they are two
-separate flat routes (`/app/settings`, `/app/integrations`), and no tab bar exists
-anywhere in the app.
+Where the reference asks for something the system genuinely cannot do, the
+screen **says so on the screen, with the reason** rather than faking it. That is
+the pattern to follow when extending these.
 
-| Status | Design                      | Tab           | Reality                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------ | --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🟡     | `SettingsOrganisation.png`  | Organisation  | `/app/settings` covers org name, industry, type, country, timezone, working week. The mockup adds registration no., website, phone, address, primary contact, an Industry Pack, org preferences (week start, date/time format, shift rounding, break deduction, overtime rule, publish time), role display labels, a sites/cost-centres summary, and Platform Support Access with grant/revoke + history — none built |
-| ✅     | `SettingsIntegrations.png`  | Integrations  | `/app/integrations` — per-org SMTP with a real test-send. Lives at its own top-level route, not as a Settings tab                                                                                                                                                                                                                                                                                                     |
-| ❌     | `Settingspolicy.png`        | Policies      | No route, no component, **no table**. Specifies ~55 policies across 10 categories, per-policy scope/status/history, a templates library, import/export, and real-time rota validation against the rules                                                                                                                                                                                                               |
-| ❌     | `Settingsaudit.png`         | Audit         | No route, no component. `audit_logs` **table exists** but is effectively empty — only `anonymize_staff_member` ever writes to it; no login, rota-publish, shift-edit or role-change events are recorded. The mockup also needs `ip_address`, `severity` and an "area" field the table lacks, plus retention/archiving and scheduled reports                                                                           |
-| ❌     | `Settingsbilling.png`       | Billing       | No route, no component. `subscriptions` **table exists** as a deliberate seam (`plan`, `status`, `provider`, `provider_ref`) but nothing reads or writes it and the billing Edge Functions it references were never built. No invoices, payment-methods, usage-metering or credit tables; no payment provider integrated                                                                                              |
-| ❌     | `SettingsNotifications.png` | Notifications | No route, no component, **no table**. This is _template administration_ (28 templates, per-channel routing, recipient rules, delivery/open analytics) — distinct from `/app/notifications`, which is an end-user inbox. Would need an SMS provider and delivery tracking                                                                                                                                              |
-| ❌     | —                           | Permissions   | No design file, no code, no table. Referenced only as a tab in the other mockups                                                                                                                                                                                                                                                                                                                                      |
-| ❌     | —                           | Roles         | No design file, no code. Roles are a fixed 3-value CHECK on `memberships.role`; the custom roles shown in `SettingsOrganisation.png` (Team Leader, Scheduler, HR Advisor…) cannot be represented                                                                                                                                                                                                                      |
+| Status | Design                      | Tab           | Reality                                                                                                                                                                |
+| ------ | --------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | `SettingsOrganisation.png`  | Organisation  | Org details, preferences and role display labels, through a typed `orgPreferences` reader over the `organisations.settings` jsonb                                      |
+| ✅     | —                           | Permissions   | Membership + staff-profile derived; absorbed the old `/app/team` invite/revoke                                                                                         |
+| ✅     | —                           | Roles         | Owner/manager/staff. States plainly that custom roles cannot be represented — `memberships.role` is a three-value CHECK (P2-4)                                         |
+| ✅     | `Settingspolicy.png`        | Policies      | Scheduling policies over `organisations.settings`. The reference's ~55-policy engine with per-policy scope/history and live rota validation remains a separate project |
+| ✅     | `SettingsNotifications.png` | Notifications | Per-category defaults. SMS is shown as unavailable — there is no provider — and template administration has no table                                                   |
+| ✅     | `SettingsIntegrations.png`  | Integrations  | Per-org SMTP with a real test-send. Moved here from top-level `/app/integrations`, which redirects                                                                     |
+| ✅     | `Settingsbilling.png`       | Billing       | Reads `subscriptions`. States that no payment provider is connected rather than rendering an invoice table that cannot exist                                           |
+| ✅     | `Settingsaudit.png`         | Audit         | Reads `audit_logs`. Still thin until more events are written (P1-5) — the viewer exists, the writers mostly do not                                                     |
 
-## 4. My Profile area — 6 designed tabs, 2 partial, 0 are tabs
+## 4. My Profile area — 6 designed tabs, all 6 built as tabs
 
-Counting **designed tabs**: Profile · Preferences · Security · Sessions · API Tokens ·
-Activity (a Connected Accounts tab also appears in one mockup's tab bar).
+Same layout-route pattern as §3, at `/app/account`. Every role sees every tab —
+this is a person's own account.
 
-Of those 6: **0 are fully built**, **2 are partial** (Profile, Preferences — both
-served by fragments of one page), and **4 have no code at all**. As with Settings,
-none of it is a tab: it's a single flat `/app/account` page, reachable only from the
-user menu.
-
-| Status | Design                 | Tab         | Reality                                                                                                                                                                                                                                                                                                                       |
-| ------ | ---------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🟡     | `ProfileSettings.png`  | Profile     | `/app/account` has full name, read-only email, password change, and one notifications on/off toggle. The mockup adds photo upload, job title, phone, department, preferred language, an "about me" bio, a 4-channel × 5-type notification matrix, role & access, recent activity, sessions, a security check-up and plan info |
-| 🟡     | `profileprefrence.png` | Preferences | `app_settings` holds exactly **two** fields (`theme`, `notifications_enabled`). The mockup specifies ~20: language, week start, time/date format, timezone, currency, default view, default rota range, density, six display toggles, four calendar toggles, plus change history and org-derived compliance rules             |
-| ❌     | `ProfileSecurity.png`  | Security    | Password change exists on `/app/account`; nothing else does. Needs MFA/TOTP enrolment, backup codes, recovery email, trusted devices, session timeout, concurrent-session limits, login alerts, and a geolocated security event log                                                                                           |
-| ❌     | —                      | Sessions    | No design file. No session listing or per-device revocation; Supabase's `auth.sessions` isn't surfaced                                                                                                                                                                                                                        |
-| ❌     | —                      | API Tokens  | No design file, no code, no table                                                                                                                                                                                                                                                                                             |
-| ❌     | —                      | Activity    | No design file, no code                                                                                                                                                                                                                                                                                                       |
+| Status | Design                 | Tab         | Reality                                                                                                                                                   |
+| ------ | ---------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | `ProfileSettings.png`  | Profile     | Name, contact, job title, department, and the notification matrix                                                                                         |
+| ✅     | `profileprefrence.png` | Preferences | Theme and the preferences `app_settings` can actually hold. The reference's ~20 fields exceed the two-column table; the gap is stated on the screen       |
+| ✅     | `ProfileSecurity.png`  | Security    | Password change. MFA, backup codes and trusted devices are named as not built rather than shown as a "100% secure" ring over checks nothing performs      |
+| ✅     | —                      | Sessions    | "Sign out everywhere" works. Supabase does not expose a session list to the client, and the screen says so instead of showing an empty device table       |
+| ✅     | —                      | API Tokens  | Explains there is no public API to hold a token for, and why issuing long-lived JWTs would be a security incident rather than a feature. See `TokensPage` |
+| ✅     | —                      | Activity    | Reads `audit_logs` for this user                                                                                                                          |
 
 ## 5. Built with no design mockup
 
-| Status | Screen                                  | Route                                 |
-| ------ | --------------------------------------- | ------------------------------------- |
-| ✅     | Team management — issue/revoke invites  | `/app/team`                           |
-| ✅     | Notifications inbox — read, push opt-in | `/app/notifications`                  |
-| ✅     | Account settings                        | `/app/account` (see §4)               |
-| ✅     | Forgot / reset password                 | `/forgot-password`, `/reset-password` |
-| ✅     | Accept invite — public, pre-signup      | `/invite/:token`                      |
-| ✅     | 404                                     | `*`                                   |
+| Status | Screen                                          | Route                                         |
+| ------ | ----------------------------------------------- | --------------------------------------------- |
+| ✅     | Team management — issue/revoke invites          | Settings → Permissions; `/app/team` redirects |
+| ✅     | Notifications inbox — read, push opt-in         | `/app/notifications`                          |
+| ✅     | Account settings                                | `/app/account/*` (see §4)                     |
+| ✅     | Forgot / reset password                         | `/forgot-password`, `/reset-password`         |
+| ✅     | Accept invite — public, pre-signup              | `/invite/:token`                              |
+| ✅     | Permission denied — role, requirement, way back | rendered by `RequireRole` on a gated route    |
+| ✅     | 404                                             | `*`                                           |
 
-## 6. Navigation — the designs restructure it
+## 6. Navigation — settled
 
-The mockups' sidebar reads: Dashboard · Rota Builder · Schedule · Staff ·
-Availability · Leave · Swaps · Timesheets · Reports · Announcements · Locations ·
-**Settings** (expandable, 8 sub-items), with **My Profile** as its own sub-nav group.
+The restructure this section used to describe as an open question landed in #75,
+and the shell around it in the product-vision pass. Current state:
 
-The built sidebar is a flat 15-item list: Dashboard · Rota · Schedule · Clock in ·
-Staff · Team · Locations · Availability · Leave · Swaps · Timesheets ·
-Announcements · Reports · Integrations · Settings.
+**Sidebar** is role-resolved, not a flat constant (`navItemsForRole`). A manager
+sees the designed twelve plus Clock in; a staff member sees nine, with Settings
+replaced by My Profile. The three differences from the mockups were decisions:
 
-Differences that are decisions, not bugs — worth settling before building Settings:
+- **Integrations** moved into Settings, as every reference screen shows.
+  `/app/integrations` redirects.
+- **Team** folded into Settings → Permissions — it is invite/revoke, i.e.
+  organisation administration. `/app/team` redirects.
+- **Clock in** is kept for every role, against audit01 §7c's "staff only"
+  recommendation. In a small care home the owner and manager are usually on the
+  rota themselves; hiding it costs a working manager the screen they open twice
+  a day, showing it costs a non-clocking manager one ignorable row.
 
-- The designs have **no Clock in and no Team** in the sidebar. Both are built and
-  routed; if the design is authoritative they need a new home.
-- **Integrations** is a top-level nav item today but a Settings tab in the design.
-- **Notifications** has no sidebar entry in either; it's reached via the bell.
-- No collapsible nav group or tab-bar component exists yet — the Settings and
-  Profile areas both need one before any of their tabs can be built.
+**Also in the shell:**
+
+| Piece                                                                 | Where                                                  |
+| --------------------------------------------------------------------- | ------------------------------------------------------ |
+| Tagline, org switcher, profile block, Help & Support, collapse toggle | `Sidebar` + `SidebarOrgSwitcher` + `SidebarFooter`     |
+| Global search (`⌘K`) — screens and actions, role-filtered             | `GlobalSearch`, catalogue in `src/lib/globalSearch.ts` |
+| Mobile bottom tab bar — Home · Schedule · Clock in · Leave · More     | `MobileTabBar`; `More` opens the sidebar drawer        |
+| Route-level role gate + permission-denied screen                      | `RequireRole`, `PermissionDenied`                      |
+
+**Collapsed state** persists in `localStorage` and is read during the initial
+`useState` rather than in an effect, so the page does not jump sideways on load.
+
+**Global search deliberately does not search records** — only screens and their
+actions. A fan-out of `ilike` queries across a dozen tables on every keystroke is
+a query storm against tenants with six-figure row counts. Record search drops in
+as an extra result group; see `src/lib/globalSearch.ts`.
+
+**Notifications** still has no sidebar entry in either design or build; it is
+reached via the bell.
 
 ## 7. Other gaps (no design file)
 
@@ -188,12 +205,38 @@ column out in a change payload.
 `designsystem.png` (token sheet, source of truth for `docs/DESIGN.md`) ·
 `rotaflowui.png` (system applied) · `logo.png` / `logo-1.png` / `logo-2.png`.
 
+## Marketing copy — the standing rule
+
+RotaFlow is **pre-launch and has no customers**, and `/` is live at
+rota.gakinz.com where real prospective buyers read it. So the public site carries
+no invented traction, no testimonials and no customer logos.
+
+`src/lib/marketing.ts` holds every word of copy and states the rule in full.
+`TRACTION` and `TESTIMONIALS` are empty constants; the stats band and the
+social-proof slot render honest alternatives while they are empty and switch over
+automatically once real figures exist. Nothing else has to change.
+
+This is not caution for its own sake: publishing "10,000+ active users" or a
+quote attributed to a named person at a named company would be a false factual
+claim to a buyer, which is a CAP Code breach and the kind of thing a competitor
+or the ASA can act on. `docs/audit01.md` §4 reached the same conclusion
+independently.
+
+The same rule governs feature claims: nothing goes in `PRODUCT_BENEFITS` that is
+not built, checked against this document first.
+
 ## Counts
 
-35 screen mockups in `design/`: **24 ✅ built · 6 🟡 partial · 5 ❌ not built.**
-Plus 6 built screens with no mockup, and 6 designed tabs (Permissions, Roles,
+35 screen mockups in `design/`: **33 ✅ built · 2 🟡 partial · 0 ❌ not built.**
+Plus 7 built screens with no mockup, and 6 designed tabs (Permissions, Roles,
 Sessions, API Tokens, Activity, Connected Accounts) specified by the tab bars but
-having no mockup file of their own.
+having no mockup file of their own — all six now built.
+
+> Updated after #75 (the 14 Settings and Profile screens) and the product-vision
+> pass (marketing site, app shell). The two remaining 🟡 are `appboot.png`, which
+> is real but does not match the mockup's 5-step checklist, and
+> `Staff-Profile.png`. Several ✅ rows are built-and-working but deliberately
+> narrower than their reference, and say so on the screen — see §3 and §4.
 
 > Corrected 2026-07-31 (`docs/audit01.md`). This previously read 34/23/7 and listed
 > Clock in under §5 "built with no design mockup" — but `design/clockin.png` exists

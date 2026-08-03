@@ -67,33 +67,70 @@ and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 
 ### Information architecture / routes (RotaFlow)
 
-Routes are organisation-scoped once a tenant is selected. `[Built]` = live
-today; everything else is a real `Sidebar` nav item rendered disabled ("Soon")
-rather than a route, so the IA is visible without shipping dead links.
+Routes are organisation-scoped once a tenant is selected. Everything below is
+**built and routed** — there are no disabled "Soon" nav items left.
+
+`src/lib/navigationTargets.test.ts` parses this route table out of `App.tsx` and
+asserts that every Settings tab, Profile tab, marketing nav link, footer link and
+global-search entry resolves to a real `<Route>`. That test exists because the
+Settings tab bar once shipped with fourteen routes, none of which had been added
+to `App.tsx`; every one rendered the 404 page while all five gates stayed green.
 
 ```text
-/                         [Built] marketing / redirect to app or login
-/login                    [Built] auth (Supabase) — /signup is a toggle within it, not a separate route
-/onboarding               [Built] create an organisation (no "join" flow yet — no invites table)
-/app                      [Built] tenant shell (requires membership, redirects to /onboarding otherwise) — org switcher in header
-  /app/dashboard          [Built, stub] profile/notifications only — not yet the full "today's shifts" spec
-  /app/rota               [Built] rota builder (owner/manager) — drag-drop + click-to-assign grid, AI auto-fill, publish
-  /app/staff              [Built] staff directory + profiles (read: any member; write: owner/manager)
-  /app/locations          [Built] locations & departments (read/write: owner/manager — see SCHEMA.md RLS, not owner-only)
-  /app/schedule           my rota (staff) — month/week/day + ICS subscribe
-  /app/availability       my availability (staff) / team availability (manager)
+PUBLIC — marketing
+/                         landing: hero, product shot, benefits, sectors, stats, CTA
+/features /solutions /pricing /resources /about /contact
+                          copy lives in src/lib/marketing.ts (see its header for
+                          the no-invented-traction rule)
+
+PUBLIC — auth
+/login /signup /forgot-password /reset-password /splash
+/invite/:token            public on purpose — an invitee has no account yet
+/onboarding               create an organisation (auth required)
+
+TENANT SHELL — /app (requires membership, else redirects to /onboarding)
+  /app/dashboard          today's coverage, queues, activity
+  /app/rota               rota builder — drag-drop, AI auto-fill, publish   [manager]
+  /app/schedule           published schedule — day/week/month/agenda + ICS
+  /app/clock              GPS clock in/out with an offline queue
+  /app/staff              staff directory                                   [manager]
+  /app/staff/:staffId     staff profile                                     [manager]
+  /app/locations          locations & departments                           [manager]
+  /app/availability       my availability / team availability
   /app/leave              leave requests + approvals
-  /app/swaps              shift swap requests + approvals
-  /app/timesheets         clock events, hours, exports
+  /app/swaps              shift swaps + approvals
+  /app/timesheets         hours from clock events, approvals, payroll export
   /app/announcements      communication centre
-  /app/reports            hours/absence/overtime + payroll export (manager/owner)
-  /app/settings           org settings, roles, subscription (owner)
-/admin                    Super Admin console (is_platform_admin) — later phase
+  /app/notifications      inbox (reached via the bell, not the sidebar)
+  /app/reports            coverage/hours/absence/overtime + CSV             [manager]
+  /app/settings           layout route + tab bar                            [manager]
+    organisation · permissions · roles · policies
+    notifications · integrations · billing · audit
+  /app/account            layout route + tab bar (every role)
+    profile · preferences · security · sessions · tokens · activity
+  /app/team               → redirects to /app/settings/permissions
+  /app/integrations       → redirects to /app/settings/integrations
 ```
 
-Role determines which nav items and routes render; the server enforces access via RLS.
-Shift-type management has no dedicated route — it's a modal opened from the
-rota builder's toolbar, since it's tightly coupled to rota-building.
+`[manager]` = gated by `RequireRole` on the `<Route>`, rendering
+`PermissionDenied` (area, role held, role required, way back) rather than
+silently redirecting. **This is presentation only — RLS is the real boundary**,
+and it holds whether or not the gate renders. The gate exists so an honest wrong
+turn produces an explanation instead of a screen of controls that fail silently.
+
+Role determines which nav items and routes render; the server enforces access via
+RLS. Shift-type management has no dedicated route — it is a modal opened from the
+rota builder's toolbar, since it is tightly coupled to rota-building.
+
+### App shell
+
+| Piece                     | Module                                    | Note                                                                                                                                                                            |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sidebar                   | `layout/Sidebar`                          | Role-resolved items; collapse persisted in `localStorage`, read during initial `useState` so the page does not jump on load                                                     |
+| Org identity + switcher   | `layout/SidebarOrgSwitcher`               | Always shows the org name; interactive only with >1 membership                                                                                                                  |
+| Profile / help / collapse | `layout/SidebarFooter`                    |                                                                                                                                                                                 |
+| Global search             | `layout/GlobalSearch`, `lib/globalSearch` | `⌘K`. Searches **screens and actions, not records** — a per-keystroke `ilike` fan-out across a dozen tables is a query storm at real tenant size. Role-filtered before matching |
+| Mobile tab bar            | `layout/MobileTabBar`                     | Home · Schedule · Clock in · Leave · More; `More` opens the sidebar drawer, whose open state is owned by `AppShell` so both controls share it                                   |
 
 ## 4. State management
 
