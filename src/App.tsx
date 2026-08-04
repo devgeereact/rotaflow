@@ -325,6 +325,10 @@ const AdminGdprPage = lazyPage(
   'AdminGdprPage',
   () => import('@/pages/admin/AdminGdprPage'),
 );
+const AdminIncidentsPage = lazyPage(
+  'AdminIncidentsPage',
+  () => import('@/pages/admin/AdminIncidentsPage'),
+);
 const SessionsPage = lazyPage(
   'SessionsPage',
   () => import('@/pages/app/account/SessionsPage'),
@@ -699,6 +703,7 @@ export function App(): JSX.Element {
                         element={<AdminPlatformHealthPage />}
                       />
                       <Route path="gdpr" element={<AdminGdprPage />} />
+                      <Route path="incidents" element={<AdminIncidentsPage />} />
                       <Route
                         path="feature-flags"
                         element={

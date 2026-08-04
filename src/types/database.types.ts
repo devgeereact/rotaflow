@@ -1507,6 +1507,38 @@ export type Database = {
           },
         ];
       };
+      // HAND-MAINTAINED PENDING REGENERATION (0021_platform_incidents.sql).
+      platform_incidents: {
+        Row: {
+          id: string;
+          title: string;
+          severity: string;
+          status: string;
+          service: string;
+          impact: string;
+          started_at: string;
+          resolved_at: string | null;
+          owner_user_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      incident_events: {
+        Row: {
+          id: string;
+          incident_id: string;
+          author_user_id: string | null;
+          author_name: string | null;
+          body: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       // HAND-MAINTAINED PENDING REGENERATION (0020_gdpr_requests.sql).
       gdpr_requests: {
         Row: {
@@ -1705,6 +1737,24 @@ export type Database = {
       };
       set_org_support_access: {
         Args: { p_org: string; p_allowed: boolean };
+        Returns: undefined;
+      };
+      // HAND-MAINTAINED PENDING REGENERATION (0021_platform_incidents.sql).
+      open_incident: {
+        Args: {
+          p_title: string;
+          p_severity: string;
+          p_service: string;
+          p_impact: string;
+        };
+        Returns: string;
+      };
+      add_incident_event: {
+        Args: { p_incident: string; p_body: string };
+        Returns: string;
+      };
+      set_incident_status: {
+        Args: { p_incident: string; p_status: string; p_note?: string | null };
         Returns: undefined;
       };
       // HAND-MAINTAINED PENDING REGENERATION (0020_gdpr_requests.sql).
