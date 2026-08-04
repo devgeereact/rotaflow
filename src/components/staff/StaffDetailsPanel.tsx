@@ -94,7 +94,13 @@ export function StaffDetailsPanel({
           title="Skills & Qualifications"
           action={<StaffLinkButton onClick={onViewSkills}>View all</StaffLinkButton>}
         />
-        <SkillChipList skills={staff.skills} tone="neutral" className="mt-3" />
+        {staff.skills.length === 0 ? (
+          <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
+            No skills recorded yet.
+          </p>
+        ) : (
+          <SkillChipList skills={staff.skills} tone="neutral" className="mt-3" />
+        )}
       </section>
 
       <section

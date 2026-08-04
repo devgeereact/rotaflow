@@ -108,15 +108,28 @@ export function StaffTable({
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <StaffTableRow
-            key={row.id}
-            row={row}
-            selected={row.id === selectedId}
-            onSelect={onSelect}
-            onOpenActions={onOpenActions}
-          />
-        ))}
+        {rows.length === 0 ? (
+          <tr>
+            {/* +1 for the trailing Actions column — matches `ui/DataTable`'s
+                own empty-row treatment, which this predates. */}
+            <td
+              colSpan={COLUMNS.length + 1}
+              className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark"
+            >
+              No staff match these filters.
+            </td>
+          </tr>
+        ) : (
+          rows.map((row) => (
+            <StaffTableRow
+              key={row.id}
+              row={row}
+              selected={row.id === selectedId}
+              onSelect={onSelect}
+              onOpenActions={onOpenActions}
+            />
+          ))
+        )}
       </tbody>
     </table>
   );

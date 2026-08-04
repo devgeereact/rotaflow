@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
-import { IconTile, type IconTileTone } from '@/components/ui/IconTile';
+import { StatTile } from '@/components/ui/StatTile';
+import type { IconTileTone } from '@/components/ui/IconTile';
 
 interface StaffMetricCardProps {
   icon: LucideIcon;
@@ -15,6 +16,13 @@ interface StaffMetricCardProps {
  * One of the five metric tiles above the profile overview
  * (design/Staff-Profile.png): icon and label on the first line, the figure
  * beneath, then a caption.
+ *
+ * A thin wrapper over the shared `StatTile` — this used to hand-roll the
+ * identical markup, which is exactly the duplication `StatTile`'s own doc
+ * comment names it as one of (`docs/DESIGN.md`, "seven near-identical
+ * versions"). Kept as its own component so callers keep this narrower,
+ * staff-specific prop contract (icon/hint required) rather than reaching
+ * into the generic tile directly.
  */
 export function StaffMetricCard({
   icon,
@@ -25,24 +33,13 @@ export function StaffMetricCard({
   hint,
 }: StaffMetricCardProps): JSX.Element {
   return (
-    <div className="rounded-xl border border-surface-border bg-surface px-3.5 py-3.5 dark:border-surface-border-dark dark:bg-surface-dark">
-      <div className="flex items-start gap-2.5">
-        <IconTile icon={icon} tone={tone} size="sm" />
-        <p className="text-sm font-semibold leading-5 text-content dark:text-content-dark">
-          {label}
-        </p>
-      </div>
-      <p className="mt-3 flex items-baseline gap-1.5 text-3xl font-bold leading-9 text-content dark:text-content-dark">
-        {value}
-        {suffix && (
-          <span className="text-sm font-medium text-content-muted dark:text-content-muted-dark">
-            {suffix}
-          </span>
-        )}
-      </p>
-      <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-        {hint}
-      </p>
-    </div>
+    <StatTile
+      icon={icon}
+      tone={tone}
+      label={label}
+      value={value}
+      suffix={suffix}
+      hint={hint}
+    />
   );
 }
