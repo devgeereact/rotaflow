@@ -1,4 +1,5 @@
 import {
+  Activity,
   BookOpen,
   Building2,
   CreditCard,
@@ -56,6 +57,7 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     roles: ['platform_owner', 'platform_admin', 'platform_finance'],
   },
   { label: 'Support', icon: LifeBuoy, to: '/admin/support' },
+  { label: 'Platform health', icon: Activity, to: '/admin/platform-health' },
   { label: 'Audit', icon: ScrollText, to: '/admin/audit' },
   {
     label: 'Feature flags',
