@@ -5,7 +5,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Button } from '@/components/ui/Button';
 import { MARKETING_NAV } from '@/lib/marketing';
 import { cn } from '@/lib/utils';
-import logo from '@/assets/logo.png';
+import { BrandMark } from '@/components/ui/BrandMark';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -74,7 +74,7 @@ export function PublicNav(): JSX.Element {
     <header className="sticky top-0 z-30 border-b border-surface-border bg-surface/80 backdrop-blur dark:border-surface-border-dark dark:bg-surface-dark/80">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Link to="/" className="flex shrink-0 items-center gap-2">
-          <img src={logo} alt="" aria-hidden="true" className="h-8 w-8" />
+          <BrandMark label={null} className="h-8 w-8" />
           <span className="font-display text-lg font-bold text-content dark:text-content-dark">
             Rota<span className="text-primary">Flow</span>
           </span>

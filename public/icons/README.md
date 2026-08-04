@@ -1,18 +1,21 @@
 # App icons
 
-Drop your generated PNG icons here. The manifest in `vite.config.ts` expects:
+These are **generated from the vector mark**, not hand-exported. The geometry
+lives in one place — `src/components/ui/BrandMark.tsx` — and `public/favicon.svg`
+carries the same paths, so the tab icon, the installed-app icon and the in-app
+sidebar mark cannot drift apart.
 
-| File                     | Size    | Purpose   |
-| ------------------------ | ------- | --------- |
-| `pwa-192.png`            | 192×192 | any       |
-| `pwa-512.png`            | 512×512 | any       |
-| `pwa-maskable-512.png`   | 512×512 | maskable  |
+| File                   | Size    | Purpose  | Notes                                    |
+| ---------------------- | ------- | -------- | ---------------------------------------- |
+| `pwa-192.png`          | 192×192 | any      | Full-bleed brand tile                    |
+| `pwa-512.png`          | 512×512 | any      | Full-bleed brand tile                    |
+| `pwa-maskable-512.png` | 512×512 | maskable | Mark inset to 66% for the Android crop    |
 
-Fast way to generate all sizes from one source image:
+`vite.config.ts` → `manifest.icons` expects exactly these filenames.
 
-```bash
-npx pwa-asset-generator ./logo.png ./public/icons \
-  --background "#0a0a0a" --padding "18%" --icon-only
-```
+## Regenerating
 
-Then confirm the filenames match the `manifest.icons` entries in `vite.config.ts`.
+Do not hand-edit these PNGs. If the mark changes, change `BrandMark.tsx` and
+`favicon.svg` together, then re-render the PNGs from that geometry at 192, 512
+and 512-maskable. The maskable variant must keep the mark inside the ~80% safe
+zone or Android's circular crop will clip the R's leg.

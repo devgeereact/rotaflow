@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FOOTER_COLUMNS, TAGLINE } from '@/lib/marketing';
-import logo from '@/assets/logo.png';
+import { BrandMark } from '@/components/ui/BrandMark';
 
 /**
  * Site footer.
@@ -24,7 +24,7 @@ export function PublicFooter(): JSX.Element {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center gap-2">
-              <img src={logo} alt="" aria-hidden="true" className="h-8 w-8" />
+              <BrandMark label={null} className="h-8 w-8" />
               <span className="font-display text-lg font-bold text-content dark:text-content-dark">
                 Rota<span className="text-primary">Flow</span>
               </span>

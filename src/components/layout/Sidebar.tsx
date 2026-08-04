@@ -7,7 +7,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
 import { SidebarFooter } from '@/components/layout/SidebarFooter';
 import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
-import logo from '@/assets/logo.png';
+import { BrandMark } from '@/components/ui/BrandMark';
 
 const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
@@ -126,7 +126,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
             collapsed && 'justify-center px-0',
           )}
         >
-          <img src={logo} alt="" aria-hidden="true" className="h-8 w-8 shrink-0" />
+          <BrandMark label={null} className="h-8 w-8 shrink-0" />
           {!collapsed && (
             <span className="min-w-0">
               <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
@@ -162,7 +162,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
           >
             <div className="flex items-center justify-between gap-2 px-5 py-6">
               <div className="flex items-center gap-2">
-                <img src={logo} alt="" aria-hidden="true" className="h-8 w-8" />
+                <BrandMark label={null} className="h-8 w-8" />
                 <span>
                   <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
                     Rota<span className="text-primary">Flow</span>

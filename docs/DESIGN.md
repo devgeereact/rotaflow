@@ -179,7 +179,20 @@ not files to edit:
 - `authscreen.png` — sign-in screen (split layout, marketing panel + form).
 - `splashscreen.png` — app loading/splash screen.
 
-The logo is a rounded-square, solid `#3B6FE0` mark with a stylised white "R".
-Current shipped PWA icons/favicon predate this design system and should be
-regenerated to match before the next asset pass — flag this rather than
-shipping a mismatched icon silently.
+### The mark
+
+The logo is a rounded-square `brand` (`#0C60F8`) tile carrying a stylised white
+"R" — bar, bowl and diagonal leg — with a `brand-light` accent tile tucked under
+the leg and a 2×2 shift grid at the foot.
+
+**There is exactly one implementation: `src/components/ui/BrandMark.tsx`.**
+Every surface uses it — app sidebar and header, marketing nav and footer, auth,
+onboarding, splash, app boot, the invitation screen and the platform console.
+Never inline the paths again, and never reintroduce a raster export: the old
+`src/assets/logo.png` was a glow-on-dark-blue render that could not sit on a
+light canvas, and six surfaces shipped it against light backgrounds before it
+was retired (2026-08-04).
+
+`public/favicon.svg` and the three `public/icons/*.png` are generated from the
+same geometry, so the browser tab, the installed app and the in-app mark cannot
+drift apart. See `public/icons/README.md` before changing any of them.

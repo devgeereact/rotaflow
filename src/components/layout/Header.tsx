@@ -3,7 +3,7 @@ import { LifeBuoy } from 'lucide-react';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { UserMenu } from '@/components/layout/UserMenu';
 import { NotificationBell } from '@/components/layout/NotificationBell';
-import logo from '@/assets/logo.png';
+import { BrandMark } from '@/components/ui/BrandMark';
 
 /**
  * Top bar for the `/app/*` shell. Page-specific chrome (the rota's week nav,
@@ -28,7 +28,7 @@ export function Header(): JSX.Element {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-surface-border bg-surface px-4 md:px-6 dark:border-surface-border-dark dark:bg-surface-dark">
       <Link to="/app/dashboard" className="flex shrink-0 items-center gap-2 md:hidden">
-        <img src={logo} alt="" aria-hidden="true" className="h-8 w-8" />
+        <BrandMark label={null} className="h-8 w-8" />
         <span className="font-display text-base font-bold text-content dark:text-content-dark">
           Rota<span className="text-primary">Flow</span>
         </span>
