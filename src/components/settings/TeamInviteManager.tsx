@@ -3,6 +3,7 @@ import { Copy, Plus, X } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { createInvite, listPendingInvites, revokeInvite } from '@/services/inviteService';
 import { reportError } from '@/lib/sentry';
@@ -50,6 +51,7 @@ export function TeamInviteManager(): JSX.Element {
   const { orgId, orgName } = useOrg();
   const { canManageStaff, canManageOrg } = usePermissions();
   const { showError, showSuccess } = useToast();
+  const { confirm } = useConfirm();
 
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,6 +130,14 @@ export function TeamInviteManager(): JSX.Element {
 
   const handleRevoke = useCallback(
     async (invite: Invite): Promise<void> => {
+      const ok = await confirm({
+        title: 'Revoke this invitation?',
+        message: `${invite.email} will no longer be able to accept this invitation. You can invite them again afterwards.`,
+        confirmLabel: 'Revoke invitation',
+        tone: 'danger',
+      });
+      if (!ok) return;
+
       try {
         await revokeInvite(invite.id);
         setInvites((prev) => prev.filter((i) => i.id !== invite.id));
@@ -137,7 +147,7 @@ export function TeamInviteManager(): JSX.Element {
         showError('Could not revoke that invitation.');
       }
     },
-    [showError, showSuccess],
+    [confirm, showError, showSuccess],
   );
 
   const copyLink = useCallback(
@@ -248,7 +258,7 @@ export function TeamInviteManager(): JSX.Element {
                 </span>
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="danger-outline"
                   onClick={() => void handleRevoke(invite)}
                   aria-label={`Revoke invitation for ${invite.email}`}
                 >

@@ -367,8 +367,7 @@ export function SettingsIntegrationsPage(): JSX.Element {
                   {testing ? 'Sending test…' : 'Send test email'}
                 </Button>
                 <Button
-                  variant="ghost"
-                  className="text-danger hover:text-danger"
+                  variant="danger-outline"
                   onClick={() => void handleRemove()}
                   disabled={saving || testing}
                 >
