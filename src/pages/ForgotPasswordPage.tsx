@@ -2,7 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
-import { env } from '@/lib/env';
+import { appUrlFor } from '@/lib/appOrigin';
 import { isValidEmail } from '@/lib/email';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -31,10 +31,9 @@ export function ForgotPasswordPage(): JSX.Element {
     setBusy(true);
     setError(null);
     try {
-      const base = env.appUrl || window.location.origin;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
-        { redirectTo: `${base.replace(/\/$/, '')}/reset-password` },
+        { redirectTo: appUrlFor('/reset-password') },
       );
       if (resetError) throw resetError;
       setSent(true);

@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { env, type OAuthProvider } from '@/lib/env';
+import { appUrlFor } from '@/lib/appOrigin';
 import { buildAcceptUrl } from '@/services/inviteService';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -82,7 +83,7 @@ export function SignupPage(): JSX.Element {
   // homepage instead of the dashboard/onboarding.
   const redirectTo = inviteToken
     ? buildAcceptUrl(inviteToken)
-    : `${(env.appUrl || window.location.origin).replace(/\/$/, '')}/app/dashboard`;
+    : appUrlFor('/app/dashboard');
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);

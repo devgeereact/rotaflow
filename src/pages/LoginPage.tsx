@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { isValidEmail } from '@/lib/email';
 import { env, type OAuthProvider } from '@/lib/env';
+import { appUrlFor } from '@/lib/appOrigin';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
@@ -60,7 +61,11 @@ export function LoginPage(): JSX.Element {
   // OAuth/magic-link both bounce through Supabase and back — send them
   // straight at the app, not the bare origin, or a signed-in user lands back
   // on the marketing homepage instead of the dashboard/onboarding.
-  const redirectTo = `${(env.appUrl || window.location.origin).replace(/\/$/, '')}/app/dashboard`;
+  //
+  // `appUrlFor` resolves the *current* origin, so this returns to whichever
+  // host you signed in from. It used to prefer `VITE_APP_URL`, which sent
+  // every localhost sign-in to production (see lib/appOrigin.ts).
+  const redirectTo = appUrlFor('/app/dashboard');
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);

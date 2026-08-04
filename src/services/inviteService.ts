@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { env } from '@/lib/env';
+import { appUrlFor } from '@/lib/appOrigin';
 import type { Invite, MembershipRole } from '@/types';
 
 /**
@@ -33,10 +33,17 @@ export interface InvitePreview {
   expiresAt: string;
 }
 
-/** Absolute accept-invite URL. Falls back to the current origin in dev. */
+/**
+ * Absolute accept-invite URL.
+ *
+ * Built from the current origin, so an invite minted on localhost is
+ * acceptable on localhost. It previously preferred `VITE_APP_URL` despite a
+ * comment claiming it fell back to the origin in dev — it could not, because
+ * that fallback only fires when the variable is empty (see lib/appOrigin.ts).
+ * In production the two are the same value; in dev only one of them works.
+ */
 export function buildAcceptUrl(token: string): string {
-  const base = env.appUrl || window.location.origin;
-  return `${base.replace(/\/$/, '')}/invite/${token}`;
+  return appUrlFor(`/invite/${token}`);
 }
 
 /** Mint an invite. Owners/managers only — enforced in the database. */
