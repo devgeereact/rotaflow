@@ -20,6 +20,9 @@ import {
   type HealthStatus,
 } from '@/lib/platformHealth';
 import { env } from '@/lib/env';
+import { listOpenIncidents } from '@/services/incidentService';
+import { SEVERITY_LABELS, type Incident } from '@/lib/incidents';
+import { Link } from 'react-router-dom';
 
 const STATUS_TONE: Record<HealthStatus, 'success' | 'warning' | 'danger' | 'neutral'> = {
   operational: 'success',
@@ -64,6 +67,10 @@ function StatusIcon({ status }: { status: HealthStatus }): JSX.Element {
  */
 export function AdminPlatformHealthPage(): JSX.Element {
   const [checks, setChecks] = useState<HealthCheck[]>([]);
+  // Probes answer "is it reachable now". An open incident answers "does
+  // somebody already know". Both belong on the page: without the second, the
+  // first invites a duplicate investigation of a known problem.
+  const [openIncidents, setOpenIncidents] = useState<Incident[]>([]);
   const [running, setRunning] = useState(true);
   const [ranAt, setRanAt] = useState<Date | null>(null);
 
@@ -71,6 +78,13 @@ export function AdminPlatformHealthPage(): JSX.Element {
     setRunning(true);
     const results = await runHealthChecks();
     setChecks(results);
+    try {
+      setOpenIncidents(await listOpenIncidents());
+    } catch {
+      // A failure to read incidents must not blank the probe results, which
+      // are the reason someone opened this page.
+      setOpenIncidents([]);
+    }
     setRanAt(new Date());
     setRunning(false);
   }, []);
@@ -121,6 +135,31 @@ export function AdminPlatformHealthPage(): JSX.Element {
             hint={ranAt ? ranAt.toLocaleDateString('en-GB') : 'Checks have not finished'}
           />
         </div>
+
+        {openIncidents.length > 0 && (
+          <Card className="border-danger/40 bg-danger/5">
+            <h2 className="mb-1 font-semibold text-content dark:text-content-dark">
+              {openIncidents.length} open incident
+              {openIncidents.length === 1 ? '' : 's'} — somebody is already on this
+            </h2>
+            <ul className="mt-2 space-y-1 text-sm text-content-muted dark:text-content-muted-dark">
+              {openIncidents.map((incident) => (
+                <li key={incident.id}>
+                  <span className="font-medium text-content dark:text-content-dark">
+                    {SEVERITY_LABELS[incident.severity]}
+                  </span>{' '}
+                  · {incident.service} — {incident.title}
+                </li>
+              ))}
+            </ul>
+            <Link
+              to="/admin/incidents"
+              className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+            >
+              Open incidents
+            </Link>
+          </Card>
+        )}
 
         <Card>
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -210,7 +249,10 @@ export function AdminPlatformHealthPage(): JSX.Element {
             <li>Background job queue depth and failure counts</li>
             <li>Storage totals and per-tenant usage</li>
             <li>Per-region latency, and latency for anyone other than you</li>
-            <li>Historical uptime — each visit measures only this moment</li>
+            <li>
+              Historical uptime — each visit measures only this moment. What <em>is</em>{' '}
+              durable is the incident record, which is why it sits above.
+            </li>
           </ul>
           <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
             Those need a collector with service-role access writing to a metrics table, or
