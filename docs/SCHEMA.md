@@ -89,6 +89,33 @@ Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, excep
 | `subscriptions`      | `org_id`, `plan` (`starter`\|`professional`\|`business`), `status`, `provider`, `provider_ref?`, `current_period_end?`                                                                                            | Billing seam. Provider is pluggable (Apple Pay / Google Pay / PayPal); charging is built last. |
 | `audit_logs`         | `org_id`, `actor_user_id?`, `action`, `entity_type`, `entity_id?`, `metadata jsonb`, `created_at`                                                                                                                 | GDPR + compliance trail (append-only).                                                         |
 
+## 3b. Platform tables (from `0015`–`0020`)
+
+These sit **above** the tenant model: they have no `org_id` scoping in the usual
+sense, and they are read through `has_platform_role()` rather than
+`is_org_member()`. Added when the platform console grew past a single
+`is_platform_admin` boolean.
+
+| Table                     | Key columns                                                                                                                    | Purpose                                                                                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platform_admins`         | `user_id` PK, `role` (`platform_owner`\|`platform_admin`\|`platform_support`\|`platform_finance`), `granted_by`, `revoked_at?` | Source of truth for platform access. `profiles.is_platform_admin` is a **derived cache**, recomputed from this table by the `sync_platform_admin_flag` trigger — never write it directly. |
+| `platform_settings`       | single row (`id` is a `boolean` PK), platform-wide configuration                                                               | One row, enforced by the primary key.                                                                                                                                                     |
+| `support_access_sessions` | `org_id`, `admin_user_id`, `reason`, `case_ref`, `scope` (`read`\|`read_write`), `granted_at`, `expires_at`, `revoked_at?`     | Time-boxed, justified records of platform staff opening a tenant's data. **An accountability trail, not an access grant** — see the header of `0019`.                                     |
+| `gdpr_requests`           | `org_id?`, `subject_email`, `kind` (Art. 15–22), `status`, `received_on`, `due_on`, `extended_to?`                             | Data subject requests and the Article 12(3) clock. `due_on` is computed by the database on insert, never supplied by a caller.                                                            |
+
+**Neither `support_access_sessions` nor `gdpr_requests` has an insert, update or
+delete policy.** Every mutation goes through a `security definer` function
+(`request_support_access`, `revoke_support_access`, `log_gdpr_request`,
+`set_gdpr_request_status`, `extend_gdpr_request`). That is deliberate: it is what
+makes the required reason, the computed deadline, the outcome-on-close rule and
+the customer's `support_access_allowed` opt-out impossible to bypass by writing
+to the table directly.
+
+`0017` also adds to `organisations`: `status` (`active`\|`suspended`\|`archived`),
+`suspended_at?`, `suspended_reason?` and `support_access_allowed` — the last being
+a real column rather than a `settings` jsonb key, because a control governing who
+may read a customer's data must not be clobberable by a `mergeOrgSettings` call.
+
 ## 4. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions
