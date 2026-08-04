@@ -32,7 +32,7 @@ export function TimesheetRulesCard({
           <button
             type="button"
             onClick={onEdit}
-            className="text-[0.7rem] font-semibold text-primary hover:underline"
+            className="rounded text-[0.7rem] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             Edit
           </button>

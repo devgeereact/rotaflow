@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import {
   AdminEmpty,
   AdminError,
@@ -69,6 +70,60 @@ export function AdminBillingPage(): JSX.Element {
     return counts;
   }, [subscriptions]);
 
+  const columns = useMemo<DataTableColumn<Subscription>[]>(
+    () => [
+      {
+        key: 'organisation',
+        label: 'Organisation',
+        width: 'w-[28%]',
+        cell: (sub) => (
+          <span className="truncate font-medium text-content dark:text-content-dark">
+            {orgById.get(sub.org_id)?.name ?? 'Unknown organisation'}
+          </span>
+        ),
+      },
+      {
+        key: 'plan',
+        label: 'Plan',
+        width: 'w-[18%]',
+        cell: (sub) => <span className="capitalize">{sub.plan}</span>,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        width: 'w-[18%]',
+        cell: (sub) => (
+          <Badge tone={sub.status === 'active' ? 'success' : 'warning'}>
+            {sub.status}
+          </Badge>
+        ),
+      },
+      {
+        key: 'provider',
+        label: 'Provider',
+        width: 'w-[18%]',
+        cell: (sub) => (
+          <span className="text-content-muted dark:text-content-muted-dark">
+            {sub.provider ?? 'Not set'}
+          </span>
+        ),
+      },
+      {
+        key: 'periodEnd',
+        label: 'Period ends',
+        width: 'w-[18%]',
+        cell: (sub) => (
+          <span className="whitespace-nowrap text-content-muted dark:text-content-muted-dark">
+            {sub.current_period_end
+              ? new Date(sub.current_period_end).toLocaleDateString('en-GB')
+              : '—'}
+          </span>
+        ),
+      },
+    ],
+    [orgById],
+  );
+
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
 
   return (
@@ -115,48 +170,13 @@ export function AdminBillingPage(): JSX.Element {
           {subscriptions.length === 0 ? (
             <AdminEmpty message="No organisation has a subscription record yet." />
           ) : (
-            <Card className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[46rem] text-sm">
-                  <thead>
-                    <tr className="border-b border-surface-border text-left text-xs uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-                      <th className="px-5 py-3 font-medium">Organisation</th>
-                      <th className="px-5 py-3 font-medium">Plan</th>
-                      <th className="px-5 py-3 font-medium">Status</th>
-                      <th className="px-5 py-3 font-medium">Provider</th>
-                      <th className="px-5 py-3 font-medium">Period ends</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subscriptions.map((sub) => (
-                      <tr
-                        key={sub.id}
-                        className="border-b border-surface-border last:border-0 dark:border-surface-border-dark"
-                      >
-                        <td className="px-5 py-3 font-medium text-content dark:text-content-dark">
-                          {orgById.get(sub.org_id)?.name ?? 'Unknown organisation'}
-                        </td>
-                        <td className="px-5 py-3 capitalize text-content dark:text-content-dark">
-                          {sub.plan}
-                        </td>
-                        <td className="px-5 py-3">
-                          <Badge tone={sub.status === 'active' ? 'success' : 'warning'}>
-                            {sub.status}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-3 text-content-muted dark:text-content-muted-dark">
-                          {sub.provider ?? 'Not set'}
-                        </td>
-                        <td className="px-5 py-3 text-content-muted dark:text-content-muted-dark">
-                          {sub.current_period_end
-                            ? new Date(sub.current_period_end).toLocaleDateString('en-GB')
-                            : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <Card className="overflow-hidden p-0">
+              <DataTable
+                caption="Subscription records by organisation"
+                columns={columns}
+                rows={subscriptions}
+                rowKey={(sub) => sub.id}
+              />
             </Card>
           )}
         </div>

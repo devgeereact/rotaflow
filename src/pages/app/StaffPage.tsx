@@ -29,6 +29,8 @@ import { listShiftsForPeriod } from '@/services/shiftService';
 import { listDocuments } from '@/services/documentService';
 import { anonymizeStaffMember, exportStaffData } from '@/services/gdprService';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { Card } from '@/components/ui/Card';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { StaffDirectoryView } from '@/components/staff/StaffDirectoryView';
 import type { StaffFilterSelect } from '@/components/staff/StaffFilterBar';
@@ -495,9 +497,9 @@ export function StaffPage(): JSX.Element {
       )}
 
       {loading ? (
-        <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          Loading…
-        </p>
+        <Card>
+          <LoadingState variant="tiles" rows={4} label="Loading staff directory…" />
+        </Card>
       ) : (
         <StaffDirectoryView
           stats={stats}

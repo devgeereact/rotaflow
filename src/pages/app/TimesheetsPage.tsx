@@ -49,8 +49,10 @@ import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { Modal } from '@/components/ui/Modal';
 import { TimesheetStatCard } from '@/components/timesheets/TimesheetStatCard';
 import { TimesheetsView } from '@/components/timesheets/TimesheetsView';
@@ -659,7 +661,8 @@ export function TimesheetsPage(): JSX.Element {
           <button
             type="button"
             onClick={() => setTeamMode(false)}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-content-muted hover:text-content dark:text-content-muted-dark"
+            aria-pressed={false}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark"
           >
             My hours
           </button>
@@ -667,7 +670,7 @@ export function TimesheetsPage(): JSX.Element {
             type="button"
             onClick={() => setTeamMode(true)}
             aria-pressed
-            className="rounded-lg bg-surface px-3 py-1.5 text-sm font-medium text-primary dark:bg-surface-dark"
+            className="rounded-lg bg-surface px-3 py-1.5 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-surface-dark"
           >
             Team
           </button>
@@ -789,7 +792,7 @@ export function TimesheetsPage(): JSX.Element {
               type="button"
               onClick={() => setTeamMode(false)}
               aria-pressed={!teamMode}
-              className="rounded-lg bg-surface px-3 py-1.5 text-sm font-medium text-primary dark:bg-surface-dark"
+              className="rounded-lg bg-surface px-3 py-1.5 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-surface-dark"
             >
               My hours
             </button>
@@ -797,7 +800,7 @@ export function TimesheetsPage(): JSX.Element {
               type="button"
               onClick={() => setTeamMode(true)}
               aria-pressed={teamMode}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-content-muted hover:text-content dark:text-content-muted-dark"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark"
             >
               Team
             </button>
@@ -810,17 +813,17 @@ export function TimesheetsPage(): JSX.Element {
           type="button"
           onClick={() => setAnchor((a) => stepPeriod(view, a, -1))}
           aria-label="Previous period"
-          className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+          className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={16} aria-hidden="true" />
         </button>
         <button
           type="button"
           onClick={() => setAnchor((a) => stepPeriod(view, a, 1))}
           aria-label="Next period"
-          className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+          className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
         <Button size="sm" variant="ghost" onClick={() => setAnchor(todayIso())}>
           Today
@@ -837,6 +840,7 @@ export function TimesheetsPage(): JSX.Element {
               aria-pressed={view === v.value}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm font-medium',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 view === v.value
                   ? 'bg-primary text-white'
                   : 'text-content-muted hover:text-content dark:text-content-muted-dark',
@@ -864,13 +868,15 @@ export function TimesheetsPage(): JSX.Element {
 
       {loading ? (
         <Card>
-          <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
+          <LoadingState variant="card" rows={4} label="Loading timesheets…" />
         </Card>
       ) : segmentsByStaff.size === 0 ? (
         <Card>
-          <p className="text-content-muted dark:text-content-muted-dark">
-            No clock events in this period.
-          </p>
+          <EmptyState
+            icon={Clock3}
+            title="No clock events in this period"
+            description="Clock-ins for this period will appear here once staff start their shifts."
+          />
         </Card>
       ) : (
         <div className="space-y-4">

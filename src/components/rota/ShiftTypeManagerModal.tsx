@@ -160,22 +160,22 @@ export function ShiftTypeManagerModal({
                     </span>
                   )}
                 </span>
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => startEdit(type)}
                     aria-label={`Edit ${type.name}`}
-                    className="text-content-muted hover:text-primary dark:text-content-muted-dark"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-content-muted transition-colors hover:bg-surface-subtle hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
                   >
-                    <Pencil size={14} />
+                    <Pencil size={14} aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleDelete(type.id, type.name)}
                     aria-label={`Delete ${type.name}`}
-                    className="text-content-muted hover:text-danger dark:text-content-muted-dark"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-content-muted transition-colors hover:bg-surface-subtle hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={14} aria-hidden="true" />
                   </button>
                 </span>
               </li>
@@ -197,9 +197,9 @@ export function ShiftTypeManagerModal({
           <button
             type="button"
             onClick={() => setView('list')}
-            className="flex items-center gap-1.5 text-sm text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark"
+            className="flex items-center gap-1.5 text-sm text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
           >
-            <ArrowLeft size={14} /> Back
+            <ArrowLeft size={14} aria-hidden="true" /> Back
           </button>
 
           <div>
@@ -223,6 +223,7 @@ export function ShiftTypeManagerModal({
                   onClick={() => setForm((f) => ({ ...f, colour: swatch.hex }))}
                   className={cn(
                     'h-8 w-8 rounded-full ring-offset-2 ring-offset-surface transition-shadow dark:ring-offset-surface-dark',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                     swatch.bgClass,
                     form.colour === swatch.hex && 'ring-2 ring-primary',
                   )}

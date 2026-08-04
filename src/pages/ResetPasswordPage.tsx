@@ -1,5 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
@@ -26,6 +27,7 @@ export function ResetPasswordPage(): JSX.Element {
   const [checking, setChecking] = useState(true);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -104,22 +106,42 @@ export function ResetPasswordPage(): JSX.Element {
             <Input
               id="new-password"
               className="mb-4"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               value={password}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
+              endAdornment={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="grid h-7 w-7 place-items-center rounded-md text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
             />
 
             <Label htmlFor="confirm-password">Confirm password</Label>
             <Input
               id="confirm-password"
               className="mb-5"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               value={confirm}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)}
               placeholder="Repeat the password"
+              endAdornment={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="grid h-7 w-7 place-items-center rounded-md text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
             />
 
             <Button

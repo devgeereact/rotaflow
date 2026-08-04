@@ -70,7 +70,7 @@ export function ScheduleViewBar({
             value={grouping}
             onChange={(event) => onGroupingChange(event.target.value as ScheduleGrouping)}
             aria-label="Group staff by"
-            className="appearance-none bg-transparent text-sm font-medium text-content outline-none dark:text-content-dark"
+            className="appearance-none rounded-lg bg-transparent text-sm font-medium text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
           >
             <option value="location">Location</option>
             <option value="role">Role</option>

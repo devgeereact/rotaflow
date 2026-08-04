@@ -73,6 +73,7 @@ export function ShiftChip({
         {...attributes}
         className={cn(
           'relative w-full rounded-lg px-1 py-1.5 text-center ring-1 transition-opacity',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-surface dark:focus-visible:ring-offset-surface-dark',
           isPast ? PAST_SHIFT_TINT : paletteTintForColour(shiftType?.colour),
           // A shift running right now is the one thing on the grid that is
           // literally happening, so it gets a live edge rather than a colour.

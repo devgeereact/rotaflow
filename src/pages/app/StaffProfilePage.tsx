@@ -9,6 +9,7 @@ import { listShiftsForPeriod } from '@/services/shiftService';
 import { StaffProfileView } from '@/components/staff/StaffProfileView';
 import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
 import { updateStaffProfile } from '@/services/staffService';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { toStaffDocument } from '@/lib/staffDirectoryMapping';
 import { buildProfile } from '@/lib/staffProfileMapping';
 import { reportError } from '@/lib/sentry';
@@ -131,9 +132,7 @@ export function StaffProfilePage(): JSX.Element {
   };
 
   if (loading) {
-    return (
-      <p className="text-sm text-content-muted dark:text-content-muted-dark">Loading…</p>
-    );
+    return <LoadingState variant="card" rows={6} label="Loading staff profile…" />;
   }
 
   if (error || !profile) {

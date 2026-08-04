@@ -502,7 +502,7 @@ function CloseRequestModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Exported the staff record and emailed it to the subject on 4 August."
-            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
           />
           <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
             Required. A refusal must also state the lawful ground and the subject&rsquo;s
@@ -585,7 +585,7 @@ function ExtendRequestModal({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Request covers four years of clock events across three sites."
-            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
           />
         </div>
         {error && (

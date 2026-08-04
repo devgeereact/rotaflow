@@ -174,7 +174,7 @@ export function RotaGrid({
                   return next;
                 })
               }
-              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark dark:hover:bg-surface-subtle-dark"
             >
               {isCollapsed ? (
                 <ChevronRight size={16} aria-hidden="true" />

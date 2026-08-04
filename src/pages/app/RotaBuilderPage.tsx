@@ -1304,9 +1304,9 @@ export function RotaBuilderPage(): JSX.Element {
                 )
               }
               aria-label="Previous week"
-              className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+              className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -1316,9 +1316,9 @@ export function RotaBuilderPage(): JSX.Element {
                 )
               }
               aria-label="Next week"
-              className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+              className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={16} aria-hidden="true" />
             </button>
             <Button
               size="sm"
@@ -1362,6 +1362,7 @@ export function RotaBuilderPage(): JSX.Element {
                   onClick={() => setViewMode(tab)}
                   className={cn(
                     'rounded-lg px-3 py-1.5 text-sm font-medium',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                     viewMode === tab
                       ? 'bg-primary text-white'
                       : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
@@ -1375,9 +1376,9 @@ export function RotaBuilderPage(): JSX.Element {
               type="button"
               onClick={() => setShiftTypeModalOpen(true)}
               aria-label="Manage shift types"
-              className="rounded-xl border border-surface-border p-2 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+              className="rounded-xl border border-surface-border p-2 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
             >
-              <Settings2 size={16} />
+              <Settings2 size={16} aria-hidden="true" />
             </button>
 
             <div className="relative flex">
@@ -1410,9 +1411,9 @@ export function RotaBuilderPage(): JSX.Element {
                   type="button"
                   aria-label="Publish options"
                   onClick={() => setPublishMenuOpen((v) => !v)}
-                  className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg hover:bg-primary/90"
+                  className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
                 >
-                  <ChevronDown size={14} />
+                  <ChevronDown size={14} aria-hidden="true" />
                 </button>
               )}
               {publishMenuOpen && (
@@ -1424,7 +1425,7 @@ export function RotaBuilderPage(): JSX.Element {
                       void handleUnpublish();
                     }}
                     disabled={rotasInScope.every((r) => r.status !== 'published')}
-                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50 dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 dark:text-content-dark dark:hover:bg-surface-subtle-dark"
                   >
                     Unpublish current rota
                   </button>

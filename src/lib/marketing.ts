@@ -336,7 +336,7 @@ export const PLANS: readonly Plan[] = [
       'GPS clock-in with offline queue',
       'CSV export',
     ],
-    cta: 'Start free',
+    cta: 'Start free trial',
   },
   {
     name: 'Team',

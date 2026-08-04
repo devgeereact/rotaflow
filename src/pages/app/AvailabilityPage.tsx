@@ -42,10 +42,18 @@ const WEEKDAYS = [
  */
 type AvailabilityStatus = 'available' | 'preferred' | 'unavailable';
 
+// Same `avail` wash + ink pairing the team matrix uses for these three states
+// (`STATE_CELL` in `src/lib/availabilityMatrix.ts`), so this status chip and
+// the matrix agree on what "available" looks like instead of reusing the
+// generic operational palette (`success`/`primary`/`danger`), which was never
+// tuned for this feature's own contrast requirements.
 const STATUS_STYLE: Record<AvailabilityStatus, string> = {
-  available: 'bg-success/10 text-success',
-  preferred: 'bg-primary/10 text-primary',
-  unavailable: 'bg-danger/10 text-danger',
+  available:
+    'bg-avail-free text-avail-free-fg dark:bg-avail-free-dark dark:text-avail-free-fg-dark',
+  preferred:
+    'bg-avail-pref text-avail-pref-fg dark:bg-avail-pref-dark dark:text-avail-pref-fg-dark',
+  unavailable:
+    'bg-avail-off text-avail-off-fg dark:bg-avail-off-dark dark:text-avail-off-fg-dark',
 };
 
 function toAvailabilityStatus(value: string): AvailabilityStatus {

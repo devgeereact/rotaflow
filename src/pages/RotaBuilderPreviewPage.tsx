@@ -28,6 +28,7 @@ function formatWeekRange(dates: string[]): string {
 }
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
 import { ShiftInspectorPanel } from '@/components/rota/ShiftInspectorPanel';
@@ -388,20 +389,16 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                 <Info size={14} aria-hidden="true" />
               </p>
             </div>
-            <div className="relative">
-              <Search
-                size={16}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
-              />
-              <input
-                placeholder="Search staff, skills, shifts…"
-                className="w-80 rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
-              />
-              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-                ⌘ K
-              </kbd>
-            </div>
+            <Input
+              icon={Search}
+              placeholder="Search staff, skills, shifts…"
+              className="w-80 bg-surface pr-16 dark:bg-surface-dark"
+              endAdornment={
+                <kbd className="pointer-events-none rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+                  ⌘ K
+                </kbd>
+              }
+            />
           </div>
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -409,16 +406,16 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               <button
                 type="button"
                 aria-label="Previous week"
-                className="rounded-lg border border-surface-border p-1.5 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
+                className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} aria-hidden="true" />
               </button>
               <button
                 type="button"
                 aria-label="Next week"
-                className="rounded-lg border border-surface-border p-1.5 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
+                className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={16} aria-hidden="true" />
               </button>
               <Button size="sm" variant="secondary">
                 Today
@@ -443,8 +440,10 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                   <button
                     key={tab}
                     type="button"
+                    aria-pressed={tab === 'Week'}
                     className={cn(
                       'rounded-lg px-3 py-1.5 text-sm font-medium',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                       tab === 'Week'
                         ? 'bg-primary text-white'
                         : 'text-content-muted dark:text-content-muted-dark',
@@ -457,9 +456,9 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               <button
                 type="button"
                 aria-label="Manage shift types"
-                className="rounded-xl border border-surface-border p-2 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
+                className="rounded-xl border border-surface-border p-2 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
               >
-                <Settings2 size={16} />
+                <Settings2 size={16} aria-hidden="true" />
               </button>
               <div className="flex">
                 <Button size="sm" className="rounded-r-none">
@@ -468,9 +467,9 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                 <button
                   type="button"
                   aria-label="Publish options"
-                  className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg"
+                  className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
-                  <ChevronDown size={14} />
+                  <ChevronDown size={14} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -488,7 +487,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </Select>
             <button
               type="button"
-              className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:text-content-dark"
+              className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-dark"
             >
               More filters
               <ChevronDown size={14} aria-hidden="true" />
@@ -571,13 +570,16 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </span>
             <div className="flex flex-wrap items-center gap-5 text-xs text-content-muted dark:text-content-muted-dark">
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-success" /> Optimal
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />{' '}
+                Optimal
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-danger" /> Understaffed
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-danger" />{' '}
+                Understaffed
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-warning" /> Unpublished
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-warning" />{' '}
+                Unpublished
               </span>
             </div>
           </div>

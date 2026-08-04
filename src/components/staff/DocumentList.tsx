@@ -20,6 +20,14 @@ const LABELS: Record<DocumentStatus, string> = {
 
 /** Compliance documents with their expiry state — the panel and profile rail share this. */
 export function DocumentList({ documents }: DocumentListProps): JSX.Element {
+  if (documents.length === 0) {
+    return (
+      <p className="text-sm text-content-muted dark:text-content-muted-dark">
+        No documents on file yet.
+      </p>
+    );
+  }
+
   return (
     <ul className="space-y-3.5">
       {documents.map((doc) => (

@@ -50,6 +50,7 @@ export function ShiftPatternLegend({
         aria-pressed={activeId === 'all'}
         className={cn(
           'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
           activeId === 'all'
             ? 'border-primary bg-primary/10 text-primary'
             : 'border-surface-border text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:text-content-dark',
@@ -70,6 +71,7 @@ export function ShiftPatternLegend({
             title={`${type.name} · ${hhmm(type.default_start)}–${hhmm(type.default_end)}`}
             className={cn(
               'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
               active
                 ? 'border-primary bg-primary/10 text-primary'
                 : count === 0

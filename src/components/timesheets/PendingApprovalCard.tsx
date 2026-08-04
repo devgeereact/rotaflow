@@ -37,7 +37,7 @@ export function PendingApprovalCard({
         <button
           type="button"
           onClick={onViewAll}
-          className="text-[0.7rem] font-semibold text-primary hover:underline"
+          className="rounded text-[0.7rem] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           View all
         </button>
@@ -83,7 +83,7 @@ export function PendingApprovalCard({
         <button
           type="button"
           onClick={onViewAll}
-          className="mt-3 flex items-center gap-1.5 text-[0.7rem] font-semibold text-primary hover:underline"
+          className="mt-3 flex items-center gap-1.5 rounded text-[0.7rem] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Plus size={13} aria-hidden="true" />
           {moreCount} more pending

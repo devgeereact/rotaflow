@@ -26,7 +26,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 // 43 elements carrying `bg-danger`/`text-danger` in a className, none of them
 // agreeing on padding, weight or hover.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-primary-fg hover:bg-primary/90',
+  // Ink Navy re-skin: solid buttons go graphite (near-black), while links,
+  // focus rings and the active-nav tint stay the cobalt `primary` — two
+  // distinct roles for one brand identity rather than one flat blue
+  // everywhere. See tailwind.config.ts's `graphite` token comment.
+  primary: 'bg-graphite text-graphite-fg hover:bg-graphite/90',
   secondary:
     'bg-surface text-content border border-surface-border hover:bg-surface-subtle ' +
     'dark:bg-surface-dark dark:text-content-dark dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark',

@@ -22,7 +22,7 @@ interface TimesheetTableProps {
 const HEAD_CELL =
   'whitespace-nowrap px-1.5 py-3 text-[0.66rem] font-semibold leading-4 text-content dark:text-content-dark';
 const NUM_CELL =
-  'px-1.5 py-2.5 text-center text-[0.76rem] font-semibold leading-4 tabular-nums text-content dark:text-content-dark';
+  'px-1.5 py-2.5 text-center font-mono text-[0.76rem] font-semibold leading-4 tabular-nums text-content dark:text-content-dark';
 
 /** The timesheet list — one row per person per week (design/Timesheets-Dashboard.png). */
 export function TimesheetTable({
@@ -57,7 +57,7 @@ export function TimesheetTable({
                 checked={allSelected}
                 onChange={onToggleAll}
                 aria-label="Select all timesheets"
-                className="m-0 block h-4 w-4 rounded border-surface-border accent-primary dark:border-surface-border-dark"
+                className="m-0 block h-4 w-4 rounded border-surface-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
               />
             </th>
             <th scope="col" className={cn(HEAD_CELL, 'w-[13.4%] text-left')}>
@@ -112,7 +112,7 @@ export function TimesheetTable({
                     checked={selected}
                     onChange={() => onToggleRow(row.id)}
                     aria-label={`Select ${row.firstName} ${row.lastName}'s timesheet`}
-                    className="m-0 block h-4 w-4 rounded border-surface-border accent-primary dark:border-surface-border-dark"
+                    className="m-0 block h-4 w-4 rounded border-surface-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
                   />
                 </td>
 
@@ -166,7 +166,7 @@ export function TimesheetTable({
                       type="button"
                       onClick={() => onRowMenu(row.id)}
                       aria-label={`More actions for ${row.firstName} ${row.lastName}`}
-                      className="grid h-7 w-6 place-items-center rounded-lg border border-surface-border text-content-muted transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                      className="grid h-7 w-6 place-items-center rounded-lg border border-surface-border text-content-muted transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
                     >
                       <MoreVertical size={15} aria-hidden="true" />
                     </button>

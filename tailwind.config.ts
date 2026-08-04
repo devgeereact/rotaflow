@@ -30,8 +30,21 @@ const config: Config = {
           dark: '#1B2740', // subtle in-list separators (dark)
         },
         primary: {
-          DEFAULT: '#3B6FE0', // brand blue — CTAs, active state, links
+          DEFAULT: '#0369A1', // Ink Navy re-skin's cobalt — CTAs, active state, links, focus rings
           fg: '#FFFFFF', // text/icons on a solid primary fill
+        },
+        // Ink Navy re-skin's second brand hue — solid buttons and the app
+        // sidebar go near-black graphite while links/focus/active-nav stay
+        // the cobalt `primary` above, so the two roles read as distinct
+        // rather than one flat blue everywhere. `subtle` is the hover fill
+        // for dark surfaces (Sidebar, SidebarFooter) — a lighter graphite
+        // step, not a `primary`-tinted one, so hover doesn't fight the nav's
+        // own dark identity.
+        graphite: {
+          DEFAULT: '#0F172A',
+          fg: '#FFFFFF',
+          subtle: '#1E293B',
+          border: '#243244',
         },
         // Vivid marketing blue + navy ink ramp, sampled from
         // design/splash-screen.png (and matching signin/dashboard renders).
@@ -202,9 +215,15 @@ const config: Config = {
       fontFamily: {
         // "Inter Variable" per docs/DESIGN.md — loaded as the full variable
         // weight range (100..900) from Google Fonts; the family name Google
-        // serves it under is still "Inter".
+        // serves it under is still "Inter". Body copy and dense data (tables,
+        // forms) stay on Inter — it's tuned for exactly that density.
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        // Ink Navy re-skin's display face. Every page title already routes
+        // through `PageHeader` and every wordmark instance through `Sidebar`/
+        // `AdminShell`, both of which already carry `font-display` — so this
+        // one line re-skins every heading and the wordmark app-wide with no
+        // other file needing to change.
+        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       fontSize: {
@@ -231,24 +250,44 @@ const config: Config = {
         lockup: '0.0625em',
       },
       borderRadius: {
-        xl: '1rem',
-        '2xl': '1.5rem',
+        // Tightened for the Ink Navy re-skin — same two-step scale (controls
+        // vs. cards), pulled in from the original 1rem/1.5rem for a crisper,
+        // less-rounded geometry. Every `rounded-xl`/`rounded-2xl` usage across
+        // the app inherits this without touching the component that uses it.
+        xl: '0.75rem',
+        '2xl': '1.125rem',
       },
       boxShadow: {
-        // Elevation levels from docs/DESIGN.md §2 — override the Tailwind
-        // defaults so `shadow-sm` / `shadow` / `shadow-lg` match the reference.
-        sm: '0 1px 2px rgba(0,0,0,0.05)', // level 1
-        DEFAULT: '0 4px 12px rgba(0,0,0,0.08)', // level 2
-        lg: '0 8px 24px rgba(0,0,0,0.12)', // level 3
+        // Elevation levels, re-tuned for the Ink Navy re-skin: tighter blur
+        // radius and a touch more opacity than the original so edges read as
+        // defined rather than soft — still the same three-level scale from
+        // docs/DESIGN.md §2, just crisper. Override the Tailwind defaults so
+        // `shadow-sm` / `shadow` / `shadow-lg` apply everywhere unchanged.
+        sm: '0 1px 2px rgba(15,23,42,0.06)', // level 1
+        DEFAULT: '0 2px 8px rgba(15,23,42,0.10)', // level 2
+        lg: '0 6px 16px rgba(15,23,42,0.14)', // level 3
       },
       keyframes: {
         'fade-up': {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // Anchored panels (Popover, Select menu) scale in from their trigger
+        // rather than fading up the page — the two are different gestures.
+        // `transform-origin` is set per-instance (see Popover.tsx) so this
+        // stays a plain scale+fade.
+        'popover-in': {
+          '0%': { opacity: '0', transform: 'scale(0.96) translateY(-2px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 300ms ease-out both',
+        // Strong ease-out (easing.dev-style overshoot-free curve) reads as
+        // more responsive than Tailwind's stock `ease-out` at the same
+        // duration — the popover should feel like it's already moving the
+        // instant it appears.
+        'popover-in': 'popover-in 150ms cubic-bezier(0.16,1,0.3,1) both',
       },
     },
   },

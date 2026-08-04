@@ -48,6 +48,9 @@ export function RotaGridCell({
     isEmpty && 'cursor-pointer hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
   );
 
+  const emptyCellFocusRing =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary';
+
   // An empty cell shows a muted en-dash rather than blank space, matching
   // design/Rota-Builder.png — it reads as "no shift" instead of "not loaded".
   if (isEmpty) {
@@ -59,6 +62,7 @@ export function RotaGridCell({
         aria-label="Add shift"
         className={cn(
           containerClassName,
+          emptyCellFocusRing,
           'flex w-full items-center justify-center text-sm text-content-muted/50 dark:text-content-muted-dark/50',
         )}
       >

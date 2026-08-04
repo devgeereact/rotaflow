@@ -85,7 +85,7 @@ export function ScheduleToolbar({
           value={locationId ?? ''}
           onChange={(event) => onLocationChange(event.target.value || null)}
           aria-label="Filter by location"
-          className="appearance-none bg-transparent pr-1 text-sm font-medium text-content outline-none dark:text-content-dark"
+          className="appearance-none rounded-lg bg-transparent pr-1 text-sm font-medium text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
         >
           <option value="">All Locations</option>
           {locations.map((location) => (

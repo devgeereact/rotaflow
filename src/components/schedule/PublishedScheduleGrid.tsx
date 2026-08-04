@@ -133,7 +133,7 @@ export function PublishedScheduleGrid({
               type="button"
               onClick={() => toggle(group.id)}
               aria-expanded={!isCollapsed}
-              className="flex w-full items-center gap-2 border-b border-divider bg-surface-subtle px-3 py-1.5 text-left transition-colors hover:bg-divider dark:border-divider-dark dark:bg-surface-subtle-dark dark:hover:bg-surface-border-dark/40"
+              className="flex w-full items-center gap-2 border-b border-divider bg-surface-subtle px-3 py-1.5 text-left transition-colors hover:bg-divider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:border-divider-dark dark:bg-surface-subtle-dark dark:hover:bg-surface-border-dark/40"
             >
               <Building2
                 size={15}

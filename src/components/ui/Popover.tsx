@@ -91,7 +91,11 @@ export function Popover({
           className={cn(
             'absolute top-full z-30 mt-2 rounded-xl border border-surface-border bg-surface p-4 shadow-lg',
             'dark:border-surface-border-dark dark:bg-surface-dark',
-            align === 'right' ? 'right-0' : 'left-0',
+            // Scales in from the corner nearest its trigger, not the panel
+            // centre — an anchored control should read as growing out of the
+            // button that opened it.
+            align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+            'animate-popover-in motion-reduce:animate-none',
             widthClassName,
           )}
         >

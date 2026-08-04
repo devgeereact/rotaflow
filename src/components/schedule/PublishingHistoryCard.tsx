@@ -29,7 +29,7 @@ export function PublishingHistoryCard({
           <button
             type="button"
             onClick={onViewAll}
-            className="text-xs font-medium text-primary hover:underline"
+            className="rounded text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             View all
           </button>

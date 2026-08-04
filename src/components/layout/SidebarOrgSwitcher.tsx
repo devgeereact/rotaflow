@@ -63,12 +63,17 @@ export function SidebarOrgSwitcher({
 
   const summary = role ? (ROLE_LABEL[role] ?? role) : 'No role';
 
+  // Ink Navy re-skin: this trigger lives inside the now-permanently-dark
+  // `Sidebar`, so it's styled as a translucent card on graphite rather than
+  // the light `bg-surface` card every other trigger in the app uses. The
+  // dropdown panel below stays the normal light popover style, since it
+  // floats over page content, not the dark rail.
   if (collapsed) {
     return (
       <div className="px-3 pb-3">
         <span
           title={`${orgName} · ${summary}`}
-          className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"
+          className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-white"
         >
           <Building2 size={18} aria-hidden="true" />
           <span className="sr-only">{orgName}</span>
@@ -88,30 +93,25 @@ export function SidebarOrgSwitcher({
         // itself as pressable — for a single-org user this is a label.
         disabled={!canSwitch}
         className={cn(
-          'flex w-full items-center gap-2.5 rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-left',
-          'dark:border-surface-border-dark dark:bg-surface-dark',
+          'flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left',
           canSwitch &&
-            'hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark',
+            'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-graphite',
           !canSwitch && 'cursor-default',
         )}
       >
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/20 text-white">
           <Building2 size={16} aria-hidden="true" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-content dark:text-content-dark">
+          <span className="block truncate text-sm font-semibold text-white">
             {orgName}
           </span>
-          <span className="block truncate text-xs text-content-muted dark:text-content-muted-dark">
+          <span className="block truncate text-xs text-white/50">
             {canSwitch ? `${summary} · ${memberships.length} organisations` : summary}
           </span>
         </span>
         {canSwitch && (
-          <ChevronsUpDown
-            size={16}
-            aria-hidden="true"
-            className="shrink-0 text-content-muted"
-          />
+          <ChevronsUpDown size={16} aria-hidden="true" className="shrink-0 text-white/50" />
         )}
       </button>
 
