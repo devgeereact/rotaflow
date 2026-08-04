@@ -18,6 +18,57 @@ export type Database = {
   };
   public: {
     Tables: {
+      // HAND-MAINTAINED PENDING REGENERATION (0018_platform_settings.sql).
+      platform_settings: {
+        Row: {
+          created_at: string;
+          default_timezone: string;
+          id: boolean;
+          maintenance_message: string | null;
+          maintenance_mode: boolean;
+          platform_name: string;
+          platform_url: string;
+          registration_enabled: boolean;
+          support_email: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          default_timezone?: string;
+          id?: boolean;
+          maintenance_message?: string | null;
+          maintenance_mode?: boolean;
+          platform_name?: string;
+          platform_url?: string;
+          registration_enabled?: boolean;
+          support_email?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          default_timezone?: string;
+          id?: boolean;
+          maintenance_message?: string | null;
+          maintenance_mode?: boolean;
+          platform_name?: string;
+          platform_url?: string;
+          registration_enabled?: boolean;
+          support_email?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'platform_settings_updated_by_fkey';
+            columns: ['updated_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       // HAND-MAINTAINED PENDING REGENERATION (0015_platform_roles.sql).
       platform_admins: {
         Row: {
@@ -794,6 +845,12 @@ export type Database = {
           },
         ];
       };
+      // Lifecycle columns HAND-MAINTAINED PENDING REGENERATION
+      // (0017_organisation_status.sql). `status` and `support_access_allowed`
+      // are absent from `Update` on purpose: 0017 revokes the UPDATE privilege
+      // on both from `authenticated`, so they move through `set_org_status` /
+      // `set_org_support_access` only. Typing them as writable here would
+      // invite a `.update({ status })` that compiles and then 42501s.
       organisations: {
         Row: {
           created_at: string;
@@ -803,6 +860,10 @@ export type Database = {
           plan: string;
           settings: Json;
           slug: string;
+          status: string;
+          support_access_allowed: boolean;
+          suspended_at: string | null;
+          suspended_reason: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1591,6 +1652,15 @@ export type Database = {
         Returns: undefined;
       };
       revoke_platform_role: { Args: { p_user: string }; Returns: undefined };
+      // HAND-MAINTAINED PENDING REGENERATION (0017_organisation_status.sql).
+      set_org_status: {
+        Args: { p_org: string; p_status: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      set_org_support_access: {
+        Args: { p_org: string; p_allowed: boolean };
+        Returns: undefined;
+      };
       // HAND-MAINTAINED PENDING REGENERATION (0016_audit_events.sql).
       log_audit_event: {
         Args: {

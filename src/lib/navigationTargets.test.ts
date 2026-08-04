@@ -275,18 +275,28 @@ describe('navigation targets', () => {
     },
   );
 
-  it('routes all seven platform administration screens §34 names', () => {
+  it('routes every platform administration screen §34 names', () => {
     for (const path of [
       '/admin',
       '/admin/organisations',
       '/admin/users',
+      '/admin/subscriptions',
       '/admin/billing',
       '/admin/support',
       '/admin/audit',
       '/admin/feature-flags',
+      '/admin/settings',
     ]) {
       expect(isRoutable(path)).toBe(true);
     }
+  });
+
+  it('routes the platform detail screens the console links to', () => {
+    // Hard-coded rather than derived: nothing in ADMIN_NAV points at these,
+    // they are only reached from a row in a table. That is exactly how a
+    // detail route goes missing without anything noticing.
+    expect(isRoutable('/admin/organisations/some-uuid')).toBe(true);
+    expect(isRoutable('/admin/users/some-uuid')).toBe(true);
   });
 
   it('keeps platform administration out of the tenant sidebar', () => {

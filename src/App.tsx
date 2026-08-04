@@ -277,6 +277,22 @@ const AdminOrganisationsPage = lazyPage(
   'AdminOrganisationsPage',
   () => import('@/pages/admin/AdminOrganisationsPage'),
 );
+const AdminOrganisationDetailPage = lazyPage(
+  'AdminOrganisationDetailPage',
+  () => import('@/pages/admin/AdminOrganisationDetailPage'),
+);
+const AdminUserDetailPage = lazyPage(
+  'AdminUserDetailPage',
+  () => import('@/pages/admin/AdminUserDetailPage'),
+);
+const AdminSubscriptionsPage = lazyPage(
+  'AdminSubscriptionsPage',
+  () => import('@/pages/admin/AdminSubscriptionsPage'),
+);
+const AdminSettingsPage = lazyPage(
+  'AdminSettingsPage',
+  () => import('@/pages/admin/AdminSettingsPage'),
+);
 const AdminUsersPage = lazyPage(
   'AdminUsersPage',
   () => import('@/pages/admin/AdminUsersPage'),
@@ -617,7 +633,34 @@ export function App(): JSX.Element {
                     >
                       <Route index element={<AdminOverviewPage />} />
                       <Route path="organisations" element={<AdminOrganisationsPage />} />
+                      <Route
+                        path="organisations/:organisationId"
+                        element={<AdminOrganisationDetailPage />}
+                      />
                       <Route path="users" element={<AdminUsersPage />} />
+                      <Route path="users/:userId" element={<AdminUserDetailPage />} />
+                      <Route
+                        path="subscriptions"
+                        element={
+                          <RequirePlatformRole
+                            allow={PLATFORM_BILLING_ROLES}
+                            area="Subscriptions"
+                          >
+                            <AdminSubscriptionsPage />
+                          </RequirePlatformRole>
+                        }
+                      />
+                      <Route
+                        path="settings"
+                        element={
+                          <RequirePlatformRole
+                            allow={PLATFORM_CONFIG_ROLES}
+                            area="Platform settings"
+                          >
+                            <AdminSettingsPage />
+                          </RequirePlatformRole>
+                        }
+                      />
                       {/* Billing and feature flags are narrower than the area
                       itself: `adminNavForRole` hides them from a support
                       administrator, and §34 is explicit that restricted routes

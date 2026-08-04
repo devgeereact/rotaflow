@@ -6,7 +6,9 @@ import {
   LayoutDashboard,
   LifeBuoy,
   MessageCircleQuestion,
+  Receipt,
   ScrollText,
+  Settings,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -42,6 +44,12 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: 'Organisations', icon: Building2, to: '/admin/organisations' },
   { label: 'Platform users', icon: Users, to: '/admin/users' },
   {
+    label: 'Subscriptions',
+    icon: Receipt,
+    to: '/admin/subscriptions',
+    roles: ['platform_owner', 'platform_admin', 'platform_finance'],
+  },
+  {
     label: 'Billing',
     icon: CreditCard,
     to: '/admin/billing',
@@ -53,6 +61,12 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     label: 'Feature flags',
     icon: Flag,
     to: '/admin/feature-flags',
+    roles: ['platform_owner', 'platform_admin'],
+  },
+  {
+    label: 'Platform settings',
+    icon: Settings,
+    to: '/admin/settings',
     roles: ['platform_owner', 'platform_admin'],
   },
 ] as const;
