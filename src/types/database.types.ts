@@ -18,6 +18,102 @@ export type Database = {
   };
   public: {
     Tables: {
+      // HAND-MAINTAINED PENDING REGENERATION (0018_platform_settings.sql).
+      platform_settings: {
+        Row: {
+          created_at: string;
+          default_timezone: string;
+          id: boolean;
+          maintenance_message: string | null;
+          maintenance_mode: boolean;
+          platform_name: string;
+          platform_url: string;
+          registration_enabled: boolean;
+          support_email: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          default_timezone?: string;
+          id?: boolean;
+          maintenance_message?: string | null;
+          maintenance_mode?: boolean;
+          platform_name?: string;
+          platform_url?: string;
+          registration_enabled?: boolean;
+          support_email?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          default_timezone?: string;
+          id?: boolean;
+          maintenance_message?: string | null;
+          maintenance_mode?: boolean;
+          platform_name?: string;
+          platform_url?: string;
+          registration_enabled?: boolean;
+          support_email?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'platform_settings_updated_by_fkey';
+            columns: ['updated_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      // HAND-MAINTAINED PENDING REGENERATION (0015_platform_roles.sql).
+      platform_admins: {
+        Row: {
+          created_at: string;
+          granted_at: string;
+          granted_by: string | null;
+          note: string | null;
+          revoked_at: string | null;
+          revoked_by: string | null;
+          role: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          granted_at?: string;
+          granted_by?: string | null;
+          note?: string | null;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          role?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          granted_at?: string;
+          granted_by?: string | null;
+          note?: string | null;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          role?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'platform_admins_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: true;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       announcements: {
         Row: {
           author_user_id: string | null;
@@ -127,36 +223,64 @@ export type Database = {
           },
         ];
       };
+      // HAND-MAINTAINED PENDING REGENERATION (0016_audit_events.sql).
+      // `org_id` is nullable for platform-scoped events, and the actor/org
+      // names are snapshotted at write time rather than joined. Replace this
+      // block with a real `supabase gen types` run once 0016 is applied.
       audit_logs: {
         Row: {
           action: string;
+          actor_email: string | null;
+          actor_name: string | null;
           actor_user_id: string | null;
           created_at: string;
           entity_id: string | null;
           entity_type: string | null;
           id: string;
+          ip_address: string | null;
           metadata: Json;
-          org_id: string;
+          org_id: string | null;
+          org_name: string | null;
+          scope: string;
+          severity: string;
+          user_agent: string | null;
+          visibility: string;
         };
         Insert: {
           action: string;
+          actor_email?: string | null;
+          actor_name?: string | null;
           actor_user_id?: string | null;
           created_at?: string;
           entity_id?: string | null;
           entity_type?: string | null;
           id?: string;
+          ip_address?: string | null;
           metadata?: Json;
-          org_id: string;
+          org_id?: string | null;
+          org_name?: string | null;
+          scope?: string;
+          severity?: string;
+          user_agent?: string | null;
+          visibility?: string;
         };
         Update: {
           action?: string;
+          actor_email?: string | null;
+          actor_name?: string | null;
           actor_user_id?: string | null;
           created_at?: string;
           entity_id?: string | null;
           entity_type?: string | null;
           id?: string;
+          ip_address?: string | null;
           metadata?: Json;
-          org_id?: string;
+          org_id?: string | null;
+          org_name?: string | null;
+          scope?: string;
+          severity?: string;
+          user_agent?: string | null;
+          visibility?: string;
         };
         Relationships: [
           {
@@ -721,6 +845,12 @@ export type Database = {
           },
         ];
       };
+      // Lifecycle columns HAND-MAINTAINED PENDING REGENERATION
+      // (0017_organisation_status.sql). `status` and `support_access_allowed`
+      // are absent from `Update` on purpose: 0017 revokes the UPDATE privilege
+      // on both from `authenticated`, so they move through `set_org_status` /
+      // `set_org_support_access` only. Typing them as writable here would
+      // invite a `.update({ status })` that compiles and then 42501s.
       organisations: {
         Row: {
           created_at: string;
@@ -730,6 +860,10 @@ export type Database = {
           plan: string;
           settings: Json;
           slug: string;
+          status: string;
+          support_access_allowed: boolean;
+          suspended_at: string | null;
+          suspended_reason: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1509,6 +1643,35 @@ export type Database = {
         }[];
       };
       slug_available: { Args: { p_slug: string }; Returns: boolean };
+      // HAND-MAINTAINED PENDING REGENERATION (0015_platform_roles.sql).
+      has_platform_role: { Args: { p_roles: string[] }; Returns: boolean };
+      my_platform_role: { Args: never; Returns: string | null };
+      my_active_org_ids: { Args: never; Returns: string[] };
+      grant_platform_role: {
+        Args: { p_user: string; p_role: string };
+        Returns: undefined;
+      };
+      revoke_platform_role: { Args: { p_user: string }; Returns: undefined };
+      // HAND-MAINTAINED PENDING REGENERATION (0017_organisation_status.sql).
+      set_org_status: {
+        Args: { p_org: string; p_status: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      set_org_support_access: {
+        Args: { p_org: string; p_allowed: boolean };
+        Returns: undefined;
+      };
+      // HAND-MAINTAINED PENDING REGENERATION (0016_audit_events.sql).
+      log_audit_event: {
+        Args: {
+          p_org: string;
+          p_action: string;
+          p_entity_type?: string | null;
+          p_entity_id?: string | null;
+          p_metadata?: Json;
+        };
+        Returns: undefined;
+      };
       has_org_role: {
         Args: { p_org: string; p_roles: string[] };
         Returns: boolean;

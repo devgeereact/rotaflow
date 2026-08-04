@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
+import { authErrorMessage } from '@/lib/authErrors';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -66,7 +67,7 @@ export function ResetPasswordPage(): JSX.Element {
       void navigate('/app/dashboard', { replace: true });
     } catch (err) {
       reportError(err, { area: 'auth:reset-password' });
-      setError(err instanceof Error ? err.message : 'Could not update the password.');
+      setError(authErrorMessage(err, 'Could not update the password.'));
     } finally {
       setBusy(false);
     }

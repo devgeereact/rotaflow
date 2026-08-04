@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { grantPlatformRole, revokePlatformRole } from '@/services/platformRoleService';
 import type { AuditLog, Organisation, Profile, Subscription } from '@/types';
 
 /**
@@ -93,14 +94,36 @@ export async function countMembershipsByOrg(): Promise<Map<string, number>> {
   return counts;
 }
 
-/** Flip a platform-admin flag. Guarded by RLS on `profiles`. */
+/**
+ * Grant or revoke platform administration.
+ *
+ * ## Why this is no longer a `profiles` update
+ *
+ * It used to write `is_platform_admin` directly, and it did not work. `profiles`
+ * RLS was still 0001's own-row-only policy, so the update matched zero rows and
+ * PostgREST returned 204 with no error — a control that reported success and
+ * changed nothing. 0015 fixes the read side and closes the write side entirely:
+ * the UPDATE privilege on that column no longer exists for `authenticated`, so
+ * the old call would now fail loudly rather than silently.
+ *
+ * Grants go through `grant_platform_role` / `revoke_platform_role`, which also
+ * record *which* role and refuse to remove the last platform owner. The flag is
+ * kept in sync by trigger; it is a mirror, not the source of truth.
+ *
+ * Kept here as a thin re-export so callers that only need "make this person an
+ * administrator" do not have to choose a role. Anything role-aware should use
+ * `platformRoleService` directly.
+ */
 export async function setPlatformAdmin(
   userId: string,
   isPlatformAdmin: boolean,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ is_platform_admin: isPlatformAdmin })
-    .eq('id', userId);
-  if (error) throw error;
+  if (isPlatformAdmin) {
+    // The most limited role that is still an administrator. Promotion beyond
+    // it is a deliberate act on the administrators roster, not a side effect
+    // of a toggle.
+    await grantPlatformRole(userId, 'platform_support');
+    return;
+  }
+  await revokePlatformRole(userId);
 }

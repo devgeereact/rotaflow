@@ -6,7 +6,7 @@ import { rotaWorkspaceTabs, teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
 import { navItemsForRole } from '@/lib/sidebarNav';
-import { ADMIN_NAV } from '@/lib/adminNav';
+import { ADMIN_NAV, ADMIN_SECONDARY_NAV, adminNavForRole } from '@/lib/adminNav';
 
 /**
  * Every tab must point at a route that exists.
@@ -275,18 +275,28 @@ describe('navigation targets', () => {
     },
   );
 
-  it('routes all seven platform administration screens §34 names', () => {
+  it('routes every platform administration screen §34 names', () => {
     for (const path of [
       '/admin',
       '/admin/organisations',
       '/admin/users',
+      '/admin/subscriptions',
       '/admin/billing',
       '/admin/support',
       '/admin/audit',
       '/admin/feature-flags',
+      '/admin/settings',
     ]) {
       expect(isRoutable(path)).toBe(true);
     }
+  });
+
+  it('routes the platform detail screens the console links to', () => {
+    // Hard-coded rather than derived: nothing in ADMIN_NAV points at these,
+    // they are only reached from a row in a table. That is exactly how a
+    // detail route goes missing without anything noticing.
+    expect(isRoutable('/admin/organisations/some-uuid')).toBe(true);
+    expect(isRoutable('/admin/users/some-uuid')).toBe(true);
   });
 
   it('keeps platform administration out of the tenant sidebar', () => {
@@ -295,6 +305,51 @@ describe('navigation targets', () => {
     for (const role of ['owner', 'manager', 'staff'] as const) {
       expect(navItemsForRole(role).some((i) => i.to.startsWith('/admin'))).toBe(false);
     }
+  });
+
+  it.each(ADMIN_SECONDARY_NAV.map((item) => [item.label, item.to] as const))(
+    'platform console secondary item %s (%s) has a route',
+    (_label, to) => {
+      // These deliberately leave the console — documentation and support are
+      // marketing routes. That is exactly why they need checking: nothing else
+      // in the console links to them, so a rename would go unnoticed.
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
+
+  it('gives every platform role a console it can actually navigate', () => {
+    // Role filtering hides entries; it must never produce a dead one, and it
+    // must never leave a role with nothing but the overview. `null` covers an
+    // administrator whose granular grant could not be read — they still get
+    // the unrestricted screens rather than an empty sidebar.
+    for (const role of [
+      'platform_owner',
+      'platform_admin',
+      'platform_support',
+      'platform_finance',
+      null,
+    ] as const) {
+      const items = adminNavForRole(role);
+      expect(items.length).toBeGreaterThan(1);
+      for (const item of items) expect(isRoutable(item.to)).toBe(true);
+    }
+  });
+
+  it('restricts billing and feature flags to the roles that may write them', () => {
+    // Mirrors the has_platform_role(...) lists in 0015 onward. A support
+    // administrator shown a billing screen full of empty tables would
+    // reasonably conclude the product is broken.
+    const support = adminNavForRole('platform_support').map((i) => i.to);
+    expect(support).not.toContain('/admin/billing');
+    expect(support).not.toContain('/admin/feature-flags');
+
+    const finance = adminNavForRole('platform_finance').map((i) => i.to);
+    expect(finance).toContain('/admin/billing');
+    expect(finance).not.toContain('/admin/feature-flags');
+
+    expect(adminNavForRole('platform_owner').map((i) => i.to)).toEqual(
+      ADMIN_NAV.map((i) => i.to),
+    );
   });
 
   it('routes every public entry point the marketing pages link to', () => {

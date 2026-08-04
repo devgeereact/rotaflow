@@ -12,8 +12,10 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
+import { authErrorMessage } from '@/lib/authErrors';
 import { isValidEmail } from '@/lib/email';
 import { env, type OAuthProvider } from '@/lib/env';
+import { appUrlFor } from '@/lib/appOrigin';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
@@ -60,7 +62,11 @@ export function LoginPage(): JSX.Element {
   // OAuth/magic-link both bounce through Supabase and back — send them
   // straight at the app, not the bare origin, or a signed-in user lands back
   // on the marketing homepage instead of the dashboard/onboarding.
-  const redirectTo = `${(env.appUrl || window.location.origin).replace(/\/$/, '')}/app/dashboard`;
+  //
+  // `appUrlFor` resolves the *current* origin, so this returns to whichever
+  // host you signed in from. It used to prefer `VITE_APP_URL`, which sent
+  // every localhost sign-in to production (see lib/appOrigin.ts).
+  const redirectTo = appUrlFor('/app/dashboard');
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -70,7 +76,7 @@ export function LoginPage(): JSX.Element {
       await fn();
     } catch (err) {
       reportError(err, { area: 'login' });
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -119,7 +125,16 @@ export function LoginPage(): JSX.Element {
         },
       });
       if (otpError) throw otpError;
-      setMessage('Magic link sent — check your inbox.');
+      // Deliberately conditional. `shouldCreateUser: false` above means an
+      // address with no account gets **no email at all**, and Supabase still
+      // returns success — it will not confirm whether an account exists, and
+      // it is right not to. Claiming "sent" is then simply false, and it is
+      // the single most confusing thing this screen could say: the reader
+      // waits for a mail that was never going to arrive. This wording keeps
+      // the anti-enumeration property and still points a new user at signup.
+      setMessage(
+        'If an account exists for that address, a magic link is on its way — check your inbox. New to RotaFlow? Create an account first.',
+      );
     });
   };
 

@@ -13,7 +13,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
+import { authErrorMessage } from '@/lib/authErrors';
 import { env, type OAuthProvider } from '@/lib/env';
+import { appUrlFor } from '@/lib/appOrigin';
 import { buildAcceptUrl } from '@/services/inviteService';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -82,7 +84,7 @@ export function SignupPage(): JSX.Element {
   // homepage instead of the dashboard/onboarding.
   const redirectTo = inviteToken
     ? buildAcceptUrl(inviteToken)
-    : `${(env.appUrl || window.location.origin).replace(/\/$/, '')}/app/dashboard`;
+    : appUrlFor('/app/dashboard');
 
   const withBusy = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -92,7 +94,7 @@ export function SignupPage(): JSX.Element {
       await fn();
     } catch (err) {
       reportError(err, { area: 'signup' });
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -162,6 +164,29 @@ export function SignupPage(): JSX.Element {
     lastName.trim().length > 0 &&
     isValidEmail(email) &&
     passwordValid;
+
+  /**
+   * Why the form will not submit yet, or null when it will.
+   *
+   * Four separate conditions gate `canSubmit` and none of them said so: the
+   * button simply sat there disabled. Reported in the order someone fills the
+   * form in, so the message tracks where they actually are.
+   */
+  const blockingReason: string | null = (() => {
+    if (canSubmit || busy) return null;
+    if (!firstName.trim() || !lastName.trim()) {
+      return 'Enter both your first and last name.';
+    }
+    if (!email.trim()) return 'Enter your email address.';
+    if (!isValidEmail(email)) return 'That does not look like a valid email address.';
+    if (!passwordValid) {
+      const missing = requirements
+        .filter((r) => !r.met)
+        .map((r) => r.label.toLowerCase());
+      return `Your password still needs: ${missing.join(', ')}.`;
+    }
+    return null;
+  })();
 
   return (
     <AuthSplitLayout
@@ -259,10 +284,22 @@ export function SignupPage(): JSX.Element {
           className="w-full bg-brand hover:bg-brand/90 dark:bg-brand"
           size="lg"
           disabled={!canSubmit}
+          title={blockingReason ?? undefined}
           onClick={() => void handleSignUp()}
         >
           {busy ? 'Creating account…' : 'Create account'}
         </Button>
+
+        {/* Naming what is outstanding, rather than leaving a dead button.
+            The password rules above are a checklist someone reads once and
+            then stops looking at, and nothing at all spoke for the two name
+            fields or a malformed address — so an incomplete form looked
+            exactly like a broken one. */}
+        {blockingReason && !busy && (
+          <p className="mt-2 text-center text-sm text-content-muted dark:text-content-muted-dark">
+            {blockingReason}
+          </p>
+        )}
 
         {env.oauthProviders.length > 0 && (
           <>
