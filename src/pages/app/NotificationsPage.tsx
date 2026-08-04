@@ -14,6 +14,8 @@ import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingState } from '@/components/ui/LoadingState';
 import type { Notification } from '@/types';
 
 /**
@@ -151,13 +153,15 @@ export function NotificationsPage(): JSX.Element {
 
       {loading ? (
         <Card>
-          <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
+          <LoadingState variant="card" rows={4} label="Loading notifications…" />
         </Card>
       ) : notifications.length === 0 ? (
         <Card>
-          <p className="text-content-muted dark:text-content-muted-dark">
-            No notifications yet.
-          </p>
+          <EmptyState
+            icon={Bell}
+            title="No notifications yet"
+            description="Updates about shifts, leave and swaps will show up here."
+          />
         </Card>
       ) : (
         <Card className="p-0">
@@ -189,7 +193,7 @@ export function NotificationsPage(): JSX.Element {
                   <button
                     type="button"
                     onClick={() => void handleMarkRead(notification.id)}
-                    className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                    className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     Mark read
                   </button>

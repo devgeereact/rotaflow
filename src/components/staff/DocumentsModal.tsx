@@ -151,9 +151,9 @@ export function DocumentsModal({
                   type="button"
                   onClick={() => void handleDelete(d)}
                   aria-label={`Remove ${d.name}`}
-                  className="shrink-0 text-content-muted hover:text-danger dark:text-content-muted-dark"
+                  className="shrink-0 rounded text-content-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={16} aria-hidden="true" />
                 </button>
               </li>
             ))}

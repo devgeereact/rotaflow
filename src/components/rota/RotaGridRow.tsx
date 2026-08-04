@@ -104,7 +104,7 @@ export function RotaGridRow({
           aria-label={
             staff ? `Add shift for ${staff.first_name} ${staff.last_name}` : 'Add shift'
           }
-          className="grid h-8 w-8 place-items-center rounded-lg border border-surface-border text-content-muted transition-colors hover:border-primary hover:text-primary dark:border-surface-border-dark dark:text-content-muted-dark"
+          className="grid h-8 w-8 place-items-center rounded-lg border border-surface-border text-content-muted transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
         >
           <Plus size={16} aria-hidden="true" />
         </button>

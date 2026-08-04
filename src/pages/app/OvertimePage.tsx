@@ -256,6 +256,7 @@ export function OvertimePage(): JSX.Element {
               aria-pressed={!teamMode}
               className={cn(
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 !teamMode
                   ? 'bg-primary/10 text-primary'
                   : 'text-content-muted dark:text-content-muted-dark',
@@ -269,6 +270,7 @@ export function OvertimePage(): JSX.Element {
               aria-pressed={teamMode}
               className={cn(
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 teamMode
                   ? 'bg-primary/10 text-primary'
                   : 'text-content-muted dark:text-content-muted-dark',

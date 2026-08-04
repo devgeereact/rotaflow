@@ -8,6 +8,7 @@ import {
 } from '@/services/locationService';
 import { reportError } from '@/lib/sentry';
 import { Input } from '@/components/ui/Input';
+import { LoadingState } from '@/components/ui/LoadingState';
 import type { Department } from '@/types';
 
 interface DepartmentManagerProps {
@@ -97,9 +98,7 @@ export function DepartmentManager({
         Departments
       </h3>
       {loading ? (
-        <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          Loading…
-        </p>
+        <LoadingState variant="text" rows={2} label="Loading departments…" className="mb-3" />
       ) : (
         <ul className="mb-3 space-y-1">
           {departments.map((dept) => (
@@ -119,17 +118,17 @@ export function DepartmentManager({
                     type="button"
                     onClick={() => void saveEdit(dept.id)}
                     aria-label="Save"
-                    className="text-success"
+                    className="rounded text-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <Check size={16} />
+                    <Check size={16} aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingId(null)}
                     aria-label="Cancel"
-                    className="text-content-muted dark:text-content-muted-dark"
+                    className="rounded text-content-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark"
                   >
-                    <X size={16} />
+                    <X size={16} aria-hidden="true" />
                   </button>
                 </div>
               ) : (
@@ -142,17 +141,17 @@ export function DepartmentManager({
                       type="button"
                       onClick={() => startEdit(dept)}
                       aria-label={`Edit ${dept.name}`}
-                      className="text-content-muted hover:text-primary dark:text-content-muted-dark"
+                      className="rounded text-content-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={14} aria-hidden="true" />
                     </button>
                     <button
                       type="button"
                       onClick={() => void handleDelete(dept.id)}
                       aria-label={`Delete ${dept.name}`}
-                      className="text-content-muted hover:text-danger dark:text-content-muted-dark"
+                      className="rounded text-content-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={14} aria-hidden="true" />
                     </button>
                   </span>
                 </>
@@ -182,9 +181,9 @@ export function DepartmentManager({
           onClick={() => void handleAdd()}
           aria-label="Add department"
           disabled={!newName.trim()}
-          className="rounded-lg bg-primary p-2 text-primary-fg disabled:opacity-50"
+          className="rounded-lg bg-primary p-2 text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-50"
         >
-          <Plus size={16} />
+          <Plus size={16} aria-hidden="true" />
         </button>
       </div>
       {error && <p className="mt-2 text-xs text-danger">{error}</p>}

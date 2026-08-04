@@ -38,6 +38,7 @@ export function TimesheetTabs({
             onClick={() => onChange(tab.value)}
             className={cn(
               'flex items-center gap-2 border-b-[3px] px-3.5 pb-2.5 pt-4 text-[0.79rem] transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
               isActive
                 ? 'border-primary font-semibold text-primary'
                 : 'border-transparent font-medium text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',

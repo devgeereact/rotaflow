@@ -271,14 +271,14 @@ export function DashboardView({
                 type="button"
                 aria-label="Previous day"
                 onClick={onPrevDay}
-                className="grid h-8 w-8 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                className="grid h-8 w-8 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
               >
                 <ChevronLeft size={16} aria-hidden="true" />
               </button>
               <button
                 type="button"
                 onClick={onToday}
-                className="rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                className="rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
               >
                 Today
               </button>
@@ -286,7 +286,7 @@ export function DashboardView({
                 type="button"
                 aria-label="Next day"
                 onClick={onNextDay}
-                className="grid h-8 w-8 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                className="grid h-8 w-8 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
               >
                 <ChevronRight size={16} aria-hidden="true" />
               </button>
@@ -635,6 +635,7 @@ function MonthlyOverview({ overview, onSelectDate }: MonthlyOverviewProps): JSX.
               onClick={() => onSelectDate(date)}
               className={cn(
                 'flex flex-col items-center gap-0.5 rounded-lg py-1.5',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 !inMonth && 'text-content-muted/40 dark:text-content-muted-dark/40',
                 inMonth &&
                   !isToday &&

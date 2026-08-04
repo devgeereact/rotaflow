@@ -23,6 +23,7 @@ import {
 import type { RotaInsight } from '@/lib/rotaInsights';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import { Button } from '@/components/ui/Button';
+import { PanelTabs } from '@/components/ui/PanelTabs';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
 
@@ -82,23 +83,14 @@ export function ShiftInspectorPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-4 flex gap-4 border-b border-surface-border dark:border-surface-border-dark">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={cn(
-              '-mb-px border-b-2 pb-2.5 text-xs font-semibold transition-colors',
-              tab === t.key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <PanelTabs
+        items={tabs.map((t) => ({ value: t.key, label: t.label }))}
+        active={tab}
+        onChange={setTab}
+        label="Shift inspector sections"
+        gapClass="gap-4"
+        className="mb-4"
+      />
 
       {tab === 'details' &&
         (selectedShift ? (
@@ -276,7 +268,7 @@ function ShiftDetails({
         <button
           type="button"
           onClick={() => onEdit(shift)}
-          className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          className="flex items-center gap-1 rounded text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Pencil size={12} aria-hidden="true" />
           Edit
@@ -322,7 +314,7 @@ function ShiftDetails({
             <button
               type="button"
               onClick={() => onEdit(shift)}
-              className="text-xs font-medium text-primary hover:underline"
+              className="rounded text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Edit
             </button>
@@ -485,6 +477,7 @@ function WarningsList({
                   onClick={() => onSelectShiftId(shiftId)}
                   className={cn(
                     'w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:brightness-95',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                     style.className,
                   )}
                 >
