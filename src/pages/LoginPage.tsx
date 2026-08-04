@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
+import { authErrorMessage } from '@/lib/authErrors';
 import { isValidEmail } from '@/lib/email';
 import { env, type OAuthProvider } from '@/lib/env';
 import { appUrlFor } from '@/lib/appOrigin';
@@ -75,7 +76,7 @@ export function LoginPage(): JSX.Element {
       await fn();
     } catch (err) {
       reportError(err, { area: 'login' });
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -124,7 +125,16 @@ export function LoginPage(): JSX.Element {
         },
       });
       if (otpError) throw otpError;
-      setMessage('Magic link sent — check your inbox.');
+      // Deliberately conditional. `shouldCreateUser: false` above means an
+      // address with no account gets **no email at all**, and Supabase still
+      // returns success — it will not confirm whether an account exists, and
+      // it is right not to. Claiming "sent" is then simply false, and it is
+      // the single most confusing thing this screen could say: the reader
+      // waits for a mail that was never going to arrive. This wording keeps
+      // the anti-enumeration property and still points a new user at signup.
+      setMessage(
+        'If an account exists for that address, a magic link is on its way — check your inbox. New to RotaFlow? Create an account first.',
+      );
     });
   };
 

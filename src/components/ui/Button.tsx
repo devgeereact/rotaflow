@@ -57,7 +57,21 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'inline-flex items-center justify-center gap-2 rounded-xl font-semibold',
         'transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-        'disabled:pointer-events-none disabled:opacity-50',
+        // A disabled button must *look* disabled and must still be hoverable.
+        //
+        // `pointer-events-none` was doing real damage: a disabled `<button>`
+        // already refuses clicks natively, so it prevented nothing — while
+        // suppressing the hover that shows the `title` explaining *why* the
+        // control is unavailable, and the `not-allowed` cursor that is the
+        // only other signal. Every "why is nothing happening?" on this app's
+        // disabled controls traces back to it.
+        //
+        // The opacity is deepened and hover growth suppressed as well: at
+        // `opacity-50` a saturated primary button still reads as clickable,
+        // which is how a disabled Create account button got mistaken for a
+        // broken sign-up.
+        'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100',
+        'disabled:active:scale-100 disabled:saturate-50',
         VARIANTS[variant],
         SIZES[size],
         className,
