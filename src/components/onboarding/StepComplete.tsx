@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   MapPin,
+  PartyPopper,
   ShieldCheck,
   Users,
 } from 'lucide-react';
@@ -201,12 +202,14 @@ export function StepComplete({
       </div>
 
       <div className="flex flex-col gap-4 border-t border-surface-border pt-6 dark:border-surface-border-dark sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          🎉{' '}
-          <span className="font-medium text-ink dark:text-content-dark">
-            Welcome aboard!
-          </span>{' '}
-          We&rsquo;re excited to help you streamline your workforce scheduling.
+        <p className="flex items-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">
+          <PartyPopper size={16} aria-hidden="true" className="shrink-0 text-brand" />
+          <span>
+            <span className="font-medium text-ink dark:text-content-dark">
+              Welcome aboard!
+            </span>{' '}
+            We&rsquo;re excited to help you streamline your workforce scheduling.
+          </span>
         </p>
         <div className="flex shrink-0 gap-3">
           <Button variant="secondary" onClick={onFinish}>
