@@ -11,12 +11,15 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
 /**
- * Tenant shell for every /app/* route: gates on org membership (redirecting
- * to /onboarding if the user belongs to none) and renders the sidebar/header
- * chrome around the routed page. ProtectedRoute (auth-only) wraps this.
+ * Tenant shell for every /app/* route: gates on org membership and renders the
+ * sidebar/header chrome around the routed page. ProtectedRoute (auth-only)
+ * wraps this.
+ *
+ * Where a member-less user is sent depends on who they are — see the redirect
+ * below. A platform administrator is not a prospective customer.
  */
 export function AppShell(): JSX.Element {
-  const { loading, loadFailed, memberships, refresh } = useOrg();
+  const { loading, loadFailed, memberships, refresh, isPlatformAdmin } = useOrg();
   const [navOpen, setNavOpen] = useState(false);
 
   // Auth already resolved to reach AppShell; only the org query is outstanding.
@@ -44,7 +47,17 @@ export function AppShell(): JSX.Element {
     );
   }
 
-  if (memberships.length === 0) return <Navigate to="/onboarding" replace />;
+  // A platform administrator with no membership is not a new customer, and
+  // must not be pushed into onboarding: the only way out of that screen is to
+  // create an organisation, so a support or finance account signing in would
+  // mint a junk tenant in the same table real customers live in, just to get
+  // past a guard. Send them where they actually belong instead.
+  //
+  // They can still reach /onboarding deliberately if they genuinely want to
+  // create an organisation — this changes the default, not the ability.
+  if (memberships.length === 0) {
+    return <Navigate to={isPlatformAdmin ? '/admin' : '/onboarding'} replace />;
+  }
 
   return (
     /*
