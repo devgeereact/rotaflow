@@ -44,15 +44,22 @@ export function SidebarFooter({
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '';
 
+  // Ink Navy re-skin: pinned to the bottom of the now-permanently-dark
+  // `Sidebar`, so every control here is styled for graphite rather than the
+  // light `bg-surface` hover every other footer-style control in the app uses.
+  const focusRing =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-graphite';
+
   return (
-    <div className="mt-auto border-t border-surface-border px-3 py-3 dark:border-surface-border-dark">
+    <div className="mt-auto border-t border-white/10 px-3 py-3">
       <Link
         to="/app/account"
         onClick={onNavigate}
         title={collapsed ? `${displayName} — your profile` : undefined}
         className={cn(
           'flex items-center gap-2.5 rounded-xl px-2 py-2 text-left',
-          'hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-dark',
+          'hover:bg-white/5',
+          focusRing,
           collapsed && 'justify-center px-0',
         )}
       >
@@ -61,10 +68,10 @@ export function SidebarFooter({
         </span>
         {!collapsed && (
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium text-content dark:text-content-dark">
+            <span className="block truncate text-sm font-medium text-white">
               {displayName}
             </span>
-            <span className="block truncate text-xs capitalize text-content-muted dark:text-content-muted-dark">
+            <span className="block truncate text-xs capitalize text-white/50">
               {role ?? 'No role'}
             </span>
           </span>
@@ -78,8 +85,8 @@ export function SidebarFooter({
         title={collapsed ? 'Help and support' : undefined}
         className={cn(
           'mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
-          'text-content-muted hover:bg-surface hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-          'dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark',
+          'text-white/60 hover:bg-white/5 hover:text-white',
+          focusRing,
           collapsed && 'justify-center px-0',
         )}
       >
@@ -95,8 +102,8 @@ export function SidebarFooter({
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className={cn(
             'mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
-            'text-content-muted hover:bg-surface hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-            'dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark',
+            'text-white/60 hover:bg-white/5 hover:text-white',
+            focusRing,
             collapsed && 'justify-center px-0',
           )}
         >

@@ -11,13 +11,21 @@ import { BrandMark } from '@/components/ui/BrandMark';
 
 const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
-const LINK_INACTIVE =
-  'text-content-muted hover:bg-surface hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark';
-// Soft-tint highlight, not the old white-pill/left-border treatment — same
-// bg-X/10 text-X idiom already used for status badges elsewhere in the app
-// (e.g. AvailabilityPage, LeavePage), so the active nav item reads as "this
-// app's highlight colour", not a one-off style.
-const LINK_ACTIVE = 'bg-primary/10 text-primary dark:bg-primary/15';
+// Ink Navy re-skin: the sidebar is a permanently-dark graphite surface,
+// independent of the app's light/dark theme (see the `<aside>` below) — so
+// its own link states are hand-tuned for a dark background rather than
+// reusing the light-surface `content-muted`/`hover:bg-surface` pair every
+// other nav-adjacent control still uses. `focus-visible:ring-offset-graphite`
+// keeps the focus ring visible against the dark fill instead of the ring's
+// default white offset disappearing into it.
+const LINK_INACTIVE = 'text-white/60 hover:bg-white/5 hover:text-white';
+// Cobalt tint reads clearly on graphite — same bg-X/10 text-X idiom the rest
+// of the app uses for "this is the highlight colour", just against a dark
+// fill instead of a light one. `Sidebar`'s `LINK_ACTIVE` (this file) is the
+// single source of truth for the active nav treatment — see docs/DESIGN.md §6.
+const LINK_ACTIVE = 'bg-primary/20 text-white';
+const FOCUS_RING =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-graphite';
 
 function NavList({
   items,
@@ -43,6 +51,7 @@ function NavList({
           className={({ isActive }) =>
             cn(
               LINK_BASE,
+              FOCUS_RING,
               isActive ? LINK_ACTIVE : LINK_INACTIVE,
               collapsed && 'justify-center px-0',
             )
@@ -115,8 +124,10 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
       */}
       <aside
         className={cn(
-          'hidden h-full shrink-0 flex-col border-r border-surface-border bg-surface-subtle transition-[width] duration-200 md:flex',
-          'dark:border-surface-border-dark dark:bg-surface-subtle-dark',
+          // Ink Navy re-skin: permanently graphite, independent of the app's
+          // own light/dark theme toggle — the sidebar is chrome, not content,
+          // so it doesn't invert with the page the way surfaces do.
+          'hidden h-full shrink-0 flex-col border-r border-graphite-border bg-graphite transition-[width] duration-200 md:flex',
           collapsed ? 'w-[4.5rem]' : 'w-64',
         )}
       >
@@ -129,10 +140,10 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
           <BrandMark label={null} className="h-8 w-8 shrink-0" />
           {!collapsed && (
             <span className="min-w-0">
-              <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
+              <span className="block font-display text-lg font-bold leading-tight text-white">
                 Rota<span className="text-primary">Flow</span>
               </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
+              <span className="block text-[10px] font-semibold uppercase tracking-lockup text-white/50">
                 Workforce scheduling
               </span>
             </span>
@@ -158,16 +169,16 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
             aria-modal="true"
             aria-label="Navigation menu"
             tabIndex={-1}
-            className="relative z-10 flex w-64 flex-col border-r border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark"
+            className="relative z-10 flex w-64 flex-col border-r border-graphite-border bg-graphite"
           >
             <div className="flex items-center justify-between gap-2 px-5 py-6">
               <div className="flex items-center gap-2">
                 <BrandMark label={null} className="h-8 w-8" />
                 <span>
-                  <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
+                  <span className="block font-display text-lg font-bold leading-tight text-white">
                     Rota<span className="text-primary">Flow</span>
                   </span>
-                  <span className="block text-[10px] font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
+                  <span className="block text-[10px] font-semibold uppercase tracking-lockup text-white/50">
                     Workforce scheduling
                   </span>
                 </span>
@@ -176,7 +187,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
                 type="button"
                 onClick={() => setMobileOpen(false)}
                 aria-label="Close navigation menu"
-                className="rounded-lg p-1 text-content-muted hover:bg-surface dark:text-content-muted-dark"
+                className={cn('rounded-lg p-1 text-white/60 hover:bg-white/10', FOCUS_RING)}
               >
                 <X size={18} aria-hidden="true" />
               </button>

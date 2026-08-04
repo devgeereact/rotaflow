@@ -14,6 +14,18 @@ grid) and generous breathing room everywhere else. Motion supports meaning (a sh
 snapping into place, a sync completing) and never decorates for its own sake. The
 product must feel dependable to a care-home manager and effortless to frontline staff.
 
+**"Ink Navy" re-skin (2026-08-04).** Brand primary moved from a mid-blue
+(`#3B6FE0`) to a deeper cobalt (`#0369A1`); a second `graphite` token
+(`#0F172A`) carries solid buttons and the tenant app's sidebar, which is now a
+permanently-dark surface independent of the light/dark theme toggle — see
+`Sidebar.tsx`. Headings and the wordmark moved to Plus Jakarta Sans
+(`font-display`); body copy and dense data stay on Inter. Radii and shadows
+were tightened for a crisper edge. `AdminShell` (the platform console)
+deliberately keeps its own `danger`-red accent and light chrome unchanged —
+see its own doc comment for why that distinction is load-bearing, not
+cosmetic. Status colours (success/warning/danger/info) and the shift/leave/
+avail palettes are untouched.
+
 **Theme: light-first.** RotaFlow ships **light by default** — every reference
 screen (auth, splash, dashboard, rota grid) is light. Dark remains a fully
 supported, deliberate user choice (see the mode switch in `rotaflowui.png`), not
@@ -39,8 +51,10 @@ one with a `dark:` variant using the dark column, e.g.
 | Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#FAFBFC` | `#15203A` | Nested panels, hover fills, sidebar                                                    |
 | Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#E3E6EA` | `#22304D` | Card/control outlines                                                                  |
 | Divider             | `border-divider` / `dark:border-divider-dark`               | `#F2F4F6` | `#1B2740` | Subtle in-list separators (lighter than border)                                        |
-| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0` | `#3B6FE0` | Brand, CTAs, active state, links                                                       |
+| Primary             | `bg-primary` / `text-primary`                               | `#0369A1` | `#0369A1` | Brand, links, active state, focus rings — CTAs use `graphite` (below)                  |
 | Primary foreground  | `text-primary-fg`                                           | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid primary fill                                                     |
+| Graphite            | `bg-graphite` / `text-graphite`                             | `#0F172A` | `#0F172A` | Solid buttons (`Button`'s `primary` variant) and the tenant app's `Sidebar`            |
+| Graphite foreground | `text-graphite-fg`                                          | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid graphite fill                                                    |
 | Secondary           | `text-secondary`                                            | `#6B7280` | `#94A3B8` | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name) |
 | Text primary        | `text-content` / `dark:text-content-dark`                   | `#16191F` | `#F8FAFC` | Headings, body                                                                         |
 | Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#6B7280` | `#94A3B8` | Captions, hints, secondary text                                                        |
@@ -91,16 +105,21 @@ system even though colours are per-org-configurable.
 | Caption         | 12 / 16            | Regular   | `text-xs`                            |
 | Code / meta     | 12 / 16            | Monospace | `text-xs font-mono`                  |
 
-Font family: **Inter Variable** throughout (`font-sans` / `font-display` — one
-face, no separate display typeface). `font-mono` is **JetBrains Mono**, used for
-times, hours, and payroll figures so columns align.
+Font family: **Inter Variable** for body/dense-data (`font-sans`) and
+**Plus Jakarta Sans** for headings and the wordmark (`font-display`) — set once
+in `tailwind.config.ts`, so every screen through `PageHeader`/`Sidebar`/
+`AdminShell` picks it up automatically. `font-mono` is **JetBrains Mono**, used
+for times, hours, and payroll figures so columns align.
 
 ### Spacing & radius
 
 - Base unit = 4px (Tailwind default: `4px·8px·12px·16px·24px·32px·48px·64px` =
   `1·2·3·4·6·8·12·16`). Prefer `gap-*` / `space-y-*`.
-- Radii: cards `rounded-2xl`, controls `rounded-xl`, pills/status badges/avatars
-  `rounded-full`. Rota cells stay tighter (`rounded-lg`) for density.
+- Radii: cards `rounded-2xl` (`1.125rem`), controls `rounded-xl` (`0.75rem`),
+  pills/status badges/avatars `rounded-full`. Rota cells stay tighter
+  (`rounded-lg`) for density. Both `xl`/`2xl` are overridden in
+  `tailwind.config.ts` — tightened for the Ink Navy re-skin from their original
+  `1rem`/`1.5rem`.
 - Lean on `border-surface-border` + subtle surface contrast over heavy shadows.
 
 ### Shadows (elevation)
@@ -109,11 +128,11 @@ times, hours, and payroll figures so columns align.
 match the reference exactly — use the stock Tailwind class names, don't invent
 new ones.
 
-| Level | Tailwind class     | Spec                          |
-| ----- | ------------------ | ----------------------------- |
-| 1     | `shadow-sm`        | `0 1px 2px rgba(0,0,0,0.05)`  |
-| 2     | `shadow` (default) | `0 4px 12px rgba(0,0,0,0.08)` |
-| 3     | `shadow-lg`        | `0 8px 24px rgba(0,0,0,0.12)` |
+| Level | Tailwind class     | Spec                            |
+| ----- | ------------------ | -------------------------------- |
+| 1     | `shadow-sm`        | `0 1px 2px rgba(15,23,42,0.06)`  |
+| 2     | `shadow` (default) | `0 2px 8px rgba(15,23,42,0.10)`  |
+| 3     | `shadow-lg`        | `0 6px 16px rgba(15,23,42,0.14)` |
 
 ## 3. Iconography
 
@@ -157,14 +176,17 @@ fallback when Framer Motion isn't warranted.
   transparent, `text-primary`, no border — text-only affordance.
 - Density matters: the rota builder is information-dense by design; keep chrome
   quiet so the schedule itself is the focus.
-- **Sidebar nav, active item:** soft-tint highlight — `bg-primary/10
-text-primary` (`dark:bg-primary/15`), same `bg-X/10 text-X` idiom already
-  used for status badges (`AvailabilityPage`, `LeavePage`, `SwapsPage`). Not a
-  white pill and not a left-border accent — both were tried earlier and
-  replaced (2026-07-31) for reading as one-off rather than "this app's
-  highlight colour." `src/components/layout/Sidebar.tsx`'s `LINK_ACTIVE` is
-  the single source of truth; don't reintroduce a different active-state
-  treatment there without updating this note.
+- **Sidebar nav, active item:** soft-tint highlight — `bg-primary/20 text-white`
+  against the sidebar's own permanently-dark `graphite` fill (not a
+  theme-dependent light/dark pair any more, since the Ink Navy re-skin made
+  the sidebar a fixed-dark surface — see `docs/DESIGN.md` §1). Same `bg-X/N
+  text-X` idiom already used for status badges (`AvailabilityPage`,
+  `LeavePage`, `SwapsPage`), just tuned for a dark fill instead of a light
+  one. Not a white pill and not a left-border accent — both were tried
+  earlier and replaced (2026-07-31) for reading as one-off rather than "this
+  app's highlight colour." `src/components/layout/Sidebar.tsx`'s
+  `LINK_ACTIVE` is the single source of truth; don't reintroduce a different
+  active-state treatment there without updating this note.
 
 ## 7. Reference assets
 
