@@ -1507,6 +1507,30 @@ export type Database = {
           },
         ];
       };
+      // HAND-MAINTAINED PENDING REGENERATION (0020_gdpr_requests.sql).
+      gdpr_requests: {
+        Row: {
+          id: string;
+          org_id: string | null;
+          subject_email: string;
+          subject_name: string | null;
+          kind: string;
+          status: string;
+          received_on: string;
+          due_on: string;
+          extended_to: string | null;
+          extension_reason: string | null;
+          assigned_to: string | null;
+          closed_at: string | null;
+          outcome_note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        // Mutations go through the SECURITY DEFINER RPCs above.
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       // HAND-MAINTAINED PENDING REGENERATION (0019_support_access_sessions.sql).
       support_access_sessions: {
         Row: {
@@ -1682,6 +1706,25 @@ export type Database = {
       set_org_support_access: {
         Args: { p_org: string; p_allowed: boolean };
         Returns: undefined;
+      };
+      // HAND-MAINTAINED PENDING REGENERATION (0020_gdpr_requests.sql).
+      log_gdpr_request: {
+        Args: {
+          p_subject_email: string;
+          p_subject_name?: string | null;
+          p_kind: string;
+          p_org?: string | null;
+          p_received_on?: string | null;
+        };
+        Returns: string;
+      };
+      set_gdpr_request_status: {
+        Args: { p_request: string; p_status: string; p_note?: string | null };
+        Returns: undefined;
+      };
+      extend_gdpr_request: {
+        Args: { p_request: string; p_reason: string };
+        Returns: string;
       };
       // HAND-MAINTAINED PENDING REGENERATION (0019_support_access_sessions.sql).
       request_support_access: {
