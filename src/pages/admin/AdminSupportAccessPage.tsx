@@ -385,7 +385,7 @@ function RequestModal({
             onChange={(e) => setReason(e.target.value)}
             rows={3}
             placeholder="Investigating the rota publish failure reported in CASE-2400."
-            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
           />
           <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
             Recorded permanently and visible to the organisation&rsquo;s owner.
@@ -440,7 +440,7 @@ function RequestModal({
             type="checkbox"
             checked={confirmed}
             onChange={(e) => setConfirmed(e.target.checked)}
-            className="mt-1 h-4 w-4 accent-primary"
+            className="mt-1 h-4 w-4 rounded border-surface-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
           />
           <span>
             I confirm that this access is necessary to resolve the identified support
