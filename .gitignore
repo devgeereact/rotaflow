@@ -46,3 +46,10 @@ supabase/.temp/
 
 # Vitest coverage output
 coverage/
+
+# Ruflo local secrets and runtime data
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.swarm/
+ruvector.db
