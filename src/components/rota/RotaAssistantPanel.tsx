@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { PanelTabs, type PanelTabItem } from '@/components/ui/PanelTabs';
 import { computeShiftIsoRange, formatDayLabel } from '@/lib/rotaGrid';
 import {
   computeRotaInsights,
@@ -351,16 +352,16 @@ export function RotaAssistantPanel({
     }
   };
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: PanelTabItem<Tab>[] = [
     {
-      key: 'review',
+      value: 'review',
       label: `Review${insights.length ? ` (${insights.length})` : ''}`,
     },
     {
-      key: 'fill',
+      value: 'fill',
       label: `Fill gaps${openShifts.length ? ` (${openShifts.length})` : ''}`,
     },
-    { key: 'ask', label: 'Ask AI' },
+    { value: 'ask', label: 'Ask AI' },
   ];
 
   return (
@@ -384,23 +385,13 @@ export function RotaAssistantPanel({
           )}
         </div>
 
-        <div className="flex gap-4 border-b border-surface-border dark:border-surface-border-dark">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={cn(
-                '-mb-px border-b-2 pb-2 text-xs font-semibold transition-colors',
-                tab === t.key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <PanelTabs
+          items={tabs}
+          active={tab}
+          onChange={setTab}
+          label="Rota assistant sections"
+          gapClass="gap-4"
+        />
 
         {/* ================= Review ================= */}
         {tab === 'review' &&
