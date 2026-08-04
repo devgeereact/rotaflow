@@ -246,9 +246,22 @@ const config: Config = {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // Anchored panels (Popover, Select menu) scale in from their trigger
+        // rather than fading up the page — the two are different gestures.
+        // `transform-origin` is set per-instance (see Popover.tsx) so this
+        // stays a plain scale+fade.
+        'popover-in': {
+          '0%': { opacity: '0', transform: 'scale(0.96) translateY(-2px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 300ms ease-out both',
+        // Strong ease-out (easing.dev-style overshoot-free curve) reads as
+        // more responsive than Tailwind's stock `ease-out` at the same
+        // duration — the popover should feel like it's already moving the
+        // instant it appears.
+        'popover-in': 'popover-in 150ms cubic-bezier(0.16,1,0.3,1) both',
       },
     },
   },
