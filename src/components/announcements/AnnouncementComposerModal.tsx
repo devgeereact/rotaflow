@@ -170,12 +170,12 @@ export function AnnouncementComposerModal({
             className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm text-content dark:text-content-dark">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
           <input
             type="checkbox"
             checked={urgent}
             onChange={(event) => setUrgent(event.target.checked)}
-            className="h-4 w-4 accent-primary"
+            className="h-4 w-4 rounded border-surface-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
           />
           Mark as urgent
         </label>
