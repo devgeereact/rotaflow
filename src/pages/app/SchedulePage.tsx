@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -33,7 +33,9 @@ import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Label } from '@/components/ui/Label';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { ScheduleAgenda } from '@/components/schedule/ScheduleAgenda';
@@ -671,17 +673,17 @@ export function SchedulePage(): JSX.Element {
             type="button"
             onClick={() => setAnchor((a) => stepPeriod(view, a, -1))}
             aria-label="Previous period"
-            className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+            className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={() => setAnchor((a) => stepPeriod(view, a, 1))}
             aria-label="Next period"
-            className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+            className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={16} aria-hidden="true" />
           </button>
         </div>
         <Button size="sm" variant="ghost" onClick={() => setAnchor(todayIso())}>
@@ -725,6 +727,7 @@ export function SchedulePage(): JSX.Element {
               aria-pressed={view === v.value}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 view === v.value
                   ? 'bg-primary text-white'
                   : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
@@ -743,6 +746,7 @@ export function SchedulePage(): JSX.Element {
               aria-pressed={personalOnly}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 personalOnly
                   ? 'bg-surface text-primary dark:bg-surface-dark'
                   : 'text-content-muted hover:text-content dark:text-content-muted-dark',
@@ -756,6 +760,7 @@ export function SchedulePage(): JSX.Element {
               aria-pressed={!personalOnly}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 !personalOnly
                   ? 'bg-surface text-primary dark:bg-surface-dark'
                   : 'text-content-muted hover:text-content dark:text-content-muted-dark',
@@ -767,17 +772,22 @@ export function SchedulePage(): JSX.Element {
         )}
       </div>
 
-      <Card className="p-0">
-        {loading ? (
-          <p className="p-6 text-sm text-content-muted dark:text-content-muted-dark">
-            Loading…
-          </p>
-        ) : shifts.length === 0 ? (
-          <p className="p-6 text-sm text-content-muted dark:text-content-muted-dark">
-            No published shifts in this period.
-            {canBuildRota && ' Build and publish a rota from the Rota Builder.'}
-          </p>
-        ) : (
+      {loading ? (
+        <Card>
+          <LoadingState variant="card" rows={4} label="Loading shifts…" />
+        </Card>
+      ) : shifts.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={CalendarDays}
+            title="No published shifts in this period"
+            description={
+              canBuildRota ? 'Build and publish a rota from the Rota Builder.' : undefined
+            }
+          />
+        </Card>
+      ) : (
+        <Card className="p-0">
           <ScheduleAgenda
             dates={period.dates}
             shiftsByDate={shiftsByDate}
@@ -787,8 +797,8 @@ export function SchedulePage(): JSX.Element {
             timezone={timezone}
             hideNames={personalOnly}
           />
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

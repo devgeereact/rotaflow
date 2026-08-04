@@ -14,6 +14,7 @@ import { listActiveStaff } from '@/services/staffService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { Modal } from '@/components/ui/Modal';
 import { DepartmentManager } from '@/components/locations/DepartmentManager';
 import { DepartmentsView } from '@/components/locations/DepartmentsView';
@@ -310,7 +311,7 @@ export function LocationsPage(): JSX.Element {
 
       {loading ? (
         <Card>
-          <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
+          <LoadingState variant="table" rows={6} label="Loading locations…" />
         </Card>
       ) : tab === 'locations' ? (
         <LocationsView
