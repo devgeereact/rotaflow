@@ -1507,6 +1507,28 @@ export type Database = {
           },
         ];
       };
+      // HAND-MAINTAINED PENDING REGENERATION (0019_support_access_sessions.sql).
+      support_access_sessions: {
+        Row: {
+          id: string;
+          org_id: string;
+          admin_user_id: string;
+          reason: string;
+          case_ref: string;
+          scope: string;
+          granted_at: string;
+          expires_at: string;
+          revoked_at: string | null;
+          revoked_by: string | null;
+          revoke_reason: string | null;
+        };
+        // No insert or update policy exists — both mutations go through the
+        // SECURITY DEFINER RPCs above. These shapes are here so a `select`
+        // types correctly, not because a client may write the table.
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       subscriptions: {
         Row: {
           created_at: string;
@@ -1659,6 +1681,21 @@ export type Database = {
       };
       set_org_support_access: {
         Args: { p_org: string; p_allowed: boolean };
+        Returns: undefined;
+      };
+      // HAND-MAINTAINED PENDING REGENERATION (0019_support_access_sessions.sql).
+      request_support_access: {
+        Args: {
+          p_org: string;
+          p_reason: string;
+          p_case_ref: string;
+          p_scope: string;
+          p_minutes: number;
+        };
+        Returns: string;
+      };
+      revoke_support_access: {
+        Args: { p_session: string; p_reason?: string | null };
         Returns: undefined;
       };
       // HAND-MAINTAINED PENDING REGENERATION (0016_audit_events.sql).

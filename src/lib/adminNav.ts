@@ -4,6 +4,7 @@ import {
   Building2,
   CreditCard,
   Flag,
+  KeyRound,
   LayoutDashboard,
   LifeBuoy,
   MessageCircleQuestion,
@@ -57,6 +58,7 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     roles: ['platform_owner', 'platform_admin', 'platform_finance'],
   },
   { label: 'Support', icon: LifeBuoy, to: '/admin/support' },
+  { label: 'Support access', icon: KeyRound, to: '/admin/support-access' },
   { label: 'Platform health', icon: Activity, to: '/admin/platform-health' },
   { label: 'Audit', icon: ScrollText, to: '/admin/audit' },
   {

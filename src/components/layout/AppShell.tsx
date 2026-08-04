@@ -3,6 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { RouteFallback } from '@/components/RouteFallback';
 import { useOrg } from '@/hooks/useOrg';
 import { AppBootScreen } from '@/components/AppBootScreen';
+import { SupportAccessBanner } from '@/components/layout/SupportAccessBanner';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileTabBar } from '@/components/layout/MobileTabBar';
 import { Header } from '@/components/layout/Header';
@@ -69,6 +70,9 @@ export function AppShell(): JSX.Element {
       <Sidebar mobileOpen={navOpen} onMobileOpenChange={setNavOpen} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
+        {/* Above the scroll container, not inside it: a customer must not be
+            able to scroll away the notice that their data is being viewed. */}
+        <SupportAccessBanner />
         {/* `pb-20` on mobile clears the fixed tab bar; without it the last row
             of every table sits underneath it and cannot be reached. */}
         <main className="flex-1 overflow-y-auto px-6 pb-20 pt-8 md:px-10 md:pb-8">

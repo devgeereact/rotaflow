@@ -317,6 +317,10 @@ const AdminPlatformHealthPage = lazyPage(
   'AdminPlatformHealthPage',
   () => import('@/pages/admin/AdminPlatformHealthPage'),
 );
+const AdminSupportAccessPage = lazyPage(
+  'AdminSupportAccessPage',
+  () => import('@/pages/admin/AdminSupportAccessPage'),
+);
 const SessionsPage = lazyPage(
   'SessionsPage',
   () => import('@/pages/app/account/SessionsPage'),
@@ -684,6 +688,7 @@ export function App(): JSX.Element {
                         }
                       />
                       <Route path="support" element={<AdminSupportPage />} />
+                      <Route path="support-access" element={<AdminSupportAccessPage />} />
                       <Route path="audit" element={<AdminAuditPage />} />
                       <Route
                         path="platform-health"
