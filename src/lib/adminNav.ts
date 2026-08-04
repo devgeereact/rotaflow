@@ -1,8 +1,11 @@
 import {
+  Activity,
   BookOpen,
   Building2,
   CreditCard,
+  DatabaseZap,
   Flag,
+  KeyRound,
   LayoutDashboard,
   LifeBuoy,
   MessageCircleQuestion,
@@ -56,6 +59,9 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     roles: ['platform_owner', 'platform_admin', 'platform_finance'],
   },
   { label: 'Support', icon: LifeBuoy, to: '/admin/support' },
+  { label: 'Support access', icon: KeyRound, to: '/admin/support-access' },
+  { label: 'Platform health', icon: Activity, to: '/admin/platform-health' },
+  { label: 'GDPR & data', icon: DatabaseZap, to: '/admin/gdpr' },
   { label: 'Audit', icon: ScrollText, to: '/admin/audit' },
   {
     label: 'Feature flags',

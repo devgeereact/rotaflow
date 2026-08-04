@@ -14,9 +14,17 @@ interface BrandMarkProps {
  * The RotaFlow app icon — rounded-square brand tile with the stylised "R"
  * (bar + bowl + leg), the accent tile and the 2×2 shift-grid dots.
  *
- * Vector rather than the raster `assets/logo.png`, because that export is a
- * glow-on-dark-blue render that cannot sit on the light splash canvas.
- * Geometry is traced from design/splash-screen.png at its native 266×269.
+ * The single source of the mark across the whole product — app sidebar and
+ * header, marketing nav and footer, auth, onboarding, splash, app boot, the
+ * invitation screen and the platform console. Geometry is traced from
+ * design/splash-screen.png at its native 266×269.
+ *
+ * Vector, not raster. The old `assets/logo.png` was a glow-on-dark-blue export
+ * that could not sit on a light canvas, so six surfaces shipped a mark that
+ * fought the background it was on; it was retired in favour of this. The same
+ * geometry also generates `public/favicon.svg` and the three PWA icons, so the
+ * installed app, the browser tab and the sidebar are one mark rather than
+ * three near-misses.
  */
 export function BrandMark({
   className,

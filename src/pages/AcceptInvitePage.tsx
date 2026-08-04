@@ -12,7 +12,7 @@ import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SplashScreen } from '@/components/SplashScreen';
-import logo from '@/assets/logo.png';
+import { BrandMark } from '@/components/ui/BrandMark';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'an owner',
@@ -95,7 +95,7 @@ export function AcceptInvitePage(): JSX.Element {
   const shell = (children: React.ReactNode): JSX.Element => (
     <main className="grid min-h-screen place-items-center px-6">
       <Card className="w-full max-w-sm animate-fade-up text-center">
-        <img src={logo} alt="RotaFlow" className="mx-auto mb-6 h-14 w-14" />
+        <BrandMark className="mx-auto mb-6 h-14 w-14" />
         {children}
       </Card>
     </main>

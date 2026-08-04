@@ -8,6 +8,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { ADMIN_SECONDARY_NAV, adminNavForRole, type AdminNavItem } from '@/lib/adminNav';
 import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
+import { BrandMark } from '@/components/ui/BrandMark';
 
 const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
@@ -69,11 +70,12 @@ function ConsoleIdentity(): JSX.Element {
   return (
     <div className="px-5">
       <p className="flex items-center gap-2 font-display text-lg font-bold text-content dark:text-content-dark">
-        <ShieldCheck size={20} className="text-danger" aria-hidden="true" />
+        <BrandMark label={null} className="h-7 w-7" />
         RotaFlow
       </p>
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-danger">
+        <p className="flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wider text-danger">
+          <ShieldCheck size={13} aria-hidden="true" />
           Platform console
         </p>
         <span

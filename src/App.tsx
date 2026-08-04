@@ -313,6 +313,18 @@ const AdminFeatureFlagsPage = lazyPage(
   'AdminFeatureFlagsPage',
   () => import('@/pages/admin/AdminFeatureFlagsPage'),
 );
+const AdminPlatformHealthPage = lazyPage(
+  'AdminPlatformHealthPage',
+  () => import('@/pages/admin/AdminPlatformHealthPage'),
+);
+const AdminSupportAccessPage = lazyPage(
+  'AdminSupportAccessPage',
+  () => import('@/pages/admin/AdminSupportAccessPage'),
+);
+const AdminGdprPage = lazyPage(
+  'AdminGdprPage',
+  () => import('@/pages/admin/AdminGdprPage'),
+);
 const SessionsPage = lazyPage(
   'SessionsPage',
   () => import('@/pages/app/account/SessionsPage'),
@@ -680,7 +692,13 @@ export function App(): JSX.Element {
                         }
                       />
                       <Route path="support" element={<AdminSupportPage />} />
+                      <Route path="support-access" element={<AdminSupportAccessPage />} />
                       <Route path="audit" element={<AdminAuditPage />} />
+                      <Route
+                        path="platform-health"
+                        element={<AdminPlatformHealthPage />}
+                      />
+                      <Route path="gdpr" element={<AdminGdprPage />} />
                       <Route
                         path="feature-flags"
                         element={
