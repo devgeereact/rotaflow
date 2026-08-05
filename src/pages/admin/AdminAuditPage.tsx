@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
@@ -11,6 +12,10 @@ import {
   AdminPage,
 } from '@/components/admin/AdminPage';
 import { listAllOrganisations, listPlatformAuditLogs } from '@/services/platformService';
+import { Callout } from '@/components/ui/Callout';
+import { Button } from '@/components/ui/Button';
+import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
+import { downloadCsv } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
 import type { AuditLog, Organisation } from '@/types';
 
@@ -25,6 +30,8 @@ const SEVERITY_TONE = {
 } as const;
 
 type SeverityKey = keyof typeof SEVERITY_TONE;
+
+const SEVERITIES = Object.keys(SEVERITY_TONE) as SeverityKey[];
 
 function toneFor(severity: string): (typeof SEVERITY_TONE)[SeverityKey] {
   return SEVERITY_TONE[severity as SeverityKey] ?? 'neutral';
@@ -56,6 +63,45 @@ function toneFor(severity: string): (typeof SEVERITY_TONE)[SeverityKey] {
  * `org_name` is snapshotted at write time and is what those rows fall back to,
  * so a deleted customer's events still name the customer.
  */
+/**
+ * Read one named key out of an audit row's free-form metadata — and only when
+ * it is a scalar.
+ *
+ * The reference shows Before and After columns; `audit_logs` has no such
+ * columns, so the values can only come from `metadata`, which is written by
+ * whatever recorded the event. §44 is explicit that sensitive information must
+ * not surface in a standard audit view, so this never renders an object or an
+ * array — a nested payload is exactly where a phone number or an address would
+ * be hiding. Anything that is not a string, number or boolean reads as "—".
+ */
+function scalarFromMetadata(metadata: unknown, key: 'before' | 'after'): string | null {
+  if (typeof metadata !== 'object' || metadata === null) return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return null;
+}
+
+function ChangeCell({
+  value,
+  muted,
+}: {
+  value: string | null;
+  muted?: boolean;
+}): JSX.Element {
+  return (
+    <span
+      className={`block truncate text-xs ${
+        muted
+          ? 'text-content-muted dark:text-content-muted-dark'
+          : 'font-semibold text-content dark:text-content-dark'
+      }`}
+    >
+      {value ?? '—'}
+    </span>
+  );
+}
+
 export function AdminAuditPage(): JSX.Element {
   const [entries, setEntries] = useState<AuditLog[] | null>(null);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
@@ -63,6 +109,7 @@ export function AdminAuditPage(): JSX.Element {
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
   const [orgFilter, setOrgFilter] = useState('all');
+  const [severityFilter, setSeverityFilter] = useState('all');
 
   useEffect(() => {
     let active = true;
@@ -100,6 +147,9 @@ export function AdminAuditPage(): JSX.Element {
     } else if (orgFilter !== 'all') {
       rows = rows.filter((e) => e.org_id === orgFilter);
     }
+    if (severityFilter !== 'all') {
+      rows = rows.filter((e) => e.severity === severityFilter);
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       rows = rows.filter(
@@ -111,41 +161,50 @@ export function AdminAuditPage(): JSX.Element {
       );
     }
     return rows;
-  }, [entries, orgFilter, search]);
+  }, [entries, orgFilter, severityFilter, search]);
 
   const columns = useMemo<DataTableColumn<AuditLog>[]>(
     () => [
       {
         key: 'when',
         label: 'When',
-        width: 'w-[16%]',
+        width: 'w-[12%]',
         cell: (entry) => (
-          <span className="whitespace-nowrap font-mono text-xs text-content-muted dark:text-content-muted-dark">
-            {new Date(entry.created_at).toLocaleString('en-GB')}
+          <span className="block font-mono text-xs leading-tight text-content-muted dark:text-content-muted-dark">
+            {new Date(entry.created_at).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })}
+            <br />
+            {new Date(entry.created_at).toLocaleTimeString('en-GB')}
           </span>
         ),
       },
       {
         key: 'organisation',
         label: 'Organisation',
-        width: 'w-[20%]',
+        width: 'w-[13%]',
         cell: (entry) =>
           entry.scope === 'platform' ? (
-            <span className="text-content-muted dark:text-content-muted-dark">
+            <span className="block truncate text-content-muted dark:text-content-muted-dark">
               Platform
             </span>
           ) : (
-            <span className="truncate">
+            <Link
+              to={`/admin/organisations/${entry.org_id ?? ''}`}
+              className="block truncate text-primary hover:underline"
+            >
               {orgById.get(entry.org_id ?? '')?.name ?? entry.org_name ?? 'Unknown'}
-            </span>
+            </Link>
           ),
       },
       {
         key: 'actor',
         label: 'Actor',
-        width: 'w-[20%]',
+        width: 'w-[11%]',
         cell: (entry) => (
-          <span className="truncate text-content-muted dark:text-content-muted-dark">
+          <span className="block truncate text-content-muted dark:text-content-muted-dark">
             {entry.actor_name ?? entry.actor_email ?? 'System'}
           </span>
         ),
@@ -153,35 +212,100 @@ export function AdminAuditPage(): JSX.Element {
       {
         key: 'action',
         label: 'Action',
-        width: 'w-[24%]',
-        cell: (entry) => <span className="font-medium">{entry.action}</span>,
+        width: 'w-[19%]',
+        cell: (entry) => (
+          <span className="block truncate font-medium">{entry.action}</span>
+        ),
       },
       {
         key: 'entity',
         label: 'Entity',
         width: 'w-[12%]',
         cell: (entry) => (
-          <span className="text-content-muted dark:text-content-muted-dark">
+          // `table-fixed` gives this column a hard width, so an entity name
+          // longer than it — `support_access_session` — ran under the severity
+          // badge in the next column instead of clipping.
+          <span className="block truncate font-mono text-xs text-content-muted dark:text-content-muted-dark">
             {entry.entity_type ?? '—'}
           </span>
         ),
       },
       {
-        key: 'severity',
-        label: 'Severity',
+        key: 'entity',
+        label: 'Before',
+        width: 'w-[6%]',
+        cell: (entry) => (
+          <ChangeCell value={scalarFromMetadata(entry.metadata, 'before')} muted />
+        ),
+      },
+      {
+        key: 'entity',
+        label: 'After',
+        width: 'w-[6%]',
+        cell: (entry) => (
+          <ChangeCell value={scalarFromMetadata(entry.metadata, 'after')} />
+        ),
+      },
+      {
+        key: 'entity',
+        label: 'IP',
         width: 'w-[10%]',
-        cell: (entry) => <Badge tone={toneFor(entry.severity)}>{entry.severity}</Badge>,
+        cell: (entry) => (
+          <span className="block truncate font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+            {entry.ip_address ?? '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'severity',
+        label: 'Result',
+        width: 'w-[11%]',
+        cell: (entry) => (
+          <Badge tone={toneFor(entry.severity)} dot>
+            {entry.severity}
+          </Badge>
+        ),
       },
     ],
     [orgById],
   );
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+  useRegisterConsoleRefresh(retry);
+
+  const exportCsv = useCallback(() => {
+    downloadCsv(`platform-audit_${new Date().toISOString().slice(0, 10)}`, visible, [
+      { label: 'When', value: (e) => e.created_at },
+      { label: 'Scope', value: (e) => e.scope ?? '' },
+      {
+        label: 'Organisation',
+        value: (e) => orgById.get(e.org_id ?? '')?.name ?? e.org_name ?? '',
+      },
+      { label: 'Actor', value: (e) => e.actor_name ?? e.actor_email ?? 'System' },
+      { label: 'Action', value: (e) => e.action },
+      { label: 'Entity', value: (e) => e.entity_type ?? '' },
+      { label: 'Severity', value: (e) => e.severity ?? '' },
+    ]);
+  }, [visible, orgById]);
 
   return (
     <AdminPage
-      title="Platform audit"
-      description={`The ${LIMIT} most recent events across every organisation.`}
+      title="Audit logs"
+      description="Append-only record of every platform-administrator action. Records cannot be edited or deleted by anyone, including a Platform Owner."
+      action={
+        <>
+          <Button
+            variant="secondary"
+            disabled
+            title="Nothing stores a saved filter — there is no table for one"
+          >
+            Save filter
+          </Button>
+          <Button variant="secondary" onClick={exportCsv} disabled={visible.length === 0}>
+            Export CSV
+          </Button>
+        </>
+      }
     >
       {failed ? (
         <AdminError onRetry={retry} />
@@ -191,6 +315,15 @@ export function AdminAuditPage(): JSX.Element {
         <AdminEmpty message="No audit events have been recorded yet." />
       ) : (
         <div className="space-y-4">
+          <Callout tone="info">
+            <p>
+              Most writers are still to be added, so this log is thinner than it will be
+              rather than incomplete. Before and After are read from a row&rsquo;s{' '}
+              <code>metadata</code> and only when the value is a scalar — an audit view is
+              the wrong place to dump a payload that may hold personal data.
+            </p>
+          </Callout>
+
           <div className="flex flex-wrap gap-3">
             <Input
               value={search}
@@ -213,6 +346,22 @@ export function AdminAuditPage(): JSX.Element {
                 </option>
               ))}
             </Select>
+            <Select
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value)}
+              aria-label="Filter by result"
+              className="max-w-[12rem]"
+            >
+              <option value="all">Any result</option>
+              {SEVERITIES.map((level) => (
+                <option key={level} value={level}>
+                  {level}
+                </option>
+              ))}
+            </Select>
+            <span className="ml-auto self-center text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+              {visible.length} of {entries.length}
+            </span>
           </div>
 
           <Card className="overflow-hidden p-0">

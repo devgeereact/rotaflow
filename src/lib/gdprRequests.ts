@@ -116,7 +116,14 @@ export function daysUntil(due: string, today: string): number {
     // deadline calculation — the whole point of this module is that the number
     // is right. Treat it as epoch so the difference is obviously wrong rather
     // than quietly absent.
+    //
+    // `isFinite`, not `!== undefined`: the original check only caught a value
+    // with too few parts. A full ISO timestamp has three, and its third is
+    // `"02T00:00:00.000Z"`, which `Number` turns into NaN — so the guard passed
+    // and `Date.UTC` returned NaN, which reached the screen as "NaN days left".
+    // Anything that is not a finite number is not a date.
     if (y === undefined || m === undefined || d === undefined) return 0;
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return 0;
     return Date.UTC(y, m - 1, d);
   };
   return Math.round((toUtc(due) - toUtc(today)) / 86_400_000);
@@ -163,4 +170,56 @@ export function todayIso(now: Date = new Date()): string {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * How many requests were closed in the {@link window} days ending today.
+ *
+ * `closedAt` is a timestamp and `today` is a date, so the comparison is made on
+ * the date part alone. A request closed earlier today is inside a zero-day
+ * window, which is what a reader expects "closed in the last 90 days" to mean.
+ */
+export function closedWithin(
+  requests: readonly Pick<GdprRequest, 'closedAt'>[],
+  today: string,
+  window = 90,
+): number {
+  return requests.filter((r) => {
+    if (!r.closedAt) return false;
+    const age = daysUntil(r.closedAt.slice(0, 10), today);
+    // `daysUntil` counts forward, so a past date is negative.
+    return age <= 0 && -age <= window;
+  }).length;
+}
+
+/**
+ * Median days from receipt to closure, across the closed requests only.
+ *
+ * The median rather than the mean: one request that sat for three months
+ * would drag a mean far past what the queue actually feels like, and this
+ * figure is read as "how long does a request take here".
+ *
+ * Returns `null` when nothing has been closed — a turnaround of zero would
+ * read as instant rather than as unknown.
+ */
+export function medianTurnaroundDays(
+  requests: readonly Pick<GdprRequest, 'receivedOn' | 'closedAt'>[],
+): number | null {
+  const spans = requests
+    .filter((r): r is { receivedOn: string; closedAt: string } => Boolean(r.closedAt))
+    .map((r) => -daysUntil(r.receivedOn, r.closedAt.slice(0, 10)))
+    .filter((days) => Number.isFinite(days) && days >= 0)
+    .sort((a, b) => a - b);
+  if (spans.length === 0) return null;
+  const mid = Math.floor(spans.length / 2);
+  const median =
+    spans.length % 2 === 1 ? spans[mid]! : (spans[mid - 1]! + spans[mid]!) / 2;
+  return Math.round(median * 10) / 10;
+}
+
+/** Open erasure requests — the ones that end in data actually being destroyed. */
+export function pendingErasures(
+  requests: readonly Pick<GdprRequest, 'kind' | 'status'>[],
+): number {
+  return requests.filter((r) => r.kind === 'erasure' && !isClosed(r.status)).length;
 }

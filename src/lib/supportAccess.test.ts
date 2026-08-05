@@ -5,7 +5,9 @@ import {
   formatRemaining,
   millisecondsRemaining,
   sessionStatus,
+  summariseSessions,
   validateRequest,
+  type SupportAccessSession,
 } from '@/lib/supportAccess';
 
 const NOW = new Date('2026-08-04T12:00:00.000Z');
@@ -137,5 +139,99 @@ describe('SUPPORT_ACCESS_DURATIONS', () => {
       expect(minutes).toBeGreaterThanOrEqual(15);
       expect(minutes).toBeLessThanOrEqual(1440);
     }
+  });
+});
+
+describe('summariseSessions', () => {
+  const NOW = new Date('2026-08-05T12:00:00Z');
+
+  const session = (
+    overrides: Partial<SupportAccessSession> = {},
+  ): SupportAccessSession => ({
+    id: 'sa-1',
+    orgId: 'org-1',
+    orgName: 'Sunnyvale Care Group',
+    adminUserId: 'user-1',
+    adminName: 'Sarah Okonjo',
+    reason: 'Investigating a failed rota publish',
+    caseRef: 'RF-4796',
+    scope: 'read',
+    grantedAt: '2026-08-05T09:00:00Z',
+    expiresAt: '2026-08-05T10:00:00Z',
+    revokedAt: null,
+    revokeReason: null,
+    ...overrides,
+  });
+
+  it('returns zeroes and a null median for an empty log', () => {
+    expect(summariseSessions([], NOW)).toEqual({
+      active: 0,
+      grantedThisMonth: 0,
+      medianMinutes: null,
+      revokedEarly: 0,
+      expired: 0,
+    });
+  });
+
+  it('counts an open session as active and excludes it from durations', () => {
+    const stats = summariseSessions(
+      [session({ expiresAt: '2026-08-05T13:00:00Z' })],
+      NOW,
+    );
+    expect(stats.active).toBe(1);
+    expect(stats.medianMinutes).toBeNull();
+  });
+
+  it('separates sessions ended by a person from those that ran out', () => {
+    const stats = summariseSessions(
+      [session({ id: 'a', revokedAt: '2026-08-05T09:30:00Z' }), session({ id: 'b' })],
+      NOW,
+    );
+    expect(stats.revokedEarly).toBe(1);
+    expect(stats.expired).toBe(1);
+  });
+
+  /**
+   * The reason this is a median: one long investigation among short look-ups
+   * would drag a mean past every actual session, and the figure is read as
+   * "how long does a support session usually last".
+   */
+  it('takes the median duration, not the mean', () => {
+    const stats = summariseSessions(
+      [
+        session({ id: 'a', revokedAt: '2026-08-05T09:05:00Z' }),
+        session({ id: 'b', revokedAt: '2026-08-05T09:10:00Z' }),
+        session({ id: 'c', revokedAt: '2026-08-05T13:00:00Z' }),
+      ],
+      NOW,
+    );
+    expect(stats.medianMinutes).toBe(10);
+  });
+
+  it('averages the middle pair when the count is even', () => {
+    const stats = summariseSessions(
+      [
+        session({ id: 'a', revokedAt: '2026-08-05T09:10:00Z' }),
+        session({ id: 'b', revokedAt: '2026-08-05T09:30:00Z' }),
+      ],
+      NOW,
+    );
+    expect(stats.medianMinutes).toBe(20);
+  });
+
+  it('counts only grants inside the current calendar month', () => {
+    const stats = summariseSessions(
+      [
+        session({ id: 'a', grantedAt: '2026-08-01T09:00:00Z' }),
+        session({ id: 'b', grantedAt: '2026-07-31T09:00:00Z' }),
+      ],
+      NOW,
+    );
+    expect(stats.grantedThisMonth).toBe(1);
+  });
+
+  it('ignores an unparseable timestamp rather than producing NaN', () => {
+    const stats = summariseSessions([session({ grantedAt: 'not-a-date' })], NOW);
+    expect(Number.isFinite(stats.grantedThisMonth)).toBe(true);
   });
 });

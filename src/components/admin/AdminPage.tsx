@@ -22,16 +22,32 @@ export function AdminPage({
   title,
   description,
   action,
+  avatar,
+  meta,
   children,
 }: {
   title: string;
-  description: string;
+  /** Optional on a detail screen, which carries `meta` instead. */
+  description?: string;
   action?: ReactNode;
+  /** Identity mark for a detail screen — see {@link PageHeader}. */
+  avatar?: ReactNode;
+  /** Identifier, plan, status and dates for a detail screen. */
+  meta?: ReactNode;
   children: ReactNode;
 }): JSX.Element {
+  // No width cap here any more: `AdminShell`'s `<main>` carries the console's
+  // 1440px measure, and two caps meant the outer one silently won while the
+  // inner one looked authoritative.
   return (
-    <div className="max-w-[1400px]">
-      <PageHeader title={title} description={description} actions={action} />
+    <div>
+      <PageHeader
+        title={title}
+        description={description}
+        actions={action}
+        avatar={avatar}
+        meta={meta}
+      />
       {children}
     </div>
   );

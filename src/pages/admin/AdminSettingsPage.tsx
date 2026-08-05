@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { PanelTabs } from '@/components/ui/PanelTabs';
+import { Panel } from '@/components/ui/Card';
+import { Callout } from '@/components/ui/Callout';
+import { SettingRow } from '@/components/ui/SettingRow';
+import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { Select } from '@/components/ui/Select';
 import { Toggle } from '@/components/ui/Toggle';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
@@ -27,16 +31,65 @@ import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
 import { env } from '@/lib/env';
 import { PLATFORM_ROLE_LABELS, PLATFORM_ROLE_SCOPES } from '@/lib/platformRoles';
+import { MeterRows } from '@/components/ui/MeterRows';
+import {
+  DEMO_API,
+  DEMO_BRANDING,
+  DEMO_EMAIL,
+  DEMO_SECURITY,
+  DEMO_STORAGE_LIMITS,
+  DEMO_STORAGE_USAGE,
+  RETENTION_POLICY,
+  type DemoSettingRow,
+} from '@/lib/adminOverviewDemo';
 import type { PlatformAdmin, PlatformRole, PlatformSettings, Profile } from '@/types';
 
-type Tab = 'general' | 'administrators' | 'authentication' | 'maintenance';
+type Tab =
+  | 'general'
+  | 'branding'
+  | 'authentication'
+  | 'security'
+  | 'email'
+  | 'storage'
+  | 'retention'
+  | 'administrators'
+  | 'api'
+  | 'maintenance';
 
+/** The console reference's tabs, in its order. */
 const TABS = [
   { value: 'general', label: 'General' },
-  { value: 'administrators', label: 'Administrators' },
+  { value: 'branding', label: 'Branding' },
   { value: 'authentication', label: 'Authentication' },
+  { value: 'security', label: 'Security' },
+  { value: 'email', label: 'Email' },
+  { value: 'storage', label: 'Storage' },
+  { value: 'retention', label: 'Data Retention' },
+  { value: 'administrators', label: 'Administrators' },
+  { value: 'api', label: 'API' },
   { value: 'maintenance', label: 'Maintenance' },
 ] as const satisfies readonly { value: Tab; label: string }[];
+
+/**
+ * Which tabs are drawn from `adminOverviewDemo` rather than from a column.
+ *
+ * Each one carries its own warning at the top of the tab naming what would be
+ * needed to make it real, so a reader never has to guess which switch does
+ * something. Delete the demo module and every one of these fails to compile.
+ */
+const PLACEHOLDER_TABS: Partial<Record<Tab, string>> = {
+  branding:
+    'No table holds a logo, favicon or accent colour, and the palette is compiled into the bundle by Tailwind — changing it is a deploy, not a setting.',
+  security:
+    'MFA enforcement, session timeout, IP allowlisting and concurrent-session limits are Supabase Auth and network concerns. None is readable or writable from a static client holding the anon key.',
+  email:
+    'The platform sender is configured in the Supabase dashboard, and no table records what was sent, delivered or bounced. Per-organisation SMTP is real and lives on Integrations.',
+  storage:
+    'Documents are recorded as rows but no file storage is wired up, so there are no bytes to total and no limits to enforce.',
+  retention:
+    'Nothing enforces a retention period. GDPR erasure is per data subject and lives on the GDPR screen; a number here would be one no job reads.',
+  api: 'There is no public API, so there are no keys, rate limits or webhook retries to configure. Issuing a long-lived token would be a security decision, not a settings row.',
+};
 
 const ROLES: readonly PlatformRole[] = [
   'platform_owner',
@@ -64,6 +117,7 @@ interface AdminRow {
  * So that tab reports the real build-time configuration and names where each
  * setting actually lives.
  */
+
 export function AdminSettingsPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const { canManagePlatformConfig, canManagePlatformAdmins } = usePermissions();
@@ -74,7 +128,24 @@ export function AdminSettingsPage(): JSX.Element {
   const [admins, setAdmins] = useState<AdminRow[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tab, setTab] = useState<Tab>('general');
+  // The open tab lives in the URL so a link can point at one — "the API tab
+  // says there is no API" is a thing people send each other, and it was
+  // unlinkable while this was component state.
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('tab');
+  const tab: Tab = TABS.some((t) => t.value === requested)
+    ? (requested as Tab)
+    : 'general';
+  const setTab = useCallback(
+    (next: Tab) => {
+      setParams((prev) => {
+        const copy = new URLSearchParams(prev);
+        copy.set('tab', next);
+        return copy;
+      });
+    },
+    [setParams],
+  );
   const [draft, setDraft] = useState<Partial<PlatformSettings>>({});
   const [saving, setSaving] = useState(false);
   const [busyUser, setBusyUser] = useState<string | null>(null);
@@ -112,6 +183,7 @@ export function AdminSettingsPage(): JSX.Element {
   }, [reloadKey]);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+  useRegisterConsoleRefresh(retry);
 
   const value = <K extends keyof PlatformSettings>(key: K): PlatformSettings[K] =>
     (draft[key] ?? settings?.[key]) as PlatformSettings[K];
@@ -324,7 +396,7 @@ export function AdminSettingsPage(): JSX.Element {
   return (
     <AdminPage
       title="Platform settings"
-      description="Configuration for this deployment, and who administers it."
+      description="Configuration that applies to every tenant. Changes are audited and take effect immediately."
       action={
         tab === 'general' || tab === 'maintenance' ? (
           <Button
@@ -342,7 +414,7 @@ export function AdminSettingsPage(): JSX.Element {
         ) : undefined
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
         <PanelTabs
           items={TABS.map((t) => ({ value: t.value, label: t.label }))}
           active={tab}
@@ -351,7 +423,10 @@ export function AdminSettingsPage(): JSX.Element {
         />
 
         {tab === 'general' && (
-          <Card className="space-y-4">
+          <Panel
+            title="Platform identity"
+            bodyClassName="grid gap-4 p-4 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]"
+          >
             <Field
               id="platform-name"
               label="Platform name"
@@ -382,12 +457,12 @@ export function AdminSettingsPage(): JSX.Element {
               onChange={(v) => setDraft((d) => ({ ...d, default_timezone: v }))}
               hint="Used when an organisation has not chosen one. Existing organisations are unaffected."
             />
-          </Card>
+          </Panel>
         )}
 
         {tab === 'administrators' && (
           <div className="space-y-4">
-            <Card className="overflow-hidden p-0">
+            <Panel title="Platform administrators" flush>
               <DataTable
                 caption="Platform administrators"
                 columns={adminColumns}
@@ -395,11 +470,8 @@ export function AdminSettingsPage(): JSX.Element {
                 rowKey={({ grant }) => grant.user_id}
                 emptyMessage="No platform administrators are recorded."
               />
-            </Card>
-            <Card>
-              <h2 className="mb-2 font-semibold text-content dark:text-content-dark">
-                What each role can do
-              </h2>
+            </Panel>
+            <Panel title="What each role can do">
               <dl className="space-y-2">
                 {ROLES.map((role) => (
                   <div key={role}>
@@ -417,28 +489,25 @@ export function AdminSettingsPage(): JSX.Element {
                 <span className="font-medium">Platform users</span>. New grants start as
                 Platform Support and can be promoted here.
               </p>
-            </Card>
+            </Panel>
           </div>
         )}
 
         {tab === 'authentication' && (
           <div className="space-y-4">
-            <Card className="border-warning/30 bg-warning/5">
-              <h2 className="mb-1 font-semibold text-content dark:text-content-dark">
-                These settings are not editable here
-              </h2>
-              <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            <Callout tone="warning" title="These settings are not editable here">
+              <p>
                 Password policy, email verification, magic links, session length and OAuth
                 providers are owned by Supabase Auth and configured in the Supabase
                 dashboard. Storing a copy of them in this database would create a switch
                 that persists a value nothing reads.
               </p>
-              <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
+              <p>
                 What is below is the real, build-time configuration this deployment is
                 running with.
               </p>
-            </Card>
-            <Card className="p-0">
+            </Callout>
+            <Panel title="Actual configuration" flush>
               <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
                 <Capability
                   name="Sign-in providers"
@@ -464,47 +533,151 @@ export function AdminSettingsPage(): JSX.Element {
                   enabled={Boolean(env.sentryDsn)}
                 />
               </ul>
-            </Card>
+            </Panel>
           </div>
         )}
 
-        {tab === 'maintenance' && (
-          <Card className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-medium text-content dark:text-content-dark">
-                  Maintenance banner
-                </p>
-                <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                  Shows a notice to every signed-in user.
-                </p>
-              </div>
-              <Toggle
-                checked={value('maintenance_mode')}
-                disabled={!canManagePlatformConfig}
-                label="Show the maintenance banner to every signed-in user"
-                onChange={(checked) =>
-                  setDraft((d) => ({ ...d, maintenance_mode: checked }))
+        {PLACEHOLDER_TABS[tab] && (
+          <Callout tone="warning" title="This tab is placeholder">
+            <p>{PLACEHOLDER_TABS[tab]}</p>
+            <p>
+              The rows below come from <code>src/lib/adminOverviewDemo.ts</code>. Every
+              control on them is inert — a switch that flipped and forgot would be worse
+              than one that plainly cannot move.
+            </p>
+          </Callout>
+        )}
+
+        {tab === 'branding' && <DemoSettings title="Branding" rows={DEMO_BRANDING} />}
+
+        {tab === 'security' && (
+          <DemoSettings title="Console security" rows={DEMO_SECURITY} />
+        )}
+
+        {tab === 'email' && <DemoSettings title="Platform email" rows={DEMO_EMAIL} />}
+
+        {tab === 'storage' && (
+          <div className="space-y-4">
+            <Panel title="Storage by type" bodyClassName="p-4">
+              <MeterRows
+                caption="Placeholder storage totals by type"
+                rows={DEMO_STORAGE_USAGE.map((row) => ({
+                  label: row.label,
+                  value: row.value,
+                  display: row.display,
+                }))}
+              />
+            </Panel>
+            <DemoSettings title="Upload limits" rows={DEMO_STORAGE_LIMITS} />
+          </div>
+        )}
+
+        {tab === 'retention' && (
+          <Panel title="Retention schedule" bodyClassName="p-4">
+            {RETENTION_POLICY.map((row) => (
+              <SettingRow
+                key={row.data}
+                label={row.data}
+                control={
+                  <span className="font-mono text-xs text-content dark:text-content-dark">
+                    {row.retained}
+                  </span>
                 }
               />
-            </div>
-            <Field
-              id="maintenance-message"
-              label="Message"
-              value={value('maintenance_message') ?? ''}
-              disabled={!canManagePlatformConfig}
-              onChange={(v) => setDraft((d) => ({ ...d, maintenance_message: v }))}
-              hint="e.g. Scheduled maintenance on Sunday 02:00–04:00 UTC."
-            />
-            <p className="rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 text-sm text-content-muted dark:text-content-muted-dark">
-              This is a banner, not a kill switch. A static PWA cannot refuse to serve
-              itself, and row-level security is what actually stands between a user and
-              their data — so this informs people rather than stopping them.
+            ))}
+            <p className="pt-4 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
+              The audit row is the one that is true today: <code>audit_logs</code> carries
+              no update or delete policy, so it cannot be erased from the product. The
+              rest is the schedule to build to, and the same table is shown beside the
+              request register on GDPR &amp; Data.
             </p>
-          </Card>
+          </Panel>
+        )}
+
+        {tab === 'api' && <DemoSettings title="API" rows={DEMO_API} />}
+
+        {tab === 'maintenance' && (
+          <Panel title="Maintenance" bodyClassName="p-4">
+            <SettingRow
+              label="Maintenance banner"
+              hint="Shows a notice to every signed-in user, across every organisation."
+              control={
+                <Toggle
+                  checked={value('maintenance_mode')}
+                  disabled={!canManagePlatformConfig}
+                  label="Show the maintenance banner to every signed-in user"
+                  onChange={(checked) =>
+                    setDraft((d) => ({ ...d, maintenance_mode: checked }))
+                  }
+                />
+              }
+            />
+            <div className="pt-4">
+              <Field
+                id="maintenance-message"
+                label="Message"
+                value={value('maintenance_message') ?? ''}
+                disabled={!canManagePlatformConfig}
+                onChange={(v) => setDraft((d) => ({ ...d, maintenance_message: v }))}
+                hint="e.g. Scheduled maintenance on Sunday 02:00–04:00 UTC."
+              />
+            </div>
+            <Callout tone="warning" className="mt-4">
+              <p>
+                This is a banner, not a kill switch. A static PWA cannot refuse to serve
+                itself, and row-level security is what actually stands between a user and
+                their data — so this informs people rather than stopping them.
+              </p>
+            </Callout>
+          </Panel>
         )}
       </div>
     </AdminPage>
+  );
+}
+
+/**
+ * A tab of settings this deployment cannot store.
+ *
+ * Controls render their state and refuse to change it, and each says why on
+ * hover — a dead switch that explains itself is better than one that answers
+ * the click with nothing.
+ */
+function DemoSettings({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: readonly DemoSettingRow[];
+}): JSX.Element {
+  return (
+    <Panel title={title} bodyClassName="p-4">
+      {rows.map((row) => (
+        <SettingRow
+          key={row.label}
+          label={row.label}
+          hint={row.hint}
+          control={
+            row.kind === 'switch' ? (
+              <Toggle
+                checked={Boolean(row.on)}
+                disabled
+                label={row.label}
+                onChange={() => {}}
+              />
+            ) : row.kind === 'action' ? (
+              <Button variant="secondary" disabled title="Nothing stores this setting">
+                {row.value}
+              </Button>
+            ) : (
+              <span className="font-mono text-xs text-content dark:text-content-dark">
+                {row.value}
+              </span>
+            )
+          }
+        />
+      ))}
+    </Panel>
   );
 }
 

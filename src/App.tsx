@@ -317,6 +317,10 @@ const AdminPlatformHealthPage = lazyPage(
   'AdminPlatformHealthPage',
   () => import('@/pages/admin/AdminPlatformHealthPage'),
 );
+const AdminIncidentsPage = lazyPage(
+  'AdminIncidentsPage',
+  () => import('@/pages/admin/AdminIncidentsPage'),
+);
 const AdminSupportAccessPage = lazyPage(
   'AdminSupportAccessPage',
   () => import('@/pages/admin/AdminSupportAccessPage'),
@@ -324,6 +328,18 @@ const AdminSupportAccessPage = lazyPage(
 const AdminGdprPage = lazyPage(
   'AdminGdprPage',
   () => import('@/pages/admin/AdminGdprPage'),
+);
+const AdminPreviewHarness = devPage(
+  'AdminPreviewHarness',
+  () => import('@/pages/admin/AdminPreviewHarness'),
+);
+const AdminIntegrationsPage = lazyPage(
+  'AdminIntegrationsPage',
+  () => import('@/pages/admin/AdminIntegrationsPage'),
+);
+const AdminNotificationsPage = lazyPage(
+  'AdminNotificationsPage',
+  () => import('@/pages/admin/AdminNotificationsPage'),
 );
 const SessionsPage = lazyPage(
   'SessionsPage',
@@ -438,6 +454,53 @@ export function App(): JSX.Element {
                         />
                         {/* design/clockin.png. */}
                         <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
+                        {/* The whole platform console against fixtures, with the
+                        real shell and the real page components — the only way to
+                        look at `/admin/*` without a seeded platform-admin
+                        session. See `AdminPreviewHarness`. */}
+                        <Route path="/admin-preview" element={<AdminPreviewHarness />}>
+                          <Route index element={<AdminOverviewPage />} />
+                          <Route
+                            path="organisations"
+                            element={<AdminOrganisationsPage />}
+                          />
+                          <Route
+                            path="organisations/:organisationId"
+                            element={<AdminOrganisationDetailPage />}
+                          />
+                          <Route path="users" element={<AdminUsersPage />} />
+                          <Route path="users/:userId" element={<AdminUserDetailPage />} />
+                          <Route
+                            path="subscriptions"
+                            element={<AdminSubscriptionsPage />}
+                          />
+                          <Route path="billing" element={<AdminBillingPage />} />
+                          <Route path="support" element={<AdminSupportPage />} />
+                          <Route
+                            path="support-access"
+                            element={<AdminSupportAccessPage />}
+                          />
+                          <Route
+                            path="platform-health"
+                            element={<AdminPlatformHealthPage />}
+                          />
+                          <Route path="incidents" element={<AdminIncidentsPage />} />
+                          <Route
+                            path="integrations"
+                            element={<AdminIntegrationsPage />}
+                          />
+                          <Route
+                            path="notifications"
+                            element={<AdminNotificationsPage />}
+                          />
+                          <Route path="audit" element={<AdminAuditPage />} />
+                          <Route
+                            path="feature-flags"
+                            element={<AdminFeatureFlagsPage />}
+                          />
+                          <Route path="gdpr" element={<AdminGdprPage />} />
+                          <Route path="settings" element={<AdminSettingsPage />} />
+                        </Route>
                         {/* design/staff.png and design/Staff-Profile.png. */}
                         <Route path="/staff-preview" element={<StaffPreviewPage />} />
                         <Route
@@ -697,6 +760,24 @@ export function App(): JSX.Element {
                       <Route
                         path="platform-health"
                         element={<AdminPlatformHealthPage />}
+                      />
+                      <Route path="incidents" element={<AdminIncidentsPage />} />
+                      <Route path="integrations" element={<AdminIntegrationsPage />} />
+                      {/* Config roles only: this reads every tenant's delivery
+                      record, which is a cross-tenant view of who was told what.
+                      The nav hides it for support and finance, and so does the
+                      route — a hidden link that renders when typed is not a
+                      permission. */}
+                      <Route
+                        path="notifications"
+                        element={
+                          <RequirePlatformRole
+                            allow={PLATFORM_CONFIG_ROLES}
+                            area="Platform notifications"
+                          >
+                            <AdminNotificationsPage />
+                          </RequirePlatformRole>
+                        }
                       />
                       <Route path="gdpr" element={<AdminGdprPage />} />
                       <Route

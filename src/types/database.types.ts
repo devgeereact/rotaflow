@@ -32,6 +32,23 @@ export type Database = {
           support_email: string;
           updated_at: string;
           updated_by: string | null;
+          admin_session_minutes: number;
+          api_rate_limit_per_min: number;
+          email_provider: string;
+          email_sender_address: string;
+          email_sender_name: string;
+          favicon_url: string | null;
+          logo_url: string | null;
+          max_concurrent_sessions: number;
+          max_upload_mb: number;
+          permitted_file_types: string[];
+          primary_colour: string;
+          public_api_enabled: boolean;
+          reauth_for_critical: boolean;
+          require_mfa: boolean;
+          signin_alerts: boolean;
+          support_branding: boolean;
+          webhook_max_attempts: number;
         };
         Insert: {
           created_at?: string;
@@ -45,6 +62,23 @@ export type Database = {
           support_email?: string;
           updated_at?: string;
           updated_by?: string | null;
+          admin_session_minutes?: number;
+          api_rate_limit_per_min?: number;
+          email_provider?: string;
+          email_sender_address?: string;
+          email_sender_name?: string;
+          favicon_url?: string | null;
+          logo_url?: string | null;
+          max_concurrent_sessions?: number;
+          max_upload_mb?: number;
+          permitted_file_types?: string[];
+          primary_colour?: string;
+          public_api_enabled?: boolean;
+          reauth_for_critical?: boolean;
+          require_mfa?: boolean;
+          signin_alerts?: boolean;
+          support_branding?: boolean;
+          webhook_max_attempts?: number;
         };
         Update: {
           created_at?: string;
@@ -58,6 +92,23 @@ export type Database = {
           support_email?: string;
           updated_at?: string;
           updated_by?: string | null;
+          admin_session_minutes?: number;
+          api_rate_limit_per_min?: number;
+          email_provider?: string;
+          email_sender_address?: string;
+          email_sender_name?: string;
+          favicon_url?: string | null;
+          logo_url?: string | null;
+          max_concurrent_sessions?: number;
+          max_upload_mb?: number;
+          permitted_file_types?: string[];
+          primary_colour?: string;
+          public_api_enabled?: boolean;
+          reauth_for_critical?: boolean;
+          require_mfa?: boolean;
+          signin_alerts?: boolean;
+          support_branding?: boolean;
+          webhook_max_attempts?: number;
         };
         Relationships: [
           {
@@ -245,6 +296,8 @@ export type Database = {
           severity: string;
           user_agent: string | null;
           visibility: string;
+          after_value: string | null;
+          before_value: string | null;
         };
         Insert: {
           action: string;
@@ -263,6 +316,8 @@ export type Database = {
           severity?: string;
           user_agent?: string | null;
           visibility?: string;
+          after_value?: string | null;
+          before_value?: string | null;
         };
         Update: {
           action?: string;
@@ -281,6 +336,8 @@ export type Database = {
           severity?: string;
           user_agent?: string | null;
           visibility?: string;
+          after_value?: string | null;
+          before_value?: string | null;
         };
         Relationships: [
           {
@@ -865,6 +922,12 @@ export type Database = {
           suspended_at: string | null;
           suspended_reason: string | null;
           updated_at: string;
+          contact_email: string | null;
+          contact_phone: string | null;
+          country: string;
+          industry: string | null;
+          last_activity_at: string | null;
+          timezone: string;
         };
         Insert: {
           created_at?: string;
@@ -875,6 +938,12 @@ export type Database = {
           settings?: Json;
           slug: string;
           updated_at?: string;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          country?: string;
+          industry?: string | null;
+          last_activity_at?: string | null;
+          timezone?: string;
         };
         Update: {
           created_at?: string;
@@ -885,6 +954,12 @@ export type Database = {
           settings?: Json;
           slug?: string;
           updated_at?: string;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          country?: string;
+          industry?: string | null;
+          last_activity_at?: string | null;
+          timezone?: string;
         };
         Relationships: [
           {
@@ -1564,6 +1639,11 @@ export type Database = {
           provider_ref: string | null;
           status: string;
           updated_at: string;
+          canceled_at: string | null;
+          currency: string;
+          price_pence: number | null;
+          started_at: string;
+          trial_ends_at: string | null;
         };
         Insert: {
           created_at?: string;
@@ -1575,6 +1655,11 @@ export type Database = {
           provider_ref?: string | null;
           status?: string;
           updated_at?: string;
+          canceled_at?: string | null;
+          currency?: string;
+          price_pence?: number | null;
+          started_at?: string;
+          trial_ends_at?: string | null;
         };
         Update: {
           created_at?: string;
@@ -1586,6 +1671,11 @@ export type Database = {
           provider_ref?: string | null;
           status?: string;
           updated_at?: string;
+          canceled_at?: string | null;
+          currency?: string;
+          price_pence?: number | null;
+          started_at?: string;
+          trial_ends_at?: string | null;
         };
         Relationships: [
           {
@@ -1648,8 +1738,355 @@ export type Database = {
           },
         ];
       };
+      // HAND-MAINTAINED PENDING REGENERATION (0021–0027).
+      //
+      // Every block below follows the same shape the generator emits: a `Row`
+      // of what a select returns, an `Insert`/`Update` pair, and no
+      // relationships, because nothing in the console navigates a foreign key
+      // through PostgREST's embedding syntax for these.
+      //
+      // `Insert` and `Update` are declared `never` on the tables whose writes
+      // all go through SECURITY DEFINER functions. That is not laziness: the
+      // grants were revoked in the migration, so a `.insert()` would fail at
+      // runtime, and a type that permits it invites the call.
+      incidents: {
+        Row: {
+          created_at: string;
+          detected_at: string | null;
+          id: string;
+          impact: string;
+          is_public: boolean;
+          owner_id: string | null;
+          reference: string;
+          resolution: string | null;
+          resolved_at: string | null;
+          service: string;
+          severity: string;
+          started_at: string;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      incident_updates: {
+        Row: {
+          author_id: string | null;
+          body: string;
+          created_at: string;
+          id: string;
+          incident_id: string;
+          status: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      feature_flags: {
+        Row: {
+          created_at: string;
+          critical: boolean;
+          description: string;
+          enabled: boolean;
+          environment: string;
+          key: string;
+          name: string;
+          rollout: number;
+          target_plans: string[];
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      feature_flag_targets: {
+        Row: { created_at: string; flag_key: string; org_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      feature_flag_changes: {
+        Row: {
+          actor_id: string | null;
+          actor_name: string | null;
+          after_value: string | null;
+          before_value: string | null;
+          created_at: string;
+          field: string;
+          flag_key: string;
+          id: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      plans: {
+        Row: {
+          code: string;
+          created_at: string;
+          currency: string;
+          description: string;
+          location_limit: number | null;
+          monthly_price_pence: number;
+          name: string;
+          seat_limit: number | null;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      invoices: {
+        Row: {
+          amount_pence: number;
+          attempts: number;
+          created_at: string;
+          currency: string;
+          due_on: string;
+          failure_reason: string | null;
+          id: string;
+          issued_on: string;
+          number: string;
+          org_id: string;
+          paid_at: string | null;
+          period_end: string;
+          period_start: string;
+          provider: string | null;
+          provider_ref: string | null;
+          refunded_at: string | null;
+          status: string;
+          tax_pence: number;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      support_cases: {
+        Row: {
+          assigned_to: string | null;
+          category: string;
+          created_at: string;
+          csat: number | null;
+          csat_comment: string | null;
+          first_response_at: string | null;
+          id: string;
+          org_id: string | null;
+          priority: string;
+          reference: string;
+          requester_email: string;
+          requester_id: string | null;
+          requester_name: string | null;
+          resolved_at: string | null;
+          status: string;
+          subject: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      support_case_messages: {
+        Row: {
+          author_id: string | null;
+          author_name: string | null;
+          author_side: string;
+          body: string;
+          case_id: string;
+          created_at: string;
+          id: string;
+          is_internal: boolean;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      platform_announcements: {
+        Row: {
+          audience: string;
+          audience_plans: string[];
+          body: string;
+          channel: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          kind: string;
+          scheduled_for: string | null;
+          sent_at: string | null;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      platform_announcement_deliveries: {
+        Row: {
+          announcement_id: string;
+          created_at: string;
+          failed_at: string | null;
+          failure_reason: string | null;
+          id: string;
+          org_id: string;
+          read_at: string | null;
+          read_by: string | null;
+          sent_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      platform_announcement_optouts: {
+        Row: { created_at: string; opted_out_by: string | null; org_id: string };
+        Insert: { org_id: string; opted_out_by?: string | null };
+        Update: never;
+        Relationships: [];
+      };
+      integration_connectors: {
+        Row: {
+          available: boolean;
+          category: string;
+          created_at: string;
+          description: string;
+          docs_url: string | null;
+          key: string;
+          name: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      org_integrations: {
+        Row: {
+          connected_at: string;
+          connected_by: string | null;
+          connector_key: string;
+          created_at: string;
+          credentials_ref: string | null;
+          id: string;
+          last_error: string | null;
+          last_sync_at: string | null;
+          org_id: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      integration_sync_runs: {
+        Row: {
+          connector_key: string;
+          duration_ms: number | null;
+          error: string | null;
+          finished_at: string | null;
+          id: string;
+          org_id: string;
+          org_integration_id: string;
+          outcome: string;
+          records: number;
+          started_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      platform_ip_allowlist: {
+        Row: {
+          cidr: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          label: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      retention_policies: {
+        Row: {
+          data_type: string;
+          enforced: boolean;
+          label: string;
+          note: string;
+          retain_months: number | null;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      platform_health_samples: {
+        Row: {
+          checked_at: string;
+          id: number;
+          latency_ms: number | null;
+          service: string;
+          source: string;
+          status: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      background_jobs: {
+        Row: {
+          attempts: number;
+          created_at: string;
+          error: string | null;
+          finished_at: string | null;
+          id: string;
+          job_key: string;
+          org_id: string | null;
+          payload: Json;
+          queue: string;
+          scheduled_for: string;
+          started_at: string | null;
+          status: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
+      // HAND-MAINTAINED PENDING REGENERATION (0026, 0027).
+      integration_connector_stats: {
+        Row: {
+          available: boolean | null;
+          category: string | null;
+          failed_24h: number | null;
+          key: string | null;
+          last_sync_at: string | null;
+          median_duration_ms: number | null;
+          name: string | null;
+          orgs_connected: number | null;
+          runs_24h: number | null;
+          status: string | null;
+          success_rate_7d: number | null;
+        };
+        Relationships: [];
+      };
+      platform_health_summary: {
+        Row: {
+          last_checked_at: string | null;
+          ok_24h: number | null;
+          p50_ms: number | null;
+          p95_ms: number | null;
+          p99_ms: number | null;
+          samples_24h: number | null;
+          service: string | null;
+          uptime_pct_24h: number | null;
+        };
+        Relationships: [];
+      };
       org_smtp_settings_safe: {
         Row: {
           org_id: string;
@@ -1674,6 +2111,135 @@ export type Database = {
       };
     };
     Functions: {
+      // HAND-MAINTAINED PENDING REGENERATION (0021–0027).
+      declare_incident: {
+        Args: {
+          p_title: string;
+          p_impact: string;
+          p_severity: string;
+          p_service: string;
+          p_started_at?: string | null;
+        };
+        Returns: string;
+      };
+      add_incident_update: {
+        Args: { p_incident: string; p_status: string; p_body: string };
+        Returns: string;
+      };
+      resolve_incident: {
+        Args: { p_incident: string; p_resolution: string };
+        Returns: undefined;
+      };
+      flag_enabled_for_org: { Args: { p_key: string; p_org: string }; Returns: boolean };
+      set_feature_flag: {
+        Args: {
+          p_key: string;
+          p_enabled?: boolean | null;
+          p_rollout?: number | null;
+          p_plans?: string[] | null;
+        };
+        Returns: undefined;
+      };
+      set_feature_flag_target: {
+        Args: { p_key: string; p_org: string; p_targeted: boolean };
+        Returns: undefined;
+      };
+      subscription_mrr_pence: { Args: { p_org: string }; Returns: number };
+      touch_org_activity: { Args: { p_org: string }; Returns: undefined };
+      issue_invoice: {
+        Args: {
+          p_org: string;
+          p_period_start: string;
+          p_period_end: string;
+          p_amount_pence?: number | null;
+        };
+        Returns: string;
+      };
+      set_invoice_status: {
+        Args: { p_invoice: string; p_status: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      open_support_case: {
+        Args: {
+          p_subject: string;
+          p_body: string;
+          p_category?: string;
+          p_priority?: string;
+          p_org?: string | null;
+          p_requester_email?: string | null;
+        };
+        Returns: string;
+      };
+      reply_to_support_case: {
+        Args: { p_case: string; p_body: string; p_internal?: boolean };
+        Returns: string;
+      };
+      set_support_case_status: {
+        Args: { p_case: string; p_status: string; p_note?: string | null };
+        Returns: undefined;
+      };
+      assign_support_case: {
+        Args: { p_case: string; p_agent: string | null };
+        Returns: undefined;
+      };
+      rate_support_case: {
+        Args: { p_case: string; p_score: number; p_comment?: string | null };
+        Returns: undefined;
+      };
+      create_platform_announcement: {
+        Args: {
+          p_title: string;
+          p_body: string;
+          p_kind?: string;
+          p_audience?: string;
+          p_plans?: string[];
+          p_channel?: string;
+          p_scheduled_for?: string | null;
+        };
+        Returns: string;
+      };
+      publish_platform_announcement: {
+        Args: { p_announcement: string };
+        Returns: number;
+      };
+      mark_announcement_read: { Args: { p_announcement: string }; Returns: undefined };
+      connect_integration: {
+        Args: { p_org: string; p_connector: string; p_ref?: string | null };
+        Returns: string;
+      };
+      set_org_integration_status: {
+        Args: { p_org: string; p_connector: string; p_status: string };
+        Returns: undefined;
+      };
+      record_health_sample: {
+        Args: {
+          p_service: string;
+          p_status: string;
+          p_latency_ms?: number | null;
+          p_source?: string;
+        };
+        Returns: undefined;
+      };
+      platform_user_auth_facts: {
+        Args: { p_user: string };
+        Returns: {
+          email_confirmed_at: string | null;
+          last_sign_in_at: string | null;
+          mfa_enrolled: boolean;
+          banned_until: string | null;
+        }[];
+      };
+      platform_auth_facts_summary: {
+        Args: never;
+        Returns: {
+          total_accounts: number;
+          unverified: number;
+          active_30d: number;
+          inactive_90d: number;
+          mfa_enrolled: number;
+          banned: number;
+        }[];
+      };
       accept_invite: { Args: { p_token: string }; Returns: string };
       create_invite: {
         Args: { p_org: string; p_email: string; p_role?: string };

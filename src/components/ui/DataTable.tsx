@@ -14,6 +14,14 @@ export interface DataTableColumn<Row, Key extends string = string> {
   width?: string;
   align?: 'left' | 'center' | 'right';
   sortable?: boolean;
+  /**
+   * A column of figures: right-aligned, monospaced and tabular.
+   *
+   * Digits in the app's UI face are proportional, so a column of counts or
+   * money sat on a ragged left edge and the eye could not compare two rows
+   * without reading both. Implies `align: 'right'`.
+   */
+  numeric?: boolean;
   /** Renders the cell. Kept on the column so a table is one declaration. */
   cell: (row: Row) => ReactNode;
 }
@@ -38,6 +46,17 @@ const ALIGN = {
   center: 'text-center',
   right: 'text-right',
 } as const;
+
+/**
+ * Column headings are labels, not headings.
+ *
+ * They were `text-sm font-semibold` in ink — the same weight and colour as the
+ * data underneath, so on a forty-row table the header row read as just another
+ * row. Small caps in the muted tone let the eye skip past them to the figures,
+ * which is what a header row is for. docs/DESIGN.md caption scale.
+ */
+const HEAD_LABEL =
+  'inline-flex items-center gap-1.5 whitespace-nowrap text-[0.69rem] font-semibold uppercase tracking-[0.06em] text-content-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark';
 
 /**
  * The shared sortable table.
@@ -118,18 +137,18 @@ export function DataTable<Row, Key extends string = string>({
                     'px-3 py-2.5',
                     index === 0 && 'pl-4',
                     index === columns.length - 1 && 'pr-4',
-                    ALIGN[column.align ?? 'left'],
+                    ALIGN[column.numeric ? 'right' : (column.align ?? 'left')],
                   )}
                 >
                   {sortable ? (
                     <button
                       type="button"
                       onClick={() => toggle(column.key)}
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-content transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
+                      className={cn(HEAD_LABEL, 'transition-colors hover:text-primary')}
                     >
                       {column.label}
                       <Icon
-                        size={13}
+                        size={12}
                         aria-hidden="true"
                         className={
                           active
@@ -139,9 +158,7 @@ export function DataTable<Row, Key extends string = string>({
                       />
                     </button>
                   ) : (
-                    <span className="whitespace-nowrap text-sm font-semibold text-content dark:text-content-dark">
-                      {column.label}
-                    </span>
+                    <span className={HEAD_LABEL}>{column.label}</span>
                   )}
                 </th>
               );
@@ -185,17 +202,18 @@ export function DataTable<Row, Key extends string = string>({
                     'border-b border-divider last:border-0 dark:border-divider-dark',
                     onRowClick &&
                       'cursor-pointer transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:hover:bg-surface-subtle-dark',
-                    selectedKey === key && 'bg-primary/5 dark:bg-primary/10',
+                    selectedKey === key && 'bg-primary-wash dark:bg-primary-wash-dark',
                   )}
                 >
                   {columns.map((column, index) => (
                     <td
                       key={column.key}
                       className={cn(
-                        'px-3 py-3 align-middle text-sm text-content dark:text-content-dark',
+                        'px-3 py-2.5 align-middle text-sm text-content dark:text-content-dark',
                         index === 0 && 'pl-4',
                         index === columns.length - 1 && 'pr-4',
-                        ALIGN[column.align ?? 'left'],
+                        column.numeric && 'font-mono tabular-nums',
+                        ALIGN[column.numeric ? 'right' : (column.align ?? 'left')],
                       )}
                     >
                       {column.cell(row)}

@@ -1,13 +1,53 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { Callout } from '@/components/ui/Callout';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableSort,
+} from '@/components/ui/DataTable';
 import { StatTile } from '@/components/ui/StatTile';
+import { TileGrid } from '@/components/ui/TileGrid';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { listAllOrganisations, listAllSubscriptions } from '@/services/platformService';
+import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
+import { daysUntil, needsAttention } from '@/lib/platformBilling';
+import { humaniseKey } from '@/lib/platformOverview';
+import { downloadCsv } from '@/lib/csv';
+import {
+  demoSubscriptionFacts,
+  DEMO_ACTIVE_SUBSCRIPTIONS,
+  DEMO_ARR_SHORT,
+  DEMO_CHURN_CHANGE,
+  DEMO_CHURN_RATE,
+  DEMO_MRR,
+  DEMO_MRR_CHANGE,
+  DEMO_PAST_DUE,
+  DEMO_PAST_DUE_HINT,
+  DEMO_REVENUE_TREND,
+  DEMO_TRIALS,
+  DEMO_TRIALS_HINT,
+  type DemoPaymentState,
+} from '@/lib/adminOverviewDemo';
+import { Sparkline } from '@/components/ui/TrendChart';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, Subscription } from '@/types';
+
+const PAYMENT_TONE: Record<
+  DemoPaymentState,
+  'success' | 'warning' | 'danger' | 'neutral'
+> = {
+  paid: 'success',
+  pending: 'warning',
+  failed: 'danger',
+  refunded: 'neutral',
+};
 
 const STATUS_TONE = {
   active: 'success',
@@ -19,6 +59,8 @@ const STATUS_TONE = {
 function toneFor(status: string): (typeof STATUS_TONE)[keyof typeof STATUS_TONE] {
   return STATUS_TONE[status as keyof typeof STATUS_TONE] ?? 'neutral';
 }
+
+type SubSortKey = 'organisation' | 'plan' | 'status' | 'value' | 'period' | 'usage';
 
 interface Row {
   organisation: Organisation;
@@ -43,12 +85,17 @@ interface Row {
  *
  * The table is keyed on organisations rather than subscriptions on purpose: the
  * interesting row is a tenant with **no** subscription record, and a list of
- * subscriptions cannot show one.
+ * subscriptions cannot show one. `/admin/billing` takes the other cut — the
+ * renewal lifecycle across the records that do exist.
  */
 export function AdminSubscriptionsPage(): JSX.Element {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [search, setSearch] = useState('');
+  const [plan, setPlan] = useState('');
+  const [status, setStatus] = useState('');
+  const [sort, setSort] = useState<DataTableSort<SubSortKey> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -79,53 +126,126 @@ export function AdminSubscriptionsPage(): JSX.Element {
     };
   }, [reloadKey]);
 
+  const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+  useRegisterConsoleRefresh(retry);
+
+  // Placeholder value / cycle / payment / usage — no amount exists anywhere in
+  // the schema. See `adminOverviewDemo`.
+  const facts = useCallback(
+    (row: Row) =>
+      demoSubscriptionFacts(
+        row.organisation.id,
+        (rows ?? []).findIndex((r) => r.organisation.id === row.organisation.id),
+        row.subscription?.status ?? 'none',
+      ),
+    [rows],
+  );
+
+  const planOf = useCallback(
+    (row: Row): string => row.subscription?.plan ?? row.organisation.plan,
+    [],
+  );
+
   const stats = useMemo(() => {
-    const all = rows ?? [];
-    const withSub = all.filter((r) => r.subscription);
+    if (!rows) return null;
+    // `flatMap` rather than `filter(...).map(...!)`: the filter does not narrow
+    // `subscription` for TypeScript, and the assertion that silences it is the
+    // one thing standing between a schema change and a runtime null.
+    const present = rows.flatMap((r) => (r.subscription ? [r.subscription] : []));
+    const withSub = rows.filter((r) => r.subscription);
+    const flagged = needsAttention(present, new Date());
     return {
-      tenants: all.length,
+      tenants: rows.length,
       withRecord: withSub.length,
       active: withSub.filter((r) => r.subscription?.status === 'active').length,
       trialing: withSub.filter((r) => r.subscription?.status === 'trialing').length,
       pastDue: withSub.filter((r) => r.subscription?.status === 'past_due').length,
+      flagged: flagged.length,
+      plans: [...new Set(rows.map(planOf))].sort(),
+      statuses: [...new Set(withSub.map((r) => r.subscription?.status ?? ''))]
+        .filter(Boolean)
+        .sort(),
     };
-  }, [rows]);
+  }, [rows, planOf]);
 
-  const columns = useMemo<DataTableColumn<Row>[]>(
+  const visible = useMemo(() => {
+    if (!rows) return [];
+    const q = search.trim().toLowerCase();
+    const filtered = rows.filter((row) => {
+      if (plan && planOf(row) !== plan) return false;
+      if (status) {
+        if (status === 'none' ? row.subscription : row.subscription?.status !== status) {
+          return false;
+        }
+      }
+      if (!q) return true;
+      return (
+        row.organisation.name.toLowerCase().includes(q) ||
+        row.organisation.slug.toLowerCase().includes(q)
+      );
+    });
+
+    if (!sort) return filtered;
+    const direction = sort.direction === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      switch (sort.key) {
+        case 'plan':
+          return planOf(a).localeCompare(planOf(b)) * direction;
+        case 'status':
+          return (
+            (a.subscription?.status ?? '').localeCompare(b.subscription?.status ?? '') *
+            direction
+          );
+        case 'value':
+          return ((facts(a).value ?? 0) - (facts(b).value ?? 0)) * direction;
+        case 'usage':
+          return (facts(a).usage - facts(b).usage) * direction;
+        case 'period': {
+          const av = a.subscription?.current_period_end ?? '';
+          const bv = b.subscription?.current_period_end ?? '';
+          return av.localeCompare(bv) * direction;
+        }
+        default:
+          return a.organisation.name.localeCompare(b.organisation.name) * direction;
+      }
+    });
+  }, [rows, search, plan, status, sort, facts, planOf]);
+
+  const columns = useMemo<DataTableColumn<Row, SubSortKey>[]>(
     () => [
       {
         key: 'organisation',
         label: 'Organisation',
-        width: 'w-[34%]',
+        width: 'w-[18%]',
+        sortable: true,
         cell: ({ organisation }) => (
-          <Link
-            to={`/admin/organisations/${organisation.id}`}
-            className="block min-w-0 hover:underline"
-          >
-            <p className="truncate font-medium text-content dark:text-content-dark">
+          <Link to={`/admin/organisations/${organisation.id}`} className="block min-w-0">
+            <span className="block truncate font-medium text-primary hover:underline">
               {organisation.name}
-            </p>
-            <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
+            </span>
+            <span className="block truncate font-mono text-xs text-content-muted dark:text-content-muted-dark">
               {organisation.slug}
-            </p>
+            </span>
           </Link>
         ),
       },
       {
         key: 'plan',
         label: 'Plan',
-        width: 'w-[18%]',
-        cell: ({ organisation, subscription }) => (
-          <span className="capitalize">{subscription?.plan ?? organisation.plan}</span>
-        ),
+        width: 'w-[10%]',
+        sortable: true,
+        cell: (row) => <Badge tone="neutral">{humaniseKey(planOf(row))}</Badge>,
       },
       {
         key: 'status',
-        label: 'Subscription',
-        width: 'w-[20%]',
+        label: 'Status',
+        width: 'w-[10%]',
+        sortable: true,
         cell: ({ subscription }) =>
           subscription ? (
-            <Badge tone={toneFor(subscription.status)}>{subscription.status}</Badge>
+            <Badge tone={toneFor(subscription.status)} dot>
+              {humaniseKey(subscription.status)}
+            </Badge>
           ) : (
             <span className="text-content-muted dark:text-content-muted-dark">
               No record
@@ -133,84 +253,226 @@ export function AdminSubscriptionsPage(): JSX.Element {
           ),
       },
       {
-        key: 'account',
-        label: 'Account',
-        width: 'w-[14%]',
-        cell: ({ organisation }) => (
-          <Badge tone={organisation.status === 'active' ? 'success' : 'warning'}>
-            {organisation.status}
-          </Badge>
-        ),
+        key: 'plan',
+        label: 'Cycle',
+        width: 'w-[8%]',
+        cell: (row) => facts(row).cycle,
       },
       {
-        key: 'renews',
-        label: 'Period ends',
-        width: 'w-[14%]',
-        cell: ({ subscription }) => (
-          <span className="whitespace-nowrap text-content-muted dark:text-content-muted-dark">
-            {subscription?.current_period_end
-              ? new Date(subscription.current_period_end).toLocaleDateString('en-GB')
-              : '—'}
+        key: 'value',
+        label: 'Value',
+        width: 'w-[9%]',
+        numeric: true,
+        sortable: true,
+        cell: (row) => {
+          const { value } = facts(row);
+          return value === null ? '—' : `£${value.toLocaleString('en-GB')}`;
+        },
+      },
+      {
+        key: 'period',
+        label: 'Renews',
+        width: 'w-[11%]',
+        sortable: true,
+        cell: ({ subscription }) => {
+          const end = subscription?.current_period_end;
+          if (!end) return <span className="text-content-muted">—</span>;
+          const days = daysUntil(end, new Date());
+          return (
+            <span
+              className={
+                days !== null && days < 0
+                  ? 'whitespace-nowrap text-warning'
+                  : 'whitespace-nowrap text-content-muted dark:text-content-muted-dark'
+              }
+            >
+              {new Date(end).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'status',
+        label: 'Payment',
+        width: 'w-[10%]',
+        cell: (row) => {
+          const { payment } = facts(row);
+          return (
+            <Badge tone={PAYMENT_TONE[payment]} dot>
+              {humaniseKey(payment)}
+            </Badge>
+          );
+        },
+      },
+      {
+        key: 'usage',
+        label: 'Usage',
+        width: 'w-[7%]',
+        numeric: true,
+        sortable: true,
+        cell: (row) => `${facts(row).usage}%`,
+      },
+      {
+        key: 'organisation',
+        label: 'Actions',
+        width: 'w-[17%]',
+        align: 'right',
+        cell: ({ organisation }) => (
+          <span className="flex justify-end gap-1.5">
+            {/* Both lead to the organisation, where a plan change is a
+                confirmed write with the consequences beside it. Nothing on this
+                deployment can price a plan or apply a discount, so acting from
+                the row would be a button that cannot finish. */}
+            <Link
+              to={`/admin/organisations/${organisation.id}`}
+              className="whitespace-nowrap rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+            >
+              Change plan
+            </Link>
+            <span
+              title="No pricing exists to discount — see the note below the table"
+              className="cursor-not-allowed whitespace-nowrap rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
+            >
+              Discount
+            </span>
           </span>
         ),
       },
     ],
-    [],
+    [planOf, facts],
   );
 
-  const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+  const exportCsv = useCallback(() => {
+    downloadCsv(`subscriptions_${new Date().toISOString().slice(0, 10)}`, visible, [
+      { label: 'Organisation', value: (r) => r.organisation.name },
+      { label: 'Slug', value: (r) => r.organisation.slug },
+      { label: 'Plan', value: (r) => planOf(r) },
+      { label: 'Subscription status', value: (r) => r.subscription?.status ?? 'none' },
+      { label: 'Account status', value: (r) => r.organisation.status },
+      { label: 'Provider', value: (r) => r.subscription?.provider ?? '' },
+      { label: 'Period ends', value: (r) => r.subscription?.current_period_end ?? '' },
+    ]);
+  }, [visible, planOf]);
 
   return (
     <AdminPage
       title="Subscriptions"
-      description="Contracted plan state for every organisation on this deployment."
+      description="Every customer subscription record, its plan, value and payment state."
+      action={
+        <Button variant="secondary" onClick={exportCsv} disabled={visible.length === 0}>
+          <Download size={15} aria-hidden="true" />
+          Export
+        </Button>
+      }
     >
       {failed ? (
         <AdminError onRetry={retry} />
-      ) : !rows ? (
+      ) : !rows || !stats ? (
         <AdminLoading variant="tiles" rows={4} />
       ) : (
-        <div className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-4">
+          <TileGrid>
             <StatTile
-              label="Organisations"
-              value={stats.tenants}
-              hint={`${stats.withRecord} with a subscription record`}
+              label="MRR"
+              value={DEMO_MRR}
+              hint={<span className="font-semibold text-success">{DEMO_MRR_CHANGE}</span>}
+              chart={<Sparkline values={DEMO_REVENUE_TREND} colour="#1EA06B" />}
             />
-            <StatTile label="Active" value={stats.active} />
-            <StatTile label="Trialing" value={stats.trialing} />
+            <StatTile label="ARR" value={DEMO_ARR_SHORT} hint="run rate" />
+            <StatTile
+              label="Active subscriptions"
+              value={DEMO_ACTIVE_SUBSCRIPTIONS.toLocaleString('en-GB')}
+            />
+            <StatTile label="Trials" value={DEMO_TRIALS} hint={DEMO_TRIALS_HINT} />
             <StatTile
               label="Past due"
-              value={stats.pastDue}
-              hint={stats.pastDue === 0 ? 'None' : 'Needs attention'}
+              value={DEMO_PAST_DUE}
+              hint={
+                <span className="font-semibold text-danger">{DEMO_PAST_DUE_HINT}</span>
+              }
             />
-          </div>
+            <StatTile
+              label="Churn rate"
+              value={DEMO_CHURN_RATE}
+              hint={
+                <>
+                  <span className="font-semibold text-success">{DEMO_CHURN_CHANGE}</span>{' '}
+                  vs July
+                </>
+              }
+            />
+          </TileGrid>
 
-          <Card className="border-warning/30 bg-warning/5">
-            <h2 className="mb-1 font-semibold text-content dark:text-content-dark">
-              Revenue reporting is not built
-            </h2>
-            <p className="text-sm text-content-muted dark:text-content-muted-dark">
-              No payment provider is integrated, so there is no invoice, payment or amount
-              anywhere in the schema — <code>subscriptions</code> carries plan state only,
-              and no plan carries a price. Monthly recurring revenue, churn and
-              outstanding balances are therefore not shown rather than estimated.
+          <Callout tone="warning" title="Value, payment state and usage are placeholder">
+            <p>
+              <code>subscriptions</code> records a plan, a status and a period end and
+              nothing else — no amount, no currency, no billing interval — and no payment
+              provider is connected. MRR, ARR, churn, the Value and Payment columns and
+              the Usage percentage are demonstration figures from{' '}
+              <code>src/lib/adminOverviewDemo.ts</code>, not measurements.
             </p>
-            <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
-              Most organisations below will show “no record”: nothing writes to{' '}
-              <code>subscriptions</code> today either, so the plan shown falls back to{' '}
-              <code>organisations.plan</code>, which is chosen at sign-up and is not a
-              billing record.
+            <p>
+              Real on this screen: which organisation is on which plan, its subscription
+              status, its account status, and when the recorded period ends. Most rows
+              show “no record”, because nothing writes to <code>subscriptions</code> yet
+              either — the plan then falls back to <code>organisations.plan</code>, chosen
+              at sign-up.
             </p>
-          </Card>
+          </Callout>
 
-          <Card className="overflow-hidden p-0">
+          <Card className="p-0">
+            <div className="flex flex-wrap items-center gap-2 border-b border-divider p-3 dark:border-divider-dark">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search organisation…"
+                aria-label="Search subscriptions"
+                className="max-w-xs"
+              />
+              <Select
+                value={plan}
+                onChange={(e) => setPlan(e.target.value)}
+                aria-label="Filter by plan"
+                className="w-auto"
+              >
+                <option value="">All plans</option>
+                {stats.plans.map((p) => (
+                  <option key={p} value={p}>
+                    {humaniseKey(p)}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                aria-label="Filter by subscription status"
+                className="w-auto"
+              >
+                <option value="">Any subscription state</option>
+                {stats.statuses.map((s) => (
+                  <option key={s} value={s}>
+                    {humaniseKey(s)}
+                  </option>
+                ))}
+                <option value="none">No record</option>
+              </Select>
+              <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                {visible.length} of {stats.tenants}
+              </span>
+            </div>
+
             <DataTable
               caption="Subscription state by organisation"
               columns={columns}
-              rows={rows}
+              rows={visible}
               rowKey={({ organisation }) => organisation.id}
-              emptyMessage="No organisations on this deployment yet."
+              sort={sort}
+              onSortChange={setSort}
+              emptyMessage="No organisation matches these filters."
             />
           </Card>
         </div>

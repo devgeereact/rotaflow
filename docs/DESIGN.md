@@ -32,18 +32,20 @@ one with a `dark:` variant using the dark column, e.g.
 
 ### Colour — brand & neutrals
 
-| Token               | Tailwind class                                              | Light hex | Dark hex  | Use                                                                                    |
-| ------------------- | ----------------------------------------------------------- | --------- | --------- | -------------------------------------------------------------------------------------- |
-| Background (canvas) | `bg-background` / `dark:bg-background-dark`                 | `#F5F7FA` | `#0B1220` | App canvas, behind cards                                                               |
-| Surface (default)   | `bg-surface` / `dark:bg-surface-dark`                       | `#FFFFFF` | `#111A2E` | Cards, sheets, panels, rota cells                                                      |
-| Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#FAFBFC` | `#15203A` | Nested panels, hover fills, sidebar                                                    |
-| Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#E3E6EA` | `#22304D` | Card/control outlines                                                                  |
-| Divider             | `border-divider` / `dark:border-divider-dark`               | `#F2F4F6` | `#1B2740` | Subtle in-list separators (lighter than border)                                        |
-| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0` | `#3B6FE0` | Brand, CTAs, active state, links                                                       |
-| Primary foreground  | `text-primary-fg`                                           | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid primary fill                                                     |
-| Secondary           | `text-secondary`                                            | `#6B7280` | `#94A3B8` | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name) |
-| Text primary        | `text-content` / `dark:text-content-dark`                   | `#16191F` | `#F8FAFC` | Headings, body                                                                         |
-| Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#6B7280` | `#94A3B8` | Captions, hints, secondary text                                                        |
+| Token               | Tailwind class                                              | Light hex | Dark hex  | Use                                                                                     |
+| ------------------- | ----------------------------------------------------------- | --------- | --------- | --------------------------------------------------------------------------------------- |
+| Background (canvas) | `bg-background` / `dark:bg-background-dark`                 | `#F5F7FA` | `#0B1220` | App canvas, behind cards                                                                |
+| Surface (default)   | `bg-surface` / `dark:bg-surface-dark`                       | `#FFFFFF` | `#111A2E` | Cards, sheets, panels, rota cells                                                       |
+| Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#FAFBFC` | `#15203A` | Nested panels, hover fills, sidebar                                                     |
+| Surface rail        | `bg-surface-rail` / `dark:bg-surface-rail-dark`             | `#FAFBFC` | `#0E1729` | Navigation rail. Light matches `surface-subtle`; dark deliberately does not — see below |
+| Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#E3E6EA` | `#22304D` | Card/control outlines                                                                   |
+| Divider             | `border-divider` / `dark:border-divider-dark`               | `#F2F4F6` | `#1B2740` | Subtle in-list separators (lighter than border)                                         |
+| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0` | `#3B6FE0` | Brand, CTAs, active state, links                                                        |
+| Primary foreground  | `text-primary-fg`                                           | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid primary fill                                                      |
+| Primary wash        | `bg-primary-wash` / `dark:bg-primary-wash-dark`             | `#EEF3FD` | `#182848` | Hovered/selected rows and nav items — **not** `primary/10`, see below                   |
+| Secondary           | `text-secondary`                                            | `#6B7280` | `#94A3B8` | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name)  |
+| Text primary        | `text-content` / `dark:text-content-dark`                   | `#16191F` | `#F8FAFC` | Headings, body                                                                          |
+| Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#6B7280` | `#94A3B8` | Captions, hints, secondary text                                                         |
 
 ### Colour — semantic (operational status)
 
@@ -57,6 +59,29 @@ one with a `dark:` variant using the dark column, e.g.
 Same hex in both themes — these need to stay recognisable regardless of mode.
 Status colours encode rota state — **always pair them with an icon or text
 label**, never colour alone (accessibility + colour blindness).
+
+#### Washes — the surface a status sits on
+
+| Token        | Tailwind class                                  | Light     | Dark      |
+| ------------ | ----------------------------------------------- | --------- | --------- |
+| Valid wash   | `bg-success-wash` / `dark:bg-success-wash-dark` | `#E7F5EE` | `#102A21` |
+| Warning wash | `bg-warning-wash` / `dark:bg-warning-wash-dark` | `#FBF2E1` | `#2C2416` |
+| Danger wash  | `bg-danger-wash` / `dark:bg-danger-wash-dark`   | `#FAEAE7` | `#2E1A17` |
+| Info wash    | `bg-info-wash` / `dark:bg-info-wash-dark`       | `#E8F2FA` | `#12253A` |
+
+**Use these, never `success/10`.** An alpha of the solid hue lands on a
+different colour over `surface` than it does over `background`, so a status pill
+drifted every time it moved between a card and the canvas — and the same pill in
+a table row, a callout and a feed read as three shades. The washes are opaque,
+so a pill is identical wherever it is placed. The dark values are separate
+sampled colours, not inversions: a light wash over `surface-dark` blows out.
+
+Pair a wash with its solid token as the ink (`bg-danger-wash text-danger`), and
+add `ring-1 ring-inset ring-<token>/30` where the chip needs an edge.
+
+Both these and `surface-rail` / `primary-wash` above come from the platform
+console reference, `docs/PLATFORM_CONSOLE.html` — the interactive artifact the
+`/admin/*` rebuild is being matched against, screen by screen.
 
 ### Colour — shift type palette (8)
 
@@ -99,8 +124,14 @@ times, hours, and payroll figures so columns align.
 
 - Base unit = 4px (Tailwind default: `4px·8px·12px·16px·24px·32px·48px·64px` =
   `1·2·3·4·6·8·12·16`). Prefer `gap-*` / `space-y-*`.
-- Radii: cards `rounded-2xl`, controls `rounded-xl`, pills/status badges/avatars
-  `rounded-full`. Rota cells stay tighter (`rounded-lg`) for density.
+- Radii: **one value for the whole product — `0.5rem` (8px)** (owner's decision,
+  2026-08-05). Every named size token resolves to it, so `rounded-sm`,
+  `rounded-lg` and `rounded-2xl` are interchangeable; **prefer `rounded-lg`** in
+  new code. The aliases exist only so the ~350 existing usages did not have to be
+  rewritten to say the same thing. Do not add arbitrary radii
+  (`rounded-[10px]`) — there were four, and they have been folded in.
+  `rounded-full` is **not** covered by this: it is a shape, not a radius. Avatars,
+  status dots and pills stay round.
 - Lean on `border-surface-border` + subtle surface contrast over heavy shadows.
 
 ### Shadows (elevation)

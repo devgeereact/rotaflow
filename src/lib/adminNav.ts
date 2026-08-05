@@ -1,17 +1,20 @@
 import {
   Activity,
+  AlertTriangle,
+  Bell,
   BookOpen,
   Building2,
   CreditCard,
-  DatabaseZap,
   Flag,
   KeyRound,
   LayoutDashboard,
   LifeBuoy,
   MessageCircleQuestion,
+  Plug,
   Receipt,
   ScrollText,
   Settings,
+  ShieldCheck,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -45,32 +48,54 @@ export interface AdminNavItem {
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: 'Overview', icon: LayoutDashboard, to: '/admin', end: true },
   { label: 'Organisations', icon: Building2, to: '/admin/organisations' },
-  { label: 'Platform users', icon: Users, to: '/admin/users' },
+  { label: 'Users', icon: Users, to: '/admin/users' },
   {
     label: 'Subscriptions',
-    icon: Receipt,
+    icon: CreditCard,
     to: '/admin/subscriptions',
     roles: ['platform_owner', 'platform_admin', 'platform_finance'],
   },
   {
     label: 'Billing',
-    icon: CreditCard,
+    icon: Receipt,
     to: '/admin/billing',
     roles: ['platform_owner', 'platform_admin', 'platform_finance'],
   },
-  { label: 'Support', icon: LifeBuoy, to: '/admin/support' },
-  { label: 'Support access', icon: KeyRound, to: '/admin/support-access' },
-  { label: 'Platform health', icon: Activity, to: '/admin/platform-health' },
-  { label: 'GDPR & data', icon: DatabaseZap, to: '/admin/gdpr' },
-  { label: 'Audit', icon: ScrollText, to: '/admin/audit' },
+  { label: 'Support Centre', icon: LifeBuoy, to: '/admin/support' },
+  { label: 'Support Access', icon: KeyRound, to: '/admin/support-access' },
+  // Platform Health is deliberately NOT a primary entry. It and the secondary
+  // "System Status" link pointed at the same route, so the console offered two
+  // names for one screen and a reader had to discover they were the same thing.
+  // System Status is the name people already use for it, so that is the one
+  // kept — the route is unchanged, so every existing link still resolves.
+  // Placeholder register, and the screen says so above the table. It is in the
+  // nav anyway because the decision it exists to force — who declares, who
+  // owns, and whether anyone outside this console may read it — is one nobody
+  // makes while the screen is invisible.
+  { label: 'Incidents', icon: AlertTriangle, to: '/admin/incidents' },
+  { label: 'Integrations', icon: Plug, to: '/admin/integrations' },
   {
-    label: 'Feature flags',
+    label: 'Notifications',
+    icon: Bell,
+    to: '/admin/notifications',
+    roles: ['platform_owner', 'platform_admin'],
+  },
+  { label: 'Audit Logs', icon: ScrollText, to: '/admin/audit' },
+  {
+    label: 'Feature Flags',
     icon: Flag,
     to: '/admin/feature-flags',
     roles: ['platform_owner', 'platform_admin'],
   },
+  // Deliberately unrestricted, unlike the console reference, which lists GDPR
+  // as owner/admin only. `/admin/gdpr` carries no `RequirePlatformRole` in the
+  // route table, and hiding a link whose route still renders when typed is a
+  // decoration rather than a permission. The narrowing lands with the screen
+  // itself, where the nav gate, the route gate and the table's
+  // `has_platform_role(...)` policy can be changed together.
+  { label: 'GDPR & Data', icon: ShieldCheck, to: '/admin/gdpr' },
   {
-    label: 'Platform settings',
+    label: 'Platform Settings',
     icon: Settings,
     to: '/admin/settings',
     roles: ['platform_owner', 'platform_admin'],
@@ -90,7 +115,9 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
  */
 export const ADMIN_SECONDARY_NAV: readonly AdminNavItem[] = [
   { label: 'Documentation', icon: BookOpen, to: '/resources' },
-  { label: 'Platform support', icon: MessageCircleQuestion, to: '/contact' },
+  // The only way into the health screen. See the note in `ADMIN_NAV`.
+  { label: 'System Status', icon: Activity, to: '/admin/platform-health' },
+  { label: 'Platform Support', icon: MessageCircleQuestion, to: '/contact' },
 ] as const;
 
 /**

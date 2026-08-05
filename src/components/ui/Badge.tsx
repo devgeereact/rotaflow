@@ -14,45 +14,68 @@ export type BadgeTone =
 
 interface BadgeProps {
   tone?: BadgeTone;
+  /**
+   * Leading status dot, as the platform console reference draws it.
+   *
+   * Off by default: the org app also uses this component for *type* chips
+   * (shift types, location types, plan names), and a dot on those reads as a
+   * state they do not have. Turn it on where the chip really is a status.
+   */
+  dot?: boolean;
   children: ReactNode;
   className?: string;
 }
 
+/**
+ * Opaque washes, not `success/10` — see docs/DESIGN.md §2. The alpha versions
+ * these replace resolved against whatever sat behind them, so the same pill
+ * rendered as three different shades across a card, a table row and the canvas.
+ */
 const TONES: Record<BadgeTone, string> = {
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/15 text-warning',
-  danger: 'bg-danger/10 text-danger',
-  info: 'bg-info/10 text-info',
-  primary: 'bg-primary/10 text-primary',
+  success: 'bg-success-wash text-success dark:bg-success-wash-dark',
+  warning: 'bg-warning-wash text-warning dark:bg-warning-wash-dark',
+  danger: 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
+  info: 'bg-info-wash text-info dark:bg-info-wash-dark',
+  primary: 'bg-primary-wash text-primary dark:bg-primary-wash-dark',
   // Location / department type chips (design/Locations-Management.png,
   // design/Location-department.png) run across the shift palette, which is the
-  // only token set with enough distinct hues for org-defined type lists.
+  // only token set with enough distinct hues for org-defined type lists. These
+  // keep an alpha tint: the shift palette has no wash pair, and inventing eight
+  // more tokens for chips that are already paired with a text label is not
+  // worth the config.
   violet: 'bg-shift-violet/15 text-shift-violet',
   rose: 'bg-shift-rose/15 text-shift-rose',
   teal: 'bg-shift-teal/15 text-shift-teal',
   neutral:
-    'bg-divider text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark',
+    'border border-surface-border bg-surface-subtle text-content-muted dark:border-surface-border-dark dark:bg-surface-subtle-dark dark:text-content-muted-dark',
 };
 
 /**
  * Small status pill — "Published", "Live", "Pending" and the like.
  *
  * Status is never colour alone (docs/DESIGN.md §5): callers pass a label, and
- * an icon where the reference shows one.
+ * an icon or `dot` where the reference shows one.
  */
 export function Badge({
   tone = 'neutral',
+  dot = false,
   children,
   className,
 }: BadgeProps): JSX.Element {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-[3px] text-[0.72rem] font-semibold',
         TONES[tone],
         className,
       )}
     >
+      {dot && (
+        <span
+          aria-hidden="true"
+          className="h-1.5 w-1.5 shrink-0 rounded-full bg-current"
+        />
+      )}
       {children}
     </span>
   );

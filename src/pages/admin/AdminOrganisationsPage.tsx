@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Download, Plus, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { StatTile } from '@/components/ui/StatTile';
+import { TileGrid } from '@/components/ui/TileGrid';
 import {
   DataTable,
   type DataTableColumn,
@@ -14,23 +20,52 @@ import {
   AdminPage,
 } from '@/components/admin/AdminPage';
 import {
+  countLocationsByOrg,
   countMembershipsByOrg,
   listAllOrganisations,
   listAllSubscriptions,
 } from '@/services/platformService';
+import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
+import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
+import { downloadCsv } from '@/lib/csv';
+import {
+  demoOrgFacts,
+  DEMO_ORGS_AT_RISK,
+  DEMO_ORGS_AT_RISK_HINT,
+  DEMO_ORGS_NEW_CHANGE,
+  DEMO_ORGS_TRIAL,
+  DEMO_ORGS_TRIAL_HINT,
+} from '@/lib/adminOverviewDemo';
 import { reportError } from '@/lib/sentry';
-import type { Organisation, Subscription } from '@/types';
+import type { Organisation, OrganisationStatus, Subscription } from '@/types';
 
-type OrgSortKey = 'organisation' | 'members' | 'plan' | 'created';
+type OrgSortKey =
+  | 'organisation'
+  | 'industry'
+  | 'members'
+  | 'locations'
+  | 'plan'
+  | 'status'
+  | 'usage'
+  | 'activity';
+
+const STATUS_TONE: Record<OrganisationStatus, 'success' | 'warning' | 'neutral'> = {
+  active: 'success',
+  suspended: 'warning',
+  archived: 'neutral',
+};
 
 /** `/admin/organisations` — NEW_STRUCTURE §34's tenant management. */
 export function AdminOrganisationsPage(): JSX.Element {
   const [organisations, setOrganisations] = useState<Organisation[] | null>(null);
   const [members, setMembers] = useState<Map<string, number>>(new Map());
+  const [sites, setSites] = useState<Map<string, number>>(new Map());
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [plan, setPlan] = useState('');
   const [sort, setSort] = useState<DataTableSort<OrgSortKey> | null>(null);
 
   useEffect(() => {
@@ -39,14 +74,16 @@ export function AdminOrganisationsPage(): JSX.Element {
     setOrganisations(null);
     void (async () => {
       try {
-        const [orgs, counts, subs] = await Promise.all([
+        const [orgs, counts, siteCounts, subs] = await Promise.all([
           listAllOrganisations(),
           countMembershipsByOrg(),
+          countLocationsByOrg(),
           listAllSubscriptions(),
         ]);
         if (!active) return;
         setOrganisations(orgs);
         setMembers(counts);
+        setSites(siteCounts);
         setSubscriptions(subs);
       } catch (err) {
         if (!active) return;
@@ -59,20 +96,55 @@ export function AdminOrganisationsPage(): JSX.Element {
     };
   }, [reloadKey]);
 
-  const planByOrg = useMemo(() => {
+  const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+  useRegisterConsoleRefresh(retry);
+
+  const subByOrg = useMemo(() => {
     const map = new Map<string, Subscription>();
     for (const sub of subscriptions) map.set(sub.org_id, sub);
     return map;
   }, [subscriptions]);
 
+  // Placeholder industry / usage / last-activity, keyed so a row keeps the same
+  // invented values as it is sorted and filtered. See `adminOverviewDemo`.
+  const facts = useCallback(
+    (org: Organisation) =>
+      demoOrgFacts(
+        org.id,
+        (organisations ?? []).findIndex((o) => o.id === org.id),
+      ),
+    [organisations],
+  );
+
+  const planOf = useCallback(
+    (org: Organisation): string => subByOrg.get(org.id)?.plan ?? org.plan,
+    [subByOrg],
+  );
+
+  const summary = useMemo(() => {
+    if (!organisations) return null;
+    const byStatus = (s: OrganisationStatus): number =>
+      organisations.filter((o) => o.status === s).length;
+    const growth = monthlyGrowth(organisations, new Date(), 1);
+    return {
+      total: organisations.length,
+      active: byStatus('active'),
+      suspended: byStatus('suspended'),
+      archived: byStatus('archived'),
+      newThisMonth: growth[0]?.created ?? 0,
+      plans: [...new Set(organisations.map((o) => planOf(o)))].sort(),
+    };
+  }, [organisations, planOf]);
+
   const visible = useMemo(() => {
     if (!organisations) return [];
     const q = search.trim().toLowerCase();
-    const filtered = q
-      ? organisations.filter(
-          (o) => o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q),
-        )
-      : organisations;
+    const filtered = organisations.filter((o) => {
+      if (status && o.status !== status) return false;
+      if (plan && planOf(o) !== plan) return false;
+      if (!q) return true;
+      return o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q);
+    });
 
     // `null` sort keeps the service's own order — newest tenant first — which
     // is the more useful default on this screen than any column.
@@ -83,13 +155,17 @@ export function AdminOrganisationsPage(): JSX.Element {
       switch (sort.key) {
         case 'members':
           return ((members.get(a.id) ?? 0) - (members.get(b.id) ?? 0)) * direction;
+        case 'locations':
+          return ((sites.get(a.id) ?? 0) - (sites.get(b.id) ?? 0)) * direction;
         case 'plan':
-          return (
-            (planByOrg.get(a.id)?.plan ?? '').localeCompare(
-              planByOrg.get(b.id)?.plan ?? '',
-            ) * direction
-          );
-        case 'created':
+          return planOf(a).localeCompare(planOf(b)) * direction;
+        case 'status':
+          return a.status.localeCompare(b.status) * direction;
+        case 'industry':
+          return facts(a).industry.localeCompare(facts(b).industry) * direction;
+        case 'usage':
+          return (facts(a).usage - facts(b).usage) * direction;
+        case 'activity':
           return (
             (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) *
             direction
@@ -98,93 +174,274 @@ export function AdminOrganisationsPage(): JSX.Element {
           return a.name.localeCompare(b.name) * direction;
       }
     });
-  }, [organisations, search, sort, members, planByOrg]);
+  }, [organisations, search, status, plan, sort, members, sites, planOf, facts]);
 
   const columns = useMemo<DataTableColumn<Organisation, OrgSortKey>[]>(
     () => [
       {
         key: 'organisation',
         label: 'Organisation',
-        width: 'w-[38%]',
+        width: 'w-[20%]',
         sortable: true,
         cell: (org) => (
-          <>
-            <p className="truncate font-medium text-content dark:text-content-dark">
-              {org.name}
-            </p>
-            <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
-              {org.slug}
-            </p>
-          </>
+          <span className="flex min-w-0 items-center gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary dark:bg-primary-wash-dark">
+              {org.name
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join('')
+                .toUpperCase()}
+            </span>
+            <span className="min-w-0">
+              <Link
+                to={`/admin/organisations/${org.id}`}
+                className="block truncate font-medium text-content hover:text-primary dark:text-content-dark"
+              >
+                {org.name}
+              </Link>
+              <span className="block truncate font-mono text-xs text-content-muted dark:text-content-muted-dark">
+                {org.slug}
+              </span>
+            </span>
+          </span>
         ),
       },
       {
-        key: 'members',
-        label: 'Members',
-        width: 'w-[16%]',
+        key: 'industry',
+        label: 'Industry',
+        width: 'w-[11%]',
         sortable: true,
-        cell: (org) => <span className="font-mono">{members.get(org.id) ?? 0}</span>,
+        cell: (org) => facts(org).industry,
       },
       {
         key: 'plan',
         label: 'Plan',
-        width: 'w-[24%]',
+        width: 'w-[9%]',
+        sortable: true,
+        cell: (org) => <Badge tone="neutral">{humaniseKey(planOf(org))}</Badge>,
+      },
+      {
+        key: 'members',
+        label: 'Users',
+        width: 'w-[6%]',
+        numeric: true,
+        sortable: true,
+        cell: (org) => members.get(org.id) ?? 0,
+      },
+      {
+        key: 'locations',
+        label: 'Sites',
+        width: 'w-[5%]',
+        numeric: true,
+        sortable: true,
+        cell: (org) => sites.get(org.id) ?? 0,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        width: 'w-[10%]',
+        sortable: true,
+        cell: (org) => (
+          <Badge tone={STATUS_TONE[org.status as OrganisationStatus] ?? 'neutral'} dot>
+            {humaniseKey(org.status)}
+          </Badge>
+        ),
+      },
+      {
+        key: 'usage',
+        label: 'Usage',
+        width: 'w-[10%]',
         sortable: true,
         cell: (org) => {
-          const sub = planByOrg.get(org.id);
-          return sub ? (
-            <Badge tone={sub.status === 'active' ? 'success' : 'warning'}>
-              {sub.plan}
-            </Badge>
-          ) : (
-            <span className="text-content-muted dark:text-content-muted-dark">
-              No subscription
+          const { usage } = facts(org);
+          return (
+            <span className="flex items-center justify-end gap-2">
+              <span className="font-mono text-xs tabular-nums">{usage}%</span>
+              <span className="block h-1.5 w-11 overflow-hidden rounded-full border border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
+                <span
+                  className={`block h-full ${usage > 90 ? 'bg-warning' : 'bg-primary'}`}
+                  style={{ width: `${usage}%` }}
+                />
+              </span>
             </span>
           );
         },
       },
       {
-        key: 'created',
-        label: 'Created',
-        width: 'w-[22%]',
+        key: 'activity',
+        label: 'Last activity',
+        width: 'w-[11%]',
         sortable: true,
         cell: (org) => (
           <span className="whitespace-nowrap text-content-muted dark:text-content-muted-dark">
-            {new Date(org.created_at).toLocaleDateString('en-GB')}
+            {facts(org).lastActivity}
+          </span>
+        ),
+      },
+      {
+        key: 'organisation',
+        label: 'Actions',
+        width: 'w-[18%]',
+        align: 'right',
+        cell: (org) => (
+          <span className="flex justify-end gap-1.5">
+            <Link
+              to={`/admin/organisations/${org.id}`}
+              className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+            >
+              View
+            </Link>
+            <Link
+              to="/admin/support-access"
+              className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+            >
+              Access
+            </Link>
+            {/* Suspend and reactivate are confirmed writes with a reason, so
+                they stay on the organisation's own page where the dialog and
+                the consequences live. This is the way in. */}
+            <Link
+              to={`/admin/organisations/${org.id}`}
+              className={`rounded-lg border px-2 py-1 text-xs font-medium ${
+                org.status === 'suspended'
+                  ? 'border-surface-border text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark'
+                  : 'border-danger/34 text-danger hover:bg-danger-wash dark:hover:bg-danger-wash-dark'
+              }`}
+            >
+              {org.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+            </Link>
           </span>
         ),
       },
     ],
-    [members, planByOrg],
+    [members, sites, planOf, facts],
   );
 
-  const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+  // Exports what is on screen, not the whole table: the filters above are the
+  // question being asked, and an export that quietly ignores them is the wrong
+  // answer to it.
+  const exportCsv = useCallback(() => {
+    downloadCsv(`organisations_${new Date().toISOString().slice(0, 10)}`, visible, [
+      { label: 'Name', value: (org) => org.name },
+      { label: 'Slug', value: (org) => org.slug },
+      { label: 'Plan', value: (org) => planOf(org) },
+      { label: 'Status', value: (org) => org.status },
+      { label: 'Members', value: (org) => members.get(org.id) ?? 0 },
+      { label: 'Sites', value: (org) => sites.get(org.id) ?? 0 },
+      { label: 'Industry', value: (org) => facts(org).industry },
+      { label: 'Usage %', value: (org) => facts(org).usage },
+      { label: 'Created', value: (org) => org.created_at },
+    ]);
+  }, [visible, members, sites, planOf, facts]);
 
   return (
     <AdminPage
       title="Organisations"
-      description="Every tenant on this deployment, with its size and billing plan."
+      description="Manage customer organisations, subscriptions, access and platform activity."
+      action={
+        <>
+          <Button variant="secondary" disabled title="Bulk import is not built">
+            <Upload size={15} aria-hidden="true" />
+            Import
+          </Button>
+          <Button variant="secondary" onClick={exportCsv} disabled={visible.length === 0}>
+            <Download size={15} aria-hidden="true" />
+            Export
+          </Button>
+          {/* Creating a tenant from the console is not built: an organisation is
+              created by its owner during onboarding, which also provisions the
+              owner membership by trigger. A console form would have to
+              reimplement that and pick an owner who has not signed up. */}
+          <Button disabled title="Organisations are created by their owner at sign-up">
+            <Plus size={15} aria-hidden="true" />
+            Add organisation
+          </Button>
+        </>
+      }
     >
       {failed ? (
         <AdminError onRetry={retry} />
-      ) : !organisations ? (
+      ) : !organisations || !summary ? (
         <AdminLoading />
       ) : organisations.length === 0 ? (
         <AdminEmpty message="No organisations have been created on this deployment yet." />
       ) : (
         <div className="space-y-4">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search organisations…"
-            aria-label="Search organisations"
-            className="max-w-sm"
-          />
+          <TileGrid>
+            <StatTile label="Total" value={summary.total.toLocaleString('en-GB')} />
+            <StatTile
+              label="Active"
+              value={summary.active.toLocaleString('en-GB')}
+              hint={`${((summary.active / summary.total) * 100).toFixed(1)}%`}
+            />
+            <StatTile label="Trial" value={DEMO_ORGS_TRIAL} hint={DEMO_ORGS_TRIAL_HINT} />
+            <StatTile
+              label="Suspended"
+              value={summary.suspended}
+              hint={
+                summary.suspended ? (
+                  <span className="font-semibold text-danger">payment or abuse</span>
+                ) : (
+                  'None'
+                )
+              }
+            />
+            <StatTile
+              label="At risk"
+              value={DEMO_ORGS_AT_RISK}
+              hint={DEMO_ORGS_AT_RISK_HINT}
+            />
+            <StatTile
+              label="New this month"
+              value={summary.newThisMonth}
+              hint={
+                <span className="font-semibold text-success">{DEMO_ORGS_NEW_CHANGE}</span>
+              }
+            />
+          </TileGrid>
 
-          {/* The table scrolls inside its own container so the page never
-              does — the pattern §27 asks for on wide data. `DataTable` owns
-              that, along with the sort affordance and the empty row. */}
-          <Card className="overflow-hidden p-0">
+          <Card className="p-0">
+            <div className="flex flex-wrap items-center gap-2 border-b border-divider p-3 dark:border-divider-dark">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or slug…"
+                aria-label="Search organisations"
+                className="max-w-xs"
+              />
+              <Select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                aria-label="Filter by status"
+                className="w-auto"
+              >
+                <option value="">Any status</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="archived">Archived</option>
+              </Select>
+              <Select
+                value={plan}
+                onChange={(e) => setPlan(e.target.value)}
+                aria-label="Filter by plan"
+                className="w-auto"
+              >
+                <option value="">All plans</option>
+                {summary.plans.map((p) => (
+                  <option key={p} value={p}>
+                    {humaniseKey(p)}
+                  </option>
+                ))}
+              </Select>
+              <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                {visible.length} of {summary.total}
+              </span>
+            </div>
+
+            {/* The table scrolls inside its own container so the page never
+                does — the pattern §27 asks for on wide data. `DataTable` owns
+                that, along with the sort affordance and the empty row. */}
             <DataTable
               caption="Organisations on this deployment"
               columns={columns}
@@ -192,7 +449,7 @@ export function AdminOrganisationsPage(): JSX.Element {
               rowKey={(org) => org.id}
               sort={sort}
               onSortChange={setSort}
-              emptyMessage="No organisation matches that search."
+              emptyMessage="No organisation matches these filters."
             />
           </Card>
         </div>

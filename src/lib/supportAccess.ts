@@ -121,3 +121,76 @@ export function validateRequest(input: {
   }
   return errors;
 }
+
+export interface SupportAccessStats {
+  /** Open right now. */
+  active: number;
+  /** Granted since the first of the current month. */
+  grantedThisMonth: number;
+  /** Median minutes from grant to end, over sessions that have ended. */
+  medianMinutes: number | null;
+  /** Ended by a person rather than by the clock. */
+  revokedEarly: number;
+  /** Ran to expiry — indistinguishable from "opened and forgotten". */
+  expired: number;
+}
+
+/**
+ * Summarise the session log for `/admin/support-access`.
+ *
+ * All of these are computed rather than stored: the table records a grant time,
+ * an expiry and an optional revocation, and everything an administrator wants
+ * to know about their own use of the door falls out of those three.
+ *
+ * **Median, not mean.** One four-hour investigation among twenty five-minute
+ * look-ups drags a mean past both, and the number is read as "how long does a
+ * support session usually last". The median answers that; the mean answers a
+ * question nobody asked.
+ *
+ * "Expired unused" is deliberately named "expired" here: nothing records
+ * whether anything was actually read during a session, so a session that ran to
+ * its expiry is indistinguishable from one that was opened and forgotten. The
+ * screen must not claim to know which.
+ */
+export function summariseSessions(
+  sessions: readonly SupportAccessSession[],
+  now: Date,
+): SupportAccessStats {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const durations: number[] = [];
+  let active = 0;
+  let grantedThisMonth = 0;
+  let revokedEarly = 0;
+  let expired = 0;
+
+  for (const session of sessions) {
+    const granted = new Date(session.grantedAt).getTime();
+    if (Number.isFinite(granted) && granted >= monthStart) grantedThisMonth += 1;
+
+    const state = sessionStatus(session, now);
+    if (state === 'active') {
+      active += 1;
+      continue;
+    }
+    if (state === 'revoked') revokedEarly += 1;
+    if (state === 'expired') expired += 1;
+
+    const ended = session.revokedAt
+      ? new Date(session.revokedAt).getTime()
+      : new Date(session.expiresAt).getTime();
+    if (Number.isFinite(granted) && Number.isFinite(ended) && ended > granted) {
+      durations.push((ended - granted) / 60_000);
+    }
+  }
+
+  durations.sort((a, b) => a - b);
+  const mid = Math.floor(durations.length / 2);
+  const medianMinutes =
+    durations.length === 0
+      ? null
+      : durations.length % 2 === 1
+        ? Math.round(durations[mid] ?? 0)
+        : Math.round(((durations[mid - 1] ?? 0) + (durations[mid] ?? 0)) / 2);
+
+  return { active, grantedThisMonth, medianMinutes, revokedEarly, expired };
+}

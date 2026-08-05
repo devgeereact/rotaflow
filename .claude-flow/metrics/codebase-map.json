@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-08-04T21:44:05.330Z",
+  "projectRoot": "/Users/mrgee/WebstormProjects/rotaflow",
+  "structure": {
+    "hasPackageJson": true,
+    "hasTsConfig": true,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1785879845330
+}

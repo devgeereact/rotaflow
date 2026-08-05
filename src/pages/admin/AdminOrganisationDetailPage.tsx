@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Ban, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Card, Panel } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import { PanelTabs } from '@/components/ui/PanelTabs';
+import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
+import { TileGrid } from '@/components/ui/TileGrid';
+import {
+  DEMO_ORG_MRR,
+  DEMO_ORG_PROFILE,
+  DEMO_ORG_STORAGE,
+} from '@/lib/adminOverviewDemo';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { SuspendOrgModal } from '@/components/admin/SuspendOrgModal';
 import {
@@ -21,7 +28,19 @@ import {
   type OrgMemberRow,
   type OrgUsage,
 } from '@/services/platformOrgService';
+import { listSupportAccessSessions } from '@/services/supportAccessService';
+import { getOrgSmtpSettings } from '@/services/smtpSettingsService';
+import { listGdprRequests } from '@/services/gdprRequestService';
+import {
+  formatRemaining,
+  millisecondsRemaining,
+  sessionStatus,
+  SCOPE_LABELS,
+  type SupportAccessSession,
+} from '@/lib/supportAccess';
+import type { GdprRequest } from '@/lib/gdprRequests';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
@@ -31,18 +50,37 @@ import type {
   Location,
   Organisation,
   OrganisationStatus,
+  OrgSmtpSettingsSafe,
   Subscription,
 } from '@/types';
 
-type Tab = 'overview' | 'users' | 'locations' | 'subscription' | 'usage' | 'audit';
+type Tab =
+  | 'overview'
+  | 'users'
+  | 'locations'
+  | 'subscription'
+  | 'usage'
+  | 'support'
+  | 'integrations'
+  | 'audit'
+  | 'data';
 
+/**
+ * The console reference lists ten tabs. Nine are here; the tenth, Activity, is
+ * not — a tenant activity timeline would have to come from `audit_logs`, which
+ * still has essentially one writer, so it would show a couple of rows and imply
+ * nothing else had happened. Stated on the Data tab rather than shown empty.
+ */
 const TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'users', label: 'Users' },
   { value: 'locations', label: 'Locations' },
   { value: 'subscription', label: 'Subscription' },
   { value: 'usage', label: 'Usage' },
+  { value: 'support', label: 'Support' },
+  { value: 'integrations', label: 'Integrations' },
   { value: 'audit', label: 'Audit' },
+  { value: 'data', label: 'Data' },
 ] as const satisfies readonly { value: Tab; label: string }[];
 
 const STATUS_TONE = {
@@ -59,6 +97,9 @@ interface Detail {
   subscription: Subscription | null;
   usage: OrgUsage;
   audit: AuditLog[];
+  sessions: SupportAccessSession[];
+  smtp: OrgSmtpSettingsSafe | null;
+  gdpr: GdprRequest[];
 }
 
 /**
@@ -78,6 +119,22 @@ interface Detail {
  * because a control that looks like a lockout and is not one is worse than no
  * control at all.
  */
+/** One `dt`/`dd` pair in the detail panels. */
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}): JSX.Element {
+  return (
+    <>
+      <dt className="text-content-muted dark:text-content-muted-dark">{label}</dt>
+      <dd className="font-medium text-content dark:text-content-dark">{children}</dd>
+    </>
+  );
+}
+
 export function AdminOrganisationDetailPage(): JSX.Element {
   const { organisationId = '' } = useParams();
   const { canManagePlatformConfig } = usePermissions();
@@ -88,7 +145,24 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   const [failed, setFailed] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tab, setTab] = useState<Tab>('overview');
+  // In the URL rather than in component state, so a link can point at a
+  // particular tab — "see the audit tab on this tenant" is a message people
+  // send, and it was unlinkable before.
+  const [params, setParams] = useSearchParams();
+  const requestedTab = params.get('tab');
+  const tab: Tab = TABS.some((t) => t.value === requestedTab)
+    ? (requestedTab as Tab)
+    : 'overview';
+  const setTab = useCallback(
+    (next: Tab) => {
+      setParams((prev) => {
+        const copy = new URLSearchParams(prev);
+        copy.set('tab', next);
+        return copy;
+      });
+    },
+    [setParams],
+  );
   const [busy, setBusy] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
 
@@ -105,15 +179,34 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           setNotFound(true);
           return;
         }
-        const [members, locations, departments, subscription, usage, audit] =
-          await Promise.all([
-            listOrgMembers(organisationId),
-            listOrgLocations(organisationId),
-            listOrgDepartments(organisationId),
-            getOrgSubscription(organisationId),
-            getOrgUsage(organisationId),
-            listOrgAuditLogs(organisationId),
-          ]);
+        const [
+          members,
+          locations,
+          departments,
+          subscription,
+          usage,
+          audit,
+          sessions,
+          smtp,
+          gdpr,
+        ] = await Promise.all([
+          listOrgMembers(organisationId),
+          listOrgLocations(organisationId),
+          listOrgDepartments(organisationId),
+          getOrgSubscription(organisationId),
+          getOrgUsage(organisationId),
+          listOrgAuditLogs(organisationId),
+          // Filtered client-side: the sessions table is small, the console
+          // already reads it whole on the overview, and a per-org endpoint
+          // would be a third query shape over the same forty rows.
+          listSupportAccessSessions(200).then((all) =>
+            all.filter((s) => s.orgId === organisationId),
+          ),
+          getOrgSmtpSettings(organisationId),
+          listGdprRequests(200).then((all) =>
+            all.filter((r) => r.orgId === organisationId),
+          ),
+        ]);
         if (!active) return;
         setDetail({
           organisation,
@@ -123,6 +216,9 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           subscription,
           usage,
           audit,
+          sessions,
+          smtp,
+          gdpr,
         });
       } catch (err) {
         if (!active) return;
@@ -136,6 +232,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   }, [organisationId, reloadKey]);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+  useRegisterConsoleRefresh(retry);
 
   const applyStatus = useCallback(
     async (next: OrganisationStatus, reason?: string): Promise<void> => {
@@ -276,11 +373,32 @@ export function AdminOrganisationDetailPage(): JSX.Element {
 
   const { organisation: org } = detail;
   const status = (org.status as OrganisationStatus) ?? 'active';
+  // The tenant's own owner, not a platform administrator — this is who a
+  // support conversation actually starts with.
+  const owner = detail.members.find((m) => m.role === 'owner') ?? null;
 
   return (
     <AdminPage
       title={org.name}
-      description={`${org.slug} · created ${new Date(org.created_at).toLocaleDateString('en-GB')}`}
+      avatar={
+        <StaffAvatar
+          firstName={org.name.split(' ')[0] ?? org.name}
+          lastName={org.name.split(' ')[1] ?? ''}
+          size="xl"
+        />
+      }
+      meta={
+        <>
+          <span className="font-mono text-xs">{org.slug}</span>
+          <span aria-hidden="true">·</span>
+          <Badge tone="neutral">{detail.subscription?.plan ?? org.plan}</Badge>
+          <Badge tone={STATUS_TONE[status]} dot>
+            {status}
+          </Badge>
+          <span aria-hidden="true">·</span>
+          <span>Created {new Date(org.created_at).toLocaleDateString('en-GB')}</span>
+        </>
+      }
       action={
         canManagePlatformConfig ? (
           status === 'active' ? (
@@ -341,31 +459,117 @@ export function AdminOrganisationDetailPage(): JSX.Element {
         />
 
         {tab === 'overview' && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile
-              label="Members"
-              value={detail.members.filter((m) => m.status === 'active').length}
-              hint={`${detail.members.length} total including invited`}
-            />
-            <StatTile
-              label="Staff records"
-              value={detail.usage.activeStaff}
-              hint={`${detail.usage.staff} including inactive`}
-            />
-            <StatTile
-              label="Locations"
-              value={detail.usage.locations}
-              hint={`${detail.usage.departments} departments`}
-            />
-            <StatTile
-              label="Plan"
-              value={detail.subscription?.plan ?? org.plan}
-              hint={
-                detail.subscription
-                  ? `Subscription ${detail.subscription.status}`
-                  : 'No subscription record'
-              }
-            />
+          <div className="space-y-4">
+            <TileGrid>
+              <StatTile
+                label="Users"
+                value={detail.members.filter((m) => m.status === 'active').length}
+                hint={`${detail.members.length} total including invited`}
+              />
+              <StatTile
+                label="Locations"
+                value={detail.usage.locations}
+                hint={`${detail.usage.departments} departments`}
+              />
+              <StatTile
+                label="Published rotas"
+                value={detail.usage.publishedRotas}
+                hint="Lifetime"
+              />
+              <StatTile
+                label="Monthly shifts"
+                value={detail.usage.shiftsThisMonth.toLocaleString('en-GB')}
+                hint="This calendar month"
+              />
+              <StatTile
+                label="Storage"
+                value={DEMO_ORG_STORAGE}
+                hint={<span className="text-warning">Placeholder</span>}
+              />
+              <StatTile
+                label="MRR"
+                value={DEMO_ORG_MRR}
+                hint={<span className="text-warning">Placeholder</span>}
+              />
+            </TileGrid>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Panel title="Organisation" bodyClassName="p-4">
+                <dl className="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-3 text-sm">
+                  <Row label="Slug">
+                    <span className="font-mono text-xs">{org.slug}</span>
+                  </Row>
+                  <Row label="Plan">
+                    <Badge tone="neutral">{detail.subscription?.plan ?? org.plan}</Badge>
+                  </Row>
+                  <Row label="Status">
+                    <Badge tone={STATUS_TONE[status]} dot>
+                      {status}
+                    </Badge>
+                  </Row>
+                  <Row label="Size">
+                    {detail.usage.activeStaff} staff · {detail.usage.locations} sites
+                  </Row>
+                  <Row label="Created">
+                    {new Date(org.created_at).toLocaleDateString('en-GB')}
+                  </Row>
+                  {/* Everything below is placeholder — `organisations` records
+                      none of it. Chipped rather than footnoted, so a reader
+                      scanning the column cannot mistake one for the other. */}
+                  {DEMO_ORG_PROFILE.map((row) => (
+                    <Row key={row.label} label={row.label}>
+                      <span className="flex flex-wrap items-center gap-2">
+                        {row.value}
+                        <Badge tone="warning">Placeholder</Badge>
+                      </span>
+                    </Row>
+                  ))}
+                </dl>
+              </Panel>
+
+              <Panel title="Primary contact" bodyClassName="p-4">
+                {owner ? (
+                  <>
+                    <dl className="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-3 text-sm">
+                      <Row label="Name">{owner.fullName ?? 'Not recorded'}</Row>
+                      <Row label="Email">
+                        <span className="font-mono text-xs">
+                          {owner.email ?? 'Not recorded'}
+                        </span>
+                      </Row>
+                      <Row label="Organisation role">
+                        <Badge tone="neutral">{owner.role}</Badge>
+                      </Row>
+                      <Row label="Joined">
+                        {new Date(owner.joinedAt).toLocaleDateString('en-GB')}
+                      </Row>
+                    </dl>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setTab('users')}
+                        title="Open the Users tab, filtered to this organisation"
+                      >
+                        View in users
+                      </Button>
+                      {owner.email && (
+                        <a
+                          href={`mailto:${owner.email}`}
+                          className="inline-flex items-center rounded-lg border border-surface-border px-3 py-1.5 text-sm font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                        >
+                          Contact owner
+                        </a>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                    No member of this organisation holds the owner role, so there is
+                    nobody to name as the primary contact.
+                  </p>
+                )}
+              </Panel>
+            </div>
           </div>
         )}
 
@@ -472,16 +676,139 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           </div>
         )}
 
+        {tab === 'support' && (
+          <div className="space-y-4">
+            <Panel
+              title="Temporary support access"
+              actions={
+                <Link
+                  to="/admin/support-access"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Request access
+                </Link>
+              }
+              flush
+            >
+              {detail.sessions.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
+                  No support session has ever been opened against this organisation.
+                </p>
+              ) : (
+                <ul>
+                  {detail.sessions.map((session) => {
+                    const state = sessionStatus(session, new Date());
+                    return (
+                      <li
+                        key={session.id}
+                        className="border-b border-divider px-4 py-3 last:border-0 dark:border-divider-dark"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            tone={
+                              state === 'active'
+                                ? 'warning'
+                                : state === 'revoked'
+                                  ? 'danger'
+                                  : 'neutral'
+                            }
+                            dot
+                          >
+                            {state}
+                          </Badge>
+                          <span className="text-sm font-medium text-content dark:text-content-dark">
+                            {session.adminName ?? 'Platform administrator'}
+                          </span>
+                          <span className="text-xs text-content-muted dark:text-content-muted-dark">
+                            {SCOPE_LABELS[session.scope]} · case {session.caseRef}
+                          </span>
+                          <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                            {state === 'active'
+                              ? formatRemaining(
+                                  millisecondsRemaining(session.expiresAt, new Date()),
+                                )
+                              : new Date(session.grantedAt).toLocaleString('en-GB')}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+                          {session.reason}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Panel>
+
+            <Panel title="This organisation's own setting">
+              <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                Support access is{' '}
+                <span className="font-semibold text-content dark:text-content-dark">
+                  {org.support_access_allowed ? 'permitted' : 'refused'}
+                </span>{' '}
+                by this organisation. A tenant can withdraw consent, and the request form
+                honours it — the toggle belongs to the customer, not to the console.
+              </p>
+            </Panel>
+          </div>
+        )}
+
+        {tab === 'integrations' && (
+          <div className="space-y-4">
+            <Panel title="Outgoing email (SMTP)">
+              {detail.smtp ? (
+                <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+                  <Field label="Host" value={detail.smtp.smtp_host} />
+                  <Field label="Port" value={String(detail.smtp.smtp_port)} />
+                  <Field label="Username" value={detail.smtp.smtp_user} />
+                  <Field label="From address" value={detail.smtp.from_email} />
+                  <Field label="From name" value={detail.smtp.from_name ?? '—'} />
+                  <Field
+                    label="Configured"
+                    value={new Date(detail.smtp.updated_at).toLocaleDateString('en-GB')}
+                  />
+                </dl>
+              ) : (
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  This organisation has not configured its own SMTP. Its mail goes out on
+                  the platform sender.
+                </p>
+              )}
+              {/* The password is not merely hidden here — the view this reads,
+                  `org_smtp_settings_safe`, omits the column, so the console
+                  cannot show it even by accident. */}
+              <p className="mt-3 text-xs text-content-muted dark:text-content-muted-dark">
+                The SMTP password is omitted at the column level by
+                <span className="font-mono"> org_smtp_settings_safe</span>. It is not
+                readable from the console.
+              </p>
+            </Panel>
+
+            <Panel title="Other integrations">
+              <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                SMTP is the only per-organisation integration this deployment has.
+                Payroll, HR, calendar and identity connectors are not built — there are no
+                tables holding a connection, a sync state or a failure count, so there is
+                nothing here to report on rather than a list of connectors showing a green
+                tick for something that does not run.
+              </p>
+            </Panel>
+          </div>
+        )}
+
         {tab === 'audit' && (
-          <Card className="p-0">
-            <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
+          <Panel title="Organisation audit trail" flush>
+            <ul>
               {detail.audit.length === 0 ? (
-                <li className="px-5 py-4 text-sm text-content-muted dark:text-content-muted-dark">
+                <li className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
                   No events recorded for this organisation yet.
                 </li>
               ) : (
                 detail.audit.map((entry) => (
-                  <li key={entry.id} className="px-5 py-3">
+                  <li
+                    key={entry.id}
+                    className="border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
+                  >
                     <p className="text-sm font-medium text-content dark:text-content-dark">
                       {entry.action}
                       {entry.entity_type ? ` · ${entry.entity_type}` : ''}
@@ -494,7 +821,86 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                 ))
               )}
             </ul>
-          </Card>
+          </Panel>
+        )}
+
+        {tab === 'data' && (
+          <div className="space-y-4">
+            <Panel
+              title="Data rights requests"
+              actions={
+                <Link
+                  to="/admin/gdpr"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  All requests
+                </Link>
+              }
+              flush
+            >
+              {detail.gdpr.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
+                  No export, deletion or correction request has been raised for this
+                  organisation.
+                </p>
+              ) : (
+                <ul>
+                  {detail.gdpr.map((request) => (
+                    <li
+                      key={request.id}
+                      className="flex flex-wrap items-center gap-2 border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
+                    >
+                      <Badge tone="neutral">{request.kind}</Badge>
+                      <span className="text-sm text-content dark:text-content-dark">
+                        {request.subjectName ?? request.subjectEmail}
+                      </span>
+                      <Badge tone={request.closedAt ? 'success' : 'warning'} dot>
+                        {request.status}
+                      </Badge>
+                      <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                        due {new Date(request.dueOn).toLocaleDateString('en-GB')}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+
+            {/* What this tab in the reference offers that this deployment does
+                not, said plainly rather than shown as a disabled button. */}
+            <Panel title="Not available here">
+              <ul className="space-y-3 text-sm text-content-muted dark:text-content-muted-dark">
+                <li>
+                  <span className="font-semibold text-content dark:text-content-dark">
+                    Whole-organisation export.
+                  </span>{' '}
+                  Export is per data subject, through the GDPR screen. There is no
+                  tenant-wide bundle, because nothing assembles one.
+                </li>
+                <li>
+                  <span className="font-semibold text-content dark:text-content-dark">
+                    Deletion with a grace period.
+                  </span>{' '}
+                  Erasure anonymises one staff record. Deleting a tenant is a database
+                  operation, deliberately not a console button.
+                </li>
+                <li>
+                  <span className="font-semibold text-content dark:text-content-dark">
+                    Storage usage.
+                  </span>{' '}
+                  Documents are recorded as rows but no file storage is wired up, so there
+                  are no bytes to total.
+                </li>
+                <li>
+                  <span className="font-semibold text-content dark:text-content-dark">
+                    Activity timeline.
+                  </span>{' '}
+                  Rota, attendance and leave writes are not audited yet, so a timeline
+                  would show a handful of events and imply nothing else happened.
+                </li>
+              </ul>
+            </Panel>
+          </div>
         )}
       </div>
 
