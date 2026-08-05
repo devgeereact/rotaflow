@@ -5,13 +5,20 @@
 -- console reports measurements rather than an empty state on a fresh
 -- deployment or a demo environment.
 --
--- RUN IT:  paste the whole file into the Supabase SQL editor and run once,
---          or POST it to /v1/projects/<ref>/database/query. Run it as one
---          unit — it uses session-local temp functions.
+-- RUN IT:  paste the whole file into the Supabase SQL editor, POST it to
+--          /v1/projects/<ref>/database/query, or `supabase db push
+--          --include-seed`. It holds no session-local function and drops its
+--          scratch tables itself, so it survives a runner that executes one
+--          statement per transaction.
 --
 -- IDEMPOTENT BY RESET: every id is derived from a key, so re-running deletes
 -- exactly what it created and rebuilds it. Dates are relative to `now()`, so
 -- a re-run re-centres the whole history on today.
+--
+-- Each scratch table is dropped before it is created: a pooled connection can
+-- hand back a session that still holds one from an earlier run, and
+-- `create temp table` on a name that exists is a hard error rather than a
+-- no-op.
 --
 -- SAFE: it only ever writes rows whose ids it derives itself, plus invoices,
 -- integrations and announcement deliveries attached to organisations that
@@ -24,33 +31,37 @@
 
 create extension if not exists pgcrypto with schema extensions;
 
-create or replace function pg_temp.pf_uuid(p_key text)
-returns uuid language sql immutable as $$
-  select md5('rotaflow-platform-seed-v1:' || p_key)::uuid;
-$$;
-
 -- ---------------------------------------------------------------------
 -- Reset. Deleting the parents cascades to updates, deliveries and messages.
 -- ---------------------------------------------------------------------
 delete from public.incidents
- where id in (select pg_temp.pf_uuid('incident:' || i) from generate_series(1, 12) i);
+ where id in (select md5('rotaflow-platform-seed-v1:' || 'incident:' || i)::uuid from generate_series(1, 12) i);
 delete from public.support_cases
- where id in (select pg_temp.pf_uuid('case:' || i) from generate_series(1, 20) i);
+ where id in (select md5('rotaflow-platform-seed-v1:' || 'case:' || i)::uuid from generate_series(1, 20) i);
 delete from public.platform_announcements
- where id in (select pg_temp.pf_uuid('announcement:' || i) from generate_series(1, 8) i);
+ where id in (select md5('rotaflow-platform-seed-v1:' || 'announcement:' || i)::uuid from generate_series(1, 8) i);
+-- Invoice and integration ids are derived from a *pair* of keys, so the reset
+-- has to walk the same pairs. Deleting `invoice:<n>` when the insert writes
+-- `invoice:<n>:<month>` matched nothing, and the second run then collided on
+-- the primary key — the failure this shape exists to prevent.
 delete from public.invoices
- where id in (select pg_temp.pf_uuid('invoice:' || i) from generate_series(1, 200) i);
+ where id in (select md5('rotaflow-platform-seed-v1:' || format('invoice:%s:%s', n, m))::uuid
+                from generate_series(1, 50) n, generate_series(1, 12) m);
 delete from public.org_integrations
- where id in (select pg_temp.pf_uuid('orgint:' || i) from generate_series(1, 200) i);
+ where id in (select md5('rotaflow-platform-seed-v1:' || format('orgint:%s:%s', n, k))::uuid
+                from generate_series(1, 50) n,
+                     (values ('sage_payroll'), ('xero'), ('google_calendar'),
+                             ('brighthr'), ('slack')) as c(k));
 delete from public.platform_health_samples where source = 'manual';
 delete from public.background_jobs
- where id in (select pg_temp.pf_uuid('job:' || i) from generate_series(1, 60) i);
+ where id in (select md5('rotaflow-platform-seed-v1:' || 'job:' || i)::uuid from generate_series(1, 60) i);
 
 -- ---------------------------------------------------------------------
 -- Who owns things. Platform staff first, falling back to any profile, so a
 -- deployment with no platform_admins row still seeds.
 -- ---------------------------------------------------------------------
-create temp table pf_staff on commit drop as
+drop table if exists pf_staff;
+create temp table pf_staff as
 select p.id, p.full_name, row_number() over (order by a.granted_at) as n
   from public.platform_admins a
   join public.profiles p on p.id = a.user_id
@@ -63,7 +74,8 @@ select p.id, p.full_name, 1
  order by p.created_at
  limit 1;
 
-create temp table pf_org on commit drop as
+drop table if exists pf_org;
+create temp table pf_org as
 select o.id, o.name, o.plan, row_number() over (order by o.created_at) as n
   from public.organisations o
  where o.status = 'active';
@@ -115,7 +127,7 @@ insert into public.invoices
   (id, org_id, number, period_start, period_end, amount_pence, tax_pence,
    status, issued_on, due_on, paid_at, refunded_at, failure_reason, attempts, provider)
 select
-  pg_temp.pf_uuid(format('invoice:%s:%s', o.n, m)),
+  md5('rotaflow-platform-seed-v1:' || format('invoice:%s:%s', o.n, m))::uuid,
   o.id,
   format('INV-%s-%s%s', to_char(date_trunc('month', now()) - (m || ' months')::interval, 'YYYY'),
          lpad(o.n::text, 2, '0'), lpad(m::text, 2, '0')),
@@ -139,15 +151,17 @@ select
 from pf_org o
 cross join generate_series(1, 12) m
 join public.plans p on p.code = o.plan
-where exists (select 1 from public.subscriptions s where s.org_id = o.id);
+where exists (select 1 from public.subscriptions s where s.org_id = o.id)
+on conflict (id) do nothing;
 
 -- =====================================================================
 -- 4. Incidents — a year of platform history
 -- =====================================================================
+drop table if exists pf_incident;
 create temp table pf_incident (
   n int, title text, impact text, severity text, status text, service text,
   started_hours_ago numeric, detect_minutes numeric, resolve_minutes numeric, resolution text
-) on commit drop;
+);
 
 insert into pf_incident values
   (1, 'Elevated push notification failures (APNs)',
@@ -185,7 +199,7 @@ insert into public.incidents
   (id, reference, title, impact, severity, status, service,
    started_at, detected_at, resolved_at, owner_id, resolution)
 select
-  pg_temp.pf_uuid('incident:' || i.n),
+  md5('rotaflow-platform-seed-v1:' || 'incident:' || i.n)::uuid,
   'INC-' || lpad((137 + i.n)::text, 4, '0'),
   i.title, i.impact, i.severity, i.status, i.service,
   timezone('utc', now()) - (i.started_hours_ago || ' hours')::interval,
@@ -201,7 +215,7 @@ from pf_incident i;
 -- The timeline. Every incident opens with its impact statement, and a
 -- resolved one closes with its resolution — the two entries a review needs.
 insert into public.incident_updates (id, incident_id, author_id, status, body, created_at)
-select pg_temp.pf_uuid('incupd:open:' || i.n), pg_temp.pf_uuid('incident:' || i.n),
+select md5('rotaflow-platform-seed-v1:' || 'incupd:open:' || i.n)::uuid, md5('rotaflow-platform-seed-v1:' || 'incident:' || i.n)::uuid,
        (select id from pf_staff where n = ((i.n % 2) + 1) limit 1),
        'investigating', i.impact,
        timezone('utc', now()) - (i.started_hours_ago || ' hours')::interval
@@ -209,7 +223,7 @@ select pg_temp.pf_uuid('incupd:open:' || i.n), pg_temp.pf_uuid('incident:' || i.
 from pf_incident i;
 
 insert into public.incident_updates (id, incident_id, author_id, status, body, created_at)
-select pg_temp.pf_uuid('incupd:close:' || i.n), pg_temp.pf_uuid('incident:' || i.n),
+select md5('rotaflow-platform-seed-v1:' || 'incupd:close:' || i.n)::uuid, md5('rotaflow-platform-seed-v1:' || 'incident:' || i.n)::uuid,
        (select id from pf_staff where n = ((i.n % 2) + 1) limit 1),
        'resolved', i.resolution,
        timezone('utc', now()) - (i.started_hours_ago || ' hours')::interval
@@ -220,10 +234,11 @@ where i.resolve_minutes is not null;
 -- =====================================================================
 -- 5. Support cases
 -- =====================================================================
+drop table if exists pf_case;
 create temp table pf_case (
   n int, subject text, body text, category text, priority text, status text,
   age_hours numeric, first_response_minutes numeric, resolve_hours numeric, csat int
-) on commit drop;
+);
 
 insert into pf_case values
   (1,  'Rota publish is failing for the night shift',
@@ -262,12 +277,24 @@ insert into public.support_cases
    subject, category, priority, status, assigned_to,
    first_response_at, resolved_at, csat, created_at)
 select
-  pg_temp.pf_uuid('case:' || c.n),
+  md5('rotaflow-platform-seed-v1:' || 'case:' || c.n)::uuid,
   'CASE-' || lpad((4119 + c.n)::text, 4, '0'),
   o.id,
-  m.user_id,
-  p.full_name,
-  coalesce(p.email, 'support@example.co.uk'),
+  -- Scalar subqueries, not a join. An organisation with two active owners
+  -- would make the join emit two rows for one case, and both would carry the
+  -- same derived id — a primary key collision inside a single INSERT.
+  (select m.user_id from public.memberships m
+    where m.org_id = o.id and m.role = 'owner' and m.status = 'active'
+    order by m.created_at limit 1),
+  (select p.full_name from public.memberships m
+     join public.profiles p on p.id = m.user_id
+    where m.org_id = o.id and m.role = 'owner' and m.status = 'active'
+    order by m.created_at limit 1),
+  coalesce((select p.email from public.memberships m
+              join public.profiles p on p.id = m.user_id
+             where m.org_id = o.id and m.role = 'owner' and m.status = 'active'
+             order by m.created_at limit 1),
+           'support@example.co.uk'),
   c.subject, c.category, c.priority, c.status,
   (select id from pf_staff where n = ((c.n % 2) + 1) limit 1),
   case when c.first_response_minutes is null then null
@@ -280,38 +307,37 @@ select
   timezone('utc', now()) - (c.age_hours || ' hours')::interval
 from pf_case c
 join pf_org o on o.n = ((c.n - 1) % greatest((select count(*) from pf_org), 1)) + 1
-left join public.memberships m
-       on m.org_id = o.id and m.role = 'owner' and m.status = 'active'
-left join public.profiles p on p.id = m.user_id;
+on conflict (id) do nothing;
 
 -- The opening message, always. A case with no correspondence is a row nobody
 -- can action.
 insert into public.support_case_messages
   (id, case_id, author_id, author_name, author_side, body, is_internal, created_at)
-select pg_temp.pf_uuid('casemsg:open:' || c.n), pg_temp.pf_uuid('case:' || c.n),
+select md5('rotaflow-platform-seed-v1:' || 'casemsg:open:' || c.n)::uuid, md5('rotaflow-platform-seed-v1:' || 'case:' || c.n)::uuid,
        sc.requester_id, sc.requester_name, 'customer', c.body, false, sc.created_at
 from pf_case c
-join public.support_cases sc on sc.id = pg_temp.pf_uuid('case:' || c.n);
+join public.support_cases sc on sc.id = md5('rotaflow-platform-seed-v1:' || 'case:' || c.n)::uuid;
 
 insert into public.support_case_messages
   (id, case_id, author_id, author_name, author_side, body, is_internal, created_at)
-select pg_temp.pf_uuid('casemsg:reply:' || c.n), pg_temp.pf_uuid('case:' || c.n),
+select md5('rotaflow-platform-seed-v1:' || 'casemsg:reply:' || c.n)::uuid, md5('rotaflow-platform-seed-v1:' || 'case:' || c.n)::uuid,
        (select id from pf_staff where n = ((c.n % 2) + 1) limit 1),
        (select full_name from pf_staff where n = ((c.n % 2) + 1) limit 1),
        'platform',
        'Thanks for the detail — we have reproduced this and are working on it now.',
        false, sc.first_response_at
 from pf_case c
-join public.support_cases sc on sc.id = pg_temp.pf_uuid('case:' || c.n)
+join public.support_cases sc on sc.id = md5('rotaflow-platform-seed-v1:' || 'case:' || c.n)::uuid
 where sc.first_response_at is not null;
 
 -- =====================================================================
 -- 6. Platform announcements
 -- =====================================================================
+drop table if exists pf_announcement;
 create temp table pf_announcement (
   n int, title text, body text, kind text, audience text, plans text[],
   status text, days_ago numeric, days_ahead numeric
-) on commit drop;
+);
 
 insert into pf_announcement values
   (1, 'Scheduled maintenance — 02:00–03:00 BST',
@@ -334,7 +360,7 @@ insert into public.platform_announcements
   (id, title, body, kind, audience, audience_plans, channel, status,
    scheduled_for, sent_at, created_by, created_at)
 select
-  pg_temp.pf_uuid('announcement:' || a.n),
+  md5('rotaflow-platform-seed-v1:' || 'announcement:' || a.n)::uuid,
   a.title, a.body, a.kind, a.audience, a.plans,
   case when a.kind in ('maintenance','incident') then 'both' else 'in_app' end,
   a.status,
@@ -351,8 +377,8 @@ from pf_announcement a;
 insert into public.platform_announcement_deliveries
   (id, announcement_id, org_id, sent_at, read_at, read_by, created_at)
 select
-  pg_temp.pf_uuid(format('delivery:%s:%s', a.n, o.n)),
-  pg_temp.pf_uuid('announcement:' || a.n),
+  md5('rotaflow-platform-seed-v1:' || format('delivery:%s:%s', a.n, o.n))::uuid,
+  md5('rotaflow-platform-seed-v1:' || 'announcement:' || a.n)::uuid,
   o.id,
   timezone('utc', now()) - (a.days_ago || ' days')::interval,
   case when (abs(hashtext(a.n::text || o.id::text)) % 100) < 82
@@ -374,7 +400,7 @@ on conflict (announcement_id, org_id) do nothing;
 insert into public.org_integrations
   (id, org_id, connector_key, status, credentials_ref, connected_at, last_sync_at)
 select
-  pg_temp.pf_uuid(format('orgint:%s:%s', o.n, c.key)),
+  md5('rotaflow-platform-seed-v1:' || format('orgint:%s:%s', o.n, c.key))::uuid,
   o.id, c.key,
   case when o.n % 7 = 3 and c.key = 'brighthr' then 'error' else 'connected' end,
   c.key || '_cred_' || lpad(o.n::text, 3, '0'),
@@ -393,7 +419,7 @@ insert into public.integration_sync_runs
   (id, org_integration_id, connector_key, org_id, started_at, finished_at,
    duration_ms, outcome, records, error)
 select
-  pg_temp.pf_uuid(format('syncrun:%s:%s:%s', oi.id, d, r)),
+  md5('rotaflow-platform-seed-v1:' || format('syncrun:%s:%s:%s', oi.id, d, r))::uuid,
   oi.id, oi.connector_key, oi.org_id,
   timezone('utc', now()) - (d || ' days')::interval - ((r * 6) || ' hours')::interval,
   timezone('utc', now()) - (d || ' days')::interval - ((r * 6) || ' hours')::interval
@@ -413,7 +439,7 @@ select
 from public.org_integrations oi
 cross join generate_series(0, 6) d
 cross join generate_series(0, 3) r
-where oi.id in (select pg_temp.pf_uuid(format('orgint:%s:%s', o.n, c.key))
+where oi.id in (select md5('rotaflow-platform-seed-v1:' || format('orgint:%s:%s', o.n, c.key))::uuid
                   from pf_org o
                   cross join (values ('sage_payroll'), ('xero'), ('google_calendar'),
                                      ('brighthr'), ('slack')) as c(key))
@@ -448,7 +474,7 @@ cross join generate_series(0, 95) t;
 insert into public.background_jobs
   (id, queue, job_key, status, attempts, org_id, scheduled_for, started_at, finished_at, error)
 select
-  pg_temp.pf_uuid('job:' || g),
+  md5('rotaflow-platform-seed-v1:' || 'job:' || g)::uuid,
   (array['rota-publish','payroll-export','notifications','reminders'])[(g % 4) + 1],
   (array['publish_rota','export_timesheets','send_digest','shift_reminder'])[(g % 4) + 1]
     || ':' || g,
@@ -470,8 +496,21 @@ from generate_series(1, 48) g;
 -- =====================================================================
 insert into public.platform_ip_allowlist (id, cidr, label)
 values
-  (pg_temp.pf_uuid('allow:1'), '0.0.0.0/0'::cidr, 'Unrestricted — no ranges enforced yet')
+  (md5('rotaflow-platform-seed-v1:' || 'allow:1')::uuid, '0.0.0.0/0'::cidr, 'Unrestricted — no ranges enforced yet')
 on conflict (cidr) do nothing;
+
+-- =====================================================================
+-- Tidy up the scratch tables
+--
+-- Explicit rather than `on commit drop`: a runner that wraps each statement in
+-- its own transaction would drop them after the first insert, and every
+-- statement after that would fail on a table that no longer exists.
+-- =====================================================================
+drop table if exists pf_staff;
+drop table if exists pf_org;
+drop table if exists pf_incident;
+drop table if exists pf_case;
+drop table if exists pf_announcement;
 
 -- =====================================================================
 -- What this produced
