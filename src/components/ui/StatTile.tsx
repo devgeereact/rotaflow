@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { IconTile, type IconTileTone } from '@/components/ui/IconTile';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,10 @@ export interface StatTileProps {
   /** Small trailing unit next to the figure, e.g. `/ 5`. */
   suffix?: string;
   hint?: ReactNode;
+  /** Where the figure came from. Renders the tile as a link. */
+  to?: string;
+  /** A `Sparkline` under the figure — its recent shape, not a second number. */
+  chart?: ReactNode;
   className?: string;
 }
 
@@ -46,32 +51,31 @@ export function StatTile({
   value,
   suffix,
   hint,
+  to,
+  chart,
   className,
 }: StatTileProps): JSX.Element {
-  return (
-    <div
-      className={cn(
-        'rounded-xl border border-surface-border bg-surface px-3.5 py-3.5',
-        'dark:border-surface-border-dark dark:bg-surface-dark',
-        className,
-      )}
-    >
+  const body = (
+    <>
       <div className="flex items-start gap-2.5">
         {icon && <IconTile icon={icon} tone={tone} size="sm" />}
-        <p className="text-sm font-semibold leading-5 text-content dark:text-content-dark">
+        {/* Caption weight, not heading weight. The figure is the thing being
+            read; a 14px ink label above it competed with the number it
+            labels. docs/DESIGN.md §2 caption scale. */}
+        <p className="text-xs font-medium leading-4 text-content-muted dark:text-content-muted-dark">
           {label}
         </p>
       </div>
       <p
         className={cn(
-          'flex items-baseline gap-1.5 font-display text-3xl font-bold leading-9',
+          'flex items-baseline gap-1.5 font-display text-[1.7rem] font-semibold leading-tight tracking-[-0.6px] tabular-nums',
           'text-content dark:text-content-dark',
-          icon ? 'mt-3' : 'mt-2',
+          icon ? 'mt-2.5' : 'mt-1.5',
         )}
       >
         {value}
         {suffix && (
-          <span className="text-sm font-medium text-content-muted dark:text-content-muted-dark">
+          <span className="text-sm font-medium tracking-normal text-content-muted dark:text-content-muted-dark">
             {suffix}
           </span>
         )}
@@ -81,6 +85,26 @@ export function StatTile({
           {hint}
         </p>
       )}
-    </div>
+      {chart}
+    </>
+  );
+
+  const shell = cn(
+    'block rounded-2xl border border-surface-border bg-surface px-3.5 py-3.5 shadow-sm',
+    'dark:border-surface-border-dark dark:bg-surface-dark',
+    to &&
+      'transition-colors hover:border-primary/45 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+    className,
+  );
+
+  // A tile that leads somewhere is a link, not a div with a click handler —
+  // the console's tiles are the primary way into the screen they summarise,
+  // and they have to be reachable by keyboard and openable in a new tab.
+  return to ? (
+    <Link to={to} className={shell}>
+      {body}
+    </Link>
+  ) : (
+    <div className={shell}>{body}</div>
   );
 }

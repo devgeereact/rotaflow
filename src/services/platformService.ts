@@ -95,6 +95,40 @@ export async function countMembershipsByOrg(): Promise<Map<string, number>> {
 }
 
 /**
+ * Locations per organisation, across every tenant.
+ *
+ * Reads one column and tallies client-side, exactly as `countMembershipsByOrg`
+ * does, because PostgREST has no GROUP BY. That is affordable here — a location
+ * is a building, so the row count is small even across a large deployment — and
+ * it is not affordable for shifts, which is why there is no equivalent for
+ * those.
+ *
+ * Visible cross-tenant because `locations_select` uses `is_org_member(org_id)`,
+ * and `is_org_member` ends in `or public.is_platform_admin()`. Nothing extra is
+ * granted here; a non-administrator calling this gets only their own.
+ */
+export async function countLocationsByOrg(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('locations').select('org_id');
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    counts.set(row.org_id, (counts.get(row.org_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Published rotas across every tenant — the platform-wide total. */
+export async function countPublishedRotas(): Promise<number> {
+  const { count, error } = await supabase
+    .from('rotas')
+    .select('id', { count: 'exact', head: true })
+    .not('published_at', 'is', null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
  * Grant or revoke platform administration.
  *
  * ## Why this is no longer a `profiles` update

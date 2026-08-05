@@ -1,0 +1,2190 @@
+<title>RotaFlow Platform Console</title>
+<style>
+  :root {
+    --canvas:#F5F7FA; --surface:#FFFFFF; --subtle:#FAFBFC; --rail:#FAFBFC;
+    --border:#E3E6EA; --divider:#F2F4F6;
+    --ink:#16191F; --muted:#6B7280;
+    --primary:#3B6FE0; --primary-fg:#FFFFFF; --primary-wash:#EEF3FD;
+    --success:#1EA06B; --warning:#E0A030; --danger:#D94A3A; --info:#388FD4;
+    --success-wash:#E7F5EE; --warning-wash:#FBF2E1; --danger-wash:#FAEAE7; --info-wash:#E8F2FA;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+    --shadow:0 4px 12px rgba(0,0,0,.08);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+    --ui:-apple-system,BlinkMacSystemFont,"Segoe UI Variable Text","Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"JetBrains Mono","Roboto Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --canvas:#0B1220; --surface:#111A2E; --subtle:#15203A; --rail:#0E1729;
+      --border:#22304D; --divider:#1B2740;
+      --ink:#F8FAFC; --muted:#94A3B8;
+      --primary-wash:#182848;
+      --success-wash:#102A21; --warning-wash:#2C2416; --danger-wash:#2E1A17; --info-wash:#12253A;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+      --shadow:0 4px 12px rgba(0,0,0,.45);
+      --shadow-lg:0 8px 24px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas:#0B1220; --surface:#111A2E; --subtle:#15203A; --rail:#0E1729;
+    --border:#22304D; --divider:#1B2740;
+    --ink:#F8FAFC; --muted:#94A3B8;
+    --primary-wash:#182848;
+    --success-wash:#102A21; --warning-wash:#2C2416; --danger-wash:#2E1A17; --info-wash:#12253A;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow:0 4px 12px rgba(0,0,0,.45);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.55);
+  }
+  :root[data-theme="light"] {
+    --canvas:#F5F7FA; --surface:#FFFFFF; --subtle:#FAFBFC; --rail:#FAFBFC;
+    --border:#E3E6EA; --divider:#F2F4F6;
+    --ink:#16191F; --muted:#6B7280;
+    --primary-wash:#EEF3FD;
+    --success-wash:#E7F5EE; --warning-wash:#FBF2E1; --danger-wash:#FAEAE7; --info-wash:#E8F2FA;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+    --shadow:0 4px 12px rgba(0,0,0,.08);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--canvas); color:var(--ink);
+    font:400 16px/1.5 var(--ui);
+    -webkit-font-smoothing:antialiased;
+  }
+  a { color:var(--primary); }
+  button, input, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--primary); outline-offset:2px; border-radius:6px; }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+
+  /* ---------- console frame ---------- */
+  .console { display:grid; grid-template-columns:264px 1fr; min-height:100vh; }
+  .rail {
+    background:var(--rail); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; gap:4px;
+    position:sticky; top:0; height:100vh; overflow-y:auto; padding:16px 12px 12px;
+  }
+  .brandbar { display:flex; align-items:center; gap:10px; padding:4px 8px 12px; }
+  .mark {
+    width:30px; height:30px; border-radius:8px; background:var(--primary);
+    display:grid; place-items:center; color:#fff; font-weight:700; font-size:15px; flex:none;
+  }
+  .brandbar .wm { font-weight:650; letter-spacing:-.2px; }
+  .envline { display:flex; align-items:center; gap:6px; padding:0 8px 12px; flex-wrap:wrap; }
+  .eyebrow {
+    font-size:10px; font-weight:650; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted);
+  }
+  .envbadge {
+    font:600 10px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase;
+    padding:5px 7px; border-radius:999px;
+    background:var(--danger-wash); color:var(--danger); border:1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  }
+  .rolepick { padding:0 8px 12px; display:grid; gap:5px; }
+  .rolepick select {
+    width:100%; padding:7px 9px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface); font-size:13px;
+  }
+  .nav { display:flex; flex-direction:column; gap:1px; }
+  .navsec { padding:14px 8px 5px; }
+  .nav a {
+    display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:9px;
+    color:var(--ink); text-decoration:none; font-size:13.5px; font-weight:500;
+  }
+  .nav a:hover { background:var(--primary-wash); }
+  .nav a[aria-current="page"] { background:var(--primary); color:var(--primary-fg); }
+  .nav a[aria-current="page"] .ico { opacity:1; }
+  .nav a .ico { width:16px; height:16px; flex:none; opacity:.72; }
+  .nav a .count {
+    margin-left:auto; font:600 11px/1 var(--mono); padding:3px 6px; border-radius:999px;
+    background:var(--danger); color:#fff;
+  }
+  .nav a[aria-current="page"] .count { background:rgba(255,255,255,.24); }
+  .railfoot { margin-top:auto; padding-top:12px; border-top:1px solid var(--divider); }
+  .whoami { display:flex; align-items:center; gap:9px; padding:9px 8px; border-radius:10px; }
+  .whoami:hover { background:var(--primary-wash); }
+  .av {
+    width:30px; height:30px; border-radius:999px; flex:none; display:grid; place-items:center;
+    background:var(--primary-wash); color:var(--primary); font-weight:650; font-size:12px;
+    border:1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+  .whoami .nm { font-size:13px; font-weight:600; line-height:1.25; }
+  .whoami .rl { font-size:11px; color:var(--muted); line-height:1.3; }
+
+  /* ---------- main ---------- */
+  main { min-width:0; display:flex; flex-direction:column; }
+  .topbar {
+    position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--canvas) 88%, transparent);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px; padding:10px 24px;
+  }
+  .crumbs { font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:6px; min-width:0; }
+  .crumbs b { color:var(--ink); font-weight:600; }
+  .topbar .spacer { margin-left:auto; }
+  .wrap { padding:24px; max-width:1440px; width:100%; }
+
+  /* ---------- support access banner ---------- */
+  .sabanner {
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    background:var(--warning-wash); color:var(--ink);
+    border-bottom:1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+    padding:10px 24px; font-size:13.5px;
+  }
+  .sabanner .dot {
+    width:8px; height:8px; border-radius:999px; background:var(--warning); flex:none;
+    animation:pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .sabanner strong { font-weight:650; }
+  .sabanner .clock { font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600; }
+
+  /* ---------- primitives ---------- */
+  h1 { font-size:32px; line-height:40px; font-weight:650; margin:0; letter-spacing:-.5px; text-wrap:balance; }
+  h2 { font-size:24px; line-height:32px; font-weight:650; margin:0; letter-spacing:-.3px; text-wrap:balance; }
+  h3 { font-size:16px; line-height:24px; font-weight:650; margin:0; }
+  .lede { color:var(--muted); font-size:14px; margin:6px 0 0; max-width:64ch; }
+  .pagehead { display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .pagehead .acts { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+
+  .btn {
+    display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:11px;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink);
+    font-size:13.5px; font-weight:550; cursor:pointer; box-shadow:var(--shadow-sm);
+  }
+  .btn:hover { background:var(--subtle); }
+  .btn.p { background:var(--primary); border-color:var(--primary); color:var(--primary-fg); }
+  .btn.p:hover { filter:brightness(1.07); }
+  .btn.d { color:var(--danger); border-color:color-mix(in srgb, var(--danger) 34%, transparent); }
+  .btn.d:hover { background:var(--danger-wash); }
+  .btn.sm { padding:5px 9px; font-size:12.5px; border-radius:9px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  .card {
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    box-shadow:var(--shadow-sm);
+  }
+  .card > header {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:14px 16px; border-bottom:1px solid var(--divider);
+  }
+  .card > header .spacer { margin-left:auto; }
+  .card .body { padding:16px; }
+  .grid { display:grid; gap:16px; }
+
+  /* metric tiles */
+  .tiles { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .tile {
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 15px;
+    display:flex; flex-direction:column; gap:6px; text-decoration:none; color:inherit;
+    box-shadow:var(--shadow-sm); position:relative; overflow:hidden;
+  }
+  a.tile:hover { border-color:color-mix(in srgb, var(--primary) 45%, var(--border)); box-shadow:var(--shadow); }
+  .tile .lbl { font-size:12px; color:var(--muted); font-weight:550; }
+  .tile .val { font:650 28px/1.1 var(--ui); font-variant-numeric:tabular-nums; letter-spacing:-.6px; }
+  .tile .sub { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:5px; }
+  .tile .spark { margin-top:2px; }
+  .up { color:var(--success); font-weight:600; }
+  .down { color:var(--danger); font-weight:600; }
+
+  /* pills */
+  .pill {
+    display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:999px;
+    font-size:11.5px; font-weight:600; white-space:nowrap; border:1px solid transparent;
+  }
+  .pill::before { content:""; width:6px; height:6px; border-radius:999px; background:currentColor; flex:none; }
+  .pill.ok { background:var(--success-wash); color:var(--success); }
+  .pill.warn { background:var(--warning-wash); color:var(--warning); }
+  .pill.bad { background:var(--danger-wash); color:var(--danger); }
+  .pill.info { background:var(--info-wash); color:var(--info); }
+  .pill.neutral { background:var(--subtle); color:var(--muted); border-color:var(--border); }
+  .pill.plain::before { display:none; }
+
+  /* tables */
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th {
+    text-align:left; font-size:11px; font-weight:650; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); padding:9px 12px; border-bottom:1px solid var(--border); white-space:nowrap;
+    background:var(--subtle); position:sticky; top:0;
+  }
+  td { padding:10px 12px; border-bottom:1px solid var(--divider); vertical-align:middle; }
+  tbody tr:hover td { background:var(--subtle); }
+  tbody tr:last-child td { border-bottom:0; }
+  td.num, th.num { text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .mono { font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .dim { color:var(--muted); }
+  .strong { font-weight:600; }
+  .two-line .t { font-weight:600; line-height:1.3; display:block; }
+  .two-line .s { font-size:12px; color:var(--muted); line-height:1.3; display:block; }
+  .rowav { display:flex; align-items:center; gap:9px; min-width:0; }
+
+  /* filter bar */
+  .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:12px 16px; border-bottom:1px solid var(--divider); }
+  .filters input[type="search"], .filters select {
+    padding:7px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); font-size:13px;
+  }
+  .filters input[type="search"] { min-width:230px; }
+
+  /* tabs */
+  .tabs { display:flex; gap:2px; overflow-x:auto; border-bottom:1px solid var(--border); margin-bottom:18px; }
+  .tabs button {
+    padding:9px 13px; border:0; background:none; cursor:pointer; font-size:13.5px; font-weight:550;
+    color:var(--muted); border-bottom:2px solid transparent; white-space:nowrap;
+  }
+  .tabs button[aria-selected="true"] { color:var(--primary); border-bottom-color:var(--primary); }
+  .tabs button:hover { color:var(--ink); }
+
+  /* definition rows */
+  .dl { display:grid; grid-template-columns:minmax(120px,auto) 1fr; gap:1px 16px; font-size:13.5px; }
+  .dl dt { color:var(--muted); padding:7px 0; }
+  .dl dd { margin:0; padding:7px 0; font-weight:550; }
+
+  /* feed */
+  .feed { display:flex; flex-direction:column; }
+  .feed li { display:flex; gap:11px; padding:11px 16px; border-bottom:1px solid var(--divider); list-style:none; }
+  .feed li:last-child { border-bottom:0; }
+  .feed .fi { width:28px; height:28px; border-radius:9px; display:grid; place-items:center; flex:none; }
+  .feed .ft { font-size:13.5px; line-height:1.4; display:block; }
+  .feed .fm { font-size:12px; color:var(--muted); margin-top:2px; display:block; }
+  ul.feed { margin:0; padding:0; }
+
+  /* service list */
+  .svc { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--divider); }
+  .svc:last-child { border-bottom:0; }
+  .svc .nm { font-size:13.5px; font-weight:550; }
+  .svc .bars { display:flex; gap:2px; margin-left:auto; }
+  .svc .bars i { width:4px; height:18px; border-radius:2px; background:var(--success); display:block; }
+  .svc .bars i.w { background:var(--warning); }
+  .svc .bars i.b { background:var(--danger); }
+
+  /* bar chart rows */
+  .bars-row { display:grid; grid-template-columns:96px 1fr 62px; align-items:center; gap:10px; padding:7px 0; font-size:13px; }
+  .bars-row .track { height:8px; border-radius:999px; background:var(--subtle); overflow:hidden; border:1px solid var(--border); }
+  .bars-row .fill { height:100%; border-radius:999px; background:var(--primary); }
+  .bars-row .amt { text-align:right; font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums; }
+
+  /* toggle */
+  .sw { width:38px; height:22px; border-radius:999px; border:1px solid var(--border); background:var(--subtle); position:relative; cursor:pointer; flex:none; padding:0; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:999px; background:var(--surface); box-shadow:var(--shadow-sm); transition:left .16s ease; }
+  .sw[aria-checked="true"] { background:var(--primary); border-color:var(--primary); }
+  .sw[aria-checked="true"]::after { left:18px; }
+
+  /* modal */
+  dialog {
+    border:1px solid var(--border); border-radius:18px; background:var(--surface); color:var(--ink);
+    padding:0; box-shadow:var(--shadow-lg); max-width:520px; width:calc(100% - 32px);
+  }
+  dialog::backdrop { background:rgba(10,16,30,.42); backdrop-filter:blur(2px); }
+  dialog header { padding:16px 18px 12px; border-bottom:1px solid var(--divider); }
+  dialog .body { padding:16px 18px; display:grid; gap:13px; }
+  dialog footer { padding:13px 18px; border-top:1px solid var(--divider); display:flex; gap:8px; justify-content:flex-end; }
+  .field { display:grid; gap:5px; }
+  .field label { font-size:12.5px; font-weight:600; }
+  .field input, .field select, .field textarea {
+    padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); font-size:13.5px; width:100%;
+  }
+  .field textarea { min-height:70px; resize:vertical; font-family:inherit; }
+  .field .hint { font-size:11.5px; color:var(--muted); }
+  .field .err { font-size:11.5px; color:var(--danger); font-weight:600; }
+  .check { display:flex; gap:9px; align-items:flex-start; font-size:13px; }
+  .check input { margin-top:2px; }
+
+  /* callouts */
+  .callout { display:flex; gap:11px; padding:13px 15px; border-radius:14px; font-size:13.5px; line-height:1.5; border:1px solid; }
+  .callout.warn { background:var(--warning-wash); border-color:color-mix(in srgb, var(--warning) 34%, transparent); }
+  .callout.info { background:var(--info-wash); border-color:color-mix(in srgb, var(--info) 30%, transparent); }
+  .callout.bad { background:var(--danger-wash); border-color:color-mix(in srgb, var(--danger) 34%, transparent); }
+
+  .empty { padding:44px 16px; text-align:center; color:var(--muted); font-size:13.5px; }
+  .locked { max-width:520px; margin:56px auto; text-align:center; }
+  .locked .shield { width:56px; height:56px; margin:0 auto 16px; color:var(--danger); }
+
+  /* toast */
+  .toasts { position:fixed; right:18px; bottom:18px; z-index:60; display:grid; gap:8px; }
+  .toast {
+    background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--success);
+    border-radius:12px; padding:11px 14px; box-shadow:var(--shadow-lg); font-size:13.5px; max-width:340px;
+  }
+  .toast.bad { border-left-color:var(--danger); }
+
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .railtoggle { display:none; }
+
+  @media (max-width:1000px) {
+    .console { grid-template-columns:1fr; }
+    .rail { position:fixed; inset:0 auto 0 0; width:264px; z-index:50; transform:translateX(-100%); transition:transform .18s ease; }
+    .rail.open { transform:none; box-shadow:var(--shadow-lg); }
+    .railtoggle { display:inline-flex; }
+    .wrap { padding:16px; }
+    .topbar { padding:10px 16px; }
+    h1 { font-size:26px; line-height:34px; }
+  }
+</style>
+
+<div class="console">
+  <aside class="rail" id="rail">
+    <div class="brandbar">
+      <div class="mark">R</div>
+      <div>
+        <div class="wm">RotaFlow</div>
+        <div class="eyebrow">Platform Console</div>
+      </div>
+    </div>
+    <div class="envline">
+      <span class="envbadge" id="envBadge">Production</span>
+      <span class="eyebrow" style="color:var(--muted)">eu-west-2</span>
+    </div>
+    <div class="rolepick">
+      <label class="eyebrow" for="roleSel">Signed in as</label>
+      <select id="roleSel" aria-label="Platform role"></select>
+    </div>
+    <nav class="nav" id="nav" aria-label="Platform"></nav>
+    <div class="railfoot">
+      <nav class="nav" id="nav2" aria-label="Secondary"></nav>
+      <div class="whoami" id="whoami">
+        <div class="av" id="whoAv">SA</div>
+        <div>
+          <div class="nm">Sarah Okonjo</div>
+          <div class="rl" id="whoRole">Platform Administrator</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div id="banner"></div>
+    <div class="topbar">
+      <button class="btn sm railtoggle" id="railBtn" aria-label="Toggle navigation">☰</button>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="spacer"></div>
+      <button class="btn sm" id="refreshBtn">Refresh</button>
+      <button class="btn sm" id="saBtn">Request support access</button>
+    </div>
+    <div class="wrap" id="screen"></div>
+  </main>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<dialog id="modal"></dialog>
+
+<script>
+/* ============================ platform roles ============================ */
+const ROLES = {
+  owner:   { name:'Platform Owner',         short:'Owner' },
+  admin:   { name:'Platform Administrator', short:'Admin' },
+  support: { name:'Platform Support',       short:'Support' },
+  finance: { name:'Platform Finance',       short:'Finance' },
+};
+const ALL = ['owner','admin','support','finance'];
+const CONFIG = ['owner','admin'];
+const BILLING = ['owner','admin','finance'];
+const OPS = ['owner','admin','support'];
+
+/* nav = the route table; `allow` is the same list the route guard uses, so a
+   role that cannot see a link also cannot reach it by typing the hash. */
+const NAV = [
+  { id:'overview',      label:'Overview',          icon:'grid',    allow:ALL },
+  { id:'organisations', label:'Organisations',     icon:'building',allow:ALL },
+  { id:'users',         label:'Users',             icon:'users',   allow:OPS },
+  { id:'subscriptions', label:'Subscriptions',     icon:'card',    allow:BILLING },
+  { id:'billing',       label:'Billing',           icon:'receipt', allow:BILLING },
+  { id:'support',       label:'Support Centre',    icon:'life',    allow:OPS, badge:'openCases' },
+  { id:'support-access',label:'Support Access',    icon:'key',     allow:OPS },
+  { id:'platform-health',label:'Platform Health',  icon:'pulse',   allow:ALL },
+  { id:'incidents',     label:'Incidents',         icon:'alert',   allow:OPS, badge:'openIncidents' },
+  { id:'integrations',  label:'Integrations',      icon:'plug',    allow:OPS },
+  { id:'notifications', label:'Notifications',     icon:'bell',    allow:CONFIG },
+  { id:'audit',         label:'Audit Logs',        icon:'scroll',  allow:ALL },
+  { id:'feature-flags', label:'Feature Flags',     icon:'flag',    allow:CONFIG },
+  { id:'gdpr',          label:'GDPR & Data',       icon:'shield',  allow:CONFIG },
+  { id:'settings',      label:'Platform Settings', icon:'cog',     allow:CONFIG },
+];
+const NAV2 = [
+  { id:'docs',    label:'Documentation',  icon:'book' },
+  { id:'status',  label:'System Status',  icon:'pulse' },
+  { id:'psupport',label:'Platform Support', icon:'life' },
+  { id:'exit',    label:'Return to Organisation', icon:'exit' },
+];
+
+/* ============================ icons (lucide-shaped) ============================ */
+const P = {
+  grid:'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+  building:'M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h2a2 2 0 0 1 2 2v10M9 7h2M9 11h2M9 15h2',
+  users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  card:'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zM2 10h20',
+  receipt:'M4 2v20l3-2 3 2 3-2 3 2 3-2V2l-3 2-3-2-3 2-3-2zM8 8h8M8 12h8M8 16h5',
+  life:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4.9 4.9l4.2 4.2M14.9 14.9l4.2 4.2M14.9 9.1l4.2-4.2M4.9 19.1l4.2-4.2',
+  key:'M15 2a7 7 0 0 0-6.6 9.3L2 17.7V22h4.3l1.4-1.4V19h1.6l1.4-1.4v-1.6h1.6l1.1-1.1A7 7 0 1 0 15 2M17 7h.01',
+  pulse:'M3 12h4l3 8 4-16 3 8h4',
+  alert:'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0',
+  plug:'M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4',
+  bell:'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
+  scroll:'M8 3H5a2 2 0 0 0-2 2v3M3 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8M7 8h9M7 12h9M7 16h5',
+  flag:'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7',
+  shield:'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10',
+  cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.3 6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V2a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 17 3.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.7 1.2',
+  book:'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2',
+  exit:'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  check:'M20 6 9 17l-5-5',
+  x:'M18 6 6 18M6 6l12 12',
+};
+const ico = (n, cls='ico') =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[n]||P.grid}"/></svg>`;
+
+/* ============================ helpers ============================ */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n = x => x.toLocaleString('en-GB');
+const gbp = x => '£' + x.toLocaleString('en-GB', { maximumFractionDigits:0 });
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const STATUS = {
+  active:['ok','Active'], trial:['info','Trial'], suspended:['bad','Suspended'],
+  risk:['warn','At risk'], archived:['neutral','Archived'], past_due:['warn','Past due'],
+  cancelled:['neutral','Cancelled'], operational:['ok','Operational'], degraded:['warn','Degraded'],
+  outage:['bad','Major outage'], maintenance:['info','Maintenance'], open:['warn','Open'],
+  resolved:['ok','Resolved'], closed:['neutral','Closed'], waiting:['info','Awaiting customer'],
+  investigating:['bad','Investigating'], monitoring:['warn','Monitoring'], expired:['neutral','Expired'],
+  revoked:['bad','Revoked'], pending:['warn','Pending'], complete:['ok','Complete'],
+  verified:['ok','Verified'], unverified:['warn','Unverified'], disabled:['bad','Disabled'],
+  failed:['bad','Failed'], paid:['ok','Paid'], refunded:['neutral','Refunded'],
+};
+const pill = k => { const [c,l] = STATUS[k] || ['neutral', k]; return `<span class="pill ${c}">${esc(l)}</span>`; };
+const initials = nm => nm.split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+
+function sparkline(vals, tint='var(--primary)', w=110, h=26) {
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const pts = vals.map((v,i) => [i*(w/(vals.length-1)), h - 2 - ((v-min)/span)*(h-5)]);
+  const line = pts.map(([x,y],i)=>`${i?'L':'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${w} ${h} L0 ${h} Z`;
+  const id = 'g' + Math.random().toString(36).slice(2,8);
+  const [ex,ey] = pts[pts.length-1];
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${tint}" stop-opacity=".22"/><stop offset="1" stop-color="${tint}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#${id})"/>
+    <path d="${line}" fill="none" stroke="${tint}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="2.4" fill="${tint}"/>
+  </svg>`;
+}
+
+function areaChart(series, labels, h=180) {
+  const w = 720, pad = { l:8, r:8, t:12, b:22 };
+  const all = series.flatMap(s => s.vals);
+  const max = Math.max(...all) * 1.12, min = 0;
+  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const X = i => pad.l + i * (iw / (labels.length - 1));
+  const Y = v => pad.t + ih - ((v - min) / (max - min)) * ih;
+  const grid = [0,.25,.5,.75,1].map(f =>
+    `<line x1="${pad.l}" x2="${w-pad.r}" y1="${(pad.t+ih*f).toFixed(1)}" y2="${(pad.t+ih*f).toFixed(1)}"
+      stroke="var(--divider)" stroke-width="1"/>`).join('');
+  const paths = series.map((s,si) => {
+    const id = 'c'+si+Math.random().toString(36).slice(2,6);
+    const line = s.vals.map((v,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+    const fill = s.fill === false ? '' :
+      `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${s.color}" stop-opacity=".2"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="${line} L${X(s.vals.length-1)} ${pad.t+ih} L${pad.l} ${pad.t+ih} Z" fill="url(#${id})"/>`;
+    return fill + `<path d="${line}" fill="none" stroke="${s.color}" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${X(s.vals.length-1).toFixed(1)}" cy="${Y(s.vals[s.vals.length-1]).toFixed(1)}" r="3.2" fill="${s.color}"/>`;
+  }).join('');
+  const xl = labels.map((l,i) => (i % Math.ceil(labels.length/7) === 0 || i === labels.length-1)
+    ? `<text x="${X(i).toFixed(1)}" y="${h-5}" font-size="10" fill="var(--muted)"
+        text-anchor="${i===0?'start':i===labels.length-1?'end':'middle'}" font-family="var(--mono)">${esc(l)}</text>` : '').join('');
+  const legend = series.map(s =>
+    `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">
+      <i style="width:9px;height:9px;border-radius:3px;background:${s.color};display:block"></i>${esc(s.name)}</span>`).join('');
+  return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">${legend}</div>
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Trend chart" preserveAspectRatio="none">
+      ${grid}${paths}${xl}</svg>`;
+}
+
+function barRows(rows, tint) {
+  const max = Math.max(...rows.map(r => r.v));
+  return rows.map(r => `<div class="bars-row">
+    <span class="dim">${esc(r.k)}</span>
+    <span class="track"><span class="fill" style="width:${(r.v/max*100).toFixed(1)}%;background:${r.color||tint||'var(--primary)'}"></span></span>
+    <span class="amt">${esc(r.d ?? n(r.v))}</span></div>`).join('');
+}
+
+function table(cols, rows, opts = {}) {
+  const head = cols.map(c => `<th${c.num?' class="num"':''}>${esc(c.h)}</th>`).join('');
+  const body = rows.length ? rows.map(r =>
+    `<tr>${r.map((cell,i) => `<td${cols[i].num?' class="num"':''}>${cell}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}"><div class="empty">${esc(opts.empty || 'Nothing matches these filters.')}</div></td></tr>`;
+  return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function tiles(list) {
+  return `<div class="tiles">${list.map(t => {
+    const tag = t.to ? 'a' : 'div', href = t.to ? ` href="#/${t.to}"` : '';
+    return `<${tag} class="tile"${href}>
+      <span class="lbl">${esc(t.lbl)}</span>
+      <span class="val">${esc(t.val)}</span>
+      <span class="sub">${t.sub || ''}</span>
+      ${t.spark ? sparkline(t.spark, t.tint) : ''}
+    </${tag}>`;
+  }).join('')}</div>`;
+}
+
+function toast(msg, bad) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (bad ? ' bad' : '');
+  el.textContent = msg;
+  $('#toasts').append(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 3400);
+  setTimeout(() => el.remove(), 3800);
+}
+</script>
+
+<script>
+/* ============================ demo dataset ============================ */
+const ME = { name:'Sarah Okonjo', email:'sarah.okonjo@rotaflow.co.uk', role:'admin' };
+
+const ORGS = [
+  { id:'org_7f3a91', name:'Sunnyvale Care Group', ind:'Residential care', plan:'Enterprise', users:248, locs:9, status:'active', usage:92, seen:'4 minutes ago', made:'12 Mar 2024', country:'United Kingdom', tz:'Europe/London', contact:'Marcus Bell', email:'m.bell@sunnyvalecare.co.uk', mrr:1240, health:'Healthy', rotas:412, shifts:9820, storage:'14.2 GB', depts:22 },
+  { id:'org_2b8c40', name:'Northgate Hospitality', ind:'Hospitality', plan:'Business', users:132, locs:6, status:'active', usage:74, seen:'22 minutes ago', made:'04 Jun 2024', country:'United Kingdom', tz:'Europe/London', contact:'Priya Raman', email:'priya@northgatehosp.com', mrr:480, health:'Healthy', rotas:188, shifts:4310, storage:'6.1 GB', depts:11 },
+  { id:'org_9d1e57', name:'Mersey Domiciliary Care', ind:'Domiciliary care', plan:'Professional', users:87, locs:3, status:'risk', usage:41, seen:'6 days ago', made:'19 Jan 2025', country:'United Kingdom', tz:'Europe/London', contact:'Dan Whitfield', email:'d.whitfield@merseydom.uk', mrr:290, health:'At risk', rotas:64, shifts:1490, storage:'2.4 GB', depts:5 },
+  { id:'org_4a6f22', name:'Cardiff Retail Partners', ind:'Retail', plan:'Business', users:196, locs:14, status:'active', usage:88, seen:'11 minutes ago', made:'27 Sep 2024', country:'United Kingdom', tz:'Europe/London', contact:'Ffion Davies', email:'f.davies@cardiffretail.co.uk', mrr:640, health:'Healthy', rotas:301, shifts:7240, storage:'9.8 GB', depts:16 },
+  { id:'org_1c5b83', name:'Tayside Community Trust', ind:'Healthcare', plan:'Enterprise', users:412, locs:21, status:'active', usage:96, seen:'2 minutes ago', made:'08 Nov 2023', country:'United Kingdom', tz:'Europe/London', contact:'Alison Frame', email:'a.frame@taysidect.scot', mrr:1980, health:'Attention required', rotas:702, shifts:16400, storage:'31.6 GB', depts:38 },
+  { id:'org_6e0d14', name:'Brightpath Nurseries', ind:'Childcare', plan:'Starter', users:34, locs:2, status:'trial', usage:28, seen:'1 hour ago', made:'21 Jul 2026', country:'United Kingdom', tz:'Europe/London', contact:'Jo Adeyemi', email:'jo@brightpathnurseries.uk', mrr:0, health:'Healthy', rotas:12, shifts:280, storage:'0.4 GB', depts:3 },
+  { id:'org_8f7a35', name:'Harbour Logistics UK', ind:'Logistics', plan:'Professional', users:71, locs:4, status:'suspended', usage:0, seen:'34 days ago', made:'02 Feb 2025', country:'United Kingdom', tz:'Europe/London', contact:'Tomas Nowak', email:'t.nowak@harbourlog.uk', mrr:0, health:'Suspended', rotas:96, shifts:2100, storage:'3.9 GB', depts:7 },
+  { id:'org_3b9c68', name:'Ashford Security Services', ind:'Security', plan:'Professional', users:58, locs:5, status:'active', usage:63, seen:'48 minutes ago', made:'30 Apr 2025', country:'United Kingdom', tz:'Europe/London', contact:'Grace Nkemdi', email:'g.nkemdi@ashfordsec.co.uk', mrr:290, health:'Healthy', rotas:81, shifts:1980, storage:'1.9 GB', depts:4 },
+  { id:'org_5d2e97', name:'Pennine Facilities', ind:'Facilities', plan:'Starter', users:19, locs:1, status:'active', usage:34, seen:'3 hours ago', made:'14 Feb 2026', country:'United Kingdom', tz:'Europe/London', contact:'Rob Ellery', email:'rob@penninefm.co.uk', mrr:90, health:'Healthy', rotas:22, shifts:460, storage:'0.6 GB', depts:2 },
+  { id:'org_0a4f76', name:'Belfast Care Collective', ind:'Residential care', plan:'Business', users:104, locs:7, status:'trial', usage:52, seen:'5 hours ago', made:'18 Jul 2026', country:'United Kingdom', tz:'Europe/London', contact:'Sean Callaghan', email:'s.callaghan@belfastcc.org', mrr:0, health:'Healthy', rotas:38, shifts:920, storage:'1.2 GB', depts:9 },
+];
+const orgById = id => ORGS.find(o => o.id === id) || ORGS[0];
+
+const USERS = [
+  { id:'usr_a91f30', name:'Marcus Bell', email:'m.bell@sunnyvalecare.co.uk', org:'org_7f3a91', role:'owner', plat:null, status:'active', last:'4 minutes ago', made:'12 Mar 2024', mfa:true, verified:true },
+  { id:'usr_c02d81', name:'Alison Frame', email:'a.frame@taysidect.scot', org:'org_1c5b83', role:'owner', plat:null, status:'active', last:'2 minutes ago', made:'08 Nov 2023', mfa:true, verified:true },
+  { id:'usr_e47b19', name:'Sarah Okonjo', email:'sarah.okonjo@rotaflow.co.uk', org:'org_7f3a91', role:'manager', plat:'admin', status:'active', last:'just now', made:'01 Feb 2024', mfa:true, verified:true },
+  { id:'usr_44ac02', name:'Daniel Whitfield', email:'d.whitfield@merseydom.uk', org:'org_9d1e57', role:'owner', plat:null, status:'active', last:'6 days ago', made:'19 Jan 2025', mfa:false, verified:true },
+  { id:'usr_9b71fe', name:'Priya Raman', email:'priya@northgatehosp.com', org:'org_2b8c40', role:'owner', plat:null, status:'active', last:'22 minutes ago', made:'04 Jun 2024', mfa:true, verified:true },
+  { id:'usr_71e5a8', name:'Tomas Nowak', email:'t.nowak@harbourlog.uk', org:'org_8f7a35', role:'owner', plat:null, status:'disabled', last:'34 days ago', made:'02 Feb 2025', mfa:false, verified:true },
+  { id:'usr_2f8d64', name:'Grace Nkemdi', email:'g.nkemdi@ashfordsec.co.uk', org:'org_3b9c68', role:'manager', plat:null, status:'active', last:'48 minutes ago', made:'30 Apr 2025', mfa:true, verified:true },
+  { id:'usr_58c3b7', name:'Jo Adeyemi', email:'jo@brightpathnurseries.uk', org:'org_6e0d14', role:'owner', plat:null, status:'active', last:'1 hour ago', made:'21 Jul 2026', mfa:false, verified:false },
+  { id:'usr_d6a204', name:'Callum Reid', email:'c.reid@taysidect.scot', org:'org_1c5b83', role:'staff', plat:null, status:'active', last:'19 minutes ago', made:'11 Jan 2026', mfa:false, verified:true },
+  { id:'usr_b3f819', name:'Idris Okafor', email:'idris.okafor@rotaflow.co.uk', org:'org_4a6f22', role:'staff', plat:'owner', status:'active', last:'3 hours ago', made:'14 Nov 2023', mfa:true, verified:true },
+  { id:'usr_ff0c25', name:'Ffion Davies', email:'f.davies@cardiffretail.co.uk', org:'org_4a6f22', role:'owner', plat:null, status:'active', last:'11 minutes ago', made:'27 Sep 2024', mfa:true, verified:true },
+  { id:'usr_7a92c1', name:'Rob Ellery', email:'rob@penninefm.co.uk', org:'org_5d2e97', role:'owner', plat:null, status:'active', last:'3 hours ago', made:'14 Feb 2026', mfa:false, verified:true },
+];
+const userById = id => USERS.find(u => u.id === id) || USERS[0];
+
+const CASES = [
+  { id:'RF-4821', pri:'Urgent', subj:'Rota publish fails for 3 locations', org:'org_1c5b83', by:'Alison Frame', to:'Sarah Okonjo', status:'open', upd:'14 minutes ago', made:'04 Aug 2026 08:12', cat:'Rota builder' },
+  { id:'RF-4819', pri:'High', subj:'Clock-in GPS rejecting on-site staff', org:'org_7f3a91', by:'Marcus Bell', to:'Idris Okafor', status:'open', upd:'52 minutes ago', made:'04 Aug 2026 06:40', cat:'Attendance' },
+  { id:'RF-4814', pri:'Normal', subj:'Invoice VAT number incorrect', org:'org_4a6f22', by:'Ffion Davies', to:'Leah Marchetti', status:'waiting', upd:'3 hours ago', made:'03 Aug 2026 16:22', cat:'Billing' },
+  { id:'RF-4809', pri:'High', subj:'Payroll export missing night premiums', org:'org_2b8c40', by:'Priya Raman', to:'Sarah Okonjo', status:'open', upd:'5 hours ago', made:'03 Aug 2026 11:05', cat:'Integrations' },
+  { id:'RF-4802', pri:'Low', subj:'Request to extend trial by 14 days', org:'org_0a4f76', by:'Sean Callaghan', to:'Leah Marchetti', status:'waiting', upd:'1 day ago', made:'02 Aug 2026 09:31', cat:'Subscription' },
+  { id:'RF-4796', pri:'Normal', subj:'Staff cannot accept shift swap on iOS', org:'org_3b9c68', by:'Grace Nkemdi', to:'Idris Okafor', status:'resolved', upd:'2 days ago', made:'31 Jul 2026 14:48', cat:'Mobile' },
+  { id:'RF-4790', pri:'Urgent', subj:'Account suspended in error after chargeback', org:'org_8f7a35', by:'Tomas Nowak', to:'Sarah Okonjo', status:'resolved', upd:'3 days ago', made:'30 Jul 2026 10:02', cat:'Account' },
+];
+const caseById = id => CASES.find(c => c.id === id) || CASES[0];
+const PRI = { Urgent:'bad', High:'warn', Normal:'info', Low:'neutral' };
+
+const FLAGS = [
+  { key:'ai_rota_assistant', name:'AI rota assistant', desc:'Draft-rota suggestions from the OpenRouter edge function.', on:true, roll:35, env:'Production', plans:'Business, Enterprise', by:'Idris Okafor', upd:'02 Aug 2026', critical:true },
+  { key:'advanced_reporting', name:'Advanced reporting', desc:'Cost, coverage and absence analytics beyond the standard pack.', on:true, roll:100, env:'Production', plans:'Professional and above', by:'Sarah Okonjo', upd:'28 Jul 2026', critical:false },
+  { key:'gps_clock_in', name:'GPS clock-in', desc:'Geofenced attendance capture on the staff PWA.', on:true, roll:100, env:'Production', plans:'All plans', by:'Idris Okafor', upd:'14 Jun 2026', critical:true },
+  { key:'shift_swap_automation', name:'Shift swap automation', desc:'Auto-approve swaps that break no rule and no cost ceiling.', on:false, roll:0, env:'Production', plans:'Enterprise', by:'Sarah Okonjo', upd:'19 Jul 2026', critical:false },
+  { key:'new_rota_builder', name:'New rota builder', desc:'Rebuilt drag-and-drop grid with keyboard-first editing.', on:true, roll:12, env:'Production', plans:'Opt-in organisations', by:'Idris Okafor', upd:'03 Aug 2026', critical:true },
+  { key:'beta_integrations', name:'Beta integrations', desc:'Unreleased payroll and HR connectors.', on:false, roll:0, env:'Staging', plans:'Internal only', by:'Sarah Okonjo', upd:'11 Jul 2026', critical:false },
+];
+
+const SERVICES = [
+  { name:'Web application', status:'operational', up:'99.99%', ms:118, hist:[1,1,1,1,1,1,1,1,1,1,1,1] },
+  { name:'API', status:'operational', up:'99.97%', ms:142, hist:[1,1,1,1,1,1,2,1,1,1,1,1] },
+  { name:'Authentication', status:'operational', up:'99.99%', ms:96, hist:[1,1,1,1,1,1,1,1,1,1,1,1] },
+  { name:'PostgreSQL database', status:'degraded', up:'99.82%', ms:311, hist:[1,1,1,1,2,2,2,1,1,2,2,2] },
+  { name:'File storage', status:'operational', up:'99.98%', ms:174, hist:[1,1,1,1,1,1,1,1,1,1,1,1] },
+  { name:'Email delivery', status:'operational', up:'99.94%', ms:402, hist:[1,1,2,1,1,1,1,1,1,1,1,1] },
+  { name:'Push notifications', status:'degraded', up:'99.41%', ms:688, hist:[1,2,2,1,1,2,2,2,1,1,2,2] },
+  { name:'Background jobs', status:'operational', up:'99.96%', ms:230, hist:[1,1,1,1,1,1,1,1,1,1,1,1] },
+  { name:'Search', status:'operational', up:'99.99%', ms:88, hist:[1,1,1,1,1,1,1,1,1,1,1,1] },
+  { name:'Analytics', status:'maintenance', up:'99.10%', ms:0, hist:[1,1,1,1,1,1,1,1,3,3,3,3] },
+];
+
+const INCIDENTS = [
+  { id:'INC-0142', title:'Elevated push notification failures (APNs)', sev:'High', status:'monitoring', svc:'Push notifications', start:'04 Aug 2026 07:14', end:'—', owner:'Idris Okafor', impact:'≈8% of staff devices did not receive shift-change pushes for 46 minutes.' },
+  { id:'INC-0141', title:'Database read replica lag above 30s', sev:'Medium', status:'investigating', svc:'PostgreSQL database', start:'04 Aug 2026 05:52', end:'—', owner:'Sarah Okonjo', impact:'Reports and exports served stale figures; writes unaffected.' },
+  { id:'INC-0139', title:'Payroll export queue backlog', sev:'Medium', status:'resolved', svc:'Background jobs', start:'31 Jul 2026 22:10', end:'01 Aug 2026 01:35', owner:'Idris Okafor', impact:'412 payroll exports delayed by up to 3h 25m. All completed.' },
+  { id:'INC-0138', title:'Sign-in outage — auth provider certificate expiry', sev:'Critical', status:'resolved', svc:'Authentication', start:'22 Jul 2026 09:03', end:'22 Jul 2026 09:41', owner:'Sarah Okonjo', impact:'All sign-ins failed for 38 minutes across every tenant.' },
+];
+const SEV = { Critical:'bad', High:'warn', Medium:'info', Low:'neutral' };
+
+const INTEGRATIONS = [
+  { name:'Sage Payroll', cat:'Payroll', orgs:412, status:'operational', rate:99.4, last:'6 minutes ago', fails:3 },
+  { name:'Xero', cat:'Payroll', orgs:288, status:'operational', rate:99.8, last:'2 minutes ago', fails:0 },
+  { name:'BrightHR', cat:'HR', orgs:194, status:'degraded', rate:91.2, last:'41 minutes ago', fails:27 },
+  { name:'Google Calendar', cat:'Calendar', orgs:706, status:'operational', rate:99.9, last:'1 minute ago', fails:1 },
+  { name:'Microsoft 365', cat:'Identity', orgs:521, status:'operational', rate:99.7, last:'3 minutes ago', fails:2 },
+  { name:'Slack', cat:'Communication', orgs:338, status:'operational', rate:99.6, last:'4 minutes ago', fails:2 },
+  { name:'Outbound webhooks', cat:'Webhooks', orgs:96, status:'degraded', rate:87.5, last:'18 minutes ago', fails:44 },
+  { name:'PostHog', cat:'Analytics', orgs:1284, status:'operational', rate:99.9, last:'just now', fails:0 },
+];
+
+const GDPR = [
+  { id:'DSR-0311', org:'org_1c5b83', type:'Data export', by:'Alison Frame', status:'pending', to:'Sarah Okonjo', due:'07 Aug 2026', made:'01 Aug 2026' },
+  { id:'DSR-0309', org:'org_9d1e57', type:'Data deletion', by:'Daniel Whitfield', status:'pending', to:'Idris Okafor', due:'11 Aug 2026', made:'28 Jul 2026' },
+  { id:'DSR-0304', org:'org_2b8c40', type:'Data correction', by:'Priya Raman', status:'complete', to:'Leah Marchetti', due:'24 Jul 2026', made:'12 Jul 2026' },
+  { id:'DSR-0298', org:'org_8f7a35', type:'Data export', by:'Tomas Nowak', status:'complete', to:'Sarah Okonjo', due:'02 Jul 2026', made:'20 Jun 2026' },
+];
+
+const SESSIONS = [
+  { org:'org_9d1e57', admin:'Idris Okafor', reason:'Investigating failed rota publish reported in RF-4796', scope:'Read-only · rota and staff', start:'04 Aug 2026 09:02', exp:'04 Aug 2026 10:02', status:'expired', ref:'RF-4796' },
+  { org:'org_8f7a35', admin:'Sarah Okonjo', reason:'Restoring account after chargeback resolved', scope:'Read + write · billing', start:'30 Jul 2026 10:14', exp:'30 Jul 2026 11:14', status:'revoked', ref:'RF-4790' },
+];
+
+const PLAN_MIX = [
+  { k:'Free', v:186, color:'var(--muted)' },
+  { k:'Starter', v:341, color:'var(--info)' },
+  { k:'Professional', v:402, color:'var(--primary)' },
+  { k:'Business', v:264, color:'var(--success)' },
+  { k:'Enterprise', v:91, color:'var(--warning)' },
+];
+const HEALTH_MIX = [
+  { k:'Healthy', v:1042, color:'var(--success)' },
+  { k:'Attention', v:118, color:'var(--warning)' },
+  { k:'At risk', v:82, color:'var(--danger)' },
+  { k:'Suspended', v:42, color:'var(--muted)' },
+];
+const MONTHS = ['Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug'];
+const GROWTH = {
+  created:[38,44,41,29,52,58,61,55,64,71,68,42],
+  active:[812,868,902,921,974,1022,1068,1096,1134,1168,1189,1198],
+  churned:[9,7,11,14,8,10,6,12,9,7,8,4],
+};
+const REVENUE = [128400,133100,138900,141200,148600,153900,159400,163800,169700,174900,180200,184260];
+const DAU = [10820,11240,10990,11680,12010,11870,12489];
+const DAYS = ['Tue','Wed','Thu','Fri','Sat','Sun','Mon'];
+
+const INVOICES = [
+  { id:'INV-2026-4412', org:'org_1c5b83', amt:1980, status:'paid', due:'01 Aug 2026', method:'Direct Debit' },
+  { id:'INV-2026-4411', org:'org_7f3a91', amt:1240, status:'paid', due:'01 Aug 2026', method:'Card ·· 4417' },
+  { id:'INV-2026-4409', org:'org_4a6f22', amt:640, status:'past_due', due:'28 Jul 2026', method:'Card ·· 9082' },
+  { id:'INV-2026-4404', org:'org_2b8c40', amt:480, status:'paid', due:'25 Jul 2026', method:'Direct Debit' },
+  { id:'INV-2026-4398', org:'org_9d1e57', amt:290, status:'failed', due:'22 Jul 2026', method:'Card ·· 3311' },
+  { id:'INV-2026-4390', org:'org_8f7a35', amt:290, status:'refunded', due:'18 Jul 2026', method:'Card ·· 7745' },
+];
+
+const ANNOUNCEMENTS = [
+  { title:'Scheduled maintenance — 10 Aug, 02:00–03:00 BST', type:'Maintenance', aud:'All organisations', when:'Scheduled 08 Aug 2026', sent:0, read:0, status:'pending' },
+  { title:'New: cost forecasting in Reports', type:'Product release', aud:'Business, Enterprise', when:'Sent 29 Jul 2026', sent:355, read:241, status:'complete' },
+  { title:'Action needed: card expiring this month', type:'Billing', aud:'96 organisations', when:'Sent 25 Jul 2026', sent:96, read:88, status:'complete' },
+  { title:'Resolved: sign-in outage on 22 July', type:'Platform incident', aud:'All organisations', when:'Sent 22 Jul 2026', sent:1284, read:1102, status:'complete' },
+];
+
+/* audit log is append-only: actions taken in this console push onto the front */
+const AUDIT = [
+  { ts:'04 Aug 2026 09:41:02', who:'Idris Okafor', org:'org_1c5b83', act:'feature_flag.rollout_changed', ent:'new_rota_builder', from:'8%', to:'12%', ip:'82.14.203.11', ok:true },
+  { ts:'04 Aug 2026 09:12:47', who:'Sarah Okonjo', org:'org_8f7a35', act:'organisation.suspended', ent:'org_8f7a35', from:'active', to:'suspended', ip:'82.14.203.44', ok:true },
+  { ts:'04 Aug 2026 08:55:19', who:'Leah Marchetti', org:'org_0a4f76', act:'subscription.trial_extended', ent:'sub_0a4f76', from:'21 Aug 2026', to:'04 Sep 2026', ip:'91.203.44.87', ok:true },
+  { ts:'04 Aug 2026 08:31:04', who:'Idris Okafor', org:'org_9d1e57', act:'support_access.granted', ent:'sa_31f8', from:'—', to:'60 minutes', ip:'82.14.203.11', ok:true },
+  { ts:'04 Aug 2026 07:58:22', who:'Sarah Okonjo', org:'—', act:'platform_admin.invited', ent:'leah.marchetti@rotaflow.co.uk', from:'—', to:'Platform Finance', ip:'82.14.203.44', ok:true },
+  { ts:'03 Aug 2026 22:14:56', who:'system', org:'—', act:'auth.admin_signin_blocked', ent:'unknown@example.com', from:'—', to:'IP not allowlisted', ip:'203.0.113.77', ok:false },
+  { ts:'03 Aug 2026 17:02:11', who:'Leah Marchetti', org:'org_4a6f22', act:'invoice.credit_issued', ent:'INV-2026-4409', from:'£640', to:'£560', ip:'91.203.44.87', ok:true },
+  { ts:'03 Aug 2026 14:40:33', who:'Idris Okafor', org:'—', act:'platform_settings.security_updated', ent:'mfa_required', from:'false', to:'true', ip:'82.14.203.11', ok:true },
+];
+
+const ADMINS = [
+  { name:'Idris Okafor', email:'idris.okafor@rotaflow.co.uk', role:'owner', mfa:true, last:'3 hours ago', status:'active' },
+  { name:'Sarah Okonjo', email:'sarah.okonjo@rotaflow.co.uk', role:'admin', mfa:true, last:'just now', status:'active' },
+  { name:'Leah Marchetti', email:'leah.marchetti@rotaflow.co.uk', role:'finance', mfa:true, last:'1 hour ago', status:'active' },
+  { name:'Tobi Adeyinka', email:'tobi.adeyinka@rotaflow.co.uk', role:'support', mfa:false, last:'2 days ago', status:'active' },
+  { name:'Hannah Groves', email:'hannah.groves@rotaflow.co.uk', role:'support', mfa:true, last:'21 days ago', status:'suspended' },
+];
+
+/* mutable console state */
+const state = {
+  role: ME.role,
+  session: null,     // { org, reason, scope, ref, until }
+  flags: Object.fromEntries(FLAGS.map(f => [f.key, { on:f.on, roll:f.roll }])),
+  audit: AUDIT.slice(),
+  cases: CASES.map(c => ({ ...c })),
+  sessions: SESSIONS.map(s => ({ ...s })),
+  orgs: ORGS.map(o => ({ ...o })),
+  admins: ADMINS.map(a => ({ ...a })),
+};
+const openCases = () => state.cases.filter(c => c.status === 'open' || c.status === 'waiting').length;
+const openIncidents = () => INCIDENTS.filter(i => i.status !== 'resolved').length;
+const BADGES = { openCases, openIncidents };
+
+function nowStamp() {
+  const d = new Date();
+  const p = x => String(x).padStart(2, '0');
+  return `${p(d.getDate())} Aug 2026 ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function logAudit(act, { org = '—', ent = '—', from = '—', to = '—', ok = true } = {}) {
+  state.audit.unshift({ ts:nowStamp(), who:ME.name, org, act, ent, from, to, ip:'82.14.203.44', ok });
+}
+</script>
+
+<script>
+/* ============================ shell: nav, router, guards ============================ */
+function renderRail() {
+  const cur = location.hash.slice(2).split('/')[0] || 'overview';
+  $('#nav').innerHTML =
+    `<div class="navsec eyebrow">Platform</div>` +
+    NAV.filter(item => item.allow.includes(state.role)).map(item => {
+      const count = item.badge ? BADGES[item.badge]() : 0;
+      return `<a href="#/${item.id}"${cur === item.id ? ' aria-current="page"' : ''}>
+        ${ico(item.icon)}<span>${esc(item.label)}</span>
+        ${count ? `<span class="count">${count}</span>` : ''}</a>`;
+    }).join('');
+  $('#nav2').innerHTML = NAV2.map(item =>
+    `<a href="#/${item.id}">${ico(item.icon)}<span>${esc(item.label)}</span></a>`).join('');
+  $('#whoRole').textContent = ROLES[state.role].name;
+  $('#whoAv').textContent = initials(ME.name);
+}
+
+function crumbs(parts) {
+  $('#crumbs').innerHTML = ['Platform Console', ...parts]
+    .map((p, i, a) => i === a.length - 1 ? `<b>${esc(p)}</b>` : esc(p))
+    .join(' <span aria-hidden="true">/</span> ');
+}
+
+function guard(id) {
+  const item = NAV.find(x => x.id === id);
+  return !item || item.allow.includes(state.role);
+}
+
+function lockedScreen(id) {
+  const item = NAV.find(x => x.id === id);
+  const allowed = item.allow.map(r => ROLES[r].name).join(', ');
+  return `<div class="locked">
+    <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P.shield}"/></svg>
+    <h1>Platform access restricted</h1>
+    <p class="lede" style="margin:10px auto 0">
+      <b>${esc(item.label)}</b> is not available to a ${esc(ROLES[state.role].name)}.
+      This route is refused by the server and by row-level security, not only hidden from the sidebar.</p>
+    <div class="card" style="margin:22px 0;text-align:left">
+      <div class="body">
+        <dl class="dl">
+          <dt>Signed in as</dt><dd>${esc(ME.name)} · ${esc(ME.email)}</dd>
+          <dt>Platform role</dt><dd>${esc(ROLES[state.role].name)}</dd>
+          <dt>Required</dt><dd>${esc(allowed)}</dd>
+          <dt>Attempt logged</dt><dd class="mono">platform.access_denied · ${esc(id)}</dd>
+        </dl>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <a class="btn p" href="#/overview">Back to Overview</a>
+      <button class="btn" onclick="toast('Signed out of the platform console.')">Sign out</button>
+    </div>
+  </div>`;
+}
+
+function renderBanner() {
+  const b = $('#banner');
+  if (!state.session) { b.innerHTML = ''; return; }
+  const org = orgById(state.session.org);
+  b.innerHTML = `<div class="sabanner" role="status">
+    <span class="dot"></span>
+    <span><strong>Support access active.</strong> You are temporarily viewing
+      <a href="#/organisations/${org.id}">${esc(org.name)}</a> · ${esc(state.session.scope)}</span>
+    <span>Expires in <span class="clock" id="saClock">—</span></span>
+    <button class="btn sm d" style="margin-left:auto" onclick="endSession('Exited')">Exit support session</button>
+  </div>`;
+  tickClock();
+}
+let clockTimer = null;
+function tickClock() {
+  clearInterval(clockTimer);
+  const paint = () => {
+    if (!state.session) return;
+    const left = Math.max(0, state.session.until - Date.now());
+    if (left === 0) { endSession('Expired'); return; }
+    const m = Math.floor(left / 60000), s = Math.floor(left % 60000 / 1000);
+    const el = $('#saClock');
+    if (el) el.textContent = `${m}:${String(s).padStart(2, '0')}`;
+  };
+  paint();
+  clockTimer = setInterval(paint, 1000);
+}
+function endSession(how) {
+  if (!state.session) return;
+  const org = orgById(state.session.org);
+  const rec = state.sessions.find(s => s.live);
+  if (rec) { rec.live = false; rec.status = how === 'Expired' ? 'expired' : 'revoked'; }
+  logAudit('support_access.ended', { org:org.id, ent:'support session', from:'active', to:how.toLowerCase() });
+  state.session = null;
+  clearInterval(clockTimer);
+  renderBanner(); route();
+  toast(`${how} support session for ${org.name}.`);
+}
+
+const SCREENS = {};
+function route() {
+  const [id = 'overview', a, b] = location.hash.slice(2).split('/');
+  renderRail();
+  const known = SCREENS[id];
+  if (!known) {
+    crumbs([id]);
+    $('#screen').innerHTML = `<div class="locked">
+      <h1>Not built yet</h1>
+      <p class="lede" style="margin:10px auto 0">
+        <span class="mono">#/${esc(id)}</span> is a secondary link in this prototype.</p>
+      <p style="margin-top:18px"><a class="btn p" href="#/overview">Back to Overview</a></p></div>`;
+    return;
+  }
+  if (!guard(id)) { crumbs([NAV.find(x => x.id === id).label]); $('#screen').innerHTML = lockedScreen(id); return; }
+  $('#screen').innerHTML = known(a, b);
+  window.scrollTo({ top:0, behavior:'instant' });
+  $$('[data-tabs]').forEach(wireTabs);
+  $$('[data-filter]').forEach(wireFilter);
+}
+
+function wireTabs(root) {
+  const btns = [...root.querySelectorAll('.tabs button')];
+  btns.forEach(btn => btn.onclick = () => {
+    btns.forEach(x => x.setAttribute('aria-selected', String(x === btn)));
+    root.querySelectorAll('[data-panel]').forEach(p =>
+      p.hidden = p.dataset.panel !== btn.dataset.tab);
+  });
+}
+function wireFilter(root) {
+  const q = root.querySelector('input[type="search"]');
+  const sels = [...root.querySelectorAll('select[data-key]')];
+  const rows = [...root.querySelectorAll('tbody tr[data-row]')];
+  const empty = root.querySelector('[data-empty]');
+  const apply = () => {
+    const term = (q?.value || '').trim().toLowerCase();
+    let shown = 0;
+    rows.forEach(tr => {
+      const hitText = !term || tr.dataset.row.toLowerCase().includes(term);
+      const hitSel = sels.every(s => !s.value || (tr.dataset[s.dataset.key] || '') === s.value);
+      const vis = hitText && hitSel;
+      tr.hidden = !vis; if (vis) shown++;
+    });
+    if (empty) empty.hidden = shown > 0;
+    const c = root.querySelector('[data-count]');
+    if (c) c.textContent = `${shown} of ${rows.length}`;
+  };
+  q?.addEventListener('input', apply);
+  sels.forEach(s => s.addEventListener('change', apply));
+  apply();
+}
+
+/* ============================ modal ============================ */
+function modal({ title, sub, body, confirm, danger, reason, reauth, onOk }) {
+  const dlg = $('#modal');
+  dlg.innerHTML = `<form method="dialog">
+    <header>
+      <h3>${esc(title)}</h3>
+      ${sub ? `<p class="lede" style="margin-top:4px">${sub}</p>` : ''}
+    </header>
+    <div class="body">
+      ${body || ''}
+      ${reason ? `<div class="field">
+        <label for="mReason">Reason (recorded in the audit log)</label>
+        <textarea id="mReason" placeholder="Why is this necessary?"></textarea>
+        <span class="err" id="mReasonErr" hidden>A reason is required before this action is recorded.</span>
+      </div>` : ''}
+      ${reauth ? `<div class="field">
+        <label for="mPass">Confirm your password</label>
+        <input id="mPass" type="password" placeholder="••••••••" autocomplete="current-password">
+        <span class="hint">Critical platform actions re-authenticate before they are written.</span>
+        <span class="err" id="mPassErr" hidden>Password required to continue.</span>
+      </div>` : ''}
+    </div>
+    <footer>
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+      <button class="btn ${danger ? 'd' : 'p'}" id="mOk" type="button">${esc(confirm || 'Confirm')}</button>
+    </footer>
+  </form>`;
+  dlg.showModal();
+  dlg.querySelector('#mOk').onclick = () => {
+    const vals = {};
+    if (reason) {
+      const v = dlg.querySelector('#mReason').value.trim();
+      dlg.querySelector('#mReasonErr').hidden = !!v;
+      if (!v) return; vals.reason = v;
+    }
+    if (reauth) {
+      const v = dlg.querySelector('#mPass').value;
+      dlg.querySelector('#mPassErr').hidden = !!v;
+      if (!v) return;
+    }
+    dlg.querySelectorAll('[data-val]').forEach(el => {
+      vals[el.dataset.val] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    if (dlg.querySelector('#mAck') && !dlg.querySelector('#mAck').checked) {
+      dlg.querySelector('#mAckErr').hidden = false; return;
+    }
+    dlg.close();
+    onOk?.(vals);
+  };
+}
+
+/* ============================ actions ============================ */
+function requestAccess(orgId) {
+  modal({
+    title:'Request temporary support access',
+    sub:'Access is time limited, scoped, fully audited, and visible to the organisation owner.',
+    confirm:'Start support session',
+    reason:true, reauth:true,
+    body:`<div class="field">
+        <label for="saOrg">Organisation</label>
+        <select id="saOrg" data-val="org">${state.orgs.map(o =>
+          `<option value="${o.id}"${o.id === orgId ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select>
+      </div>
+      <div class="field">
+        <label for="saScope">Access scope</label>
+        <select id="saScope" data-val="scope">
+          <option>Read-only · rota and staff</option>
+          <option>Read-only · billing</option>
+          <option>Read + write · rota</option>
+          <option>Read + write · billing</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="saMins">Duration</label>
+        <select id="saMins" data-val="mins">
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="60" selected>1 hour</option>
+          <option value="240">4 hours</option>
+          <option value="1440">24 hours</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="saRef">Support case reference</label>
+        <input id="saRef" data-val="ref" value="${esc(state.cases[0].id)}" placeholder="RF-0000">
+      </div>
+      <label class="check"><input type="checkbox" id="mAck">
+        <span>I confirm that this access is necessary to resolve the identified support issue.</span></label>
+      <span class="err" id="mAckErr" hidden>You must confirm before access is granted.</span>`,
+    onOk(v) {
+      const mins = Number(v.mins);
+      const org = orgById(v.org);
+      state.session = { org:org.id, reason:v.reason, scope:v.scope, ref:v.ref, until:Date.now() + mins * 60000 };
+      state.sessions.unshift({ org:org.id, admin:ME.name, reason:v.reason, scope:v.scope,
+        start:nowStamp(), exp:`+${mins} min`, status:'active', ref:v.ref, live:true });
+      logAudit('support_access.granted', { org:org.id, ent:'support session', from:'—', to:`${mins} minutes` });
+      renderBanner(); route();
+      toast(`Support access to ${org.name} granted for ${mins} minutes.`);
+    },
+  });
+}
+
+function toggleFlag(key) {
+  const f = FLAGS.find(x => x.key === key), s = state.flags[key];
+  const turningOff = s.on;
+  const go = () => {
+    s.on = !s.on; if (!s.on) s.roll = 0; else s.roll = s.roll || 100;
+    logAudit(s.on ? 'feature_flag.enabled' : 'feature_flag.disabled',
+      { ent:key, from:String(turningOff), to:String(s.on) });
+    route(); toast(`${f.name} ${s.on ? 'enabled' : 'disabled'} in Production.`);
+  };
+  if (f.critical) {
+    modal({ title:`${turningOff ? 'Disable' : 'Enable'} ${f.name}?`, danger:turningOff,
+      sub:`<span class="mono">${esc(key)}</span> is marked critical — it changes behaviour for live tenants immediately.`,
+      confirm:turningOff ? 'Disable flag' : 'Enable flag', reason:true, reauth:true, onOk:go });
+  } else go();
+}
+
+function suspendOrg(id) {
+  const org = state.orgs.find(o => o.id === id);
+  const on = org.status === 'suspended';
+  modal({
+    title:on ? `Reactivate ${org.name}?` : `Suspend ${org.name}?`, danger:!on,
+    sub:on ? 'Staff regain access immediately and published rotas become visible again.'
+           : `${n(org.users)} users lose access immediately. Published rotas stay stored but become unreadable.`,
+    confirm:on ? 'Reactivate organisation' : 'Suspend organisation', reason:true, reauth:!on,
+    onOk() {
+      const from = org.status; org.status = on ? 'active' : 'suspended';
+      logAudit(on ? 'organisation.reactivated' : 'organisation.suspended',
+        { org:org.id, ent:org.id, from, to:org.status });
+      route(); toast(`${org.name} ${on ? 'reactivated' : 'suspended'}.`);
+    },
+  });
+}
+
+function resolveCase(id) {
+  const c = state.cases.find(x => x.id === id);
+  modal({ title:`Resolve ${id}?`, confirm:'Resolve case', reason:true,
+    sub:'The requester is emailed a resolution summary. Internal notes are never included.',
+    onOk() {
+      const from = c.status; c.status = 'resolved'; c.upd = 'just now';
+      logAudit('support_case.resolved', { org:c.org, ent:id, from, to:'resolved' });
+      route(); toast(`${id} resolved.`);
+    } });
+}
+</script>
+
+<script>
+/* ============================ screen: overview ============================ */
+SCREENS.overview = () => {
+  crumbs(['Overview']);
+  const feed = [
+    ['ok','building','Brightpath Nurseries created an organisation','Starter trial · 6 minutes ago'],
+    ['info','card','Cardiff Retail Partners upgraded Business → Enterprise','£640 → £1,180 MRR · 41 minutes ago'],
+    ['bad','building','Harbour Logistics UK suspended','Chargeback unresolved · 2 hours ago'],
+    ['warn','key','Support access granted to Mersey Domiciliary Care','Idris Okafor · 60 minutes · case RF-4796'],
+    ['info','flag','new_rota_builder rollout raised to 12%','Idris Okafor · 3 hours ago'],
+    ['bad','plug','BrightHR sync failed for 27 organisations','Retry scheduled · 41 minutes ago'],
+  ];
+  const washOf = { ok:'var(--success-wash)', warn:'var(--warning-wash)', bad:'var(--danger-wash)', info:'var(--info-wash)' };
+  const inkOf = { ok:'var(--success)', warn:'var(--warning)', bad:'var(--danger)', info:'var(--info)' };
+
+  return `
+  <div class="pagehead">
+    <div>
+      <h1>Platform overview</h1>
+      <p class="lede">Organisations, users, subscriptions and platform performance across every RotaFlow tenant.</p>
+    </div>
+    <div class="acts">
+      <select class="btn" aria-label="Date range">
+        <option>Last 30 days</option><option>Last 7 days</option>
+        <option>Last 90 days</option><option selected>Last 12 months</option>
+      </select>
+      <button class="btn" onclick="toast('Platform report queued — you will be emailed a CSV.')">Export report</button>
+    </div>
+  </div>
+
+  ${tiles([
+    { lbl:'Total organisations', val:'1,284', to:'organisations', spark:GROWTH.active,
+      sub:`<span class="up">+42</span> this month` },
+    { lbl:'Active organisations', val:'1,198', to:'organisations',
+      sub:'93.3% of all tenants', spark:GROWTH.active, tint:'var(--success)' },
+    { lbl:'Total users', val:'48,726', to:'users', spark:[41200,42600,43800,44900,46100,47300,48726],
+      sub:`<span class="up">+1,842</span> this month` },
+    { lbl:'Active users today', val:'12,489', to:'users', spark:DAU, tint:'var(--info)',
+      sub:'25.6% of all users' },
+    { lbl:'Published rotas', val:'8,942', spark:[7100,7480,7690,8020,8310,8640,8942], tint:'var(--success)',
+      sub:'This week' },
+    { lbl:'Monthly revenue', val:'£184,260', to:'billing', spark:REVENUE, tint:'var(--warning)',
+      sub:`<span class="up">+12.4%</span> from last month` },
+  ])}
+
+  <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:16px">
+    <section class="card">
+      <header><h3>Platform growth</h3>
+        <span class="spacer"></span><span class="pill neutral plain">Last 12 months</span></header>
+      <div class="body">
+        ${areaChart([
+          { name:'Active organisations', vals:GROWTH.active, color:'var(--primary)' },
+          { name:'New organisations', vals:GROWTH.created.map(v => v * 14), color:'var(--success)', fill:false },
+          { name:'Churned', vals:GROWTH.churned.map(v => v * 14), color:'var(--danger)', fill:false },
+        ], MONTHS, 310)}
+        <p class="lede" style="font-size:12.5px">New and churned counts are scaled onto the same axis for shape
+          comparison. August is 4 days in.</p>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <header><h3>Subscription mix</h3></header>
+        <div class="body">${barRows(PLAN_MIX)}</div>
+      </section>
+      <section class="card">
+        <header><h3>Organisation health</h3>
+          <span class="spacer"></span><a class="btn sm" href="#/organisations">Review</a></header>
+        <div class="body">${barRows(HEALTH_MIX)}</div>
+      </section>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-top:16px">
+    <section class="card">
+      <header><h3>System health</h3><span class="spacer"></span>
+        <a class="btn sm" href="#/platform-health">All services</a></header>
+      ${SERVICES.slice(0, 6).map(s => `<div class="svc">
+        <span class="nm">${esc(s.name)}</span>${pill(s.status)}
+        <span class="bars">${s.hist.map(h =>
+          `<i class="${h === 2 ? 'w' : h === 3 ? 'b' : ''}"></i>`).join('')}</span></div>`).join('')}
+    </section>
+
+    <section class="card">
+      <header><h3>Platform activity</h3><span class="spacer"></span>
+        <a class="btn sm" href="#/audit">Audit log</a></header>
+      <ul class="feed">${feed.map(([tone, icon, t, m]) => `<li>
+        <span class="fi" style="background:${washOf[tone]};color:${inkOf[tone]}">${ico(icon)}</span>
+        <span><span class="ft">${esc(t)}</span><span class="fm">${esc(m)}</span></span></li>`).join('')}</ul>
+    </section>
+
+    <section class="card">
+      <header><h3>Support</h3><span class="spacer"></span>
+        <a class="btn sm" href="#/support">Support centre</a></header>
+      <div class="body" style="display:grid;gap:12px">
+        <div class="tiles" style="grid-template-columns:1fr 1fr">
+          ${['Open cases', 'Urgent'].map((l, i) => `<div class="tile" style="box-shadow:none">
+            <span class="lbl">${l}</span>
+            <span class="val">${i ? state.cases.filter(c => c.pri === 'Urgent' && c.status !== 'resolved').length : openCases()}</span>
+          </div>`).join('')}
+        </div>
+        ${state.cases.filter(c => c.status !== 'resolved').slice(0, 3).map(c => `
+          <a href="#/support/${c.id}" style="text-decoration:none;color:inherit;display:flex;gap:10px;align-items:flex-start">
+            <span class="pill ${PRI[c.pri]}">${esc(c.pri)}</span>
+            <span><span class="ft" style="font-weight:550;font-size:13px">${esc(c.subj)}</span>
+            <span class="fm" style="display:block;font-size:12px;color:var(--muted)">
+              ${esc(orgById(c.org).name)} · ${esc(c.upd)}</span></span></a>`).join('')}
+      </div>
+    </section>
+  </div>`;
+};
+
+/* ============================ screen: organisations ============================ */
+SCREENS.organisations = (id) => {
+  if (id) return SCREENS.orgDetail(id);
+  crumbs(['Organisations']);
+  const os = state.orgs;
+  const rows = os.map(o => [
+    `<div class="rowav"><span class="av">${initials(o.name)}</span>
+      <span class="two-line"><span class="t"><a href="#/organisations/${o.id}"
+        style="text-decoration:none;color:inherit">${esc(o.name)}</a></span>
+      <span class="s mono">${esc(o.id)}</span></span></div>`,
+    esc(o.ind),
+    `<span class="pill neutral plain">${esc(o.plan)}</span>`,
+    n(o.users), n(o.locs),
+    pill(o.status),
+    `<span style="display:flex;align-items:center;gap:7px;justify-content:flex-end">
+      <span class="mono">${o.usage}%</span>
+      <span style="width:44px;height:6px;border-radius:999px;background:var(--subtle);border:1px solid var(--border);overflow:hidden;display:inline-block">
+        <span style="display:block;height:100%;width:${o.usage}%;background:${o.usage > 90 ? 'var(--warning)' : 'var(--primary)'}"></span></span></span>`,
+    `<span class="dim">${esc(o.seen)}</span>`,
+    `<div style="display:flex;gap:5px;justify-content:flex-end">
+      <a class="btn sm" href="#/organisations/${o.id}">View</a>
+      <button class="btn sm" onclick="requestAccess('${o.id}')">Access</button>
+      <button class="btn sm ${o.status === 'suspended' ? '' : 'd'}" onclick="suspendOrg('${o.id}')">
+        ${o.status === 'suspended' ? 'Reactivate' : 'Suspend'}</button></div>`,
+  ]);
+  const trs = os.map((o, i) => `<tr data-row="${esc(o.name + ' ' + o.id + ' ' + o.ind + ' ' + o.contact)}"
+      data-plan="${esc(o.plan)}" data-status="${esc(o.status)}" data-ind="${esc(o.ind)}">
+      ${rows[i].map((c, j) => `<td${[3,4,6].includes(j) ? ' class="num"' : ''}>${c}</td>`).join('')}</tr>`).join('');
+
+  return `
+  <div class="pagehead">
+    <div><h1>Organisations</h1>
+      <p class="lede">Manage customer organisations, subscriptions, access and platform activity.</p></div>
+    <div class="acts">
+      <button class="btn" onclick="toast('Import accepts a CSV of organisation name, plan and owner email.')">Import</button>
+      <button class="btn" onclick="toast('1,284 organisations exported to CSV.')">Export</button>
+      <button class="btn p" onclick="toast('New organisation form — name, plan, owner email, country.')">Add organisation</button>
+    </div>
+  </div>
+
+  ${tiles([
+    { lbl:'Total', val:'1,284' },
+    { lbl:'Active', val:'1,198', sub:'93.3%' },
+    { lbl:'Trial', val:'86', sub:'22 converting this week' },
+    { lbl:'Suspended', val:'42', sub:'<span class="down">payment or abuse</span>' },
+    { lbl:'At risk', val:'82', sub:'no activity in 14 days' },
+    { lbl:'New this month', val:'42', sub:'<span class="up">+18%</span> vs July' },
+  ])}
+
+  <section class="card" style="margin-top:16px" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search name, ID, industry or contact…" aria-label="Search organisations">
+      <select data-key="plan" aria-label="Plan"><option value="">All plans</option>
+        ${['Starter','Professional','Business','Enterprise'].map(p => `<option>${p}</option>`).join('')}</select>
+      <select data-key="status" aria-label="Status"><option value="">Any status</option>
+        ${['active','trial','risk','suspended'].map(s => `<option value="${s}">${STATUS[s][1]}</option>`).join('')}</select>
+      <select data-key="ind" aria-label="Industry"><option value="">All industries</option>
+        ${[...new Set(os.map(o => o.ind))].map(i => `<option>${esc(i)}</option>`).join('')}</select>
+      <span class="spacer" style="margin-left:auto"></span>
+      <span class="dim mono" data-count style="font-size:12px"></span>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr>
+        <th>Organisation</th><th>Industry</th><th>Plan</th><th class="num">Users</th>
+        <th class="num">Sites</th><th>Status</th><th class="num">Usage</th><th>Last activity</th>
+        <th style="text-align:right">Actions</th></tr></thead>
+      <tbody>${trs}</tbody></table></div>
+    <div class="empty" data-empty hidden>No organisations match these filters.</div>
+  </section>`;
+};
+</script>
+
+<script>
+/* ============================ screen: organisation detail ============================ */
+SCREENS.orgDetail = (orgId) => {
+  const o = state.orgs.find(x => x.id === orgId) || state.orgs[0];
+  crumbs(['Organisations', o.name]);
+  const staff = USERS.filter(u => u.org === o.id);
+  const cases = state.cases.filter(c => c.org === o.id);
+  const audit = state.audit.filter(a => a.org === o.id);
+  const panel = (id, inner, first) => `<div data-panel="${id}"${first ? '' : ' hidden'}>${inner}</div>`;
+
+  const locations = [
+    ['Sunnyvale House', 'Residential', 78, 'Active'], ['Oak Lodge', 'Residential', 54, 'Active'],
+    ['Willow Court', 'Dementia care', 41, 'Active'], ['Community Team North', 'Domiciliary', 36, 'Active'],
+    ['Community Team South', 'Domiciliary', 29, 'Setup'], ['Head office', 'Administration', 10, 'Active'],
+  ];
+
+  return `
+  <div class="pagehead">
+    <div class="rowav" style="gap:14px">
+      <span class="av" style="width:50px;height:50px;font-size:17px">${initials(o.name)}</span>
+      <div>
+        <h1 style="font-size:26px;line-height:34px">${esc(o.name)}</h1>
+        <p class="lede" style="margin-top:5px;display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+          <span class="mono">${esc(o.id)}</span><span>·</span>
+          <span class="pill neutral plain">${esc(o.plan)}</span>${pill(o.status)}
+          <span>·</span><span>Created ${esc(o.made)}</span></p>
+      </div>
+    </div>
+    <div class="acts">
+      <button class="btn" onclick="toast('Opened a new support case against ${esc(o.name)}.')">Open case</button>
+      <button class="btn" onclick="requestAccess('${o.id}')">Request support access</button>
+      <button class="btn ${o.status === 'suspended' ? 'p' : 'd'}" onclick="suspendOrg('${o.id}')">
+        ${o.status === 'suspended' ? 'Reactivate' : 'Suspend'}</button>
+    </div>
+  </div>
+
+  <div data-tabs>
+    <div class="tabs" role="tablist">
+      ${['Overview','Users','Locations','Subscription','Usage','Activity','Support','Integrations','Audit','Data']
+        .map((t, i) => `<button role="tab" data-tab="${t}" aria-selected="${i === 0}">${t}</button>`).join('')}
+    </div>
+
+    ${panel('Overview', `
+      ${tiles([
+        { lbl:'Users', val:n(o.users), sub:`${Math.round(o.users * 0.72)} active this week` },
+        { lbl:'Locations', val:n(o.locs), sub:`${o.depts} departments` },
+        { lbl:'Published rotas', val:n(o.rotas), sub:'lifetime' },
+        { lbl:'Monthly shifts', val:n(o.shifts) },
+        { lbl:'Storage', val:o.storage },
+        { lbl:'MRR', val:o.mrr ? gbp(o.mrr) : '—', sub:o.mrr ? 'billed monthly' : 'trial' },
+      ])}
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:16px">
+        <section class="card"><header><h3>Organisation</h3></header><div class="body">
+          <dl class="dl">
+            <dt>Industry</dt><dd>${esc(o.ind)}</dd>
+            <dt>Country</dt><dd>${esc(o.country)}</dd>
+            <dt>Timezone</dt><dd class="mono">${esc(o.tz)}</dd>
+            <dt>Size</dt><dd>${n(o.users)} staff · ${o.locs} sites</dd>
+            <dt>Account health</dt><dd>${pill(o.health === 'Healthy' ? 'active' : o.health === 'At risk' ? 'risk' : o.health === 'Suspended' ? 'suspended' : 'trial')} ${esc(o.health)}</dd>
+            <dt>Last activity</dt><dd>${esc(o.seen)}</dd>
+          </dl></div></section>
+        <section class="card"><header><h3>Primary contact</h3></header><div class="body">
+          <dl class="dl">
+            <dt>Name</dt><dd>${esc(o.contact)}</dd>
+            <dt>Email</dt><dd class="mono">${esc(o.email)}</dd>
+            <dt>Role</dt><dd>Organisation owner</dd>
+            <dt>Verified</dt><dd>${pill('verified')}</dd>
+          </dl>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="btn sm" onclick="toast('Email drafted to ${esc(o.contact)}.')">Contact owner</button>
+            <a class="btn sm" href="#/users">View in users</a></div>
+        </div></section>
+      </div>`, true)}
+
+    ${panel('Users', `<section class="card">
+      <header><h3>${staff.length} users in this organisation</h3><span class="spacer"></span>
+        <button class="btn sm" onclick="toast('Invitation resent.')">Resend invitations</button></header>
+      ${table(
+        [{h:'User'},{h:'Role'},{h:'Status'},{h:'MFA'},{h:'Last login'},{h:'Actions'}],
+        staff.map(u => [
+          `<div class="rowav"><span class="av">${initials(u.name)}</span>
+            <span class="two-line"><span class="t">${esc(u.name)}</span>
+            <span class="s mono">${esc(u.email)}</span></span></div>`,
+          `<span class="pill neutral plain">${esc(u.role)}</span>`,
+          pill(u.status),
+          u.mfa ? pill('ok') + ' On' : `<span class="dim">Off</span>`,
+          `<span class="dim">${esc(u.last)}</span>`,
+          `<div style="display:flex;gap:5px"><a class="btn sm" href="#/users/${u.id}">View</a>
+            <button class="btn sm" onclick="toast('Password reset sent to ${esc(u.email)}.')">Reset</button></div>`,
+        ]), { empty:'No users yet.' })}</section>`)}
+
+    ${panel('Locations', `<section class="card">
+      <header><h3>Locations and departments</h3></header>
+      ${table([{h:'Location'},{h:'Type'},{h:'Staff',num:true},{h:'Status'},{h:'Rota activity'}],
+        locations.slice(0, o.locs).map(([nm, ty, st, sts]) => [
+          `<span class="strong">${esc(nm)}</span>`, esc(ty), n(st),
+          sts === 'Active' ? pill('active') : pill('pending'),
+          `<span class="dim">Published to ${new Date().getDate() + 10} Aug</span>`,
+        ]))}</section>`)}
+
+    ${panel('Subscription', `
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+        <section class="card"><header><h3>Current plan</h3><span class="spacer"></span>
+          <span class="pill neutral plain">${esc(o.plan)}</span></header><div class="body">
+          <dl class="dl">
+            <dt>Status</dt><dd>${pill(o.status === 'trial' ? 'trial' : 'active')}</dd>
+            <dt>Billing cycle</dt><dd>Monthly</dd>
+            <dt>Value</dt><dd class="mono">${o.mrr ? gbp(o.mrr) + ' / month' : 'Trial — no charge'}</dd>
+            <dt>Renews</dt><dd>01 Sep 2026</dd>
+            <dt>Payment</dt><dd>${pill(o.status === 'suspended' ? 'failed' : 'paid')}</dd>
+            <dt>Billing contact</dt><dd class="mono">${esc(o.email)}</dd>
+          </dl>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+            <button class="btn sm" onclick="toast('Plan change previewed — prorated at £${o.mrr}.')">Change plan</button>
+            <button class="btn sm" onclick="toast('14-day trial extension applied.')">Extend trial</button>
+            <button class="btn sm d" onclick="modal({title:'Cancel subscription?',danger:true,confirm:'Cancel subscription',reason:true,reauth:true,sub:'Access continues until the end of the paid period.',onOk(){logAudit('subscription.cancelled',{org:'${o.id}',ent:'${o.id}',from:'active',to:'cancelled'});toast('Subscription cancelled at period end.')}})">Cancel</button>
+          </div></div></section>
+        <section class="card"><header><h3>Invoice history</h3></header>
+          ${table([{h:'Invoice'},{h:'Amount',num:true},{h:'Status'},{h:'Due'}],
+            INVOICES.filter(i => i.org === o.id).concat(INVOICES.slice(0, 2)).slice(0, 4).map(i => [
+              `<span class="mono">${esc(i.id)}</span>`, gbp(i.amt), pill(i.status), `<span class="dim">${esc(i.due)}</span>`]))}
+        </section>
+      </div>`)}
+
+    ${panel('Usage', `<section class="card"><header><h3>Usage against plan limits</h3></header>
+      <div class="body">${barRows([
+        { k:'Users', v:o.users, d:`${o.users} / ${Math.round(o.users / (o.usage / 100))}` },
+        { k:'Locations', v:o.locs * 10, d:`${o.locs} / ${o.locs + 4}` },
+        { k:'Monthly shifts', v:o.shifts, d:n(o.shifts) },
+        { k:'Storage', v:parseFloat(o.storage) * 100, d:o.storage },
+        { k:'API calls', v:o.users * 40, d:n(o.users * 40) + ' / mo' },
+        { k:'Exports', v:o.rotas, d:n(o.rotas) + ' / mo' },
+      ])}</div></section>`)}
+
+    ${panel('Activity', `<section class="card"><header><h3>Recent activity</h3></header>
+      <ul class="feed">${[
+        ['Rota published for week commencing 10 Aug', `${o.contact} · 4 minutes ago`],
+        ['18 shifts reassigned after sickness absence', 'Duty manager · 2 hours ago'],
+        ['Payroll export completed', 'Sage Payroll · 6 hours ago'],
+        ['3 leave requests approved', `${o.contact} · yesterday`],
+        ['New staff member onboarded', 'Head office · 2 days ago'],
+      ].map(([t, m]) => `<li><span class="fi" style="background:var(--primary-wash);color:var(--primary)">${ico('pulse')}</span>
+        <span><span class="ft">${esc(t)}</span><span class="fm">${esc(m)}</span></span></li>`).join('')}</ul></section>`)}
+
+    ${panel('Support', `<section class="card"><header><h3>Support cases</h3></header>
+      ${table([{h:'Case'},{h:'Priority'},{h:'Subject'},{h:'Status'},{h:'Updated'}],
+        cases.map(c => [`<a class="mono" href="#/support/${c.id}">${esc(c.id)}</a>`,
+          `<span class="pill ${PRI[c.pri]}">${esc(c.pri)}</span>`, esc(c.subj), pill(c.status),
+          `<span class="dim">${esc(c.upd)}</span>`]), { empty:'No support cases for this organisation.' })}
+      </section>
+      <section class="card" style="margin-top:16px"><header><h3>Support access history</h3></header>
+      ${table([{h:'Administrator'},{h:'Scope'},{h:'Started'},{h:'Status'}],
+        state.sessions.filter(s => s.org === o.id).map(s => [esc(s.admin), esc(s.scope),
+          `<span class="mono">${esc(s.start)}</span>`, pill(s.status)]),
+        { empty:'No support session has ever been opened against this organisation.' })}</section>`)}
+
+    ${panel('Integrations', `<section class="card"><header><h3>Connected integrations</h3></header>
+      ${table([{h:'Integration'},{h:'Status'},{h:'Last sync'},{h:'Failed',num:true},{h:'Actions'}],
+        INTEGRATIONS.slice(0, 4).map(i => [`<span class="strong">${esc(i.name)}</span>
+          <span class="dim"> · ${esc(i.cat)}</span>`, pill(i.status), `<span class="dim">${esc(i.last)}</span>`,
+          i.fails, `<button class="btn sm" onclick="toast('Re-sync queued for ${esc(i.name)}.')">Retry</button>`]))}
+      </section>`)}
+
+    ${panel('Audit', `<section class="card"><header><h3>Organisation audit trail</h3>
+      <span class="spacer"></span><span class="pill neutral plain">Immutable</span></header>
+      ${table([{h:'Timestamp'},{h:'Administrator'},{h:'Action'},{h:'Before'},{h:'After'}],
+        audit.map(a => [`<span class="mono">${esc(a.ts)}</span>`, esc(a.who),
+          `<span class="mono">${esc(a.act)}</span>`, `<span class="dim">${esc(a.from)}</span>`,
+          `<span class="strong">${esc(a.to)}</span>`]),
+        { empty:'No platform-administrator action has touched this organisation.' })}</section>`)}
+
+    ${panel('Data', `
+      <div class="callout warn" style="margin-bottom:16px">${ico('shield','ico')}
+        <span>Every action on this tab requires a reason, re-authentication, and writes an immutable audit
+        record. Deletion is irreversible once the 30-day grace period elapses.</span></div>
+      <section class="card"><header><h3>Data management</h3></header>
+        ${table([{h:'Action'},{h:'Effect'},{h:''}], [
+          ['Export organisation data', 'Full JSON + CSV bundle, delivered by signed link valid 24 hours.',
+            `<button class="btn sm" onclick="modal({title:'Export ${esc(o.name)} data?',confirm:'Queue export',reason:true,onOk(){logAudit('data.export_requested',{org:'${o.id}',ent:'${o.id}',to:'queued'});toast('Export queued — link emailed when ready.')}})">Export</button>`],
+          ['Request data deletion', 'Schedules erasure of all tenant records after a 30-day grace period.',
+            `<button class="btn sm d" onclick="modal({title:'Schedule deletion of ${esc(o.name)}?',danger:true,confirm:'Schedule deletion',reason:true,reauth:true,sub:'${n(o.users)} user records and ${n(o.shifts)} shifts are erased after 30 days. This cannot be undone once the grace period ends.',onOk(){logAudit('data.deletion_scheduled',{org:'${o.id}',ent:'${o.id}',to:'+30 days'});toast('Deletion scheduled for 03 Sep 2026.')}})">Request deletion</button>`],
+          ['Retention status', `Rota history kept 7 years · attendance 3 years · audit indefinitely.`,
+            `<span class="pill ok">Compliant</span>`],
+          ['Storage used', o.storage + ' of plan allowance', `<span class="mono">${o.storage}</span>`],
+        ].map(r => r))}</section>`)}
+  </div>`;
+};
+
+/* ============================ screen: users ============================ */
+SCREENS.users = (id) => {
+  if (id) return SCREENS.userDetail(id);
+  crumbs(['Users']);
+  const trs = USERS.map(u => {
+    const org = orgById(u.org);
+    return `<tr data-row="${esc(u.name + ' ' + u.email + ' ' + org.name)}"
+      data-status="${esc(u.status)}" data-role="${esc(u.role)}" data-plat="${u.plat ? 'yes' : 'no'}">
+      <td><div class="rowav"><span class="av">${initials(u.name)}</span>
+        <span class="two-line"><span class="t"><a href="#/users/${u.id}" style="color:inherit;text-decoration:none">${esc(u.name)}</a></span>
+        <span class="s mono">${esc(u.email)}</span></span></div></td>
+      <td><a href="#/organisations/${org.id}">${esc(org.name)}</a></td>
+      <td><span class="pill neutral plain">${esc(u.role)}</span></td>
+      <td>${u.plat ? `<span class="pill info">${esc(ROLES[u.plat].name)}</span>` : '<span class="dim">—</span>'}</td>
+      <td>${pill(u.status)}${u.verified ? '' : ' ' + pill('unverified')}</td>
+      <td>${u.mfa ? '<span class="pill ok">On</span>' : '<span class="dim">Off</span>'}</td>
+      <td><span class="dim">${esc(u.last)}</span></td>
+      <td style="text-align:right"><div style="display:flex;gap:5px;justify-content:flex-end">
+        <a class="btn sm" href="#/users/${u.id}">View</a>
+        <button class="btn sm" onclick="toast('Password reset emailed to ${esc(u.email)}.')">Reset</button>
+      </div></td></tr>`;
+  }).join('');
+
+  return `
+  <div class="pagehead">
+    <div><h1>Users</h1><p class="lede">Every account across every organisation. Platform roles are separate
+      from organisation membership and are shown in their own column.</p></div>
+    <div class="acts"><button class="btn" onclick="toast('48,726 users exported to CSV.')">Export</button></div>
+  </div>
+
+  ${tiles([
+    { lbl:'Total users', val:'48,726' }, { lbl:'Active', val:'46,104', sub:'94.6%' },
+    { lbl:'Inactive 90 days', val:'1,884' }, { lbl:'Unverified', val:'412', sub:'<span class="down">invite not accepted</span>' },
+    { lbl:'Suspended', val:'326' }, { lbl:'Platform admins', val:'5', to:'settings' },
+  ])}
+
+  <section class="card" style="margin-top:16px" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search name, email or organisation…" aria-label="Search users">
+      <select data-key="role" aria-label="Organisation role"><option value="">Any org role</option>
+        <option value="owner">owner</option><option value="manager">manager</option><option value="staff">staff</option></select>
+      <select data-key="status" aria-label="Status"><option value="">Any status</option>
+        <option value="active">Active</option><option value="disabled">Disabled</option></select>
+      <select data-key="plat" aria-label="Platform admin"><option value="">All accounts</option>
+        <option value="yes">Platform admins only</option><option value="no">No platform access</option></select>
+      <span style="margin-left:auto"></span><span class="dim mono" data-count style="font-size:12px"></span>
+    </div>
+    <div class="tablewrap"><table><thead><tr>
+      <th>User</th><th>Organisation</th><th>Org role</th><th>Platform role</th>
+      <th>Status</th><th>MFA</th><th>Last login</th><th style="text-align:right">Actions</th>
+    </tr></thead><tbody>${trs}</tbody></table></div>
+    <div class="empty" data-empty hidden>No users match these filters.</div>
+  </section>`;
+};
+
+SCREENS.userDetail = (userId) => {
+  const u = userById(userId), org = orgById(u.org);
+  crumbs(['Users', u.name]);
+  const panel = (id, inner, first) => `<div data-panel="${id}"${first ? '' : ' hidden'}>${inner}</div>`;
+  return `
+  <div class="pagehead">
+    <div class="rowav" style="gap:14px">
+      <span class="av" style="width:50px;height:50px;font-size:17px">${initials(u.name)}</span>
+      <div><h1 style="font-size:26px;line-height:34px">${esc(u.name)}</h1>
+        <p class="lede" style="margin-top:5px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+          <span class="mono">${esc(u.email)}</span><span>·</span>${pill(u.status)}
+          ${u.plat ? `<span class="pill info">${esc(ROLES[u.plat].name)}</span>` : ''}</p></div>
+    </div>
+    <div class="acts">
+      <button class="btn" onclick="toast('Verification email resent.')">Resend verification</button>
+      <button class="btn d" onclick="modal({title:'Force sign out everywhere?',danger:true,confirm:'Sign out all sessions',reason:true,sub:'All 3 active sessions end immediately. The user must sign in again.',onOk(){logAudit('user.sessions_revoked',{org:'${org.id}',ent:'${u.id}',to:'0 sessions'});toast('All sessions revoked.')}})">Force sign out</button>
+    </div>
+  </div>
+  <div data-tabs>
+    <div class="tabs" role="tablist">${['Overview','Organisations','Roles','Sessions','Activity','Security','Audit']
+      .map((t, i) => `<button role="tab" data-tab="${t}" aria-selected="${i === 0}">${t}</button>`).join('')}</div>
+
+    ${panel('Overview', `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <section class="card"><header><h3>Profile</h3></header><div class="body"><dl class="dl">
+        <dt>Full name</dt><dd>${esc(u.name)}</dd><dt>Email</dt><dd class="mono">${esc(u.email)}</dd>
+        <dt>Email verified</dt><dd>${pill(u.verified ? 'verified' : 'unverified')}</dd>
+        <dt>Account status</dt><dd>${pill(u.status)}</dd>
+        <dt>Created</dt><dd>${esc(u.made)}</dd><dt>Last login</dt><dd>${esc(u.last)}</dd>
+        <dt>User ID</dt><dd class="mono">${esc(u.id)}</dd></dl></div></section>
+      <section class="card"><header><h3>Access</h3></header><div class="body"><dl class="dl">
+        <dt>Organisation</dt><dd><a href="#/organisations/${org.id}">${esc(org.name)}</a></dd>
+        <dt>Organisation role</dt><dd><span class="pill neutral plain">${esc(u.role)}</span></dd>
+        <dt>Platform role</dt><dd>${u.plat ? `<span class="pill info">${esc(ROLES[u.plat].name)}</span>` : '<span class="dim">None — customer account</span>'}</dd>
+        <dt>MFA</dt><dd>${u.mfa ? pill('ok') + ' Enforced' : pill('warn') + ' Not enrolled'}</dd>
+      </dl>
+      ${u.plat ? `<button class="btn sm d" style="margin-top:14px"
+        onclick="modal({title:'Remove platform access?',danger:true,confirm:'Remove platform access',reason:true,reauth:true,sub:'The organisation membership is untouched — only the platform permission is revoked.',onOk(){logAudit('platform_admin.removed',{ent:'${u.email}',from:'${u.plat}',to:'none'});toast('Platform access removed from ${esc(u.name)}.')}})">Remove platform access</button>` : ''}
+      </div></section></div>`, true)}
+
+    ${panel('Organisations', `<section class="card"><header><h3>Memberships</h3></header>
+      ${table([{h:'Organisation'},{h:'Role'},{h:'Joined'},{h:'Status'}],
+        [[`<a href="#/organisations/${org.id}">${esc(org.name)}</a>`,
+          `<span class="pill neutral plain">${esc(u.role)}</span>`, esc(u.made), pill('active')]])}
+      <div class="body"><p class="lede" style="margin:0">A user may belong to several organisations.
+        Organisation roles never grant platform access.</p></div></section>`)}
+
+    ${panel('Roles', `<section class="card"><header><h3>Effective permissions</h3></header>
+      <div class="body"><dl class="dl">
+        <dt>Organisation</dt><dd>${esc(u.role)} in ${esc(org.name)}</dd>
+        <dt>Platform</dt><dd>${u.plat ? ROLES[u.plat].name : 'None'}</dd>
+        <dt>Can reach /admin</dt><dd>${u.plat ? pill('ok') + ' Yes' : pill('bad') + ' No — blocked at route, API and RLS'}</dd>
+      </dl></div></section>`)}
+
+    ${panel('Sessions', `<section class="card"><header><h3>Active sessions</h3><span class="spacer"></span>
+      <button class="btn sm d" onclick="toast('All sessions revoked.')">Revoke all</button></header>
+      ${table([{h:'Device'},{h:'IP'},{h:'Started'},{h:'Last seen'},{h:''}], [
+        ['Chrome 141 · macOS', '<span class="mono">82.14.203.44</span>', '04 Aug 08:02', 'just now',
+          '<button class="btn sm" onclick="toast(&#39;Session revoked.&#39;)">Revoke</button>'],
+        ['RotaFlow PWA · iOS 19', '<span class="mono">92.40.118.7</span>', '02 Aug 06:44', '3 hours ago',
+          '<button class="btn sm" onclick="toast(&#39;Session revoked.&#39;)">Revoke</button>'],
+      ])}</section>`)}
+
+    ${panel('Activity', `<section class="card"><header><h3>Recent activity</h3></header>
+      <ul class="feed">${[['Signed in', u.last], ['Published a rota', '2 hours ago'],
+        ['Approved 4 leave requests', 'yesterday'], ['Changed notification preferences', '3 days ago']]
+        .map(([t, m]) => `<li><span class="fi" style="background:var(--primary-wash);color:var(--primary)">${ico('pulse')}</span>
+        <span><span class="ft">${esc(t)}</span><span class="fm">${esc(m)}</span></span></li>`).join('')}</ul></section>`)}
+
+    ${panel('Security', `<section class="card"><header><h3>Security events</h3></header>
+      ${table([{h:'Event'},{h:'IP'},{h:'When'},{h:'Result'}], [
+        ['Sign-in', '<span class="mono">82.14.203.44</span>', u.last, pill('ok')],
+        ['Password changed', '<span class="mono">82.14.203.44</span>', '19 Jul 2026', pill('ok')],
+        ['Sign-in from new device', '<span class="mono">92.40.118.7</span>', '02 Aug 2026', pill('warn')],
+        ['Failed sign-in ×3', '<span class="mono">203.0.113.77</span>', '28 Jul 2026', pill('bad')],
+      ])}</section>`)}
+
+    ${panel('Audit', `<section class="card"><header><h3>Platform actions on this account</h3>
+      <span class="spacer"></span><span class="pill neutral plain">Immutable</span></header>
+      ${table([{h:'Timestamp'},{h:'Administrator'},{h:'Action'},{h:'After'}],
+        state.audit.filter(a => a.ent === u.email || a.ent === u.id).map(a =>
+          [`<span class="mono">${esc(a.ts)}</span>`, esc(a.who), `<span class="mono">${esc(a.act)}</span>`, esc(a.to)]),
+        { empty:'No platform administrator has acted on this account.' })}</section>`)}
+  </div>`;
+};
+</script>
+
+<script>
+/* ============================ screen: subscriptions ============================ */
+SCREENS.subscriptions = () => {
+  crumbs(['Subscriptions']);
+  const trs = state.orgs.map(o => `<tr data-row="${esc(o.name + ' ' + o.plan)}"
+    data-plan="${esc(o.plan)}" data-status="${esc(o.status === 'trial' ? 'trial' : o.status === 'suspended' ? 'past_due' : 'active')}">
+    <td><a href="#/organisations/${o.id}">${esc(o.name)}</a>
+      <div class="s mono dim" style="font-size:12px">${esc(o.id)}</div></td>
+    <td><span class="pill neutral plain">${esc(o.plan)}</span></td>
+    <td>${pill(o.status === 'trial' ? 'trial' : o.status === 'suspended' ? 'past_due' : 'active')}</td>
+    <td>Monthly</td>
+    <td class="num">${o.mrr ? gbp(o.mrr) : '—'}</td>
+    <td class="dim">01 Sep 2026</td>
+    <td>${pill(o.status === 'suspended' ? 'failed' : o.status === 'trial' ? 'pending' : 'paid')}</td>
+    <td class="num">${o.usage}%</td>
+    <td style="text-align:right"><div style="display:flex;gap:5px;justify-content:flex-end">
+      <button class="btn sm" onclick="toast('Plan change previewed for ${esc(o.name)}.')">Change plan</button>
+      <button class="btn sm" onclick="toast('20% discount applied for 3 months.')">Discount</button></div></td></tr>`).join('');
+  return `
+  <div class="pagehead"><div><h1>Subscriptions</h1>
+    <p class="lede">Every customer subscription record, its plan, value and payment state.</p></div>
+    <div class="acts"><button class="btn" onclick="toast('Subscription ledger exported.')">Export</button></div></div>
+  ${tiles([
+    { lbl:'MRR', val:'£184,260', spark:REVENUE, tint:'var(--success)', sub:'<span class="up">+12.4%</span>' },
+    { lbl:'ARR', val:'£2.21m', sub:'run rate' },
+    { lbl:'Active subscriptions', val:'1,098' },
+    { lbl:'Trials', val:'86', sub:'22 convert this week' },
+    { lbl:'Past due', val:'31', sub:'<span class="down">£8,940 at risk</span>' },
+    { lbl:'Churn rate', val:'1.4%', sub:'<span class="up">−0.3pt</span> vs July' },
+  ])}
+  <section class="card" style="margin-top:16px" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search organisation or plan…" aria-label="Search subscriptions">
+      <select data-key="plan" aria-label="Plan"><option value="">All plans</option>
+        ${['Starter','Professional','Business','Enterprise'].map(p => `<option>${p}</option>`).join('')}</select>
+      <select data-key="status" aria-label="Status"><option value="">Any status</option>
+        <option value="active">Active</option><option value="trial">Trial</option><option value="past_due">Past due</option></select>
+      <span style="margin-left:auto"></span><span class="dim mono" data-count style="font-size:12px"></span></div>
+    <div class="tablewrap"><table><thead><tr><th>Organisation</th><th>Plan</th><th>Status</th><th>Cycle</th>
+      <th class="num">Value</th><th>Renews</th><th>Payment</th><th class="num">Usage</th>
+      <th style="text-align:right">Actions</th></tr></thead><tbody>${trs}</tbody></table></div>
+    <div class="empty" data-empty hidden>No subscriptions match these filters.</div></section>`;
+};
+
+/* ============================ screen: billing ============================ */
+SCREENS.billing = () => {
+  crumbs(['Billing']);
+  return `
+  <div class="pagehead"><div><h1>Billing and finance</h1>
+    <p class="lede">Platform-wide revenue, invoices and payment recovery.</p></div>
+    <div class="acts">
+      <button class="btn" onclick="toast('Financial report for July 2026 exported.')">Export report</button></div></div>
+  ${tiles([
+    { lbl:'MRR', val:'£184,260', spark:REVENUE, tint:'var(--success)', sub:'<span class="up">+12.4%</span> MoM' },
+    { lbl:'ARR', val:'£2,211,120' },
+    { lbl:'Collected this month', val:'£176,420', sub:'95.7% of billed' },
+    { lbl:'Outstanding', val:'£8,940', sub:'<span class="down">31 invoices</span>' },
+    { lbl:'Refunds', val:'£1,180', sub:'4 this month' },
+    { lbl:'ARPO', val:'£154', sub:'per organisation' },
+  ])}
+  <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:16px">
+    <section class="card"><header><h3>Revenue growth</h3><span class="spacer"></span>
+      <span class="pill neutral plain">12 months</span></header>
+      <div class="body">${areaChart([{ name:'Monthly recurring revenue', vals:REVENUE, color:'var(--success)' }], MONTHS)}</div>
+    </section>
+    <section class="card"><header><h3>Revenue by plan</h3></header><div class="body">${barRows([
+      { k:'Enterprise', v:82400, d:'£82.4k', color:'var(--warning)' },
+      { k:'Business', v:56200, d:'£56.2k', color:'var(--success)' },
+      { k:'Professional', v:34100, d:'£34.1k', color:'var(--primary)' },
+      { k:'Starter', v:11560, d:'£11.6k', color:'var(--info)' },
+    ])}</div></section>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr));margin-top:16px">
+    <section class="card"><header><h3>Recent invoices</h3></header>
+      ${table([{h:'Invoice'},{h:'Organisation'},{h:'Amount',num:true},{h:'Status'},{h:'Actions'}],
+        INVOICES.map(i => [`<span class="mono">${esc(i.id)}</span>`,
+          `<a href="#/organisations/${i.org}">${esc(orgById(i.org).name)}</a>`, gbp(i.amt), pill(i.status),
+          `<div style="display:flex;gap:5px">
+            <button class="btn sm" onclick="toast('${esc(i.id)} opened.')">View</button>
+            <button class="btn sm" onclick="modal({title:'Issue credit against ${esc(i.id)}?',confirm:'Issue credit',reason:true,body:'<div class=&quot;field&quot;><label for=&quot;cAmt&quot;>Credit amount</label><input id=&quot;cAmt&quot; data-val=&quot;amt&quot; value=&quot;£80&quot;></div>',onOk(v){logAudit('invoice.credit_issued',{org:'${i.org}',ent:'${i.id}',from:'${gbp(i.amt)}',to:v.amt});toast('Credit issued.')}})">Credit</button></div>`]))}
+    </section>
+    <section class="card"><header><h3>Failed payments</h3><span class="spacer"></span>
+      <span class="pill bad">Needs action</span></header>
+      ${table([{h:'Organisation'},{h:'Amount',num:true},{h:'Attempts',num:true},{h:'Actions'}],
+        INVOICES.filter(i => i.status === 'failed' || i.status === 'past_due').map(i => [
+          `<a href="#/organisations/${i.org}">${esc(orgById(i.org).name)}</a>`, gbp(i.amt), 3,
+          `<button class="btn sm" onclick="toast('Payment retried — awaiting processor.')">Retry</button>`]),
+        { empty:'No failed payments.' })}
+      <div class="body"><p class="lede" style="margin:0">Dunning retries on days 1, 3 and 7, then the
+        organisation is suspended on day 14 unless a platform administrator intervenes.</p></div>
+    </section>
+  </div>`;
+};
+
+/* ============================ screen: support centre ============================ */
+SCREENS.support = (id) => {
+  if (id) return SCREENS.caseDetail(id);
+  crumbs(['Support Centre']);
+  const trs = state.cases.map(c => `<tr data-row="${esc(c.id + ' ' + c.subj + ' ' + orgById(c.org).name + ' ' + c.by)}"
+    data-status="${esc(c.status)}" data-pri="${esc(c.pri)}">
+    <td><a class="mono" href="#/support/${c.id}">${esc(c.id)}</a></td>
+    <td><span class="pill ${PRI[c.pri]}">${esc(c.pri)}</span></td>
+    <td><a href="#/support/${c.id}" style="color:inherit;font-weight:550">${esc(c.subj)}</a>
+      <div class="s dim" style="font-size:12px">${esc(c.cat)}</div></td>
+    <td><a href="#/organisations/${c.org}">${esc(orgById(c.org).name)}</a></td>
+    <td>${esc(c.by)}</td><td>${esc(c.to)}</td><td>${pill(c.status)}</td>
+    <td class="dim">${esc(c.upd)}</td>
+    <td style="text-align:right"><div style="display:flex;gap:5px;justify-content:flex-end">
+      <a class="btn sm" href="#/support/${c.id}">Open</a>
+      ${c.status === 'resolved' ? '' : `<button class="btn sm" onclick="resolveCase('${c.id}')">Resolve</button>`}
+    </div></td></tr>`).join('');
+  return `
+  <div class="pagehead"><div><h1>Support centre</h1>
+    <p class="lede">Customer cases, response targets and the support access they justify.</p></div>
+    <div class="acts">
+      <a class="btn" href="#/support-access">Support access</a>
+      <button class="btn p" onclick="toast('New case drafted.')">New case</button></div></div>
+  ${tiles([
+    { lbl:'Open cases', val:String(openCases()) },
+    { lbl:'Urgent', val:String(state.cases.filter(c => c.pri === 'Urgent' && c.status !== 'resolved').length),
+      sub:'<span class="down">1h response target</span>' },
+    { lbl:'Awaiting customer', val:String(state.cases.filter(c => c.status === 'waiting').length) },
+    { lbl:'Median first response', val:'34m', sub:'<span class="up">target 1h</span>' },
+    { lbl:'Median resolution', val:'6h 12m' },
+    { lbl:'CSAT', val:'4.6 / 5', sub:'184 ratings, 30 days' },
+  ])}
+  <section class="card" style="margin-top:16px" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search case, subject, organisation or requester…" aria-label="Search cases">
+      <select data-key="status" aria-label="Status"><option value="">Any status</option>
+        <option value="open">Open</option><option value="waiting">Awaiting customer</option>
+        <option value="resolved">Resolved</option></select>
+      <select data-key="pri" aria-label="Priority"><option value="">Any priority</option>
+        ${['Urgent','High','Normal','Low'].map(p => `<option>${p}</option>`).join('')}</select>
+      <span style="margin-left:auto"></span><span class="dim mono" data-count style="font-size:12px"></span></div>
+    <div class="tablewrap"><table><thead><tr><th>Case</th><th>Priority</th><th>Subject</th><th>Organisation</th>
+      <th>Requester</th><th>Assigned</th><th>Status</th><th>Updated</th>
+      <th style="text-align:right">Actions</th></tr></thead><tbody>${trs}</tbody></table></div>
+    <div class="empty" data-empty hidden>No cases match these filters.</div></section>`;
+};
+
+SCREENS.caseDetail = (caseId) => {
+  const c = state.cases.find(x => x.id === caseId) || state.cases[0];
+  const org = orgById(c.org);
+  crumbs(['Support Centre', c.id]);
+  const thread = [
+    { who:c.by, side:'customer', when:c.made, text:'Three of our sites cannot publish next week’s rota — the button spins then returns "could not save". The other six sites publish fine.' },
+    { who:ME.name, side:'agent', when:'04 Aug 2026 08:31', text:'Thanks — I can see failed publish jobs against those three locations. Requesting read-only support access so I can check the shift records directly.' },
+    { who:'Internal note · ' + ME.name, side:'note', when:'04 Aug 2026 08:34', text:'Rota publish fails where a location has more than 200 shifts in one week. Matches INC-0141 replica lag. Not customer-facing yet.' },
+    { who:c.by, side:'customer', when:'04 Aug 2026 09:02', text:'Access approved from our side. Rota needs to go out before 17:00 today.' },
+  ];
+  return `
+  <div class="pagehead">
+    <div><p class="eyebrow">${esc(c.id)} · ${esc(c.cat)}</p>
+      <h1 style="font-size:26px;line-height:34px;margin-top:6px">${esc(c.subj)}</h1>
+      <p class="lede" style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+        <span class="pill ${PRI[c.pri]}">${esc(c.pri)}</span>${pill(c.status)}
+        <span>·</span><a href="#/organisations/${org.id}">${esc(org.name)}</a>
+        <span>·</span><span>Raised by ${esc(c.by)}, ${esc(c.made)}</span></p></div>
+    <div class="acts">
+      <button class="btn" onclick="requestAccess('${org.id}')">Request support access</button>
+      <button class="btn" onclick="toast('Escalated to Platform Owner.')">Escalate</button>
+      ${c.status === 'resolved' ? '' : `<button class="btn p" onclick="resolveCase('${c.id}')">Resolve</button>`}</div>
+  </div>
+  <div class="grid" style="grid-template-columns:2fr 1fr">
+    <section class="card"><header><h3>Conversation</h3><span class="spacer"></span>
+      <span class="pill neutral plain">Internal notes never reach the customer</span></header>
+      <div class="body" style="display:grid;gap:12px">
+        ${thread.map(m => `<article style="border:1px solid ${m.side === 'note' ? 'color-mix(in srgb, var(--warning) 34%, transparent)' : 'var(--border)'};
+          background:${m.side === 'note' ? 'var(--warning-wash)' : m.side === 'agent' ? 'var(--primary-wash)' : 'var(--subtle)'};
+          border-radius:14px;padding:12px 14px">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <span class="strong" style="font-size:13px">${esc(m.who)}</span>
+            <span class="dim mono" style="font-size:11.5px;margin-left:auto">${esc(m.when)}</span></div>
+          <p style="margin:0;font-size:13.5px;line-height:1.55">${esc(m.text)}</p></article>`).join('')}
+        <div class="field"><label for="reply">Reply to customer</label>
+          <textarea id="reply" placeholder="Written in plain English — the customer sees this verbatim."></textarea>
+          <div style="display:flex;gap:8px">
+            <button class="btn p" onclick="toast('Reply sent to ${esc(c.by)}.')">Send reply</button>
+            <button class="btn" onclick="toast('Internal note added — not visible to the customer.')">Add internal note</button>
+          </div></div>
+      </div></section>
+    <div class="grid" style="align-content:start">
+      <section class="card"><header><h3>Case</h3></header><div class="body"><dl class="dl">
+        <dt>Status</dt><dd>${pill(c.status)}</dd><dt>Priority</dt><dd>${esc(c.pri)}</dd>
+        <dt>Category</dt><dd>${esc(c.cat)}</dd><dt>Assigned</dt><dd>${esc(c.to)}</dd>
+        <dt>Organisation</dt><dd><a href="#/organisations/${org.id}">${esc(org.name)}</a></dd>
+        <dt>Plan</dt><dd>${esc(org.plan)}</dd><dt>Opened</dt><dd>${esc(c.made)}</dd>
+        <dt>Updated</dt><dd>${esc(c.upd)}</dd></dl></div></section>
+      <section class="card"><header><h3>Related platform events</h3></header>
+        <ul class="feed">
+          <li><span class="fi" style="background:var(--danger-wash);color:var(--danger)">${ico('alert')}</span>
+            <span><span class="ft"><a href="#/incidents">INC-0141 — replica lag above 30s</a></span>
+            <span class="fm">Investigating · same window as first report</span></span></li>
+          <li><span class="fi" style="background:var(--warning-wash);color:var(--warning)">${ico('key')}</span>
+            <span><span class="ft">Support access granted, 60 minutes</span>
+            <span class="fm">Idris Okafor · read-only · expired</span></span></li>
+        </ul></section>
+    </div>
+  </div>`;
+};
+</script>
+
+<script>
+/* ============================ screen: support access ============================ */
+SCREENS['support-access'] = () => {
+  crumbs(['Support Access']);
+  const rows = state.sessions.map(s => [
+    `<a href="#/organisations/${s.org}">${esc(orgById(s.org).name)}</a>`,
+    esc(s.admin), `<span style="max-width:30ch;display:inline-block">${esc(s.reason)}</span>`,
+    `<span class="dim">${esc(s.scope)}</span>`,
+    `<span class="mono">${esc(s.start)}</span>`, `<span class="mono">${esc(s.exp)}</span>`,
+    pill(s.status === 'active' ? 'active' : s.status),
+    s.live ? `<button class="btn sm d" onclick="endSession('Revoked')">Revoke</button>`
+           : `<a class="btn sm" href="#/audit">Audit</a>`,
+  ]);
+  return `
+  <div class="pagehead"><div><h1>Temporary support access</h1>
+    <p class="lede">Every session is scoped, time limited, tied to a case, revocable, and disclosed to the
+      organisation owner. There is no permanent back door into a tenant.</p></div>
+    <div class="acts"><button class="btn p" onclick="requestAccess()">Request access</button></div></div>
+
+  <div class="callout ${state.session ? 'warn' : 'info'}" style="margin-bottom:16px">${ico('key','ico')}
+    <span>${state.session
+      ? `A session against <b>${esc(orgById(state.session.org).name)}</b> is active right now — see the banner
+         above. Reason recorded: “${esc(state.session.reason)}”.`
+      : 'No support session is currently active. Granting one writes an immutable audit record before the first byte of tenant data is read.'}</span></div>
+
+  ${tiles([
+    { lbl:'Active sessions', val:String(state.sessions.filter(s => s.live).length) },
+    { lbl:'Granted this month', val:'27' },
+    { lbl:'Median duration', val:'22m' },
+    { lbl:'Revoked early', val:'6', sub:'by administrator or owner' },
+    { lbl:'Expired unused', val:'3' },
+    { lbl:'Denied by owner', val:'2' },
+  ])}
+
+  <section class="card" style="margin-top:16px"><header><h3>Session history</h3>
+    <span class="spacer"></span><span class="pill neutral plain">Retained 7 years</span></header>
+    ${table([{h:'Organisation'},{h:'Administrator'},{h:'Reason'},{h:'Scope'},{h:'Started'},{h:'Expires'},
+      {h:'Status'},{h:'Actions'}], rows, { empty:'No support session has ever been granted.' })}</section>`;
+};
+
+/* ============================ screen: platform health ============================ */
+SCREENS['platform-health'] = () => {
+  crumbs(['Platform Health']);
+  return `
+  <div class="pagehead"><div><h1>Platform health</h1>
+    <p class="lede">Live service status, latency and queue depth across the RotaFlow estate.</p></div>
+    <div class="acts">
+      <button class="btn" onclick="toast('Diagnostics bundle exported.')">Export diagnostics</button>
+      <a class="btn p" href="#/incidents">Incidents</a></div></div>
+
+  ${tiles([
+    { lbl:'Uptime, 30 days', val:'99.94%', sub:'<span class="down">target 99.95%</span>' },
+    { lbl:'API p95', val:'142 ms', spark:[128,134,131,140,152,147,142], tint:'var(--info)' },
+    { lbl:'Error rate', val:'0.21%', sub:'<span class="down">+0.08pt</span> in 24h' },
+    { lbl:'Auth success', val:'99.7%' },
+    { lbl:'Queue depth', val:'1,284', sub:'<span class="down">backlog rising</span>' },
+    { lbl:'Push delivery', val:'94.1%', sub:'<span class="down">APNs degraded</span>' },
+  ])}
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:16px">
+    <section class="card"><header><h3>Services</h3><span class="spacer"></span>
+      <span class="dim" style="font-size:12px">last 12 hours</span></header>
+      ${SERVICES.map(s => `<div class="svc">
+        <span class="nm">${esc(s.name)}</span>${pill(s.status)}
+        <span class="mono dim" style="font-size:12px;margin-left:8px">${s.ms ? s.ms + ' ms' : '—'}</span>
+        <span class="bars">${s.hist.map(h => `<i class="${h === 2 ? 'w' : h === 3 ? 'b' : ''}"></i>`).join('')}</span>
+        <span class="mono dim" style="font-size:12px;width:56px;text-align:right">${esc(s.up)}</span></div>`).join('')}
+    </section>
+    <div class="grid" style="align-content:start">
+      <section class="card"><header><h3>API latency</h3></header><div class="body">
+        ${areaChart([
+          { name:'p50', vals:[62,64,61,68,72,70,66,71,69,74,73,70], color:'var(--primary)' },
+          { name:'p95', vals:[128,134,131,140,152,147,142,168,159,171,166,142], color:'var(--warning)', fill:false },
+          { name:'p99', vals:[240,252,244,268,301,288,272,340,318,352,336,281], color:'var(--danger)', fill:false },
+        ], ['−11h','−10h','−9h','−8h','−7h','−6h','−5h','−4h','−3h','−2h','−1h','now'], 150)}</div></section>
+      <section class="card"><header><h3>Background jobs</h3></header><div class="body">${barRows([
+        { k:'Rota publish', v:412, d:'412 queued' },
+        { k:'Payroll export', v:184, d:'184 queued', color:'var(--warning)' },
+        { k:'Notifications', v:688, d:'688 queued' },
+        { k:'Failed, 24h', v:31, d:'31 failed', color:'var(--danger)' },
+      ])}</div></section>
+    </div>
+  </div>`;
+};
+
+/* ============================ screen: incidents ============================ */
+SCREENS.incidents = () => {
+  crumbs(['Incidents']);
+  return `
+  <div class="pagehead"><div><h1>Incidents</h1>
+    <p class="lede">Open and historic platform incidents, their blast radius and their resolution.</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'Declare an incident',confirm:'Declare incident',
+      body:'<div class=&quot;field&quot;><label for=&quot;iT&quot;>Title</label><input id=&quot;iT&quot; data-val=&quot;t&quot; placeholder=&quot;What is broken, in plain English&quot;></div><div class=&quot;field&quot;><label for=&quot;iS&quot;>Severity</label><select id=&quot;iS&quot; data-val=&quot;s&quot;><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></div>',
+      onOk(v){logAudit('incident.declared',{ent:v.t||'untitled',to:v.s});toast('Incident declared and status page updated.')}})">Declare incident</button></div></div>
+  ${tiles([
+    { lbl:'Open', val:String(openIncidents()) },
+    { lbl:'Critical, 90 days', val:'1' },
+    { lbl:'Mean time to detect', val:'4m 20s' },
+    { lbl:'Mean time to resolve', val:'1h 06m' },
+    { lbl:'Incidents this month', val:'4', sub:'<span class="up">−2</span> vs July' },
+    { lbl:'Status page', val:'Published', sub:'status.rotaflow.co.uk' },
+  ])}
+  <section class="card" style="margin-top:16px"><header><h3>Incident register</h3></header>
+    ${table([{h:'ID'},{h:'Title'},{h:'Severity'},{h:'Status'},{h:'Service'},{h:'Started'},{h:'Owner'},{h:'Actions'}],
+      INCIDENTS.map(i => [`<span class="mono">${esc(i.id)}</span>`,
+        `<span class="strong">${esc(i.title)}</span>
+         <div class="dim" style="font-size:12px;max-width:52ch">${esc(i.impact)}</div>`,
+        `<span class="pill ${SEV[i.sev]}">${esc(i.sev)}</span>`, pill(i.status), esc(i.svc),
+        `<span class="mono">${esc(i.start)}</span>`, esc(i.owner),
+        i.status === 'resolved'
+          ? `<button class="btn sm" onclick="toast('${esc(i.id)} report generated.')">Report</button>`
+          : `<button class="btn sm p" onclick="modal({title:'Mark ${esc(i.id)} resolved?',confirm:'Mark resolved',reason:true,sub:'A resolution note is published to the public status page.',onOk(){logAudit('incident.resolved',{ent:'${esc(i.id)}',from:'${i.status}',to:'resolved'});toast('${esc(i.id)} resolved and status page updated.')}})">Resolve</button>`,
+      ]))}</section>`;
+};
+
+/* ============================ screen: integrations ============================ */
+SCREENS.integrations = () => {
+  crumbs(['Integrations']);
+  return `
+  <div class="pagehead"><div><h1>Integrations</h1>
+    <p class="lede">Connector health across every tenant. A failing connector is a silent data problem, so
+      failures are counted, not just flagged.</p></div>
+    <div class="acts"><button class="btn" onclick="toast('All degraded connectors queued for re-sync.')">Retry all failed</button></div></div>
+  ${tiles([
+    { lbl:'Connectors', val:'8' },
+    { lbl:'Organisations connected', val:'1,043', sub:'81% of tenants' },
+    { lbl:'Syncs, 24h', val:'184,206' },
+    { lbl:'Failed, 24h', val:'79', sub:'<span class="down">0.04%</span>' },
+    { lbl:'Degraded', val:'2', sub:'<span class="down">BrightHR, webhooks</span>' },
+    { lbl:'Median sync', val:'2.4 s' },
+  ])}
+  <section class="card" style="margin-top:16px"><header><h3>Connector status</h3></header>
+    ${table([{h:'Integration'},{h:'Category'},{h:'Organisations',num:true},{h:'Status'},
+      {h:'Success rate',num:true},{h:'Last sync'},{h:'Failed',num:true},{h:'Actions'}],
+      INTEGRATIONS.map(i => [`<span class="strong">${esc(i.name)}</span>`, esc(i.cat), n(i.orgs), pill(i.status),
+        `<span style="color:${i.rate < 95 ? 'var(--danger)' : 'inherit'}">${i.rate}%</span>`,
+        `<span class="dim">${esc(i.last)}</span>`,
+        i.fails ? `<span style="color:var(--danger);font-weight:600">${i.fails}</span>` : '0',
+        `<div style="display:flex;gap:5px;justify-content:flex-end">
+          <button class="btn sm" onclick="toast('Sync logs for ${esc(i.name)} opened.')">Logs</button>
+          <button class="btn sm" onclick="toast('Re-sync queued for ${esc(i.name)}.')">Retry</button>
+          <button class="btn sm d" onclick="modal({title:'Disable ${esc(i.name)}?',danger:true,confirm:'Disable connector',reason:true,reauth:true,sub:'${n(i.orgs)} organisations lose this sync immediately.',onOk(){logAudit('integration.disabled',{ent:'${esc(i.name)}',from:'enabled',to:'disabled'});toast('${esc(i.name)} disabled platform-wide.')}})">Disable</button></div>`]))}
+  </section>`;
+};
+
+/* ============================ screen: notifications ============================ */
+SCREENS.notifications = () => {
+  crumbs(['Notifications']);
+  return `
+  <div class="pagehead"><div><h1>Platform notifications</h1>
+    <p class="lede">Announcements sent to tenants — maintenance, incidents, billing and releases.</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'New announcement',confirm:'Schedule announcement',
+      body:'<div class=&quot;field&quot;><label for=&quot;nT&quot;>Title</label><input id=&quot;nT&quot; data-val=&quot;t&quot; placeholder=&quot;What changes, and when&quot;></div><div class=&quot;field&quot;><label for=&quot;nK&quot;>Type</label><select id=&quot;nK&quot; data-val=&quot;k&quot;><option>Maintenance</option><option>Service update</option><option>Security</option><option>Product release</option><option>Billing</option><option>Platform incident</option></select></div><div class=&quot;field&quot;><label for=&quot;nA&quot;>Audience</label><select id=&quot;nA&quot; data-val=&quot;a&quot;><option>All organisations</option><option>Enterprise only</option><option>Business and Enterprise</option><option>Trial organisations</option></select></div>',
+      onOk(v){logAudit('notification.scheduled',{ent:v.t||'announcement',to:v.a});toast('Announcement scheduled.')}})">New announcement</button></div></div>
+  ${tiles([
+    { lbl:'Sent, 30 days', val:'1,735' }, { lbl:'Delivered', val:'99.2%' },
+    { lbl:'Read', val:'82.4%', spark:[71,74,76,79,80,81,82], tint:'var(--success)' },
+    { lbl:'Failed', val:'14', sub:'<span class="down">invalid addresses</span>' },
+    { lbl:'Scheduled', val:'1', sub:'maintenance, 10 Aug' },
+    { lbl:'Opt-outs', val:'38' },
+  ])}
+  <section class="card" style="margin-top:16px"><header><h3>Announcements</h3></header>
+    ${table([{h:'Announcement'},{h:'Type'},{h:'Audience'},{h:'When'},{h:'Sent',num:true},{h:'Read',num:true},{h:'Status'}],
+      ANNOUNCEMENTS.map(a => [`<span class="strong">${esc(a.title)}</span>`,
+        `<span class="pill neutral plain">${esc(a.type)}</span>`, esc(a.aud), `<span class="dim">${esc(a.when)}</span>`,
+        a.sent ? n(a.sent) : '—', a.read ? n(a.read) : '—', pill(a.status)]))}</section>`;
+};
+
+/* ============================ screen: audit ============================ */
+SCREENS.audit = () => {
+  crumbs(['Audit Logs']);
+  const trs = state.audit.map(a => `<tr data-row="${esc(a.who + ' ' + a.act + ' ' + a.ent + ' ' + a.ip)}"
+    data-ok="${a.ok ? 'ok' : 'fail'}" data-who="${esc(a.who)}">
+    <td><span class="mono">${esc(a.ts)}</span></td>
+    <td>${esc(a.who)}</td>
+    <td>${a.org === '—' ? '<span class="dim">Platform</span>' : `<a href="#/organisations/${a.org}">${esc(orgById(a.org).name)}</a>`}</td>
+    <td><span class="mono">${esc(a.act)}</span></td>
+    <td><span class="mono dim">${esc(a.ent)}</span></td>
+    <td><span class="dim">${esc(a.from)}</span></td>
+    <td><span class="strong">${esc(a.to)}</span></td>
+    <td><span class="mono">${esc(a.ip)}</span></td>
+    <td>${a.ok ? pill('ok') : pill('bad')}</td></tr>`).join('');
+  return `
+  <div class="pagehead"><div><h1>Audit logs</h1>
+    <p class="lede">Append-only record of every platform-administrator action. Records cannot be edited or
+      deleted by anyone, including a Platform Owner.</p></div>
+    <div class="acts">
+      <button class="btn" onclick="toast('Filter saved as “Failed actions, 7 days”.')">Save filter</button>
+      <button class="btn" onclick="toast('Audit export queued — signed CSV.')">Export</button></div></div>
+  <div class="callout info" style="margin-bottom:16px">${ico('scroll','ico')}
+    <span>Actions you take in this prototype are written to the top of this table — try suspending an
+      organisation or toggling a feature flag, then come back.</span></div>
+  <section class="card" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search administrator, action, entity or IP…" aria-label="Search audit log">
+      <select data-key="who" aria-label="Administrator"><option value="">Any administrator</option>
+        ${[...new Set(state.audit.map(a => a.who))].map(w => `<option>${esc(w)}</option>`).join('')}</select>
+      <select data-key="ok" aria-label="Result"><option value="">Any result</option>
+        <option value="ok">Succeeded</option><option value="fail">Refused</option></select>
+      <span style="margin-left:auto"></span><span class="dim mono" data-count style="font-size:12px"></span></div>
+    <div class="tablewrap"><table><thead><tr><th>Timestamp</th><th>Administrator</th><th>Organisation</th>
+      <th>Action</th><th>Entity</th><th>Before</th><th>After</th><th>IP</th><th>Result</th>
+      </tr></thead><tbody>${trs}</tbody></table></div>
+    <div class="empty" data-empty hidden>No audit records match these filters.</div></section>`;
+};
+</script>
+
+<script>
+/* ============================ screen: feature flags ============================ */
+SCREENS['feature-flags'] = () => {
+  crumbs(['Feature Flags']);
+  return `
+  <div class="pagehead"><div><h1>Feature flags</h1>
+    <p class="lede">Ship behind a flag, roll out by percentage, and turn it off without a deploy. Flags marked
+      critical change live tenant behaviour and require re-authentication.</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'Create feature flag',confirm:'Create flag',
+      body:'<div class=&quot;field&quot;><label for=&quot;fN&quot;>Name</label><input id=&quot;fN&quot; data-val=&quot;n&quot; placeholder=&quot;Human name&quot;></div><div class=&quot;field&quot;><label for=&quot;fK&quot;>Key</label><input id=&quot;fK&quot; data-val=&quot;k&quot; placeholder=&quot;snake_case_key&quot;></div><div class=&quot;field&quot;><label for=&quot;fE&quot;>Environment</label><select id=&quot;fE&quot; data-val=&quot;e&quot;><option>Development</option><option>Staging</option><option>Production</option></select></div>',
+      onOk(v){logAudit('feature_flag.created',{ent:v.k||'new_flag',to:v.e});toast('Flag created, disabled by default.')}})">Create flag</button></div></div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr))">
+    ${FLAGS.map(f => {
+      const s = state.flags[f.key];
+      return `<section class="card"><div class="body" style="display:grid;gap:11px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="min-width:0">
+            <h3>${esc(f.name)}</h3>
+            <div class="mono dim" style="font-size:12px;margin-top:3px">${esc(f.key)}</div>
+          </div>
+          <button class="sw" role="switch" aria-checked="${s.on}" aria-label="Toggle ${esc(f.name)}"
+            style="margin-left:auto" onclick="toggleFlag('${f.key}')"></button>
+        </div>
+        <p class="lede" style="margin:0;font-size:13px">${esc(f.desc)}</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${s.on ? pill('active') : '<span class="pill neutral">Off</span>'}
+          <span class="pill neutral plain">${esc(f.env)}</span>
+          ${f.critical ? '<span class="pill bad">Critical</span>' : ''}
+        </div>
+        <div class="bars-row" style="grid-template-columns:64px 1fr 46px">
+          <span class="dim">Rollout</span>
+          <span class="track"><span class="fill" style="width:${s.roll}%;background:${s.roll === 100 ? 'var(--success)' : 'var(--primary)'}"></span></span>
+          <span class="amt">${s.roll}%</span></div>
+        <dl class="dl" style="font-size:12.5px">
+          <dt>Targets</dt><dd>${esc(f.plans)}</dd>
+          <dt>Updated</dt><dd>${esc(f.upd)} · ${esc(f.by)}</dd></dl>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn sm" onclick="modal({title:'Set rollout for ${esc(f.name)}',confirm:'Apply rollout',
+            reason:${f.critical},reauth:${f.critical},
+            body:'<div class=&quot;field&quot;><label for=&quot;rP&quot;>Rollout percentage</label><input id=&quot;rP&quot; data-val=&quot;p&quot; type=&quot;number&quot; min=&quot;0&quot; max=&quot;100&quot; value=&quot;${s.roll}&quot;><span class=&quot;hint&quot;>Applies to organisations by stable hash, so a tenant never flips back and forth.</span></div>',
+            onOk(v){const p=Math.max(0,Math.min(100,Number(v.p)||0));logAudit('feature_flag.rollout_changed',{ent:'${f.key}',from:'${s.roll}%',to:p+'%'});state.flags['${f.key}'].roll=p;if(p>0)state.flags['${f.key}'].on=true;route();toast('${esc(f.name)} rollout set to '+p+'%.')}})">Set rollout</button>
+          <button class="btn sm" onclick="toast('Targeting ${esc(f.name)} by organisation.')">Target orgs</button>
+          <a class="btn sm" href="#/audit">History</a>
+        </div></div></section>`;
+    }).join('')}
+  </div>`;
+};
+
+/* ============================ screen: GDPR ============================ */
+SCREENS.gdpr = () => {
+  crumbs(['GDPR & Data']);
+  return `
+  <div class="pagehead"><div><h1>GDPR and data management</h1>
+    <p class="lede">Data subject requests, retention policy and processing records. Every action here is
+      audited and time-bound by the one-month statutory deadline.</p></div>
+    <div class="acts"><button class="btn" onclick="toast('Processing record (Article 30) exported.')">Export Article 30 record</button></div></div>
+  ${tiles([
+    { lbl:'Open requests', val:String(GDPR.filter(g => g.status === 'pending').length) },
+    { lbl:'Due within 7 days', val:'1', sub:'<span class="down">DSR-0311</span>' },
+    { lbl:'Completed, 90 days', val:'23' },
+    { lbl:'Median turnaround', val:'4.2 days', sub:'<span class="up">statutory 30 days</span>' },
+    { lbl:'Deletions pending', val:'1', sub:'grace period running' },
+    { lbl:'Breaches reported', val:'0', sub:'since launch' },
+  ])}
+  <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:16px">
+    <section class="card"><header><h3>Data subject requests</h3></header>
+      ${table([{h:'Request'},{h:'Organisation'},{h:'Type'},{h:'Requester'},{h:'Assigned'},{h:'Due'},{h:'Status'},{h:'Actions'}],
+        GDPR.map(g => [`<span class="mono">${esc(g.id)}</span>`,
+          `<a href="#/organisations/${g.org}">${esc(orgById(g.org).name)}</a>`,
+          `<span class="pill neutral plain">${esc(g.type)}</span>`, esc(g.by), esc(g.to),
+          `<span class="dim">${esc(g.due)}</span>`, pill(g.status),
+          g.status === 'complete' ? `<button class="btn sm" onclick="toast('${esc(g.id)} record opened.')">View</button>`
+            : `<button class="btn sm p" onclick="modal({title:'Complete ${esc(g.id)}?',confirm:'Complete request',reason:true,reauth:${g.type === 'Data deletion'},sub:'${esc(g.type)} for ${esc(orgById(g.org).name)}. The requester is notified automatically.',onOk(){logAudit('gdpr.request_completed',{org:'${g.org}',ent:'${esc(g.id)}',from:'pending',to:'complete'});toast('${esc(g.id)} completed.')}})">Complete</button>`]))}
+    </section>
+    <section class="card"><header><h3>Retention policy</h3></header>
+      ${table([{h:'Data'},{h:'Retained'}], [
+        ['Rota and shift history', '7 years'], ['Attendance and clock-in', '3 years'],
+        ['Leave records', '6 years'], ['Support cases', '3 years'],
+        ['Platform audit log', 'Indefinite — immutable'], ['Deleted tenant data', '30-day grace, then erased'],
+      ])}
+      <div class="body"><p class="lede" style="margin:0">Retention is enforced by a nightly job, not by
+        manual clean-up. The audit log is deliberately exempt from erasure.</p></div></section>
+  </div>`;
+};
+
+/* ============================ screen: platform settings ============================ */
+SCREENS.settings = () => {
+  crumbs(['Platform Settings']);
+  const panel = (id, inner, first) => `<div data-panel="${id}"${first ? '' : ' hidden'}>${inner}</div>`;
+  const setting = (label, hint, control) => `<div style="display:flex;gap:14px;align-items:flex-start;
+    padding:13px 0;border-bottom:1px solid var(--divider)">
+    <div style="min-width:0"><div class="strong" style="font-size:13.5px">${esc(label)}</div>
+      <div class="dim" style="font-size:12.5px;margin-top:2px;max-width:56ch">${esc(hint)}</div></div>
+    <div style="margin-left:auto;flex:none">${control}</div></div>`;
+  const sw = (on, label) => `<button class="sw" role="switch" aria-checked="${on}" aria-label="${esc(label)}"
+    onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked')==='true'?'false':'true');
+      logAudit('platform_settings.updated',{ent:'${esc(label)}',from:'${on}',to:String(this.getAttribute('aria-checked'))});
+      toast('${esc(label)} updated.')"></button>`;
+
+  return `
+  <div class="pagehead"><div><h1>Platform settings</h1>
+    <p class="lede">Configuration that applies to every tenant. Changes are audited and take effect immediately.</p></div>
+  </div>
+  <div data-tabs>
+    <div class="tabs" role="tablist">${['General','Branding','Authentication','Security','Email','Storage',
+      'Data Retention','Administrators','API','Maintenance']
+      .map((t, i) => `<button role="tab" data-tab="${t}" aria-selected="${i === 0}">${t}</button>`).join('')}</div>
+
+    ${panel('General', `<section class="card"><div class="body">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+        <div class="field"><label for="gN">Platform name</label><input id="gN" value="RotaFlow"></div>
+        <div class="field"><label for="gS">Support email</label><input id="gS" value="support@rotaflow.co.uk"></div>
+        <div class="field"><label for="gU">Platform URL</label><input id="gU" value="https://rota.gakinz.com"></div>
+        <div class="field"><label for="gT">Default timezone</label><select id="gT"><option>Europe/London</option><option>UTC</option></select></div>
+        <div class="field"><label for="gL">Default language</label><select id="gL"><option>English (UK)</option><option>English (US)</option></select></div>
+        <div class="field"><label for="gD">Date format</label><select id="gD"><option>DD/MM/YYYY</option><option>YYYY-MM-DD</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn p" onclick="logAudit('platform_settings.general_updated',{ent:'general',to:'saved'});toast('General settings saved.')">Save changes</button>
+        <button class="btn" onclick="toast('Changes discarded.')">Discard</button></div></div></section>`, true)}
+
+    ${panel('Branding', `<section class="card"><div class="body">
+      ${setting('Platform logo', 'Shown in the console rail and on every transactional email.', '<button class="btn sm" onclick="toast(\'Logo upload opened.\')">Replace</button>')}
+      ${setting('Primary colour', 'Brand blue used for actions and active state across both surfaces.',
+        '<span class="pill neutral plain mono">#3B6FE0</span>')}
+      ${setting('Favicon', 'Browser tab icon for the customer app and this console.', '<button class="btn sm" onclick="toast(\'Favicon upload opened.\')">Replace</button>')}
+      ${setting('Support branding', 'Show RotaFlow branding on customer-facing support replies.', sw(true, 'Support branding'))}
+    </div></section>`)}
+
+    ${panel('Authentication', `<section class="card"><div class="body">
+      ${setting('Self-service registration', 'Allow new organisations to sign up without an invitation.', sw(true, 'Self-service registration'))}
+      ${setting('Email verification required', 'Block access until the address is confirmed.', sw(true, 'Email verification'))}
+      ${setting('Magic links', 'Passwordless sign-in for staff accounts on shared devices.', sw(true, 'Magic links'))}
+      ${setting('Google sign-in', 'OAuth via Google Workspace.', sw(true, 'Google sign-in'))}
+      ${setting('Microsoft sign-in', 'OAuth via Entra ID.', sw(false, 'Microsoft sign-in'))}
+      ${setting('Session duration', 'How long a customer session lasts before re-authentication.',
+        '<select class="btn"><option>7 days</option><option selected>30 days</option><option>90 days</option></select>')}
+    </div></section>`)}
+
+    ${panel('Security', `
+      <div class="callout warn" style="margin-bottom:16px">${ico('shield','ico')}
+        <span>These controls protect the platform console itself. Weakening any of them requires a
+        Platform Owner and is announced to every other administrator.</span></div>
+      <section class="card"><div class="body">
+      ${setting('Require MFA for platform administrators', 'Non-negotiable for Owner and Administrator roles.', sw(true, 'MFA requirement'))}
+      ${setting('Administrator session timeout', 'Idle time before the console locks.',
+        '<select class="btn"><option>15 minutes</option><option selected>30 minutes</option><option>1 hour</option></select>')}
+      ${setting('IP allowlist', 'Only these ranges may reach /admin. Four ranges configured.',
+        '<button class="btn sm" onclick="toast(\'IP allowlist opened — 4 ranges.\')">Manage</button>')}
+      ${setting('Sign-in alerts', 'Email every administrator when a new device signs in to the console.', sw(true, 'Sign-in alerts'))}
+      ${setting('Maximum concurrent sessions', 'Per administrator account.',
+        '<select class="btn"><option>1</option><option selected>2</option><option>5</option></select>')}
+      ${setting('Re-authenticate for critical actions', 'Suspensions, deletions, flag changes and role changes.', sw(true, 'Re-authentication'))}
+      </div></section>`)}
+
+    ${panel('Email', `<section class="card"><div class="body">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+        <div class="field"><label for="eN">Sender name</label><input id="eN" value="RotaFlow"></div>
+        <div class="field"><label for="eE">Sender address</label><input id="eE" value="info@gakinz.com">
+          <span class="hint">Must be a domain with published SPF and DKIM, or delivery fails silently.</span></div>
+        <div class="field"><label for="eP">Provider</label><select id="eP"><option>Custom SMTP</option><option>Postmark</option></select></div>
+      </div>
+      <div style="margin-top:14px">${setting('Delivery status', 'Last 24 hours: 4,182 sent, 12 bounced, 0 complaints.', pill('ok') + ' Healthy')}</div>
+      <button class="btn" style="margin-top:14px" onclick="toast('Test email sent to sarah.okonjo@rotaflow.co.uk.')">Send test email</button>
+    </div></section>`)}
+
+    ${panel('Storage', `<section class="card"><div class="body">
+      ${barRows([{ k:'Documents', v:412, d:'412 GB' }, { k:'Avatars', v:38, d:'38 GB' },
+        { k:'Exports', v:96, d:'96 GB' }, { k:'Backups', v:684, d:'684 GB', color:'var(--warning)' }])}
+      <div style="margin-top:14px">
+        ${setting('Maximum file size', 'Per upload, across all tenants.', '<span class="mono">25 MB</span>')}
+        ${setting('Permitted types', 'Everything else is rejected at upload.', '<span class="mono">pdf, png, jpg, csv, xlsx</span>')}
+      </div></div></section>`)}
+
+    ${panel('Data Retention', `<section class="card"><div class="body">
+      ${setting('Rota history', 'Kept for payroll and dispute resolution.', '<span class="mono">7 years</span>')}
+      ${setting('Attendance records', 'Clock-in, clock-out and GPS traces.', '<span class="mono">3 years</span>')}
+      ${setting('Deleted tenant grace period', 'Recovery window before permanent erasure.', '<span class="mono">30 days</span>')}
+      ${setting('Audit log', 'Deliberately exempt from erasure and from Platform Owner deletion.', '<span class="pill neutral plain">Indefinite</span>')}
+    </div></section>`)}
+
+    ${panel('Administrators', `
+      <div class="callout info" style="margin-bottom:16px">${ico('users','ico')}
+        <span>The last remaining Platform Owner cannot be removed or demoted — the control is disabled below,
+        not merely hidden.</span></div>
+      <section class="card"><header><h3>Platform administrators</h3><span class="spacer"></span>
+        <button class="btn sm p" onclick="modal({title:'Invite platform administrator',confirm:'Send invitation',reason:true,
+          body:'<div class=&quot;field&quot;><label for=&quot;aE&quot;>Email address</label><input id=&quot;aE&quot; data-val=&quot;e&quot; placeholder=&quot;name@rotaflow.co.uk&quot;></div><div class=&quot;field&quot;><label for=&quot;aR&quot;>Platform role</label><select id=&quot;aR&quot; data-val=&quot;r&quot;><option>Platform Owner</option><option selected>Platform Administrator</option><option>Platform Support</option><option>Platform Finance</option></select></div>',
+          onOk(v){logAudit('platform_admin.invited',{ent:v.e||'invitee',to:v.r});toast('Invitation sent — MFA enrolment required before first sign-in.')}})">Invite administrator</button></header>
+        ${table([{h:'Administrator'},{h:'Platform role'},{h:'MFA'},{h:'Last login'},{h:'Status'},{h:'Actions'}],
+          state.admins.map(a => {
+            const owners = state.admins.filter(x => x.role === 'owner' && x.status === 'active').length;
+            const lastOwner = a.role === 'owner' && owners <= 1;
+            return [`<div class="rowav"><span class="av">${initials(a.name)}</span>
+              <span class="two-line"><span class="t">${esc(a.name)}</span>
+              <span class="s mono">${esc(a.email)}</span></span></div>`,
+              `<span class="pill ${a.role === 'owner' ? 'info' : 'neutral plain'}">${esc(ROLES[a.role].name)}</span>`,
+              a.mfa ? pill('ok') + ' Enrolled' : pill('warn') + ' Not enrolled',
+              `<span class="dim">${esc(a.last)}</span>`, pill(a.status),
+              `<div style="display:flex;gap:5px;justify-content:flex-end">
+                <button class="btn sm" onclick="toast('Role change for ${esc(a.name)} opened.')" ${lastOwner ? 'disabled title="The final Platform Owner cannot be demoted"' : ''}>Change role</button>
+                <button class="btn sm d" ${lastOwner ? 'disabled title="The final Platform Owner cannot be removed"' : ''}
+                  onclick="modal({title:'Remove ${esc(a.name)}?',danger:true,confirm:'Remove administrator',reason:true,reauth:true,sub:'Platform access ends immediately. Their organisation membership is untouched.',onOk(){logAudit('platform_admin.removed',{ent:'${esc(a.email)}',from:'${a.role}',to:'none'});toast('${esc(a.name)} removed from the platform console.')}})">Remove</button></div>`];
+          }))}</section>`)}
+
+    ${panel('API', `<section class="card"><div class="body">
+      ${setting('Public API', 'Tenant-scoped REST API for payroll and HR systems.', sw(true, 'Public API'))}
+      ${setting('Rate limit', 'Requests per minute, per organisation.', '<span class="mono">600 / min</span>')}
+      ${setting('Webhook retries', 'Exponential backoff before a webhook endpoint is marked failing.', '<span class="mono">5 attempts</span>')}
+      ${setting('API keys issued', 'Across 96 organisations.', '<button class="btn sm" onclick="toast(\'API key register opened.\')">Manage keys</button>')}
+    </div></section>`)}
+
+    ${panel('Maintenance', `
+      <div class="callout bad" style="margin-bottom:16px">${ico('alert','ico')}
+        <span>Maintenance mode signs out every user on every tenant and returns a holding page. Use it only
+        for migrations that cannot run online.</span></div>
+      <section class="card"><div class="body">
+      ${setting('Maintenance mode', 'Currently off — the platform is serving normally.',
+        `<button class="btn d" onclick="modal({title:'Enable maintenance mode?',danger:true,confirm:'Enable maintenance mode',reason:true,reauth:true,sub:'48,726 users across 1,284 organisations lose access immediately.',onOk(){logAudit('platform.maintenance_enabled',{ent:'maintenance_mode',from:'false',to:'true'});toast('Maintenance mode enabled — holding page live.',true)}})">Enable</button>`)}
+      ${setting('Scheduled window', 'Announced to tenants seven days ahead.', '<span class="mono">10 Aug 2026 02:00–03:00 BST</span>')}
+      ${setting('Read-only mode', 'A softer option — sign-in works, writes are refused.', sw(false, 'Read-only mode'))}
+      </div></section>`)}
+  </div>`;
+};
+
+/* ============================ boot ============================ */
+$('#roleSel').innerHTML = ALL.map(r =>
+  `<option value="${r}"${r === state.role ? ' selected' : ''}>${ROLES[r].name}</option>`).join('');
+$('#roleSel').onchange = e => {
+  state.role = e.target.value;
+  const id = location.hash.slice(2).split('/')[0] || 'overview';
+  if (!guard(id)) { toast(`${ROLES[state.role].name} cannot open that area.`, true); }
+  route();
+};
+$('#railBtn').onclick = () => $('#rail').classList.toggle('open');
+$('#refreshBtn').onclick = () => { route(); toast('Platform figures refreshed.'); };
+$('#saBtn').onclick = () => state.session ? endSession('Exited') : requestAccess();
+$('#whoami').onclick = () => toast(`${ME.name} · ${ROLES[state.role].name} · MFA enrolled`);
+document.addEventListener('click', e => {
+  const a = e.target.closest('.rail a');
+  if (a && window.innerWidth <= 1000) $('#rail').classList.remove('open');
+});
+addEventListener('hashchange', route);
+if (!location.hash) location.hash = '#/overview';
+route();
+</script>

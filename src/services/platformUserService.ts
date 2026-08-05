@@ -50,6 +50,67 @@ export async function listUserMemberships(userId: string): Promise<UserMembershi
   });
 }
 
+export interface UserMembershipSummary {
+  /** Organisations this account belongs to, active or otherwise. */
+  organisations: number;
+  /** One organisation's name when there is exactly one, for the list column. */
+  soleOrgName: string | null;
+  /** Distinct organisation roles held, e.g. `['owner', 'staff']`. */
+  roles: string[];
+  /** True when at least one membership is active. */
+  active: boolean;
+}
+
+/**
+ * Membership summaries for every account, keyed by user.
+ *
+ * One query for the whole table rather than one per row: the users list shows
+ * an organisation column for every account on the deployment, and doing that
+ * per row is the N+1 that makes a forty-account page take forty round trips.
+ *
+ * Readable cross-tenant for the same reason the rest of the console is —
+ * `memberships` select policy admits `is_platform_admin()`. A non-administrator
+ * calling this gets their own rows, which is harmless rather than misleading:
+ * the screen it feeds is behind the platform route guard.
+ */
+export async function summariseMembershipsByUser(): Promise<
+  Map<string, UserMembershipSummary>
+> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('user_id, role, status, organisation:organisations(name)');
+  if (error) throw error;
+
+  const byUser = new Map<string, UserMembershipSummary & { names: Set<string> }>();
+  for (const row of data ?? []) {
+    const org = row.organisation as { name: string } | null;
+    const entry = byUser.get(row.user_id) ?? {
+      organisations: 0,
+      soleOrgName: null,
+      roles: [],
+      active: false,
+      names: new Set<string>(),
+    };
+    entry.organisations += 1;
+    if (org?.name) entry.names.add(org.name);
+    if (!entry.roles.includes(row.role)) entry.roles.push(row.role);
+    if (row.status === 'active') entry.active = true;
+    byUser.set(row.user_id, entry);
+  }
+
+  const out = new Map<string, UserMembershipSummary>();
+  for (const [userId, entry] of byUser) {
+    const [only] = [...entry.names];
+    out.set(userId, {
+      organisations: entry.organisations,
+      soleOrgName: entry.names.size === 1 ? (only ?? null) : null,
+      roles: entry.roles.sort(),
+      active: entry.active,
+    });
+  }
+  return out;
+}
+
 /**
  * What this account has done, across every tenant.
  *

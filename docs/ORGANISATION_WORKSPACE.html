@@ -1,0 +1,2018 @@
+<title>RotaFlow Organisation Workspace</title>
+<style>
+  :root {
+    --canvas:#F5F7FA; --surface:#FFFFFF; --subtle:#FAFBFC; --rail:#FFFFFF;
+    --border:#E3E6EA; --divider:#F2F4F6;
+    --ink:#16191F; --muted:#6B7280;
+    --primary:#3B6FE0; --primary-fg:#FFFFFF; --primary-wash:#EEF3FD;
+    --brand:#0C60F8; --ink-deep:#0D1934;
+    --success:#1EA06B; --warning:#E0A030; --danger:#D94A3A; --info:#388FD4;
+    --clock:#068D41; --clock-tint:#D6F4E1; --clock-fg:#0A5522;
+    --success-wash:#E7F5EE; --warning-wash:#FBF2E1; --danger-wash:#FAEAE7; --info-wash:#E8F2FA;
+    /* shift-type palette — docs/DESIGN.md §2, same hex in both themes */
+    --s-clay:#E28273; --s-amber:#C69A45; --s-moss:#86AC6A; --s-teal:#4FB39A;
+    --s-sky:#56AACD; --s-indigo:#6CA0EB; --s-violet:#C48FD6; --s-rose:#E888AB;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+    --shadow:0 4px 12px rgba(0,0,0,.08);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+    --ui:-apple-system,BlinkMacSystemFont,"Segoe UI Variable Text","Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"JetBrains Mono","Roboto Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --canvas:#0B1220; --surface:#111A2E; --subtle:#15203A; --rail:#0E1729;
+      --border:#22304D; --divider:#1B2740; --ink:#F8FAFC; --muted:#94A3B8;
+      --primary-wash:#182848; --ink-deep:#F8FAFC; --clock-tint:#0E2E1C; --clock-fg:#8FE4B4;
+      --success-wash:#102A21; --warning-wash:#2C2416; --danger-wash:#2E1A17; --info-wash:#12253A;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 4px 12px rgba(0,0,0,.45); --shadow-lg:0 8px 24px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas:#0B1220; --surface:#111A2E; --subtle:#15203A; --rail:#0E1729;
+    --border:#22304D; --divider:#1B2740; --ink:#F8FAFC; --muted:#94A3B8;
+    --primary-wash:#182848; --ink-deep:#F8FAFC; --clock-tint:#0E2E1C; --clock-fg:#8FE4B4;
+    --success-wash:#102A21; --warning-wash:#2C2416; --danger-wash:#2E1A17; --info-wash:#12253A;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 4px 12px rgba(0,0,0,.45); --shadow-lg:0 8px 24px rgba(0,0,0,.55);
+  }
+  :root[data-theme="light"] {
+    --canvas:#F5F7FA; --surface:#FFFFFF; --subtle:#FAFBFC; --rail:#FFFFFF;
+    --border:#E3E6EA; --divider:#F2F4F6; --ink:#16191F; --muted:#6B7280;
+    --primary-wash:#EEF3FD; --ink-deep:#0D1934; --clock-tint:#D6F4E1; --clock-fg:#0A5522;
+    --success-wash:#E7F5EE; --warning-wash:#FBF2E1; --danger-wash:#FAEAE7; --info-wash:#E8F2FA;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.05); --shadow:0 4px 12px rgba(0,0,0,.08); --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--canvas); color:var(--ink); font:400 16px/1.5 var(--ui); -webkit-font-smoothing:antialiased; }
+  a { color:var(--primary); }
+  button, input, select, textarea { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--primary); outline-offset:2px; border-radius:6px; }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+
+  /* ---------- shell ---------- */
+  .app { display:grid; grid-template-columns:252px 1fr; min-height:100vh; }
+  .rail { background:var(--rail); border-right:1px solid var(--border); display:flex; flex-direction:column;
+    position:sticky; top:0; height:100vh; overflow-y:auto; padding:14px 10px 10px; gap:2px; }
+  .orgswitch { display:flex; align-items:center; gap:10px; padding:8px; border-radius:12px; border:1px solid var(--border);
+    background:var(--subtle); cursor:pointer; width:100%; text-align:left; margin-bottom:4px; }
+  .orgswitch:hover { background:var(--primary-wash); }
+  .orgmark { width:32px; height:32px; border-radius:9px; background:var(--brand); color:#fff; display:grid;
+    place-items:center; font-weight:700; font-size:13px; flex:none; }
+  .orgswitch .on { font-size:13px; font-weight:650; line-height:1.25; }
+  .orgswitch .os { font-size:11px; color:var(--muted); line-height:1.3; }
+  .orgswitch .chev { margin-left:auto; color:var(--muted); }
+  .brandline { display:grid; gap:1px; padding:6px 8px 10px; }
+  .brandline .wm { font-weight:700; letter-spacing:-.3px; color:var(--ink-deep); }
+  .brandline .tag { font-size:10.5px; color:var(--muted); line-height:1.3; }
+  .kbar { display:flex; align-items:center; gap:8px; margin:2px 0 8px; padding:7px 9px; width:100%;
+    border-radius:11px; border:1px solid var(--border); background:var(--surface); color:var(--muted);
+    font-size:13px; cursor:pointer; }
+  .kbar:hover { border-color:var(--primary); color:var(--ink); }
+  .kbar kbd { margin-left:auto; font:600 10.5px/1 var(--mono); border:1px solid var(--border);
+    border-radius:5px; padding:3px 5px; background:var(--subtle); }
+  .nav { display:flex; flex-direction:column; gap:1px; }
+  .nav a { display:flex; align-items:center; gap:10px; padding:8px 9px; border-radius:10px; color:var(--ink);
+    text-decoration:none; font-size:13.5px; font-weight:500; }
+  .nav a:hover { background:var(--primary-wash); }
+  .nav a[aria-current="page"] { background:var(--primary); color:var(--primary-fg); }
+  .nav a .ico { width:17px; height:17px; flex:none; opacity:.75; }
+  .nav a[aria-current="page"] .ico { opacity:1; }
+  .nav a .count { margin-left:auto; font:600 11px/1 var(--mono); padding:3px 6px; border-radius:999px;
+    background:var(--warning); color:#3A2A08; }
+  .nav a[aria-current="page"] .count { background:rgba(255,255,255,.26); color:#fff; }
+  .railfoot { margin-top:auto; padding-top:10px; border-top:1px solid var(--divider); display:grid; gap:2px; }
+  .whoami { display:flex; align-items:center; gap:9px; padding:8px; border-radius:11px; width:100%;
+    background:none; border:0; cursor:pointer; text-align:left; }
+  .whoami:hover { background:var(--primary-wash); }
+  .av { width:31px; height:31px; border-radius:999px; flex:none; display:grid; place-items:center;
+    background:var(--primary-wash); color:var(--primary); font-weight:650; font-size:12px;
+    border:1px solid color-mix(in srgb, var(--primary) 22%, transparent); }
+  .whoami .nm { font-size:13px; font-weight:600; line-height:1.25; }
+  .whoami .rl { font-size:11px; color:var(--muted); line-height:1.3; text-transform:capitalize; }
+
+  main { min-width:0; display:flex; flex-direction:column; padding-bottom:0; }
+  .topbar { position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--canvas) 88%, transparent);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--border); display:flex; align-items:center;
+    gap:10px; padding:9px 22px; }
+  .crumbs { font-size:12.5px; color:var(--muted); display:flex; gap:6px; align-items:center; min-width:0; }
+  .crumbs b { color:var(--ink); font-weight:600; }
+  .wrap { padding:22px; max-width:1400px; width:100%; }
+  .iconbtn { position:relative; display:inline-grid; place-items:center; width:34px; height:34px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface); cursor:pointer; }
+  .iconbtn:hover { background:var(--subtle); }
+  .iconbtn .ico { width:17px; height:17px; }
+  .iconbtn .dot { position:absolute; top:5px; right:5px; width:7px; height:7px; border-radius:999px;
+    background:var(--danger); border:1.5px solid var(--surface); }
+
+  /* ---------- primitives ---------- */
+  h1 { font-size:30px; line-height:38px; font-weight:650; margin:0; letter-spacing:-.5px; text-wrap:balance; }
+  h2 { font-size:22px; line-height:30px; font-weight:650; margin:0; letter-spacing:-.3px; }
+  h3 { font-size:16px; line-height:24px; font-weight:650; margin:0; }
+  .lede { color:var(--muted); font-size:14px; margin:6px 0 0; max-width:64ch; }
+  .eyebrow { font-size:10px; font-weight:650; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .pagehead { display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  .pagehead .acts { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:11px;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink); font-size:13.5px;
+    font-weight:550; cursor:pointer; box-shadow:var(--shadow-sm); text-decoration:none; }
+  .btn:hover { background:var(--subtle); }
+  .btn.p { background:var(--primary); border-color:var(--primary); color:var(--primary-fg); }
+  .btn.p:hover { filter:brightness(1.07); }
+  .btn.g { background:var(--clock); border-color:var(--clock); color:#fff; }
+  .btn.d { color:var(--danger); border-color:color-mix(in srgb, var(--danger) 34%, transparent); }
+  .btn.d:hover { background:var(--danger-wash); }
+  .btn.sm { padding:5px 9px; font-size:12.5px; border-radius:9px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .btn .ico { width:15px; height:15px; }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-sm); }
+  .card > header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 16px;
+    border-bottom:1px solid var(--divider); }
+  .card > header .spacer { margin-left:auto; }
+  .card .body { padding:16px; }
+  .grid { display:grid; gap:16px; }
+  .tiles { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .tile { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 15px;
+    display:flex; flex-direction:column; gap:5px; text-decoration:none; color:inherit; box-shadow:var(--shadow-sm); }
+  a.tile:hover { border-color:color-mix(in srgb, var(--primary) 45%, var(--border)); box-shadow:var(--shadow); }
+  .tile .lbl { font-size:12px; color:var(--muted); font-weight:550; }
+  .tile .val { font:650 27px/1.1 var(--ui); font-variant-numeric:tabular-nums; letter-spacing:-.6px; }
+  .tile .sub { font-size:12px; color:var(--muted); }
+  .up { color:var(--success); font-weight:600; } .down { color:var(--danger); font-weight:600; }
+
+  .pill { display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:999px;
+    font-size:11.5px; font-weight:600; white-space:nowrap; border:1px solid transparent; }
+  .pill::before { content:""; width:6px; height:6px; border-radius:999px; background:currentColor; flex:none; }
+  .pill.ok { background:var(--success-wash); color:var(--success); }
+  .pill.warn { background:var(--warning-wash); color:var(--warning); }
+  .pill.bad { background:var(--danger-wash); color:var(--danger); }
+  .pill.info { background:var(--info-wash); color:var(--info); }
+  .pill.neutral { background:var(--subtle); color:var(--muted); border-color:var(--border); }
+  .pill.plain::before { display:none; }
+
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th { text-align:left; font-size:11px; font-weight:650; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); padding:9px 12px; border-bottom:1px solid var(--border); white-space:nowrap; background:var(--subtle); }
+  td { padding:10px 12px; border-bottom:1px solid var(--divider); vertical-align:middle; }
+  tbody tr:hover td { background:var(--subtle); }
+  tbody tr:last-child td { border-bottom:0; }
+  td.num, th.num { text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .mono { font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .dim { color:var(--muted); } .strong { font-weight:600; }
+  .rowav { display:flex; align-items:center; gap:9px; min-width:0; }
+  .two-line .t { font-weight:600; line-height:1.3; display:block; }
+  .two-line .s { font-size:12px; color:var(--muted); line-height:1.3; display:block; }
+
+  .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:12px 16px; border-bottom:1px solid var(--divider); }
+  .filters input[type="search"], .filters select { padding:7px 10px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface); font-size:13px; }
+  .filters input[type="search"] { min-width:220px; }
+
+  .tabs { display:flex; gap:2px; overflow-x:auto; border-bottom:1px solid var(--border); margin-bottom:18px; }
+  .tabs button { padding:9px 13px; border:0; background:none; cursor:pointer; font-size:13.5px; font-weight:550;
+    color:var(--muted); border-bottom:2px solid transparent; white-space:nowrap; }
+  .tabs button[aria-selected="true"] { color:var(--primary); border-bottom-color:var(--primary); }
+  .tabs button:hover { color:var(--ink); }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:11px; overflow:hidden; background:var(--surface); }
+  .seg button { border:0; background:none; padding:7px 12px; font-size:13px; font-weight:550; cursor:pointer; color:var(--muted); }
+  .seg button[aria-pressed="true"] { background:var(--primary); color:var(--primary-fg); }
+
+  .dl { display:grid; grid-template-columns:minmax(110px,auto) 1fr; gap:1px 16px; font-size:13.5px; }
+  .dl dt { color:var(--muted); padding:7px 0; }
+  .dl dd { margin:0; padding:7px 0; font-weight:550; }
+
+  ul.feed { margin:0; padding:0; }
+  .feed li { display:flex; gap:11px; padding:11px 16px; border-bottom:1px solid var(--divider); list-style:none; }
+  .feed li:last-child { border-bottom:0; }
+  .feed .fi { width:28px; height:28px; border-radius:9px; display:grid; place-items:center; flex:none; }
+  .feed .ft { font-size:13.5px; line-height:1.4; display:block; }
+  .feed .fm { font-size:12px; color:var(--muted); margin-top:2px; display:block; }
+
+  .bars-row { display:grid; grid-template-columns:104px 1fr 64px; align-items:center; gap:10px; padding:7px 0; font-size:13px; }
+  .bars-row .track { height:8px; border-radius:999px; background:var(--subtle); overflow:hidden; border:1px solid var(--border); }
+  .bars-row .fill { height:100%; border-radius:999px; background:var(--primary); }
+  .bars-row .amt { text-align:right; font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums; }
+
+  .sw { width:38px; height:22px; border-radius:999px; border:1px solid var(--border); background:var(--subtle);
+    position:relative; cursor:pointer; flex:none; padding:0; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:999px;
+    background:var(--surface); box-shadow:var(--shadow-sm); transition:left .16s ease; }
+  .sw[aria-checked="true"] { background:var(--primary); border-color:var(--primary); }
+  .sw[aria-checked="true"]::after { left:18px; }
+
+  .callout { display:flex; gap:11px; padding:13px 15px; border-radius:14px; font-size:13.5px; line-height:1.5; border:1px solid; }
+  .callout.warn { background:var(--warning-wash); border-color:color-mix(in srgb, var(--warning) 34%, transparent); }
+  .callout.info { background:var(--info-wash); border-color:color-mix(in srgb, var(--info) 30%, transparent); }
+  .callout.bad { background:var(--danger-wash); border-color:color-mix(in srgb, var(--danger) 34%, transparent); }
+  .callout.ok { background:var(--success-wash); border-color:color-mix(in srgb, var(--success) 34%, transparent); }
+  .callout .ico { width:18px; height:18px; flex:none; margin-top:1px; }
+  .empty { padding:40px 16px; text-align:center; color:var(--muted); font-size:13.5px; }
+  .denied { max-width:520px; margin:52px auto; text-align:center; }
+  .denied .lock { width:52px; height:52px; margin:0 auto 14px; color:var(--warning); }
+
+  /* ---------- rota grid ---------- */
+  .rota { overflow-x:auto; }
+  .rota table { border-collapse:separate; border-spacing:0; min-width:940px; }
+  .rota th, .rota td { border-bottom:1px solid var(--divider); }
+  .rota th.day { text-align:center; padding:8px 6px; }
+  .rota th.day .dn { display:block; font-size:11px; letter-spacing:.06em; }
+  .rota th.day .dd { display:block; font:600 13px/1.2 var(--mono); color:var(--ink); text-transform:none; letter-spacing:0; }
+  .rota th.who, .rota td.who { position:sticky; left:0; z-index:2; background:var(--surface); min-width:210px;
+    border-right:1px solid var(--border); }
+  .rota th.who { background:var(--subtle); }
+  .rota td { padding:5px; }
+  .cell { width:100%; min-height:52px; border-radius:10px; border:1px dashed var(--border); background:none;
+    cursor:pointer; padding:6px 7px; display:flex; flex-direction:column; gap:3px; align-items:flex-start;
+    justify-content:center; color:var(--muted); font-size:12px; }
+  .cell:hover { border-color:var(--primary); background:var(--primary-wash); color:var(--primary); }
+  .cell.filled { border-style:solid; border-color:transparent; color:#16191F; align-items:stretch; }
+  .cell .code { font:700 12px/1 var(--mono); letter-spacing:.04em; }
+  .cell .hrs { font-size:11px; opacity:.85; font-family:var(--mono); }
+  .cell.conflict { box-shadow:0 0 0 2px var(--danger); }
+  .rota .totals td { font-family:var(--mono); font-size:12.5px; text-align:center; font-variant-numeric:tabular-nums;
+    background:var(--subtle); font-weight:600; }
+  .rota .totals td.who { text-align:left; font-family:var(--ui); font-size:12px; }
+  .cov { display:flex; gap:3px; align-items:flex-end; height:26px; }
+  .legend { display:flex; gap:12px; flex-wrap:wrap; padding:12px 16px; border-top:1px solid var(--divider); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .legend i { width:11px; height:11px; border-radius:4px; display:block; }
+
+  /* ---------- clock ---------- */
+  .clockface { display:grid; place-items:center; gap:14px; padding:26px 16px; text-align:center; }
+  .bigclock { font:650 46px/1 var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-1px; }
+  .clockbtn { width:168px; height:168px; border-radius:999px; border:3px solid var(--clock); background:var(--clock);
+    color:#fff; font-size:17px; font-weight:650; cursor:pointer; display:grid; place-items:center; gap:2px;
+    box-shadow:0 8px 28px color-mix(in srgb, var(--clock) 34%, transparent); }
+  .clockbtn.out { background:var(--surface); color:var(--danger); border-color:var(--danger); box-shadow:none; }
+  .clockbtn small { display:block; font-size:12px; font-weight:500; opacity:.85; }
+
+  dialog { border:1px solid var(--border); border-radius:18px; background:var(--surface); color:var(--ink);
+    padding:0; box-shadow:var(--shadow-lg); max-width:540px; width:calc(100% - 32px); }
+  dialog::backdrop { background:rgba(10,16,30,.42); backdrop-filter:blur(2px); }
+  dialog header { padding:16px 18px 12px; border-bottom:1px solid var(--divider); }
+  dialog .body { padding:16px 18px; display:grid; gap:13px; max-height:60vh; overflow-y:auto; }
+  dialog footer { padding:13px 18px; border-top:1px solid var(--divider); display:flex; gap:8px; justify-content:flex-end; }
+  .field { display:grid; gap:5px; }
+  .field label { font-size:12.5px; font-weight:600; }
+  .field input, .field select, .field textarea { padding:8px 10px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface); font-size:13.5px; width:100%; }
+  .field textarea { min-height:70px; resize:vertical; font-family:inherit; }
+  .field .hint { font-size:11.5px; color:var(--muted); }
+  .field .err { font-size:11.5px; color:var(--danger); font-weight:600; }
+  .picker { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:8px; }
+  .picker button { border:1px solid var(--border); border-radius:12px; padding:9px; cursor:pointer;
+    background:var(--surface); display:grid; gap:3px; text-align:left; }
+  .picker button:hover { border-color:var(--primary); }
+  .picker .sw2 { width:100%; height:6px; border-radius:999px; display:block; }
+  .picker .pc { font:700 12px/1 var(--mono); }
+  .picker .pn { font-size:11.5px; color:var(--muted); }
+
+  .toasts { position:fixed; right:18px; bottom:18px; z-index:60; display:grid; gap:8px; }
+  .toast { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--success);
+    border-radius:12px; padding:11px 14px; box-shadow:var(--shadow-lg); font-size:13.5px; max-width:340px; }
+  .toast.bad { border-left-color:var(--danger); }
+
+  /* ---------- command palette ---------- */
+  #palette { max-width:560px; }
+  #palette .body { padding:0; display:block; }
+  #palette input { border:0; border-bottom:1px solid var(--divider); border-radius:0; padding:14px 16px; font-size:15px; }
+  #palette input:focus { outline:none; }
+  .presults { max-height:340px; overflow-y:auto; padding:6px; }
+  .presults button { display:flex; gap:10px; align-items:center; width:100%; border:0; background:none;
+    padding:9px 10px; border-radius:10px; cursor:pointer; text-align:left; font-size:13.5px; }
+  .presults button:hover, .presults button.on { background:var(--primary-wash); }
+  .presults .k { margin-left:auto; font-size:11px; color:var(--muted); }
+  .presults .ico { width:16px; height:16px; opacity:.7; }
+
+  /* ---------- mobile ---------- */
+  .tabbar { display:none; }
+  .railtoggle { display:none; }
+  @media (max-width:1000px) {
+    .app { grid-template-columns:1fr; }
+    .rail { position:fixed; inset:0 auto 0 0; width:262px; z-index:50; transform:translateX(-100%); transition:transform .18s ease; }
+    .rail.open { transform:none; box-shadow:var(--shadow-lg); }
+    .railtoggle { display:inline-grid; }
+    .wrap { padding:16px 16px 84px; }
+    .topbar { padding:9px 14px; }
+    h1 { font-size:24px; line-height:32px; }
+    .tabbar { display:grid; grid-auto-flow:column; position:fixed; left:0; right:0; bottom:0; z-index:40;
+      background:var(--surface); border-top:1px solid var(--border); padding:6px 4px calc(6px + env(safe-area-inset-bottom)); }
+    .tabbar a { display:grid; justify-items:center; gap:3px; padding:5px 2px; text-decoration:none;
+      color:var(--muted); font-size:10.5px; font-weight:600; border-radius:10px; }
+    .tabbar a[aria-current="page"] { color:var(--primary); }
+    .tabbar .ico { width:19px; height:19px; }
+  }
+</style>
+
+<div class="app">
+  <aside class="rail" id="rail">
+    <div class="brandline"><span class="wm">RotaFlow</span><span class="tag">Smarter rota. Stronger teams.</span></div>
+    <button class="orgswitch" id="orgBtn">
+      <span class="orgmark" id="orgMark">SC</span>
+      <span><span class="on" id="orgName">Sunnyvale Care Group</span>
+        <span class="os" id="orgMeta">9 sites · Enterprise</span></span>
+      <span class="chev" aria-hidden="true">⌄</span>
+    </button>
+    <button class="kbar" id="kbarBtn">Search screens and actions<kbd>⌘K</kbd></button>
+    <nav class="nav" id="nav" aria-label="Workspace"></nav>
+    <div class="railfoot">
+      <nav class="nav" id="nav2" aria-label="Account"></nav>
+      <button class="whoami" id="whoami">
+        <span class="av" id="whoAv">MB</span>
+        <span><span class="nm" id="whoName">Marcus Bell</span><span class="rl" id="whoRole">Owner</span></span>
+      </button>
+    </div>
+  </aside>
+
+  <main>
+    <div id="banner"></div>
+    <div class="topbar">
+      <button class="iconbtn railtoggle" id="railBtn" aria-label="Toggle navigation">☰</button>
+      <div class="crumbs" id="crumbs"></div>
+      <span style="margin-left:auto"></span>
+      <select class="btn sm" id="roleSel" aria-label="Signed in as"></select>
+      <button class="iconbtn" id="bellBtn" aria-label="Notifications"></button>
+    </div>
+    <div class="wrap" id="screen"></div>
+  </main>
+</div>
+
+<nav class="tabbar" id="tabbar" aria-label="Primary"></nav>
+<div class="toasts" id="toasts"></div>
+<dialog id="modal"></dialog>
+<dialog id="palette"></dialog>
+
+<script>
+/* ============================ roles and navigation ============================ */
+/* Organisation membership roles. These are the ONLY roles here — platform
+   administration is a separate permission on a separate surface. */
+const ROLES = { owner:'Owner', manager:'Manager', staff:'Staff' };
+const MANAGERIAL = ['owner','manager'];
+const EVERYONE = ['owner','manager','staff'];
+
+const NAV = [
+  { id:'dashboard',     label:'Dashboard',     icon:'home',   allow:EVERYONE },
+  { id:'rota',          label:'Rota Builder',  icon:'grid',   allow:MANAGERIAL },
+  { id:'schedule',      label:'Schedule',      icon:'cal',    allow:EVERYONE },
+  { id:'clock',         label:'Clock in',      icon:'clock',  allow:EVERYONE },
+  { id:'timesheets',    label:'Timesheets',    icon:'sheet',  allow:EVERYONE },
+  { id:'availability',  label:'Availability',  icon:'check',  allow:EVERYONE },
+  { id:'leave',         label:'Leave',         icon:'plane',  allow:EVERYONE, badge:'leaveOpen' },
+  { id:'swaps',         label:'Shift Swaps',   icon:'swap',   allow:EVERYONE, badge:'swapsOpen' },
+  { id:'overtime',      label:'Overtime',      icon:'plus',   allow:EVERYONE },
+  { id:'team',          label:'Team',          icon:'users',  allow:MANAGERIAL },
+  { id:'locations',     label:'Locations',     icon:'pin',    allow:MANAGERIAL },
+  { id:'announcements', label:'Announcements', icon:'mega',   allow:EVERYONE },
+  { id:'reports',       label:'Reports',       icon:'chart',  allow:MANAGERIAL },
+];
+/* Staff get My Profile where a manager gets Settings — navItemsForRole. */
+const NAV_FOOT = [
+  { id:'settings', label:'Settings',   icon:'cog',  allow:MANAGERIAL },
+  { id:'account',  label:'My Profile', icon:'user', allow:EVERYONE },
+  { id:'help',     label:'Help & Support', icon:'life', allow:EVERYONE },
+];
+const MOBILE_TABS = ['dashboard','schedule','clock','leave'];
+
+const P = {
+  home:'M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
+  grid:'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18',
+  cal:'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2',
+  clock:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 6v6l4 2',
+  sheet:'M4 2h16v20H4zM8 7h8M8 11h8M8 15h5',
+  check:'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  plane:'M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a1 1 0 0 0-.9 1.7L9 11l-2 3H4l1.5 3L9 18.5V15l3-2 3.1 5.1a1 1 0 0 0 1.7-.9',
+  swap:'M7 3 3 7l4 4M3 7h13a4 4 0 0 1 4 4M17 21l4-4-4-4M21 17H8a4 4 0 0 1-4-4',
+  plus:'M12 5v14M5 12h14',
+  users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  pin:'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6',
+  mega:'M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14',
+  chart:'M3 3v18h18M7 15l4-5 3 3 5-7',
+  cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.3 6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V2a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 17 3.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.7 1.2',
+  user:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+  life:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4.9 4.9l4.2 4.2M14.9 14.9l4.2 4.2M14.9 9.1l4.2-4.2M4.9 19.1l4.2-4.2',
+  bell:'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
+  lock:'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2M8 11V7a4 4 0 1 1 8 0v4',
+  alert:'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0',
+  info:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16v-4M12 8h.01',
+  ok:'M20 6 9 17l-5-5',
+  pulse:'M3 12h4l3 8 4-16 3 8h4',
+  gps:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8M12 2v3M12 19v3M2 12h3M19 12h3',
+  doc:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+};
+const ico = (nme, cls='ico') =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[nme]||P.home}"/></svg>`;
+
+/* ============================ helpers ============================ */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n = x => x.toLocaleString('en-GB');
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const initials = nm => nm.split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const hrs = x => (Math.round(x * 10) / 10).toFixed(1).replace(/\.0$/, '') + 'h';
+
+const STATUS = {
+  published:['ok','Published'], draft:['warn','Draft'], approved:['ok','Approved'],
+  pending:['warn','Pending'], declined:['bad','Declined'], cancelled:['neutral','Cancelled'],
+  active:['ok','Active'], on_shift:['ok','On shift'], off:['neutral','Off'],
+  late:['warn','Late'], absent:['bad','Absent'], complete:['ok','Complete'],
+  open:['info','Open'], matched:['info','Matched'], setup:['warn','Setup'],
+  queued:['warn','Queued offline'], synced:['ok','Synced'], invited:['info','Invited'],
+};
+const pill = k => { const [c,l] = STATUS[k] || ['neutral', k]; return `<span class="pill ${c}">${esc(l)}</span>`; };
+
+function sparkline(vals, tint='var(--primary)', w=110, h=26) {
+  const mn = Math.min(...vals), mx = Math.max(...vals), span = (mx - mn) || 1;
+  const pts = vals.map((v,i) => [i*(w/(vals.length-1)), h - 2 - ((v-mn)/span)*(h-5)]);
+  const line = pts.map(([x,y],i)=>`${i?'L':'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const id = 'g' + Math.random().toString(36).slice(2,8);
+  const [ex,ey] = pts[pts.length-1];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${tint}" stop-opacity=".22"/><stop offset="1" stop-color="${tint}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${line} L${w} ${h} L0 ${h} Z" fill="url(#${id})"/>
+    <path d="${line}" fill="none" stroke="${tint}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="2.4" fill="${tint}"/></svg>`;
+}
+
+function areaChart(series, labels, h=190) {
+  const w = 720, pad = { l:8, r:8, t:12, b:22 };
+  const mx = Math.max(...series.flatMap(s => s.vals)) * 1.14;
+  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const X = i => pad.l + i * (iw / (labels.length - 1));
+  const Y = v => pad.t + ih - (v / mx) * ih;
+  const grid = [0,.25,.5,.75,1].map(f =>
+    `<line x1="${pad.l}" x2="${w-pad.r}" y1="${(pad.t+ih*f).toFixed(1)}" y2="${(pad.t+ih*f).toFixed(1)}"
+      stroke="var(--divider)" stroke-width="1"/>`).join('');
+  const paths = series.map((s,si) => {
+    const id = 'c'+si+Math.random().toString(36).slice(2,6);
+    const line = s.vals.map((v,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+    const fill = s.fill === false ? '' :
+      `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${s.color}" stop-opacity=".2"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/>
+      </linearGradient></defs><path d="${line} L${X(s.vals.length-1)} ${pad.t+ih} L${pad.l} ${pad.t+ih} Z" fill="url(#${id})"/>`;
+    return fill + `<path d="${line}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${X(s.vals.length-1).toFixed(1)}" cy="${Y(s.vals[s.vals.length-1]).toFixed(1)}" r="3.2" fill="${s.color}"/>`;
+  }).join('');
+  const xl = labels.map((l,i) =>
+    `<text x="${X(i).toFixed(1)}" y="${h-5}" font-size="10" fill="var(--muted)"
+      text-anchor="${i===0?'start':i===labels.length-1?'end':'middle'}" font-family="var(--mono)">${esc(l)}</text>`).join('');
+  const legend = series.map(s => `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">
+    <i style="width:9px;height:9px;border-radius:3px;background:${s.color};display:block"></i>${esc(s.name)}</span>`).join('');
+  return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">${legend}</div>
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Trend" preserveAspectRatio="none">
+      ${grid}${paths}${xl}</svg>`;
+}
+
+function barRows(rows, tint) {
+  const mx = Math.max(...rows.map(r => r.v)) || 1;
+  return rows.map(r => `<div class="bars-row"><span class="dim">${esc(r.k)}</span>
+    <span class="track"><span class="fill" style="width:${(r.v/mx*100).toFixed(1)}%;background:${r.color||tint||'var(--primary)'}"></span></span>
+    <span class="amt">${esc(r.d ?? n(r.v))}</span></div>`).join('');
+}
+
+function table(cols, rows, opts = {}) {
+  const head = cols.map(c => `<th${c.num?' class="num"':''}>${esc(c.h)}</th>`).join('');
+  const body = rows.length ? rows.map(r =>
+    `<tr>${r.map((cell,i) => `<td${cols[i].num?' class="num"':''}>${cell}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}"><div class="empty">${esc(opts.empty || 'Nothing here yet.')}</div></td></tr>`;
+  return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function tiles(list) {
+  return `<div class="tiles">${list.map(t => {
+    const tag = t.to ? 'a' : 'div', href = t.to ? ` href="#/${t.to}"` : '';
+    return `<${tag} class="tile"${href}><span class="lbl">${esc(t.lbl)}</span>
+      <span class="val">${esc(t.val)}</span><span class="sub">${t.sub || ''}</span>
+      ${t.spark ? sparkline(t.spark, t.tint) : ''}</${tag}>`;
+  }).join('')}</div>`;
+}
+
+function toast(msg, bad) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (bad ? ' bad' : '');
+  el.textContent = msg;
+  $('#toasts').append(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 3400);
+  setTimeout(() => el.remove(), 3800);
+}
+</script>
+
+<script>
+/* ============================ organisation dataset ============================ */
+const ORG = { name:'Sunnyvale Care Group', plan:'Enterprise', sites:9, tz:'Europe/London' };
+const ME = { name:'Marcus Bell', role:'owner', job:'Registered Manager', site:'Sunnyvale House' };
+const WEEK = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DATES = ['4','5','6','7','8','9','10'];
+
+/* Shift types. `colour` is seeded from the 8-colour palette in docs/DESIGN.md §2
+   so every tenant's rota stays visually consistent with the system. */
+const TYPES = {
+  LD:  { name:'Long day',   from:'07:00', to:'19:30', h:12,  c:'var(--s-indigo)' },
+  E:   { name:'Early',      from:'07:00', to:'15:00', h:8,   c:'var(--s-teal)' },
+  L:   { name:'Late',       from:'14:00', to:'22:00', h:8,   c:'var(--s-amber)' },
+  N:   { name:'Night',      from:'19:00', to:'07:30', h:12.5,c:'var(--s-violet)' },
+  TW:  { name:'Twilight',   from:'17:00', to:'23:00', h:6,   c:'var(--s-sky)' },
+  TRN: { name:'Training',   from:'09:00', to:'17:00', h:7,   c:'var(--s-moss)' },
+  ANN: { name:'Annual leave', from:'—',   to:'—',     h:0,   c:'var(--s-rose)' },
+  SICK:{ name:'Sickness',   from:'—',     to:'—',     h:0,   c:'var(--s-clay)' },
+};
+const TYPE_KEYS = Object.keys(TYPES);
+
+const STAFF = [
+  { id:'s1', name:'Amara Osei',      job:'Senior Carer',   dept:'Nursing',   contract:37.5, site:'Sunnyvale House', shifts:['LD','LD','','','N','N',''] },
+  { id:'s2', name:'Callum Reid',     job:'Care Assistant', dept:'Nursing',   contract:37.5, site:'Sunnyvale House', shifts:['E','E','E','','','LD','LD'] },
+  { id:'s3', name:'Priya Raman',     job:'Care Assistant', dept:'Nursing',   contract:30,   site:'Oak Lodge',       shifts:['','L','L','L','L','',''] },
+  { id:'s4', name:'Tomas Nowak',     job:'Night Lead',     contract:37.5,    dept:'Nursing', site:'Sunnyvale House', shifts:['N','N','N','','','','N'] },
+  { id:'s5', name:'Grace Nkemdi',    job:'Senior Carer',   dept:'Dementia',  contract:37.5, site:'Willow Court',    shifts:['LD','','LD','LD','','','ANN'] },
+  { id:'s6', name:'Sean Callaghan',  job:'Care Assistant', dept:'Dementia',  contract:24,   site:'Willow Court',    shifts:['','TW','TW','','TW','',''] },
+  { id:'s7', name:'Ffion Davies',    job:'Care Assistant', dept:'Nursing',   contract:37.5, site:'Oak Lodge',       shifts:['E','','','E','E','E',''] },
+  { id:'s8', name:'Idris Okafor',    job:'Activities Lead',dept:'Wellbeing', contract:30,   site:'Sunnyvale House', shifts:['TRN','TRN','','','','',''] },
+  { id:'s9', name:'Leah Marchetti',  job:'Care Assistant', dept:'Nursing',   contract:37.5, site:'Sunnyvale House', shifts:['','','L','L','L','L',''] },
+  { id:'s10',name:'Rob Ellery',      job:'Care Assistant', dept:'Dementia',  contract:20,   site:'Willow Court',    shifts:['','','','','','LD','LD'] },
+  { id:'s11',name:'Hannah Groves',   job:'Senior Carer',   dept:'Nursing',   contract:37.5, site:'Oak Lodge',       shifts:['SICK','SICK','','LD','LD','',''] },
+  { id:'s12',name:'Daniel Whitfield',job:'Care Assistant', dept:'Wellbeing', contract:16,   site:'Sunnyvale House', shifts:['','','','','','','TW'] },
+];
+const staffById = id => STAFF.find(s => s.id === id) || STAFF[0];
+
+/* Minimum bodies on shift per day, per the site's staffing policy. */
+const REQUIRED = [6, 6, 6, 6, 6, 5, 5];
+
+const LEAVE = [
+  { id:'lv1', who:'s5',  type:'Annual leave', from:'10 Aug', to:'17 Aug', days:6, status:'pending', note:'Family holiday, booked flights.', made:'19 Jul' },
+  { id:'lv2', who:'s3',  type:'Annual leave', from:'02 Sep', to:'06 Sep', days:5, status:'pending', note:'', made:'28 Jul' },
+  { id:'lv3', who:'s9',  type:'Unpaid leave', from:'22 Aug', to:'22 Aug', days:1, status:'pending', note:'Hospital appointment.', made:'01 Aug' },
+  { id:'lv4', who:'s2',  type:'Annual leave', from:'14 Jul', to:'21 Jul', days:6, status:'approved', made:'02 Jun' },
+  { id:'lv5', who:'s7',  type:'Annual leave', from:'25 Dec', to:'27 Dec', days:2, status:'declined', note:'Christmas cover already at minimum.', made:'11 Jul' },
+];
+const SWAPS = [
+  { id:'sw1', from:'s2', to:'s7',  day:'Sat 9 Aug', type:'LD', status:'pending', reason:'Wedding in Cardiff.' },
+  { id:'sw2', from:'s9', to:null,  day:'Thu 7 Aug', type:'L',  status:'open',    reason:'Childcare fell through.' },
+  { id:'sw3', from:'s6', to:'s10', day:'Fri 8 Aug', type:'TW', status:'approved',reason:'Swapping to cover a course.' },
+];
+const TIMESHEETS = [
+  { who:'s1', day:'Mon 4 Aug', planned:'07:00–19:30', actual:'06:56–19:41', paid:12.2, status:'complete', flag:'' },
+  { who:'s2', day:'Mon 4 Aug', planned:'07:00–15:00', actual:'07:12–15:02', paid:7.6,  status:'late', flag:'12 min late' },
+  { who:'s4', day:'Mon 4 Aug', planned:'19:00–07:30', actual:'18:58– —',    paid:0,    status:'on_shift', flag:'Still clocked in' },
+  { who:'s7', day:'Mon 4 Aug', planned:'07:00–15:00', actual:'—',           paid:0,    status:'absent', flag:'No clock-in recorded' },
+  { who:'s8', day:'Mon 4 Aug', planned:'09:00–17:00', actual:'09:01–17:04', paid:7.0,  status:'complete', flag:'' },
+  { who:'s5', day:'Mon 4 Aug', planned:'07:00–19:30', actual:'07:00–19:28', paid:12.0, status:'complete', flag:'' },
+];
+const ANNOUNCEMENTS = [
+  { title:'Fire drill — Wednesday 06 Aug, 10:00', by:'Marcus Bell', when:'2 hours ago', aud:'All sites', read:38, of:52, pinned:true,
+    body:'Full evacuation drill across Sunnyvale House and Oak Lodge. Residents on the ground floor assemble at the west car park.' },
+  { title:'New medication round times from Monday', by:'Amara Osei', when:'yesterday', aud:'Nursing', read:19, of:24, pinned:false,
+    body:'Morning round moves from 08:00 to 07:45 so it completes before breakfast service.' },
+  { title:'Summer rota published to 31 August', by:'Marcus Bell', when:'3 days ago', aud:'All sites', read:50, of:52, pinned:false,
+    body:'Four weeks are now visible in Schedule. Raise swaps early — cover is tight on the August bank holiday.' },
+];
+const LOCATIONS = [
+  { name:'Sunnyvale House', type:'Residential', staff:78, depts:['Nursing','Wellbeing','Kitchen','Housekeeping'], status:'active', addr:'12 Sunnyvale Rd, Leeds LS7' },
+  { name:'Oak Lodge',       type:'Residential', staff:54, depts:['Nursing','Kitchen'], status:'active', addr:'4 Oak Lane, Leeds LS8' },
+  { name:'Willow Court',    type:'Dementia care', staff:41, depts:['Dementia','Wellbeing'], status:'active', addr:'88 Willow Ave, Leeds LS6' },
+  { name:'Community Team North', type:'Domiciliary', staff:36, depts:['Community'], status:'active', addr:'Unit 3, Kirkstall LS5' },
+  { name:'Community Team South', type:'Domiciliary', staff:29, depts:['Community'], status:'setup', addr:'Unit 11, Beeston LS11' },
+];
+const NOTIFS = [
+  { t:'Grace Nkemdi requested annual leave', m:'6 days, 10–17 August · needs your decision', k:'leave', when:'19 min ago', unread:true },
+  { t:'Callum Reid offered a shift swap', m:'Sat 9 Aug · Long day · Ffion Davies accepted', k:'swap', when:'1 hour ago', unread:true },
+  { t:'Ffion Davies has not clocked in', m:'Early shift started 47 minutes ago', k:'alert', when:'2 hours ago', unread:true },
+  { t:'Rota published for week commencing 4 August', m:'52 staff notified', k:'ok', when:'yesterday', unread:false },
+  { t:'Hannah Groves reported sickness', m:'Mon and Tue covered by agency', k:'alert', when:'2 days ago', unread:false },
+];
+
+/* mutable state */
+const state = {
+  role: ME.role,
+  grid: Object.fromEntries(STAFF.map(s => [s.id, s.shifts.slice()])),
+  published: false,
+  clockedIn: false,
+  clockStart: null,
+  online: true,
+  queued: 0,
+  leave: LEAVE.map(l => ({ ...l })),
+  swaps: SWAPS.map(s => ({ ...s })),
+  notifs: NOTIFS.map(x => ({ ...x })),
+  audit: [],
+};
+const leaveOpen = () => state.leave.filter(l => l.status === 'pending').length;
+const swapsOpen = () => state.swaps.filter(s => s.status === 'pending' || s.status === 'open').length;
+const BADGES = { leaveOpen, swapsOpen };
+const canManage = () => MANAGERIAL.includes(state.role);
+
+/* ============================ rota engine ============================ */
+const weekHours = id => state.grid[id].reduce((t, k) => t + (k ? TYPES[k].h : 0), 0);
+const onShift = d => STAFF.filter(s => { const k = state.grid[s.id][d]; return k && TYPES[k].h > 0; }).length;
+
+/* Conflicts are computed, never hard-coded — change a cell and they move. */
+function conflicts() {
+  const out = [];
+  STAFF.forEach(s => {
+    const row = state.grid[s.id];
+    const h = weekHours(s.id);
+    if (h > 48) out.push({ staff:s.id, day:null, sev:'bad',
+      msg:`${s.name} is rostered ${hrs(h)} — over the 48-hour weekly limit.` });
+    else if (h > s.contract + 12) out.push({ staff:s.id, day:null, sev:'warn',
+      msg:`${s.name} is ${hrs(h - s.contract)} over a ${s.contract}h contract.` });
+    row.forEach((k, d) => {
+      const next = row[d + 1];
+      if (k === 'N' && (next === 'E' || next === 'LD')) out.push({ staff:s.id, day:d + 1, sev:'bad',
+        msg:`${s.name} works ${TYPES[next].name.toLowerCase()} on ${WEEK[d+1]} after a night shift — under 11 hours' rest.` });
+      if (k === 'ANN' && d < 7 && row[d] === 'ANN' && false) out.push({});
+    });
+  });
+  WEEK.forEach((w, d) => {
+    const have = onShift(d);
+    if (have < REQUIRED[d]) out.push({ staff:null, day:d, sev:'bad',
+      msg:`${w} is ${REQUIRED[d] - have} short of the ${REQUIRED[d]}-person minimum.` });
+  });
+  return out;
+}
+const blockers = () => conflicts().filter(c => c.sev === 'bad');
+const cellConflict = (id, d) => conflicts().some(c => c.staff === id && c.day === d);
+
+function logAudit(what, detail) {
+  state.audit.unshift({ what, detail, who:ME.name, when:'just now' });
+}
+</script>
+
+<script>
+/* ============================ shell ============================ */
+const SCREENS = {};
+const visibleNav = () => NAV.filter(i => i.allow.includes(state.role));
+const visibleFoot = () => NAV_FOOT.filter(i => i.allow.includes(state.role));
+
+function renderRail() {
+  const cur = location.hash.slice(2).split('/')[0] || 'dashboard';
+  const link = i => {
+    const c = i.badge ? BADGES[i.badge]() : 0;
+    return `<a href="#/${i.id}"${cur === i.id ? ' aria-current="page"' : ''}>${ico(i.icon)}
+      <span>${esc(i.label)}</span>${c ? `<span class="count">${c}</span>` : ''}</a>`;
+  };
+  $('#nav').innerHTML = visibleNav().map(link).join('');
+  $('#nav2').innerHTML = visibleFoot().map(link).join('');
+  $('#whoName').textContent = ME.name;
+  $('#whoRole').textContent = ROLES[state.role];
+  $('#whoAv').textContent = initials(ME.name);
+  $('#orgMark').textContent = initials(ORG.name);
+  $('#tabbar').innerHTML = MOBILE_TABS.map(id => {
+    const i = NAV.find(x => x.id === id);
+    return `<a href="#/${i.id}"${cur === i.id ? ' aria-current="page"' : ''}>${ico(i.icon)}
+      <span>${esc(i.label)}</span></a>`;
+  }).join('') + `<a href="#" id="moreTab">${ico('grid')}<span>More</span></a>`;
+  const unread = state.notifs.filter(x => x.unread).length;
+  $('#bellBtn').innerHTML = ico('bell') + (unread ? '<span class="dot"></span>' : '');
+}
+
+function crumbs(parts) {
+  $('#crumbs').innerHTML = [ORG.name, ...parts]
+    .map((p, i, a) => i === a.length - 1 ? `<b>${esc(p)}</b>` : esc(p))
+    .join(' <span aria-hidden="true">/</span> ');
+}
+
+/* Route-level role gate. RLS is the real boundary; this turns a wrong turn into
+   an explanation instead of an interface whose every write fails silently. */
+function denied(id) {
+  const item = [...NAV, ...NAV_FOOT].find(x => x.id === id);
+  return `<div class="denied">
+    <svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P.lock}"/></svg>
+    <h1>You do not have access to ${esc(item.label.toLowerCase())}</h1>
+    <p class="lede" style="margin:10px auto 0">This area is for managers and owners. Your role in
+      ${esc(ORG.name)} is <b>${esc(ROLES[state.role])}</b>.</p>
+    <div class="card" style="margin:20px 0;text-align:left"><div class="body"><dl class="dl">
+      <dt>Your role</dt><dd>${esc(ROLES[state.role])}</dd>
+      <dt>Required</dt><dd>${item.allow.map(r => ROLES[r]).join(' or ')}</dd>
+      <dt>Enforced by</dt><dd>Route guard, then row-level security on every query</dd>
+    </dl></div></div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <a class="btn p" href="#/dashboard">Back to dashboard</a>
+      <a class="btn" href="#/announcements">Ask a manager</a></div></div>`;
+}
+
+function route() {
+  const [id = 'dashboard', a] = location.hash.slice(2).split('/');
+  renderRail();
+  const item = [...NAV, ...NAV_FOOT].find(x => x.id === id);
+  const fn = SCREENS[id];
+  if (!fn) {
+    crumbs([id]);
+    $('#screen').innerHTML = `<div class="denied"><h1>Page not found</h1>
+      <p class="lede" style="margin:10px auto 0"><span class="mono">#/${esc(id)}</span> is not a screen in this workspace.</p>
+      <p style="margin-top:18px"><a class="btn p" href="#/dashboard">Back to dashboard</a></p></div>`;
+    return;
+  }
+  if (item && !item.allow.includes(state.role)) {
+    crumbs([item.label]); $('#screen').innerHTML = denied(id); return;
+  }
+  $('#screen').innerHTML = fn(a);
+  window.scrollTo({ top:0, behavior:'instant' });
+  $$('[data-tabs]').forEach(wireTabs);
+  $$('[data-filter]').forEach(wireFilter);
+}
+
+function wireTabs(root) {
+  const btns = [...root.querySelectorAll('.tabs button')];
+  btns.forEach(b => b.onclick = () => {
+    btns.forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    root.querySelectorAll('[data-panel]').forEach(p => p.hidden = p.dataset.panel !== b.dataset.tab);
+  });
+}
+function wireFilter(root) {
+  const q = root.querySelector('input[type="search"]');
+  const sels = [...root.querySelectorAll('select[data-key]')];
+  const rows = [...root.querySelectorAll('tbody tr[data-row]')];
+  const empty = root.querySelector('[data-empty]');
+  const apply = () => {
+    const term = (q?.value || '').trim().toLowerCase();
+    let shown = 0;
+    rows.forEach(tr => {
+      const hit = (!term || tr.dataset.row.toLowerCase().includes(term))
+        && sels.every(s => !s.value || (tr.dataset[s.dataset.key] || '') === s.value);
+      tr.hidden = !hit; if (hit) shown++;
+    });
+    if (empty) empty.hidden = shown > 0;
+    const c = root.querySelector('[data-count]');
+    if (c) c.textContent = `${shown} of ${rows.length}`;
+  };
+  q?.addEventListener('input', apply);
+  sels.forEach(s => s.addEventListener('change', apply));
+  apply();
+}
+
+/* ============================ modal ============================ */
+function modal({ title, sub, body, confirm, danger, reason, onOk, okOnly }) {
+  const dlg = $('#modal');
+  dlg.innerHTML = `<form method="dialog">
+    <header><h3>${esc(title)}</h3>${sub ? `<p class="lede" style="margin-top:4px">${sub}</p>` : ''}</header>
+    <div class="body">${body || ''}
+      ${reason ? `<div class="field"><label for="mReason">Reason</label>
+        <textarea id="mReason" placeholder="The person affected sees this."></textarea>
+        <span class="err" id="mReasonErr" hidden>A reason is required.</span></div>` : ''}</div>
+    <footer>${okOnly ? '' : '<button class="btn" value="cancel" type="submit">Cancel</button>'}
+      <button class="btn ${danger ? 'd' : 'p'}" id="mOk" type="button">${esc(confirm || 'Confirm')}</button></footer>
+  </form>`;
+  dlg.showModal();
+  dlg.querySelector('#mOk').onclick = () => {
+    const vals = {};
+    if (reason) {
+      const v = dlg.querySelector('#mReason').value.trim();
+      dlg.querySelector('#mReasonErr').hidden = !!v;
+      if (!v) return; vals.reason = v;
+    }
+    dlg.querySelectorAll('[data-val]').forEach(el => {
+      vals[el.dataset.val] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    dlg.close(); onOk?.(vals);
+  };
+}
+
+/* ============================ command palette (⌘K) ============================ */
+/* Screens and their actions only — deliberately not records. A fan-out of ilike
+   queries across a dozen tables on every keystroke is a query storm. */
+const ACTIONS = [
+  { label:'Publish this week’s rota', to:'rota', allow:MANAGERIAL },
+  { label:'Add a shift', to:'rota', allow:MANAGERIAL },
+  { label:'Clock in', to:'clock', allow:EVERYONE },
+  { label:'Request annual leave', to:'leave', allow:EVERYONE },
+  { label:'Offer a shift swap', to:'swaps', allow:EVERYONE },
+  { label:'Post an announcement', to:'announcements', allow:MANAGERIAL },
+  { label:'Export timesheets to CSV', to:'timesheets', allow:MANAGERIAL },
+  { label:'Invite a team member', to:'settings', allow:MANAGERIAL },
+  { label:'Change my password', to:'account', allow:EVERYONE },
+];
+function openPalette() {
+  const dlg = $('#palette');
+  const items = [
+    ...visibleNav().map(i => ({ label:i.label, to:i.id, kind:'Screen', icon:i.icon })),
+    ...visibleFoot().map(i => ({ label:i.label, to:i.id, kind:'Screen', icon:i.icon })),
+    ...ACTIONS.filter(a => a.allow.includes(state.role)).map(a => ({ label:a.label, to:a.to, kind:'Action', icon:'pulse' })),
+  ];
+  dlg.innerHTML = `<div class="body">
+    <input id="pq" type="search" placeholder="Go to a screen, or run an action…" autocomplete="off" aria-label="Search">
+    <div class="presults" id="pr"></div></div>`;
+  const draw = term => {
+    const t = term.trim().toLowerCase();
+    const hits = items.filter(i => !t || i.label.toLowerCase().includes(t)).slice(0, 9);
+    $('#pr').innerHTML = hits.length ? hits.map((i, x) =>
+      `<button data-to="${i.to}" class="${x === 0 ? 'on' : ''}">${ico(i.icon)}
+        <span>${esc(i.label)}</span><span class="k">${i.kind}</span></button>`).join('')
+      : `<div class="empty">Nothing matches “${esc(term)}”. Search covers screens and actions, not records.</div>`;
+    $$('#pr button').forEach(b => b.onclick = () => { dlg.close(); location.hash = '#/' + b.dataset.to; });
+  };
+  draw('');
+  dlg.showModal();
+  const q = $('#pq'); q.focus();
+  q.oninput = () => draw(q.value);
+  q.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); $('#pr button')?.click(); }
+  };
+}
+
+/* ============================ actions ============================ */
+function setCell(id, d) {
+  if (!canManage()) return;
+  const s = staffById(id), cur = state.grid[id][d];
+  modal({
+    title:`${s.name} — ${WEEK[d]} ${DATES[d]} August`,
+    sub:`${esc(s.job)} · ${esc(s.site)} · ${s.contract}h contract · rostered ${hrs(weekHours(id))} this week`,
+    confirm:'Save shift', okOnly:false,
+    body:`<div class="picker">
+      ${TYPE_KEYS.map(k => `<button type="button" data-pick="${k}">
+        <span class="sw2" style="background:${TYPES[k].c}"></span>
+        <span class="pc">${k}</span>
+        <span class="pn">${esc(TYPES[k].name)}${TYPES[k].h ? ' · ' + hrs(TYPES[k].h) : ''}</span></button>`).join('')}
+      <button type="button" data-pick=""><span class="sw2" style="background:var(--border)"></span>
+        <span class="pc">—</span><span class="pn">Clear the day</span></button>
+    </div>
+    <input type="hidden" id="pickVal" data-val="k" value="${esc(cur)}">
+    <p class="lede" id="pickEcho" style="margin:0;font-size:12.5px">
+      ${cur ? `Currently <b>${esc(TYPES[cur].name)}</b>, ${esc(TYPES[cur].from)}–${esc(TYPES[cur].to)}.` : 'Currently unassigned.'}</p>`,
+    onOk(v) {
+      const from = state.grid[id][d];
+      state.grid[id][d] = v.k;
+      logAudit('shift.changed', `${s.name}, ${WEEK[d]}: ${from || 'unassigned'} → ${v.k || 'unassigned'}`);
+      if (state.published) state.published = false;
+      route();
+      toast(v.k ? `${s.name} set to ${TYPES[v.k].name} on ${WEEK[d]}.` : `${WEEK[d]} cleared for ${s.name}.`);
+    },
+  });
+  $$('#modal [data-pick]').forEach(b => b.onclick = () => {
+    const k = b.dataset.pick;
+    $('#pickVal').value = k;
+    $$('#modal [data-pick]').forEach(x => x.style.borderColor = 'var(--border)');
+    b.style.borderColor = 'var(--primary)';
+    $('#pickEcho').innerHTML = k
+      ? `Selected <b>${esc(TYPES[k].name)}</b>, ${esc(TYPES[k].from)}–${esc(TYPES[k].to)}. Save to apply.`
+      : 'The day will be cleared. Save to apply.';
+  });
+}
+
+function publishRota() {
+  const bad = blockers();
+  if (bad.length) {
+    modal({ title:'Resolve conflicts before publishing', danger:true, confirm:'Back to the rota', okOnly:true,
+      sub:`${bad.length} ${bad.length === 1 ? 'conflict blocks' : 'conflicts block'} publication. Staff never see a rota that breaks a rest rule or leaves a shift short.`,
+      body:`<ul style="margin:0;padding-left:18px;display:grid;gap:7px;font-size:13.5px">
+        ${bad.map(c => `<li>${esc(c.msg)}</li>`).join('')}</ul>` });
+    return;
+  }
+  modal({ title:'Publish week commencing 4 August?', confirm:'Publish and notify',
+    sub:`${STAFF.length} staff are notified in the app and by email. Any later change re-notifies only the people affected.`,
+    onOk() {
+      state.published = true;
+      logAudit('rota.published', 'Week commencing 4 August');
+      route(); toast('Rota published. 12 staff notified.');
+    } });
+}
+
+function decideLeave(id, ok) {
+  const l = state.leave.find(x => x.id === id), s = staffById(l.who);
+  modal({
+    title:`${ok ? 'Approve' : 'Decline'} ${s.name}’s ${l.type.toLowerCase()}?`, danger:!ok,
+    sub:`${esc(l.from)} – ${esc(l.to)} · ${l.days} days. ${ok ? 'The days are deducted from the entitlement and blocked out on the rota.' : ''}`,
+    confirm:ok ? 'Approve leave' : 'Decline leave', reason:!ok,
+    onOk(v) {
+      l.status = ok ? 'approved' : 'declined';
+      if (v.reason) l.note = v.reason;
+      logAudit('leave.' + l.status, `${s.name}, ${l.from}–${l.to}`);
+      route(); toast(`${s.name}’s leave ${l.status}.`);
+    } });
+}
+
+function decideSwap(id, ok) {
+  const sw = state.swaps.find(x => x.id === id);
+  const a = staffById(sw.from), b = sw.to ? staffById(sw.to) : null;
+  modal({
+    title:`${ok ? 'Approve' : 'Decline'} this swap?`, danger:!ok,
+    sub:`${esc(a.name)} → ${b ? esc(b.name) : 'the open pool'} · ${esc(sw.day)} · ${esc(TYPES[sw.type].name)}`,
+    confirm:ok ? 'Approve swap' : 'Decline swap', reason:!ok,
+    onOk() {
+      sw.status = ok ? 'approved' : 'declined';
+      logAudit('swap.' + sw.status, `${a.name} → ${b ? b.name : 'open'}, ${sw.day}`);
+      route(); toast(`Swap ${sw.status}.`);
+    } });
+}
+
+function toggleClock() {
+  if (!state.clockedIn) {
+    state.clockedIn = true; state.clockStart = Date.now();
+    if (!state.online) { state.queued++; }
+    logAudit('attendance.clock_in', state.online ? 'GPS verified at Sunnyvale House' : 'Queued offline');
+    route();
+    toast(state.online ? 'Clocked in. GPS verified at Sunnyvale House.' : 'Clocked in offline — queued, will sync.');
+  } else {
+    const mins = Math.round((Date.now() - state.clockStart) / 60000);
+    modal({ title:'Clock out?', confirm:'Clock out', danger:true,
+      sub:`You have been clocked in for ${mins} minute${mins === 1 ? '' : 's'}. Your timesheet is updated from this.`,
+      onOk() {
+        state.clockedIn = false; state.clockStart = null;
+        logAudit('attendance.clock_out', `${mins} minutes recorded`);
+        route(); toast('Clocked out. Timesheet updated.');
+      } });
+  }
+}
+</script>
+
+<script>
+/* ============================ dashboard ============================ */
+SCREENS.dashboard = () => {
+  crumbs(['Dashboard']);
+  const c = conflicts(), bad = c.filter(x => x.sev === 'bad');
+  const me = STAFF[0];
+
+  if (!canManage()) {
+    /* A staff member's home is their own next shifts, not the org's numbers. */
+    const mine = state.grid[me.id].map((k, d) => ({ k, d })).filter(x => x.k);
+    return `
+    <div class="pagehead"><div><h1>Good morning, ${esc(ME.name.split(' ')[0])}</h1>
+      <p class="lede">Monday 4 August · ${esc(ME.site)}</p></div>
+      <div class="acts"><a class="btn g" href="#/clock">${ico('clock')} Clock in</a></div></div>
+    ${tiles([
+      { lbl:'Your hours this week', val:hrs(weekHours(me.id)), sub:`${me.contract}h contract` },
+      { lbl:'Shifts booked', val:String(mine.length), to:'schedule' },
+      { lbl:'Leave remaining', val:'11 days', to:'leave', sub:'of 28' },
+      { lbl:'Open swaps', val:String(swapsOpen()), to:'swaps' },
+    ])}
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(310px,1fr));margin-top:16px">
+      <section class="card"><header><h3>Your next shifts</h3><span class="spacer"></span>
+        <a class="btn sm" href="#/schedule">Full schedule</a></header>
+        ${mine.map(({ k, d }) => `<div style="display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--divider)">
+          <span style="width:4px;height:38px;border-radius:999px;background:${TYPES[k].c};flex:none"></span>
+          <span><span class="strong">${esc(TYPES[k].name)}</span>
+            <span class="dim" style="display:block;font-size:12.5px">${WEEK[d]} ${DATES[d]} Aug · ${esc(TYPES[k].from)}–${esc(TYPES[k].to)} · ${esc(me.site)}</span></span>
+          <span style="margin-left:auto" class="mono dim">${hrs(TYPES[k].h)}</span></div>`).join('')}
+      </section>
+      <section class="card"><header><h3>Announcements</h3><span class="spacer"></span>
+        <a class="btn sm" href="#/announcements">All</a></header>
+        <ul class="feed">${ANNOUNCEMENTS.slice(0, 3).map(a => `<li>
+          <span class="fi" style="background:var(--primary-wash);color:var(--primary)">${ico('mega')}</span>
+          <span><span class="ft">${esc(a.title)}</span><span class="fm">${esc(a.by)} · ${esc(a.when)}</span></span></li>`).join('')}</ul>
+      </section>
+    </div>`;
+  }
+
+  return `
+  <div class="pagehead"><div><h1>Good morning, ${esc(ME.name.split(' ')[0])}</h1>
+    <p class="lede">Monday 4 August · ${esc(ORG.name)} · ${ORG.sites} sites</p></div>
+    <div class="acts">
+      <a class="btn" href="#/announcements">Post announcement</a>
+      <a class="btn p" href="#/rota">${ico('grid')} Open rota builder</a></div></div>
+
+  ${bad.length ? `<div class="callout bad" style="margin-bottom:16px">${ico('alert')}
+    <span><b>${bad.length} ${bad.length === 1 ? 'conflict needs' : 'conflicts need'} attention before this week publishes.</b><br>
+    ${esc(bad[0].msg)}${bad.length > 1 ? ` And ${bad.length - 1} more.` : ''}
+    <a href="#/rota">Open the rota builder</a>.</span></div>` : ''}
+
+  ${tiles([
+    { lbl:'Rostered this week', val:hrs(STAFF.reduce((t, s) => t + weekHours(s.id), 0)),
+      sub:'across 12 staff', spark:[402,418,396,441,428,449,462] },
+    { lbl:'Shifts to fill', val:String(REQUIRED.reduce((t, r, d) => t + Math.max(0, r - onShift(d)), 0)),
+      sub:'<span class="down">below minimum cover</span>', to:'rota' },
+    { lbl:'Leave to decide', val:String(leaveOpen()), to:'leave', sub:'oldest 16 days old' },
+    { lbl:'Swaps waiting', val:String(swapsOpen()), to:'swaps' },
+    { lbl:'On shift now', val:String(onShift(0)), to:'schedule', sub:`of ${REQUIRED[0]} required` },
+    { lbl:'Rota status', val:state.published ? 'Published' : 'Draft',
+      sub:state.published ? '<span class="up">staff notified</span>' : '<span class="down">not visible to staff</span>', to:'rota' },
+  ])}
+
+  <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:16px">
+    <section class="card"><header><h3>Cover against minimum</h3><span class="spacer"></span>
+      <span class="pill neutral plain">Week commencing 4 Aug</span></header>
+      <div class="body">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:230px">
+          ${WEEK.map((w, d) => {
+            const have = onShift(d), req = REQUIRED[d], short = have < req;
+            const pct = Math.min(100, have / (req + 3) * 100);
+            const rpct = req / (req + 3) * 100;
+            return `<div style="display:flex;flex-direction:column;gap:6px;align-items:center;height:100%">
+              <div style="flex:1;width:100%;position:relative;display:flex;align-items:flex-end;
+                border-bottom:1px solid var(--border)">
+                <span style="position:absolute;left:0;right:0;bottom:${rpct}%;border-top:1.5px dashed var(--warning)"></span>
+                <span style="width:100%;height:${pct}%;border-radius:8px 8px 0 0;
+                  background:${short ? 'var(--danger)' : 'var(--primary)'};opacity:.9"></span>
+              </div>
+              <span class="mono" style="font-size:12px;font-weight:600;color:${short ? 'var(--danger)' : 'inherit'}">${have}</span>
+              <span class="dim" style="font-size:11px">${w}</span></div>`;
+          }).join('')}
+        </div>
+        <p class="lede" style="font-size:12.5px">The dashed line is the ${REQUIRED[0]}-person staffing minimum
+          set in Settings → Policies. Bars below it are the days that block publication.</p>
+      </div></section>
+
+    <div class="grid" style="align-content:start">
+      <section class="card"><header><h3>Needs you</h3></header>
+        <ul class="feed">
+          ${state.leave.filter(l => l.status === 'pending').slice(0, 2).map(l => `<li>
+            <span class="fi" style="background:var(--warning-wash);color:var(--warning)">${ico('plane')}</span>
+            <span><span class="ft">${esc(staffById(l.who).name)} requested ${l.days} days</span>
+              <span class="fm">${esc(l.from)}–${esc(l.to)} · <a href="#/leave">Decide</a></span></span></li>`).join('')}
+          ${state.swaps.filter(s => s.status === 'pending').map(s => `<li>
+            <span class="fi" style="background:var(--info-wash);color:var(--info)">${ico('swap')}</span>
+            <span><span class="ft">Swap: ${esc(staffById(s.from).name)} → ${esc(staffById(s.to).name)}</span>
+              <span class="fm">${esc(s.day)} · <a href="#/swaps">Review</a></span></span></li>`).join('')}
+          <li><span class="fi" style="background:var(--danger-wash);color:var(--danger)">${ico('alert')}</span>
+            <span><span class="ft">Ffion Davies has not clocked in</span>
+              <span class="fm">Early shift started 47 minutes ago · <a href="#/timesheets">Timesheets</a></span></span></li>
+        </ul></section>
+      <section class="card"><header><h3>Hours by department</h3></header>
+        <div class="body">${barRows(
+          [...new Set(STAFF.map(s => s.dept))].map(d => ({
+            k:d, v:STAFF.filter(s => s.dept === d).reduce((t, s) => t + weekHours(s.id), 0),
+            d:hrs(STAFF.filter(s => s.dept === d).reduce((t, s) => t + weekHours(s.id), 0)),
+          })))}</div></section>
+    </div>
+  </div>`;
+};
+
+/* ============================ rota builder ============================ */
+SCREENS.rota = () => {
+  crumbs(['Rota Builder']);
+  const c = conflicts(), bad = c.filter(x => x.sev === 'bad'), warn = c.filter(x => x.sev === 'warn');
+
+  const head = `<tr><th class="who">Staff</th>
+    ${WEEK.map((w, d) => `<th class="day"><span class="dn">${w}</span>
+      <span class="dd">${DATES[d]} Aug</span></th>`).join('')}
+    <th class="num">Week</th></tr>`;
+
+  const rows = STAFF.map(s => {
+    const h = weekHours(s.id), over = h > 48, near = !over && h > s.contract + 12;
+    return `<tr><td class="who">
+      <div class="rowav"><span class="av">${initials(s.name)}</span>
+        <span class="two-line"><span class="t">${esc(s.name)}</span>
+        <span class="s">${esc(s.job)} · ${esc(s.site)}</span></span></div></td>
+      ${state.grid[s.id].map((k, d) => {
+        const conf = cellConflict(s.id, d);
+        if (!k) return `<td><button class="cell" onclick="setCell('${s.id}',${d})"
+          aria-label="Assign a shift to ${esc(s.name)} on ${WEEK[d]}">+ Add</button></td>`;
+        const t = TYPES[k];
+        return `<td><button class="cell filled${conf ? ' conflict' : ''}"
+          style="background:${t.c}" onclick="setCell('${s.id}',${d})"
+          aria-label="${esc(s.name)}, ${WEEK[d]}, ${esc(t.name)}">
+          <span class="code">${k}</span>
+          <span class="hrs">${t.h ? esc(t.from) + '–' + esc(t.to) : esc(t.name)}</span></button></td>`;
+      }).join('')}
+      <td class="num" style="color:${over ? 'var(--danger)' : near ? 'var(--warning)' : 'inherit'};font-weight:600">
+        ${hrs(h)}<span class="dim" style="font-weight:400">/${s.contract}</span></td></tr>`;
+  }).join('');
+
+  const totals = `<tr class="totals"><td class="who">On shift · minimum</td>
+    ${WEEK.map((w, d) => {
+      const have = onShift(d), short = have < REQUIRED[d];
+      return `<td style="color:${short ? 'var(--danger)' : 'var(--success)'}">${have} / ${REQUIRED[d]}</td>`;
+    }).join('')}
+    <td class="num">${hrs(STAFF.reduce((t, s) => t + weekHours(s.id), 0))}</td></tr>`;
+
+  return `
+  <div class="pagehead"><div>
+    <h1>Rota builder</h1>
+    <p class="lede">Week commencing Monday 4 August · ${esc(ORG.name)}. Click any cell to assign or clear a shift —
+      hours, cover and conflicts recalculate as you go.</p></div>
+    <div class="acts">
+      <div class="seg"><button aria-pressed="true">Week</button><button aria-pressed="false"
+        onclick="toast('Fortnight and month views use the same grid at lower density.')">Fortnight</button></div>
+      <button class="btn" onclick="toast('Last week copied forward. Leave and sickness were not copied.')">Copy last week</button>
+      <button class="btn" onclick="toast('AI fill drafted 4 shifts from availability, contracts and rest rules. Nothing is published until you review it.')">AI fill gaps</button>
+      <button class="btn ${state.published ? '' : 'p'}" onclick="publishRota()">
+        ${state.published ? 'Published' : 'Publish rota'}</button></div></div>
+
+  ${state.published
+    ? `<div class="callout ok" style="margin-bottom:14px">${ico('ok')}
+        <span><b>Published.</b> All 12 staff can see this week and were notified. Editing a cell returns it to draft
+        and re-notifies only the people whose shifts change.</span></div>`
+    : `<div class="callout ${bad.length ? 'bad' : 'info'}" style="margin-bottom:14px">${ico(bad.length ? 'alert' : 'info')}
+        <span><b>Draft — not visible to staff.</b>
+        ${bad.length ? `${bad.length} conflict${bad.length === 1 ? '' : 's'} block publication.`
+          : 'No blocking conflicts. Ready to publish.'}</span></div>`}
+
+  <section class="card">
+    <div class="rota"><table><thead>${head}</thead><tbody>${rows}${totals}</tbody></table></div>
+    <div class="legend">${TYPE_KEYS.map(k => `<span><i style="background:${TYPES[k].c}"></i>
+      ${k} · ${esc(TYPES[k].name)}</span>`).join('')}
+      <span style="margin-left:auto"><i style="background:none;box-shadow:0 0 0 2px var(--danger);border-radius:3px"></i>
+      Conflict</span></div>
+  </section>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-top:16px">
+    <section class="card"><header><h3>Conflicts</h3><span class="spacer"></span>
+      ${bad.length ? `<span class="pill bad">${bad.length} blocking</span>` : `<span class="pill ok">None blocking</span>`}
+      ${warn.length ? `<span class="pill warn">${warn.length} advisory</span>` : ''}</header>
+      ${c.length ? `<ul class="feed">${c.map(x => `<li>
+        <span class="fi" style="background:var(--${x.sev === 'bad' ? 'danger' : 'warning'}-wash);
+          color:var(--${x.sev === 'bad' ? 'danger' : 'warning'})">${ico('alert')}</span>
+        <span><span class="ft">${esc(x.msg)}</span>
+        <span class="fm">${x.sev === 'bad' ? 'Blocks publication' : 'Advisory — you can publish over this'}</span></span></li>`).join('')}</ul>`
+        : `<div class="empty">No conflicts. Rest rules, contracted hours and minimum cover all satisfied.</div>`}
+    </section>
+    <section class="card"><header><h3>Unassigned staff</h3></header>
+      ${(() => {
+        const idle = STAFF.filter(s => weekHours(s.id) === 0);
+        return idle.length ? table([{h:'Staff'},{h:'Contract',num:true},{h:''}],
+          idle.map(s => [`<div class="rowav"><span class="av">${initials(s.name)}</span>
+            <span class="two-line"><span class="t">${esc(s.name)}</span><span class="s">${esc(s.job)}</span></span></div>`,
+            s.contract + 'h', `<button class="btn sm" onclick="setCell('${s.id}',0)">Assign</button>`]))
+          : `<div class="empty">Everyone has at least one shift this week.</div>`;
+      })()}
+    </section>
+  </div>`;
+};
+</script>
+
+<script>
+/* ============================ schedule ============================ */
+SCREENS.schedule = () => {
+  crumbs(['Schedule']);
+  const me = STAFF[0];
+  const mgr = canManage();
+
+  if (!mgr) {
+    const mine = state.grid[me.id].map((k, d) => ({ k, d })).filter(x => x.k);
+    return `
+    <div class="pagehead"><div><h1>Your schedule</h1>
+      <p class="lede">Week commencing 4 August${state.published ? '' : ' — your manager has not published this week yet'}.</p></div>
+      <div class="acts"><a class="btn" href="#/swaps">Offer a swap</a>
+        <button class="btn" onclick="toast('Added to your phone calendar.')">Add to calendar</button></div></div>
+    ${state.published ? '' : `<div class="callout warn" style="margin-bottom:14px">${ico('info')}
+      <span>This week is still a draft. Shifts below are last week's pattern and may change.</span></div>`}
+    <div class="grid" style="gap:10px">
+      ${WEEK.map((w, d) => {
+        const k = state.grid[me.id][d];
+        return `<div class="card" style="display:flex;gap:14px;align-items:center;padding:13px 16px">
+          <div style="text-align:center;min-width:44px">
+            <div class="dim" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em">${w}</div>
+            <div class="mono" style="font-size:19px;font-weight:650">${DATES[d]}</div></div>
+          ${k ? `<span style="width:4px;height:40px;border-radius:999px;background:${TYPES[k].c}"></span>
+            <div><div class="strong">${esc(TYPES[k].name)}</div>
+              <div class="dim" style="font-size:12.5px">${TYPES[k].h ? esc(TYPES[k].from) + '–' + esc(TYPES[k].to) : 'All day'} · ${esc(me.site)}</div></div>
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+              <span class="mono dim">${TYPES[k].h ? hrs(TYPES[k].h) : '—'}</span>
+              ${TYPES[k].h ? `<a class="btn sm" href="#/swaps">Swap</a>` : ''}</div>`
+            : `<div class="dim">Not scheduled</div>
+               <div style="margin-left:auto"><a class="btn sm" href="#/availability">Set availability</a></div>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  return `
+  <div class="pagehead"><div><h1>Schedule</h1>
+    <p class="lede">Who is on, where, right now. The rota builder is where you change it.</p></div>
+    <div class="acts">
+      <div class="seg"><button aria-pressed="true">Day</button>
+        <button aria-pressed="false" onclick="toast('Week view is the rota builder grid, read-only.')">Week</button></div>
+      <a class="btn" href="#/rota">Edit in rota builder</a></div></div>
+  ${tiles([
+    { lbl:'On shift now', val:String(onShift(0)), sub:`of ${REQUIRED[0]} required` },
+    { lbl:'Clocked in', val:'4', sub:'<span class="down">1 not yet</span>', to:'timesheets' },
+    { lbl:'On leave', val:String(STAFF.filter(s => state.grid[s.id][0] === 'ANN').length) },
+    { lbl:'Off sick', val:String(STAFF.filter(s => state.grid[s.id][0] === 'SICK').length) },
+    { lbl:'Agency cover', val:'2', sub:'Hannah Groves absence' },
+    { lbl:'Status', val:state.published ? 'Published' : 'Draft' },
+  ])}
+  <section class="card" style="margin-top:16px"><header><h3>Monday 4 August</h3>
+    <span class="spacer"></span><span class="dim" style="font-size:12.5px">Grouped by site</span></header>
+    ${[...new Set(STAFF.map(s => s.site))].map(site => {
+      const on = STAFF.filter(s => s.site === site && state.grid[s.id][0]);
+      if (!on.length) return '';
+      return `<div style="padding:12px 16px;border-bottom:1px solid var(--divider)">
+        <div class="eyebrow" style="margin-bottom:9px">${esc(site)} · ${on.length} on</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:9px">
+        ${on.map(s => { const k = state.grid[s.id][0]; return `
+          <div style="display:flex;gap:9px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:9px 11px">
+            <span style="width:4px;height:32px;border-radius:999px;background:${TYPES[k].c};flex:none"></span>
+            <span class="two-line" style="min-width:0"><span class="t" style="font-size:13px">${esc(s.name)}</span>
+              <span class="s">${esc(TYPES[k].name)} · ${TYPES[k].h ? esc(TYPES[k].from) + '–' + esc(TYPES[k].to) : '—'}</span></span>
+          </div>`; }).join('')}</div></div>`;
+    }).join('')}
+  </section>`;
+};
+
+/* ============================ clock in ============================ */
+SCREENS.clock = () => {
+  crumbs(['Clock in']);
+  const mins = state.clockedIn ? Math.max(0, Math.round((Date.now() - state.clockStart) / 60000)) : 0;
+  const me = STAFF[0], today = state.grid[me.id][0];
+  return `
+  <div class="pagehead"><div><h1>Clock in</h1>
+    <p class="lede">Attendance is captured with your location and works offline — an entry made without signal
+      queues on the device and syncs when you are back.</p></div>
+    <div class="acts">
+      <button class="btn sm" onclick="state.online=!state.online;route();
+        toast(state.online?'Back online — 0 entries pending.':'Offline. Clock-ins will queue on this device.', !state.online)">
+        ${state.online ? 'Simulate going offline' : 'Simulate coming back online'}</button></div></div>
+
+  ${state.online ? '' : `<div class="callout warn" style="margin-bottom:14px">${ico('alert')}
+    <span><b>You are offline.</b> Clocking in still works. ${state.queued} entr${state.queued === 1 ? 'y is' : 'ies are'}
+    queued on this device and will sync automatically.</span></div>`}
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <section class="card"><div class="clockface">
+      <div class="eyebrow">${state.clockedIn ? 'Clocked in since' : 'Today’s shift'}</div>
+      <div class="bigclock">${state.clockedIn
+        ? new Date(state.clockStart).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })
+        : (today ? esc(TYPES[today].from) : '—')}</div>
+      ${state.clockedIn
+        ? `<div class="pill ok" style="font-size:13px">${mins} minute${mins === 1 ? '' : 's'} on shift</div>`
+        : today ? `<div class="pill neutral" style="font-size:13px">${esc(TYPES[today].name)} · ${esc(TYPES[today].from)}–${esc(TYPES[today].to)}</div>`
+        : `<div class="pill neutral" style="font-size:13px">You are not scheduled today</div>`}
+      <button class="clockbtn ${state.clockedIn ? 'out' : ''}" onclick="toggleClock()">
+        ${state.clockedIn ? 'Clock out' : 'Clock in'}
+        <small>${state.clockedIn ? 'ends your shift' : state.online ? 'GPS will be checked' : 'will queue offline'}</small></button>
+      <div class="dim" style="font-size:12.5px;display:flex;gap:7px;align-items:center">
+        ${ico('gps')} ${state.online ? 'Within 40 m of Sunnyvale House' : 'Location saved, not yet verified'}</div>
+    </div></section>
+
+    <div class="grid" style="align-content:start">
+      <section class="card"><header><h3>Today</h3></header><div class="body"><dl class="dl">
+        <dt>Scheduled</dt><dd>${today ? `${esc(TYPES[today].name)}, ${esc(TYPES[today].from)}–${esc(TYPES[today].to)}` : 'Not scheduled'}</dd>
+        <dt>Site</dt><dd>${esc(me.site)}</dd>
+        <dt>Break</dt><dd>30 minutes, unpaid</dd>
+        <dt>Status</dt><dd>${state.clockedIn ? pill('on_shift') : pill('off')}</dd>
+        <dt>Sync</dt><dd>${state.online ? pill('synced') : pill('queued')}</dd>
+      </dl></div></section>
+      <section class="card"><header><h3>This week</h3><span class="spacer"></span>
+        <a class="btn sm" href="#/timesheets">Timesheet</a></header>
+        ${table([{h:'Day'},{h:'Planned'},{h:'Actual'},{h:'Paid',num:true}],
+          TIMESHEETS.slice(0, 4).map(t => [esc(t.day), `<span class="mono">${esc(t.planned)}</span>`,
+            `<span class="mono">${esc(t.actual)}</span>`, t.paid ? hrs(t.paid) : '—']))}
+      </section>
+    </div>
+  </div>`;
+};
+
+/* ============================ timesheets ============================ */
+SCREENS.timesheets = () => {
+  crumbs(['Timesheets']);
+  const mgr = canManage();
+  const rows = (mgr ? TIMESHEETS : TIMESHEETS.filter(t => t.who === 's1')).map(t => {
+    const s = staffById(t.who);
+    return `<tr data-row="${esc(s.name + ' ' + t.day)}" data-status="${esc(t.status)}">
+      <td><div class="rowav"><span class="av">${initials(s.name)}</span>
+        <span class="two-line"><span class="t">${esc(s.name)}</span><span class="s">${esc(s.job)}</span></span></div></td>
+      <td>${esc(t.day)}</td>
+      <td><span class="mono">${esc(t.planned)}</span></td>
+      <td><span class="mono">${esc(t.actual)}</span></td>
+      <td class="num">${t.paid ? hrs(t.paid) : '—'}</td>
+      <td>${pill(t.status)}${t.flag ? `<div class="dim" style="font-size:12px;margin-top:3px">${esc(t.flag)}</div>` : ''}</td>
+      <td style="text-align:right">${mgr ? `<div style="display:flex;gap:5px;justify-content:flex-end">
+        <button class="btn sm" onclick="modal({title:'Amend ${esc(s.name)}’s hours?',confirm:'Save amendment',reason:true,
+          sub:'An amendment is recorded against the original clock event — the original is never overwritten.',
+          onOk(){logAudit('timesheet.amended','${esc(s.name)}, ${esc(t.day)}');toast('Timesheet amended and flagged for payroll.')}})">Amend</button>
+        <button class="btn sm p" onclick="toast('${esc(s.name)}’s ${esc(t.day)} approved for payroll.')">Approve</button></div>`
+        : '<span class="dim">—</span>'}</td></tr>`;
+  }).join('');
+  return `
+  <div class="pagehead"><div><h1>Timesheets</h1>
+    <p class="lede">${mgr ? 'Real hours from clock events, not the plan. Variances are flagged before payroll, not after.'
+      : 'Your recorded hours. Anything that looks wrong should go to your manager before the payroll cut-off.'}</p></div>
+    <div class="acts">${mgr ? `
+      <button class="btn" onclick="toast('Timesheets exported — 6 rows, week commencing 4 Aug.')">Export CSV</button>
+      <button class="btn p" onclick="modal({title:'Approve the whole week?',confirm:'Approve 6 timesheets',
+        sub:'Two rows carry variances. Approving accepts them as recorded.',
+        onOk(){logAudit('timesheet.week_approved','Week commencing 4 August');toast('6 timesheets approved for payroll.')}})">Approve week</button>` : ''}</div></div>
+  ${tiles(mgr ? [
+    { lbl:'Hours recorded', val:'38.8h', sub:'vs 44.0h planned' },
+    { lbl:'Variance', val:'−5.2h', sub:'<span class="down">1 absence</span>' },
+    { lbl:'Late starts', val:'1' },
+    { lbl:'Still clocked in', val:'1', sub:'night shift' },
+    { lbl:'Awaiting approval', val:'6' },
+    { lbl:'Payroll cut-off', val:'Fri 08 Aug' },
+  ] : [
+    { lbl:'Your hours this week', val:'12.2h' },
+    { lbl:'Contracted', val:'37.5h' },
+    { lbl:'Overtime', val:'0h', to:'overtime' },
+    { lbl:'Payroll cut-off', val:'Fri 08 Aug' },
+  ])}
+  <section class="card" style="margin-top:16px" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search staff or day…" aria-label="Search timesheets">
+      <select data-key="status" aria-label="Status"><option value="">Any status</option>
+        <option value="complete">Complete</option><option value="late">Late</option>
+        <option value="absent">Absent</option><option value="on_shift">On shift</option></select>
+      <span style="margin-left:auto"></span><span class="dim mono" data-count style="font-size:12px"></span></div>
+    <div class="tablewrap"><table><thead><tr><th>Staff</th><th>Day</th><th>Planned</th><th>Actual</th>
+      <th class="num">Paid</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="empty" data-empty hidden>No timesheets match these filters.</div></section>`;
+};
+
+/* ============================ availability ============================ */
+SCREENS.availability = () => {
+  crumbs(['Availability']);
+  const me = STAFF[0];
+  const pattern = [['Available','all day'],['Available','all day'],['Unavailable','school run after 15:00'],
+    ['Available','all day'],['Available','from 12:00'],['Available','all day'],['Unavailable','']];
+  return `
+  <div class="pagehead"><div><h1>Availability</h1>
+    <p class="lede">Your standing weekly pattern. The rota builder reads this before it suggests anyone for a shift,
+      so keeping it current is the cheapest way to avoid a rota you cannot work.</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'Add an exception',confirm:'Save exception',
+      sub:'A one-off date that overrides your standing pattern.',
+      body:'<div class=&quot;field&quot;><label for=&quot;xd&quot;>Date</label><input id=&quot;xd&quot; data-val=&quot;d&quot; value=&quot;16 August 2026&quot;></div><div class=&quot;field&quot;><label for=&quot;xs&quot;>Availability</label><select id=&quot;xs&quot; data-val=&quot;s&quot;><option>Unavailable all day</option><option>Available all day</option><option>Available from midday</option></select></div>',
+      onOk(v){logAudit(&#39;availability.exception&#39;,v.d);toast(&#39;Exception saved for &#39;+v.d+&#39;.&#39;)}})">Add exception</button></div></div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <section class="card"><header><h3>Your weekly pattern</h3></header>
+      ${WEEK.map((w, d) => {
+        const [st, note] = pattern[d];
+        const ok = st === 'Available';
+        return `<div style="display:flex;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--divider)">
+          <span style="width:42px" class="strong">${w}</span>
+          <span class="pill ${ok ? 'ok' : 'neutral'}">${st}</span>
+          <span class="dim" style="font-size:12.5px">${esc(note)}</span>
+          <button class="btn sm" style="margin-left:auto"
+            onclick="toast('${w} set to ${ok ? 'unavailable' : 'available'}.')">Change</button></div>`;
+      }).join('')}
+    </section>
+    <div class="grid" style="align-content:start">
+      <section class="card"><header><h3>Exceptions</h3></header>
+        ${table([{h:'Date'},{h:'Availability'},{h:''}], [
+          ['16 Aug 2026', 'Unavailable all day', '<button class="btn sm" onclick="toast(\'Exception removed.\')">Remove</button>'],
+          ['29 Aug 2026', 'Available from 12:00', '<button class="btn sm" onclick="toast(\'Exception removed.\')">Remove</button>'],
+        ])}</section>
+      ${canManage() ? `<section class="card"><header><h3>Team availability, Wednesday</h3></header>
+        ${table([{h:'Staff'},{h:'Availability'}], STAFF.slice(0, 6).map(s => [
+          `<div class="rowav"><span class="av">${initials(s.name)}</span><span>${esc(s.name)}</span></div>`,
+          s.id === 's3' ? '<span class="pill neutral">Unavailable</span>' : '<span class="pill ok">Available</span>']))}
+      </section>` : ''}
+    </div>
+  </div>`;
+};
+</script>
+
+<script>
+/* ============================ leave ============================ */
+SCREENS.leave = () => {
+  crumbs(['Leave']);
+  const mgr = canManage();
+  const list = mgr ? state.leave : state.leave.filter(l => l.who === 's1' || l.who === 's5');
+  const rows = list.map(l => {
+    const s = staffById(l.who);
+    return `<tr data-row="${esc(s.name + ' ' + l.type)}" data-status="${esc(l.status)}">
+      <td><div class="rowav"><span class="av">${initials(s.name)}</span>
+        <span class="two-line"><span class="t">${esc(s.name)}</span><span class="s">${esc(s.dept)}</span></span></div></td>
+      <td>${esc(l.type)}</td>
+      <td><span class="mono">${esc(l.from)} – ${esc(l.to)}</span></td>
+      <td class="num">${l.days}</td>
+      <td>${pill(l.status)}${l.note ? `<div class="dim" style="font-size:12px;margin-top:3px;max-width:34ch">${esc(l.note)}</div>` : ''}</td>
+      <td class="dim">${esc(l.made)}</td>
+      <td style="text-align:right">${l.status === 'pending' && mgr
+        ? `<div style="display:flex;gap:5px;justify-content:flex-end">
+            <button class="btn sm d" onclick="decideLeave('${l.id}',false)">Decline</button>
+            <button class="btn sm p" onclick="decideLeave('${l.id}',true)">Approve</button></div>`
+        : l.status === 'pending' ? `<button class="btn sm" onclick="toast('Request withdrawn.')">Withdraw</button>`
+        : '<span class="dim">—</span>'}</td></tr>`;
+  }).join('');
+  return `
+  <div class="pagehead"><div><h1>Leave</h1>
+    <p class="lede">${mgr ? 'Requests, entitlement and the cover consequence of saying yes.'
+      : 'Your entitlement, your requests, and where each one has got to.'}</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'Request leave',confirm:'Send request',
+      sub:'Your manager sees the request and the cover impact together.',
+      body:'<div class=&quot;field&quot;><label for=&quot;lt&quot;>Type</label><select id=&quot;lt&quot; data-val=&quot;t&quot;><option>Annual leave</option><option>Unpaid leave</option><option>Compassionate leave</option></select></div><div class=&quot;field&quot;><label for=&quot;lf&quot;>From</label><input id=&quot;lf&quot; data-val=&quot;f&quot; value=&quot;01 September 2026&quot;></div><div class=&quot;field&quot;><label for=&quot;lu&quot;>To</label><input id=&quot;lu&quot; data-val=&quot;u&quot; value=&quot;05 September 2026&quot;></div><div class=&quot;field&quot;><label for=&quot;ln&quot;>Note to your manager</label><textarea id=&quot;ln&quot; data-val=&quot;n&quot;></textarea></div>',
+      onOk(v){logAudit(&#39;leave.requested&#39;,v.f+&#39; – &#39;+v.u);toast(&#39;Leave requested. Your manager has been notified.&#39;)}})">Request leave</button></div></div>
+
+  ${tiles(mgr ? [
+    { lbl:'Awaiting decision', val:String(leaveOpen()), sub:'<span class="down">oldest 16 days</span>' },
+    { lbl:'Approved, next 30 days', val:'7' },
+    { lbl:'Days lost to sickness', val:'4', sub:'this month' },
+    { lbl:'Cover risk', val:'Aug 25–29', sub:'<span class="down">3 approved, 1 pending</span>' },
+    { lbl:'Team entitlement used', val:'46%' },
+  ] : [
+    { lbl:'Entitlement', val:'28 days' },
+    { lbl:'Taken', val:'17 days' },
+    { lbl:'Remaining', val:'11 days', sub:'<span class="up">book before 31 Mar</span>' },
+    { lbl:'Pending', val:'6 days' },
+  ])}
+
+  <div class="callout info" style="margin:16px 0">${ico('info')}
+    <span>Balances show <b>annual leave only</b>. The organisation holds a single holiday allowance per person,
+    so sickness, unpaid and compassionate leave are recorded and approved here but are not deducted from a
+    separate balance.</span></div>
+
+  <section class="card" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search name or type…" aria-label="Search leave">
+      <select data-key="status" aria-label="Status"><option value="">Any status</option>
+        <option value="pending">Pending</option><option value="approved">Approved</option>
+        <option value="declined">Declined</option></select>
+      <span style="margin-left:auto"></span><span class="dim mono" data-count style="font-size:12px"></span></div>
+    <div class="tablewrap"><table><thead><tr><th>Person</th><th>Type</th><th>Dates</th><th class="num">Days</th>
+      <th>Status</th><th>Requested</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="empty" data-empty hidden>No leave matches these filters.</div></section>`;
+};
+
+/* ============================ swaps ============================ */
+SCREENS.swaps = () => {
+  crumbs(['Shift Swaps']);
+  const mgr = canManage();
+  return `
+  <div class="pagehead"><div><h1>Shift swaps</h1>
+    <p class="lede">A swap needs a taker and a manager. Anything that would break cover or a rest rule is refused
+      at the point of offer, not after it is agreed.</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'Offer a shift',confirm:'Post to the swap board',
+      sub:'Colleagues who are qualified, available and would not breach a rest rule can pick this up.',
+      body:'<div class=&quot;field&quot;><label for=&quot;sd&quot;>Shift</label><select id=&quot;sd&quot; data-val=&quot;d&quot;><option>Mon 4 Aug · Long day · 07:00–19:30</option><option>Tue 5 Aug · Long day · 07:00–19:30</option><option>Fri 8 Aug · Night · 19:00–07:30</option></select></div><div class=&quot;field&quot;><label for=&quot;sr&quot;>Reason</label><textarea id=&quot;sr&quot; data-val=&quot;r&quot; placeholder=&quot;Your colleagues see this.&quot;></textarea></div>',
+      onOk(v){logAudit(&#39;swap.offered&#39;,v.d);toast(&#39;Posted to the swap board. 4 colleagues are eligible.&#39;)}})">Offer a shift</button></div></div>
+
+  ${tiles([
+    { lbl:'Open on the board', val:String(state.swaps.filter(s => s.status === 'open').length) },
+    { lbl:'Waiting on you', val:String(mgr ? state.swaps.filter(s => s.status === 'pending').length : 0) },
+    { lbl:'Approved this month', val:'9' },
+    { lbl:'Declined', val:'2', sub:'both broke minimum cover' },
+  ])}
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr));margin-top:16px">
+    <section class="card"><header><h3>Requests</h3></header>
+      ${state.swaps.length ? state.swaps.map(sw => {
+        const a = staffById(sw.from), b = sw.to ? staffById(sw.to) : null;
+        return `<div style="padding:13px 16px;border-bottom:1px solid var(--divider);display:grid;gap:9px">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span style="width:4px;height:34px;border-radius:999px;background:${TYPES[sw.type].c}"></span>
+            <span class="two-line"><span class="t">${esc(a.name)} → ${b ? esc(b.name) : 'open to anyone'}</span>
+              <span class="s">${esc(sw.day)} · ${esc(TYPES[sw.type].name)} · ${esc(TYPES[sw.type].from)}–${esc(TYPES[sw.type].to)}</span></span>
+            <span style="margin-left:auto">${pill(sw.status)}</span></div>
+          ${sw.reason ? `<p class="dim" style="margin:0;font-size:12.5px">“${esc(sw.reason)}”</p>` : ''}
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${sw.status === 'pending' && mgr ? `
+              <button class="btn sm d" onclick="decideSwap('${sw.id}',false)">Decline</button>
+              <button class="btn sm p" onclick="decideSwap('${sw.id}',true)">Approve</button>` : ''}
+            ${sw.status === 'open' ? `<button class="btn sm p"
+              onclick="toast('You have offered to take ${esc(a.name)}’s shift. It now needs manager approval.')">Take this shift</button>` : ''}
+            ${sw.status === 'approved' ? `<span class="dim" style="font-size:12.5px">Rota updated and both people notified.</span>` : ''}
+          </div></div>`;
+      }).join('') : '<div class="empty">No swap requests.</div>'}
+    </section>
+    <section class="card"><header><h3>Why a swap gets refused</h3></header><div class="body">
+      <dl class="dl">
+        <dt>Rest rule</dt><dd>Under 11 hours between the end of one shift and the start of the next</dd>
+        <dt>Weekly limit</dt><dd>Taking the shift would push the taker past 48 hours</dd>
+        <dt>Minimum cover</dt><dd>The giver's site drops below its staffing minimum</dd>
+        <dt>Qualification</dt><dd>The shift needs a senior carer and the taker is not one</dd>
+        <dt>Availability</dt><dd>The taker is marked unavailable on that day</dd>
+      </dl>
+      <p class="lede" style="font-size:12.5px">These are checked when the offer is made, so a colleague never
+        agrees to a shift the system will later refuse.</p></div></section>
+  </div>`;
+};
+
+/* ============================ overtime ============================ */
+SCREENS.overtime = () => {
+  crumbs(['Overtime']);
+  const mgr = canManage();
+  const rows = [
+    ['s1','Mon 4 Aug','1.5h','Handover ran late after an admission','pending'],
+    ['s4','Sun 3 Aug','2.0h','Covered the second half of a night shift','approved'],
+    ['s9','Fri 1 Aug','0.5h','Stayed for the medication audit','approved'],
+    ['s2','Thu 31 Jul','3.0h','Agency no-show','declined'],
+  ];
+  return `
+  <div class="pagehead"><div><h1>Overtime</h1>
+    <p class="lede">${mgr ? 'Claims raised by staff, and what they cost. Approving here sends the hours to payroll.'
+      : 'Hours you worked beyond your rostered shift. Raise them while you still remember why.'}</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'Raise an overtime claim',confirm:'Submit claim',
+      body:'<div class=&quot;field&quot;><label for=&quot;od&quot;>Day</label><input id=&quot;od&quot; data-val=&quot;d&quot; value=&quot;Monday 4 August&quot;></div><div class=&quot;field&quot;><label for=&quot;oh&quot;>Hours</label><input id=&quot;oh&quot; data-val=&quot;h&quot; value=&quot;1.5&quot;></div><div class=&quot;field&quot;><label for=&quot;or&quot;>Reason</label><textarea id=&quot;or&quot; data-val=&quot;r&quot;></textarea></div>',
+      onOk(v){logAudit(&#39;overtime.claimed&#39;,v.d+&#39;, &#39;+v.h+&#39;h&#39;);toast(&#39;Overtime claim submitted.&#39;)}})">Raise a claim</button></div></div>
+  ${tiles(mgr ? [
+    { lbl:'Awaiting decision', val:'1' }, { lbl:'Approved this month', val:'14.5h' },
+    { lbl:'Estimated cost', val:'£268', sub:'at enhanced rate' },
+    { lbl:'Top driver', val:'Sickness cover', sub:'62% of claims' },
+  ] : [
+    { lbl:'Claimed this month', val:'1.5h' }, { lbl:'Approved', val:'0h' },
+    { lbl:'Awaiting decision', val:'1.5h' }, { lbl:'Paid with', val:'August payroll' },
+  ])}
+  <section class="card" style="margin-top:16px"><header><h3>Claims</h3></header>
+    ${table([{h:'Person'},{h:'Day'},{h:'Hours',num:true},{h:'Reason'},{h:'Status'},{h:'Actions'}],
+      rows.filter(r => mgr || r[0] === 's1').map(([who, day, h, why, st]) => {
+        const s = staffById(who);
+        return [`<div class="rowav"><span class="av">${initials(s.name)}</span>
+          <span class="two-line"><span class="t">${esc(s.name)}</span><span class="s">${esc(s.job)}</span></span></div>`,
+          esc(day), esc(h), `<span class="dim">${esc(why)}</span>`, pill(st),
+          st === 'pending' && mgr ? `<div style="display:flex;gap:5px;justify-content:flex-end">
+            <button class="btn sm d" onclick="toast('Claim declined.')">Decline</button>
+            <button class="btn sm p" onclick="toast('1.5h approved and sent to payroll.')">Approve</button></div>`
+            : '<span class="dim">—</span>'];
+      }))}</section>`;
+};
+
+/* ============================ team ============================ */
+SCREENS.team = (staffId) => {
+  if (staffId) return SCREENS.staffDetail(staffId);
+  crumbs(['Team']);
+  const rows = STAFF.map(s => `<tr data-row="${esc(s.name + ' ' + s.job + ' ' + s.site)}"
+    data-dept="${esc(s.dept)}" data-site="${esc(s.site)}">
+    <td><div class="rowav"><span class="av">${initials(s.name)}</span>
+      <span class="two-line"><span class="t"><a href="#/team/${s.id}" style="color:inherit;text-decoration:none">${esc(s.name)}</a></span>
+        <span class="s">${esc(s.job)}</span></span></div></td>
+    <td>${esc(s.dept)}</td><td>${esc(s.site)}</td>
+    <td class="num">${s.contract}h</td>
+    <td class="num">${hrs(weekHours(s.id))}</td>
+    <td>${state.grid[s.id][0] ? pill(state.grid[s.id][0] === 'SICK' ? 'absent' : 'on_shift') : pill('off')}</td>
+    <td style="text-align:right"><div style="display:flex;gap:5px;justify-content:flex-end">
+      <a class="btn sm" href="#/team/${s.id}">Profile</a>
+      <button class="btn sm" onclick="toast('Message sent to ${esc(s.name)}.')">Message</button></div></td></tr>`).join('');
+  return `
+  <div class="pagehead"><div><h1>Team</h1>
+    <p class="lede">Everyone in ${esc(ORG.name)}, what they are contracted for, and what they are actually rostered.</p></div>
+    <div class="acts">
+      <button class="btn" onclick="toast('12 staff exported to CSV.')">Export</button>
+      <a class="btn p" href="#/settings">Invite a team member</a></div></div>
+  ${tiles([
+    { lbl:'Team members', val:String(STAFF.length) },
+    { lbl:'On shift today', val:String(onShift(0)) },
+    { lbl:'Absent', val:String(STAFF.filter(s => state.grid[s.id][0] === 'SICK').length) },
+    { lbl:'Under contract', val:String(STAFF.filter(s => weekHours(s.id) < s.contract - 6).length),
+      sub:'<span class="down">rostered short</span>' },
+    { lbl:'Documents expiring', val:'3', sub:'<span class="down">within 30 days</span>' },
+    { lbl:'Invites outstanding', val:'2' },
+  ])}
+  <div class="callout info" style="margin:16px 0">${ico('info')}
+    <span>Inviting and removing people lives in <a href="#/settings">Settings → Permissions</a> — it is
+    organisation administration, not day-to-day workforce management.</span></div>
+  <section class="card" data-filter>
+    <div class="filters">
+      <input type="search" placeholder="Search name, role or site…" aria-label="Search team">
+      <select data-key="dept" aria-label="Department"><option value="">All departments</option>
+        ${[...new Set(STAFF.map(s => s.dept))].map(d => `<option>${esc(d)}</option>`).join('')}</select>
+      <select data-key="site" aria-label="Site"><option value="">All sites</option>
+        ${[...new Set(STAFF.map(s => s.site))].map(d => `<option>${esc(d)}</option>`).join('')}</select>
+      <span style="margin-left:auto"></span><span class="dim mono" data-count style="font-size:12px"></span></div>
+    <div class="tablewrap"><table><thead><tr><th>Person</th><th>Department</th><th>Site</th>
+      <th class="num">Contract</th><th class="num">Rostered</th><th>Today</th>
+      <th style="text-align:right">Actions</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="empty" data-empty hidden>Nobody matches these filters.</div></section>`;
+};
+
+SCREENS.staffDetail = (id) => {
+  const s = staffById(id);
+  crumbs(['Team', s.name]);
+  const panel = (k, inner, first) => `<div data-panel="${k}"${first ? '' : ' hidden'}>${inner}</div>`;
+  return `
+  <div class="pagehead">
+    <div class="rowav" style="gap:14px">
+      <span class="av" style="width:50px;height:50px;font-size:17px">${initials(s.name)}</span>
+      <div><h1 style="font-size:25px;line-height:33px">${esc(s.name)}</h1>
+        <p class="lede" style="margin-top:5px">${esc(s.job)} · ${esc(s.dept)} · ${esc(s.site)} · ${s.contract}h contract</p></div>
+    </div>
+    <div class="acts">
+      <button class="btn" onclick="toast('Message sent to ${esc(s.name)}.')">Message</button>
+      <button class="btn" onclick="toast('Edit profile opened.')">Edit profile</button></div></div>
+  <div data-tabs>
+    <div class="tabs" role="tablist">${['Overview','Shifts','Documents','Emergency contacts','Leave','Activity']
+      .map((t, i) => `<button role="tab" data-tab="${t}" aria-selected="${i === 0}">${t}</button>`).join('')}</div>
+
+    ${panel('Overview', `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr))">
+      <section class="card"><header><h3>Details</h3></header><div class="body"><dl class="dl">
+        <dt>Job title</dt><dd>${esc(s.job)}</dd><dt>Department</dt><dd>${esc(s.dept)}</dd>
+        <dt>Primary site</dt><dd>${esc(s.site)}</dd><dt>Contract</dt><dd>${s.contract} hours per week</dd>
+        <dt>Started</dt><dd>14 March 2024</dd><dt>Role in RotaFlow</dt><dd>Staff</dd>
+      </dl></div></section>
+      <section class="card"><header><h3>This week</h3></header><div class="body">
+        ${barRows([{ k:'Rostered', v:weekHours(s.id), d:hrs(weekHours(s.id)) },
+          { k:'Contracted', v:s.contract, d:s.contract + 'h', color:'var(--muted)' }])}
+        <dl class="dl" style="margin-top:10px">
+          <dt>Shifts</dt><dd>${state.grid[s.id].filter(Boolean).length}</dd>
+          <dt>Nights</dt><dd>${state.grid[s.id].filter(k => k === 'N').length}</dd>
+          <dt>Weekend</dt><dd>${state.grid[s.id].slice(5).filter(Boolean).length} of 2</dd>
+        </dl></div></section></div>`, true)}
+
+    ${panel('Shifts', `<section class="card"><header><h3>Week commencing 4 August</h3></header>
+      ${table([{h:'Day'},{h:'Shift'},{h:'Times'},{h:'Hours',num:true}],
+        WEEK.map((w, d) => { const k = state.grid[s.id][d];
+          return [`${w} ${DATES[d]} Aug`,
+            k ? `<span style="display:inline-flex;align-items:center;gap:7px">
+              <i style="width:10px;height:10px;border-radius:3px;background:${TYPES[k].c};display:block"></i>
+              ${esc(TYPES[k].name)}</span>` : '<span class="dim">Not scheduled</span>',
+            k && TYPES[k].h ? `<span class="mono">${esc(TYPES[k].from)}–${esc(TYPES[k].to)}</span>` : '<span class="dim">—</span>',
+            k ? (TYPES[k].h ? hrs(TYPES[k].h) : '—') : '—'];
+        }))}</section>`)}
+
+    ${panel('Documents', `<section class="card"><header><h3>Documents</h3><span class="spacer"></span>
+      <button class="btn sm" onclick="toast('Upload opened.')">Upload</button></header>
+      ${table([{h:'Document'},{h:'Expires'},{h:'Status'},{h:''}], [
+        ['DBS certificate', '18 Feb 2027', pill('active'), ''],
+        ['Right to work', 'No expiry', pill('active'), ''],
+        ['Moving and handling', '29 Aug 2026', pill('pending'), '<span class="dim" style="font-size:12px">Expires in 25 days</span>'],
+        ['Safeguarding level 2', '12 Jan 2027', pill('active'), ''],
+      ])}</section>`)}
+
+    ${panel('Emergency contacts', `<section class="card">
+      ${table([{h:'Name'},{h:'Relationship'},{h:'Phone'}], [
+        ['Ruth Osei', 'Sister', '<span class="mono">07700 900412</span>'],
+        ['Daniel Osei', 'Partner', '<span class="mono">07700 900188</span>'],
+      ])}
+      <div class="body"><p class="lede" style="margin:0">Visible to managers only, and never included in an export.</p></div></section>`)}
+
+    ${panel('Leave', `<section class="card"><header><h3>Leave</h3></header>
+      ${table([{h:'Type'},{h:'Dates'},{h:'Days',num:true},{h:'Status'}],
+        state.leave.filter(l => l.who === s.id).map(l => [esc(l.type),
+          `<span class="mono">${esc(l.from)} – ${esc(l.to)}</span>`, l.days, pill(l.status)]),
+        { empty:'No leave recorded for this person.' })}</section>`)}
+
+    ${panel('Activity', `<section class="card"><header><h3>Recent activity</h3></header>
+      <ul class="feed">${[['Clocked in at Sunnyvale House','06:56 today'],
+        ['Accepted a shift swap','yesterday'],['Updated availability','3 days ago'],
+        ['Completed moving and handling refresher','19 Jul']].map(([t, m]) => `<li>
+        <span class="fi" style="background:var(--primary-wash);color:var(--primary)">${ico('pulse')}</span>
+        <span><span class="ft">${esc(t)}</span><span class="fm">${esc(m)}</span></span></li>`).join('')}</ul></section>`)}
+  </div>`;
+};
+</script>
+
+<script>
+/* ============================ locations ============================ */
+SCREENS.locations = () => {
+  crumbs(['Locations']);
+  return `
+  <div class="pagehead"><div><h1>Locations</h1>
+    <p class="lede">Sites and the departments inside them. A department is what the rota groups by and what a
+      staffing minimum is set against.</p></div>
+    <div class="acts"><button class="btn p" onclick="modal({title:'Add a location',confirm:'Create location',
+      body:'<div class=&quot;field&quot;><label for=&quot;ln2&quot;>Name</label><input id=&quot;ln2&quot; data-val=&quot;n&quot; placeholder=&quot;Site name&quot;></div><div class=&quot;field&quot;><label for=&quot;lty&quot;>Type</label><select id=&quot;lty&quot; data-val=&quot;t&quot;><option>Residential</option><option>Dementia care</option><option>Domiciliary</option><option>Head office</option></select></div><div class=&quot;field&quot;><label for=&quot;lad&quot;>Address</label><input id=&quot;lad&quot; data-val=&quot;a&quot;></div>',
+      onOk(v){logAudit(&#39;location.created&#39;,v.n||&#39;new site&#39;);toast(&#39;Location created. Add departments before rostering to it.&#39;)}})">Add location</button></div></div>
+  ${tiles([
+    { lbl:'Locations', val:String(LOCATIONS.length) },
+    { lbl:'Departments', val:String(new Set(LOCATIONS.flatMap(l => l.depts)).size) },
+    { lbl:'Staff assigned', val:String(LOCATIONS.reduce((t, l) => t + l.staff, 0)) },
+    { lbl:'In setup', val:String(LOCATIONS.filter(l => l.status === 'setup').length),
+      sub:'<span class="down">not yet rosterable</span>' },
+  ])}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-top:16px">
+    ${LOCATIONS.map(l => `<section class="card"><div class="body" style="display:grid;gap:11px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div><h3>${esc(l.name)}</h3>
+          <div class="dim" style="font-size:12.5px;margin-top:3px">${esc(l.type)} · ${esc(l.addr)}</div></div>
+        <span style="margin-left:auto">${pill(l.status)}</span></div>
+      <dl class="dl" style="font-size:13px">
+        <dt>Staff</dt><dd>${l.staff}</dd>
+        <dt>Departments</dt><dd>${l.depts.map(d => `<span class="pill neutral plain">${esc(d)}</span>`).join(' ')}</dd>
+        <dt>Minimum cover</dt><dd>${l.status === 'setup' ? '<span class="dim">Not set</span>' : '6 on days · 3 on nights'}</dd>
+      </dl>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn sm" onclick="toast('Departments for ${esc(l.name)} opened.')">Departments</button>
+        <button class="btn sm" onclick="toast('Staffing minimums for ${esc(l.name)} opened.')">Minimum cover</button>
+        <a class="btn sm" href="#/rota">Rota</a></div>
+    </div></section>`).join('')}
+  </div>`;
+};
+
+/* ============================ announcements ============================ */
+SCREENS.announcements = () => {
+  crumbs(['Announcements']);
+  const mgr = canManage();
+  return `
+  <div class="pagehead"><div><h1>Announcements</h1>
+    <p class="lede">${mgr ? 'What you post here reaches staff in the app and by push. Read counts tell you whether it landed.'
+      : 'Notices from your managers. Anything pinned stays at the top until it is taken down.'}</p></div>
+    ${mgr ? `<div class="acts"><button class="btn p" onclick="modal({title:'New announcement',confirm:'Post announcement',
+      body:'<div class=&quot;field&quot;><label for=&quot;at&quot;>Title</label><input id=&quot;at&quot; data-val=&quot;t&quot; placeholder=&quot;What people need to know&quot;></div><div class=&quot;field&quot;><label for=&quot;aa&quot;>Audience</label><select id=&quot;aa&quot; data-val=&quot;a&quot;><option>All sites</option><option>Sunnyvale House</option><option>Nursing</option><option>Night staff</option></select></div><div class=&quot;field&quot;><label for=&quot;ab&quot;>Message</label><textarea id=&quot;ab&quot; data-val=&quot;b&quot;></textarea></div>',
+      onOk(v){logAudit(&#39;announcement.posted&#39;,v.t||&#39;untitled&#39;);toast(&#39;Posted to &#39;+v.a+&#39;. 52 people notified.&#39;)}})">New announcement</button></div>` : ''}
+  <div class="grid" style="grid-template-columns:${mgr ? '2fr 1fr' : '1fr'}">
+    <div class="grid" style="align-content:start">
+      ${ANNOUNCEMENTS.map(a => `<section class="card"><div class="body" style="display:grid;gap:9px">
+        <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+          ${a.pinned ? '<span class="pill warn plain">Pinned</span>' : ''}
+          <span class="pill neutral plain">${esc(a.aud)}</span>
+          <span class="dim" style="font-size:12px;margin-left:auto">${esc(a.by)} · ${esc(a.when)}</span></div>
+        <h3>${esc(a.title)}</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.55;color:var(--muted)">${esc(a.body)}</p>
+        ${mgr ? `<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+          <div class="bars-row" style="grid-template-columns:56px 120px 62px;padding:0">
+            <span class="dim">Read</span>
+            <span class="track"><span class="fill" style="width:${(a.read / a.of * 100).toFixed(0)}%;
+              background:${a.read / a.of > .8 ? 'var(--success)' : 'var(--warning)'}"></span></span>
+            <span class="amt">${a.read}/${a.of}</span></div>
+          <button class="btn sm" style="margin-left:auto" onclick="toast('Reminder sent to ${a.of - a.read} people.')">
+            Remind ${a.of - a.read} unread</button>
+          <button class="btn sm" onclick="toast('Announcement taken down.')">Take down</button></div>`
+        : `<div><button class="btn sm" onclick="this.textContent='Marked as read';this.disabled=true">Mark as read</button></div>`}
+      </div></section>`).join('')}
+    </div>
+    ${mgr ? `<section class="card" style="align-self:start"><header><h3>Reach</h3></header><div class="body">
+      ${barRows([
+        { k:'All sites', v:52, d:'52 people' }, { k:'Nursing', v:24, d:'24' },
+        { k:'Dementia', v:14, d:'14' }, { k:'Wellbeing', v:8, d:'8' }, { k:'Night staff', v:6, d:'6' },
+      ])}
+      <p class="lede" style="font-size:12.5px">Audiences are built from department and site, so a new starter
+        joins the right lists automatically.</p></div></section>` : ''}
+  </div>`;
+};
+
+/* ============================ reports ============================ */
+SCREENS.reports = () => {
+  crumbs(['Reports']);
+  return `
+  <div class="pagehead"><div><h1>Reports</h1>
+    <p class="lede">Hours, cost and absence across the last twelve weeks. Everything here exports to CSV in the
+      shape payroll expects.</p></div>
+    <div class="acts">
+      <select class="btn" aria-label="Period"><option>Last 12 weeks</option><option>This month</option>
+        <option>Last quarter</option></select>
+      <button class="btn p" onclick="toast('Report exported — hours, cost and absence, 12 weeks.')">Export CSV</button></div></div>
+  ${tiles([
+    { lbl:'Hours worked', val:'4,982h', spark:[402,418,396,441,428,449,462], sub:'12 weeks' },
+    { lbl:'Staff cost', val:'£68,240', sub:'<span class="down">+4.1%</span> vs previous 12' },
+    { lbl:'Overtime', val:'186h', sub:'3.7% of all hours' },
+    { lbl:'Agency spend', val:'£4,180', sub:'<span class="down">sickness cover</span>' },
+    { lbl:'Absence rate', val:'3.2%', sub:'<span class="up">−0.6pt</span>' },
+    { lbl:'Cover shortfalls', val:'11', sub:'days below minimum' },
+  ])}
+  <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:16px">
+    <section class="card"><header><h3>Hours and cost</h3></header><div class="body">
+      ${areaChart([
+        { name:'Rostered hours', vals:[402,418,396,441,428,449,462,438,455,470,461,468], color:'var(--primary)' },
+        { name:'Overtime hours', vals:[12,18,9,22,16,24,31,19,26,22,18,14], color:'var(--warning)', fill:false },
+        { name:'Agency hours', vals:[0,6,0,12,8,0,18,10,6,0,14,8], color:'var(--danger)', fill:false },
+      ], ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'], 240)}</div></section>
+    <div class="grid" style="align-content:start">
+      <section class="card"><header><h3>Hours by department</h3></header><div class="body">${barRows([
+        { k:'Nursing', v:2840, d:'2,840h' }, { k:'Dementia', v:1120, d:'1,120h' },
+        { k:'Wellbeing', v:612, d:'612h' }, { k:'Community', v:410, d:'410h' },
+      ])}</div></section>
+      <section class="card"><header><h3>Absence reasons</h3></header><div class="body">${barRows([
+        { k:'Sickness', v:41, d:'41 days', color:'var(--danger)' },
+        { k:'Annual leave', v:126, d:'126 days', color:'var(--success)' },
+        { k:'Unpaid', v:9, d:'9 days', color:'var(--muted)' },
+        { k:'Compassionate', v:4, d:'4 days', color:'var(--info)' },
+      ])}</div></section>
+    </div>
+  </div>`;
+};
+
+/* ============================ notifications ============================ */
+SCREENS.notifications = () => {
+  crumbs(['Notifications']);
+  const wash = { leave:'warning', swap:'info', alert:'danger', ok:'success' };
+  const icons = { leave:'plane', swap:'swap', alert:'alert', ok:'ok' };
+  return `
+  <div class="pagehead"><div><h1>Notifications</h1>
+    <p class="lede">Reached from the bell — there is no sidebar entry, by design.</p></div>
+    <div class="acts">
+      <button class="btn" onclick="state.notifs.forEach(x=>x.unread=false);route();toast('All marked as read.')">Mark all read</button>
+      <a class="btn" href="#/account">Notification preferences</a></div></div>
+  <section class="card"><ul class="feed">
+    ${state.notifs.map(x => `<li style="${x.unread ? 'background:var(--primary-wash)' : ''}">
+      <span class="fi" style="background:var(--${wash[x.k]}-wash);color:var(--${wash[x.k]})">${ico(icons[x.k])}</span>
+      <span style="min-width:0"><span class="ft">${esc(x.t)}</span><span class="fm">${esc(x.m)}</span></span>
+      <span class="dim" style="margin-left:auto;font-size:12px;white-space:nowrap">${esc(x.when)}</span></li>`).join('')}
+  </ul></section>
+  <div class="callout info" style="margin-top:16px">${ico('info')}
+    <span>Push notifications need permission from the browser. Without it, notifications still arrive in this
+    list and by email — nothing is lost, it just is not instant.</span></div>`;
+};
+
+/* ============================ settings ============================ */
+SCREENS.settings = () => {
+  crumbs(['Settings']);
+  const panel = (k, inner, first) => `<div data-panel="${k}"${first ? '' : ' hidden'}>${inner}</div>`;
+  const row = (label, hint, control) => `<div style="display:flex;gap:14px;align-items:flex-start;
+    padding:13px 0;border-bottom:1px solid var(--divider)">
+    <div style="min-width:0"><div class="strong" style="font-size:13.5px">${esc(label)}</div>
+      <div class="dim" style="font-size:12.5px;margin-top:2px;max-width:56ch">${esc(hint)}</div></div>
+    <div style="margin-left:auto;flex:none">${control}</div></div>`;
+  const sw = (on, label) => `<button class="sw" role="switch" aria-checked="${on}" aria-label="${esc(label)}"
+    onclick="this.setAttribute('aria-checked',this.getAttribute('aria-checked')==='true'?'false':'true');
+      toast('${esc(label)} updated.')"></button>`;
+
+  return `
+  <div class="pagehead"><div><h1>Settings</h1>
+    <p class="lede">Organisation configuration. Changes apply to everyone in ${esc(ORG.name)}.</p></div></div>
+  <div data-tabs>
+    <div class="tabs" role="tablist">${['Organisation','Permissions','Roles','Policies','Notifications','Integrations','Billing','Audit']
+      .map((t, i) => `<button role="tab" data-tab="${t}" aria-selected="${i === 0}">${t}</button>`).join('')}</div>
+
+    ${panel('Organisation', `<section class="card"><div class="body">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">
+        <div class="field"><label for="on2">Organisation name</label><input id="on2" value="${esc(ORG.name)}"></div>
+        <div class="field"><label for="oind">Industry</label><select id="oind"><option>Residential care</option>
+          <option>Domiciliary care</option><option>Hospitality</option></select></div>
+        <div class="field"><label for="otz">Timezone</label><select id="otz"><option>Europe/London</option></select></div>
+        <div class="field"><label for="ows">Week starts</label><select id="ows"><option>Monday</option><option>Sunday</option></select></div>
+        <div class="field"><label for="odf">Date format</label><select id="odf"><option>DD/MM/YYYY</option></select></div>
+        <div class="field"><label for="ocy">Currency</label><select id="ocy"><option>GBP (£)</option></select></div>
+      </div>
+      <button class="btn p" style="margin-top:16px" onclick="toast('Organisation settings saved.')">Save changes</button>
+    </div></section>`, true)}
+
+    ${panel('Permissions', `<section class="card"><header><h3>People and invitations</h3><span class="spacer"></span>
+      <button class="btn sm p" onclick="modal({title:'Invite a team member',confirm:'Send invitation',
+        body:'<div class=&quot;field&quot;><label for=&quot;ie&quot;>Email</label><input id=&quot;ie&quot; data-val=&quot;e&quot; placeholder=&quot;name@example.com&quot;></div><div class=&quot;field&quot;><label for=&quot;ir&quot;>Role</label><select id=&quot;ir&quot; data-val=&quot;r&quot;><option>Staff</option><option>Manager</option><option>Owner</option></select></div>',
+        onOk(v){logAudit(&#39;member.invited&#39;,v.e);toast(&#39;Invitation sent to &#39;+v.e+&#39;.&#39;)}})">Invite</button></header>
+      ${table([{h:'Person'},{h:'Role'},{h:'Status'},{h:'Actions'}],
+        [['Marcus Bell','Owner','active'],['Amara Osei','Manager','active'],['Tomas Nowak','Manager','active'],
+         ['Callum Reid','Staff','active'],['jo@brightpath.uk','Staff','invited']].map(([nm, r, st]) => [
+          `<div class="rowav"><span class="av">${initials(nm.includes('@') ? nm[0] + nm[1] : nm)}</span>
+            <span>${esc(nm)}</span></div>`,
+          `<span class="pill neutral plain">${esc(r)}</span>`, pill(st),
+          `<div style="display:flex;gap:5px;justify-content:flex-end">
+            <button class="btn sm" ${r === 'Owner' ? 'disabled title="An organisation must keep one owner"' : ''}
+              onclick="toast('Role change opened.')">Change role</button>
+            <button class="btn sm d" ${r === 'Owner' ? 'disabled title="An organisation must keep one owner"' : ''}
+              onclick="modal({title:'Remove ${esc(nm)}?',danger:true,confirm:'Remove from organisation',reason:true,
+              sub:'Their past shifts and timesheets are kept. They lose access immediately.',
+              onOk(){logAudit(&#39;member.removed&#39;,'${esc(nm)}');toast('${esc(nm)} removed.')}})">Remove</button></div>`]))}
+    </section>`)}
+
+    ${panel('Roles', `<section class="card"><header><h3>Roles</h3></header>
+      ${table([{h:'Role'},{h:'Can do'},{h:'Cannot do'}], [
+        ['<span class="strong">Owner</span>', 'Everything a manager can, plus billing, roles and removing people',
+          'Nothing within this organisation'],
+        ['<span class="strong">Manager</span>', 'Build and publish rotas, approve leave, swaps and overtime, manage team and locations',
+          'Change billing or remove an owner'],
+        ['<span class="strong">Staff</span>', 'See their own schedule, clock in, request leave, offer swaps, raise overtime',
+          'See the rota builder, team directory, locations or reports'],
+      ])}
+      <div class="body"><div class="callout warn" style="margin:0">${ico('info')}
+        <span><b>Custom roles are not available.</b> Membership is a three-value field —
+        owner, manager or staff — so a role like "senior carer who can approve leave but not publish" cannot be
+        represented yet. Job titles are free text and do not grant permission.</span></div></div></section>`)}
+
+    ${panel('Policies', `<section class="card"><div class="body">
+      ${row('Minimum rest between shifts', 'Blocks a rota that puts someone back on shift too soon.', '<span class="mono">11 hours</span>')}
+      ${row('Maximum weekly hours', 'Rostering past this blocks publication rather than warning.', '<span class="mono">48 hours</span>')}
+      ${row('Minimum cover, day', 'Per site. Days below it cannot be published.', '<span class="mono">6 people</span>')}
+      ${row('Minimum cover, night', 'Per site.', '<span class="mono">3 people</span>')}
+      ${row('Publish notice', 'How far ahead staff should see their shifts.', '<span class="mono">14 days</span>')}
+      ${row('Swap approval', 'Whether a manager must approve every agreed swap.', sw(true, 'Swap approval'))}
+      ${row('Auto-decline clashing leave', 'Refuse leave that would drop a day under minimum cover.', sw(false, 'Auto-decline'))}
+    </div></section>`)}
+
+    ${panel('Notifications', `<section class="card"><div class="body">
+      ${row('Rota published', 'Everyone affected is told when a rota goes live.', sw(true, 'Rota published'))}
+      ${row('Shift changed', 'Only the people whose shifts moved.', sw(true, 'Shift changed'))}
+      ${row('Leave decisions', 'The requester is told either way.', sw(true, 'Leave decisions'))}
+      ${row('Swap offers', 'Eligible colleagues are notified of an open shift.', sw(true, 'Swap offers'))}
+      ${row('Missed clock-in', 'Managers are alerted 30 minutes into an unstarted shift.', sw(true, 'Missed clock-in'))}
+      ${row('SMS delivery', 'No SMS provider is connected, so text messages cannot be sent.',
+        '<span class="pill neutral">Unavailable</span>')}
+    </div></section>`)}
+
+    ${panel('Integrations', `<section class="card"><div class="body">
+      ${row('Outgoing email (SMTP)', 'Announcements and invitations send from your own domain.',
+        '<span class="pill ok">Connected</span>')}
+      ${row('Test send', 'Proves the credentials work before staff notice they do not.',
+        '<button class="btn sm" onclick="toast(&#39;Test email sent to marcus.bell@sunnyvalecare.co.uk.&#39;)">Send test</button>')}
+      ${row('Payroll export', 'CSV in the shape your payroll provider expects.', '<span class="pill ok">Sage</span>')}
+      ${row('Calendar feed', 'Staff subscribe to their own shifts.', sw(true, 'Calendar feed'))}
+    </div></section>`)}
+
+    ${panel('Billing', `<section class="card"><div class="body">
+      <div class="callout info" style="margin-bottom:14px">${ico('info')}
+        <span><b>No payment provider is connected.</b> Your plan and limits are recorded, and nothing can charge
+        you from inside the app. Invoices are raised manually by RotaFlow until billing goes live.</span></div>
+      <dl class="dl">
+        <dt>Plan</dt><dd>${esc(ORG.plan)}</dd>
+        <dt>Sites</dt><dd>${ORG.sites} of unlimited</dd>
+        <dt>People</dt><dd>52 of unlimited</dd>
+        <dt>Renews</dt><dd>01 September 2026</dd>
+        <dt>Billing contact</dt><dd class="mono">marcus.bell@sunnyvalecare.co.uk</dd>
+      </dl></div></section>`)}
+
+    ${panel('Audit', `<section class="card"><header><h3>Organisation audit</h3><span class="spacer"></span>
+      <span class="pill neutral plain">Actions taken in this session appear here</span></header>
+      ${state.audit.length ? table([{h:'When'},{h:'Who'},{h:'Action'},{h:'Detail'}],
+        state.audit.map(a => [`<span class="mono">${esc(a.when)}</span>`, esc(a.who),
+          `<span class="mono">${esc(a.what)}</span>`, esc(a.detail)]))
+        : `<div class="empty">Nothing recorded yet. Change a shift, approve leave or publish the rota and it lands here.</div>`}
+      <div class="body"><p class="lede" style="margin:0">The organisation audit is separate from the platform
+        audit RotaFlow keeps. You see what happened inside your organisation; you never see other tenants,
+        and platform staff never appear here unless they held a support session.</p></div></section>`)}
+  </div>`;
+};
+
+/* ============================ my profile ============================ */
+SCREENS.account = () => {
+  crumbs(['My Profile']);
+  const panel = (k, inner, first) => `<div data-panel="${k}"${first ? '' : ' hidden'}>${inner}</div>`;
+  const row = (label, hint, control) => `<div style="display:flex;gap:14px;align-items:flex-start;
+    padding:13px 0;border-bottom:1px solid var(--divider)">
+    <div style="min-width:0"><div class="strong" style="font-size:13.5px">${esc(label)}</div>
+      <div class="dim" style="font-size:12.5px;margin-top:2px;max-width:56ch">${esc(hint)}</div></div>
+    <div style="margin-left:auto;flex:none">${control}</div></div>`;
+  return `
+  <div class="pagehead">
+    <div class="rowav" style="gap:14px">
+      <span class="av" style="width:50px;height:50px;font-size:17px">${initials(ME.name)}</span>
+      <div><h1 style="font-size:25px;line-height:33px">${esc(ME.name)}</h1>
+        <p class="lede" style="margin-top:5px">${esc(ME.job)} · ${esc(ME.site)} · ${esc(ROLES[state.role])} in ${esc(ORG.name)}</p></div>
+    </div></div>
+  <div data-tabs>
+    <div class="tabs" role="tablist">${['Profile','Preferences','Security','Sessions','API tokens','Activity']
+      .map((t, i) => `<button role="tab" data-tab="${t}" aria-selected="${i === 0}">${t}</button>`).join('')}</div>
+
+    ${panel('Profile', `<section class="card"><div class="body">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">
+        <div class="field"><label for="pn">Full name</label><input id="pn" value="${esc(ME.name)}"></div>
+        <div class="field"><label for="pe">Email</label><input id="pe" value="marcus.bell@sunnyvalecare.co.uk"></div>
+        <div class="field"><label for="pp">Mobile</label><input id="pp" value="07700 900318"></div>
+        <div class="field"><label for="pj">Job title</label><input id="pj" value="${esc(ME.job)}"></div>
+        <div class="field"><label for="pd">Department</label><select id="pd"><option>Nursing</option><option>Wellbeing</option></select></div>
+        <div class="field"><label for="ps">Primary site</label><select id="ps">
+          ${LOCATIONS.map(l => `<option>${esc(l.name)}</option>`).join('')}</select></div>
+      </div>
+      <button class="btn p" style="margin-top:16px" onclick="toast('Profile saved.')">Save changes</button>
+    </div></section>`, true)}
+
+    ${panel('Preferences', `<section class="card"><div class="body">
+      ${row('Theme', 'Light is the default. This page follows your device unless you choose.',
+        '<select class="btn"><option>Match device</option><option>Light</option><option>Dark</option></select>')}
+      ${row('Start week on', 'Affects your schedule and the rota grid.', '<select class="btn"><option>Monday</option><option>Sunday</option></select>')}
+      ${row('Time format', '', '<select class="btn"><option>24-hour</option><option>12-hour</option></select>')}
+      ${row('Email me about', 'Shift changes, leave decisions and announcements.', '<span class="pill ok">3 of 5 categories</span>')}
+    </div></section>`)}
+
+    ${panel('Security', `<section class="card"><div class="body">
+      ${row('Password', 'Last changed 19 July 2026.',
+        '<button class="btn sm" onclick="modal({title:&#39;Change password&#39;,confirm:&#39;Update password&#39;,body:&#39;<div class=\\&#39;field\\&#39;><label>Current password</label><input type=password></div><div class=\\&#39;field\\&#39;><label>New password</label><input type=password><span class=hint>At least 12 characters.</span></div>&#39;,onOk(){toast(&#39;Password updated. Other sessions were signed out.&#39;)}})">Change</button>')}
+      ${row('Two-factor authentication', 'Not available in this organisation app yet — it is not shown as protecting you when it does not.',
+        '<span class="pill neutral">Not built</span>')}
+      ${row('Backup codes', 'Follows two-factor authentication.', '<span class="pill neutral">Not built</span>')}
+      ${row('Sign-in alerts', 'Email when a new device signs in.', '<span class="pill ok">On</span>')}
+    </div></section>`)}
+
+    ${panel('Sessions', `<section class="card"><div class="body">
+      <div class="callout info" style="margin-bottom:14px">${ico('info')}
+        <span>A per-device session list is not available to the app, so there is no device table here rather than
+        an empty one. Signing out everywhere does work and ends every session including this one.</span></div>
+      <button class="btn d" onclick="modal({title:'Sign out everywhere?',danger:true,confirm:'Sign out all devices',
+        sub:'Including this one. You will need to sign in again.',
+        onOk(){toast('Signed out of all devices.')}})">Sign out everywhere</button>
+    </div></section>`)}
+
+    ${panel('API tokens', `<section class="card"><div class="body">
+      <div class="callout warn" style="margin:0">${ico('alert')}
+        <span><b>There is no public API to hold a token for.</b> Issuing a long-lived token that could read a
+        care home's staff records would be a security problem, not a feature. When an API exists, tokens will be
+        scoped, expiring and revocable — and they will appear here.</span></div>
+    </div></section>`)}
+
+    ${panel('Activity', `<section class="card"><header><h3>Your recent activity</h3></header>
+      ${state.audit.length ? `<ul class="feed">${state.audit.map(a => `<li>
+        <span class="fi" style="background:var(--primary-wash);color:var(--primary)">${ico('pulse')}</span>
+        <span><span class="ft">${esc(a.detail)}</span><span class="fm">${esc(a.what)} · ${esc(a.when)}</span></span></li>`).join('')}</ul>`
+        : '<div class="empty">Nothing recorded in this session yet.</div>'}</section>`)}
+  </div>`;
+};
+
+/* ============================ help ============================ */
+SCREENS.help = () => {
+  crumbs(['Help & Support']);
+  return `
+  <div class="pagehead"><div><h1>Help &amp; support</h1>
+    <p class="lede">Answers first, a person second.</p></div></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <section class="card"><header><h3>Common questions</h3></header>
+      <ul class="feed">${[
+        ['Why can’t I publish the rota?','A day is below minimum cover, or someone breaks the 11-hour rest rule.'],
+        ['A shift is missing from my schedule','The week may still be a draft. Drafts are not visible to staff.'],
+        ['I clocked in but nothing happened','You were offline. The entry is queued on your device and syncs later.'],
+        ['My hours look wrong','Timesheets come from clock events, not the plan. Ask a manager to amend.'],
+      ].map(([q, a]) => `<li><span class="fi" style="background:var(--info-wash);color:var(--info)">${ico('info')}</span>
+        <span><span class="ft">${esc(q)}</span><span class="fm">${esc(a)}</span></span></li>`).join('')}</ul></section>
+    <section class="card"><header><h3>Still stuck</h3></header><div class="body">
+      <p class="lede" style="margin:0 0 14px">Support can, with your permission, open a time-limited read-only
+        session against ${esc(ORG.name)}. You are told when that happens, it expires on its own, and every action
+        taken is recorded.</p>
+      <button class="btn p" onclick="modal({title:'Contact support',confirm:'Send message',
+        body:'<div class=&quot;field&quot;><label for=&quot;hs&quot;>What is happening?</label><textarea id=&quot;hs&quot; data-val=&quot;s&quot;></textarea></div>',
+        onOk(){toast('Message sent. Support replies within one working hour on Enterprise.')}})">Contact support</button>
+    </div></section>
+  </div>`;
+};
+
+/* ============================ boot ============================ */
+$('#roleSel').innerHTML = Object.entries(ROLES)
+  .map(([k, v]) => `<option value="${k}"${k === state.role ? ' selected' : ''}>${v}</option>`).join('');
+$('#roleSel').onchange = e => {
+  state.role = e.target.value;
+  const id = location.hash.slice(2).split('/')[0] || 'dashboard';
+  const item = [...NAV, ...NAV_FOOT].find(x => x.id === id);
+  if (item && !item.allow.includes(state.role)) toast(`A ${ROLES[state.role].toLowerCase()} cannot open ${item.label}.`, true);
+  route();
+};
+$('#railBtn').onclick = () => $('#rail').classList.toggle('open');
+$('#kbarBtn').onclick = openPalette;
+$('#orgBtn').onclick = () => modal({ title:'Switch organisation', confirm:'Stay here', okOnly:true,
+  sub:'You belong to one organisation. Someone who works for two — an agency nurse, a group manager — switches here.',
+  body:`<div style="display:grid;gap:8px">
+    <div style="display:flex;gap:10px;align-items:center;border:1px solid var(--primary);border-radius:12px;padding:11px">
+      <span class="orgmark">SC</span><span><span class="strong">${esc(ORG.name)}</span>
+      <span class="dim" style="display:block;font-size:12px">Owner · ${ORG.sites} sites</span></span>
+      <span style="margin-left:auto" class="pill ok">Current</span></div></div>` });
+$('#bellBtn').onclick = () => { location.hash = '#/notifications'; };
+$('#whoami').onclick = () => { location.hash = '#/account'; };
+document.addEventListener('click', e => {
+  if (e.target.closest('#moreTab')) { e.preventDefault(); $('#rail').classList.toggle('open'); return; }
+  if (e.target.closest('.rail a') && window.innerWidth <= 1000) $('#rail').classList.remove('open');
+});
+addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); }
+});
+addEventListener('hashchange', route);
+if (!location.hash) location.hash = '#/dashboard';
+route();
+setInterval(() => { if (state.clockedIn && location.hash.includes('clock')) route(); }, 30000);
+</script>

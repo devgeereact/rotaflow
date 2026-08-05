@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   addMonths,
+  closedWithin,
   daysUntil,
   deadlineState,
   effectiveDueDate,
   extendedDueDate,
   formatDeadline,
   isClosed,
+  medianTurnaroundDays,
+  pendingErasures,
   statutoryDueDate,
   todayIso,
   type GdprRequestStatus,
@@ -160,5 +163,116 @@ describe('todayIso', () => {
     // the 5th for anywhere east of UTC, which is a whole day of deadline.
     expect(todayIso(new Date(2026, 7, 4, 23, 30))).toBe('2026-08-04');
     expect(todayIso(new Date(2026, 0, 1, 0, 15))).toBe('2026-01-01');
+  });
+});
+
+describe('daysUntil — malformed input', () => {
+  /**
+   * The bug this pins: the guard checked for a *missing* part, so a full ISO
+   * timestamp slipped through — it has three parts and its third is
+   * "02T00:00:00.000Z", which `Number` turns into NaN. `Date.UTC` then returned
+   * NaN and the console rendered "NaN days left" on every row.
+   */
+  it('treats a full ISO timestamp as malformed rather than returning NaN', () => {
+    // Malformed input falls back to the epoch by design, so the answer is a
+    // large obviously-wrong number rather than an absent one. What matters is
+    // that it is a number: NaN reached the screen as "NaN days left".
+    const withBadDue = daysUntil('2026-08-02T00:00:00.000Z', '2026-08-05');
+    const withBadToday = daysUntil('2026-08-02', '2026-08-05T09:00:00.000Z');
+    expect(Number.isFinite(withBadDue)).toBe(true);
+    expect(Number.isFinite(withBadToday)).toBe(true);
+    expect(withBadDue).toBeLessThan(-10_000);
+    expect(withBadToday).toBeGreaterThan(10_000);
+  });
+
+  it('never returns NaN for any shape of rubbish', () => {
+    for (const bad of ['', 'not-a-date', '2026-13', 'x-y-z', '2026--02']) {
+      expect(Number.isFinite(daysUntil(bad, '2026-08-05'))).toBe(true);
+    }
+  });
+});
+
+describe('closedWithin', () => {
+  it('counts a request closed today', () => {
+    expect(closedWithin([{ closedAt: '2026-08-05T09:00:00Z' }], '2026-08-05')).toBe(1);
+  });
+
+  it('excludes one closed outside the window', () => {
+    expect(closedWithin([{ closedAt: '2026-01-01T09:00:00Z' }], '2026-08-05')).toBe(0);
+  });
+
+  it('includes one closed exactly on the window boundary', () => {
+    // 90 days before 2026-08-05 is 2026-05-07.
+    expect(closedWithin([{ closedAt: '2026-05-07T09:00:00Z' }], '2026-08-05')).toBe(1);
+  });
+
+  it('ignores requests that are still open', () => {
+    expect(closedWithin([{ closedAt: null }], '2026-08-05')).toBe(0);
+  });
+
+  it('does not count a closure dated in the future as recent history', () => {
+    expect(closedWithin([{ closedAt: '2026-09-01T09:00:00Z' }], '2026-08-05')).toBe(0);
+  });
+});
+
+describe('medianTurnaroundDays', () => {
+  it('is null when nothing has been closed', () => {
+    expect(
+      medianTurnaroundDays([{ receivedOn: '2026-07-01', closedAt: null }]),
+    ).toBeNull();
+  });
+
+  it('takes the middle value of an odd count', () => {
+    expect(
+      medianTurnaroundDays([
+        { receivedOn: '2026-07-01', closedAt: '2026-07-02T00:00:00Z' },
+        { receivedOn: '2026-07-01', closedAt: '2026-07-11T00:00:00Z' },
+        { receivedOn: '2026-07-01', closedAt: '2026-07-05T00:00:00Z' },
+      ]),
+    ).toBe(4);
+  });
+
+  it('averages the middle pair of an even count', () => {
+    expect(
+      medianTurnaroundDays([
+        { receivedOn: '2026-07-01', closedAt: '2026-07-03T00:00:00Z' },
+        { receivedOn: '2026-07-01', closedAt: '2026-07-06T00:00:00Z' },
+      ]),
+      // Two days and five days — the middle pair averages to three and a half.
+    ).toBe(3.5);
+  });
+
+  it('is not dragged by a single slow request the way a mean would be', () => {
+    const rows = [
+      { receivedOn: '2026-01-01', closedAt: '2026-01-03T00:00:00Z' },
+      { receivedOn: '2026-01-01', closedAt: '2026-01-04T00:00:00Z' },
+      { receivedOn: '2026-01-01', closedAt: '2026-04-01T00:00:00Z' },
+    ];
+    expect(medianTurnaroundDays(rows)).toBe(3);
+  });
+
+  it('drops a closure dated before receipt rather than reporting a negative', () => {
+    expect(
+      medianTurnaroundDays([
+        { receivedOn: '2026-07-10', closedAt: '2026-07-01T00:00:00Z' },
+        { receivedOn: '2026-07-01', closedAt: '2026-07-05T00:00:00Z' },
+      ]),
+    ).toBe(4);
+  });
+});
+
+describe('pendingErasures', () => {
+  it('counts only open erasure requests', () => {
+    expect(
+      pendingErasures([
+        { kind: 'erasure', status: 'received' },
+        { kind: 'erasure', status: 'completed' },
+        { kind: 'access', status: 'received' },
+      ]),
+    ).toBe(1);
+  });
+
+  it('treats a refused erasure as closed', () => {
+    expect(pendingErasures([{ kind: 'erasure', status: 'refused' }])).toBe(0);
   });
 });

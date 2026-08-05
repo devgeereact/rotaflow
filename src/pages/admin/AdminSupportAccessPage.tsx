@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { KeyRound, ShieldAlert } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
+import { KeyRound } from 'lucide-react';
+import { Panel } from '@/components/ui/Card';
+import { Callout } from '@/components/ui/Callout';
+import { StatTile } from '@/components/ui/StatTile';
+import { TileGrid } from '@/components/ui/TileGrid';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -13,9 +16,10 @@ import {
   AdminError,
   AdminLoading,
   AdminPage,
-  AdminStat,
 } from '@/components/admin/AdminPage';
 import { useToast } from '@/hooks/useToast';
+import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
+import { DEMO_DENIED_BY_OWNER } from '@/lib/adminOverviewDemo';
 import { listAllOrganisations } from '@/services/platformService';
 import {
   listSupportAccessSessions,
@@ -28,6 +32,7 @@ import {
   formatRemaining,
   millisecondsRemaining,
   sessionStatus,
+  summariseSessions,
   validateRequest,
   type SupportAccessScope,
   type SupportAccessSession,
@@ -96,6 +101,13 @@ export function AdminSupportAccessPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // `load` is stable via useCallback, so this registers once and is cleared on
+  // unmount by the hook itself.
+  const refresh = useCallback(() => void load(), [load]);
+  useRegisterConsoleRefresh(refresh);
+
+  const stats = useMemo(() => summariseSessions(sessions ?? [], now), [sessions, now]);
 
   const active = useMemo(
     () => (sessions ?? []).filter((s) => sessionStatus(s, now) === 'active'),
@@ -195,61 +207,78 @@ export function AdminSupportAccessPage(): JSX.Element {
 
   return (
     <AdminPage
-      title="Support access"
-      description="Time-boxed, justified records of platform staff opening a customer's data."
+      title="Temporary support access"
+      description="Every session is scoped, time limited, tied to a case, revocable, and disclosed to the organisation owner. There is no permanent back door into a tenant."
       action={
         <Button onClick={() => setRequesting(true)}>
           <KeyRound size={16} aria-hidden="true" />
-          Request support access
+          Request access
         </Button>
       }
     >
       <div className="space-y-6">
-        {active.length > 0 && (
-          <Card className="border-warning/40 bg-warning/5">
-            <div className="flex flex-wrap items-start gap-3">
-              <ShieldAlert size={20} className="mt-0.5 text-warning" aria-hidden="true" />
-              <div className="min-w-0 flex-1">
-                <h2 className="font-semibold text-content dark:text-content-dark">
-                  {active.length} session{active.length === 1 ? '' : 's'} open right now
-                </h2>
-                <ul className="mt-1 space-y-1 text-sm text-content-muted dark:text-content-muted-dark">
-                  {active.map((s) => (
-                    <li key={s.id}>
-                      <span className="font-medium text-content dark:text-content-dark">
-                        {s.adminName}
-                      </span>{' '}
-                      is viewing {s.orgName} — expires in{' '}
-                      {formatRemaining(millisecondsRemaining(s.expiresAt, now))} (
-                      {s.caseRef})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </Card>
+        {active.length > 0 ? (
+          <Callout
+            tone="warning"
+            title={`${active.length} session${active.length === 1 ? '' : 's'} open right now`}
+          >
+            <ul className="mt-1 space-y-1">
+              {active.map((session) => (
+                <li key={session.id}>
+                  <span className="font-medium text-content dark:text-content-dark">
+                    {session.adminName}
+                  </span>{' '}
+                  is viewing {session.orgName} — expires in{' '}
+                  {formatRemaining(millisecondsRemaining(session.expiresAt, now))} (
+                  {session.caseRef})
+                </li>
+              ))}
+            </ul>
+          </Callout>
+        ) : (
+          <Callout tone="info">
+            <p>
+              No support session is currently active. Granting one writes an immutable
+              audit record before the first byte of tenant data is read.
+            </p>
+          </Callout>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <AdminStat label="Open now" value={active.length} hint="Live sessions" />
-          <AdminStat
-            label="Recorded"
-            value={sessions?.length ?? '—'}
-            hint="Most recent 100"
+        <TileGrid>
+          <StatTile
+            label="Active sessions"
+            value={stats.active}
+            hint={
+              stats.active ? 'Someone is inside a tenant' : 'Nobody is inside a tenant'
+            }
           />
-          <AdminStat
+          <StatTile label="Granted this month" value={stats.grantedThisMonth} />
+          <StatTile
+            label="Median duration"
+            value={stats.medianMinutes === null ? '—' : `${stats.medianMinutes}m`}
+            hint={stats.medianMinutes === null ? 'No session has ended yet' : undefined}
+          />
+          <StatTile
             label="Revoked early"
-            value={(sessions ?? []).filter((s) => s.revokedAt !== null).length}
-            hint="Ended before expiry"
+            value={stats.revokedEarly}
+            hint="by administrator or owner"
           />
-          <AdminStat
-            label="Write access"
-            value={(sessions ?? []).filter((s) => s.scope === 'read_write').length}
-            hint="Sessions that could change data"
+          <StatTile label="Expired" value={stats.expired} hint="Ran to the deadline" />
+          {/* The reference calls this "Denied by owner". A refusal is not
+              recorded anywhere — `request_support_access` simply raises — so
+              this is the one placeholder on an otherwise measured screen. */}
+          <StatTile
+            label="Denied by owner"
+            value={DEMO_DENIED_BY_OWNER}
+            hint="Placeholder — refusals are not recorded"
           />
-        </div>
+        </TileGrid>
 
-        <Card className="p-0">
+        <Panel
+          title="Session history"
+          actions={<Badge tone="neutral">Retained 7 years</Badge>}
+          flush
+        >
           {failed ? (
             <AdminError onRetry={() => void load()} />
           ) : sessions === null ? (
@@ -264,12 +293,9 @@ export function AdminSupportAccessPage(): JSX.Element {
               rowKey={(s) => s.id}
             />
           )}
-        </Card>
+        </Panel>
 
-        <Card>
-          <h2 className="mb-1 font-semibold text-content dark:text-content-dark">
-            What a session here does, and does not, do
-          </h2>
+        <Panel title="What a session here does, and does not, do">
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
             A row records that a named administrator stated a reason, quoted a case
             reference and accepted a deadline. It is an accountability trail.{' '}
@@ -286,7 +312,7 @@ export function AdminSupportAccessPage(): JSX.Element {
             are required, and no session can outlast 24 hours. The organisation&rsquo;s
             own owner can end any session, and sees the same records you do.
           </p>
-        </Card>
+        </Panel>
       </div>
 
       <RequestModal

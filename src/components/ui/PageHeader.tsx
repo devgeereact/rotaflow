@@ -9,6 +9,19 @@ interface PageHeaderProps {
   actions?: ReactNode;
   /** Tab bar or breadcrumb rendered below the title block. */
   below?: ReactNode;
+  /**
+   * An identity mark for a detail screen — an avatar or initials disc, drawn
+   * to the left of the title. Entity screens only: a list screen has nothing
+   * to be the identity of.
+   */
+  avatar?: ReactNode;
+  /**
+   * A row of badges and facts under the title, in place of `description`.
+   *
+   * A detail screen's subtitle is not a sentence — it is an identifier, a plan,
+   * a status and a creation date, and each of those wants its own treatment.
+   */
+  meta?: ReactNode;
   className?: string;
 }
 
@@ -35,20 +48,33 @@ export function PageHeader({
   description,
   actions,
   below,
+  avatar,
+  meta,
   className,
 }: PageHeaderProps): JSX.Element {
   return (
-    <header className={cn('mb-6', className)}>
+    <header className={cn('mb-5', className)}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-            {title}
-          </h1>
-          {description && (
-            <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
-              {description}
-            </p>
-          )}
+        <div className="flex min-w-0 items-center gap-3">
+          {avatar}
+          <div className="min-w-0">
+            <h1 className="text-balance font-display text-page-title font-semibold tracking-[-0.5px] text-content dark:text-content-dark">
+              {title}
+            </h1>
+            {description && (
+              // Capped at 64 characters: past that a one-line purpose becomes a
+              // paragraph the eye has to track back across, and every one of
+              // these sits directly above dense content.
+              <p className="mt-1.5 max-w-[64ch] text-sm text-content-muted dark:text-content-muted-dark">
+                {description}
+              </p>
+            )}
+            {meta && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-content-muted dark:text-content-muted-dark">
+                {meta}
+              </div>
+            )}
+          </div>
         </div>
         {/* `shrink-0` so a long title wraps rather than crushing the actions,
             which are the only things on the row that can be clicked. */}

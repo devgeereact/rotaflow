@@ -1,20 +1,28 @@
-import { useCallback, useRef, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
-import { ArrowLeft, Menu, ShieldCheck, X } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ArrowLeft, Menu, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { env } from '@/lib/env';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import {
+  ConsoleRefreshContext,
+  type ConsoleRefreshValue,
+} from '@/hooks/useConsoleRefresh';
 import { ADMIN_SECONDARY_NAV, adminNavForRole, type AdminNavItem } from '@/lib/adminNav';
 import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { StaffAvatar } from '@/components/ui/StaffAvatar';
 
 const LINK_BASE =
-  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
+  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[0.84rem] font-medium transition-colors';
 const LINK_INACTIVE =
-  'text-content-muted hover:bg-surface-subtle hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark';
-const LINK_ACTIVE = 'bg-danger/10 text-danger';
+  'text-content hover:bg-primary-wash dark:text-content-dark dark:hover:bg-primary-wash-dark';
+const LINK_ACTIVE = 'bg-primary text-primary-fg';
+
+const EYEBROW =
+  'text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-content-muted dark:text-content-muted-dark';
 
 /**
  * Which deployment this is.
@@ -29,12 +37,14 @@ function environmentBadge(): { label: string; className: string } {
   if (env.isProd) {
     return {
       label: 'Production',
-      className: 'bg-danger/10 text-danger ring-1 ring-inset ring-danger/30',
+      className:
+        'bg-danger-wash text-danger ring-1 ring-inset ring-danger/30 dark:bg-danger-wash-dark',
     };
   }
   return {
     label: env.mode === 'staging' ? 'Staging' : 'Development',
-    className: 'bg-warning/15 text-warning ring-1 ring-inset ring-warning/30',
+    className:
+      'bg-warning-wash text-warning ring-1 ring-inset ring-warning/30 dark:bg-warning-wash-dark',
   };
 }
 
@@ -49,7 +59,7 @@ function NavList({
     <>
       {items.map(({ label, icon: Icon, to, end }) => (
         <NavLink
-          key={to}
+          key={`${to}-${label}`}
           to={to}
           end={end}
           onClick={onNavigate}
@@ -57,76 +67,175 @@ function NavList({
             cn(LINK_BASE, isActive ? LINK_ACTIVE : LINK_INACTIVE)
           }
         >
-          <Icon size={18} aria-hidden="true" />
-          {label}
+          {({ isActive }) => (
+            <>
+              <Icon
+                size={16}
+                aria-hidden="true"
+                className={cn('shrink-0', isActive ? 'opacity-100' : 'opacity-75')}
+              />
+              {label}
+            </>
+          )}
         </NavLink>
       ))}
     </>
   );
 }
 
+/**
+ * Brand, area and environment.
+ *
+ * The mark is the product's own — this area is RotaFlow, not a separate
+ * product — and everything that says "you are not in a tenant" is carried by
+ * the eyebrow and the environment badge underneath it rather than by recolouring
+ * the console.
+ *
+ * There is no region chip beside the badge, which the reference shows: nothing
+ * in `env` reports the deployment region, and a guessed one printed next to a
+ * badge whose entire job is preventing a wrong assumption about where you are
+ * would be worse than an absent one.
+ */
 function ConsoleIdentity(): JSX.Element {
   const badge = environmentBadge();
   return (
-    <div className="px-5">
-      <p className="flex items-center gap-2 font-display text-lg font-bold text-content dark:text-content-dark">
-        <BrandMark label={null} className="h-7 w-7" />
-        RotaFlow
-      </p>
-      <div className="mt-1 flex flex-wrap items-center gap-2">
-        <p className="flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-wider text-danger">
-          <ShieldCheck size={13} aria-hidden="true" />
-          Platform console
-        </p>
-        <span
-          className={cn(
-            'rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide',
-            badge.className,
-          )}
-        >
-          {badge.label}
-        </span>
+    <div className="px-2">
+      <div className="flex items-center gap-2.5 pb-3">
+        <BrandMark label={null} className="h-[30px] w-[30px]" />
+        <div>
+          <p className="font-display text-[0.95rem] font-bold leading-tight tracking-tight text-content dark:text-content-dark">
+            RotaFlow
+          </p>
+          <p className={EYEBROW}>Platform console</p>
+        </div>
       </div>
+      <span
+        className={cn(
+          'inline-block rounded-full px-[7px] py-[5px] font-mono text-[0.625rem] font-semibold uppercase leading-none tracking-[0.08em]',
+          badge.className,
+        )}
+      >
+        {badge.label}
+      </span>
     </div>
   );
 }
 
-/** Name + resolved platform role, and the way back to the tenant app. */
+/**
+ * The role this session is actually acting as.
+ *
+ * The reference renders a role *switcher* here, which is a prototype
+ * affordance — it exists so the reader can see the console re-resolve. A real
+ * platform role comes from `platform_admins` and is enforced by the route
+ * guards and by `has_platform_role(...)` in the policies, so it is read here,
+ * never chosen.
+ */
+function ConsoleRole(): JSX.Element {
+  const { platformRole } = useOrg();
+  return (
+    <div className="grid gap-1.5 px-2 pb-3">
+      <p className={EYEBROW}>Signed in as</p>
+      <p className="rounded-lg border border-surface-border bg-surface px-2.5 py-[7px] text-[0.8rem] font-medium text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark">
+        {/* Never "Administrator" as a guess. If the granular role could not be
+            read, say so — this line is how someone checks what they are about
+            to act as. */}
+        {platformRole ? PLATFORM_ROLE_LABELS[platformRole] : 'Platform role unavailable'}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The way out of the console, pinned to the bottom of the rail.
+ *
+ * Sticky rather than one more entry in the list: the rail scrolls once the nav
+ * is fifteen items long, and this is the one link that has to be reachable from
+ * anywhere — a platform administrator who cannot find the way back to their own
+ * organisation is stuck in an area they only meant to visit. It carries the
+ * rail background and a top border so nav items scroll *under* it rather than
+ * showing through.
+ */
+function ReturnToOrganisation({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
+  return (
+    <div className="sticky bottom-0 -mx-3 mt-2 border-t border-surface-border bg-surface-rail px-5 pb-1 pt-2 dark:border-surface-border-dark dark:bg-surface-rail-dark">
+      <Link
+        to="/app/dashboard"
+        onClick={onNavigate}
+        className={cn(LINK_BASE, LINK_INACTIVE)}
+      >
+        <ArrowLeft size={16} aria-hidden="true" className="shrink-0 opacity-75" />
+        Return to Organisation
+      </Link>
+    </div>
+  );
+}
+
+/** Reference material and who you are. */
 function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
   const { user } = useSupabaseAuth();
   const { platformRole } = useOrg();
 
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '';
+  const [first = '', last = ''] = displayName.split(/[\s@.]+/);
 
   return (
-    <div className="mt-6 space-y-1 px-3">
-      <div className="mb-2 rounded-xl bg-surface-subtle px-3 py-2.5 dark:bg-surface-subtle-dark">
-        <p className="truncate text-sm font-medium text-content dark:text-content-dark">
-          {displayName}
-        </p>
-        <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
-          {/* Never "Administrator" as a guess. If the granular role could not
-              be read, say so — this line is how someone checks what they are
-              about to act as. */}
-          {platformRole
-            ? PLATFORM_ROLE_LABELS[platformRole]
-            : 'Platform role unavailable'}
-        </p>
-      </div>
-
+    <div className="mt-auto grid gap-0.5 border-t border-divider px-2 pt-3 dark:border-divider-dark">
       <NavList items={ADMIN_SECONDARY_NAV} onNavigate={onNavigate} />
 
-      <Link
-        to="/app/dashboard"
-        onClick={onNavigate}
-        className={cn(LINK_BASE, LINK_INACTIVE)}
-      >
-        <ArrowLeft size={18} aria-hidden="true" />
-        Return to organisation
-      </Link>
+      <div className="mt-1 flex items-center gap-2.5 rounded-lg px-2 py-2">
+        <StaffAvatar firstName={first} lastName={last} size="sm" />
+        <div className="min-w-0">
+          <p className="truncate text-[0.8rem] font-semibold leading-tight text-content dark:text-content-dark">
+            {displayName}
+          </p>
+          <p className="truncate text-[0.69rem] leading-tight text-content-muted dark:text-content-muted-dark">
+            {platformRole
+              ? PLATFORM_ROLE_LABELS[platformRole]
+              : 'Platform role unavailable'}
+          </p>
+        </div>
+      </div>
     </div>
   );
+}
+
+/** Rail contents, shared by the fixed sidebar and the mobile drawer. */
+function ConsoleRail({
+  items,
+  onNavigate,
+}: {
+  items: readonly AdminNavItem[];
+  onNavigate?: () => void;
+}): JSX.Element {
+  return (
+    <>
+      <ConsoleIdentity />
+      <div className="pt-3">
+        <ConsoleRole />
+      </div>
+      <nav aria-label="Platform administration" className="grid gap-px px-2">
+        <p className={cn(EYEBROW, 'px-2 pb-1.5 pt-3')}>Platform</p>
+        <NavList items={items} onNavigate={onNavigate} />
+      </nav>
+      <ConsoleFooter onNavigate={onNavigate} />
+      <ReturnToOrganisation onNavigate={onNavigate} />
+    </>
+  );
+}
+
+/** "Platform Console / Organisations", from the nav entry the URL matches. */
+function useCrumbs(items: readonly AdminNavItem[]): string | null {
+  const { pathname } = useLocation();
+  return useMemo(() => {
+    // Secondary entries are searched too: System Status is the only way into
+    // the health screen, and resolving crumbs from the primary nav alone left
+    // that page with a bare "Platform Console" and no name.
+    const match = [...items, ...ADMIN_SECONDARY_NAV]
+      .filter((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)))
+      .sort((a, b) => b.to.length - a.to.length)[0];
+    return match?.label ?? null;
+  }, [items, pathname]);
 }
 
 /**
@@ -141,10 +250,17 @@ function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element
  * member of the org they happen to have selected, and a shell implying they are
  * invites exactly the mistake this area must not make.
  *
- * The visual language is deliberately shared but the accent is not: platform
- * screens are tinted `danger` rather than `primary`, so a screenshot of this
- * area is never mistaken for a tenant's own. Cross-tenant data on screen should
- * look different from a customer's own data.
+ * ## Why the accent is `primary` again
+ *
+ * This console used to tint every surface `danger`, so that a screenshot of
+ * cross-tenant data could not be mistaken for a tenant's own. It was traded for
+ * the reference's treatment (`docs/PLATFORM_CONSOLE.html`): `primary` for
+ * interaction, `danger` reserved for the environment badge and for destructive
+ * actions. Spending the alarm colour on *navigation* left nothing louder for
+ * "suspend this organisation", and a console that is red all over is a console
+ * where red stops meaning anything. Separation is carried instead by the
+ * PLATFORM CONSOLE eyebrow, the environment badge, the rail treatment and the
+ * standing cross-tenant banner — all of which stay.
  *
  * ## The mobile drawer
  *
@@ -158,84 +274,122 @@ function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element
 export function AdminShell(): JSX.Element {
   const { platformRole } = useOrg();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [refresh, setRefresh] = useState<(() => void) | null>(null);
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const closeDrawer = useCallback(() => setMobileOpen(false), []);
 
   useFocusTrap(drawerRef, mobileOpen, closeDrawer);
 
   const items = adminNavForRole(platformRole);
+  const crumb = useCrumbs(items);
+
+  // `register` must be stable: `useRegisterConsoleRefresh` has it in a
+  // dependency array, and an identity that changed every render would
+  // re-register on every render.
+  const register = useCallback((fn: (() => void) | null) => {
+    setRefresh(() => fn);
+  }, []);
+  const refreshValue = useMemo<ConsoleRefreshValue>(
+    () => ({ refresh, register }),
+    [refresh, register],
+  );
 
   return (
-    <div className="flex min-h-screen bg-surface-subtle dark:bg-surface-subtle-dark">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-surface-border bg-surface py-5 md:flex dark:border-surface-border-dark dark:bg-surface-dark">
-        <div className="mb-6">
-          <ConsoleIdentity />
+    <ConsoleRefreshContext.Provider value={refreshValue}>
+      <div className="min-h-screen bg-background md:grid md:grid-cols-[264px_1fr] dark:bg-background-dark">
+        <aside className="sticky top-0 hidden h-screen flex-col gap-0.5 overflow-y-auto border-r border-surface-border bg-surface-rail px-3 pb-3 pt-4 md:flex dark:border-surface-border-dark dark:bg-surface-rail-dark">
+          <ConsoleRail items={items} />
+        </aside>
+
+        <div className="flex min-w-0 flex-col">
+          {/* Standing reminder of whose data is on screen. A banner rather than a
+              one-time toast because the risk — acting on a customer's live data
+              believing it is your own — lasts as long as the session does. */}
+          <div className="flex items-center gap-3 border-b border-danger/20 bg-danger-wash px-4 py-2 dark:bg-danger-wash-dark">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open platform navigation"
+              aria-expanded={mobileOpen}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger md:hidden"
+            >
+              <Menu size={18} aria-hidden="true" />
+            </button>
+            <p className="text-xs font-medium text-danger">
+              Platform administration — you are viewing data belonging to every
+              organisation on RotaFlow.
+            </p>
+          </div>
+
+          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border bg-background/90 px-4 py-2.5 backdrop-blur lg:px-6 dark:border-surface-border-dark dark:bg-background-dark/90">
+            <p className="flex min-w-0 items-center gap-1.5 truncate text-[0.78rem] text-content-muted dark:text-content-muted-dark">
+              Platform Console
+              {crumb ? (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <span className="font-semibold text-content dark:text-content-dark">
+                    {crumb}
+                  </span>
+                </>
+              ) : null}
+            </p>
+
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              {/* Absent, rather than dead, until the screen under it offers a
+                  refetch — see `useConsoleRefresh`. */}
+              {refresh ? (
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-surface-border bg-surface px-2.5 py-1.5 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <RefreshCw size={14} aria-hidden="true" />
+                  Refresh
+                </button>
+              ) : null}
+              <Link
+                to="/admin/support-access"
+                className="inline-flex items-center rounded-lg border border-surface-border bg-surface px-2.5 py-1.5 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+              >
+                Request support access
+              </Link>
+            </div>
+          </div>
+
+          <main className="w-full max-w-[1440px] p-4 lg:p-6">
+            <Outlet />
+          </main>
         </div>
-        <nav aria-label="Platform administration" className="flex-1 space-y-1 px-3">
-          <NavList items={items} />
-        </nav>
-        <ConsoleFooter />
-      </aside>
 
-      <div className="min-w-0 flex-1">
-        {/* Standing reminder of whose data is on screen. A banner rather than a
-            one-time toast because the risk — acting on a customer's live data
-            believing it is your own — lasts as long as the session does. */}
-        <div className="flex items-center gap-3 border-b border-danger/20 bg-danger/5 px-4 py-2.5">
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open platform navigation"
-            aria-expanded={mobileOpen}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-danger hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger md:hidden"
-          >
-            <Menu size={20} aria-hidden="true" />
-          </button>
-          <p className="text-xs font-medium text-danger">
-            Platform administration — you are viewing data belonging to every organisation
-            on RotaFlow.
-          </p>
-        </div>
-
-        <main className="p-5 lg:p-6">
-          <Outlet />
-        </main>
-      </div>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            aria-label="Close platform navigation"
-            onClick={closeDrawer}
-            className="absolute inset-0 cursor-default bg-black/40"
-          />
-          <div
-            ref={drawerRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Platform administration"
-            tabIndex={-1}
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col overflow-y-auto border-r border-surface-border bg-surface py-5 dark:border-surface-border-dark dark:bg-surface-dark"
-          >
-            <div className="mb-6 flex items-start justify-between gap-2 pr-3">
-              <ConsoleIdentity />
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <button
+              type="button"
+              aria-label="Close platform navigation"
+              onClick={closeDrawer}
+              className="absolute inset-0 cursor-default bg-black/40"
+            />
+            <div
+              ref={drawerRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Platform administration"
+              tabIndex={-1}
+              className="absolute inset-y-0 left-0 flex w-[264px] max-w-[85%] flex-col gap-0.5 overflow-y-auto border-r border-surface-border bg-surface-rail px-3 pb-3 pt-4 dark:border-surface-border-dark dark:bg-surface-rail-dark"
+            >
               <button
                 type="button"
                 onClick={closeDrawer}
                 aria-label="Close platform navigation"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-content-muted hover:bg-surface-subtle dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                className="absolute right-3 top-4 grid h-8 w-8 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
               >
                 <X size={18} aria-hidden="true" />
               </button>
+              <ConsoleRail items={items} onNavigate={closeDrawer} />
             </div>
-            <nav aria-label="Platform administration" className="flex-1 space-y-1 px-3">
-              <NavList items={items} onNavigate={closeDrawer} />
-            </nav>
-            <ConsoleFooter onNavigate={closeDrawer} />
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </ConsoleRefreshContext.Provider>
   );
 }

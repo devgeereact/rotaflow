@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Plus } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
+import { Plus } from 'lucide-react';
+import { Panel } from '@/components/ui/Card';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -13,9 +13,14 @@ import {
   AdminError,
   AdminLoading,
   AdminPage,
-  AdminStat,
 } from '@/components/admin/AdminPage';
+import { Callout } from '@/components/ui/Callout';
+import { StatTile } from '@/components/ui/StatTile';
+import { TileGrid } from '@/components/ui/TileGrid';
+import { RETENTION_POLICY } from '@/lib/adminOverviewDemo';
+import { downloadCsv } from '@/lib/csv';
 import { useToast } from '@/hooks/useToast';
+import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { listAllOrganisations } from '@/services/platformService';
 import {
   extendGdprRequest,
@@ -26,11 +31,14 @@ import {
 import {
   GDPR_KIND_LABELS,
   GDPR_STATUS_LABELS,
+  closedWithin,
   deadlineState,
   effectiveDueDate,
   extendedDueDate,
   formatDeadline,
   isClosed,
+  medianTurnaroundDays,
+  pendingErasures,
   statutoryDueDate,
   todayIso,
   type DeadlineState,
@@ -106,6 +114,9 @@ export function AdminGdprPage(): JSX.Element {
     void load();
   }, [load]);
 
+  const refresh = useCallback(() => void load(), [load]);
+  useRegisterConsoleRefresh(refresh);
+
   const counts = useMemo(() => {
     const all = requests ?? [];
     const open = all.filter((r) => !isClosed(r.status));
@@ -114,7 +125,25 @@ export function AdminGdprPage(): JSX.Element {
       overdue: open.filter((r) => deadlineState(r, today) === 'overdue').length,
       dueSoon: open.filter((r) => deadlineState(r, today) === 'due_soon').length,
       unassignedOrg: open.filter((r) => r.orgId === null).length,
+      completed90: closedWithin(all, today),
+      median: medianTurnaroundDays(all),
+      erasures: pendingErasures(all),
     };
+  }, [requests, today]);
+
+  const exportRegister = useCallback(() => {
+    downloadCsv(`gdpr-register_${today}`, requests ?? [], [
+      { label: 'Subject', value: (r) => r.subjectName ?? '' },
+      { label: 'Subject email', value: (r) => r.subjectEmail },
+      { label: 'Right', value: (r) => GDPR_KIND_LABELS[r.kind] },
+      { label: 'Organisation', value: (r) => r.orgName ?? '' },
+      { label: 'Received', value: (r) => r.receivedOn },
+      { label: 'Deadline', value: (r) => effectiveDueDate(r) },
+      { label: 'Extended', value: (r) => (r.extendedTo ? 'yes' : 'no') },
+      { label: 'Status', value: (r) => GDPR_STATUS_LABELS[r.status] },
+      { label: 'Closed', value: (r) => r.closedAt ?? '' },
+      { label: 'Outcome', value: (r) => r.outcomeNote ?? '' },
+    ]);
   }, [requests, today]);
 
   const columns: readonly DataTableColumn<GdprRequest, ColumnKey>[] = useMemo(
@@ -122,6 +151,7 @@ export function AdminGdprPage(): JSX.Element {
       {
         key: 'subject',
         label: 'Data subject',
+        width: 'w-[15%]',
         cell: (r) => (
           <div className="min-w-0">
             <p className="truncate font-medium text-content dark:text-content-dark">
@@ -135,10 +165,16 @@ export function AdminGdprPage(): JSX.Element {
           </div>
         ),
       },
-      { key: 'kind', label: 'Right', cell: (r) => GDPR_KIND_LABELS[r.kind] },
+      {
+        key: 'kind',
+        label: 'Right',
+        width: 'w-[13%]',
+        cell: (r) => GDPR_KIND_LABELS[r.kind],
+      },
       {
         key: 'org',
         label: 'Organisation',
+        width: 'w-[14%]',
         cell: (r) =>
           r.orgName ?? (
             // Unresolved is a state worth acting on, not a blank cell: the
@@ -146,14 +182,22 @@ export function AdminGdprPage(): JSX.Element {
             <Badge tone="warning">Not yet identified</Badge>
           ),
       },
-      { key: 'received', label: 'Received', cell: (r) => r.receivedOn },
+      {
+        key: 'received',
+        label: 'Received',
+        width: 'w-[11%]',
+        cell: (r) => (
+          <span className="whitespace-nowrap tabular-nums">{r.receivedOn}</span>
+        ),
+      },
       {
         key: 'due',
         label: 'Deadline',
+        width: 'w-[18%]',
         cell: (r) => {
           const state = deadlineState(r, today);
           return (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col items-start gap-1">
               <Badge tone={DEADLINE_TONE[state]}>{formatDeadline(r, today)}</Badge>
               <span className="text-xs text-content-muted dark:text-content-muted-dark">
                 {effectiveDueDate(r)}
@@ -166,6 +210,7 @@ export function AdminGdprPage(): JSX.Element {
       {
         key: 'status',
         label: 'Status',
+        width: 'w-[14%]',
         cell: (r) => (
           <Badge tone={STATUS_TONE[r.status]}>{GDPR_STATUS_LABELS[r.status]}</Badge>
         ),
@@ -173,6 +218,7 @@ export function AdminGdprPage(): JSX.Element {
       {
         key: 'actions',
         label: '',
+        width: 'w-[15%]',
         cell: (r) =>
           isClosed(r.status) ? (
             <span className="text-xs text-content-muted dark:text-content-muted-dark">
@@ -197,73 +243,134 @@ export function AdminGdprPage(): JSX.Element {
 
   return (
     <AdminPage
-      title="GDPR and data"
-      description="Data subject requests and the statutory clock running on each one."
+      title="GDPR and data management"
+      description="Data subject requests, retention policy and processing records. Every action here is audited and time-bound by the one-month statutory deadline."
       action={
-        <Button onClick={() => setLogging(true)}>
-          <Plus size={16} aria-hidden="true" />
-          Log a request
-        </Button>
+        <>
+          <Button
+            variant="secondary"
+            onClick={exportRegister}
+            disabled={!requests || requests.length === 0}
+          >
+            Export register
+          </Button>
+          <Button onClick={() => setLogging(true)}>
+            <Plus size={16} aria-hidden="true" />
+            Log a request
+          </Button>
+        </>
       }
     >
       <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <AdminStat label="Open" value={counts.open} hint="Not yet closed" />
-          <AdminStat
-            label="Overdue"
-            value={counts.overdue}
-            hint="Past the statutory deadline"
+        <TileGrid>
+          <StatTile label="Open requests" value={counts.open} hint="Not yet closed" />
+          <StatTile
+            label="Due within 7 days"
+            value={counts.dueSoon}
+            hint={
+              counts.overdue > 0 ? (
+                <span className="font-semibold text-danger">
+                  {counts.overdue} already overdue
+                </span>
+              ) : (
+                'Chase now'
+              )
+            }
           />
-          <AdminStat label="Due within 7 days" value={counts.dueSoon} hint="Chase now" />
-          <AdminStat
+          <StatTile
+            label="Completed, 90 days"
+            value={counts.completed90}
+            hint="Closed or refused"
+          />
+          <StatTile
+            label="Median turnaround"
+            value={counts.median === null ? '—' : `${counts.median} days`}
+            hint={<span className="font-semibold text-success">statutory 30 days</span>}
+          />
+          <StatTile
+            label="Deletions pending"
+            value={counts.erasures}
+            hint="Open erasure requests"
+          />
+          <StatTile
             label="Organisation unknown"
             value={counts.unassignedOrg}
             hint="Clock running, tenant not traced"
           />
-        </div>
+        </TileGrid>
 
         {counts.overdue > 0 && (
-          <Card className="border-danger/40 bg-danger/5">
-            <div className="flex items-start gap-3">
-              <CalendarClock
-                size={20}
-                className="mt-0.5 text-danger"
-                aria-hidden="true"
-              />
-              <p className="text-sm text-content dark:text-content-dark">
-                <span className="font-semibold">
-                  {counts.overdue} request{counts.overdue === 1 ? ' is' : 's are'} past
-                  the statutory deadline.
-                </span>{' '}
-                Under Article 12(3) the lateness is itself the breach, regardless of the
-                eventual answer. If a request is complex, extend it and tell the subject
-                why — an extension taken late is worth more than none at all.
-              </p>
-            </div>
-          </Card>
+          <Callout
+            tone="danger"
+            title={`${counts.overdue} request${counts.overdue === 1 ? ' is' : 's are'} past the statutory deadline`}
+          >
+            <p>
+              Under Article 12(3) the lateness is itself the breach, regardless of the
+              eventual answer. If a request is complex, extend it and tell the subject why
+              — an extension taken late is worth more than none at all.
+            </p>
+          </Callout>
         )}
 
-        <Card className="p-0">
-          {failed ? (
-            <AdminError onRetry={() => void load()} />
-          ) : requests === null ? (
-            <AdminLoading rows={6} />
-          ) : requests.length === 0 ? (
-            <AdminEmpty message="No data subject request has been logged." />
-          ) : (
-            <DataTable
-              caption="Data subject requests, earliest deadline first"
-              columns={columns}
-              rows={requests}
-              rowKey={(r) => r.id}
-            />
-          )}
-        </Card>
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+          <Panel title="Data subject requests" flush>
+            {failed ? (
+              <AdminError onRetry={() => void load()} />
+            ) : requests === null ? (
+              <AdminLoading rows={6} />
+            ) : requests.length === 0 ? (
+              <AdminEmpty message="No data subject request has been logged." />
+            ) : (
+              <DataTable
+                caption="Data subject requests, earliest deadline first"
+                columns={columns}
+                rows={requests}
+                rowKey={(r) => r.id}
+              />
+            )}
+          </Panel>
 
-        <Card>
-          <h2 className="mb-1 font-semibold text-content dark:text-content-dark">
-            What this register does and does not cover
-          </h2>
+          <Panel title="Retention policy" flush>
+            <table className="w-full text-sm">
+              <caption className="sr-only">
+                Intended retention periods by data type
+              </caption>
+              <thead>
+                <tr className="border-b border-divider text-left text-2xs uppercase tracking-wide text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
+                  <th scope="col" className="px-4 py-2 font-medium">
+                    Data
+                  </th>
+                  <th scope="col" className="px-4 py-2 font-medium">
+                    Retained
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {RETENTION_POLICY.map((row) => (
+                  <tr
+                    key={row.data}
+                    className="border-b border-divider last:border-0 dark:border-divider-dark"
+                  >
+                    <td className="px-4 py-2.5 text-content dark:text-content-dark">
+                      {row.data}
+                    </td>
+                    <td className="px-4 py-2.5 font-medium text-content dark:text-content-dark">
+                      {row.retained}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="border-t border-divider px-4 py-3 text-xs leading-relaxed text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
+              These are intended periods, not enforced ones. No table records a retention
+              rule and no job deletes a rota when it turns seven, so treat this as the
+              policy to build to. The audit row is the exception and is true today —
+              <code> audit_logs</code> has no update or delete policy at all.
+            </p>
+          </Panel>
+        </div>
+
+        <Panel title="What this register does and does not cover">
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
             It records the obligation: what was asked, by whom, when it arrived and when
             it must be answered. Deadlines are computed by the database from the date of
@@ -278,7 +385,7 @@ export function AdminGdprPage(): JSX.Element {
             database cannot do it, so it does not pretend the box being ticked means the
             person was informed.
           </p>
-        </Card>
+        </Panel>
       </div>
 
       <LogRequestModal

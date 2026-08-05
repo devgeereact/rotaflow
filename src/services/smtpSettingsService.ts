@@ -24,6 +24,28 @@ export async function getOrgSmtpSettings(
 }
 
 /**
+ * Every organisation's SMTP configuration, for the platform console.
+ *
+ * Reads the same `org_smtp_settings_safe` view as the per-org call, so the
+ * password is omitted at the column level here too — a platform administrator
+ * cannot read a tenant's SMTP password by widening the query, because the grant
+ * that withholds it is not a row filter.
+ *
+ * Cross-tenant because `org_smtp_settings_write` is a `for all` policy keyed on
+ * `has_org_role(org_id, ['owner'])`, and `has_org_role` ends in
+ * `or public.is_platform_admin()`. A non-administrator calling this gets the
+ * organisations they own, which is what they would see anyway.
+ */
+export async function listAllSmtpSettings(): Promise<OrgSmtpSettingsSafe[]> {
+  const { data, error } = await supabase
+    .from('org_smtp_settings_safe')
+    .select('*')
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
  * Save (create or replace) an org's SMTP credentials. Owner-only, enforced by
  * RLS on the base table. Deliberately does not `.select()` the result:
  * `smtp_pass` is excluded from the column-level SELECT grant entirely (RLS

@@ -24,6 +24,15 @@ const config: Config = {
           'subtle-dark': '#15203A', // nested panels, hover fills (dark)
           border: '#E3E6EA', // card/control outlines (light)
           'border-dark': '#22304D', // card/control outlines (dark)
+          // Navigation rail. Light is `subtle`; dark deliberately is not —
+          // `subtle-dark` (#15203A) is a *raised* panel and reads as a card
+          // floating over the canvas, where a rail should sit behind it. This
+          // value falls between `background-dark` and `surface-dark` so the
+          // rail recedes and the content column comes forward. Named
+          // separately so restyling the rail never restyles every nested
+          // panel. From docs/PLATFORM_CONSOLE.html.
+          rail: '#FAFBFC',
+          'rail-dark': '#0E1729',
         },
         divider: {
           DEFAULT: '#F2F4F6', // subtle in-list separators (light)
@@ -32,6 +41,12 @@ const config: Config = {
         primary: {
           DEFAULT: '#3B6FE0', // brand blue — CTAs, active state, links
           fg: '#FFFFFF', // text/icons on a solid primary fill
+          // Opaque hover/selected fill, for the same reason the status washes
+          // are opaque: `primary/10` over a card and over the canvas are two
+          // different colours, so a hovered row changed shade depending on
+          // what it sat on. From docs/PLATFORM_CONSOLE.html.
+          wash: '#EEF3FD',
+          'wash-dark': '#182848',
         },
         // Vivid marketing blue + navy ink ramp, sampled from
         // design/splash-screen.png (and matching signin/dashboard renders).
@@ -63,7 +78,21 @@ const config: Config = {
         // Status colours for rota states (used with text/icon, never colour
         // alone). Same hex in both themes — must stay recognisable regardless
         // of mode.
-        success: { DEFAULT: '#1EA06B' }, // published / valid / confirmed / available
+        //
+        // Each carries a `wash` / `wash-dark` pair: the surface a status pill,
+        // callout or feed icon sits on. These are NOT `success/10` and cannot
+        // be — an alpha of the solid hue over `background` and the same alpha
+        // over `surface` land on two different colours, so a pill drifted every
+        // time it moved between a card and the canvas. The washes are opaque,
+        // so a pill reads identically wherever it is placed, and the dark pair
+        // is a separate value rather than an inversion (a light wash on
+        // `surface-dark` blows out). Sampled from the platform console
+        // reference, docs/PLATFORM_CONSOLE.html.
+        success: {
+          DEFAULT: '#1EA06B', // published / valid / confirmed / available
+          wash: '#E7F5EE',
+          'wash-dark': '#102A21',
+        },
         // Attendance green — the Clock In CTA, its "ready" ring, and the
         // on-shift status washes in design/clockin.png. Sampled off that PNG:
         // it runs markedly deeper than `success` (#1EA06B), which reads too
@@ -76,9 +105,21 @@ const config: Config = {
           fg: '#0A5522', // ink on `tint`
           wash: '#EDFAF2', // larger panel wash (Attendance "On Track")
         },
-        warning: { DEFAULT: '#E0A030' }, // pending / needs attention / expiring
-        danger: { DEFAULT: '#D94A3A' }, // conflict / rejected / absent / error
-        info: { DEFAULT: '#388FD4' }, // informational / neutral status
+        warning: {
+          DEFAULT: '#E0A030', // pending / needs attention / expiring
+          wash: '#FBF2E1',
+          'wash-dark': '#2C2416',
+        },
+        danger: {
+          DEFAULT: '#D94A3A', // conflict / rejected / absent / error
+          wash: '#FAEAE7',
+          'wash-dark': '#2E1A17',
+        },
+        info: {
+          DEFAULT: '#388FD4', // informational / neutral status
+          wash: '#E8F2FA',
+          'wash-dark': '#12253A',
+        },
         content: {
           DEFAULT: '#16191F', // headings, body (light)
           dark: '#F8FAFC', // headings, body (dark)
@@ -231,8 +272,26 @@ const config: Config = {
         lockup: '0.0625em',
       },
       borderRadius: {
-        xl: '1rem',
-        '2xl': '1.5rem',
+        // One radius for the whole product: 0.5rem (8px), everywhere
+        // (owner's decision, 2026-08-05 — first sections only, then all of it).
+        //
+        // Every named size resolves to the same value, so `rounded-sm`,
+        // `rounded-lg` and `rounded-2xl` are interchangeable and no screen can
+        // drift by picking a different one. Prefer `rounded-lg` in new code;
+        // the others are kept as aliases so the ~350 existing usages did not
+        // all have to be rewritten to say the same thing.
+        //
+        // `rounded-full` is deliberately NOT redefined. It is a *shape*, not a
+        // radius — avatars, status dots and pills are round because they are
+        // round, and flattening them to 8px would turn every avatar into a
+        // square and every status dot into a tile.
+        sm: '0.5rem',
+        DEFAULT: '0.5rem',
+        md: '0.5rem',
+        lg: '0.5rem',
+        xl: '0.5rem',
+        '2xl': '0.5rem',
+        '3xl': '0.5rem',
       },
       boxShadow: {
         // Elevation levels from docs/DESIGN.md §2 — override the Tailwind
