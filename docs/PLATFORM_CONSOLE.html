@@ -823,7 +823,11 @@ const SCREENS = {};
 function route() {
   const [id = 'overview', a, b] = location.hash.slice(2).split('/');
   renderRail();
-  const known = SCREENS[id];
+  /* `hasOwn`, not a bare lookup: the id comes from the URL hash, and
+     SCREENS['constructor'] resolves up the prototype chain to a function this
+     would then invoke. Own-property only, so an unknown hash lands on the
+     "not built" screen rather than calling something. */
+  const known = Object.hasOwn(SCREENS, id) ? SCREENS[id] : undefined;
   if (!known) {
     crumbs([id]);
     $('#screen').innerHTML = `<div class="locked">

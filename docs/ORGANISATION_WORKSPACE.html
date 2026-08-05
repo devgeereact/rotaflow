@@ -696,7 +696,10 @@ function route() {
   const [id = 'dashboard', a] = location.hash.slice(2).split('/');
   renderRail();
   const item = [...NAV, ...NAV_FOOT].find(x => x.id === id);
-  const fn = SCREENS[id];
+  /* Own-property only. The id is read from the URL hash, and a bare lookup
+     resolves 'constructor' or 'toString' up the prototype chain to a function
+     that would then be invoked. */
+  const fn = Object.hasOwn(SCREENS, id) ? SCREENS[id] : undefined;
   if (!fn) {
     crumbs([id]);
     $('#screen').innerHTML = `<div class="denied"><h1>Page not found</h1>
