@@ -104,7 +104,7 @@ export async function setCaseStatus(
   const { error } = await supabase.rpc('set_support_case_status', {
     p_case: caseId,
     p_status: status,
-    p_note: note ?? null,
+    p_note: note ?? undefined,
   });
   if (error) throw error;
 }
@@ -112,7 +112,9 @@ export async function setCaseStatus(
 export async function assignCase(caseId: string, agentId: string | null): Promise<void> {
   const { error } = await supabase.rpc('assign_support_case', {
     p_case: caseId,
-    p_agent: agentId,
+    // Unassigning is passing no agent. The function's parameter has no
+    // default, so `undefined` sends SQL NULL, which is what clears it.
+    p_agent: agentId ?? undefined,
   });
   if (error) throw error;
 }
@@ -130,8 +132,8 @@ export async function openSupportCase(input: {
     p_body: input.body,
     p_category: input.category ?? 'question',
     p_priority: input.priority ?? 'normal',
-    p_org: input.orgId ?? null,
-    p_requester_email: input.requesterEmail ?? null,
+    p_org: input.orgId ?? undefined,
+    p_requester_email: input.requesterEmail ?? undefined,
   });
   if (error) throw error;
   return data;

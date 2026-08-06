@@ -125,7 +125,7 @@ export async function revokeSupportAccess(
 ): Promise<void> {
   const { error } = await supabase.rpc('revoke_support_access', {
     p_session: sessionId,
-    p_reason: reason ?? null,
+    p_reason: reason ?? undefined,
   });
   if (error) throw error;
 }

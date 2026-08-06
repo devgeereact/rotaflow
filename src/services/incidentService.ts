@@ -60,7 +60,7 @@ export async function declareIncident(input: {
     p_impact: input.impact,
     p_severity: input.severity,
     p_service: input.service,
-    p_started_at: input.startedAt ?? null,
+    p_started_at: input.startedAt ?? undefined,
   });
   if (error) throw error;
   return data;

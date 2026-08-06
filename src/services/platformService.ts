@@ -120,12 +120,35 @@ export async function countLocationsByOrg(): Promise<Map<string, number>> {
 
 /** Published rotas across every tenant. The platform-wide total. */
 export async function countPublishedRotas(): Promise<number> {
-  const { count, error } = await supabase
-    .from('rotas')
-    .select('id', { count: 'exact', head: true })
-    .not('published_at', 'is', null);
+  // Through the definer function, not a head count on `rotas`. Since 0028 a
+  // platform administrator cannot select tenant rows without a support access
+  // session, so counting directly would report zero published rotas across the
+  // entire estate whenever nobody happens to be in a support session.
+  const { data, error } = await supabase.rpc('platform_totals');
   if (error) throw error;
-  return count ?? 0;
+  return Number((data ?? [])[0]?.published_rotas ?? 0);
+}
+
+/** Every platform-wide total in one call. Counts, never rows. */
+export async function getPlatformTotals(): Promise<{
+  organisations: number;
+  activeOrgs: number;
+  profiles: number;
+  staffProfiles: number;
+  publishedRotas: number;
+  shiftsThisMonth: number;
+}> {
+  const { data, error } = await supabase.rpc('platform_totals');
+  if (error) throw error;
+  const row = (data ?? [])[0];
+  return {
+    organisations: Number(row?.organisations ?? 0),
+    activeOrgs: Number(row?.active_orgs ?? 0),
+    profiles: Number(row?.profiles ?? 0),
+    staffProfiles: Number(row?.staff_profiles ?? 0),
+    publishedRotas: Number(row?.published_rotas ?? 0),
+    shiftsThisMonth: Number(row?.shifts_month ?? 0),
+  };
 }
 
 /**
