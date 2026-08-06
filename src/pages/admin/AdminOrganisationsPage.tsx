@@ -27,15 +27,9 @@ import {
 } from '@/services/platformService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
+import { healthBreakdown } from '@/lib/tenantHealth';
 import { downloadCsv } from '@/lib/csv';
-import {
-  demoOrgFacts,
-  DEMO_ORGS_AT_RISK,
-  DEMO_ORGS_AT_RISK_HINT,
-  DEMO_ORGS_NEW_CHANGE,
-  DEMO_ORGS_TRIAL,
-  DEMO_ORGS_TRIAL_HINT,
-} from '@/lib/adminOverviewDemo';
+import { demoOrgFacts, DEMO_ORGS_NEW_CHANGE } from '@/lib/adminOverviewDemo';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, OrganisationStatus, Subscription } from '@/types';
 
@@ -133,8 +127,16 @@ export function AdminOrganisationsPage(): JSX.Element {
       archived: byStatus('archived'),
       newThisMonth: growth[0]?.created ?? 0,
       plans: [...new Set(organisations.map((o) => planOf(o)))].sort(),
+      // From `subscriptions.status` and `organisations.last_activity_at`, the
+      // same two columns the Overview's health bands read, so the two screens
+      // agree about which tenants are in trouble.
+      trialing: subscriptions.filter((sub) => sub.status === 'trialing').length,
+      atRisk:
+        healthBreakdown(organisations, subscriptions, new Date()).find(
+          (band) => band.band === 'at_risk',
+        )?.count ?? 0,
     };
-  }, [organisations, planOf]);
+  }, [organisations, planOf, subscriptions]);
 
   const visible = useMemo(() => {
     if (!organisations) return [];
@@ -378,7 +380,15 @@ export function AdminOrganisationsPage(): JSX.Element {
               value={summary.active.toLocaleString('en-GB')}
               hint={`${((summary.active / summary.total) * 100).toFixed(1)}%`}
             />
-            <StatTile label="Trial" value={DEMO_ORGS_TRIAL} hint={DEMO_ORGS_TRIAL_HINT} />
+            <StatTile
+              label="Trialing"
+              value={summary.trialing}
+              hint={
+                summary.trialing === 0
+                  ? 'No trial running'
+                  : 'Subscription not yet active'
+              }
+            />
             <StatTile
               label="Suspended"
               value={summary.suspended}
@@ -392,8 +402,8 @@ export function AdminOrganisationsPage(): JSX.Element {
             />
             <StatTile
               label="At risk"
-              value={DEMO_ORGS_AT_RISK}
-              hint={DEMO_ORGS_AT_RISK_HINT}
+              value={summary.atRisk}
+              hint="No activity in 30 days, or never"
             />
             <StatTile
               label="New this month"
