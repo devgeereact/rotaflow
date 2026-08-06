@@ -6,7 +6,7 @@ import type { PlatformAdmin, PlatformRole } from '@/types';
  *
  * ## Why grants go through RPCs rather than a table write
  *
- * `platform_admins` has a SELECT policy and no write policy at all — the same
+ * `platform_admins` has a SELECT policy and no write policy at all. The same
  * posture as `invites` (0006) and `audit_logs` (0002). Writes go through
  * `grant_platform_role` / `revoke_platform_role`, which are SECURITY DEFINER
  * and enforce two rules a client-side check cannot: only a platform owner may
@@ -15,8 +15,8 @@ import type { PlatformAdmin, PlatformRole } from '@/types';
  * the browser is not a guard.
  *
  * These functions raise rather than returning empty. That is the opposite of
- * `platformService`'s reads — where RLS filters rows and a non-admin correctly
- * sees an empty list — because a refused *write* must never look like a
+ * `platformService`'s reads, where RLS filters rows and a non-admin correctly
+ * sees an empty list, because a refused *write* must never look like a
  * successful one. Callers surface the message.
  */
 
@@ -58,7 +58,7 @@ export async function grantPlatformRole(
 /**
  * Revoke a platform role.
  *
- * Raises `23514` when the target is the last remaining platform owner — the
+ * Raises `23514` when the target is the last remaining platform owner. The
  * database's own refusal, not a duplicate of the client-side guard.
  */
 export async function revokePlatformRole(userId: string): Promise<void> {

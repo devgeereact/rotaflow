@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 
 /**
- * `/app/account/tokens` — design/ProfileSettings.png, "API Tokens".
+ * `/app/account/tokens`. Design/ProfileSettings.png, "API Tokens".
  *
  * ## Why this ships as an explanation rather than a token manager
  *
@@ -13,19 +13,19 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
  * key (public by design) and a user's session JWT. Issuing "API tokens" would
  * mean either:
  *
- * 1. handing out long-lived JWTs — a bearer credential with the user's full
+ * 1. handing out long-lived JWTs, a bearer credential with the user's full
  *    RLS scope, no expiry, no revocation list and no audit trail; or
  * 2. building a real personal-access-token system: a `api_tokens` table
  *    storing hashes, scopes, a revocation path, and a gateway that exchanges
  *    a token for a scoped database role.
  *
- * (1) is a security incident waiting to happen — a leaked token would grant
+ * (1) is a security incident waiting to happen, a leaked token would grant
  * standing access to a whole organisation's staff PII with nothing to revoke
  * it and no record of its use. (2) is a project.
  *
  * A tab that renders "You have no tokens yet" beside a "Generate token" button
  * implies (1) exists and is merely unused. It does not exist, and this page
- * says so — the tab stays in the bar because the design has it and hiding it
+ * says so. The tab stays in the bar because the design has it and hiding it
  * would only prompt the same question later.
  */
 export function TokensPage(): JSX.Element {

@@ -26,7 +26,7 @@ export interface AuthFactsSummary {
  *
  * Email confirmation, last sign-in and MFA enrolment live in `auth.users`,
  * which no client may select from. `platform_user_auth_facts` is the narrow,
- * platform-staff-only window onto exactly those columns — not a view, because
+ * platform-staff-only window onto exactly those columns, not a view, because
  * a view is one grant away from exposing the whole table.
  */
 export async function getAuthFacts(userId: string): Promise<AuthFacts | null> {

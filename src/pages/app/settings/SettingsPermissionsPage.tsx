@@ -26,13 +26,13 @@ const ROLE_TONE: Record<SystemRole, 'primary' | 'info' | 'neutral'> = {
 };
 
 /**
- * `/app/settings/permissions` — who is in the organisation, at what role, and
+ * `/app/settings/permissions`, who is in the organisation, at what role, and
  * who has been invited.
  *
  * Owner-only (see `settingsTabsForRole`): this tab is where someone can hand
  * another account the ability to spend money and change access, so it is not
- * shared with managers. The database agrees independently — `create_invite`
- * refuses an owner-role invite from a manager — which is the boundary that
+ * shared with managers. The database agrees independently, `create_invite`
+ * refuses an owner-role invite from a manager, which is the boundary that
  * actually matters; this gate is presentation.
  */
 export function SettingsPermissionsPage(): JSX.Element {
@@ -61,8 +61,8 @@ export function SettingsPermissionsPage(): JSX.Element {
         setLabels(roleLabels(org.settings));
 
         // Staff profiles carry the human name; memberships carry the role.
-        // A membership with no staff profile is normal — an owner who signed
-        // up and has not added themselves to the roster yet — so it still
+        // A membership with no staff profile is normal, an owner who signed
+        // up and has not added themselves to the roster yet, so it still
         // appears, named by its role rather than dropped from the list.
         const nameByUser = new Map<string, string>();
         for (const person of staff) {
@@ -79,7 +79,7 @@ export function SettingsPermissionsPage(): JSX.Element {
             role: memberRole as SystemRole,
           });
         }
-        // Owners first, then managers, then staff — the order someone scans in
+        // Owners first, then managers, then staff. The order someone scans in
         // when auditing who has access.
         const rank: Record<string, number> = { owner: 0, manager: 1, staff: 2 };
         rows.sort(
@@ -115,7 +115,7 @@ export function SettingsPermissionsPage(): JSX.Element {
           </p>
         ) : loadFailed ? (
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            Could not load members — this is a connection problem, not an empty
+            Could not load members. This is a connection problem, not an empty
             organisation.
           </p>
         ) : members.length === 0 ? (
@@ -165,8 +165,8 @@ export function SettingsPermissionsPage(): JSX.Element {
             </p>
             <p className="mt-1">
               Roles are set when an invitation is accepted. Changing one afterwards needs
-              a role-change audit event so the change is attributable — that event does
-              not exist yet, so the control is not offered here rather than performing an
+              a role-change audit event so the change is attributable. That event does not
+              exist yet, so the control is not offered here rather than performing an
               unrecorded privilege change.
             </p>
           </div>

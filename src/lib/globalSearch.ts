@@ -22,7 +22,7 @@ import type { MembershipRole } from '@/types';
  *
  * ## What this deliberately is, and is not
  *
- * It searches **the application** — screens, and the actions inside them — not
+ * It searches **the application**. Screens, and the actions inside them, not
  * the database. Searching staff, shifts and leave requests across every table
  * needs either a server-side full-text index or a fan-out of a dozen `ilike`
  * queries on every keystroke, against tables an org may have hundreds of
@@ -36,7 +36,7 @@ import type { MembershipRole } from '@/types';
  * lands it goes in as an extra result group underneath these, and this module
  * keeps working unchanged.
  *
- * Keep `to` in step with the route table — `navigationTargets.test.ts` asserts
+ * Keep `to` in step with the route table, `navigationTargets.test.ts` asserts
  * every entry here resolves to a real `<Route>`.
  */
 
@@ -259,7 +259,7 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
   },
 ] as const;
 
-/** Group order in the results list — most-used first, account last. */
+/** Group order in the results list. Most-used first, account last. */
 export const GROUP_ORDER: readonly SearchGroup[] = [
   'Screens',
   'Scheduling',

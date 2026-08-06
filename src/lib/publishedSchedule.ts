@@ -15,7 +15,7 @@ import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
 
 export interface ScheduleChip {
   id: string;
-  /** 'HH:mm' in the location's timezone — already converted. */
+  /** 'HH:mm' in the location's timezone. Already converted. */
   startTime: string;
   endTime: string;
   /** Shift-type name, e.g. "Morning". */
@@ -56,7 +56,7 @@ export interface ScheduleDayTotal {
   date: string;
   staff: number;
   shifts: number;
-  /** Filled slots ÷ all slots, 0–100. `null` when the day has no shifts at all. */
+  /** Filled slots ÷ all slots, 0-100. `null` when the day has no shifts at all. */
   coverage: number | null;
 }
 
@@ -91,7 +91,7 @@ function toChip(
  * there this period.
  *
  * `staff_profiles` has no location column, so a home location would be
- * invented — someone working two sites correctly appears under both.
+ * invented. Someone working two sites correctly appears under both.
  */
 export function buildScheduleGroups(input: {
   shifts: Shift[];
@@ -159,7 +159,7 @@ export function buildScheduleGroups(input: {
 /**
  * Per-day staff/shift counts and coverage.
  *
- * Coverage is filled slots ÷ all slots for the day — a real, schema-backed
+ * Coverage is filled slots ÷ all slots for the day, a real, schema-backed
  * ratio, because an unfilled slot is a row with `staff_profile_id IS NULL`.
  * There is no required-headcount column, so nothing here compares against a
  * target (see design/.loop/rota-log.md for the same decision on the builder).
@@ -188,7 +188,7 @@ export function computeScheduleTotals(
   });
 }
 
-/** Mean of the days that have any shifts at all — empty days would drag it to zero. */
+/** Mean of the days that have any shifts at all. Empty days would drag it to zero. */
 export function averageCoverage(totals: ScheduleDayTotal[]): number | null {
   const scored = totals.filter(
     (t): t is ScheduleDayTotal & { coverage: number } => t.coverage !== null,

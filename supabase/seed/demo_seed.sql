@@ -1,7 +1,7 @@
 -- =====================================================================
--- demo_seed.sql — RotaFlow showcase dataset (v2, three-month build)
+-- demo_seed.sql. RotaFlow showcase dataset (v2, three-month build)
 --
--- Builds five demo organisations with a *rolling three-month rota* — the
+-- Builds five demo organisations with a *rolling three-month rota*. The
 -- current month plus the two after it, with three weeks of completed
 -- history behind it. Every section of the app is populated, and a set of
 -- deliberate problems is planted so the demo exercises the warning,
@@ -9,7 +9,7 @@
 --
 -- RUN IT:  paste the whole file into the Supabase SQL editor and run once,
 --          or POST it to /v1/projects/<ref>/database/query. Run it as a
---          single unit — it uses session-local temp tables.
+--          single unit. It uses session-local temp tables.
 --
 -- IDEMPOTENT BY RESET: every id is derived deterministically from a key, so
 -- re-running DELETES the demo organisations (cascading to all their rows)
@@ -18,8 +18,8 @@
 -- way to refresh the demo before a client call.
 --
 -- SAFETY: it only ever touches rows whose ids it derives itself, plus the
--- eight demo auth users. Organisations created through the app — including
--- "City Hospital Care Group" and "GAKINZ" — are never read or written.
+-- eight demo auth users. Organisations created through the app, including
+-- "City Hospital Care Group" and "GAKINZ". Are never read or written.
 --
 -- Teardown: supabase/seed/demo_teardown.sql
 -- Docs:     supabase/seed/README.md
@@ -62,7 +62,7 @@ declare
 
   -- Plus-addressed on the owner's real mailbox: deliverable (so password
   -- resets and magic links actually arrive) and incapable of bouncing,
-  -- which a fake domain would do — Supabase already flagged bounce rate.
+  -- which a fake domain would do. Supabase already flagged bounce rate.
   u_keys   text[] := array['owner','manager1','manager2','staff1','staff2','staff3','staff4','worker'];
   u_emails text[] := array[
     'gakinz101+demo.owner@gmail.com','gakinz101+demo.manager1@gmail.com',
@@ -90,7 +90,7 @@ begin
   select id into v_admin from auth.users where lower(email) = c_admin_email;
   if v_admin is null then
     raise exception
-      'No auth user for % — sign up in the app first, then re-run this seed.', c_admin_email;
+      'No auth user for %. Sign up in the app first, then re-run this seed.', c_admin_email;
   end if;
 
   -- Super Admin. This is the only write the seed makes outside its own rows.
@@ -153,7 +153,7 @@ $accounts$;
 
 -- =====================================================================
 -- 1. Catalogue temp tables. Everything below is built set-based off
---    these — seventeen weeks across five orgs is far too much data for
+--    these. Seventeen weeks across five orgs is far too much data for
 --    row-at-a-time PL/pgSQL loops to finish inside an API request.
 -- =====================================================================
 drop table if exists d_user, d_admin, d_org, d_week, d_loc, d_dep, d_sty, d_pat, d_stf, d_worked;
@@ -261,7 +261,7 @@ from d_org o cross join generate_series(1, 5) k;
 
 -- ---- shift types ----------------------------------------------------
 -- Six per org. `colour` is restricted to the eight swatches in
--- src/lib/shiftPalette.ts — anything else falls through
+-- src/lib/shiftPalette.ts. Anything else falls through
 -- paletteTintForColour() to the grey default, which is exactly why the
 -- v1 seed rendered every chip colourless.
 create temp table d_sty as
@@ -275,7 +275,7 @@ select o.i as org_i, k,
          array['Day Shift','Back Shift','Night Shift','Weekend Cover','Driver Trunk','Goods-In'],
          array['Day Guard','Night Guard','Control Room AM','Control Room PM','Event Cover','Mobile Patrol']
        ])[o.i][k] as name,
-       -- Sky, Violet, Indigo, Amber, Teal, Moss — all palette hexes.
+       -- Sky, Violet, Indigo, Amber, Teal, Moss. All palette hexes.
        (array['#56AACD','#C48FD6','#6CA0EB','#C69A45','#4FB39A','#86AC6A'])[k] as colour,
        (array[
          array['07:00','14:00','21:45','17:00','08:00','09:00'],
@@ -479,19 +479,19 @@ join d_user u on (o.i = 2 and u.k = 'manager1') or (o.i >= 3 and u.j <= 5)
 on conflict (org_id, user_id) do nothing;
 
 -- =====================================================================
--- 3. Rotas — one per site per week, for all seventeen weeks.
+-- 3. Rotas, one per site per week, for all seventeen weeks.
 --
 -- This is load-bearing, not tidiness: RotaBuilderPage calls
 -- getOrCreateRotaForPeriod(org, location, Monday..Sunday) and then reads
 -- shifts *by rota id*. A week with no rota row for a site gets a fresh
--- empty draft on open, and the seeded shifts — attached to some other
--- rota — never appear. v1 seeded site 1 only, which is why four of the
+-- empty draft on open, and the seeded shifts. Attached to some other
+-- rota, never appear. v1 seeded site 1 only, which is why four of the
 -- five sites looked blank.
 -- =====================================================================
 insert into public.rotas (id, org_id, location_id, name, period_start, period_end, status, published_at)
 select pg_temp.demo_uuid(format('v2:rota:%s:%s:%s', l.org_i, l.j, wk.w)),
        l.org_id, l.id,
-       format('%s — w/c %s', l.name, to_char(wk.ws, 'DD Mon YYYY')),
+       format('%s. W/c %s', l.name, to_char(wk.ws, 'DD Mon YYYY')),
        wk.ws, wk.we,
        -- The last two weeks stay draft: an in-progress future is what the
        -- publish flow needs to demonstrate against.
@@ -501,7 +501,7 @@ select pg_temp.demo_uuid(format('v2:rota:%s:%s:%s', l.org_i, l.j, wk.w)),
 from d_loc l cross join d_week wk;
 
 -- =====================================================================
--- 4. Shifts — the rolling three-month rota.
+-- 4. Shifts. The rolling three-month rota.
 -- =====================================================================
 insert into public.shifts (
   id, org_id, rota_id, location_id, department_id, staff_profile_id,
@@ -533,7 +533,7 @@ join d_pat p on p.n_pat = s.n_pat and p.pattern = s.pattern
 cross join d_week wk
 join d_sty ty
   on ty.org_i = s.org_i
- -- Pattern 6 alternates earlies and lates week by week — a real rolling
+ -- Pattern 6 alternates earlies and lates week by week, a real rolling
  -- rota, and it gives the pattern filter something to actually find.
  and ty.k = case when s.pattern = 6 and wk.w % 2 = 1 then 2 else p.sty_k end;
 
@@ -547,7 +547,7 @@ join d_sty ty
 update public.shifts s
    set staff_profile_id = null,
        status = 'open',
-       notes = 'Open shift — needs cover.'
+       notes = 'Open shift. Needs cover.'
 from d_stf st, d_week wk
 where s.staff_profile_id = st.id
   and wk.w in (5, 7, 9, 12, 14)
@@ -571,26 +571,26 @@ select
   ((wk.ws + 1)::timestamp + time '12:00') at time zone 'Europe/London',
   ((wk.ws + 1)::timestamp + time '20:00') at time zone 'Europe/London',
   30, 'assigned', ty.colour,
-  'Added by hand — overlaps an existing shift.'
+  'Added by hand. Overlaps an existing shift.'
 from d_stf s
 join d_sty ty on ty.org_i = s.org_i and ty.k = 2
 join d_week wk on wk.w = 4
 where s.pattern = 1 and s.loc_j = 1;
 
 -- (c) LEAVE CLASH: approved leave that still has shifts rostered inside it,
---     two weeks out — a future error rather than a historical one.
+--     two weeks out, a future error rather than a historical one.
 insert into public.leave_requests (id, org_id, staff_profile_id, type, start_date, end_date,
                                    status, reason, reviewed_by, reviewed_at)
 select pg_temp.demo_uuid(format('v2:lveclash:%s', s.org_i)), s.org_id, s.id,
        'holiday',
        (select ws from d_week where w = 5), (select ws + 4 from d_week where w = 5),
-       'approved', 'Approved before the rota was built — shifts still stand.',
+       'approved', 'Approved before the rota was built. Shifts still stand.',
        (select id from d_admin), now() - interval '6 days'
 from d_stf s
 where s.pattern = 2 and s.loc_j = 1;
 
 -- (d) REST BREACH: a late finishing 22:00 followed by an early starting
---     07:00 — nine hours' rest, under the eleven the WTR expects.
+--     07:00. Nine hours' rest, under the eleven the WTR expects.
 insert into public.shifts (
   id, org_id, rota_id, location_id, department_id, staff_profile_id,
   shift_type_id, starts_at, ends_at, break_minutes, status, colour, notes)
@@ -638,7 +638,7 @@ insert into public.documents (id, org_id, staff_profile_id, type, name, file_url
 select pg_temp.demo_uuid(format('v2:doc:%s:%s:%s', s.org_i, s.n, t.k)),
        s.org_id, s.id,
        (array['contract','dbs','right_to_work','training','visa'])[t.k],
-       format('%s — %s %s',
+       format('%s, %s %s',
               (array['Employment contract','DBS certificate','Right to work check',
                      'Mandatory training record','Visa / share code'])[t.k],
               s.first_name, s.last_name),
@@ -670,7 +670,7 @@ select pg_temp.demo_uuid(format('v2:lve:%s:%s', s.org_i, s.n)), s.org_id, s.id,
        (select ws from d_week where w = ((s.n * 3) % 17)) + (s.n % 4),
        (select ws from d_week where w = ((s.n * 3) % 17)) + (s.n % 4) + ((s.n % 5) + 1),
        (array['approved','pending','approved','pending','rejected'])[((s.n - 1) % 5) + 1],
-       (array['Family holiday booked in the spring','Flu — GP note supplied',
+       (array['Family holiday booked in the spring','Flu. GP note supplied',
               'Half-term break with the kids','Moving house','Long weekend away',
               'Wedding in the family'])[((s.n - 1) % 6) + 1],
        case when (array['approved','pending','approved','pending','rejected'])[((s.n - 1) % 5) + 1] <> 'pending'
@@ -724,7 +724,7 @@ select pg_temp.demo_uuid(format('v2:emc:%s:%s', s.org_i, s.n)), s.org_id, s.id,
        format('+4477115%s%s', s.org_i, lpad((s.n * 13)::text, 5, '0')),
        case when s.n % 2 = 0 then format('+4477226%s%s', s.org_i, lpad((s.n * 17)::text, 5, '0')) end,
        case when s.n % 9 = 3 then 'Carries an inhaler (asthma).'
-            when s.n % 9 = 5 then 'Nut allergy — EpiPen in locker.' end
+            when s.n % 9 = 5 then 'Nut allergy. EpiPen in locker.' end
 from d_stf s;
 
 -- ---- announcements: one a week across the history and this week -------
@@ -737,20 +737,20 @@ select pg_temp.demo_uuid(format('v2:ann:%s:%s', o.i, wk.w)), o.id, (select id fr
        case when (array['org','location','department','org','org','org'])[(wk.w % 6) + 1] = 'department'
             then (select d.id from d_dep d where d.org_i = o.i and d.k = (wk.w % 5) + 1) end,
        (array[
-         'Rota published — please check your shifts',
+         'Rota published. Please check your shifts',
          'Fire drill this Thursday at 14:00',
          'New starters joining the team this month',
          'Reminder: submit your timesheets by Sunday',
-         'URGENT: severe weather — site cover plan',
+         'URGENT: severe weather. Site cover plan',
          'Autumn training dates are open for booking',
          'Payroll cut-off moves forward this month'])[(wk.w % 7) + 1]
          || ' (w/c ' || to_char(wk.ws, 'DD Mon') || ')',
        (array[
          'The rota for this week is live in RotaFlow. Please review your shifts and raise any swap requests before Friday.',
          'A full evacuation drill takes place on Thursday at 14:00. Assembly point is the main car park. Please make sure visitors are escorted out.',
-         'Please join us in welcoming our newest team members. Their induction runs across their first two shifts — do say hello.',
+         'Please join us in welcoming our newest team members. Their induction runs across their first two shifts. Do say hello.',
          'Timesheets close at 23:59 on Sunday. Anything submitted after that lands in the following pay run.',
-         'Amber weather warning in force. If you cannot travel safely, call the on-call number before your shift starts — do not travel and do not no-show.',
+         'Amber weather warning in force. If you cannot travel safely, call the on-call number before your shift starts. Do not travel and do not no-show.',
          'Autumn mandatory training dates are now bookable. Places are limited and expiring certificates are prioritised.',
          'Payroll cut-off is two working days earlier this month. Approve and submit timesheets accordingly.'])[(wk.w % 7) + 1],
        (wk.w % 7) = 4,
@@ -787,7 +787,7 @@ select pg_temp.demo_uuid(format('v2:ntfw:%s', g)), s.org_id,
        (array['Tap to see the details and clock in when you arrive.',
               'A colleague has asked to swap a shift with you.',
               'Your shifts for the next four weeks are now visible.',
-              'Amber warning in force — call in before travelling if unsafe.'])[g],
+              'Amber warning in force. Call in before travelling if unsafe.'])[g],
        'push', null
 from d_stf s cross join generate_series(1, 4) g
 where s.user_key = 'worker';
@@ -816,7 +816,7 @@ select pg_temp.demo_uuid(format('v2:aud:%s:%s', o.i, j)), o.id, (select id from 
 from d_org o cross join generate_series(1, 8) j;
 
 -- =====================================================================
--- 7. Shift swaps — needs shifts, so it runs after them.
+-- 7. Shift swaps. Needs shifts, so it runs after them.
 -- =====================================================================
 insert into public.shift_swaps (id, org_id, shift_id, requested_by, target_staff_profile_id,
                                 status, note, reviewed_by, reviewed_at)
@@ -905,7 +905,7 @@ update public.clock_events c
   from d_worked w
  where c.shift_id = w.id and w.recency in (5, 6);
 
--- (d) CLOCKED IN RIGHT NOW — whoever is genuinely mid-shift.
+-- (d) CLOCKED IN RIGHT NOW. Whoever is genuinely mid-shift.
 insert into public.clock_events (id, org_id, staff_profile_id, shift_id, type, event_at,
                                  latitude, longitude, accuracy, method, location_name, synced)
 select pg_temp.demo_uuid('v2:clk:live:' || sh.id::text), sh.org_id, sh.staff_profile_id, sh.id, 'in',

@@ -1,12 +1,12 @@
 /**
- * Maps Supabase rows onto the Announcements view models. Pure functions — no
- * network, no React — so `/app/announcements` and the design-loop preview
+ * Maps Supabase rows onto the Announcements view models. Pure functions, no
+ * network, no React, so `/app/announcements` and the design-loop preview
  * render exactly the same component tree.
  *
  * The schema is narrower than the screen: `announcements` has no status,
  * category, pin, attachment or read-receipt column (see `docs/SCHEMA.md`).
  * Everything below is derived from what the row actually carries, and the
- * things that cannot be derived are reported as absent rather than guessed —
+ * things that cannot be derived are reported as absent rather than guessed,
  * `delivery` is `null`, `attachments` is empty, `pinned` is `false`.
  */
 
@@ -48,7 +48,7 @@ const CATEGORY_KEYWORDS: [AnnouncementCategory, RegExp][] = [
 ];
 
 /**
- * Picks the tinted glyph beside a title. Presentational only — nothing depends
+ * Picks the tinted glyph beside a title. Presentational only. Nothing depends
  * on getting it right, and `general` (the megaphone) is a safe default, so
  * keyword matching is honest here in a way it would not be for, say, routing.
  */
@@ -61,7 +61,7 @@ export function categorise(row: Announcement): AnnouncementCategory {
   return 'general';
 }
 
-/** "22 May 2025, 09:00" — the reference's stamp format. */
+/** "22 May 2025, 09:00". The reference's stamp format. */
 function stamp(iso: string): string {
   return format(new Date(iso), 'd MMM yyyy, HH:mm');
 }
@@ -123,7 +123,7 @@ export function toAnnouncementRow(
     title: row.title,
     excerpt: firstLine,
     category: categorise(row),
-    // No pin column in `announcements` — nothing can be pinned yet.
+    // No pin column in `announcements`. Nothing can be pinned yet.
     pinned: false,
     ...audienceFor(row, locations, departments),
     status,

@@ -25,7 +25,7 @@ const CONTROL =
   'dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark';
 
 /**
- * Period length on the left, grouping and display options on the right — the
+ * Period length on the left, grouping and display options on the right. The
  * row sitting between the summary tiles and the grid
  * (design/Schedule-dashboard.png).
  */

@@ -26,7 +26,7 @@ describe('sessionStatus', () => {
     expect(sessionStatus({ expiresAt: iso(-1), revokedAt: null }, NOW)).toBe('expired');
   });
 
-  it('ranks revoked above expired — a revoked session never reads as merely lapsed', () => {
+  it('ranks revoked above expired, a revoked session never reads as merely lapsed', () => {
     // Both conditions true at once: revocation is the more specific fact and
     // must win, or an early revocation disappears from the record.
     expect(sessionStatus({ expiresAt: iso(-60_000), revokedAt: iso(-90_000) }, NOW)).toBe(
@@ -66,7 +66,7 @@ describe('formatRemaining', () => {
   });
 
   it('rounds down, so remaining access is never overstated', () => {
-    // 90 seconds is one minute and a half — reporting "2 minutes" would give a
+    // 90 seconds is one minute and a half. Reporting "2 minutes" would give a
     // person longer than they have.
     expect(formatRemaining(90_000)).toBe('1 minute');
     expect(formatRemaining(119_000)).toBe('1 minute');

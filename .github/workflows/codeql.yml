@@ -4,7 +4,7 @@ name: CodeQL
 # RotaFlow is multi-tenant and holds staff personal data (names, contact details,
 # emergency contacts, DBS/RTW documents). Tenant isolation rests on Supabase RLS,
 # but the client still handles that data, and CodeQL catches the classes of bug
-# that review misses — injection into query builders, unsafe DOM sinks, tainted
+# that review misses. Injection into query builders, unsafe DOM sinks, tainted
 # redirects (we shipped a redirect pointed at a third-party domain once already).
 #
 # This does NOT replace RLS as the enforcement boundary. It is a second net.
@@ -14,7 +14,7 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    # Weekly, so newly published queries reach an unchanged codebase too — most
+    # Weekly, so newly published queries reach an unchanged codebase too. Most
     # findings arrive from updated rules, not from new commits.
     - cron: '17 4 * * 1'
 

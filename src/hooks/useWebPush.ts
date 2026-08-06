@@ -21,7 +21,7 @@ export interface UseWebPush {
  *
  * Returns `Uint8Array<ArrayBuffer>`, not a bare `Uint8Array`: since TS 5.7 the typed
  * arrays are generic over their buffer, and `applicationServerKey` requires a
- * `BufferSource` backed by `ArrayBuffer` — the default `ArrayBufferLike` also admits
+ * `BufferSource` backed by `ArrayBuffer`. The default `ArrayBufferLike` also admits
  * `SharedArrayBuffer` and is rejected.
  */
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
@@ -35,10 +35,10 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
  * Subscribes this device to Web Push, storing the subscription in
  * `push_subscriptions` for the `send-notification` Edge Function to read.
  *
- * Requires `VITE_VAPID_PUBLIC_KEY` and a registered service worker — both are
+ * Requires `VITE_VAPID_PUBLIC_KEY` and a registered service worker, both are
  * already in place (vite-plugin-pwa registers one on every build). The
  * *sending* side (the Edge Function, VAPID-signed push) is written but not
- * deployed in this environment — see supabase/functions/send-notification —
+ * deployed in this environment. See supabase/functions/send-notification,
  * so a real push cannot be verified end-to-end from here.
  */
 export function useWebPush(): UseWebPush {

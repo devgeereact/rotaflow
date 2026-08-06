@@ -66,7 +66,7 @@ export interface AvailabilityViewProps {
 }
 
 /**
- * `/app/availability` — the team availability matrix
+ * `/app/availability`. The team availability matrix
  * (design/Availability.png).
  *
  * Presentational only: every figure arrives already computed, so the live page

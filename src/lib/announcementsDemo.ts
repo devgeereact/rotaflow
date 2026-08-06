@@ -4,13 +4,13 @@ import type { AnnouncementPreview, AnnouncementRow } from '@/lib/announcements';
  * Design-loop fixtures reproducing design/Announcements-Dashboard.png exactly.
  *
  * These exist so the screen can be screenshotted without a Supabase session or
- * a seeded organisation — `AnnouncementsPreviewPage` renders the same
+ * a seeded organisation, `AnnouncementsPreviewPage` renders the same
  * components the live page does. Nothing here is used in production.
  */
 export const DEMO_ANNOUNCEMENTS: AnnouncementRow[] = [
   {
     id: 'bank-holiday',
-    title: 'Bank Holiday Coverage – 26 May',
+    title: 'Bank Holiday Coverage-26 May',
     excerpt: 'Please note that we require all available staff to check their shifts…',
     category: 'general',
     pinned: true,
@@ -25,7 +25,7 @@ export const DEMO_ANNOUNCEMENTS: AnnouncementRow[] = [
   },
   {
     id: 'mandatory-training',
-    title: 'Mandatory Training – Update',
+    title: 'Mandatory Training. Update',
     excerpt: 'Please complete your mandatory training by 30 May to stay compliant…',
     category: 'training',
     pinned: false,
@@ -55,7 +55,7 @@ export const DEMO_ANNOUNCEMENTS: AnnouncementRow[] = [
   },
   {
     id: 'lone-working',
-    title: 'Policy Update – Lone Working',
+    title: 'Policy Update. Lone Working',
     excerpt: 'Please review the updated lone working policy before your next shift…',
     category: 'policy',
     pinned: false,
@@ -86,7 +86,7 @@ export const DEMO_ANNOUNCEMENTS: AnnouncementRow[] = [
   {
     id: 'new-rota',
     title: 'New Rota Published',
-    excerpt: 'The rota for 26 May – 8 June is now available to view in the app…',
+    excerpt: 'The rota for 26 May-8 June is now available to view in the app…',
     category: 'rota',
     pinned: false,
     audience: 'All Staff',
@@ -132,7 +132,7 @@ export const DEMO_ANNOUNCEMENTS: AnnouncementRow[] = [
 
 export const DEMO_ANNOUNCEMENT_PREVIEW: AnnouncementPreview = {
   id: 'bank-holiday',
-  title: 'Bank Holiday Coverage – 26 May',
+  title: 'Bank Holiday Coverage-26 May',
   category: 'general',
   status: 'sent',
   sentLabel: 'Sent on 22 May 2025, 09:00',
@@ -154,5 +154,5 @@ export const DEMO_ANNOUNCEMENT_PREVIEW: AnnouncementPreview = {
   ],
 };
 
-/** Total announcements in the fixture org — the reference's "of 23". */
+/** Total announcements in the fixture org. The reference's "of 23". */
 export const DEMO_ANNOUNCEMENT_TOTAL = 23;

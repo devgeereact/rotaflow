@@ -3,7 +3,7 @@ import type { Notification } from '@/types';
 
 /**
  * Read and mark-read only. There is no create/send function here on purpose:
- * `notifications` has no client insert policy (0002_rotaflow.sql) — creating
+ * `notifications` has no client insert policy (0002_rotaflow.sql). Creating
  * one is supabase/functions/send-notification's job, invoked via
  * useInngestDispatch, never a direct table write from this app.
  */

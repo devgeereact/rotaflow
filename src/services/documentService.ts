@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { StaffDocument, StaffDocumentInsert } from '@/types';
 
 /**
- * `org_id` filters are defense-in-depth, not the real enforcement — RLS
+ * `org_id` filters are defense-in-depth, not the real enforcement. RLS
  * (0002_rotaflow.sql) already scopes every row by its own `org_id`
  * regardless of what a client sends. Adding them here costs nothing and
  * matches the pattern of never trusting a single layer.
@@ -26,7 +26,7 @@ export async function listDocuments(
  * `beforeDate` ('YYYY-MM-DD').
  *
  * Documents with no expiry (a contract, typically) are excluded by the
- * `expires_at` filter itself — `null` never satisfies `lte`, which is the
+ * `expires_at` filter itself, `null` never satisfies `lte`, which is the
  * behaviour wanted here: a document that cannot lapse cannot be a warning.
  */
 export async function listExpiringDocuments(

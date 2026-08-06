@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import type { AvailabilityTone } from '@/lib/staffDirectory';
 
 interface AvailabilityMeterProps {
-  /** One tone per day, Monday-first — the reference shows six. */
+  /** One tone per day, Monday-first. The reference shows six. */
   days: AvailabilityTone[];
   percent: number;
 }
@@ -23,7 +23,7 @@ const LINE: Record<AvailabilityTone, string> = {
 };
 
 /**
- * Six connected dots plus a percentage — the Availability column in
+ * Six connected dots plus a percentage. The Availability column in
  * design/staff.png. Each dot carries its own state, so the percentage is
  * rendered as text rather than being the only signal (docs/DESIGN.md §5).
  */

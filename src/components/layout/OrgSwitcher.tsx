@@ -1,7 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 
-/** Org picker in the header — hidden when the user only belongs to one org. */
+/** Org picker in the header. Hidden when the user only belongs to one org. */
 export function OrgSwitcher(): JSX.Element | null {
   const { orgId, memberships, switchOrg } = useOrg();
 

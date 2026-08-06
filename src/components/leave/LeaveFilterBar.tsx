@@ -17,7 +17,7 @@ export interface LeaveFilterSelect {
 }
 
 interface LeaveFilterBarProps {
-  /** Pre-formatted period, e.g. "26 May – 1 June 2025". */
+  /** Pre-formatted period, e.g. "26 May-1 June 2025". */
   periodLabel: string;
   onPeriodClick: () => void;
   selects: LeaveFilterSelect[];

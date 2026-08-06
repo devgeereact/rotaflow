@@ -71,7 +71,7 @@ function hoursLabel(minutes: number): string {
   return rest === 0 ? `${whole}h` : `${whole}h ${rest}m`;
 }
 
-/** "2 hours ago" / "3d ago" — announcements show relative age, as in the reference. */
+/** "2 hours ago" / "3d ago". Announcements show relative age, as in the reference. */
 function timeAgo(iso: string): string {
   const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
   if (minutes < 60) return `${Math.max(minutes, 1)} minutes ago`;
@@ -82,7 +82,7 @@ function timeAgo(iso: string): string {
 }
 
 /**
- * `/app/schedule` — the published rota, for everyone.
+ * `/app/schedule`. The published rota, for everyone.
  *
  * Shows only shifts on a *published* rota. Drafts are a manager's working copy;
  * surfacing them here would tell staff they are working a shift that is still
@@ -221,7 +221,7 @@ export function SchedulePage(): JSX.Element {
     showError,
   ]);
 
-  // Rail context — only the manager view renders it, so it is not fetched for
+  // Rail context, only the manager view renders it, so it is not fetched for
   // someone looking at their own shifts on a phone.
   useEffect(() => {
     if (!orgId || personalOnly || staff.length === 0) return;
@@ -295,8 +295,8 @@ export function SchedulePage(): JSX.Element {
 
   /**
    * Hours scheduled beyond a person's contracted `weekly_hours`. Only the week
-   * view can answer this — over a fortnight or a month "weekly hours" is not
-   * the right comparison, so the tile reads "—" rather than a wrong number.
+   * view can answer this. Over a fortnight or a month "weekly hours" is not
+   * the right comparison, so the tile reads "-" rather than a wrong number.
    */
   const overtime = useMemo<string | null>(() => {
     if (view !== 'week') return null;
@@ -361,7 +361,7 @@ export function SchedulePage(): JSX.Element {
       locationName:
         locations.find((l) => l.id === shift.location_id)?.name ?? 'No location',
       dateLabel: format(start, 'EEE, d MMM yyyy'),
-      timeLabel: `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')} (${hours}h)`,
+      timeLabel: `${format(start, 'HH:mm')}-${format(end, 'HH:mm')} (${hours}h)`,
       published: true,
       slots: group.length,
       assigned: assigned.map((person) => ({
@@ -411,7 +411,7 @@ export function SchedulePage(): JSX.Element {
         .map((rota) => ({
           id: rota.id,
           // `rotas` has no published_by column, so this names the rota, not a
-          // person — inventing an author would be worse than omitting one.
+          // person. Inventing an author would be worse than omitting one.
           label: `${rota.name} published`,
           timeLabel: format(new Date(rota.published_at), 'd MMM yyyy, HH:mm'),
         })),
@@ -467,8 +467,8 @@ export function SchedulePage(): JSX.Element {
     const scope = personalOnly ? 'my-shifts' : 'schedule';
     downloadIcs(shifts, `rotaflow-${scope}-${period.dates[0] ?? anchor}`, {
       calendarName: personalOnly
-        ? 'RotaFlow — my shifts'
-        : `RotaFlow — ${orgName ?? 'schedule'}`,
+        ? 'RotaFlow. My shifts'
+        : `RotaFlow, ${orgName ?? 'schedule'}`,
       shiftTypes,
     });
   }, [shifts, personalOnly, period.dates, anchor, orgName, shiftTypes, showError]);
@@ -477,8 +477,8 @@ export function SchedulePage(): JSX.Element {
     return (
       <Card>
         <p className="mb-4 text-content-muted dark:text-content-muted-dark">
-          Could not load the schedule. This is a connection problem, not an empty rota —
-          nothing has been lost.
+          Could not load the schedule. This is a connection problem, not an empty rota.
+          Nothing has been lost.
         </p>
         <Button size="sm" onClick={() => setReloadKey((k) => k + 1)}>
           Retry
@@ -490,7 +490,7 @@ export function SchedulePage(): JSX.Element {
   const activeFilterCount =
     (shiftTypeFilter ? 1 : 0) + (departmentFilter ? 1 : 0) + (openOnly ? 1 : 0);
 
-  /** Shared by the grid and the agenda branch — declared once. */
+  /** Shared by the grid and the agenda branch. Declared once. */
   const dialogs = (
     <>
       <Modal

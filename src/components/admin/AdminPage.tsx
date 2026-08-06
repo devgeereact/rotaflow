@@ -15,8 +15,8 @@ import { StatTile } from '@/components/ui/StatTile';
  * `components/ui` rather than reimplementing them. The admin area had grown its
  * own private loading, empty and metric states, which is how it ended up with
  * no skeletons, no pagination and a heading that bypassed `PageHeader` while
- * the tenant app had all three. The frame stays — the console genuinely has a
- * different page shape — but nothing inside it is admin-specific any more.
+ * the tenant app had all three. The frame stays. The console genuinely has a
+ * different page shape, but nothing inside it is admin-specific any more.
  */
 export function AdminPage({
   title,
@@ -30,7 +30,7 @@ export function AdminPage({
   /** Optional on a detail screen, which carries `meta` instead. */
   description?: string;
   action?: ReactNode;
-  /** Identity mark for a detail screen — see {@link PageHeader}. */
+  /** Identity mark for a detail screen. See {@link PageHeader}. */
   avatar?: ReactNode;
   /** Identifier, plan, status and dates for a detail screen. */
   meta?: ReactNode;
@@ -78,7 +78,7 @@ export function AdminError({ onRetry }: { onRetry: () => void }): JSX.Element {
   return (
     <Card>
       <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
-        Could not load this data. That is usually a connection problem — if it persists,
+        Could not load this data. That is usually a connection problem, if it persists,
         check that your account still holds platform administrator access.
       </p>
       <Button variant="secondary" onClick={onRetry}>
@@ -100,7 +100,7 @@ export function AdminEmpty({ message }: { message: string }): JSX.Element {
  * Metric tile.
  *
  * A thin alias over the shared `StatTile`, kept as a named export because every
- * admin screen already imports it — and because the console's tiles are
+ * admin screen already imports it, and because the console's tiles are
  * deliberately icon-less where the tenant app's carry one. Cross-tenant totals
  * do not need decoration.
  */

@@ -6,7 +6,7 @@ import type {
 } from '@/types';
 
 /**
- * Fetch an org's SMTP configuration for display — host/username/from-address,
+ * Fetch an org's SMTP configuration for display. Host/username/from-address,
  * never the password. Backed by `org_smtp_settings_safe`
  * (0010_org_smtp_settings.sql), which omits `smtp_pass` at the column level.
  */
@@ -27,7 +27,7 @@ export async function getOrgSmtpSettings(
  * Every organisation's SMTP configuration, for the platform console.
  *
  * Reads the same `org_smtp_settings_safe` view as the per-org call, so the
- * password is omitted at the column level here too — a platform administrator
+ * password is omitted at the column level here too, a platform administrator
  * cannot read a tenant's SMTP password by widening the query, because the grant
  * that withholds it is not a row filter.
  *
@@ -49,7 +49,7 @@ export async function listAllSmtpSettings(): Promise<OrgSmtpSettingsSafe[]> {
  * Save (create or replace) an org's SMTP credentials. Owner-only, enforced by
  * RLS on the base table. Deliberately does not `.select()` the result:
  * `smtp_pass` is excluded from the column-level SELECT grant entirely (RLS
- * itself does permit the owner to SELECT the row — see 0010's header — but
+ * itself does permit the owner to SELECT the row. See 0010's header, but
  * the grant is what actually keeps the password from coming back), so
  * re-fetch via `getOrgSmtpSettings` (the safe view) if the caller needs
  * confirmation.
@@ -62,12 +62,12 @@ export async function saveOrgSmtpSettings(input: OrgSmtpSettingsInsert): Promise
 }
 
 /**
- * Update everything except the password — for the common case of editing
+ * Update everything except the password, for the common case of editing
  * host/username/from-address without re-entering a credential the client can
- * never see again (it's never read back — see `getOrgSmtpSettings`).
+ * never see again (it's never read back. See `getOrgSmtpSettings`).
  *
  * Always clears `verified_at`: any connection-affecting edit invalidates the
- * prior "known to work" claim, not just a password change — only test-smtp
+ * prior "known to work" claim, not just a password change, only test-smtp
  * gets to set it again.
  */
 export async function updateOrgSmtpFields(
@@ -81,7 +81,7 @@ export async function updateOrgSmtpFields(
   if (error) throw error;
 }
 
-/** Remove an org's SMTP configuration — falls back to the global sender. */
+/** Remove an org's SMTP configuration. Falls back to the global sender. */
 export async function deleteOrgSmtpSettings(orgId: string): Promise<void> {
   const { error } = await supabase.from('org_smtp_settings').delete().eq('org_id', orgId);
   if (error) throw error;
@@ -96,7 +96,7 @@ export interface TestSmtpResult {
 /**
  * Send a real test email through the org's saved SMTP settings
  * (supabase/functions/test-smtp). A send failure is reported as
- * `{ ok: false, error }`, not a thrown error — that's a legitimate outcome
+ * `{ ok: false, error }`, not a thrown error. That's a legitimate outcome
  * the caller should show inline, not treat as unexpected.
  */
 export async function testOrgSmtpSettings(orgId: string): Promise<TestSmtpResult> {

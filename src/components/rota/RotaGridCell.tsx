@@ -18,7 +18,7 @@ interface RotaGridCellProps {
   selectedShiftId: string | null;
   onAddShift: () => void;
   onSelectShift: (shift: Shift) => void;
-  /** Omitted where the viewer cannot edit — that is what hides the chip's ×. */
+  /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
   onDeleteShift?: (shift: Shift) => void;
 }
 
@@ -49,7 +49,7 @@ export function RotaGridCell({
   );
 
   // An empty cell shows a muted en-dash rather than blank space, matching
-  // design/Rota-Builder.png — it reads as "no shift" instead of "not loaded".
+  // design/Rota-Builder.png. It reads as "no shift" instead of "not loaded".
   if (isEmpty) {
     return (
       <button
@@ -62,7 +62,7 @@ export function RotaGridCell({
           'flex w-full items-center justify-center text-sm text-content-muted/50 dark:text-content-muted-dark/50',
         )}
       >
-        <span aria-hidden="true">–</span>
+        <span aria-hidden="true">, </span>
       </button>
     );
   }

@@ -85,11 +85,11 @@ async function listDocumentsForStaff(staffProfileId: string): Promise<StaffDocum
 /**
  * Everything RotaFlow holds about one staff member, for a GDPR
  * subject-access request. Full history, not scoped to any reporting
- * period — this is "what do you have on me", not a report.
+ * period. This is "what do you have on me", not a report.
  *
  * Scope note: this is the person's org-scoped employment record. It does
  * not include their RotaFlow account/login (profiles/auth.users), which can
- * span multiple organisations — a full-account export is a separate,
+ * span multiple organisations, a full-account export is a separate,
  * platform-level request, not something one org owner can produce alone.
  */
 export async function exportStaffData(staffProfileId: string): Promise<StaffDataExport> {
@@ -129,7 +129,7 @@ export async function exportStaffData(staffProfileId: string): Promise<StaffData
 /**
  * Anonymize a staff member's PII within this organisation
  * (0011_gdpr_anonymize.sql). Owner-only, enforced inside the SECURITY
- * DEFINER function itself — not by this client call, and not by whatever
+ * DEFINER function itself, not by this client call, and not by whatever
  * gates the button that triggers it.
  */
 export async function anonymizeStaffMember(

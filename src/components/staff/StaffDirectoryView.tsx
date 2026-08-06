@@ -41,7 +41,7 @@ interface StaffDirectoryViewProps {
 
 /**
  * The Staff Directory screen (design/staff.png): summary tiles, filters, the
- * roster table and the selected person's summary panel. Presentational — the
+ * roster table and the selected person's summary panel. Presentational. The
  * caller owns filtering, sorting and paging so this renders identically from
  * Supabase data and from the design-loop fixtures.
  */

@@ -28,7 +28,7 @@ interface PermissionDeniedProps {
  * the dashboard with no explanation concludes the link is broken and asks
  * someone; told plainly that reports are for owners and managers, they do not.
  * The same applies to a manager who has genuinely lost access after a role
- * change — a redirect makes that look like a bug rather than a permission
+ * change, a redirect makes that look like a bug rather than a permission
  * change somebody made deliberately.
  *
  * So it names the area, states the role actually held, states what the area
@@ -60,7 +60,7 @@ export function PermissionDenied({ area, allowed }: PermissionDeniedProps): JSX.
         You don&rsquo;t have access to {area}
       </h1>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-        Your account is signed in and nothing is wrong — this part of RotaFlow is limited
+        Your account is signed in and nothing is wrong. This part of RotaFlow is limited
         to certain roles in your organisation.
       </p>
 

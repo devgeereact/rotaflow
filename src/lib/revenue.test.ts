@@ -50,7 +50,7 @@ describe('monthlyRecurringPence', () => {
     expect(monthlyRecurringPence([sub(), sub({ plan: 'starter' })], PRICES)).toBe(32800);
   });
 
-  it('counts past due — a failed card is not a lost customer', () => {
+  it('counts past due, a failed card is not a lost customer', () => {
     expect(monthlyRecurringPence([sub({ status: 'past_due' })], PRICES)).toBe(29900);
   });
 

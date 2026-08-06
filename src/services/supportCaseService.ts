@@ -13,13 +13,13 @@ export interface SupportCaseRow extends SupportCase {
  * Support cases (0024).
  *
  * The queue is read straight from the table; `support_cases_select` already
- * scopes it — platform staff see everything, a requester sees their own, an
+ * scopes it. Platform staff see everything, a requester sees their own, an
  * organisation owner sees their tenant's. Internal notes are excluded by the
  * message policy rather than by a filter here, so a mistake in this file
  * cannot leak one.
  */
 
-/** Open first by priority, then oldest first — the order a queue is worked. */
+/** Open first by priority, then oldest first. The order a queue is worked. */
 const PRIORITY_ORDER = ['urgent', 'high', 'normal', 'low'];
 
 export async function listSupportCases(limit = 200): Promise<SupportCaseRow[]> {

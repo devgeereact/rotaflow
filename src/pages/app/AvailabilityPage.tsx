@@ -35,7 +35,7 @@ const WEEKDAYS = [
 
 /**
  * `availability.status` is `text` + a check constraint, not a Postgres enum,
- * so the generated `Availability['status']` is plain `string` — a cast to it
+ * so the generated `Availability['status']` is plain `string`, a cast to it
  * is a same-type no-op ESLint correctly flags. This is the app's own
  * narrower view of that same constraint (see ClockInPage.tsx for the same
  * pattern on `clock_events.type`).
@@ -53,7 +53,7 @@ function toAvailabilityStatus(value: string): AvailabilityStatus {
 }
 
 /**
- * `/app/availability` — recurring weekly pattern only (a specific one-off
+ * `/app/availability`. Recurring weekly pattern only (a specific one-off
  * date is also representable in the schema via `date`, but a manager building
  * next week's rota mainly needs the standing pattern; one-off exceptions are
  * closer to a leave request, which has its own screen).
@@ -181,7 +181,7 @@ export function AvailabilityPage(): JSX.Element {
         </p>
         {entry.start_time && entry.end_time && (
           <p className="text-xs text-content-muted dark:text-content-muted-dark">
-            {entry.start_time.slice(0, 5)} – {entry.end_time.slice(0, 5)}
+            {entry.start_time.slice(0, 5)}, {entry.end_time.slice(0, 5)}
           </p>
         )}
       </div>
@@ -227,8 +227,8 @@ export function AvailabilityPage(): JSX.Element {
         title="Team"
         subtitle={
           teamMode
-            ? 'Who can work when, across the team — managers schedule around this; it does not block a rota being built.'
-            : 'Your standing weekly pattern — managers schedule around it, it doesn’t block a rota being built.'
+            ? 'Who can work when, across the team. Managers schedule around this; it does not block a rota being built.'
+            : 'Your standing weekly pattern. Managers schedule around it, it doesn’t block a rota being built.'
         }
         tabs={teamWorkspaceTabs(membershipRole)}
         actions={

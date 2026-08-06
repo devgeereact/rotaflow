@@ -66,7 +66,7 @@ const RENEWAL_COLOUR: Record<string, string> = {
 };
 
 /**
- * `/admin/billing` — platform revenue, over the real tables.
+ * `/admin/billing`. Platform revenue, over the real tables.
  *
  * ## Every figure is a sum, and the sums are in one place
  *
@@ -84,7 +84,7 @@ const RENEWAL_COLOUR: Record<string, string> = {
  * MRR counts **active and past due**. A past-due subscription is still a
  * customer with a contract; writing it out the day a card fails makes the
  * headline swing on payment retries rather than on customers. Collected is by
- * *payment* date, not issue date. Outstanding is not scoped to a month — an
+ * *payment* date, not issue date. Outstanding is not scoped to a month, an
  * invoice from March that is still open is money owed today, and dropping it
  * because the month has passed is how a debt vanishes from a dashboard.
  *
@@ -271,7 +271,7 @@ export function AdminBillingPage(): JSX.Element {
             />
             <StatTile
               label="ARPO"
-              value={derived.arpo === null ? '—' : formatMoney(derived.arpo)}
+              value={derived.arpo === null ? '-' : formatMoney(derived.arpo)}
               hint="Per paying organisation"
             />
           </TileGrid>
@@ -295,8 +295,8 @@ export function AdminBillingPage(): JSX.Element {
                 height={250}
               />
               <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
-                Collected, not billed — a month with no payments is drawn as zero rather
-                than skipped, so a bad month is visible instead of smoothed over.
+                Collected rather than billed. A month with no payments is drawn as zero
+                rather than skipped, so a bad month is visible instead of smoothed over.
               </p>
             </Panel>
 
@@ -463,8 +463,8 @@ export function AdminBillingPage(): JSX.Element {
               )}
               <p className="mt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                 Marking an invoice past due records the provider&rsquo;s reason and
-                increments its attempt count. Nothing retries a payment on a schedule —
-                dunning is a policy this console can describe and not yet a job it runs.
+                increments its attempt count. Nothing retries a payment on a schedule.
+                Dunning is a policy this console can describe and not yet a job it runs.
               </p>
             </Panel>
           </div>
@@ -490,8 +490,8 @@ export function AdminBillingPage(): JSX.Element {
               <p>
                 MRR is the sum of <code>subscriptions.price_pence</code>, falling back to
                 the plan price, over the subscriptions that are active or past due.
-                Collected, outstanding and refunds are sums over <code>invoices</code> —
-                collected by payment date, outstanding by status regardless of age.
+                Collected, outstanding and refunds are sums over <code>invoices</code>.
+                Collected by payment date, outstanding by status regardless of age.
                 Nothing is stored pre-aggregated, so this screen cannot drift from the
                 rows below it.
               </p>

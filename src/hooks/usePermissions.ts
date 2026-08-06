@@ -12,16 +12,16 @@ export interface Permissions {
   canManageStaff: boolean; // owner | manager
   canManageOrg: boolean; // owner
   canManagePlatform: boolean; // any platform administrator
-  /** Subscriptions and billing state — owner, admin, finance. */
+  /** Subscriptions and billing state. Owner, admin, finance. */
   canManagePlatformBilling: boolean;
-  /** Feature flags, incidents, platform settings — owner and admin only. */
+  /** Feature flags, incidents, platform settings. Owner and admin only. */
   canManagePlatformConfig: boolean;
-  /** Grant and revoke platform roles — owner only. */
+  /** Grant and revoke platform roles. Owner only. */
   canManagePlatformAdmins: boolean;
 }
 
 /**
- * Derives UI capabilities from the active role. Client-side gating only —
+ * Derives UI capabilities from the active role. Client-side gating only,
  * RLS (SCHEMA.md) is the real enforcement; never rely on this for security.
  *
  * The platform capabilities read `platformRole` rather than the

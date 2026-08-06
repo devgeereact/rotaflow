@@ -61,7 +61,7 @@ export interface LeaveViewProps {
 }
 
 /**
- * `/app/leave` — the request table, its filters and the balances rail
+ * `/app/leave`. The request table, its filters and the balances rail
  * (design/Leave.png).
  *
  * Presentational only: every figure and every label arrives already computed,

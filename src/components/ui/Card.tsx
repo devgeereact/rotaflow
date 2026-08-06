@@ -21,7 +21,7 @@ export function Card({
 interface PanelProps {
   /** Rendered as the panel's own heading. Omit for a headerless panel. */
   title?: ReactNode;
-  /** Right-aligned header slot — a filter, a badge, a "View all" link. */
+  /** Right-aligned header slot, a filter, a badge, a "View all" link. */
   actions?: ReactNode;
   /** Drop the body padding for a panel whose child is a full-bleed table. */
   flush?: boolean;
@@ -33,7 +33,7 @@ interface PanelProps {
 /**
  * A `Card` with the console's titled header.
  *
- * `Card` is the bare surface and stays that way — around fifty screens render
+ * `Card` is the bare surface and stays that way. Around fifty screens render
  * one and its `p-6` is what their reference PNGs show. This is the other shape,
  * from `docs/PLATFORM_CONSOLE.html`: a divider-separated header strip with the
  * heading on the left and one control on the right, over a tighter body. It is
@@ -41,7 +41,7 @@ interface PanelProps {
  * treatment can drift into the other by accident.
  *
  * `flush` exists because the most common panel body is a `DataTable`, which
- * brings its own cell padding — nesting it in a padded body insets the table
+ * brings its own cell padding. Nesting it in a padded body insets the table
  * from its own header rule and looks like a mistake.
  */
 export function Panel({

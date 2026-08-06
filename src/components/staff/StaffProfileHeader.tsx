@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 interface StaffProfileHeaderProps {
   name: string;
   active: boolean;
-  /** "Senior Nurse • Nursing • Sunshine Care Home" — joined by the component. */
+  /** "Senior Nurse • Nursing • Sunshine Care Home". Joined by the component. */
   meta: string[];
   backTo: string;
   onMoreActions: () => void;

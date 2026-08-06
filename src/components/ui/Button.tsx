@@ -8,7 +8,7 @@ type Variant =
   | 'success'
   | 'warning'
   | 'danger'
-  // Outlined destructive — the "Revoke Access" treatment in
+  // Outlined destructive. The "Revoke Access" treatment in
   // design/SettingsOrganisation.png. A solid red button next to a neutral one
   // pulls the eye to the destructive choice; the outline keeps it legible as
   // dangerous without making it the visual default.
@@ -22,8 +22,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 // `designsystem.png` shows six button styles: Primary, Secondary, Ghost,
 // Success, Warning and Danger. Only the first three existed, so every
-// destructive or confirming action in the app hand-rolled its own colours —
-// 43 elements carrying `bg-danger`/`text-danger` in a className, none of them
+// destructive or confirming action in the app hand-rolled its own colours, // 43 elements carrying `bg-danger`/`text-danger` in a className, none of them
 // agreeing on padding, weight or hover.
 const VARIANTS: Record<Variant, string> = {
   primary: 'bg-primary text-primary-fg hover:bg-primary/90',
@@ -60,7 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         // A disabled button must *look* disabled and must still be hoverable.
         //
         // `pointer-events-none` was doing real damage: a disabled `<button>`
-        // already refuses clicks natively, so it prevented nothing — while
+        // already refuses clicks natively, so it prevented nothing, while
         // suppressing the hover that shows the `title` explaining *why* the
         // control is unavailable, and the `not-allowed` cursor that is the
         // only other signal. Every "why is nothing happening?" on this app's

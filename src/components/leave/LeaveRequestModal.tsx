@@ -19,7 +19,7 @@ interface LeaveRequestModalProps {
   onClose: () => void;
   onSubmit: (draft: LeaveRequestDraft) => void;
   submitting: boolean;
-  /** Shown under the actions when the device is offline — the write is queued. */
+  /** Shown under the actions when the device is offline. The write is queued. */
   offline: boolean;
 }
 

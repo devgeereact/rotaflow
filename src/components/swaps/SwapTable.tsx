@@ -7,7 +7,7 @@ import type { SwapRow } from '@/lib/swapRows';
 
 interface SwapTableProps {
   rows: SwapRow[];
-  /** "Review"/"View" — opens the request. */
+  /** "Review"/"View". Opens the request. */
   onOpenRow: (id: string) => void;
   onRowMenu: (id: string) => void;
   onSortByRequested: () => void;

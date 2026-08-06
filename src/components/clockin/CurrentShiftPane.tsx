@@ -10,7 +10,7 @@ import { ClockCardHeading } from '@/components/clockin/ClockCardHeading';
 import type { CurrentShiftInfo } from '@/lib/clockRows';
 
 interface CurrentShiftPaneProps {
-  /** `null` when nothing is rostered today — the reference never shows this. */
+  /** `null` when nothing is rostered today. The reference never shows this. */
   shift: CurrentShiftInfo | null;
   onViewReminder?: () => void;
 }
@@ -49,7 +49,7 @@ function Detail({
   );
 }
 
-/** Left half of the clock-in hero card — what shift you are about to start. */
+/** Left half of the clock-in hero card. What shift you are about to start. */
 export function CurrentShiftPane({
   shift,
   onViewReminder,
@@ -66,7 +66,7 @@ export function CurrentShiftPane({
             No shift scheduled today
           </p>
           <p className="mt-1 max-w-xs text-sm text-content-muted dark:text-content-muted-dark">
-            You can still clock in if you have been asked to cover — it will be recorded
+            You can still clock in if you have been asked to cover. It will be recorded
             against your location.
           </p>
         </div>

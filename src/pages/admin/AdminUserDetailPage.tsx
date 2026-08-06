@@ -40,12 +40,12 @@ interface Detail {
 }
 
 /**
- * `/admin/users/:userId` — one account, across every tenant it touches.
+ * `/admin/users/:userId`, one account, across every tenant it touches.
  *
  * ## Tabs the spec names that are not here
  *
  * **Sessions** and **Security** need `auth.sessions` and the Auth Admin API,
- * which are reachable only from a service-role Edge Function — a static client
+ * which are reachable only from a service-role Edge Function, a static client
  * cannot hold that key. So there is no session list, no "sign out everywhere"
  * and no MFA state, and the Overview tab says so rather than showing an empty
  * panel that implies the data is merely missing. audit01 §4 already records
@@ -79,7 +79,7 @@ export function AdminUserDetailPage(): JSX.Element {
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // In the URL rather than in component state, so a link can point at a
-  // particular tab — "see the audit tab on this tenant" is a message people
+  // particular tab, "see the audit tab on this tenant" is a message people
   // send, and it was unlinkable before.
   const [params, setParams] = useSearchParams();
   const requestedTab = params.get('tab');
@@ -317,7 +317,7 @@ export function AdminUserDetailPage(): JSX.Element {
                 </Row>
                 <Row label="Organisation role">
                   {detail.memberships.length === 0 ? (
-                    '—'
+                    '-'
                   ) : (
                     <span className="flex flex-wrap gap-1">
                       {detail.memberships.map((m) => (
@@ -333,7 +333,7 @@ export function AdminUserDetailPage(): JSX.Element {
                     ? PLATFORM_ROLE_LABELS[detail.platformRole]
                     : profile.is_platform_admin
                       ? 'Administrator, no granular role'
-                      : 'None — customer account'}
+                      : 'None. Customer account'}
                 </Row>
                 <Row label="Recorded actions">
                   {detail.audit.length}{' '}
@@ -349,7 +349,7 @@ export function AdminUserDetailPage(): JSX.Element {
             <Panel title="Platform role" bodyClassName="p-4">
               <p className="text-sm text-content dark:text-content-dark">
                 {detail.platformRole
-                  ? `${PLATFORM_ROLE_LABELS[detail.platformRole]} — ${PLATFORM_ROLE_SCOPES[detail.platformRole]}`
+                  ? `${PLATFORM_ROLE_LABELS[detail.platformRole]}, ${PLATFORM_ROLE_SCOPES[detail.platformRole]}`
                   : profile.is_platform_admin
                     ? 'This account holds the platform administrator flag but no granular role, so it reads every organisation and can change nothing that is role-gated.'
                     : 'This is a customer account. It holds no platform role and sees only its own organisations.'}
@@ -425,7 +425,7 @@ export function AdminUserDetailPage(): JSX.Element {
                       {entry.entity_type ? ` · ${entry.entity_type}` : ''}
                     </p>
                     <p className="text-xs text-content-muted dark:text-content-muted-dark">
-                      {entry.org_name ?? (entry.scope === 'platform' ? 'Platform' : '—')}{' '}
+                      {entry.org_name ?? (entry.scope === 'platform' ? 'Platform' : '-')}{' '}
                       · {new Date(entry.created_at).toLocaleString('en-GB')}
                     </p>
                   </li>

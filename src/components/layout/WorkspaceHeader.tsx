@@ -5,7 +5,7 @@ interface WorkspaceHeaderProps {
   title: string;
   subtitle: string;
   /**
-   * The sections of this workspace. Fewer than two renders no tab bar at all —
+   * The sections of this workspace. Fewer than two renders no tab bar at all,
    * a single-tab switcher is a control that cannot do anything, and staff see
    * exactly that on workspaces where the other half is managerial.
    */
@@ -29,14 +29,14 @@ interface WorkspaceHeaderProps {
  * ## Why routes rather than in-page state
  *
  * These are `ui/Tabs` (links), not `ui/PanelTabs` (buttons), because each half
- * has to survive a refresh and be linkable — a manager sending a colleague to
+ * has to survive a refresh and be linkable, a manager sending a colleague to
  * the published schedule cannot send them to "the other tab of the rota page".
  *
  * ## Why the halves stay separate components
  *
  * The obvious reading of "merge these screens" is one component rendering both.
  * That would produce a 2,500-line file out of the rota builder and the
- * schedule, against §31's "do not build large monolithic components" — and the
+ * schedule, against §31's "do not build large monolithic components", and the
  * two genuinely do different work (one writes drafts, one reads published
  * rows). They are merged as a *workspace*: one header, one URL space, one
  * sidebar entry, two focused components underneath.

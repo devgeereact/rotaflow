@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { ClockEvent, ClockEventInsert } from '@/types';
 
 /**
- * The insert path predates its screen (Phase 4) — useSyncQueue needed
+ * The insert path predates its screen (Phase 4). UseSyncQueue needed
  * something real to replay a queued 'clock' item against. This phase adds the
  * reads a clock in/out screen and an hours view actually need.
  */
@@ -43,7 +43,7 @@ export interface ClockEventRange {
   toIso: string;
 }
 
-/** One person's events in a window, oldest first — pairs into in/out shifts for hours totals. */
+/** One person's events in a window, oldest first. Pairs into in/out shifts for hours totals. */
 export async function listClockEventsForStaff(
   range: ClockEventRange,
 ): Promise<ClockEvent[]> {
@@ -64,7 +64,7 @@ export interface OrgClockEventRange {
   toIso: string;
 }
 
-/** Every event across the org in a window, newest first — manager review. */
+/** Every event across the org in a window, newest first. Manager review. */
 export async function listClockEventsForOrg(
   range: OrgClockEventRange,
 ): Promise<ClockEvent[]> {

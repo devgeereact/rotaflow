@@ -1,7 +1,7 @@
 -- =====================================================================
--- platform_seed.sql — real rows for every platform console section
+-- platform_seed.sql. Real rows for every platform console section
 --
--- Migrations 0021–0027 gave the console its tables. This fills them, so the
+-- Migrations 0021-0027 gave the console its tables. This fills them, so the
 -- console reports measurements rather than an empty state on a fresh
 -- deployment or a demo environment.
 --
@@ -25,7 +25,7 @@
 -- already exist. It never touches a tenant's rotas, staff or shifts.
 --
 -- Run it AFTER demo_seed.sql, which creates the organisations this attaches
--- to. With no organisations present it still succeeds — the org-scoped
+-- to. With no organisations present it still succeeds. The org-scoped
 -- sections simply come out empty, which is the honest result.
 -- =====================================================================
 
@@ -43,7 +43,7 @@ delete from public.platform_announcements
 -- Invoice and integration ids are derived from a *pair* of keys, so the reset
 -- has to walk the same pairs. Deleting `invoice:<n>` when the insert writes
 -- `invoice:<n>:<month>` matched nothing, and the second run then collided on
--- the primary key — the failure this shape exists to prevent.
+-- the primary key. The failure this shape exists to prevent.
 delete from public.invoices
  where id in (select md5('rotaflow-platform-seed-v1:' || format('invoice:%s:%s', n, m))::uuid
                 from generate_series(1, 50) n, generate_series(1, 12) m);
@@ -81,7 +81,7 @@ select o.id, o.name, o.plan, row_number() over (order by o.created_at) as n
  where o.status = 'active';
 
 -- =====================================================================
--- 1. Tenant profile — industry, country, timezone, contact
+-- 1. Tenant profile. Industry, country, timezone, contact
 -- =====================================================================
 -- `settings` already carried an industry for the demo organisations; 0023
 -- gave it a column, and this lifts it across rather than inventing one.
@@ -103,7 +103,7 @@ update public.organisations o
    and o.contact_email is null;
 
 -- =====================================================================
--- 2. Subscriptions — a price, a trial and a start date
+-- 2. Subscriptions, a price, a trial and a start date
 -- =====================================================================
 update public.subscriptions s
    set started_at    = coalesce(s.started_at, o.created_at),
@@ -117,7 +117,7 @@ update public.subscriptions s
  where o.id = s.org_id;
 
 -- =====================================================================
--- 3. Invoices — twelve months of billing history per organisation
+-- 3. Invoices. Twelve months of billing history per organisation
 -- =====================================================================
 -- Status is derived from the month rather than sprinkled at random: the most
 -- recent month is open, one organisation's is past due, one older one was
@@ -155,7 +155,7 @@ where exists (select 1 from public.subscriptions s where s.org_id = o.id)
 on conflict (id) do nothing;
 
 -- =====================================================================
--- 4. Incidents — a year of platform history
+-- 4. Incidents, a year of platform history
 -- =====================================================================
 drop table if exists pf_incident;
 create temp table pf_incident (
@@ -174,7 +174,7 @@ insert into pf_incident values
       '412 payroll exports were delayed by up to 3h 25m. All completed.',
       'medium', 'resolved', 'Background jobs', 128, 9, 205,
       'Queue drained after the worker concurrency was raised from 2 to 8. Concurrency is now set from queue depth.'),
-  (4, 'Sign-in outage — auth provider certificate expiry',
+  (4, 'Sign-in outage. Auth provider certificate expiry',
       'All sign-ins failed for 38 minutes across every tenant.',
       'critical', 'resolved', 'Authentication', 336, 3, 38,
       'Certificate renewed and pinned to auto-renewal. An expiry alert now fires 30 days ahead.'),
@@ -213,7 +213,7 @@ select
 from pf_incident i;
 
 -- The timeline. Every incident opens with its impact statement, and a
--- resolved one closes with its resolution — the two entries a review needs.
+-- resolved one closes with its resolution. The two entries a review needs.
 insert into public.incident_updates (id, incident_id, author_id, status, body, created_at)
 select md5('rotaflow-platform-seed-v1:' || 'incupd:open:' || i.n)::uuid, md5('rotaflow-platform-seed-v1:' || 'incident:' || i.n)::uuid,
        (select id from pf_staff where n = ((i.n % 2) + 1) limit 1),
@@ -244,7 +244,7 @@ insert into pf_case values
   (1,  'Rota publish is failing for the night shift',
        'Publishing the week beginning Monday returns an error for the night team only.',
        'bug', 'urgent', 'open', 3, null, null, null),
-  (2,  'Card payment declined — invoice unpaid',
+  (2,  'Card payment declined. Invoice unpaid',
        'Our card was replaced last month and the payment has failed twice.',
        'billing', 'high', 'pending', 20, 42, null, null),
   (3,  'Staff member cannot clock in at the new site',
@@ -282,7 +282,7 @@ select
   o.id,
   -- Scalar subqueries, not a join. An organisation with two active owners
   -- would make the join emit two rows for one case, and both would carry the
-  -- same derived id — a primary key collision inside a single INSERT.
+  -- same derived id, a primary key collision inside a single INSERT.
   (select m.user_id from public.memberships m
     where m.org_id = o.id and m.role = 'owner' and m.status = 'active'
     order by m.created_at limit 1),
@@ -324,7 +324,7 @@ select md5('rotaflow-platform-seed-v1:' || 'casemsg:reply:' || c.n)::uuid, md5('
        (select id from pf_staff where n = ((c.n % 2) + 1) limit 1),
        (select full_name from pf_staff where n = ((c.n % 2) + 1) limit 1),
        'platform',
-       'Thanks for the detail — we have reproduced this and are working on it now.',
+       'Thanks for the detail. We have reproduced this and are working on it now.',
        false, sc.first_response_at
 from pf_case c
 join public.support_cases sc on sc.id = md5('rotaflow-platform-seed-v1:' || 'case:' || c.n)::uuid
@@ -340,7 +340,7 @@ create temp table pf_announcement (
 );
 
 insert into pf_announcement values
-  (1, 'Scheduled maintenance — 02:00–03:00 BST',
+  (1, 'Scheduled maintenance-02:00-03:00 BST',
       'We will be applying a database upgrade. Rotas stay readable throughout; publishing is paused for the hour.',
       'maintenance', 'all', '{}', 'scheduled', null, 5),
   (2, 'New: cost forecasting in Reports',
@@ -395,7 +395,7 @@ where a.status = 'sent'
 on conflict (announcement_id, org_id) do nothing;
 
 -- =====================================================================
--- 7. Integrations — connections and a week of sync runs
+-- 7. Integrations. Connections and a week of sync runs
 -- =====================================================================
 insert into public.org_integrations
   (id, org_id, connector_key, status, credentials_ref, connected_at, last_sync_at)
@@ -446,7 +446,7 @@ where oi.id in (select md5('rotaflow-platform-seed-v1:' || format('orgint:%s:%s'
 on conflict (id) do nothing;
 
 -- =====================================================================
--- 8. Health samples — 24 hours of probes, every 15 minutes
+-- 8. Health samples-24 hours of probes, every 15 minutes
 -- =====================================================================
 -- `source = 'manual'` marks these as seeded rather than measured. The console
 -- shows the source, so a seeded uptime figure can never be mistaken for one
@@ -469,7 +469,7 @@ from (values
 cross join generate_series(0, 95) t;
 
 -- =====================================================================
--- 9. Background jobs — a queue with depth and a few failures
+-- 9. Background jobs, a queue with depth and a few failures
 -- =====================================================================
 insert into public.background_jobs
   (id, queue, job_key, status, attempts, org_id, scheduled_for, started_at, finished_at, error)
@@ -492,11 +492,11 @@ select
 from generate_series(1, 48) g;
 
 -- =====================================================================
--- 10. Console security — the allowlist the Security tab reports
+-- 10. Console security. The allowlist the Security tab reports
 -- =====================================================================
 insert into public.platform_ip_allowlist (id, cidr, label)
 values
-  (md5('rotaflow-platform-seed-v1:' || 'allow:1')::uuid, '0.0.0.0/0'::cidr, 'Unrestricted — no ranges enforced yet')
+  (md5('rotaflow-platform-seed-v1:' || 'allow:1')::uuid, '0.0.0.0/0'::cidr, 'Unrestricted, no ranges enforced yet')
 on conflict (cidr) do nothing;
 
 -- =====================================================================

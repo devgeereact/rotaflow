@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { LeaveRequest, LeaveRequestInsert } from '@/types';
 
 /**
- * The insert path predates its screen (Phase 4) — useSyncQueue needed a real
+ * The insert path predates its screen (Phase 4). UseSyncQueue needed a real
  * target to replay a queued 'leave' item against. This phase adds the reads
  * and the approve/reject actions the screen itself needs.
  */
@@ -18,7 +18,7 @@ export async function createLeaveRequest(
   return data;
 }
 
-/** One person's requests, newest first — their own history. */
+/** One person's requests, newest first. Their own history. */
 export async function listMyLeaveRequests(
   staffProfileId: string,
 ): Promise<LeaveRequest[]> {
@@ -31,7 +31,7 @@ export async function listMyLeaveRequests(
   return data ?? [];
 }
 
-/** Every request across the org — manager approval queue. */
+/** Every request across the org. Manager approval queue. */
 export async function listOrgLeaveRequests(orgId: string): Promise<LeaveRequest[]> {
   const { data, error } = await supabase
     .from('leave_requests')

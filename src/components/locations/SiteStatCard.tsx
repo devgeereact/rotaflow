@@ -17,7 +17,7 @@ const ICONS: Record<SiteStatIcon, LucideIcon> = {
  * (design/Locations-Management.png, design/Location-department.png).
  *
  * Unlike the staff tile the icon sits to the *right of the value*, vertically
- * centred on it, which leaves the label the card's full width — it has to hold
+ * centred on it, which leaves the label the card's full width. It has to hold
  * "Upcoming Shifts (7 days)" on one line.
  */
 export function SiteStatCard({ stat }: { stat: SiteStat }): JSX.Element {

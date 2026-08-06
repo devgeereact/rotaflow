@@ -63,7 +63,7 @@ export function StepAbout({
 }: StepAboutProps): JSX.Element {
   // The primary location starts in edit mode when blank; every other location
   // starts in edit mode the moment it's added. `null` means "nothing being
-  // edited right now" — every location with a name renders as a summary card.
+  // edited right now". Every location with a name renders as a summary card.
   const [editingIndex, setEditingIndex] = useState<number | null>(
     values.locations[0]?.name ? null : 0,
   );
@@ -351,8 +351,8 @@ export function StepAbout({
             })}
           </div>
           <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
-            Leave the primary location blank to skip — you can add locations later from
-            the Locations page.
+            Leave the primary location blank to skip. You can add locations later from the
+            Locations page.
           </p>
         </div>
 

@@ -1,5 +1,5 @@
 /**
- * Temporary support access — the pure half.
+ * Temporary support access. The pure half.
  *
  * Duration options, status derivation and countdown formatting. Kept out of
  * `services/` so it can be unit-tested under Node without dragging in the
@@ -67,7 +67,7 @@ export function sessionStatus(
   return new Date(session.expiresAt).getTime() <= now.getTime() ? 'expired' : 'active';
 }
 
-/** Milliseconds left, floored at zero — never negative, never NaN for a bad date. */
+/** Milliseconds left, floored at zero, never negative, never NaN for a bad date. */
 export function millisecondsRemaining(expiresAt: string, now: Date): number {
   const end = new Date(expiresAt).getTime();
   if (Number.isNaN(end)) return 0;
@@ -78,7 +78,7 @@ export function millisecondsRemaining(expiresAt: string, now: Date): number {
  * Countdown for the banner, e.g. "43 minutes" or "3 hours 5 minutes".
  *
  * Rounds *down*, deliberately. A session with 90 seconds left should read
- * "1 minute", not "2 minutes" — overstating remaining access is the direction
+ * "1 minute", not "2 minutes". Overstating remaining access is the direction
  * that misleads, and the banner exists to make expiry feel imminent.
  */
 export function formatRemaining(ms: number): string {
@@ -98,7 +98,7 @@ export function formatRemaining(ms: number): string {
 /**
  * Client-side validation, mirroring the CHECK constraints so a person gets a
  * sentence rather than a Postgres error code. The database is still the
- * authority — this exists to be kind, not to be trusted.
+ * authority. This exists to be kind, not to be trusted.
  */
 export function validateRequest(input: {
   orgId: string;
@@ -111,7 +111,7 @@ export function validateRequest(input: {
   if (!input.orgId) errors.orgId = 'Choose the organisation you need access to.';
 
   if (input.reason.trim().length < MIN_REASON_LENGTH) {
-    errors.reason = `Explain why access is needed — at least ${MIN_REASON_LENGTH} characters.`;
+    errors.reason = `Explain why access is needed, at least ${MIN_REASON_LENGTH} characters.`;
   }
   if (input.caseRef.trim().length < 3) {
     errors.caseRef = 'Enter the support case this relates to.';
@@ -131,7 +131,7 @@ export interface SupportAccessStats {
   medianMinutes: number | null;
   /** Ended by a person rather than by the clock. */
   revokedEarly: number;
-  /** Ran to expiry — indistinguishable from "opened and forgotten". */
+  /** Ran to expiry. Indistinguishable from "opened and forgotten". */
   expired: number;
 }
 

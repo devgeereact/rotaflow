@@ -22,7 +22,7 @@ export type RealtimeTable =
 
 /**
  * Which column narrows the subscription. Almost everything is tenant-scoped
- * on `org_id`, but `notifications` is a personal inbox — a manager must not
+ * on `org_id`, but `notifications` is a personal inbox, a manager must not
  * receive an event for every notification in the organisation, so that
  * screen scopes on `user_id` instead.
  */
@@ -36,7 +36,7 @@ export interface UseRealtimeRefreshOptions {
   tables: RealtimeTable[];
   /** Narrows the subscription. A null value disables it. */
   scope: RealtimeScope;
-  /** Called (debounced) when something changed. Re-query here — see below. */
+  /** Called (debounced) when something changed. Re-query here. See below. */
   onChange: () => void;
   /** Escape hatch for screens that should only listen conditionally. */
   enabled?: boolean;
@@ -48,7 +48,7 @@ export interface UseRealtimeRefresh {
 }
 
 /**
- * Bursts of writes are normal here — publishing a week's rota inserts every
+ * Bursts of writes are normal here. Publishing a week's rota inserts every
  * shift at once. Collapsing them into one refetch is the difference between
  * one query and fifty.
  */
@@ -63,7 +63,7 @@ const DEBOUNCE_MS = 300;
  * does apply RLS to `postgres_changes`, but DELETE payloads carry only the
  * primary key and cannot be filtered the way INSERT/UPDATE are. Never
  * rendering the payload means there is no path by which a row the caller
- * could not otherwise read reaches the screen — the data always arrives
+ * could not otherwise read reaches the screen. The data always arrives
  * through a query the database has already authorised.
  *
  * Failure is non-fatal by design. If the socket never connects, every screen
@@ -86,7 +86,7 @@ export function useRealtimeRefresh({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  // Same problem for the array literal — depend on its contents, not identity.
+  // Same problem for the array literal. Depend on its contents, not identity.
   const tableKey = [...tables].sort().join(',');
 
   useEffect(() => {

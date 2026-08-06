@@ -1,7 +1,7 @@
 import { format, isBefore, startOfMonth, subMonths } from 'date-fns';
 
 /**
- * Derivations behind `/admin` — the platform overview.
+ * Derivations behind `/admin`. The platform overview.
  *
  * Pure, and in `lib` rather than `services`, for the reason the rest of this
  * folder is: the service layer imports the Supabase client, which reaches for a
@@ -9,8 +9,8 @@ import { format, isBefore, startOfMonth, subMonths } from 'date-fns';
  * to sit this side of the line.
  *
  * Every figure here is derived from rows the console already reads. Where the
- * console reference shows a metric this deployment cannot produce — revenue,
- * active-users-today, cross-tenant rota counts — nothing is invented; see
+ * console reference shows a metric this deployment cannot produce. Revenue,
+ * active-users-today, cross-tenant rota counts. Nothing is invented; see
  * `UNAVAILABLE_METRICS`.
  */
 
@@ -36,7 +36,7 @@ export interface GrowthPoint {
  *
  * Month boundaries come from `date-fns` rather than arithmetic on epoch
  * milliseconds: the tests run in Europe/London and CI builds in UTC, and a
- * month is not a fixed number of milliseconds in either — adding 30 days across
+ * month is not a fixed number of milliseconds in either. Adding 30 days across
  * the March or October transition lands an hour out and silently moves a
  * signup between buckets.
  */
@@ -121,6 +121,6 @@ export const UNAVAILABLE_METRICS: readonly { title: string; reason: string }[] =
   {
     title: 'Per-organisation activity feed',
     reason:
-      'Rota, attendance and leave writes are not audited yet — `audit_logs` has essentially one writer — so a tenant activity timeline would show a handful of events and imply nothing else happened.',
+      'Rota, attendance and leave writes are not audited yet, `audit_logs` has essentially one writer, so a tenant activity timeline would show a handful of events and imply nothing else happened.',
   },
 ] as const;

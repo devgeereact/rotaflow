@@ -29,12 +29,12 @@ export interface PeriodShiftQuery {
   /** Exclusive ISO instant for the end of the window. */
   toIso: string;
   locationId?: string | null;
-  /** Restrict to one person — the staff "my schedule" view. */
+  /** Restrict to one person. The staff "my schedule" view. */
   staffProfileId?: string | null;
   /**
    * Only shifts attached to a published rota. The schedule shows what staff
    * have been told; a draft is a manager's working copy and must not leak into
-   * it. Default true — a caller has to ask for drafts deliberately.
+   * it. Default true, a caller has to ask for drafts deliberately.
    */
   publishedOnly?: boolean;
 }

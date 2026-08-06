@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/Card';
 import { SECTORS } from '@/lib/marketing';
 
 interface SectorGridProps {
-  /** `compact` drops the bullet lists — used on the landing page, where the full detail belongs on /solutions. */
+  /** `compact` drops the bullet lists. Used on the landing page, where the full detail belongs on /solutions. */
   variant?: 'compact' | 'full';
 }
 
@@ -11,7 +11,7 @@ interface SectorGridProps {
  * The six industries RotaFlow is built for.
  *
  * These are target sectors, described by the scheduling problems they actually
- * have — not a claim that organisations in them are already customers. No
+ * have, not a claim that organisations in them are already customers. No
  * logos and no named accounts, for the same reason `TESTIMONIALS` is empty.
  */
 export function SectorGrid({ variant = 'full' }: SectorGridProps): JSX.Element {

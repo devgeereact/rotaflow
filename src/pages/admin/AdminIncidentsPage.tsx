@@ -69,7 +69,7 @@ function stamp(iso: string): string {
 }
 
 /**
- * `/admin/incidents` — the incident register (0021).
+ * `/admin/incidents`. The incident register (0021).
  *
  * ## Every figure here is derived, none is stored
  *
@@ -78,7 +78,7 @@ function stamp(iso: string): string {
  * `src/lib/incidentMetrics.ts`. Nothing caches them, because a cached average
  * is one that can disagree with the table printed underneath it.
  *
- * A mean over an empty set reads as "—", not as zero: an estimate of zero
+ * A mean over an empty set reads as "-", not as zero: an estimate of zero
  * minutes to resolve would be the most flattering possible reading of having
  * measured nothing.
  *
@@ -86,7 +86,7 @@ function stamp(iso: string): string {
  *
  * The public status page. `incidents.is_public` exists and no policy grants
  * anonymous access, so setting it changes nothing until someone decides who
- * outside this console may read the register — a second surface with its own
+ * outside this console may read the register, a second surface with its own
  * hosting and its own audience.
  */
 export function AdminIncidentsPage(): JSX.Element {
@@ -318,7 +318,7 @@ export function AdminIncidentsPage(): JSX.Element {
                                   Date.parse(incident.started_at)) /
                                   60_000,
                               )
-                            : '—'}
+                            : '-'}
                         </td>
                         <td className="px-3 py-2.5 text-right">
                           {incident.status !== 'resolved' && canManagePlatformConfig && (
@@ -410,7 +410,7 @@ export function AdminIncidentsPage(): JSX.Element {
           </div>
           <p className="text-xs text-content-muted dark:text-content-muted-dark">
             Declaring writes an audit row and opens the timeline. The detection time is
-            stamped now — if it was noticed earlier, say so in the first update.
+            stamped now, if it was noticed earlier, say so in the first update.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDeclaring(false)}>

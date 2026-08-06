@@ -6,7 +6,7 @@ export interface ShiftSwapWithShift extends ShiftSwap {
 }
 
 /**
- * The insert path predates its screen (Phase 4) — useSyncQueue needed a real
+ * The insert path predates its screen (Phase 4). UseSyncQueue needed a real
  * target to replay a queued 'swap' item against. This phase adds the reads
  * and respond/approve actions, plus 0008_shift_swaps_target_respond.sql,
  * which grants the write access the target colleague was missing.
@@ -21,7 +21,7 @@ export async function requestShiftSwap(input: ShiftSwapInsert): Promise<ShiftSwa
   return data;
 }
 
-/** Swaps involving one person — as requester or target — newest first. */
+/** Swaps involving one person, as requester or target, newest first. */
 export async function listMyShiftSwaps(
   staffProfileId: string,
 ): Promise<ShiftSwapWithShift[]> {
@@ -34,7 +34,7 @@ export async function listMyShiftSwaps(
   return data ?? [];
 }
 
-/** Every swap across the org — manager approval queue. */
+/** Every swap across the org. Manager approval queue. */
 export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShift[]> {
   const { data, error } = await supabase
     .from('shift_swaps')
@@ -46,7 +46,7 @@ export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShi
 }
 
 /**
- * The target colleague accepting or declining — permitted by
+ * The target colleague accepting or declining. Permitted by
  * shift_swaps_target_respond, which only allows a still-pending row to move
  * to 'accepted' or 'rejected'. A manager still has to approve an accepted
  * swap before it's final; this alone does not change the rota.

@@ -4,7 +4,7 @@ import type { GdprRequest, GdprRequestKind, GdprRequestStatus } from '@/lib/gdpr
 /**
  * The data subject request register.
  *
- * Reads are plain queries — `gdpr_requests_select` in 0020 admits platform
+ * Reads are plain queries, `gdpr_requests_select` in 0020 admits platform
  * staff to every row and an organisation's own owner to requests recorded
  * against them, so the same call serves the console and (later) a tenant-side
  * view without a privileged path.
@@ -64,7 +64,7 @@ function toRequest(row: RequestRow): GdprRequest {
   };
 }
 
-/** Every request this account may see. Oldest deadline first — the useful order. */
+/** Every request this account may see. Oldest deadline first. The useful order. */
 export async function listGdprRequests(limit = 200): Promise<GdprRequest[]> {
   const { data, error } = await supabase
     .from('gdpr_requests')
@@ -97,7 +97,7 @@ export async function logGdprRequest(input: {
 
 /**
  * Move a request along. Closing it (`completed` or `refused`) requires a note
- * saying what was done — the database refuses without one.
+ * saying what was done. The database refuses without one.
  */
 export async function setGdprRequestStatus(
   requestId: string,
@@ -115,7 +115,7 @@ export async function setGdprRequestStatus(
 /**
  * Take the Article 12(3) extension. Returns the new deadline.
  *
- * Owner or admin only, once per request, and it needs a reason — an extension
+ * Owner or admin only, once per request, and it needs a reason, an extension
  * nobody justified is indistinguishable from a missed deadline.
  */
 export async function extendGdprRequest(

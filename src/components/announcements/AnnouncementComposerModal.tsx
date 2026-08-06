@@ -10,7 +10,7 @@ import type { Announcement } from '@/types';
 
 interface AnnouncementComposerModalProps {
   open: boolean;
-  /** Prefills the form — used by "Duplicate" and by the row edit button. */
+  /** Prefills the form. Used by "Duplicate" and by the row edit button. */
   seed: Announcement | null;
   /** Enables AI drafting. Omitted for anyone who cannot manage the org. */
   orgId?: string | null;
@@ -18,7 +18,7 @@ interface AnnouncementComposerModalProps {
   onSubmit: (input: { title: string; body: string; urgent: boolean }) => Promise<void>;
 }
 
-/** The fortnight the draft is grounded in — this week plus the next. */
+/** The fortnight the draft is grounded in. This week plus the next. */
 function draftPeriod(): { periodStart: string; periodEnd: string } {
   const today = new Date();
   const end = new Date(today);
@@ -31,7 +31,7 @@ function draftPeriod(): { periodStart: string; periodEnd: string } {
 
 /**
  * The "New Announcement" composer behind the header CTA. Posting publishes
- * immediately — `createAnnouncement` sets `published_at` — so there is no
+ * immediately, `createAnnouncement` sets `published_at`, so there is no
  * schedule field here; scheduling needs a column the schema does not have yet
  * (see `src/lib/announcementsMapping.ts`).
  */
@@ -65,7 +65,7 @@ export function AnnouncementComposerModal({
 
   /**
    * Fills the form; it never posts. The manager still reads, edits and presses
-   * Post — so a draft that gets a fact wrong costs an edit, not a push
+   * Post, so a draft that gets a fact wrong costs an edit, not a push
    * notification to everyone on the rota.
    */
   const handleDraft = async (): Promise<void> => {
@@ -82,7 +82,7 @@ export function AnnouncementComposerModal({
       setTitle(draft.title);
       setBody(draft.body);
       setUrgent(draft.urgent);
-      setAiNote(draft.reasoning || 'Draft ready — read it through before posting.');
+      setAiNote(draft.reasoning || 'Draft ready. Read it through before posting.');
     } catch (err) {
       reportError(err, { area: 'announcements:ai-draft' });
       setAiError(
@@ -134,8 +134,8 @@ export function AnnouncementComposerModal({
               </Button>
             </div>
             <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
-              Grounded in the next fortnight&rsquo;s real rota. It fills the form below —
-              nothing is posted until you press Post.
+              Grounded in the next fortnight&rsquo;s real rota. It fills the form below.
+              Nothing is posted until you press Post.
             </p>
             {aiNote && (
               <p className="mt-1.5 text-xs text-success" role="status">

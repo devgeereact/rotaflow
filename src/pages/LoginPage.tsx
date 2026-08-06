@@ -59,7 +59,7 @@ export function LoginPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // OAuth/magic-link both bounce through Supabase and back — send them
+  // OAuth/magic-link both bounce through Supabase and back. Send them
   // straight at the app, not the bare origin, or a signed-in user lands back
   // on the marketing homepage instead of the dashboard/onboarding.
   //
@@ -120,20 +120,20 @@ export function LoginPage(): JSX.Element {
           // GoTrueClient.js: `create_user: options?.shouldCreateUser ?? true`),
           // which silently registered an orphan user for every mistyped
           // address AND mailed a hard-bouncing mailbox. Signing up via magic
-          // link is still possible — on /signup, where it's intended.
+          // link is still possible, on /signup, where it's intended.
           shouldCreateUser: false,
         },
       });
       if (otpError) throw otpError;
       // Deliberately conditional. `shouldCreateUser: false` above means an
       // address with no account gets **no email at all**, and Supabase still
-      // returns success — it will not confirm whether an account exists, and
+      // returns success. It will not confirm whether an account exists, and
       // it is right not to. Claiming "sent" is then simply false, and it is
       // the single most confusing thing this screen could say: the reader
       // waits for a mail that was never going to arrive. This wording keeps
       // the anti-enumeration property and still points a new user at signup.
       setMessage(
-        'If an account exists for that address, a magic link is on its way — check your inbox. New to RotaFlow? Create an account first.',
+        'If an account exists for that address, a magic link is on its way. Check your inbox. New to RotaFlow? Create an account first.',
       );
     });
   };
@@ -144,7 +144,7 @@ export function LoginPage(): JSX.Element {
     <AuthSplitLayout
       headline="Smarter scheduling."
       headlineAccent="Happy teams."
-      description="Plan shifts, manage your workforce and keep your team connected — all in one place."
+      description="Plan shifts, manage your workforce and keep your team connected. All in one place."
       features={FEATURES}
     >
       <div className="w-full max-w-2xl animate-fade-up rounded-2xl border border-surface-border bg-surface p-9 shadow dark:border-surface-border-dark dark:bg-surface-dark md:p-11">

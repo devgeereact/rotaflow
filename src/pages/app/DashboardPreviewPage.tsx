@@ -113,7 +113,7 @@ const PENDING: PendingRequest[] = [
     kind: 'leave',
     staffName: 'Sarah Johnson',
     detail: 'Annual leave',
-    dateLabel: '2 – 6 Jun',
+    dateLabel: '2-6 Jun',
     createdAt: NOW.toISOString(),
   },
   {
@@ -129,7 +129,7 @@ const PENDING: PendingRequest[] = [
     kind: 'leave',
     staffName: 'Emily Davis',
     detail: 'Annual leave',
-    dateLabel: '16 – 18 Jun',
+    dateLabel: '16-18 Jun',
     createdAt: NOW.toISOString(),
   },
 ];
@@ -217,7 +217,7 @@ for (let day = 1; day <= 31; day++) {
   const date = new Date(NOW.getFullYear(), NOW.getMonth(), day);
   if (date.getMonth() !== NOW.getMonth()) continue;
   const iso = format(date, 'yyyy-MM-dd');
-  // Weekends lighter, and every 6th day shown understaffed — just enough
+  // Weekends lighter, and every 6th day shown understaffed, just enough
   // variation to demonstrate both calendar dot colours.
   const weekday = date.getDay();
   if (weekday === 0 || weekday === 6) {
@@ -238,7 +238,7 @@ const OVERVIEW: DashboardOverview = {
 };
 
 /**
- * Design-loop preview only, at `/dashboard-preview` — the real `/app/dashboard`
+ * Design-loop preview only, at `/dashboard-preview`. The real `/app/dashboard`
  * needs a live Supabase session and a seeded organisation (shifts, staff,
  * requests, announcements), neither of which a screenshot tool has. Renders
  * the same `DashboardView` against fixed mock data shaped to match

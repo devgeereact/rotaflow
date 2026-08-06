@@ -1,7 +1,7 @@
 /**
  * Shown while a lazily-loaded route chunk is fetched.
  *
- * Deliberately quiet — a spinner, not a skeleton or a branded splash. It sits
+ * Deliberately quiet, a spinner, not a skeleton or a branded splash. It sits
  * inside AppShell's `<main>`, so the sidebar, header and org context are
  * already on screen and the chrome must not appear to reload. On a warm cache
  * (which is every load after the first, since the service worker precaches

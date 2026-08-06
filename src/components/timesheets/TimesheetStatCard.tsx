@@ -9,7 +9,7 @@ interface TimesheetStatCardProps {
   tint: string;
   label: string;
   value: string;
-  /** Small line under the value — a comparison, a share, a total. */
+  /** Small line under the value, a comparison, a share, a total. */
   hint?: ReactNode;
 }
 

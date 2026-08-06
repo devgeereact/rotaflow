@@ -14,7 +14,7 @@ import type { SwapFilterSelect } from '@/components/swaps/SwapFilterBar';
 import type { SwapTab } from '@/lib/swapRows';
 
 /**
- * Design-loop preview only — `/app/swaps` needs a real Supabase session, an org
+ * Design-loop preview only, `/app/swaps` needs a real Supabase session, an org
  * and seeded swap rows. This renders the same components against the fixtures
  * in `src/lib/swapsDemo.ts`, reproducing design/Swap-Request.png. Not wired to
  * any service call; see design/.loop/swaps-log.md.

@@ -3,7 +3,7 @@ import { periodStart, resolvePeriod, stepPeriod } from '@/lib/schedulePeriod';
 
 /**
  * `resolvePeriod` decides which window of time a schedule screen queries and
- * renders. If it returns the wrong window, shifts do not appear — and nothing
+ * renders. If it returns the wrong window, shifts do not appear, and nothing
  * errors, because an empty result is indistinguishable from "nobody is
  * rostered". That silence is why this file exists.
  *
@@ -16,7 +16,7 @@ import { periodStart, resolvePeriod, stepPeriod } from '@/lib/schedulePeriod';
 const CLOCKS_GO_BACK = '2026-10-25';
 const CLOCKS_GO_FORWARD = '2026-03-29';
 
-describe('resolvePeriod — DST day arithmetic', () => {
+describe('resolvePeriod. DST day arithmetic', () => {
   it('covers a full 24h+ on the day the clocks go back', () => {
     const period = resolvePeriod('day', CLOCKS_GO_BACK, 'Europe/London');
 
@@ -25,7 +25,7 @@ describe('resolvePeriod — DST day arithmetic', () => {
     // The regression this suite was written for. `toIso` was computed as
     // local-midnight + 86_400_000 ms, but a fall-back day has 25 hours, so
     // midnight + 24h landed at 23:00 the SAME day and formatted back to the
-    // same date — making `toIso === fromIso`. A zero-length window returns no
+    // same date, making `toIso === fromIso`. A zero-length window returns no
     // shifts, so the schedule rendered completely empty on that one day a
     // year, in RotaFlow's primary market, with no error anywhere.
     expect(period.toIso).not.toBe(period.fromIso);
@@ -48,8 +48,7 @@ describe('resolvePeriod — DST day arithmetic', () => {
 
   it('does not truncate a week that ends on the fall-back day', () => {
     // Week containing 25 Oct 2026 starts Monday 19 Oct and ends Sunday 25 Oct,
-    // so the buggy `+ DAY_MS` cut the final day off the query window entirely —
-    // the busiest handover day of that week, invisible.
+    // so the buggy `+ DAY_MS` cut the final day off the query window entirely, // the busiest handover day of that week, invisible.
     const period = resolvePeriod('week', CLOCKS_GO_BACK, 'Europe/London');
 
     expect(period.dates).toHaveLength(7);
@@ -72,7 +71,7 @@ describe('resolvePeriod — DST day arithmetic', () => {
   });
 });
 
-describe('resolvePeriod — the window is the location’s, not the browser’s', () => {
+describe('resolvePeriod. The window is the location’s, not the browser’s', () => {
   it('starts a London day at London midnight', () => {
     // 15 June is BST (UTC+1), so local midnight is 23:00 UTC the day before.
     const period = resolvePeriod('day', '2026-06-15', 'Europe/London');
@@ -82,7 +81,7 @@ describe('resolvePeriod — the window is the location’s, not the browser’s'
   it('starts a New York day at New York midnight, not London’s', () => {
     // RULES.md §9: a rota for a New York location viewed from a London laptop
     // must still start at midnight in New York. Same anchor date as above,
-    // different instant — if these two were equal the timezone argument would
+    // different instant, if these two were equal the timezone argument would
     // be doing nothing.
     const period = resolvePeriod('day', '2026-06-15', 'America/New_York');
     expect(period.fromIso).toBe('2026-06-15T04:00:00.000Z');
@@ -92,7 +91,7 @@ describe('resolvePeriod — the window is the location’s, not the browser’s'
   });
 
   it('keeps a 24h span for a zone whose DST falls on a different date', () => {
-    // US DST ends 1 Nov 2026, not 25 Oct — so on the UK's transition date a
+    // US DST ends 1 Nov 2026, not 25 Oct, so on the UK's transition date a
     // New York schedule is an ordinary 24-hour day. This is what proves the
     // span is computed from the location's zone rather than the runner's.
     const period = resolvePeriod('day', CLOCKS_GO_BACK, 'America/New_York');
@@ -129,7 +128,7 @@ describe('periodStart', () => {
 describe('stepPeriod', () => {
   it('steps a week across a DST boundary without losing a day', () => {
     // 19 Oct + 7 days crosses the fall-back. Naive ms arithmetic lands on
-    // 25 Oct 23:00 and formats to 25 Oct — a 6-day week.
+    // 25 Oct 23:00 and formats to 25 Oct, a 6-day week.
     expect(stepPeriod('week', '2026-10-19', 1)).toBe('2026-10-26');
   });
 

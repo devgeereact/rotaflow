@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/Label';
 import { EmailSuggestion } from '@/components/auth/EmailSuggestion';
 
 /**
- * `/forgot-password` — sends a recovery link.
+ * `/forgot-password`. Sends a recovery link.
  *
  * The confirmation message is deliberately identical whether or not the
  * address has an account. Saying "no account with that email" would turn this

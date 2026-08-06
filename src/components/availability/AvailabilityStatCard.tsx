@@ -15,7 +15,7 @@ interface AvailabilityStatCardProps {
  * One tile in the summary row above the matrix (design/Availability.png):
  * a tinted icon tile, then label / value stacked beside it and a hint beneath.
  *
- * Deliberately a sibling of `TimesheetStatCard` rather than an import of it —
+ * Deliberately a sibling of `TimesheetStatCard` rather than an import of it,
  * they are the same shape today, but promoting one to `components/ui` would
  * mean editing a screen another branch is actively matching. Worth folding into
  * a shared `StatTile` once both have settled.

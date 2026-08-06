@@ -17,7 +17,7 @@ export interface UseSyncQueue {
   /** Writes still waiting to reach Supabase. */
   pending: QueuedItem[];
   /**
-   * Writes that will never send themselves — permanently rejected, or out of
+   * Writes that will never send themselves. Permanently rejected, or out of
    * retries. These need a human: the action did not happen, and the person who
    * took it still believes it did.
    */
@@ -30,21 +30,21 @@ export interface UseSyncQueue {
 }
 
 /**
- * Consumer of the IndexedDB write outbox — see docs/HOOKS.md §8 for the
+ * Consumer of the IndexedDB write outbox. See docs/HOOKS.md §8 for the
  * approved contract this implements, and services/syncQueue.ts for the replay
  * logic. Used by the clock-in, leave and swap screens.
  *
  * `deadLettered` is not optional decoration. The outbox's failure mode is that
  * a write is accepted into IndexedDB, reported to the user as done, and then
  * never lands. If nothing renders this list the app is back to failing
- * silently, which was the original bug — see `flushQueuedWrites`.
+ * silently, which was the original bug. See `flushQueuedWrites`.
  */
 export function useSyncQueue(): UseSyncQueue {
   const online = useOnlineStatus();
   const [pending, setPending] = useState<QueuedItem[]>([]);
   const [deadLettered, setDeadLettered] = useState<DeadLetterRecord[]>([]);
   const [syncing, setSyncing] = useState(false);
-  // Guards against overlapping flushes — e.g. the reconnect effect firing
+  // Guards against overlapping flushes. E.g. the reconnect effect firing
   // while a manually-triggered flush from the UI is still in flight.
   const flushing = useRef(false);
 

@@ -12,7 +12,7 @@ interface ScheduleAgendaProps {
   locations: Location[];
   staff: StaffProfile[];
   timezone: string;
-  /** Hide the person's name — true in "my schedule", where it is always you. */
+  /** Hide the person's name. True in "my schedule", where it is always you. */
   hideNames?: boolean;
 }
 
@@ -21,7 +21,7 @@ interface ScheduleAgendaProps {
  *
  * Used for the month view and for a staff member's own schedule. A 31-column
  * grid is unreadable on any screen, and a staff member on a phone wants "what
- * am I doing next", not a spreadsheet — so this is the primary staff view
+ * am I doing next", not a spreadsheet, so this is the primary staff view
  * rather than a fallback.
  *
  * Days with nothing scheduled are omitted rather than rendered empty: a month
@@ -102,7 +102,7 @@ export function ScheduleAgenda({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium tabular-nums text-content dark:text-content-dark">
-                        {start} – {end}
+                        {start}, {end}
                         {type?.name && (
                           <span className="ml-2 font-normal text-content-muted dark:text-content-muted-dark">
                             {type.name}

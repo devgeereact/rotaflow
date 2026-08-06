@@ -16,7 +16,7 @@ const HEAD =
 
 /**
  * The announcements roster (design/Announcements-Dashboard.png). Column widths
- * are fixed so the Announcement column absorbs the remainder — the reference's
+ * are fixed so the Announcement column absorbs the remainder. The reference's
  * proportions hold at every viewport the table is scrolled into.
  */
 export function AnnouncementTable({

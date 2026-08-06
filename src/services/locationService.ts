@@ -8,7 +8,7 @@ import type {
   LocationUpdate,
 } from '@/types';
 
-// Locations and departments live in one service — ARCHITECTURE.md's service
+// Locations and departments live in one service. ARCHITECTURE.md's service
 // list names only `locationService`, no separate `departmentService`.
 
 export async function listLocations(orgId: string): Promise<Location[]> {
@@ -48,7 +48,7 @@ export async function updateLocation(
   return data;
 }
 
-// No deleteLocation in V1 — rotas/shifts/departments all reference locations
+// No deleteLocation in V1. Rotas/shifts/departments all reference locations
 // with no soft-delete column available; edit-only is the safe scope.
 
 export async function listDepartments(

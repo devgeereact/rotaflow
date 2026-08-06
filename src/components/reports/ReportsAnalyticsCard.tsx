@@ -20,7 +20,7 @@ interface ReportsAnalyticsCardProps {
  * ## Why these two measures
  *
  * They are the two the underlying queries can answer honestly over a date
- * range: hours actually worked (from paired clock events — the same
+ * range: hours actually worked (from paired clock events. The same
  * `pairClockEvents` arithmetic `/app/timesheets` shows, so the chart cannot
  * disagree with the screen it reports on) and shifts scheduled. Labour *cost*
  * is in §17's category list and is deliberately absent: no pay-rate column
@@ -31,7 +31,7 @@ interface ReportsAnalyticsCardProps {
  *
  * Scheduled shifts and worked hours are different magnitudes on different
  * units. Putting them on one plot needs a second y-scale, which lets the author
- * imply any relationship they like by choosing the scales — the single most
+ * imply any relationship they like by choosing the scales. The single most
  * common charting mistake. They get one plot each.
  */
 export function ReportsAnalyticsCard({
@@ -114,7 +114,7 @@ export function ReportsAnalyticsCard({
     if (failed) {
       return (
         <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          Could not load the figures for this range. This is a connection problem — the
+          Could not load the figures for this range. This is a connection problem. The
           reports below still run.
         </p>
       );

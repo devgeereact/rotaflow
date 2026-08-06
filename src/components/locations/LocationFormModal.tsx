@@ -155,7 +155,7 @@ export function LocationFormModal({
           </div>
         </div>
         <p className="-mt-2 text-xs text-content-muted dark:text-content-muted-dark">
-          Used for GPS clock-in geofencing (a later feature) — captured now so it's ready
+          Used for GPS clock-in geofencing (a later feature). Captured now so it's ready
           when clock-in ships.
         </p>
 

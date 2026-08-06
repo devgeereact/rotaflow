@@ -14,7 +14,7 @@ import type { LeaveStatus, LeaveTypeKey } from '@/lib/leaveRows';
  * purged at build time).
  *
  * Every colour here is paired with the status or type spelled out in words
- * wherever it renders — leave state is never carried by colour alone
+ * wherever it renders. Leave state is never carried by colour alone
  * (docs/DESIGN.md §5).
  */
 
@@ -44,7 +44,7 @@ export const LEAVE_TYPE_LABEL: Record<LeaveTypeKey, string> = {
 };
 
 /**
- * Glyph per leave type — the chip, the balance tile and nothing else.
+ * Glyph per leave type. The chip, the balance tile and nothing else.
  *
  * Read off design/Leave.png. `personal` is the one inference: the reference
  * draws a badge-with-a-head that `ContactRound` matches most closely in the

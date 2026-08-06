@@ -50,7 +50,7 @@ export function AnnouncementPagination({
 }: AnnouncementPaginationProps): JSX.Element {
   return (
     // Three tracks, not `justify-between`: the reference centres the pager on the
-    // card, which only holds if the outer cells are equal — they are not.
+    // card, which only holds if the outer cells are equal. They are not.
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-t border-divider px-5 py-3.5 dark:border-divider-dark">
       <p className="text-xs text-content-muted dark:text-content-muted-dark">
         Showing {from} to {to} of {total} announcements
@@ -118,7 +118,7 @@ export function AnnouncementPagination({
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
             aria-label="Rows per page"
             // A native select paints its own background, so it needs one that
-            // follows the theme — the sibling buttons can stay transparent.
+            // follows the theme. The sibling buttons can stay transparent.
             className={cn(
               BOX,
               NEUTRAL,

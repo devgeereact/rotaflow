@@ -14,7 +14,7 @@ import type {
  * Same posture as `platformService`: plain client queries, because
  * `is_platform_admin()` is folded into `is_org_member`/`has_org_role` in 0002
  * and already grants cross-tenant read. For anyone who is not a platform
- * administrator every read here returns empty rather than raising — RLS filters
+ * administrator every read here returns empty rather than raising. RLS filters
  * rows, it does not error.
  *
  * The writes are the opposite and go through RPCs that raise, because a refused
@@ -45,7 +45,7 @@ export interface OrgMemberRow {
  * Everyone with a membership in this organisation.
  *
  * The profile join resolves for a platform administrator because 0015 widened
- * `profiles_select_own` to admit them. For anyone else it returns nulls — which
+ * `profiles_select_own` to admit them. For anyone else it returns nulls, which
  * is correct, and why this is a platform-console service rather than something
  * the tenant app shares.
  */
@@ -124,7 +124,7 @@ export interface OrgUsage {
 /**
  * Counts for the usage tab.
  *
- * Uses PostgREST's `head`+`count: 'exact'` so no rows cross the wire — this is
+ * Uses PostgREST's `head`+`count: 'exact'` so no rows cross the wire. This is
  * a page of numbers, and pulling every shift in a tenant to call `.length` on
  * it would be the same figure at a hundred times the cost.
  *
@@ -191,7 +191,7 @@ export async function getOrgUsage(orgId: string): Promise<OrgUsage> {
  * **This is a billing and account state, not a lockout.** No RLS policy reads
  * `organisations.status`, so a suspended organisation's staff keep signing in
  * and clocking in. Enforcing it means a check inside `is_org_member()`, which
- * every policy in 0002 depends on — see the header of 0017. Any screen calling
+ * every policy in 0002 depends on. See the header of 0017. Any screen calling
  * this must say what it does and does not do.
  *
  * The reason is required by the database for anything other than reactivation,

@@ -1621,7 +1621,7 @@ export type Database = {
           revoked_by: string | null;
           revoke_reason: string | null;
         };
-        // No insert or update policy exists — both mutations go through the
+        // No insert or update policy exists, both mutations go through the
         // SECURITY DEFINER RPCs above. These shapes are here so a `select`
         // types correctly, not because a client may write the table.
         Insert: never;
@@ -1738,7 +1738,7 @@ export type Database = {
           },
         ];
       };
-      // HAND-MAINTAINED PENDING REGENERATION (0021–0027).
+      // HAND-MAINTAINED PENDING REGENERATION (0021-0027).
       //
       // Every block below follows the same shape the generator emits: a `Row`
       // of what a select returns, an `Insert`/`Update` pair, and no
@@ -2111,7 +2111,7 @@ export type Database = {
       };
     };
     Functions: {
-      // HAND-MAINTAINED PENDING REGENERATION (0021–0027).
+      // HAND-MAINTAINED PENDING REGENERATION (0021-0027).
       declare_incident: {
         Args: {
           p_title: string;

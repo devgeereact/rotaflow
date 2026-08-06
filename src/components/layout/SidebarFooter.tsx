@@ -29,7 +29,7 @@ interface SidebarFooterProps {
  * destination behind three different affordances.
  *
  * Help routes to `/contact` on the public site rather than opening a support
- * widget — there is no helpdesk product wired up, and the contact page reaches
+ * widget. There is no helpdesk product wired up, and the contact page reaches
  * the same people. See `ContactPage` for why that is a real destination and
  * not a placeholder.
  */
@@ -49,7 +49,7 @@ export function SidebarFooter({
       <Link
         to="/app/account"
         onClick={onNavigate}
-        title={collapsed ? `${displayName} — your profile` : undefined}
+        title={collapsed ? `${displayName}. Your profile` : undefined}
         className={cn(
           'flex items-center gap-2.5 rounded-xl px-2 py-2 text-left',
           'hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-dark',
@@ -69,7 +69,7 @@ export function SidebarFooter({
             </span>
           </span>
         )}
-        {collapsed && <span className="sr-only">{displayName} — your profile</span>}
+        {collapsed && <span className="sr-only">{displayName}. Your profile</span>}
       </Link>
 
       <Link

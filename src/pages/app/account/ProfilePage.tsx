@@ -23,14 +23,14 @@ const ROLE_SCOPE: Record<SystemRole, string> = {
 };
 
 /**
- * `/app/account/profile` — design/ProfileSettings.png, "Personal Information".
+ * `/app/account/profile`. Design/ProfileSettings.png, "Personal Information".
  *
  * ## Two records, one screen
  *
  * A person's details are split across two tables and the split is not
- * arbitrary. `profiles` is the account — one row per login, shared across every
+ * arbitrary. `profiles` is the account, one row per login, shared across every
  * organisation they belong to, holding the name and email. `staff_profiles` is
- * their employment *inside one organisation* — job title, department, phone —
+ * their employment *inside one organisation*. Job title, department, phone,
  * and someone who works for two organisations has two of them.
  *
  * The reference shows one form, so this writes both: name to `profiles`, job
@@ -42,7 +42,7 @@ const ROLE_SCOPE: Record<SystemRole, string> = {
  * Email is read-only on purpose: changing it needs Supabase's confirmation
  * round-trip on both the old and the new address, and half-building that
  * produces an account whose login no longer matches its profile row. Avatar
- * upload is likewise absent — ImageKit is in the stack but nothing is wired to
+ * upload is likewise absent. ImageKit is in the stack but nothing is wired to
  * it, and `photo_url` is a pasted link today.
  */
 export function ProfilePage(): JSX.Element {

@@ -6,7 +6,7 @@ interface AnnouncementTipBannerProps {
 
 /**
  * The tinted hint strip under the table (design/Announcements-Dashboard.png).
- * Copy is fixed — it is guidance about the feature, not about any one row.
+ * Copy is fixed. It is guidance about the feature, not about any one row.
  */
 export function AnnouncementTipBanner({
   onAction,

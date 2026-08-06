@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 interface ToggleProps {
   checked: boolean;
   onChange: (next: boolean) => void;
-  /** Required — the switch renders no text of its own. */
+  /** Required. The switch renders no text of its own. */
   label: string;
   disabled?: boolean;
   className?: string;
@@ -17,7 +17,7 @@ interface ToggleProps {
  * the notification grid is five rows × three channels, so fifteen of these sit
  * in one table and a screen reader has to announce the state of each without
  * a visible label beside it. `aria-label` carries "Email for Rota published",
- * which the caller composes — that is why `label` is not optional.
+ * which the caller composes, that is why `label` is not optional.
  */
 export function Toggle({
   checked,

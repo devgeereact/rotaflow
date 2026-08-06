@@ -1,5 +1,5 @@
 -- =====================================================================
--- sunnyvale_teardown.sql — remove the Sunnyvale Care Group demo org
+-- sunnyvale_teardown.sql. Remove the Sunnyvale Care Group demo org
 --
 -- Drops the organisation (everything cascades on org_id) and the two
 -- Sunnyvale demo accounts. It does NOT touch:

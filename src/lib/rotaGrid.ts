@@ -46,7 +46,7 @@ export function buildShiftMap(shifts: Shift[], timezone: string): Map<string, Sh
 /**
  * Converts a local date + time *in the given location's timezone* to a
  * correct UTC ISO timestamp. RULES.md §9: shift times display in the
- * location's timezone — never the browser's local zone.
+ * location's timezone, never the browser's local zone.
  */
 export function toIsoInTimezone(date: string, time: string, timezone: string): string {
   return fromZonedTime(`${date}T${time}:00`, timezone).toISOString();
@@ -54,7 +54,7 @@ export function toIsoInTimezone(date: string, time: string, timezone: string): s
 
 /**
  * Start/end ISO timestamps for a shift on `date`, handling shifts that cross
- * midnight (e.g. a 22:00–06:00 night shift) by rolling the end date forward
+ * midnight (e.g. a 22:00-06:00 night shift) by rolling the end date forward
  * a day when endTime is earlier than startTime.
  */
 export function computeShiftIsoRange(
@@ -75,7 +75,7 @@ export function computeShiftIsoRange(
   return { startsAt, endsAt };
 }
 
-/** Inverse of toIsoInTimezone — for pre-filling an edit form from a stored shift. */
+/** Inverse of toIsoInTimezone, for pre-filling an edit form from a stored shift. */
 export function fromIsoInTimezone(
   iso: string,
   timezone: string,
@@ -88,7 +88,7 @@ export type ShiftTimeState = 'past' | 'live' | 'future';
 
 /**
  * Where a shift sits relative to now: already worked, running right now, or
- * still ahead. Drives the grid's colour rule — past shifts render in a neutral
+ * still ahead. Drives the grid's colour rule. Past shifts render in a neutral
  * token, current and upcoming ones keep their shift-type colour.
  *
  * `now` is injected rather than read from the clock inside, so the rule is
@@ -114,7 +114,7 @@ export function formatDayLabel(dateIso: string): { weekday: string; day: string 
   return { weekday: format(d, 'EEE'), day: format(d, 'd MMM') };
 }
 
-/** Total scheduled minutes across shifts (an honest, schema-backed summary — no fabricated coverage %). */
+/** Total scheduled minutes across shifts (an honest, schema-backed summary, no fabricated coverage %). */
 export function totalScheduledMinutes(shifts: Shift[]): number {
   return shifts.reduce((total, s) => {
     const ms = new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime();
@@ -138,11 +138,11 @@ export interface DailyTotal {
 }
 
 /**
- * Per-day staff/shift counts for the totals row — "Optimal" means every shift
+ * Per-day staff/shift counts for the totals row, "Optimal" means every shift
  * that day has someone assigned; "Understaffed" means at least one is still
  * `open`. There is no schema-backed target headcount to compare against, so
  * this deliberately doesn't fabricate an "Overstaffed" signal or a coverage
- * percentage — see rota-log.md.
+ * percentage. See rota-log.md.
  */
 export function computeDailyTotals(
   shifts: Shift[],
@@ -168,10 +168,10 @@ export function computeDailyTotals(
 }
 
 /**
- * The other shifts that belong to the same rostered "shift" as `target` — same
+ * The other shifts that belong to the same rostered "shift" as `target`. Same
  * location, date, shift type and time window, whoever is assigned to each.
  * `open` rows in the group are unfilled slots for that shift, so
- * `assigned / (assigned + open)` is a real, schema-backed coverage ratio —
+ * `assigned / (assigned + open)` is a real, schema-backed coverage ratio,
  * never a fabricated headcount target.
  */
 export function shiftGroup(shifts: Shift[], target: Shift): Shift[] {
@@ -189,12 +189,12 @@ export function shiftGroup(shifts: Shift[], target: Shift): Shift[] {
  * `computeWarnings` used to live here. It grouped shifts and reported only the
  * unfilled ones, which meant the builder's Warnings tab stayed silent while a
  * person was rostered twice in the same hour. It has been deleted rather than
- * deprecated so nothing can quietly bind to it again — `computeRotaInsights`
+ * deprecated so nothing can quietly bind to it again, `computeRotaInsights`
  * in `@/lib/rotaInsights` is the single source of rota warnings, and it covers
  * open shifts alongside clashes, rest breaches, leave and availability.
  */
 
-/** Short badge from a real job title ("Senior Nurse" → "SN") — never an invented code. */
+/** Short badge from a real job title ("Senior Nurse" → "SN"), never an invented code. */
 export function jobTitleInitials(jobTitle: string | null): string | null {
   if (!jobTitle) return null;
   const initials = jobTitle

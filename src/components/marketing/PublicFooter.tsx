@@ -5,7 +5,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
 /**
  * Site footer.
  *
- * Still no social row, press mentions or postal address — none of those exist,
+ * Still no social row, press mentions or postal address. None of those exist,
  * and an unmonitored mailto or a link to a nonexistent account is worse than
  * omitting the row. What changed since the minimal version is that there are
  * now real destinations to link: `/features`, `/solutions`, `/pricing`,
@@ -60,7 +60,7 @@ export function PublicFooter(): JSX.Element {
             &copy; {new Date().getFullYear()} RotaFlow. Built in the UK.
           </p>
           <p className="text-xs text-content-muted dark:text-content-muted-dark">
-            RotaFlow is in active development — see{' '}
+            RotaFlow is in active development. See{' '}
             <Link
               to="/resources"
               className="rounded underline underline-offset-2 hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-content-dark"

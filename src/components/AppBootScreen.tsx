@@ -63,8 +63,8 @@ const STAGE_COPY: Record<StepRingState, string> = {
 /**
  * Boot progress for a cold start (design/appboot.png).
  *
- * Every stage reflects a real signal — connectivity, the auth session resolving,
- * memberships resolving — and the bar is the proportion of those actually
+ * Every stage reflects a real signal. Connectivity, the auth session resolving,
+ * memberships resolving, and the bar is the proportion of those actually
  * finished. It is deliberately not a timed animation: a progress bar that
  * advances on a timer tells the user the app is making progress when it may be
  * stuck, which is worst precisely when it matters (a staff member on bad ward
@@ -146,7 +146,7 @@ export function AppBootScreen({
           <p className="text-lg text-content-muted dark:text-content-muted-dark">
             {online
               ? "We're getting everything ready for you. This will only take a few moments."
-              : "You're offline — RotaFlow will use what it has cached."}
+              : "You're offline. RotaFlow will use what it has cached."}
           </p>
         </div>
 

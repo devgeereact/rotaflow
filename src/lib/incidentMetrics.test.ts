@@ -40,7 +40,7 @@ describe('formatDuration', () => {
   });
 
   it('is an em dash when there is nothing to measure', () => {
-    expect(formatDuration(null)).toBe('—');
+    expect(formatDuration(null)).toBe('-');
   });
 });
 

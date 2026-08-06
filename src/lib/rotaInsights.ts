@@ -11,7 +11,7 @@ import type {
 } from '@/types';
 
 /**
- * Rota insights — the deterministic half of RotaFlow's rota assistant.
+ * Rota insights. The deterministic half of RotaFlow's rota assistant.
  *
  * Everything here is computed from rows the org already has: shifts, approved
  * leave, declared availability, contracted hours and document expiry. It flags
@@ -22,7 +22,7 @@ import type {
  * `supabase/functions/ai-rota-assistant`. That reads the same facts and writes
  * prose about them; this one *is* the facts, so it works with no API key, no
  * network and no chance of a confident invention. Anything a manager might act
- * on — "this person is on leave", "nobody is covering Saturday night" — is
+ * on, "this person is on leave", "nobody is covering Saturday night", is
  * decided here, and the model is left to phrase things, never to decide them.
  *
  * Pure functions only, no service imports: this file is unit-tested under Node,
@@ -34,7 +34,7 @@ import type {
 // rest in each 24-hour period. Anything shorter is a real compliance risk, not
 // a style preference, so it is flagged rather than silently scheduled.
 const MIN_REST_HOURS = 11;
-/** Contracted hours are a target, not a ceiling — only flag a real overrun. */
+/** Contracted hours are a target, not a ceiling, only flag a real overrun. */
 const OVER_CONTRACT_TOLERANCE = 1.25;
 /** A qualification lapsing inside this window needs booking now, not later. */
 const DOC_EXPIRY_WARN_DAYS = 30;
@@ -102,7 +102,7 @@ function fullName(person: StaffProfile): string {
   return `${person.first_name} ${person.last_name}`;
 }
 
-/** Net paid minutes of a shift — elapsed time less the unpaid break. */
+/** Net paid minutes of a shift. Elapsed time less the unpaid break. */
 export function shiftNetMinutes(shift: Shift): number {
   const elapsed =
     (new Date(shift.ends_at).getTime() - new Date(shift.starts_at).getTime()) / 60_000;
@@ -112,7 +112,7 @@ export function shiftNetMinutes(shift: Shift): number {
 /**
  * `weekday` on `availability` is Postgres' 0=Sunday convention (the seed and
  * the Availability screen both write it that way), which is also what
- * JavaScript's `Date.getDay()` returns — so they compare directly.
+ * JavaScript's `Date.getDay()` returns, so they compare directly.
  */
 function weekdayOf(dateIso: string): number {
   return new Date(`${dateIso}T00:00:00`).getDay();
@@ -149,7 +149,7 @@ function weekKey(iso: string, timezone: string): string {
  * Every problem the visible rota is about to cause, worst first.
  *
  * Shifts already in the past are skipped for everything a manager could still
- * change — there is no point warning that last Tuesday was understaffed. Only
+ * change. There is no point warning that last Tuesday was understaffed. Only
  * document expiry looks backwards, because an expired certificate is still
  * expired today.
  */
@@ -187,11 +187,11 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
     insights.push({
       id: `open:${first.id}`,
       kind: 'open_shift',
-      // Inside a week there is no time left to recruit or train — it has to be
+      // Inside a week there is no time left to recruit or train. It has to be
       // covered from the people already on the roster, so it escalates.
       severity: daysAway <= 7 ? 'critical' : 'warning',
       title: `${group.length} unfilled ${type?.name ?? 'shift'}${group.length > 1 ? 's' : ''} · ${dayLabel(date)}`,
-      detail: `${localTime(first.starts_at, timezone)}–${localTime(first.ends_at, timezone)} at ${location?.name ?? 'an unnamed site'}. Nobody is assigned${daysAway <= 7 ? ' and it starts within the week' : ''}.`,
+      detail: `${localTime(first.starts_at, timezone)}, ${localTime(first.ends_at, timezone)} at ${location?.name ?? 'an unnamed site'}. Nobody is assigned${daysAway <= 7 ? ' and it starts within the week' : ''}.`,
       date,
       staffProfileId: null,
       shiftId: first.id,
@@ -229,7 +229,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
         kind: 'leave_clash',
         severity: 'critical',
         title: `${name} is on approved leave but rostered`,
-        detail: `${dayLabel(date)} · ${localTime(shift.starts_at, timezone)}–${localTime(shift.ends_at, timezone)}. Approved ${clash.type} runs ${dayLabel(clash.start_date)} to ${dayLabel(clash.end_date)}.`,
+        detail: `${dayLabel(date)} · ${localTime(shift.starts_at, timezone)}, ${localTime(shift.ends_at, timezone)}. Approved ${clash.type} runs ${dayLabel(clash.start_date)} to ${dayLabel(clash.end_date)}.`,
         date,
         staffProfileId,
         shiftId: shift.id,
@@ -248,7 +248,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
         kind: 'unavailable',
         severity: 'warning',
         title: `${name} is marked unavailable`,
-        detail: `Rostered ${dayLabel(date)} · ${localTime(shift.starts_at, timezone)}–${localTime(shift.ends_at, timezone)}, against their declared availability.`,
+        detail: `Rostered ${dayLabel(date)} · ${localTime(shift.starts_at, timezone)}, ${localTime(shift.ends_at, timezone)}, against their declared availability.`,
         date,
         staffProfileId,
         shiftId: shift.id,
@@ -267,7 +267,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
           kind: 'double_booked',
           severity: 'critical',
           title: `${name} is double-booked`,
-          detail: `${dayLabel(date)} · ${localTime(a.starts_at, timezone)}–${localTime(a.ends_at, timezone)} overlaps ${localTime(b.starts_at, timezone)}–${localTime(b.ends_at, timezone)}. One of the two needs reassigning.`,
+          detail: `${dayLabel(date)} · ${localTime(a.starts_at, timezone)}, ${localTime(a.ends_at, timezone)} overlaps ${localTime(b.starts_at, timezone)}, ${localTime(b.ends_at, timezone)}. One of the two needs reassigning.`,
           date,
           staffProfileId,
           shiftId: b.id,
@@ -356,7 +356,7 @@ export interface InsightSummary {
   critical: number;
   warning: number;
   openShifts: number;
-  /** Assigned slots ÷ all slots across the visible period, 0–100. */
+  /** Assigned slots ÷ all slots across the visible period, 0-100. */
   coveragePct: number;
   headline: string;
 }
@@ -381,7 +381,7 @@ export function summariseInsights(
   let headline: string;
   if (upcoming.length === 0) {
     headline =
-      'Nothing left to cover in this period — every shift here has already been worked.';
+      'Nothing left to cover in this period. Every shift here has already been worked.';
   } else if (critical === 0 && warning === 0) {
     headline = `All ${upcoming.length} upcoming shifts are covered and nothing is flagged. This period is ready to publish.`;
   } else if (critical > 0) {
@@ -401,9 +401,9 @@ export interface CoverCandidate {
   staffProfileId: string;
   name: string;
   jobTitle: string | null;
-  /** 0–100. Only meaningful for ranking within one shift's candidates. */
+  /** 0-100. Only meaningful for ranking within one shift's candidates. */
   score: number;
-  /** Why they fit — shown to the manager so the ranking is auditable. */
+  /** Why they fit. Shown to the manager so the ranking is auditable. */
   reasons: string[];
   /** Why they might not. A candidate with a hard blocker is never eligible. */
   blockers: string[];
@@ -424,14 +424,14 @@ export interface CoverSuggestionInput {
  * Rank who could work an open shift, with the reasoning attached.
  *
  * The score exists only to order one shift's candidates; it is not a
- * percentage of anything and is never shown as one. Hard blockers — approved
- * leave, an overlapping shift, a declared unavailability — drop a candidate
+ * percentage of anything and is never shown as one. Hard blockers. Approved
+ * leave, an overlapping shift, a declared unavailability. Drop a candidate
  * out of eligibility entirely rather than costing them points, because no
  * amount of "good fit" makes it legal to roster someone who is on holiday.
  *
  * Everything is derived from rows that exist. There is no required-skills
  * column on `shifts`, so "right skills" means overlapping with the people who
- * normally work this pattern here — an observation, not an invented rule.
+ * normally work this pattern here, an observation, not an invented rule.
  */
 export function suggestCoverForShift(input: CoverSuggestionInput): CoverCandidate[] {
   const { shift, shifts, staff, leave, availability, timezone } = input;
@@ -534,7 +534,7 @@ export function suggestCoverForShift(input: CoverSuggestionInput): CoverCandidat
         // Zero-hours: no contractual ceiling to breach, which is precisely
         // what these contracts are for.
         score += 10;
-        reasons.push('Zero-hours — no contracted ceiling');
+        reasons.push('Zero-hours, no contracted ceiling');
       }
 
       // ---- rest around the shift ----
@@ -583,7 +583,7 @@ export function suggestCoverForShift(input: CoverSuggestionInput): CoverCandidat
  * Facts about a period, in the shape the language model is handed.
  *
  * Kept here rather than in the edge function so the model is briefed on the
- * *same* numbers the manager can see on screen — a summary computed twice in
+ * *same* numbers the manager can see on screen, a summary computed twice in
  * two places is a summary that will eventually disagree with itself.
  */
 export function describePeriodForPrompt(input: RotaInsightInput): string {

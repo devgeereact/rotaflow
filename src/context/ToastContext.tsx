@@ -28,7 +28,7 @@ export interface ToastContextValue {
   dismissToast: (id: number) => void;
 }
 
-/** Errors linger longer — they usually carry a recovery instruction. */
+/** Errors linger longer. They usually carry a recovery instruction. */
 const DURATION_MS: Record<ToastVariant, number> = {
   success: 4000,
   info: 5000,
@@ -95,7 +95,7 @@ const VARIANT_STYLES: Record<ToastVariant, string> = {
 
 /**
  * Fixed viewport region for transient feedback. Errors are assertive so a
- * failed write interrupts a screen reader mid-task — silently dropping a
+ * failed write interrupts a screen reader mid-task. Silently dropping a
  * shift assignment is exactly the failure this exists to prevent.
  */
 function Toaster({

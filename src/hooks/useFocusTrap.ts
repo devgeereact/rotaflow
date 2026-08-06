@@ -11,7 +11,7 @@ const FOCUSABLE_SELECTOR =
  *
  * `Sidebar` had all of this inline, and the platform console's shell needs the
  * identical behaviour for its own mobile drawer. Copying forty lines of focus
- * management is how two drawers end up with one of them subtly wrong — the
+ * management is how two drawers end up with one of them subtly wrong. The
  * second one usually loses the `aria-hidden` on the page behind it, or forgets
  * to restore focus, and neither failure is visible to a sighted mouse user
  * testing it.

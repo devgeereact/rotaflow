@@ -16,7 +16,7 @@ interface Props {
 }
 
 /**
- * Writes that were queued offline and can never be delivered — the server
+ * Writes that were queued offline and can never be delivered. The server
  * refused them, or they ran out of retries (`services/syncQueue.ts`).
  *
  * This component is the reason the dead-letter store is worth having. The
@@ -25,7 +25,7 @@ interface Props {
  * wrong payslip. Setting the write aside so it stops blocking the queue fixes
  * the deadlock but not the silence; only showing it does that.
  *
- * So the wording says the thing plainly — **it did not save, do it again** —
+ * So the wording says the thing plainly, **it did not save, do it again**,
  * rather than "sync error". The person who tapped Clock in believes they are
  * clocked in, and the only useful message is the one that corrects that.
  *
@@ -61,7 +61,7 @@ export function FailedWritesNotice({
           </h2>
           <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
             These were saved on this device while you were offline, but the server
-            rejected them. <strong>They did not happen</strong> — please do them again, or
+            rejected them. <strong>They did not happen</strong>. Please do them again, or
             ask your manager to add them for you.
           </p>
         </div>

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 interface ClockCardHeadingProps {
   icon: LucideIcon;
   title: string;
-  /** Optional trailing affordance — a "View All"-style link in the reference. */
+  /** Optional trailing affordance, a "View All"-style link in the reference. */
   action?: ReactNode;
   className?: string;
 }

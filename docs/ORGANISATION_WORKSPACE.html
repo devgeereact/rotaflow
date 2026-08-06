@@ -9,7 +9,7 @@
     --success:#1EA06B; --warning:#E0A030; --danger:#D94A3A; --info:#388FD4;
     --clock:#068D41; --clock-tint:#D6F4E1; --clock-fg:#0A5522;
     --success-wash:#E7F5EE; --warning-wash:#FBF2E1; --danger-wash:#FAEAE7; --info-wash:#E8F2FA;
-    /* shift-type palette — docs/DESIGN.md §2, same hex in both themes */
+    /* shift-type palette. Docs/DESIGN.md §2, same hex in both themes */
     --s-clay:#E28273; --s-amber:#C69A45; --s-moss:#86AC6A; --s-teal:#4FB39A;
     --s-sky:#56AACD; --s-indigo:#6CA0EB; --s-violet:#C48FD6; --s-rose:#E888AB;
     --shadow-sm:0 1px 2px rgba(0,0,0,.05);
@@ -345,7 +345,7 @@
 
 <script>
 /* ============================ roles and navigation ============================ */
-/* Organisation membership roles. These are the ONLY roles here — platform
+/* Organisation membership roles. These are the ONLY roles here. Platform
    administration is a separate permission on a separate surface. */
 const ROLES = { owner:'Owner', manager:'Manager', staff:'Staff' };
 const MANAGERIAL = ['owner','manager'];
@@ -366,7 +366,7 @@ const NAV = [
   { id:'announcements', label:'Announcements', icon:'mega',   allow:EVERYONE },
   { id:'reports',       label:'Reports',       icon:'chart',  allow:MANAGERIAL },
 ];
-/* Staff get My Profile where a manager gets Settings — navItemsForRole. */
+/* Staff get My Profile where a manager gets Settings. NavItemsForRole. */
 const NAV_FOOT = [
   { id:'settings', label:'Settings',   icon:'cog',  allow:MANAGERIAL },
   { id:'account',  label:'My Profile', icon:'user', allow:EVERYONE },
@@ -516,8 +516,8 @@ const TYPES = {
   N:   { name:'Night',      from:'19:00', to:'07:30', h:12.5,c:'var(--s-violet)' },
   TW:  { name:'Twilight',   from:'17:00', to:'23:00', h:6,   c:'var(--s-sky)' },
   TRN: { name:'Training',   from:'09:00', to:'17:00', h:7,   c:'var(--s-moss)' },
-  ANN: { name:'Annual leave', from:'—',   to:'—',     h:0,   c:'var(--s-rose)' },
-  SICK:{ name:'Sickness',   from:'—',     to:'—',     h:0,   c:'var(--s-clay)' },
+  ANN: { name:'Annual leave', from:'-',   to:'-',     h:0,   c:'var(--s-rose)' },
+  SICK:{ name:'Sickness',   from:'-',     to:'-',     h:0,   c:'var(--s-clay)' },
 };
 const TYPE_KEYS = Object.keys(TYPES);
 
@@ -553,20 +553,20 @@ const SWAPS = [
   { id:'sw3', from:'s6', to:'s10', day:'Fri 8 Aug', type:'TW', status:'approved',reason:'Swapping to cover a course.' },
 ];
 const TIMESHEETS = [
-  { who:'s1', day:'Mon 4 Aug', planned:'07:00–19:30', actual:'06:56–19:41', paid:12.2, status:'complete', flag:'' },
-  { who:'s2', day:'Mon 4 Aug', planned:'07:00–15:00', actual:'07:12–15:02', paid:7.6,  status:'late', flag:'12 min late' },
-  { who:'s4', day:'Mon 4 Aug', planned:'19:00–07:30', actual:'18:58– —',    paid:0,    status:'on_shift', flag:'Still clocked in' },
-  { who:'s7', day:'Mon 4 Aug', planned:'07:00–15:00', actual:'—',           paid:0,    status:'absent', flag:'No clock-in recorded' },
-  { who:'s8', day:'Mon 4 Aug', planned:'09:00–17:00', actual:'09:01–17:04', paid:7.0,  status:'complete', flag:'' },
-  { who:'s5', day:'Mon 4 Aug', planned:'07:00–19:30', actual:'07:00–19:28', paid:12.0, status:'complete', flag:'' },
+  { who:'s1', day:'Mon 4 Aug', planned:'07:00-19:30', actual:'06:56-19:41', paid:12.2, status:'complete', flag:'' },
+  { who:'s2', day:'Mon 4 Aug', planned:'07:00-15:00', actual:'07:12-15:02', paid:7.6,  status:'late', flag:'12 min late' },
+  { who:'s4', day:'Mon 4 Aug', planned:'19:00-07:30', actual:'18:58, , ',    paid:0,    status:'on_shift', flag:'Still clocked in' },
+  { who:'s7', day:'Mon 4 Aug', planned:'07:00-15:00', actual:'-',           paid:0,    status:'absent', flag:'No clock-in recorded' },
+  { who:'s8', day:'Mon 4 Aug', planned:'09:00-17:00', actual:'09:01-17:04', paid:7.0,  status:'complete', flag:'' },
+  { who:'s5', day:'Mon 4 Aug', planned:'07:00-19:30', actual:'07:00-19:28', paid:12.0, status:'complete', flag:'' },
 ];
 const ANNOUNCEMENTS = [
-  { title:'Fire drill — Wednesday 06 Aug, 10:00', by:'Marcus Bell', when:'2 hours ago', aud:'All sites', read:38, of:52, pinned:true,
+  { title:'Fire drill. Wednesday 06 Aug, 10:00', by:'Marcus Bell', when:'2 hours ago', aud:'All sites', read:38, of:52, pinned:true,
     body:'Full evacuation drill across Sunnyvale House and Oak Lodge. Residents on the ground floor assemble at the west car park.' },
   { title:'New medication round times from Monday', by:'Amara Osei', when:'yesterday', aud:'Nursing', read:19, of:24, pinned:false,
     body:'Morning round moves from 08:00 to 07:45 so it completes before breakfast service.' },
   { title:'Summer rota published to 31 August', by:'Marcus Bell', when:'3 days ago', aud:'All sites', read:50, of:52, pinned:false,
-    body:'Four weeks are now visible in Schedule. Raise swaps early — cover is tight on the August bank holiday.' },
+    body:'Four weeks are now visible in Schedule. Raise swaps early. Cover is tight on the August bank holiday.' },
 ];
 const LOCATIONS = [
   { name:'Sunnyvale House', type:'Residential', staff:78, depts:['Nursing','Wellbeing','Kitchen','Housekeeping'], status:'active', addr:'12 Sunnyvale Rd, Leeds LS7' },
@@ -576,7 +576,7 @@ const LOCATIONS = [
   { name:'Community Team South', type:'Domiciliary', staff:29, depts:['Community'], status:'setup', addr:'Unit 11, Beeston LS11' },
 ];
 const NOTIFS = [
-  { t:'Grace Nkemdi requested annual leave', m:'6 days, 10–17 August · needs your decision', k:'leave', when:'19 min ago', unread:true },
+  { t:'Grace Nkemdi requested annual leave', m:'6 days, 10-17 August · needs your decision', k:'leave', when:'19 min ago', unread:true },
   { t:'Callum Reid offered a shift swap', m:'Sat 9 Aug · Long day · Ffion Davies accepted', k:'swap', when:'1 hour ago', unread:true },
   { t:'Ffion Davies has not clocked in', m:'Early shift started 47 minutes ago', k:'alert', when:'2 hours ago', unread:true },
   { t:'Rota published for week commencing 4 August', m:'52 staff notified', k:'ok', when:'yesterday', unread:false },
@@ -606,20 +606,20 @@ const canManage = () => MANAGERIAL.includes(state.role);
 const weekHours = id => state.grid[id].reduce((t, k) => t + (k ? TYPES[k].h : 0), 0);
 const onShift = d => STAFF.filter(s => { const k = state.grid[s.id][d]; return k && TYPES[k].h > 0; }).length;
 
-/* Conflicts are computed, never hard-coded — change a cell and they move. */
+/* Conflicts are computed, never hard-coded. Change a cell and they move. */
 function conflicts() {
   const out = [];
   STAFF.forEach(s => {
     const row = state.grid[s.id];
     const h = weekHours(s.id);
     if (h > 48) out.push({ staff:s.id, day:null, sev:'bad',
-      msg:`${s.name} is rostered ${hrs(h)} — over the 48-hour weekly limit.` });
+      msg:`${s.name} is rostered ${hrs(h)}. Over the 48-hour weekly limit.` });
     else if (h > s.contract + 12) out.push({ staff:s.id, day:null, sev:'warn',
       msg:`${s.name} is ${hrs(h - s.contract)} over a ${s.contract}h contract.` });
     row.forEach((k, d) => {
       const next = row[d + 1];
       if (k === 'N' && (next === 'E' || next === 'LD')) out.push({ staff:s.id, day:d + 1, sev:'bad',
-        msg:`${s.name} works ${TYPES[next].name.toLowerCase()} on ${WEEK[d+1]} after a night shift — under 11 hours' rest.` });
+        msg:`${s.name} works ${TYPES[next].name.toLowerCase()} on ${WEEK[d+1]} after a night shift. Under 11 hours' rest.` });
       if (k === 'ANN' && d < 7 && row[d] === 'ANN' && false) out.push({});
     });
   });
@@ -773,7 +773,7 @@ function modal({ title, sub, body, confirm, danger, reason, onOk, okOnly }) {
 }
 
 /* ============================ command palette (⌘K) ============================ */
-/* Screens and their actions only — deliberately not records. A fan-out of ilike
+/* Screens and their actions only. Deliberately not records. A fan-out of ilike
    queries across a dozen tables on every keystroke is a query storm. */
 const ACTIONS = [
   { label:'Publish this week’s rota', to:'rota', allow:MANAGERIAL },
@@ -819,7 +819,7 @@ function setCell(id, d) {
   if (!canManage()) return;
   const s = staffById(id), cur = state.grid[id][d];
   modal({
-    title:`${s.name} — ${WEEK[d]} ${DATES[d]} August`,
+    title:`${s.name}, ${WEEK[d]} ${DATES[d]} August`,
     sub:`${esc(s.job)} · ${esc(s.site)} · ${s.contract}h contract · rostered ${hrs(weekHours(id))} this week`,
     confirm:'Save shift', okOnly:false,
     body:`<div class="picker">
@@ -828,11 +828,11 @@ function setCell(id, d) {
         <span class="pc">${k}</span>
         <span class="pn">${esc(TYPES[k].name)}${TYPES[k].h ? ' · ' + hrs(TYPES[k].h) : ''}</span></button>`).join('')}
       <button type="button" data-pick=""><span class="sw2" style="background:var(--border)"></span>
-        <span class="pc">—</span><span class="pn">Clear the day</span></button>
+        <span class="pc">-</span><span class="pn">Clear the day</span></button>
     </div>
     <input type="hidden" id="pickVal" data-val="k" value="${esc(cur)}">
     <p class="lede" id="pickEcho" style="margin:0;font-size:12.5px">
-      ${cur ? `Currently <b>${esc(TYPES[cur].name)}</b>, ${esc(TYPES[cur].from)}–${esc(TYPES[cur].to)}.` : 'Currently unassigned.'}</p>`,
+      ${cur ? `Currently <b>${esc(TYPES[cur].name)}</b>, ${esc(TYPES[cur].from)}, ${esc(TYPES[cur].to)}.` : 'Currently unassigned.'}</p>`,
     onOk(v) {
       const from = state.grid[id][d];
       state.grid[id][d] = v.k;
@@ -848,7 +848,7 @@ function setCell(id, d) {
     $$('#modal [data-pick]').forEach(x => x.style.borderColor = 'var(--border)');
     b.style.borderColor = 'var(--primary)';
     $('#pickEcho').innerHTML = k
-      ? `Selected <b>${esc(TYPES[k].name)}</b>, ${esc(TYPES[k].from)}–${esc(TYPES[k].to)}. Save to apply.`
+      ? `Selected <b>${esc(TYPES[k].name)}</b>, ${esc(TYPES[k].from)}, ${esc(TYPES[k].to)}. Save to apply.`
       : 'The day will be cleared. Save to apply.';
   });
 }
@@ -875,12 +875,12 @@ function decideLeave(id, ok) {
   const l = state.leave.find(x => x.id === id), s = staffById(l.who);
   modal({
     title:`${ok ? 'Approve' : 'Decline'} ${s.name}’s ${l.type.toLowerCase()}?`, danger:!ok,
-    sub:`${esc(l.from)} – ${esc(l.to)} · ${l.days} days. ${ok ? 'The days are deducted from the entitlement and blocked out on the rota.' : ''}`,
+    sub:`${esc(l.from)}, ${esc(l.to)} · ${l.days} days. ${ok ? 'The days are deducted from the entitlement and blocked out on the rota.' : ''}`,
     confirm:ok ? 'Approve leave' : 'Decline leave', reason:!ok,
     onOk(v) {
       l.status = ok ? 'approved' : 'declined';
       if (v.reason) l.note = v.reason;
-      logAudit('leave.' + l.status, `${s.name}, ${l.from}–${l.to}`);
+      logAudit('leave.' + l.status, `${s.name}, ${l.from}, ${l.to}`);
       route(); toast(`${s.name}’s leave ${l.status}.`);
     } });
 }
@@ -905,7 +905,7 @@ function toggleClock() {
     if (!state.online) { state.queued++; }
     logAudit('attendance.clock_in', state.online ? 'GPS verified at Sunnyvale House' : 'Queued offline');
     route();
-    toast(state.online ? 'Clocked in. GPS verified at Sunnyvale House.' : 'Clocked in offline — queued, will sync.');
+    toast(state.online ? 'Clocked in. GPS verified at Sunnyvale House.' : 'Clocked in offline. Queued, will sync.');
   } else {
     const mins = Math.round((Date.now() - state.clockStart) / 60000);
     modal({ title:'Clock out?', confirm:'Clock out', danger:true,
@@ -945,7 +945,7 @@ SCREENS.dashboard = () => {
         ${mine.map(({ k, d }) => `<div style="display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--divider)">
           <span style="width:4px;height:38px;border-radius:999px;background:${TYPES[k].c};flex:none"></span>
           <span><span class="strong">${esc(TYPES[k].name)}</span>
-            <span class="dim" style="display:block;font-size:12.5px">${WEEK[d]} ${DATES[d]} Aug · ${esc(TYPES[k].from)}–${esc(TYPES[k].to)} · ${esc(me.site)}</span></span>
+            <span class="dim" style="display:block;font-size:12.5px">${WEEK[d]} ${DATES[d]} Aug · ${esc(TYPES[k].from)}, ${esc(TYPES[k].to)} · ${esc(me.site)}</span></span>
           <span style="margin-left:auto" class="mono dim">${hrs(TYPES[k].h)}</span></div>`).join('')}
       </section>
       <section class="card"><header><h3>Announcements</h3><span class="spacer"></span>
@@ -1011,7 +1011,7 @@ SCREENS.dashboard = () => {
           ${state.leave.filter(l => l.status === 'pending').slice(0, 2).map(l => `<li>
             <span class="fi" style="background:var(--warning-wash);color:var(--warning)">${ico('plane')}</span>
             <span><span class="ft">${esc(staffById(l.who).name)} requested ${l.days} days</span>
-              <span class="fm">${esc(l.from)}–${esc(l.to)} · <a href="#/leave">Decide</a></span></span></li>`).join('')}
+              <span class="fm">${esc(l.from)}, ${esc(l.to)} · <a href="#/leave">Decide</a></span></span></li>`).join('')}
           ${state.swaps.filter(s => s.status === 'pending').map(s => `<li>
             <span class="fi" style="background:var(--info-wash);color:var(--info)">${ico('swap')}</span>
             <span><span class="ft">Swap: ${esc(staffById(s.from).name)} → ${esc(staffById(s.to).name)}</span>
@@ -1055,7 +1055,7 @@ SCREENS.rota = () => {
           style="background:${t.c}" onclick="setCell('${s.id}',${d})"
           aria-label="${esc(s.name)}, ${WEEK[d]}, ${esc(t.name)}">
           <span class="code">${k}</span>
-          <span class="hrs">${t.h ? esc(t.from) + '–' + esc(t.to) : esc(t.name)}</span></button></td>`;
+          <span class="hrs">${t.h ? esc(t.from) + ', ' + esc(t.to) : esc(t.name)}</span></button></td>`;
       }).join('')}
       <td class="num" style="color:${over ? 'var(--danger)' : near ? 'var(--warning)' : 'inherit'};font-weight:600">
         ${hrs(h)}<span class="dim" style="font-weight:400">/${s.contract}</span></td></tr>`;
@@ -1071,8 +1071,7 @@ SCREENS.rota = () => {
   return `
   <div class="pagehead"><div>
     <h1>Rota builder</h1>
-    <p class="lede">Week commencing Monday 4 August · ${esc(ORG.name)}. Click any cell to assign or clear a shift —
-      hours, cover and conflicts recalculate as you go.</p></div>
+    <p class="lede">Week commencing Monday 4 August · ${esc(ORG.name)}. Click any cell to assign or clear a shift. Hours, cover and conflicts recalculate as you go.</p></div>
     <div class="acts">
       <div class="seg"><button aria-pressed="true">Week</button><button aria-pressed="false"
         onclick="toast('Fortnight and month views use the same grid at lower density.')">Fortnight</button></div>
@@ -1086,7 +1085,7 @@ SCREENS.rota = () => {
         <span><b>Published.</b> All 12 staff can see this week and were notified. Editing a cell returns it to draft
         and re-notifies only the people whose shifts change.</span></div>`
     : `<div class="callout ${bad.length ? 'bad' : 'info'}" style="margin-bottom:14px">${ico(bad.length ? 'alert' : 'info')}
-        <span><b>Draft — not visible to staff.</b>
+        <span><b>Draft, not visible to staff.</b>
         ${bad.length ? `${bad.length} conflict${bad.length === 1 ? '' : 's'} block publication.`
           : 'No blocking conflicts. Ready to publish.'}</span></div>`}
 
@@ -1106,7 +1105,7 @@ SCREENS.rota = () => {
         <span class="fi" style="background:var(--${x.sev === 'bad' ? 'danger' : 'warning'}-wash);
           color:var(--${x.sev === 'bad' ? 'danger' : 'warning'})">${ico('alert')}</span>
         <span><span class="ft">${esc(x.msg)}</span>
-        <span class="fm">${x.sev === 'bad' ? 'Blocks publication' : 'Advisory — you can publish over this'}</span></span></li>`).join('')}</ul>`
+        <span class="fm">${x.sev === 'bad' ? 'Blocks publication' : 'Advisory. You can publish over this'}</span></span></li>`).join('')}</ul>`
         : `<div class="empty">No conflicts. Rest rules, contracted hours and minimum cover all satisfied.</div>`}
     </section>
     <section class="card"><header><h3>Unassigned staff</h3></header>
@@ -1134,7 +1133,7 @@ SCREENS.schedule = () => {
     const mine = state.grid[me.id].map((k, d) => ({ k, d })).filter(x => x.k);
     return `
     <div class="pagehead"><div><h1>Your schedule</h1>
-      <p class="lede">Week commencing 4 August${state.published ? '' : ' — your manager has not published this week yet'}.</p></div>
+      <p class="lede">Week commencing 4 August${state.published ? '' : '. Your manager has not published this week yet'}.</p></div>
       <div class="acts"><a class="btn" href="#/swaps">Offer a swap</a>
         <button class="btn" onclick="toast('Added to your phone calendar.')">Add to calendar</button></div></div>
     ${state.published ? '' : `<div class="callout warn" style="margin-bottom:14px">${ico('info')}
@@ -1148,9 +1147,9 @@ SCREENS.schedule = () => {
             <div class="mono" style="font-size:19px;font-weight:650">${DATES[d]}</div></div>
           ${k ? `<span style="width:4px;height:40px;border-radius:999px;background:${TYPES[k].c}"></span>
             <div><div class="strong">${esc(TYPES[k].name)}</div>
-              <div class="dim" style="font-size:12.5px">${TYPES[k].h ? esc(TYPES[k].from) + '–' + esc(TYPES[k].to) : 'All day'} · ${esc(me.site)}</div></div>
+              <div class="dim" style="font-size:12.5px">${TYPES[k].h ? esc(TYPES[k].from) + ', ' + esc(TYPES[k].to) : 'All day'} · ${esc(me.site)}</div></div>
             <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-              <span class="mono dim">${TYPES[k].h ? hrs(TYPES[k].h) : '—'}</span>
+              <span class="mono dim">${TYPES[k].h ? hrs(TYPES[k].h) : '-'}</span>
               ${TYPES[k].h ? `<a class="btn sm" href="#/swaps">Swap</a>` : ''}</div>`
             : `<div class="dim">Not scheduled</div>
                <div style="margin-left:auto"><a class="btn sm" href="#/availability">Set availability</a></div>`}
@@ -1186,7 +1185,7 @@ SCREENS.schedule = () => {
           <div style="display:flex;gap:9px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:9px 11px">
             <span style="width:4px;height:32px;border-radius:999px;background:${TYPES[k].c};flex:none"></span>
             <span class="two-line" style="min-width:0"><span class="t" style="font-size:13px">${esc(s.name)}</span>
-              <span class="s">${esc(TYPES[k].name)} · ${TYPES[k].h ? esc(TYPES[k].from) + '–' + esc(TYPES[k].to) : '—'}</span></span>
+              <span class="s">${esc(TYPES[k].name)} · ${TYPES[k].h ? esc(TYPES[k].from) + ', ' + esc(TYPES[k].to) : '-'}</span></span>
           </div>`; }).join('')}</div></div>`;
     }).join('')}
   </section>`;
@@ -1199,11 +1198,11 @@ SCREENS.clock = () => {
   const me = STAFF[0], today = state.grid[me.id][0];
   return `
   <div class="pagehead"><div><h1>Clock in</h1>
-    <p class="lede">Attendance is captured with your location and works offline — an entry made without signal
+    <p class="lede">Attendance is captured with your location and works offline, an entry made without signal
       queues on the device and syncs when you are back.</p></div>
     <div class="acts">
       <button class="btn sm" onclick="state.online=!state.online;route();
-        toast(state.online?'Back online — 0 entries pending.':'Offline. Clock-ins will queue on this device.', !state.online)">
+        toast(state.online?'Back online-0 entries pending.':'Offline. Clock-ins will queue on this device.', !state.online)">
         ${state.online ? 'Simulate going offline' : 'Simulate coming back online'}</button></div></div>
 
   ${state.online ? '' : `<div class="callout warn" style="margin-bottom:14px">${ico('alert')}
@@ -1215,10 +1214,10 @@ SCREENS.clock = () => {
       <div class="eyebrow">${state.clockedIn ? 'Clocked in since' : 'Today’s shift'}</div>
       <div class="bigclock">${state.clockedIn
         ? new Date(state.clockStart).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })
-        : (today ? esc(TYPES[today].from) : '—')}</div>
+        : (today ? esc(TYPES[today].from) : '-')}</div>
       ${state.clockedIn
         ? `<div class="pill ok" style="font-size:13px">${mins} minute${mins === 1 ? '' : 's'} on shift</div>`
-        : today ? `<div class="pill neutral" style="font-size:13px">${esc(TYPES[today].name)} · ${esc(TYPES[today].from)}–${esc(TYPES[today].to)}</div>`
+        : today ? `<div class="pill neutral" style="font-size:13px">${esc(TYPES[today].name)} · ${esc(TYPES[today].from)}, ${esc(TYPES[today].to)}</div>`
         : `<div class="pill neutral" style="font-size:13px">You are not scheduled today</div>`}
       <button class="clockbtn ${state.clockedIn ? 'out' : ''}" onclick="toggleClock()">
         ${state.clockedIn ? 'Clock out' : 'Clock in'}
@@ -1229,7 +1228,7 @@ SCREENS.clock = () => {
 
     <div class="grid" style="align-content:start">
       <section class="card"><header><h3>Today</h3></header><div class="body"><dl class="dl">
-        <dt>Scheduled</dt><dd>${today ? `${esc(TYPES[today].name)}, ${esc(TYPES[today].from)}–${esc(TYPES[today].to)}` : 'Not scheduled'}</dd>
+        <dt>Scheduled</dt><dd>${today ? `${esc(TYPES[today].name)}, ${esc(TYPES[today].from)}, ${esc(TYPES[today].to)}` : 'Not scheduled'}</dd>
         <dt>Site</dt><dd>${esc(me.site)}</dd>
         <dt>Break</dt><dd>30 minutes, unpaid</dd>
         <dt>Status</dt><dd>${state.clockedIn ? pill('on_shift') : pill('off')}</dd>
@@ -1239,7 +1238,7 @@ SCREENS.clock = () => {
         <a class="btn sm" href="#/timesheets">Timesheet</a></header>
         ${table([{h:'Day'},{h:'Planned'},{h:'Actual'},{h:'Paid',num:true}],
           TIMESHEETS.slice(0, 4).map(t => [esc(t.day), `<span class="mono">${esc(t.planned)}</span>`,
-            `<span class="mono">${esc(t.actual)}</span>`, t.paid ? hrs(t.paid) : '—']))}
+            `<span class="mono">${esc(t.actual)}</span>`, t.paid ? hrs(t.paid) : '-']))}
       </section>
     </div>
   </div>`;
@@ -1257,21 +1256,21 @@ SCREENS.timesheets = () => {
       <td>${esc(t.day)}</td>
       <td><span class="mono">${esc(t.planned)}</span></td>
       <td><span class="mono">${esc(t.actual)}</span></td>
-      <td class="num">${t.paid ? hrs(t.paid) : '—'}</td>
+      <td class="num">${t.paid ? hrs(t.paid) : '-'}</td>
       <td>${pill(t.status)}${t.flag ? `<div class="dim" style="font-size:12px;margin-top:3px">${esc(t.flag)}</div>` : ''}</td>
       <td style="text-align:right">${mgr ? `<div style="display:flex;gap:5px;justify-content:flex-end">
         <button class="btn sm" onclick="modal({title:'Amend ${esc(s.name)}’s hours?',confirm:'Save amendment',reason:true,
-          sub:'An amendment is recorded against the original clock event — the original is never overwritten.',
+          sub:'An amendment is recorded against the original clock event. The original is never overwritten.',
           onOk(){logAudit('timesheet.amended','${esc(s.name)}, ${esc(t.day)}');toast('Timesheet amended and flagged for payroll.')}})">Amend</button>
         <button class="btn sm p" onclick="toast('${esc(s.name)}’s ${esc(t.day)} approved for payroll.')">Approve</button></div>`
-        : '<span class="dim">—</span>'}</td></tr>`;
+        : '<span class="dim">-</span>'}</td></tr>`;
   }).join('');
   return `
   <div class="pagehead"><div><h1>Timesheets</h1>
     <p class="lede">${mgr ? 'Real hours from clock events, not the plan. Variances are flagged before payroll, not after.'
       : 'Your recorded hours. Anything that looks wrong should go to your manager before the payroll cut-off.'}</p></div>
     <div class="acts">${mgr ? `
-      <button class="btn" onclick="toast('Timesheets exported — 6 rows, week commencing 4 Aug.')">Export CSV</button>
+      <button class="btn" onclick="toast('Timesheets exported-6 rows, week commencing 4 Aug.')">Export CSV</button>
       <button class="btn p" onclick="modal({title:'Approve the whole week?',confirm:'Approve 6 timesheets',
         sub:'Two rows carry variances. Approving accepts them as recorded.',
         onOk(){logAudit('timesheet.week_approved','Week commencing 4 August');toast('6 timesheets approved for payroll.')}})">Approve week</button>` : ''}</div></div>
@@ -1357,7 +1356,7 @@ SCREENS.leave = () => {
       <td><div class="rowav"><span class="av">${initials(s.name)}</span>
         <span class="two-line"><span class="t">${esc(s.name)}</span><span class="s">${esc(s.dept)}</span></span></div></td>
       <td>${esc(l.type)}</td>
-      <td><span class="mono">${esc(l.from)} – ${esc(l.to)}</span></td>
+      <td><span class="mono">${esc(l.from)}, ${esc(l.to)}</span></td>
       <td class="num">${l.days}</td>
       <td>${pill(l.status)}${l.note ? `<div class="dim" style="font-size:12px;margin-top:3px;max-width:34ch">${esc(l.note)}</div>` : ''}</td>
       <td class="dim">${esc(l.made)}</td>
@@ -1366,7 +1365,7 @@ SCREENS.leave = () => {
             <button class="btn sm d" onclick="decideLeave('${l.id}',false)">Decline</button>
             <button class="btn sm p" onclick="decideLeave('${l.id}',true)">Approve</button></div>`
         : l.status === 'pending' ? `<button class="btn sm" onclick="toast('Request withdrawn.')">Withdraw</button>`
-        : '<span class="dim">—</span>'}</td></tr>`;
+        : '<span class="dim">-</span>'}</td></tr>`;
   }).join('');
   return `
   <div class="pagehead"><div><h1>Leave</h1>
@@ -1375,13 +1374,13 @@ SCREENS.leave = () => {
     <div class="acts"><button class="btn p" onclick="modal({title:'Request leave',confirm:'Send request',
       sub:'Your manager sees the request and the cover impact together.',
       body:'<div class=&quot;field&quot;><label for=&quot;lt&quot;>Type</label><select id=&quot;lt&quot; data-val=&quot;t&quot;><option>Annual leave</option><option>Unpaid leave</option><option>Compassionate leave</option></select></div><div class=&quot;field&quot;><label for=&quot;lf&quot;>From</label><input id=&quot;lf&quot; data-val=&quot;f&quot; value=&quot;01 September 2026&quot;></div><div class=&quot;field&quot;><label for=&quot;lu&quot;>To</label><input id=&quot;lu&quot; data-val=&quot;u&quot; value=&quot;05 September 2026&quot;></div><div class=&quot;field&quot;><label for=&quot;ln&quot;>Note to your manager</label><textarea id=&quot;ln&quot; data-val=&quot;n&quot;></textarea></div>',
-      onOk(v){logAudit(&#39;leave.requested&#39;,v.f+&#39; – &#39;+v.u);toast(&#39;Leave requested. Your manager has been notified.&#39;)}})">Request leave</button></div></div>
+      onOk(v){logAudit(&#39;leave.requested&#39;,v.f+&#39;, &#39;+v.u);toast(&#39;Leave requested. Your manager has been notified.&#39;)}})">Request leave</button></div></div>
 
   ${tiles(mgr ? [
     { lbl:'Awaiting decision', val:String(leaveOpen()), sub:'<span class="down">oldest 16 days</span>' },
     { lbl:'Approved, next 30 days', val:'7' },
     { lbl:'Days lost to sickness', val:'4', sub:'this month' },
-    { lbl:'Cover risk', val:'Aug 25–29', sub:'<span class="down">3 approved, 1 pending</span>' },
+    { lbl:'Cover risk', val:'Aug 25-29', sub:'<span class="down">3 approved, 1 pending</span>' },
     { lbl:'Team entitlement used', val:'46%' },
   ] : [
     { lbl:'Entitlement', val:'28 days' },
@@ -1418,7 +1417,7 @@ SCREENS.swaps = () => {
       at the point of offer, not after it is agreed.</p></div>
     <div class="acts"><button class="btn p" onclick="modal({title:'Offer a shift',confirm:'Post to the swap board',
       sub:'Colleagues who are qualified, available and would not breach a rest rule can pick this up.',
-      body:'<div class=&quot;field&quot;><label for=&quot;sd&quot;>Shift</label><select id=&quot;sd&quot; data-val=&quot;d&quot;><option>Mon 4 Aug · Long day · 07:00–19:30</option><option>Tue 5 Aug · Long day · 07:00–19:30</option><option>Fri 8 Aug · Night · 19:00–07:30</option></select></div><div class=&quot;field&quot;><label for=&quot;sr&quot;>Reason</label><textarea id=&quot;sr&quot; data-val=&quot;r&quot; placeholder=&quot;Your colleagues see this.&quot;></textarea></div>',
+      body:'<div class=&quot;field&quot;><label for=&quot;sd&quot;>Shift</label><select id=&quot;sd&quot; data-val=&quot;d&quot;><option>Mon 4 Aug · Long day · 07:00-19:30</option><option>Tue 5 Aug · Long day · 07:00-19:30</option><option>Fri 8 Aug · Night · 19:00-07:30</option></select></div><div class=&quot;field&quot;><label for=&quot;sr&quot;>Reason</label><textarea id=&quot;sr&quot; data-val=&quot;r&quot; placeholder=&quot;Your colleagues see this.&quot;></textarea></div>',
       onOk(v){logAudit(&#39;swap.offered&#39;,v.d);toast(&#39;Posted to the swap board. 4 colleagues are eligible.&#39;)}})">Offer a shift</button></div></div>
 
   ${tiles([
@@ -1436,7 +1435,7 @@ SCREENS.swaps = () => {
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <span style="width:4px;height:34px;border-radius:999px;background:${TYPES[sw.type].c}"></span>
             <span class="two-line"><span class="t">${esc(a.name)} → ${b ? esc(b.name) : 'open to anyone'}</span>
-              <span class="s">${esc(sw.day)} · ${esc(TYPES[sw.type].name)} · ${esc(TYPES[sw.type].from)}–${esc(TYPES[sw.type].to)}</span></span>
+              <span class="s">${esc(sw.day)} · ${esc(TYPES[sw.type].name)} · ${esc(TYPES[sw.type].from)}, ${esc(TYPES[sw.type].to)}</span></span>
             <span style="margin-left:auto">${pill(sw.status)}</span></div>
           ${sw.reason ? `<p class="dim" style="margin:0;font-size:12.5px">“${esc(sw.reason)}”</p>` : ''}
           <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1497,7 +1496,7 @@ SCREENS.overtime = () => {
           st === 'pending' && mgr ? `<div style="display:flex;gap:5px;justify-content:flex-end">
             <button class="btn sm d" onclick="toast('Claim declined.')">Decline</button>
             <button class="btn sm p" onclick="toast('1.5h approved and sent to payroll.')">Approve</button></div>`
-            : '<span class="dim">—</span>'];
+            : '<span class="dim">-</span>'];
       }))}</section>`;
 };
 
@@ -1533,7 +1532,7 @@ SCREENS.team = (staffId) => {
     { lbl:'Invites outstanding', val:'2' },
   ])}
   <div class="callout info" style="margin:16px 0">${ico('info')}
-    <span>Inviting and removing people lives in <a href="#/settings">Settings → Permissions</a> — it is
+    <span>Inviting and removing people lives in <a href="#/settings">Settings → Permissions</a>. It is
     organisation administration, not day-to-day workforce management.</span></div>
   <section class="card" data-filter>
     <div class="filters">
@@ -1589,8 +1588,8 @@ SCREENS.staffDetail = (id) => {
             k ? `<span style="display:inline-flex;align-items:center;gap:7px">
               <i style="width:10px;height:10px;border-radius:3px;background:${TYPES[k].c};display:block"></i>
               ${esc(TYPES[k].name)}</span>` : '<span class="dim">Not scheduled</span>',
-            k && TYPES[k].h ? `<span class="mono">${esc(TYPES[k].from)}–${esc(TYPES[k].to)}</span>` : '<span class="dim">—</span>',
-            k ? (TYPES[k].h ? hrs(TYPES[k].h) : '—') : '—'];
+            k && TYPES[k].h ? `<span class="mono">${esc(TYPES[k].from)}, ${esc(TYPES[k].to)}</span>` : '<span class="dim">-</span>',
+            k ? (TYPES[k].h ? hrs(TYPES[k].h) : '-') : '-'];
         }))}</section>`)}
 
     ${panel('Documents', `<section class="card"><header><h3>Documents</h3><span class="spacer"></span>
@@ -1612,7 +1611,7 @@ SCREENS.staffDetail = (id) => {
     ${panel('Leave', `<section class="card"><header><h3>Leave</h3></header>
       ${table([{h:'Type'},{h:'Dates'},{h:'Days',num:true},{h:'Status'}],
         state.leave.filter(l => l.who === s.id).map(l => [esc(l.type),
-          `<span class="mono">${esc(l.from)} – ${esc(l.to)}</span>`, l.days, pill(l.status)]),
+          `<span class="mono">${esc(l.from)}, ${esc(l.to)}</span>`, l.days, pill(l.status)]),
         { empty:'No leave recorded for this person.' })}</section>`)}
 
     ${panel('Activity', `<section class="card"><header><h3>Recent activity</h3></header>
@@ -1714,7 +1713,7 @@ SCREENS.reports = () => {
     <div class="acts">
       <select class="btn" aria-label="Period"><option>Last 12 weeks</option><option>This month</option>
         <option>Last quarter</option></select>
-      <button class="btn p" onclick="toast('Report exported — hours, cost and absence, 12 weeks.')">Export CSV</button></div></div>
+      <button class="btn p" onclick="toast('Report exported. Hours, cost and absence, 12 weeks.')">Export CSV</button></div></div>
   ${tiles([
     { lbl:'Hours worked', val:'4,982h', spark:[402,418,396,441,428,449,462], sub:'12 weeks' },
     { lbl:'Staff cost', val:'£68,240', sub:'<span class="down">+4.1%</span> vs previous 12' },
@@ -1752,7 +1751,7 @@ SCREENS.notifications = () => {
   const icons = { leave:'plane', swap:'swap', alert:'alert', ok:'ok' };
   return `
   <div class="pagehead"><div><h1>Notifications</h1>
-    <p class="lede">Reached from the bell — there is no sidebar entry, by design.</p></div>
+    <p class="lede">Reached from the bell. There is no sidebar entry, by design.</p></div>
     <div class="acts">
       <button class="btn" onclick="state.notifs.forEach(x=>x.unread=false);route();toast('All marked as read.')">Mark all read</button>
       <a class="btn" href="#/account">Notification preferences</a></div></div>
@@ -1764,7 +1763,7 @@ SCREENS.notifications = () => {
   </ul></section>
   <div class="callout info" style="margin-top:16px">${ico('info')}
     <span>Push notifications need permission from the browser. Without it, notifications still arrive in this
-    list and by email — nothing is lost, it just is not instant.</span></div>`;
+    list and by email. Nothing is lost, it just is not instant.</span></div>`;
 };
 
 /* ============================ settings ============================ */
@@ -1829,8 +1828,7 @@ SCREENS.settings = () => {
           'See the rota builder, team directory, locations or reports'],
       ])}
       <div class="body"><div class="callout warn" style="margin:0">${ico('info')}
-        <span><b>Custom roles are not available.</b> Membership is a three-value field —
-        owner, manager or staff — so a role like "senior carer who can approve leave but not publish" cannot be
+        <span><b>Custom roles are not available.</b> Membership is a three-value field. Owner, manager or staff, so a role like "senior carer who can approve leave but not publish" cannot be
         represented yet. Job titles are free text and do not grant permission.</span></div></div></section>`)}
 
     ${panel('Policies', `<section class="card"><div class="body">
@@ -1930,7 +1928,7 @@ SCREENS.account = () => {
     ${panel('Security', `<section class="card"><div class="body">
       ${row('Password', 'Last changed 19 July 2026.',
         '<button class="btn sm" onclick="modal({title:&#39;Change password&#39;,confirm:&#39;Update password&#39;,body:&#39;<div class=\\&#39;field\\&#39;><label>Current password</label><input type=password></div><div class=\\&#39;field\\&#39;><label>New password</label><input type=password><span class=hint>At least 12 characters.</span></div>&#39;,onOk(){toast(&#39;Password updated. Other sessions were signed out.&#39;)}})">Change</button>')}
-      ${row('Two-factor authentication', 'Not available in this organisation app yet — it is not shown as protecting you when it does not.',
+      ${row('Two-factor authentication', 'Not available in this organisation app yet. It is not shown as protecting you when it does not.',
         '<span class="pill neutral">Not built</span>')}
       ${row('Backup codes', 'Follows two-factor authentication.', '<span class="pill neutral">Not built</span>')}
       ${row('Sign-in alerts', 'Email when a new device signs in.', '<span class="pill ok">On</span>')}
@@ -1949,7 +1947,7 @@ SCREENS.account = () => {
       <div class="callout warn" style="margin:0">${ico('alert')}
         <span><b>There is no public API to hold a token for.</b> Issuing a long-lived token that could read a
         care home's staff records would be a security problem, not a feature. When an API exists, tokens will be
-        scoped, expiring and revocable — and they will appear here.</span></div>
+        scoped, expiring and revocable, and they will appear here.</span></div>
     </div></section>`)}
 
     ${panel('Activity', `<section class="card"><header><h3>Your recent activity</h3></header>
@@ -1999,7 +1997,7 @@ $('#roleSel').onchange = e => {
 $('#railBtn').onclick = () => $('#rail').classList.toggle('open');
 $('#kbarBtn').onclick = openPalette;
 $('#orgBtn').onclick = () => modal({ title:'Switch organisation', confirm:'Stay here', okOnly:true,
-  sub:'You belong to one organisation. Someone who works for two — an agency nurse, a group manager — switches here.',
+  sub:'You belong to one organisation. Someone who works for two, an agency nurse, a group manager, switches here.',
   body:`<div style="display:grid;gap:8px">
     <div style="display:flex;gap:10px;align-items:center;border:1px solid var(--primary);border-radius:12px;padding:11px">
       <span class="orgmark">SC</span><span><span class="strong">${esc(ORG.name)}</span>

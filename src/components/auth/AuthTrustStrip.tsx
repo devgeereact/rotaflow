@@ -8,7 +8,7 @@ const CLAIMS = [
 /**
  * The trust-badge row under the auth card (design/signup.png,
  * design/signin.png). The reference's third badge, "99.9% uptime", is
- * dropped — an SLA figure nobody has committed to is exactly the kind of
+ * dropped, an SLA figure nobody has committed to is exactly the kind of
  * unverified claim HomePage.tsx already avoids for this pre-launch product.
  * "Secure & encrypted" and "GDPR compliant" describe the actual architecture
  * (RLS-scoped multi-tenancy, EU-region infra) so they stay.

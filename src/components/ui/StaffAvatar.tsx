@@ -16,7 +16,7 @@ const SIZES: Record<NonNullable<StaffAvatarProps['size']>, string> = {
   '2xl': 'h-16 w-16 text-xl',
 };
 
-/** Staff photo, falling back to initials on a neutral tint — never a broken image icon. */
+/** Staff photo, falling back to initials on a neutral tint, never a broken image icon. */
 export function StaffAvatar({
   firstName,
   lastName,

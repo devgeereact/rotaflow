@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/Label';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 
 /**
- * `/app/account/security` — design/ProfileSecurity.png.
+ * `/app/account/security`. Design/ProfileSecurity.png.
  *
  * ## The "Security check-up" scoring is deliberately not built
  *
@@ -21,11 +21,11 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
  * two-factor authentication, recovery email set, no security issues found.
  * Three of those four cannot be answered honestly from this client:
  *
- * - **Password strength** — Supabase stores a hash. The browser cannot inspect
+ * - **Password strength**. Supabase stores a hash. The browser cannot inspect
  *   it, so the only truthful statement is about a password being typed *now*.
- * - **Two-factor** — Supabase MFA is not enrolled anywhere in this app. A tick
+ * - **Two-factor**. Supabase MFA is not enrolled anywhere in this app. A tick
  *   next to "Two-factor authentication" would be false.
- * - **"No security issues found"** — nothing scans for any.
+ * - **"No security issues found"**. Nothing scans for any.
  *
  * A 100% Secure ring that is really a static graphic is the worst possible
  * version of this card: it tells someone they are protected when nothing has
@@ -123,7 +123,7 @@ export function SecurityPage(): JSX.Element {
                 Email address
               </dt>
               <dd className="mt-0.5 break-all text-content dark:text-content-dark">
-                {user?.email ?? '—'}
+                {user?.email ?? '-'}
               </dd>
             </div>
             <div>
@@ -148,7 +148,7 @@ export function SecurityPage(): JSX.Element {
               <dd className="mt-0.5 text-content dark:text-content-dark">
                 {user?.last_sign_in_at
                   ? new Date(user.last_sign_in_at).toLocaleString('en-GB')
-                  : '—'}
+                  : '-'}
               </dd>
             </div>
           </dl>
@@ -167,7 +167,7 @@ export function SecurityPage(): JSX.Element {
               </p>
               <p className="mt-1">
                 RotaFlow does not support a second factor at sign-in. Your account is
-                protected by your password alone — use one you do not reuse anywhere else.
+                protected by your password alone. Use one you do not reuse anywhere else.
               </p>
             </div>
           </div>

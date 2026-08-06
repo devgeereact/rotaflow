@@ -1,5 +1,5 @@
 /**
- * Target industries, verbatim from docs/PRD.md §"Positioning" — the sectors
+ * Target industries, verbatim from docs/PRD.md §"Positioning". The sectors
  * RotaFlow is designed for, not a claim that organisations in them are already
  * customers. No logos, no customer names: none exist yet to show honestly.
  */

@@ -6,7 +6,7 @@ import type { MembershipRole } from '@/types';
 interface RequireRoleProps {
   /** Roles permitted to see the route. */
   allow: readonly MembershipRole[];
-  /** What the route shows, e.g. "the rota builder" — used in the denial copy. */
+  /** What the route shows, e.g. "the rota builder". Used in the denial copy. */
   area: string;
   children: ReactNode;
 }
@@ -17,7 +17,7 @@ interface RequireRoleProps {
  * ## Why at the route and not in each page
  *
  * The gate used to live inside whichever page remembered it, as a bare card
- * with a one-line message, phrased differently each time — and four pages had
+ * with a one-line message, phrased differently each time, and four pages had
  * no gate at all, so a staff member who deep-linked to them got the full
  * manager interface. Every write behind it still failed on RLS, so nothing
  * leaked that the database would not hand over; what they got was a screen full

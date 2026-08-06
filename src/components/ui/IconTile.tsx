@@ -20,7 +20,7 @@ interface IconTileProps {
 }
 
 /**
- * A rounded, tinted square holding one outline icon — the summary-tile and
+ * A rounded, tinted square holding one outline icon. The summary-tile and
  * activity-row motif in design/staff.png and design/Staff-Profile.png.
  * Purely decorative: the label beside it carries the meaning.
  */
@@ -35,7 +35,7 @@ const TONES: Record<IconTileTone, string> = {
   rose: 'bg-shift-rose/15 text-shift-rose',
   teal: 'bg-shift-teal/15 text-shift-teal',
   danger: 'bg-danger/10 text-danger',
-  // Blue-violet, not the pink `shift-violet` — the announcement megaphone and
+  // Blue-violet, not the pink `shift-violet`. The announcement megaphone and
   // rota tiles in design/Announcements-Dashboard.png sit in the indigo family.
   indigo:
     'bg-shift-tint-violet text-shift-tint-violet-fg dark:bg-shift-deep-violet dark:text-shift-violet',
@@ -43,12 +43,12 @@ const TONES: Record<IconTileTone, string> = {
 
 const SIZES: Record<NonNullable<IconTileProps['size']>, { box: string; icon: number }> = {
   sm: { box: 'h-8 w-8 rounded-lg', icon: 16 },
-  // 40px — the summary-tile and department-row square on both locations
+  // 40px. The summary-tile and department-row square on both locations
   // references, a step down from the 44px staff tile.
   base: { box: 'h-10 w-10 rounded-lg', icon: 20 },
   md: { box: 'h-11 w-11 rounded-xl', icon: 20 },
   lg: { box: 'h-12 w-12 rounded-xl', icon: 24 },
-  // 56px — the announcement preview rail's tile, the largest on any screen.
+  // 56px. The announcement preview rail's tile, the largest on any screen.
   xl: { box: 'h-14 w-14 rounded-xl', icon: 26 },
 };
 

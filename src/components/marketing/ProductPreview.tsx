@@ -1,5 +1,5 @@
 /**
- * The hero product shot — a manager's dashboard with a phone showing the same
+ * The hero product shot, a manager's dashboard with a phone showing the same
  * week as a staff member sees it.
  *
  * Built from real markup and real design tokens rather than a screenshot, for
@@ -9,7 +9,7 @@
  * dark mode and the viewer's reduced-motion setting where an image cannot.
  *
  * It is illustrative, not a live render: the figures are the same ones the
- * dashboard mockup uses. Everything here is `aria-hidden` — a screen reader
+ * dashboard mockup uses. Everything here is `aria-hidden`, a screen reader
  * gets the hero copy, which says the same thing in words, instead of a
  * meaningless tour of decorative cells.
  */
@@ -22,7 +22,7 @@ const METRICS = [
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-/** Shift chips per staff row — `null` is a day off, so the grid reads like a real week. */
+/** Shift chips per staff row, `null` is a day off, so the grid reads like a real week. */
 const ROWS: { name: string; shifts: (keyof typeof CHIP | null)[] }[] = [
   { name: 'A. Okafor', shifts: ['early', 'early', null, 'late', 'late', null, null] },
   { name: 'J. Whitfield', shifts: ['day', 'day', 'day', null, null, 'night', 'night'] },
@@ -38,10 +38,10 @@ const CHIP = {
 } as const;
 
 const AGENDA = [
-  { day: 'Mon 11', time: '07:00 – 15:00', role: 'Early · Floor 2', chip: CHIP.early },
-  { day: 'Tue 12', time: '07:00 – 15:00', role: 'Early · Floor 2', chip: CHIP.early },
-  { day: 'Thu 14', time: '14:00 – 22:00', role: 'Late · Floor 1', chip: CHIP.late },
-  { day: 'Sat 16', time: '22:00 – 06:00', role: 'Night · Floor 1', chip: CHIP.night },
+  { day: 'Mon 11', time: '07:00-15:00', role: 'Early · Floor 2', chip: CHIP.early },
+  { day: 'Tue 12', time: '07:00-15:00', role: 'Early · Floor 2', chip: CHIP.early },
+  { day: 'Thu 14', time: '14:00-22:00', role: 'Late · Floor 1', chip: CHIP.late },
+  { day: 'Sat 16', time: '22:00-06:00', role: 'Night · Floor 1', chip: CHIP.night },
 ];
 
 export function ProductPreview(): JSX.Element {
@@ -51,7 +51,7 @@ export function ProductPreview(): JSX.Element {
         The phone is absolutely positioned over the dashboard's bottom-right
         corner, so on `lg` and up the dashboard reserves room for it. Without
         that reserve the phone sat on top of the last two columns of the rota
-        grid and half the "Open shifts" metric — which reads as a layout bug
+        grid and half the "Open shifts" metric, which reads as a layout bug
         rather than as depth.
       */}
       <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg lg:mr-40 dark:border-surface-border-dark dark:bg-surface-dark">
@@ -60,7 +60,7 @@ export function ProductPreview(): JSX.Element {
           <span className="h-2.5 w-2.5 rounded-full bg-warning/60" />
           <span className="h-2.5 w-2.5 rounded-full bg-success/60" />
           <span className="ml-3 text-xs text-content-muted dark:text-content-muted-dark">
-            Week of 11–17 May · Sunnyvale Care Home
+            Week of 11-17 May · Sunnyvale Care Home
           </span>
         </div>
 
@@ -135,11 +135,11 @@ export function ProductPreview(): JSX.Element {
         </div>
       </div>
 
-      {/* Staff phone — the same week, published */}
+      {/* Staff phone. The same week, published */}
       <div className="absolute -bottom-8 -right-2 hidden w-52 rounded-[1.75rem] border-4 border-content/85 bg-surface shadow-lg lg:block dark:border-content-dark/20 dark:bg-surface-dark">
         <div className="rounded-t-[1.4rem] bg-primary px-4 pb-4 pt-5 text-primary-fg">
           <p className="text-[10px] uppercase tracking-wide opacity-80">My schedule</p>
-          <p className="font-display text-sm font-bold">11 – 17 May</p>
+          <p className="font-display text-sm font-bold">11-17 May</p>
         </div>
         <div className="space-y-2 p-3">
           {AGENDA.map(({ day, time, role, chip }) => (

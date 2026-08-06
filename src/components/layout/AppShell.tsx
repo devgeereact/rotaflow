@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/Card';
  * sidebar/header chrome around the routed page. ProtectedRoute (auth-only)
  * wraps this.
  *
- * Where a member-less user is sent depends on who they are — see the redirect
+ * Where a member-less user is sent depends on who they are. See the redirect
  * below. A platform administrator is not a prospective customer.
  */
 export function AppShell(): JSX.Element {
@@ -27,7 +27,7 @@ export function AppShell(): JSX.Element {
 
   // Check the failure first. An unreachable memberships query also yields an
   // empty list, and redirecting on that would tell an existing owner to create
-  // an organisation they already have — and let them create a duplicate.
+  // an organisation they already have, and let them create a duplicate.
   if (loadFailed && memberships.length === 0) {
     return (
       <main className="grid min-h-screen place-items-center px-6">
@@ -54,7 +54,7 @@ export function AppShell(): JSX.Element {
   // past a guard. Send them where they actually belong instead.
   //
   // They can still reach /onboarding deliberately if they genuinely want to
-  // create an organisation — this changes the default, not the ability.
+  // create an organisation. This changes the default, not the ability.
   if (memberships.length === 0) {
     return <Navigate to={isPlatformAdmin ? '/admin' : '/onboarding'} replace />;
   }
@@ -64,7 +64,7 @@ export function AppShell(): JSX.Element {
      * The shell is exactly one viewport tall and does not scroll. Only `main`
      * does.
      *
-     * This was `min-h-screen`, which grows with its content — so `main`'s
+     * This was `min-h-screen`, which grows with its content, so `main`'s
      * `overflow-y-auto` had no bounded parent to scroll inside, the whole
      * document scrolled instead, and the sidebar and header slid away with it.
      * On a long rota you lost the navigation entirely and had to scroll back up
@@ -72,8 +72,8 @@ export function AppShell(): JSX.Element {
      *
      * `100dvh` rather than `100vh`: on mobile Safari and Chrome `vh` is fixed to
      * the *largest* viewport, so with the address bar showing, `h-screen` is
-     * taller than what you can see and the bottom of the sidebar — the profile
-     * block and collapse control — sits below the fold with no way to reach it.
+     * taller than what you can see and the bottom of the sidebar. The profile
+     * block and collapse control. Sits below the fold with no way to reach it.
      * `dvh` tracks the visible height as the browser chrome moves.
      */
     <div className="flex h-[100dvh] overflow-hidden bg-background dark:bg-background-dark">

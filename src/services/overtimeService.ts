@@ -4,19 +4,19 @@ import type { OvertimeRequest, OvertimeRequestInsert } from '@/types';
 /**
  * `overtime_requests` reader/writer.
  *
- * The table has existed since migration 0001 and carried no service at all —
+ * The table has existed since migration 0001 and carried no service at all,
  * audit01 P2-7, and NEW_STRUCTURE §34's `/app/overtime` had nothing behind it.
  * Staff could not offer overtime and managers could not allocate it, so the
  * hours a rota actually costs beyond contract were invisible outside the
  * timesheet totals.
  *
- * Shaped deliberately like `leaveService`: the two are the same workflow —
+ * Shaped deliberately like `leaveService`: the two are the same workflow,
  * a person asks, a manager decides, the decision is stamped with who and when.
  * Matching them means the pages, the status vocabulary and the RLS story stay
  * recognisable rather than each request type inventing its own.
  */
 
-/** One person's own requests — the staff view. */
+/** One person's own requests. The staff view. */
 export async function listMyOvertimeRequests(
   staffProfileId: string,
 ): Promise<OvertimeRequest[]> {
@@ -29,7 +29,7 @@ export async function listMyOvertimeRequests(
   return data ?? [];
 }
 
-/** Every request across the org — the manager approval queue. */
+/** Every request across the org. The manager approval queue. */
 export async function listOrgOvertimeRequests(orgId: string): Promise<OvertimeRequest[]> {
   const { data, error } = await supabase
     .from('overtime_requests')
@@ -55,7 +55,7 @@ export async function createOvertimeRequest(
 /**
  * Manager approve/reject.
  *
- * RLS (`has_org_role`) is the real enforcement — this only records the
+ * RLS (`has_org_role`) is the real enforcement. This only records the
  * decision. `reviewed_by` takes the reviewer's **user id**, matching
  * `reviewLeaveRequest`, because the column FKs `profiles`.
  */

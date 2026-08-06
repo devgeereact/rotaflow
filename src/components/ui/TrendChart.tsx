@@ -5,7 +5,7 @@ export interface TrendSeries {
   name: string;
   /** One value per label, same length and order as `labels`. */
   values: readonly number[];
-  /** A colour token, e.g. `var(--chart-primary)` is not used — pass a class-free CSS colour. */
+  /** A colour token, e.g. `var(--chart-primary)` is not used. Pass a class-free CSS colour. */
   colour: string;
   /** Line only, no area fill. Use for secondary series so fills do not stack up. */
   lineOnly?: boolean;
@@ -26,7 +26,7 @@ const PAD = { l: 8, r: 8, t: 12, b: 22 };
 const VIEW_W = 720;
 
 /**
- * Multi-series trend plot — the shape the platform console opens with.
+ * Multi-series trend plot. The shape the platform console opens with.
  *
  * ## Why not `BarChart`
  *
@@ -41,7 +41,7 @@ const VIEW_W = 720;
  * A plot is not readable by a screen reader, and "chart of platform growth" is
  * not a substitute for the numbers. As in `BarChart`, the same data is always
  * available as a table behind a toggle rather than hidden in a `title`
- * attribute — the figures are the point, the line is the convenience.
+ * attribute. The figures are the point, the line is the convenience.
  */
 export function TrendChart({
   series,

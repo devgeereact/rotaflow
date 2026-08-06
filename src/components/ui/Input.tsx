@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  /** Leading icon, e.g. `Mail` — rendered inside the field, never as a separate label. */
+  /** Leading icon, e.g. `Mail`. Rendered inside the field, never as a separate label. */
   icon?: LucideIcon;
   /** Trailing slot, e.g. a password show/hide toggle button. */
   endAdornment?: ReactNode;

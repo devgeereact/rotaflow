@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { EmergencyContact, EmergencyContactInsert } from '@/types';
 
 /**
- * `org_id` filters are defense-in-depth, not the real enforcement — RLS
+ * `org_id` filters are defense-in-depth, not the real enforcement. RLS
  * (0002_rotaflow.sql) already scopes every row by its own `org_id`
  * regardless of what a client sends. Adding them here costs nothing and
  * matches the pattern of never trusting a single layer.

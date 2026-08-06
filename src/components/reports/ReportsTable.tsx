@@ -16,7 +16,7 @@ interface ReportsTableProps {
   onDownload: (id: string) => void;
   /** Omitted where no row menu exists to open. */
   onRowMenu?: (id: string) => void;
-  /** Set while a report is generating — its Run button shows the busy state. */
+  /** Set while a report is generating. Its Run button shows the busy state. */
   runningId: string | null;
   emptyMessage: string;
 }
@@ -29,7 +29,7 @@ const ACTION =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40 ' +
   'dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark';
 
-/** The report catalogue — one row per report (design/Reports-Dashboard.png). */
+/** The report catalogue, one row per report (design/Reports-Dashboard.png). */
 export function ReportsTable({
   rows,
   onToggleFavourite,

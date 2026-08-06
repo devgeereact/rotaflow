@@ -1,4 +1,4 @@
-# Supabase PostgreSQL Schema & Security — RotaFlow
+# Supabase PostgreSQL Schema & Security. RotaFlow
 
 The canonical, runnable source is `supabase/migrations/`. `0001_init.sql` ships the
 built-in `profiles` + `app_settings` and conventions; **`0002_rotaflow.sql`** adds the
@@ -9,8 +9,7 @@ closes the permanent creator-read bypass `0003` left open (see §4). Apply via t
 Supabase SQL editor or `supabase db push`.
 
 RotaFlow is **multi-tenant on a single database**: every domain table carries an
-`org_id`, and Row Level Security isolates tenants. RLS is the last line of defence —
-the client also scopes every query, but the database guarantees no cross-tenant leak.
+`org_id`, and Row Level Security isolates tenants. RLS is the last line of defence. The client also scopes every query, but the database guarantees no cross-tenant leak.
 
 ## 1. Tenancy & roles model
 
@@ -56,7 +55,7 @@ auth.users ──1:1──> public.profiles
 
 ### `app_settings`
 
-Per-user preferences (`theme`, `notifications_enabled`) — unchanged. `theme` values
+Per-user preferences (`theme`, `notifications_enabled`). Unchanged. `theme` values
 `dark`/`light`; the app also honours the device preference by default.
 
 ## 3. RotaFlow tables (from `0002_rotaflow.sql`)
@@ -85,7 +84,7 @@ Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, excep
 | `emergency_contacts` | `org_id`, `staff_profile_id`, `name`, `relationship`, `phone`, `secondary_phone?`, `medical_notes?`                                                                                                               | Per-employee.                                                                                  |
 | `documents`          | `org_id`, `staff_profile_id`, `type`, `name`, `file_url`, `issued_at?`, `expires_at?`                                                                                                                             | Contracts, DBS, RTW, visas; expiry surfaced in Phase 2.                                        |
 | `announcements`      | `org_id`, `author_user_id`, `scope` (`org`\|`location`\|`department`), `location_id?`, `department_id?`, `title`, `body`, `urgent`, `published_at`                                                                | Communication centre.                                                                          |
-| `notifications`      | `org_id`, `user_id`, `type`, `title`, `body`, `channel` (`push`\|`email`\|`sms`), `read_at?`                                                                                                                      | In-app + delivery record. **`sms` is a reserved channel value — not delivered in V1.**         |
+| `notifications`      | `org_id`, `user_id`, `type`, `title`, `body`, `channel` (`push`\|`email`\|`sms`), `read_at?`                                                                                                                      | In-app + delivery record. **`sms` is a reserved channel value, not delivered in V1.**         |
 | `subscriptions`      | `org_id`, `plan` (`starter`\|`professional`\|`business`), `status`, `provider`, `provider_ref?`, `current_period_end?`                                                                                            | Billing seam. Provider is pluggable (Apple Pay / Google Pay / PayPal); charging is built last. |
 | `audit_logs`         | `org_id`, `actor_user_id?`, `action`, `entity_type`, `entity_id?`, `metadata jsonb`, `created_at`                                                                                                                 | GDPR + compliance trail (append-only).                                                         |
 
@@ -113,18 +112,17 @@ Baseline policy shape:
 | Anything                                                                                                                                   | Super Admin (`is_platform_admin()`) may read for support                               | writes still audited                                                     |
 
 There is **no** blanket public-read policy. Unauthenticated requests return nothing.
-These policies are a solid, working baseline — tighten per feature as flows land.
+These policies are a solid, working baseline. Tighten per feature as flows land.
 
 **`organisations` read is a deliberate exception** to the table above:
 `is_org_member(id) OR (created_by = auth.uid() AND no membership row exists yet for
 that org)` (`0003_fix_organisations_select_rls.sql`, narrowed by
 `0005_narrow_organisations_select_rls.sql`). Without the `created_by` clause,
-`insert(...).select().single()` fails RLS for the very first org a user creates —
-Postgres checks the new row against the SELECT policy for `RETURNING` _before_ the
+`insert(...).select().single()` fails RLS for the very first org a user creates. Postgres checks the new row against the SELECT policy for `RETURNING` _before_ the
 `on_org_created` trigger has inserted their membership row, so `is_org_member` alone
 can't see it yet. `0003`'s original fix left that clause unconditional, which let the
 creator read the org forever, even after their membership was removed or suspended.
-`0005` scopes it to the genuine bootstrap window only — the instant `on_org_created`
+`0005` scopes it to the genuine bootstrap window only. The instant `on_org_created`
 inserts the owner's membership row (same transaction), the `not exists` check flips
 and only `is_org_member()` governs access, same as every other tenant table.
 
@@ -146,11 +144,10 @@ supabase gen types typescript --project-id <ref> --schema public \
 ```
 
 The Supabase client is `createClient<Database>(…)`, so every query is fully typed.
-`src/types/index.ts` exposes row aliases (`Organisation`, `Shift`, `LeaveRequest`, …)
-— add them there as tables are generated.
+`src/types/index.ts` exposes row aliases (`Organisation`, `Shift`, `LeaveRequest`, …). Add them there as tables are generated.
 
 ## 7. Migration policy
 
 - One numbered file per change (`0002_rotaflow.sql`, `0003_…`). Additive & idempotent
-  (`if not exists`). **Never edit an applied migration** — add a new one.
+  (`if not exists`). **Never edit an applied migration**. Add a new one.
 - Every new table: `org_id`, RLS enabled, membership-scoped policies, `set_updated_at`.

@@ -5,7 +5,7 @@ import { IconTile, type IconTileTone } from '@/components/ui/IconTile';
 import { cn } from '@/lib/utils';
 
 export interface StatTileProps {
-  /** Omit for a figure-only tile — the platform console's default. */
+  /** Omit for a figure-only tile. The platform console's default. */
   icon?: LucideIcon;
   tone?: IconTileTone;
   label: string;
@@ -15,7 +15,7 @@ export interface StatTileProps {
   hint?: ReactNode;
   /** Where the figure came from. Renders the tile as a link. */
   to?: string;
-  /** A `Sparkline` under the figure — its recent shape, not a second number. */
+  /** A `Sparkline` under the figure. Its recent shape, not a second number. */
   chart?: ReactNode;
   className?: string;
 }
@@ -25,10 +25,10 @@ export interface StatTileProps {
  *
  * ## Why this exists
  *
- * Seven near-identical versions of this component had grown across the app —
+ * Seven near-identical versions of this component had grown across the app,
  * `dashboard/StatCard`, `staff/StaffStatCard`, `staff/StaffMetricCard`,
  * `timesheets/TimesheetStatCard`, `schedule/ScheduleStatCard`,
- * `availability/AvailabilityStatCard`, `locations/SiteStatCard` — plus
+ * `availability/AvailabilityStatCard`, `locations/SiteStatCard`, plus
  * `AdminStat` in the platform console. `AvailabilityStatCard` already
  * documented the duplication in a comment ("worth folding into a shared
  * `StatTile` once both have settled"). They have settled, and the platform
@@ -41,7 +41,7 @@ export interface StatTileProps {
  * rules cannot survive that.
  *
  * `icon` is optional because the platform console's tiles are figures without
- * decoration — cross-tenant totals, where an icon per tile adds noise rather
+ * decoration. Cross-tenant totals, where an icon per tile adds noise rather
  * than meaning.
  */
 export function StatTile({
@@ -97,8 +97,7 @@ export function StatTile({
     className,
   );
 
-  // A tile that leads somewhere is a link, not a div with a click handler —
-  // the console's tiles are the primary way into the screen they summarise,
+  // A tile that leads somewhere is a link, not a div with a click handler, // the console's tiles are the primary way into the screen they summarise,
   // and they have to be reachable by keyboard and openable in a new tab.
   return to ? (
     <Link to={to} className={shell}>

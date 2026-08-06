@@ -1,11 +1,11 @@
 /**
  * Email validation, kept deliberately close to the SQL regex in
  * `0006_invites.sql` so the client and the database agree on what an address
- * is — with one addition: a TLD of at least two characters, which rules out
+ * is, with one addition: a TLD of at least two characters, which rules out
  * `a@b.c` typos the SQL pattern lets through.
  *
  * Why this exists at all: there is no `<form>` element anywhere in `src/`, so
- * every `type="email"` attribute in the app is decorative — native
+ * every `type="email"` attribute in the app is decorative. Native
  * constraint validation only runs on a real form submit, and every submit
  * path here is an `onClick` handler. Before this module, the only guard on
  * an address that triggers a Supabase Auth email was `.trim().length > 0`.
@@ -22,7 +22,7 @@ export function isValidEmail(email: string): boolean {
 
 /**
  * Domains typo'd often enough to be worth catching. Keys are the whole
- * domain, never a suffix — matching on a suffix would "correct" the
+ * domain, never a suffix. Matching on a suffix would "correct" the
  * perfectly real `yahoo.co.uk` into `yahoo.com`.
  */
 const DOMAIN_TYPOS: Record<string, string> = {
@@ -55,7 +55,7 @@ const DOMAIN_TYPOS: Record<string, string> = {
  *
  * Deliberately advisory, never enforced: `gmial.com` is a syntactically
  * valid domain and could in principle be somebody's real mail server.
- * Callers should offer this as "did you mean…", not block on it — the cost
+ * Callers should offer this as "did you mean…", not block on it. The cost
  * of wrongly blocking a real address is much higher than the cost of one
  * bounce.
  */

@@ -79,7 +79,7 @@ const TABS = [
  */
 const PLACEHOLDER_TABS: Partial<Record<Tab, string>> = {
   branding:
-    'No table holds a logo, favicon or accent colour, and the palette is compiled into the bundle by Tailwind — changing it is a deploy, not a setting.',
+    'No table holds a logo, favicon or accent colour, and the palette is compiled into the bundle by Tailwind. Changing it is a deploy, not a setting.',
   security:
     'MFA enforcement, session timeout, IP allowlisting and concurrent-session limits are Supabase Auth and network concerns. None is readable or writable from a static client holding the anon key.',
   email:
@@ -104,7 +104,7 @@ interface AdminRow {
 }
 
 /**
- * `/admin/settings` — deployment configuration and the administrator roster.
+ * `/admin/settings`. Deployment configuration and the administrator roster.
  *
  * ## Which settings are real
  *
@@ -112,7 +112,7 @@ interface AdminRow {
  * effect. The Authentication tab is **read-only and says so**: password policy,
  * magic links, OAuth providers and session length all belong to Supabase Auth,
  * which this table cannot override. A "require email verification" switch here
- * would persist a boolean nothing consults — the same defect the console
+ * would persist a boolean nothing consults. The same defect the console
  * already shipped once, where a toggle reported success and changed nothing.
  * So that tab reports the real build-time configuration and names where each
  * setting actually lives.
@@ -128,7 +128,7 @@ export function AdminSettingsPage(): JSX.Element {
   const [admins, setAdmins] = useState<AdminRow[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  // The open tab lives in the URL so a link can point at one — "the API tab
+  // The open tab lives in the URL so a link can point at one, "the API tab
   // says there is no API" is a thing people send each other, and it was
   // unlinkable while this was component state.
   const [params, setParams] = useSearchParams();
@@ -290,7 +290,7 @@ export function AdminSettingsPage(): JSX.Element {
         cell: ({ grant, profile }) => (
           <>
             <p className="truncate font-medium text-content dark:text-content-dark">
-              {profile?.full_name ?? '—'}
+              {profile?.full_name ?? '-'}
               {grant.user_id === user?.id && (
                 <span className="ml-2 text-xs font-normal text-content-muted dark:text-content-muted-dark">
                   (you)
@@ -514,7 +514,7 @@ export function AdminSettingsPage(): JSX.Element {
                   detail={
                     env.oauthProviders.length > 0
                       ? env.oauthProviders.join(', ')
-                      : 'Email and password only — no OAuth providers declared'
+                      : 'Email and password only, no OAuth providers declared'
                   }
                   enabled={env.oauthProviders.length > 0}
                 />
@@ -542,7 +542,7 @@ export function AdminSettingsPage(): JSX.Element {
             <p>{PLACEHOLDER_TABS[tab]}</p>
             <p>
               The rows below come from <code>src/lib/adminOverviewDemo.ts</code>. Every
-              control on them is inert — a switch that flipped and forgot would be worse
+              control on them is inert, a switch that flipped and forgot would be worse
               than one that plainly cannot move.
             </p>
           </Callout>
@@ -619,14 +619,14 @@ export function AdminSettingsPage(): JSX.Element {
                 value={value('maintenance_message') ?? ''}
                 disabled={!canManagePlatformConfig}
                 onChange={(v) => setDraft((d) => ({ ...d, maintenance_message: v }))}
-                hint="e.g. Scheduled maintenance on Sunday 02:00–04:00 UTC."
+                hint="e.g. Scheduled maintenance on Sunday 02:00-04:00 UTC."
               />
             </div>
             <Callout tone="warning" className="mt-4">
               <p>
                 This is a banner, not a kill switch. A static PWA cannot refuse to serve
                 itself, and row-level security is what actually stands between a user and
-                their data — so this informs people rather than stopping them.
+                their data, so this informs people rather than stopping them.
               </p>
             </Callout>
           </Panel>
@@ -640,7 +640,7 @@ export function AdminSettingsPage(): JSX.Element {
  * A tab of settings this deployment cannot store.
  *
  * Controls render their state and refuse to change it, and each says why on
- * hover — a dead switch that explains itself is better than one that answers
+ * hover, a dead switch that explains itself is better than one that answers
  * the click with nothing.
  */
 function DemoSettings({
@@ -735,7 +735,7 @@ function Capability({
           {detail}
         </p>
       </div>
-      {/* Colour is never the only signal — the word says it too (§26). */}
+      {/* Colour is never the only signal. The word says it too (§26). */}
       <Badge tone={enabled ? 'success' : 'neutral'}>
         {enabled ? 'Enabled' : 'Not configured'}
       </Badge>

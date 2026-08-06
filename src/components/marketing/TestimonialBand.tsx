@@ -28,7 +28,7 @@ const COMMITMENTS = [
  * The social-proof slot.
  *
  * When `TESTIMONIALS` has entries this renders them. It is **empty on purpose**
- * — RotaFlow has no customers, and a quote attributed to a named person at a
+ *. RotaFlow has no customers, and a quote attributed to a named person at a
  * named company is the most actionable false claim a pre-launch site can make.
  * See `src/lib/marketing.ts`.
  *
@@ -73,7 +73,7 @@ export function TestimonialBand(): JSX.Element {
         </h2>
         <p className="mt-3 text-content-muted dark:text-content-muted-dark">
           RotaFlow is pre-launch, so there are no customer quotes here yet. These are the
-          commitments the product is built on — each one checkable, not a claim about how
+          commitments the product is built on. Each one checkable, not a claim about how
           many people use it.
         </p>
       </div>

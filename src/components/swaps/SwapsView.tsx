@@ -17,7 +17,7 @@ import type { SwapRule } from '@/components/swaps/SwapRulesCard';
 import type { SwapRow, SwapStatusCount, SwapTab } from '@/lib/swapRows';
 
 export interface SwapsViewProps {
-  /** Page heading — "Swaps" for a manager, narrowed for a staff member. */
+  /** Page heading, "Swaps" for a manager, narrowed for a staff member. */
   title: string;
   subtitle: string;
 
@@ -62,7 +62,7 @@ export interface SwapsViewProps {
 }
 
 /**
- * `/app/swaps` — the shift-swap queue and its manager review actions
+ * `/app/swaps`. The shift-swap queue and its manager review actions
  * (design/Swap-Request.png).
  *
  * Presentational only: every figure and label arrives already computed, so the

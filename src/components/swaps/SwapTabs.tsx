@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import type { SwapTab } from '@/lib/swapRows';
 
 /**
- * `solid` is the attention state the reference gives the pending count only —
+ * `solid` is the attention state the reference gives the pending count only,
  * a filled warning chip, so a manager sees the size of their queue without
  * opening the tab. Every other count is a soft tint.
  */
@@ -42,7 +42,7 @@ const SOLID: Record<SwapTabDef['tone'], string> = {
 /**
  * Status tabs above the swap table (design/Swap-Request.png).
  *
- * The active underline sits clear of the rule beneath the row — in the
+ * The active underline sits clear of the rule beneath the row, in the
  * reference they are two separate lines about 9px apart, not one border the
  * active tab overlaps.
  */

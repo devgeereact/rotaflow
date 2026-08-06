@@ -36,7 +36,7 @@ interface ShiftInspectorPanelProps {
   locations: Location[];
   dailyTotals: DailyTotal[];
   /**
-   * Everything wrong with the visible rota, worst first — not just unfilled
+   * Everything wrong with the visible rota, worst first, not just unfilled
    * shifts. Comes from `computeRotaInsights`, which is the same engine the
    * assistant and the publish gate read, so all three agree.
    */
@@ -164,12 +164,12 @@ function ShiftDetails({
   const wholeGroup = shiftGroup(shifts, shift);
   const group = wholeGroup.filter((s) => s.staff_profile_id);
   const groupTotal = wholeGroup.length;
-  // Filled slots ÷ total slots for this shift — derived from rows that exist,
+  // Filled slots ÷ total slots for this shift. Derived from rows that exist,
   // not a target-vs-actual figure (the schema carries no required headcount).
   const coveragePct = groupTotal > 0 ? Math.round((group.length / groupTotal) * 100) : 0;
 
   // `shifts` has no required-skills column, so this is the union of skills the
-  // assigned staff actually hold — hence "Skills on Shift", not the
+  // assigned staff actually hold. Hence "Skills on Shift", not the
   // reference's "Required Skills". See design/.loop/rota-log.md.
   const skills = [
     ...new Set(
@@ -227,7 +227,7 @@ function ShiftDetails({
         })}
       </p>
       <p className="mb-4 pl-[1.4rem] font-mono text-sm text-content-muted dark:text-content-muted-dark">
-        {startTime} – {endTime} ({durationHours}h)
+        {startTime}, {endTime} ({durationHours}h)
       </p>
 
       {/* Staffing and coverage sit side by side, split by a hairline. */}
@@ -378,7 +378,7 @@ function CoverageList({ dailyTotals }: { dailyTotals: DailyTotal[] }): JSX.Eleme
               {t.status === 'understaffed'
                 ? 'Understaffed'
                 : t.status === 'empty'
-                  ? '—'
+                  ? '-'
                   : 'Optimal'}
             </span>
           </span>

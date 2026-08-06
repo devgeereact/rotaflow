@@ -49,7 +49,7 @@ export interface AnnouncementsViewProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
 
-  /** `null` while nothing is selected — the rail collapses rather than showing a shell. */
+  /** `null` while nothing is selected. The rail collapses rather than showing a shell. */
   preview: AnnouncementPreview | null;
   quickActions: AnnouncementQuickAction[];
   onDownload: (attachmentId: string) => void;
@@ -57,7 +57,7 @@ export interface AnnouncementsViewProps {
 }
 
 /**
- * `/app/announcements` — compose, schedule and track team communications
+ * `/app/announcements`. Compose, schedule and track team communications
  * (design/Announcements-Dashboard.png).
  *
  * Presentational only: rows, counts and the preview arrive already mapped, so

@@ -52,7 +52,7 @@ function requireKeys(keys: (keyof ImportMetaEnv)[]): void {
 }
 
 /**
- * Parse `VITE_ENABLE_OAUTH` — a comma-separated provider list, e.g. "google"
+ * Parse `VITE_ENABLE_OAUTH`, a comma-separated provider list, e.g. "google"
  * or "google,github". Unknown or legacy values ("true"/"false") match nothing
  * and yield an empty list, so a misconfigured value hides the buttons rather
  * than shipping dead ones.

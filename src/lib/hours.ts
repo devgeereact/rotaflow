@@ -24,7 +24,7 @@ export interface WorkedSegment {
 /**
  * Pairs a chronological event stream into worked segments (in → out, minus
  * any break in between). There is no `timesheets` automation in the schema
- * (docs/SCHEMA.md — it's a manually-managed aggregate, not trigger-populated),
+ * (docs/SCHEMA.md. It's a manually-managed aggregate, not trigger-populated),
  * so this is computed client-side directly from `clock_events` rather than
  * reading a maintained total.
  *
@@ -38,7 +38,7 @@ export interface WorkedSegment {
  * a number on a payslip.
  *
  * Tolerant of an `out` with no matching `in` (a queued offline event replayed
- * out of order, or a manually corrected row) — it is ignored rather than
+ * out of order, or a manually corrected row). It is ignored rather than
  * producing a segment that starts at the epoch.
  */
 export function pairClockEvents(
@@ -76,7 +76,7 @@ export function pairClockEvents(
     // A break that was started and never ended. The break_start event is
     // evidence the person stopped working; there is no evidence they resumed.
     // The literal reading is that the break ran to the end of the shift, so
-    // that is what is deducted — but it is flagged, because the alternative
+    // that is what is deducted, but it is flagged, because the alternative
     // (they forgot to press "end break" and worked on) is just as likely and
     // only a human can tell. Previously this branch deducted NOTHING, so an
     // unclosed break was paid in full and nobody ever saw it.
@@ -105,7 +105,7 @@ export function pairClockEvents(
   for (const event of sorted) {
     if (event.type === 'in') {
       // A second clock-in while one is already open means the first shift was
-      // never closed — someone forgot to clock out, then started their next
+      // never closed. Someone forgot to clock out, then started their next
       // shift. This used to overwrite `openIn`, deleting the earlier shift
       // outright: a full day worked and never paid, with no error and no trace.
       //
@@ -131,7 +131,7 @@ export function pairClockEvents(
     }
   }
 
-  // Still clocked in — an ongoing segment up to `now`, not dropped.
+  // Still clocked in, an ongoing segment up to `now`, not dropped.
   if (openIn) closeSegment(null, now, null);
 
   return segments;

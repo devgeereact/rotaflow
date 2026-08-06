@@ -1,15 +1,15 @@
 /**
  * View model for the clock-in screen (design/clockin.png).
  *
- * The `src/components/clockin/*` cards are presentational — they render
+ * The `src/components/clockin/*` cards are presentational. They render
  * pre-formatted strings and never touch a Date, a timezone or a Supabase row.
  * Everything real is computed here from `shifts` + `clock_events` and mapped
  * into these shapes, so `/app/clock` and `/clockin-preview` feed the same
  * components with the same props.
  *
  * Lives in `lib`, not `services`, deliberately: it is pure and covered by
- * `clockRows.test.ts`, and importing a service would drag `@/lib/supabase` —
- * and a WebSocket Node 20 does not have — into the test run.
+ * `clockRows.test.ts`, and importing a service would drag `@/lib/supabase`,
+ * and a WebSocket Node 20 does not have, into the test run.
  */
 import { addMinutes, differenceInMinutes, format, isSameDay, subDays } from 'date-fns';
 import { pairClockEvents, totalWorkedMinutes } from '@/lib/hours';
@@ -31,18 +31,18 @@ export const RECENT_ACTIVITY_LIMIT = 3;
 export type ClockStage = 'ready' | 'working' | 'break' | 'done';
 
 export interface CurrentShiftInfo {
-  /** "Starts in 12 min" — the pill above the time. */
+  /** "Starts in 12 min". The pill above the time. */
   countdownLabel: string;
   timeRange: string;
   dateLabel: string;
   locationName: string;
-  /** Department. `null` where the shift has none — the row is dropped. */
+  /** Department. `null` where the shift has none. The row is dropped. */
   areaName: string | null;
   /** The person's job title. `null` where the profile has none. */
   roleName: string | null;
-  /** `null` where the shift has no shift_type — the field is dropped. */
+  /** `null` where the shift has no shift_type. The field is dropped. */
   shiftTypeName: string | null;
-  /** "12:30 – 13:00", or `null` for a shift with no unpaid break. */
+  /** "12:30-13:00", or `null` for a shift with no unpaid break. */
   breakRange: string | null;
   /** Rendered muted next to the break range, e.g. "(30 min)". */
   breakDuration: string | null;
@@ -70,7 +70,7 @@ export interface ClockActivityEntry {
   label: string;
   timeLabel: string;
   locationName: string;
-  /** Shown right-aligned on clock-outs only — the shift length worked. */
+  /** Shown right-aligned on clock-outs only. The shift length worked. */
   durationLabel?: string;
 }
 
@@ -86,7 +86,7 @@ export interface WeeklySummaryData {
   /** 0-100, drives the progress bar width. */
   completedPercent: number;
   progressLabel: string;
-  /** `null` where nothing was scheduled — a percentage would be a lie. */
+  /** `null` where nothing was scheduled, a percentage would be a lie. */
   attendancePercent: number | null;
 }
 
@@ -108,13 +108,13 @@ export interface ClockLookups {
   jobTitle: string | null;
 }
 
-/** "35h 02m" — the reference zero-pads minutes but never the hour. */
+/** "35h 02m". The reference zero-pads minutes but never the hour. */
 export function formatHm(minutes: number): string {
   const total = Math.max(0, Math.round(minutes));
   return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, '0')}m`;
 }
 
-/** "+2h 28m" / "-1h 05m" — the variance figure, which carries its sign. */
+/** "+2h 28m" / "-1h 05m". The variance figure, which carries its sign. */
 export function formatSignedHm(minutes: number): string {
   const rounded = Math.round(minutes);
   return `${rounded < 0 ? '-' : '+'}${formatHm(Math.abs(rounded))}`;
@@ -134,7 +134,7 @@ export function scheduledMinutes(shift: Shift): number {
 /**
  * Where the person is in their shift, from their most recent event.
  *
- * `break_end` is 'working', not a state of its own — ending a break puts you
+ * `break_end` is 'working', not a state of its own. Ending a break puts you
  * back on shift, and the next thing you do is clock out.
  */
 export function clockStage(latest: ClockEvent | null): ClockStage {
@@ -171,7 +171,7 @@ export function pickCurrentShift(shifts: Shift[], now: Date): Shift | null {
 /**
  * When the unpaid break falls.
  *
- * The schema stores `break_minutes` — a duration — and no break start time, so
+ * The schema stores `break_minutes`, a duration, and no break start time, so
  * there is nothing to read. Centred on the shift's midpoint, which is where a
  * mid-shift break lands in practice; it is a display convenience only, and
  * nothing pays or bills off it. Noted as inferred in design/.loop/clockin-log.md.
@@ -193,7 +193,7 @@ function durationLabel(minutes: number): string {
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
 }
 
-/** "Starts in 12 min" / "Ends in 3h 20m" / "Ended" — the pill above the time. */
+/** "Starts in 12 min" / "Ends in 3h 20m" / "Ended". The pill above the time. */
 export function shiftCountdownLabel(shift: Shift, now: Date): string {
   const start = new Date(shift.starts_at);
   const end = new Date(shift.ends_at);
@@ -210,7 +210,7 @@ export interface ClockWindow {
 
 /**
  * The caption under the live clock. Open from
- * `CLOCK_IN_WINDOW_MINUTES` before the start until the shift ends — late
+ * `CLOCK_IN_WINDOW_MINUTES` before the start until the shift ends. Late
  * clock-ins are flagged, never blocked, because a blocked clock-in is an unpaid
  * hour.
  */
@@ -225,7 +225,7 @@ export function clockWindow(shift: Shift | null, now: Date): ClockWindow {
 }
 
 function timeRange(from: Date, to: Date): string {
-  return `${format(from, 'HH:mm')} – ${format(to, 'HH:mm')}`;
+  return `${format(from, 'HH:mm')}-${format(to, 'HH:mm')}`;
 }
 
 /** `shifts.location_id` is nullable, and an unknown id must never be printed. */
@@ -388,7 +388,7 @@ export function buildRecentActivity(
  * slicing the events per week and pairing each slice: a night shift clocking in
  * 23:00 Sunday and out 07:00 Monday would otherwise land its `in` in one slice
  * and its `out` in the next, and the first slice would see an unclosed segment
- * and run it to `now` — inventing hours nobody worked.
+ * and run it to `now`. Inventing hours nobody worked.
  */
 export function segmentsInRange(
   segments: WorkedSegment[],
@@ -404,9 +404,9 @@ export function segmentsInRange(
 /**
  * Scheduled vs worked for one week.
  *
- * `attendancePercent` is `null` rather than 0 when nothing was scheduled —
+ * `attendancePercent` is `null` rather than 0 when nothing was scheduled,
  * "0% attendance" for a week someone was not rostered is a false accusation,
- * and the card shows "—" instead.
+ * and the card shows "-" instead.
  */
 export function buildWeeklySummary(
   shifts: Shift[],
@@ -435,10 +435,10 @@ export function buildWeeklySummary(
 }
 
 function percentLabel(percent: number | null): string {
-  return percent === null ? '—' : `${Math.round(percent)}%`;
+  return percent === null ? '-' : `${Math.round(percent)}%`;
 }
 
-/** The reassurance panel — thresholds are a product judgement, not schema. */
+/** The reassurance panel. Thresholds are a product judgement, not schema. */
 export function buildAttendance(
   thisWeek: number | null,
   lastWeek: number | null,

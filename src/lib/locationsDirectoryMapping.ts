@@ -1,13 +1,13 @@
 /**
  * Maps Supabase rows onto the Locations & Departments view models. Pure
- * functions — no network, no React — so `/app/locations` and the design-loop
+ * functions, no network, no React, so `/app/locations` and the design-loop
  * preview render exactly the same component tree.
  *
  * **What the schema can and cannot back.** `locations` carries only `name`,
  * `address`, `latitude`, `longitude`, `timezone` and `geofence_radius_m`;
  * `departments` only `name` and `location_id` (docs/SCHEMA.md §3). The
  * references also show a site type, a region, an operating status, a capacity,
- * open hours, a manager, a payroll code, a cost centre and an activity feed —
+ * open hours, a manager, a payroll code, a cost centre and an activity feed,
  * none of which exist as columns. Rather than invent them, every such field
  * maps to `null` and the components omit it. Everything below is derived from
  * rows that really exist.
@@ -46,7 +46,7 @@ function iconFor(index: number): { icon: DepartmentIcon; tone: SiteTone } {
 
 /**
  * Share of the period's shifts that have someone on them. An open shift is one
- * with no `staff_profile_id` — exactly the gap a manager is looking for here.
+ * with no `staff_profile_id`. Exactly the gap a manager is looking for here.
  */
 export function coverageOf(shifts: Shift[]): number {
   if (shifts.length === 0) return 0;

@@ -22,7 +22,7 @@ interface ReportsTabsProps {
 /**
  * Underlined tab bar above the reports table (design/Reports-Dashboard.png).
  *
- * A genuine `role="tablist"` — unlike `ui/Tabs`, which navigates to a URL per
+ * A genuine `role="tablist"`. Unlike `ui/Tabs`, which navigates to a URL per
  * section, these swap the rows inside one page, which is what the ARIA tabs
  * pattern is actually for. So the pattern is implemented in full: roving
  * `tabIndex` (the bar is one Tab stop), arrow/Home/End handling, and

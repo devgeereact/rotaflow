@@ -27,7 +27,7 @@ export interface GeofenceCheck {
 /**
  * Is a position within a location's geofence?
  *
- * Returns `withinFence: true` when the location has no coordinates set — most
+ * Returns `withinFence: true` when the location has no coordinates set. Most
  * locations won't, since `address` is optional at onboarding (StepAbout) and
  * lat/long aren't collected there at all yet. Treating "no geofence
  * configured" as a hard block would make GPS clock-in unusable for every org

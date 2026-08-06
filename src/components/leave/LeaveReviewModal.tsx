@@ -9,7 +9,7 @@ import type { LeaveRow } from '@/lib/leaveRows';
 interface LeaveReviewModalProps {
   row: LeaveRow | null;
   onClose: () => void;
-  /** Manager actions — omitted for someone looking at their own request. */
+  /** Manager actions. Omitted for someone looking at their own request. */
   onApprove?: (id: string) => void;
   onDecline?: (id: string) => void;
   /** Staff withdrawing their own still-pending request. */
@@ -30,7 +30,7 @@ function Field({ label, value }: { label: string; value: string }): JSX.Element 
 
 /**
  * One request in full, with whatever decision the viewer is allowed to make.
- * The row's "Review"/"View" button and its overflow menu both open this — the
+ * The row's "Review"/"View" button and its overflow menu both open this. The
  * reference draws two controls but specifies only one destination.
  */
 export function LeaveReviewModal({

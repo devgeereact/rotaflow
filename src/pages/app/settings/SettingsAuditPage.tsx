@@ -26,7 +26,7 @@ function formatTimestamp(iso: string): string {
 }
 
 /**
- * `/app/settings/audit` — design/Settingsaudit.png.
+ * `/app/settings/audit`. Design/Settingsaudit.png.
  *
  * ## Why this screen is mostly an explanation
  *
@@ -35,7 +35,7 @@ function formatTimestamp(iso: string): string {
  * shift edit, role change, invite or GDPR export is recorded anywhere.
  *
  * For a multi-tenant app holding staff PII under UK GDPR, an audit trail is an
- * accountability control — *who changed this person's shift*, *who exported
+ * accountability control, *who changed this person's shift*, *who exported
  * this record*. Shipping a viewer over a table that will be empty for every
  * organisation, without saying why, produces a screen that looks broken and,
  * worse, implies that nothing has happened. So the screen renders whatever is
@@ -92,7 +92,7 @@ export function SettingsAuditPage(): JSX.Element {
           </p>
         ) : loadFailed ? (
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            Could not load the audit trail — this is a connection problem, not an empty
+            Could not load the audit trail. This is a connection problem, not an empty
             record.
           </p>
         ) : entries.length === 0 ? (
@@ -140,7 +140,7 @@ export function SettingsAuditPage(): JSX.Element {
                       )}
                     </td>
                     <td className="py-3 text-content-muted dark:text-content-muted-dark">
-                      {entry.entity_type ?? '—'}
+                      {entry.entity_type ?? '-'}
                     </td>
                   </tr>
                 ))}

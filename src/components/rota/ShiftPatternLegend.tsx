@@ -22,7 +22,7 @@ function hhmm(value: string | null): string {
  * A rota grid is read by colour long before it is read by text, but a colour
  * key that only *explains* leaves you scanning hundreds of chips by eye to
  * find "who is on nights". Making each swatch a filter turns the same strip
- * into the fastest way to isolate one pattern — and it puts the times on
+ * into the fastest way to isolate one pattern, and it puts the times on
  * screen, so "the 21:45" is findable without opening a single chip.
  *
  * Counts come from the shifts actually on screen, so a pattern nobody is
@@ -67,7 +67,7 @@ export function ShiftPatternLegend({
             type="button"
             onClick={() => onSelect(active ? 'all' : type.id)}
             aria-pressed={active}
-            title={`${type.name} · ${hhmm(type.default_start)}–${hhmm(type.default_end)}`}
+            title={`${type.name} · ${hhmm(type.default_start)}, ${hhmm(type.default_end)}`}
             className={cn(
               'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
               active
@@ -86,7 +86,7 @@ export function ShiftPatternLegend({
             />
             {type.name}
             <span className="font-mono text-[0.65rem] opacity-70">
-              {hhmm(type.default_start)}–{hhmm(type.default_end)}
+              {hhmm(type.default_start)}, {hhmm(type.default_end)}
             </span>
             <span className="tabular-nums opacity-60">({count})</span>
           </button>

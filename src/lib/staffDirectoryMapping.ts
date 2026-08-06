@@ -1,6 +1,6 @@
 /**
- * Maps Supabase rows onto the Staff Directory view models. Pure functions —
- * no network, no React — so `/app/staff` and the design-loop preview render
+ * Maps Supabase rows onto the Staff Directory view models. Pure functions,
+ * no network, no React, so `/app/staff` and the design-loop preview render
  * exactly the same component tree.
  *
  * `availability.weekday` is stored the way JavaScript reports it:
@@ -92,7 +92,7 @@ function locationNameFor(
 ): string {
   const department = departments.find((d) => d.id === profile.department_id);
   const location = locations.find((l) => l.id === department?.location_id);
-  return location?.name ?? '—';
+  return location?.name ?? '-';
 }
 
 export function statusFor(profile: StaffProfile, onLeave: boolean): StaffStatus {
@@ -112,12 +112,12 @@ export function toDirectoryRow(
     firstName: profile.first_name,
     lastName: profile.last_name,
     photoUrl: profile.photo_url,
-    payrollId: profile.payroll_id ?? '—',
-    role: profile.job_title ?? '—',
+    payrollId: profile.payroll_id ?? '-',
+    role: profile.job_title ?? '-',
     roleCode: roleCodeFor(profile.job_title),
     roleCodeTone: 'neutral',
     department:
-      context.departments.find((d) => d.id === profile.department_id)?.name ?? '—',
+      context.departments.find((d) => d.id === profile.department_id)?.name ?? '-',
     location: locationNameFor(profile, context),
     skills: profile.skills ?? [],
     availability: meter.tones,
@@ -183,7 +183,7 @@ export function buildWeek(entries: Availability[], weekStart: Date): Availabilit
       weekday: format(day, 'EEE'),
       date: format(day, 'd MMM'),
       timeLabel: working
-        ? `${working.start_time!.slice(0, 5)} – ${working.end_time!.slice(0, 5)}`
+        ? `${working.start_time!.slice(0, 5)}, ${working.end_time!.slice(0, 5)}`
         : null,
       tone: working ? 'default' : 'off',
     };
@@ -205,10 +205,10 @@ export function toStaffDetails(
     firstName: profile.first_name,
     lastName: profile.last_name,
     photoUrl: profile.photo_url,
-    role: profile.job_title ?? '—',
+    role: profile.job_title ?? '-',
     location: locationNameFor(profile, context),
     email,
-    phone: profile.phone ?? '—',
+    phone: profile.phone ?? '-',
     joinedLabel: profile.start_date
       ? `Joined ${format(new Date(profile.start_date), 'd MMMM yyyy')}`
       : 'Start date not set',

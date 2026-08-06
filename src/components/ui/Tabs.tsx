@@ -23,14 +23,14 @@ interface TabsProps {
  * ## Why this is a `<nav>` of links and NOT `role="tablist"`
  *
  * It looks like a tab bar, and the designs call these tabs, but every one of
- * them is a distinct URL — `/app/settings/organisation`, `/app/settings/billing`
+ * them is a distinct URL, `/app/settings/organisation`, `/app/settings/billing`
  * and so on. That has to stay true: a manager needs to send a colleague a link
  * to the Billing screen, and a page this deep must survive a refresh.
  *
  * The ARIA tabs pattern is for switching panels **within one page**. Announcing
  * `role="tab"` on something that performs a navigation tells a screen-reader
  * user that content will swap in place, then the whole page changes under them
- * — and it costs the affordances links actually have (open in a new tab, copy
+ *, and it costs the affordances links actually have (open in a new tab, copy
  * link address, back button). W3C's own guidance is to use links when the tabs
  * are navigation. So: a labelled `<nav>`, real `<a>`s, `aria-current="page"` on
  * the active one. Browsers give keyboard support for free, which is also why
@@ -39,7 +39,7 @@ interface TabsProps {
  * ## Overflow
  *
  * Settings has eight tabs and My Profile six. They do not fit on a phone, so
- * the strip scrolls horizontally rather than wrapping to a second row — a
+ * the strip scrolls horizontally rather than wrapping to a second row, a
  * wrapped tab bar reflows the page content under it every time the active item
  * changes line.
  */
@@ -60,7 +60,7 @@ export function Tabs({ items, label, className }: TabsProps): JSX.Element {
             <NavLink
               to={item.to}
               // `end` so a parent route does not stay highlighted while a child
-              // is active — /app/settings must not look selected on
+              // is active, /app/settings must not look selected on
               // /app/settings/billing.
               end
               className={({ isActive }) =>
@@ -75,7 +75,7 @@ export function Tabs({ items, label, className }: TabsProps): JSX.Element {
                 )
               }
               // NavLink sets aria-current="page" on the active link itself.
-              // Do not pass aria-current here — supplying it explicitly
+              // Do not pass aria-current here. Supplying it explicitly
               // overrides that and silently removes the only programmatic
               // signal of which section is open.
             >

@@ -1,5 +1,5 @@
 /**
- * PLACEHOLDER DATA FOR `/admin` — NOT REAL, AND NOT DERIVED FROM ANYTHING.
+ * PLACEHOLDER DATA FOR `/admin`, NOT REAL, AND NOT DERIVED FROM ANYTHING.
  *
  * ============================================================================
  * Every value in this file is invented. It exists so the platform overview can
@@ -9,19 +9,19 @@
  *
  * ## What is fabricated, and why it could not be computed
  *
- * - **Revenue / MRR** — `subscriptions` records a plan and a status but no
+ * - **Revenue / MRR**, `subscriptions` records a plan and a status but no
  *   amount, and no payment provider is connected. There is nothing to total.
- * - **Active users today** — `profiles` has no last-seen column and Supabase
+ * - **Active users today**, `profiles` has no last-seen column and Supabase
  *   does not expose `auth.users.last_sign_in_at` to a client.
- * - **Named plan tiers** (Free … Enterprise) — plans are free text per
+ * - **Named plan tiers** (Free … Enterprise). Plans are free text per
  *   organisation; this deployment has no plan catalogue.
- * - **Organisation health** (Healthy / Attention / At risk) — `organisations`
+ * - **Organisation health** (Healthy / Attention / At risk), `organisations`
  *   has `status`, which is an account state, not a health signal. Nothing
  *   computes risk.
- * - **Per-service uptime history** — a browser cannot observe another user's
+ * - **Per-service uptime history**, a browser cannot observe another user's
  *   latency, and nothing stores a history. `/admin/platform-health` measures
  *   this device, live, and says so.
- * - **Support cases** — there is no `support_cases` table and no inbound
+ * - **Support cases**. There is no `support_cases` table and no inbound
  *   channel writing to one.
  *
  * ## Removing it
@@ -29,8 +29,8 @@
  * Delete this file and the imports of `DEMO_*` in `AdminOverviewPage`. Anything
  * that then fails to compile is a section that was never backed by data, which
  * is exactly the list of work still to do. The real figures already on that
- * screen — organisation counts, growth from `created_at`, plan and status
- * breakdowns, the audit feed, support-access sessions — do not come from here.
+ * screen. Organisation counts, growth from `created_at`, plan and status
+ * breakdowns, the audit feed, support-access sessions. Do not come from here.
  */
 
 /** Marks a card whose figures are placeholder, for the on-screen notice. */
@@ -58,7 +58,7 @@ export const DEMO_REVENUE_TREND = [
  * Nothing records a churn event: an organisation is `archived` or `suspended`
  * with no date of leaving, so there is no month to attribute a departure to.
  * The series is drawn alongside two real ones, which is why it is named in the
- * chart's own caption as well as in the placeholder notice — an illustrative
+ * chart's own caption as well as in the placeholder notice, an illustrative
  * line sitting inside a real chart is the easiest of these to misread.
  */
 const CHURN_SHAPE = [1.4, 1.1, 1.7, 2.2, 1.2, 1.5, 0.9, 1.8, 1.4, 1.1, 1.2, 0.6];
@@ -71,7 +71,7 @@ const CHURN_SHAPE = [1.4, 1.1, 1.7, 2.2, 1.2, 1.5, 0.9, 1.8, 1.4, 1.1, 1.2, 0.6]
  * flat on the floor; against a six-tenant development database it towered over
  * the two real series and rescaled the whole chart around a number nothing
  * measured. Deriving it from the real totals keeps the line where a plausible
- * churn line belongs — just under 2% a month — whatever the estate is.
+ * churn line belongs, just under 2% a month, whatever the estate is.
  */
 export function demoChurnTrend(totals: readonly number[]): number[] {
   return totals.map((total, i) =>
@@ -104,7 +104,7 @@ export type DemoServiceState = 'operational' | 'degraded' | 'outage';
 export interface DemoService {
   name: string;
   status: DemoServiceState;
-  /** Twelve slots, oldest first — one per hour. */
+  /** Twelve slots, oldest first, one per hour. */
   history: DemoServiceState[];
 }
 
@@ -287,7 +287,7 @@ export const DEMO_ORGS_NEW_CHANGE = '+18% vs July';
  *
  * All three live in Supabase's `auth` schema. `auth.users` is reachable only
  * through the Auth Admin API from a service-role Edge Function, and a static
- * client holding the anon key cannot read it — so `profiles` has no
+ * client holding the anon key cannot read it, so `profiles` has no
  * `last_sign_in_at`, no `banned_until` and no factor list to join against.
  *
  * Derived from the account id so a row keeps the same invented values through
@@ -459,7 +459,7 @@ export const DEMO_DUNNING_NOTE =
   'Dunning retries on days 1, 3 and 7, then the organisation is suspended on day 14 unless a platform administrator intervenes.';
 
 /* ---------------------------------------------------------------------------
- * `/admin/support` — the case queue
+ * `/admin/support`. The case queue
  *
  * There is no `support_cases` table and no inbound channel writing to one, so
  * cases, priorities, assignment, response targets and CSAT are all invented.
@@ -575,7 +575,7 @@ export const DEMO_URGENT_TARGET = '1h response target';
 export const DEMO_CSAT = '4.6 / 5';
 export const DEMO_CSAT_HINT = '184 ratings, 30 days';
 
-/** Consent refusals are not recorded — `request_support_access` just refuses. */
+/** Consent refusals are not recorded, `request_support_access` just refuses. */
 export const DEMO_DENIED_BY_OWNER = 2;
 
 /* ---------------------------------------------------------------------------
@@ -584,8 +584,8 @@ export const DEMO_DENIED_BY_OWNER = 2;
  * RotaFlow is a static PWA: there is no server of ours to ask for a metric, and
  * a browser holding the anon key cannot observe uptime, error rates, queue
  * depth, another user's latency, or anything at all about a service it does not
- * itself call. The three live probes the console really does run — database,
- * auth, realtime — are measured and marked as such on the screen; everything
+ * itself call. The three live probes the console really does run. Database,
+ * auth, realtime. Are measured and marked as such on the screen; everything
  * else here is invented.
  * ------------------------------------------------------------------------- */
 
@@ -816,11 +816,11 @@ export const DEMO_DEGRADED_HINT = 'BrightHR, webhooks';
 export const DEMO_MEDIAN_SYNC = '2.4 s';
 
 /* ---------------------------------------------------------------------------
- * `/admin/notifications` — platform announcements
+ * `/admin/notifications`. Platform announcements
  *
  * `notifications` rows are addressed to one user inside one organisation, and
  * the table has no client insert policy by design. There is no platform-wide
- * message, no audience definition, no fan-out and no schedule — so the
+ * message, no audience definition, no fan-out and no schedule, so the
  * announcement register below is invented. The per-notification delivery
  * summary on that screen is real.
  * ------------------------------------------------------------------------- */
@@ -839,7 +839,7 @@ export interface DemoAnnouncement {
 
 export const DEMO_ANNOUNCEMENTS: readonly DemoAnnouncement[] = [
   {
-    title: 'Scheduled maintenance — 10 Aug, 02:00–03:00 BST',
+    title: 'Scheduled maintenance-10 Aug, 02:00-03:00 BST',
     type: 'Maintenance',
     audience: 'All organisations',
     when: 'Scheduled 08 Aug 2026',
@@ -890,8 +890,8 @@ export const DEMO_OPT_OUTS = 38;
  * `/admin/feature-flags`
  *
  * There is no `feature_flags` table and no service to read one, so per-tenant
- * flags — key, rollout percentage, target plans, target organisations,
- * scheduled activation — are all invented. The two real switches on that screen
+ * flags. Key, rollout percentage, target plans, target organisations,
+ * scheduled activation. Are all invented. The two real switches on that screen
  * (`registration_enabled`, `maintenance_mode`) come from `platform_settings`.
  * ------------------------------------------------------------------------- */
 
@@ -1005,7 +1005,7 @@ export const RETENTION_POLICY: readonly { data: string; retained: string }[] = [
   { data: 'Attendance and clock-in', retained: '3 years' },
   { data: 'Leave records', retained: '6 years' },
   { data: 'Support cases', retained: '3 years' },
-  { data: 'Platform audit log', retained: 'Indefinite — immutable' },
+  { data: 'Platform audit log', retained: 'Indefinite. Immutable' },
   { data: 'Deleted tenant data', retained: '30-day grace, then erased' },
 ];
 
@@ -1013,7 +1013,7 @@ export const RETENTION_POLICY: readonly { data: string; retained: string }[] = [
 export const DEMO_BREACHES_REPORTED = 0;
 
 /* ------------------------------------------------------------------ *
- * Platform settings — the six tabs with nothing behind them
+ * Platform settings. The six tabs with nothing behind them
  * ------------------------------------------------------------------ */
 
 /**
@@ -1190,7 +1190,7 @@ export const DEMO_API: readonly DemoSettingRow[] = [
  * The organisation attributes the console reference shows that RotaFlow does
  * not record.
  *
- * `organisations` has a name, a slug, a plan, a status and a settings jsonb —
+ * `organisations` has a name, a slug, a plan, a status and a settings jsonb,
  * no industry, no country, no timezone and no account-health grade. Every row
  * built from this constant is drawn with a "placeholder" chip beside it, so a
  * reader never has to work out which half of the panel is real.
@@ -1219,7 +1219,7 @@ export const DEMO_ORG_MRR = '£1,240';
  * `profiles` has a name, an email, an avatar and timestamps. Whether the
  * address was verified, when the person last signed in, and whether MFA is
  * enrolled all live in `auth.users`, which a client holding the anon key
- * cannot read — an Edge Function would have to expose them deliberately.
+ * cannot read, an Edge Function would have to expose them deliberately.
  */
 export const DEMO_USER_ACCOUNT: readonly { label: string; value: string }[] = [
   { label: 'Email verified', value: 'Verified' },
@@ -1248,8 +1248,8 @@ export interface DemoIncident {
  *
  * There is no `incidents` table in any migration, so every row here is
  * invented. The screen exists anyway because an incident register is a
- * decision about process — who declares, who owns, what the public status page
- * says — and having the shape on screen is what makes that decision concrete.
+ * decision about process, who declares, who owns, what the public status page
+ * says, and having the shape on screen is what makes that decision concrete.
  * Nothing on it writes: Declare and Resolve are disabled, and the page says so
  * above the table.
  */
@@ -1289,7 +1289,7 @@ export const DEMO_INCIDENTS: readonly DemoIncident[] = [
   },
   {
     id: 'INC-0138',
-    title: 'Sign-in outage — auth provider certificate expiry',
+    title: 'Sign-in outage. Auth provider certificate expiry',
     impact: 'All sign-ins failed for 38 minutes across every tenant.',
     severity: 'Critical',
     status: 'resolved',

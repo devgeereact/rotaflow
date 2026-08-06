@@ -13,7 +13,7 @@ const TONES: Record<SiteTone, BadgeTone> = {
 };
 
 /**
- * Location- or department-type chip ("Care Home", "Clinical", "Support") —
+ * Location- or department-type chip ("Care Home", "Clinical", "Support"),
  * a squarer pill than the rounded-full status badges on the same row.
  */
 export function SiteTypePill({

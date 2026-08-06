@@ -34,7 +34,7 @@ interface RotaGridProps {
   selectedShiftId: string | null;
   onAddShift: (staffProfileId: string | null, date: string, locationId: string) => void;
   onSelectShift: (shift: Shift) => void;
-  /** Omitted where the viewer cannot edit — that is what hides the chip's ×. */
+  /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
   onDeleteShift?: (shift: Shift) => void;
 }
 
@@ -61,7 +61,7 @@ export function RotaGrid({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // One clock for the whole grid. Every chip needs to know whether it is in
   // the past, and hundreds of cells each running their own timer would be
-  // hundreds of timers — and they would disagree mid-render.
+  // hundreds of timers, and they would disagree mid-render.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -231,7 +231,7 @@ export function RotaGrid({
       })}
 
       {/* One bordered "Add staff" affordance under the whole grid, as in
-          design/Rota-Builder.png — not one per location group. */}
+          design/Rota-Builder.png, not one per location group. */}
       <Link
         to="/app/team"
         className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
@@ -284,7 +284,7 @@ export function RotaGrid({
                   ) : (
                     <Check size={11} aria-hidden="true" />
                   ))}
-                {understaffed ? 'Understaffed' : empty ? '—' : 'Optimal'}
+                {understaffed ? 'Understaffed' : empty ? '-' : 'Optimal'}
               </p>
             </div>
           );

@@ -26,7 +26,7 @@ export function PreviewShiftChip({
     >
       <span className="block truncate">{label}</span>
       <span className="block font-mono text-[10px]">
-        {startTime}–{endTime}
+        {startTime}, {endTime}
       </span>
     </div>
   );

@@ -15,7 +15,7 @@ import {
 } from '@/lib/clockinDemo';
 
 /**
- * Design-loop preview only — `/app/clock` needs a real Supabase session, a
+ * Design-loop preview only, `/app/clock` needs a real Supabase session, a
  * staff profile and a rostered shift. This renders the same `ClockInView` the
  * live route renders, against the fixed values in `@/lib/clockinDemo`, so the
  * screen can be screenshotted without auth or a database.
@@ -25,7 +25,7 @@ import {
  */
 /**
  * The live screen wires "Report an Issue" to its Troubleshooting dialog. The
- * preview only needs the button to exist so the footer matches the reference —
+ * preview only needs the button to exist so the footer matches the reference,
  * it renders only when a handler is supplied.
  */
 function noop(): void {

@@ -61,7 +61,7 @@ interface Row {
 }
 
 /**
- * `/admin/subscriptions` — plan state across every tenant.
+ * `/admin/subscriptions`. Plan state across every tenant.
  *
  * ## What this can and cannot say
  *
@@ -70,7 +70,7 @@ interface Row {
  * that could be turned into revenue: no invoices, no payments, no MRR, no
  * churn rate. `docs/PRD.md` §7 already puts live charging out of scope for V1.
  *
- * What this screen therefore reports is *contracted plan state* — which
+ * What this screen therefore reports is *contracted plan state*, which
  * organisations are on which plan, which are trialing, which are past due. That
  * is real and it is useful, and the alternative (a revenue figure derived from
  * a price list nobody is billing against) would be a number nothing computed
@@ -78,7 +78,7 @@ interface Row {
  *
  * The table is keyed on organisations rather than subscriptions on purpose: the
  * interesting row is a tenant with **no** subscription record, and a list of
- * subscriptions cannot show one. `/admin/billing` takes the other cut — the
+ * subscriptions cannot show one. `/admin/billing` takes the other cut. The
  * renewal lifecycle across the records that do exist.
  */
 export function AdminSubscriptionsPage(): JSX.Element {
@@ -152,7 +152,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
-  // Placeholder value / cycle / payment / usage — no amount exists anywhere in
+  // Placeholder value / cycle / payment / usage, no amount exists anywhere in
   // the schema. See `adminOverviewDemo`.
   const facts = useCallback(
     (row: Row) =>
@@ -289,7 +289,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         sortable: true,
         cell: (row) => {
           const { value } = facts(row);
-          return value === null ? '—' : `£${value.toLocaleString('en-GB')}`;
+          return value === null ? '-' : `£${value.toLocaleString('en-GB')}`;
         },
       },
       {
@@ -299,7 +299,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         sortable: true,
         cell: ({ subscription }) => {
           const end = subscription?.current_period_end;
-          if (!end) return <span className="text-content-muted">—</span>;
+          if (!end) return <span className="text-content-muted">-</span>;
           const days = daysUntil(end, new Date());
           return (
             <span
@@ -357,7 +357,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
               Change plan
             </Link>
             <span
-              title="No pricing exists to discount — see the note below the table"
+              title="No pricing exists to discount. See the note below the table"
               className="cursor-not-allowed whitespace-nowrap rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
             >
               Discount
@@ -440,7 +440,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
             <p>
               MRR is the sum of each subscription&rsquo;s negotiated price, falling back
               to its plan price from <code>plans</code>, over the rows that are active or
-              past due — the same arithmetic{' '}
+              past due. The same arithmetic{' '}
               <Link to="/admin/billing" className="text-primary hover:underline">
                 Billing
               </Link>{' '}
@@ -448,7 +448,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
             </p>
             <p>
               Churn is not shown: nothing records the month an organisation left, so a
-              rate would be a guess. The Usage column is still a placeholder — no plan
+              rate would be a guess. The Usage column is still a placeholder, no plan
               carries a seat or location cap anywhere in the schema, so there is no
               ceiling to measure against.
             </p>

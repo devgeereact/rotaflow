@@ -12,7 +12,7 @@ export interface AuthFeature {
 }
 
 interface AuthSplitLayoutProps {
-  /** First headline line — dark ink, e.g. "Create your account." */
+  /** First headline line. Dark ink, e.g. "Create your account." */
   headline: string;
   /** Second headline line, set in brand blue, e.g. "Build a stronger team." */
   headlineAccent: string;
@@ -23,13 +23,13 @@ interface AuthSplitLayoutProps {
 
 /**
  * The split-screen shell shared by the auth screens (design/signup.png,
- * design/signin.png): a marketing panel — logo, headline, feature list, wave
- * background — beside a white form panel supplied via `children`.
+ * design/signin.png): a marketing panel. Logo, headline, feature list, wave
+ * background. Beside a white form panel supplied via `children`.
  *
  * The reference's marketing panel also carries a customer testimonial (name,
  * role, photo). Omitted deliberately: RotaFlow is pre-launch with no real
  * customers, and HomePage.tsx already rejects fabricated social proof for the
- * same reason — inventing a quote here would be inconsistent with that policy.
+ * same reason. Inventing a quote here would be inconsistent with that policy.
  */
 export function AuthSplitLayout({
   headline,

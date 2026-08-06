@@ -17,10 +17,10 @@ import { Card } from '@/components/ui/Card';
 import type { Notification } from '@/types';
 
 /**
- * `/app/notifications` — read + mark-read against the real `notifications`
+ * `/app/notifications`. Read + mark-read against the real `notifications`
  * table. Will be genuinely empty on a fresh deploy: nothing writes into it
  * until send-notification is deployed and its Inngest routing is configured
- * (both manual, out-of-repo steps — see that function's header comment).
+ * (both manual, out-of-repo steps. See that function's header comment).
  * This screen is correct and ready for whenever that lands.
  */
 export function NotificationsPage(): JSX.Element {

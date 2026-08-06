@@ -1,6 +1,6 @@
 /**
  * The "team collaborating" illustration for the invite-team step
- * (design/Team-onboarding.png) — three simplified flat figures at a table,
+ * (design/Team-onboarding.png). Three simplified flat figures at a table,
  * replacing that step's marketing panel `BuildingIllustration`.
  *
  * Deliberately flat/geometric (circles, rounded rectangles), not the
@@ -62,12 +62,12 @@ export function TeamIllustration(): JSX.Element {
         <circle cx="388" cy="152" r="14" className="fill-brand-pale" />
       </g>
 
-      {/* Person 1 — left */}
+      {/* Person 1. Left */}
       <g>
         <rect x="72" y="140" width="46" height="52" rx="14" className="fill-brand" />
         <circle cx="95" cy="118" r="20" className="fill-brand-light" />
       </g>
-      {/* Person 2 — centre, taller */}
+      {/* Person 2. Centre, taller */}
       <g>
         <rect
           x="204"
@@ -79,7 +79,7 @@ export function TeamIllustration(): JSX.Element {
         />
         <circle cx="230" cy="94" r="22" className="fill-brand-mist" />
       </g>
-      {/* Person 3 — right */}
+      {/* Person 3. Right */}
       <g>
         <rect
           x="296"

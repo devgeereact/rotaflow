@@ -4,7 +4,7 @@ import { differenceInCalendarDays, isValid, parseISO } from 'date-fns';
  * Subscription-period derivations for `/admin/subscriptions` and
  * `/admin/billing`.
  *
- * Pure and in `lib` for the usual reason — the service layer pulls in the
+ * Pure and in `lib` for the usual reason. The service layer pulls in the
  * Supabase client, which reaches for a WebSocket Node does not have.
  *
  * Everything here is about *when a period ends*, because that is the only
@@ -33,7 +33,7 @@ export const RENEWAL_LABELS: Record<RenewalBucket, string> = {
 };
 
 /**
- * Whole days from `now` until a period ends — negative once it has passed.
+ * Whole days from `now` until a period ends. Negative once it has passed.
  *
  * Calendar days, not elapsed milliseconds: "renews in 1 day" should mean
  * tomorrow, whatever the clock time, and dividing a millisecond difference by
@@ -83,7 +83,7 @@ export function renewalBreakdown(
  *
  * The second case is the one worth surfacing. Nothing advances
  * `current_period_end` on this deployment, so an "active" subscription whose
- * period ended three months ago is not a customer in arrears — it is a record
+ * period ended three months ago is not a customer in arrears. It is a record
  * nobody is maintaining. Both look identical on a status badge alone.
  */
 export function needsAttention(

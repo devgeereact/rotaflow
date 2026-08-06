@@ -23,7 +23,7 @@ export type Membership = Database['public']['Tables']['memberships']['Row'];
  * Deliberately a separate union from `MembershipRole`, not an extension of it.
  * Organisation permissions control access to one customer's workspace;
  * platform permissions control RotaFlow-wide administration. Conflating them
- * would hand every customer's owner the keys to every other customer's data —
+ * would hand every customer's owner the keys to every other customer's data,
  * which is why Super Admin has never been a fourth membership role.
  */
 export type PlatformRole =
@@ -84,7 +84,7 @@ export type Notification = Database['public']['Tables']['notifications']['Row'];
 export type AuditLog = Database['public']['Tables']['audit_logs']['Row'];
 
 export type Subscription = Database['public']['Tables']['subscriptions']['Row'];
-/** `subscriptions.plan` CHECK — the three plans the schema will accept. */
+/** `subscriptions.plan` CHECK. The three plans the schema will accept. */
 export type SubscriptionPlan = 'starter' | 'professional' | 'business';
 
 export type PushSubscriptionRow =
@@ -112,7 +112,7 @@ export type StaffDocument = Database['public']['Tables']['documents']['Row'];
 export type StaffDocumentInsert = Database['public']['Tables']['documents']['Insert'];
 
 /**
- * Org SMTP: `smtp_pass` is write-only — excluded from the column-level
+ * Org SMTP: `smtp_pass` is write-only. Excluded from the column-level
  * SELECT grant on the base table (see 0010_org_smtp_settings.sql). The app
  * only ever reads through the `_safe` view, which omits the password
  * entirely.

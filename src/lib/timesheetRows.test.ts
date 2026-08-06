@@ -37,7 +37,7 @@ describe('splitOvertime', () => {
     expect(splitOvertime(60 * 60, null)).toEqual({ regular: 3600, overtime: 0 });
   });
 
-  it('handles a zero-hours contract — every minute is overtime', () => {
+  it('handles a zero-hours contract. Every minute is overtime', () => {
     // Zero-hours is common in this market and is NOT the same as "no contract".
     expect(splitOvertime(8 * 60, 0)).toEqual({ regular: 0, overtime: 480 });
   });
@@ -90,7 +90,7 @@ describe('countByStatus', () => {
     lastName: 'B',
     jobTitle: null,
     photoUrl: null,
-    weekLabel: '26 May – 1 Jun 2025',
+    weekLabel: '26 May-1 Jun 2025',
     shifts: 1,
     regularHours: '8.00',
     overtimeHours: '0.00',

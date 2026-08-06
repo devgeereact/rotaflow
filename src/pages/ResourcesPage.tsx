@@ -23,7 +23,7 @@ import { FinalCta } from '@/components/marketing/FinalCta';
  *
  * So it carries what genuinely exists and is useful to someone evaluating the
  * product: how to get set up, what is built today, and what is not. The build
- * status section is the honest centrepiece — a prospective buyer deciding
+ * status section is the honest centrepiece, a prospective buyer deciding
  * whether RotaFlow covers their operation is better served by a straight answer
  * than by a feature matrix with every box ticked.
  *
@@ -79,7 +79,7 @@ const GUIDES: readonly Guide[] = [
     steps: [
       'Staff clock in and out on their phone, GPS-verified',
       'Entries made with no signal queue and sync automatically',
-      'Review the week — scheduled against worked, with variance',
+      'Review the week. Scheduled against worked, with variance',
       'Approve, or request a correction on anything flagged',
     ],
   },
@@ -97,7 +97,7 @@ const BUILD_STATUS: readonly StatusGroup[] = [
     heading: 'Built and in use today',
     items: [
       'Rota builder with drag-and-drop, conflicts and publishing',
-      'Published schedules — day, week, month and agenda views',
+      'Published schedules. Day, week, month and agenda views',
       'Staff directory, profiles, qualifications and documents',
       'Availability, leave requests and shift swaps',
       'GPS clock-in with an offline queue',
@@ -112,8 +112,8 @@ const BUILD_STATUS: readonly StatusGroup[] = [
     state: 'partial',
     heading: 'Built, still being extended',
     items: [
-      'Notification delivery — in-app and email work; SMS has no provider yet',
-      'Reporting — the core reports are in, scheduled reports are not',
+      'Notification delivery, in-app and email work; SMS has no provider yet',
+      'Reporting. The core reports are in, scheduled reports are not',
       'Custom role labels, on top of the fixed owner/manager/staff permissions',
     ],
   },
@@ -121,7 +121,7 @@ const BUILD_STATUS: readonly StatusGroup[] = [
     state: 'planned',
     heading: 'Not built yet',
     items: [
-      'Billing and subscriptions — no payment provider is connected',
+      'Billing and subscriptions, no payment provider is connected',
       'Payroll and HR integrations',
       'Document and photo upload to managed storage',
       'QR-code clock-in as an alternative to GPS',
@@ -142,7 +142,7 @@ export function ResourcesPage(): JSX.Element {
       <PageHero
         eyebrow="Resources"
         heading="Getting started, and what is actually built"
-        body="RotaFlow is in active development. These are the guides for setting it up — and a straight answer on what the product does and does not do today."
+        body="RotaFlow is in active development. These are the guides for setting it up, and a straight answer on what the product does and does not do today."
       />
 
       <section className="mx-auto max-w-6xl px-6 py-20">
@@ -196,7 +196,7 @@ export function ResourcesPage(): JSX.Element {
             </h2>
             <p className="mt-3 text-content-muted dark:text-content-muted-dark">
               Published because you should be able to tell whether RotaFlow covers your
-              operation before you sign up — not after.
+              operation before you sign up, not after.
             </p>
           </div>
 
@@ -241,7 +241,7 @@ export function ResourcesPage(): JSX.Element {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
               There is no app store download. Open RotaFlow in Safari on iOS or Chrome on
-              Android, then choose <em>Add to Home Screen</em> — or accept the install
+              Android, then choose <em>Add to Home Screen</em>, or accept the install
               prompt the app offers. It then opens full-screen like any other app and
               keeps working without a connection.
             </p>
@@ -256,7 +256,7 @@ export function ResourcesPage(): JSX.Element {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
               RotaFlow is small enough that questions reach the people building it. There
-              is no ticket queue and no chatbot — just{' '}
+              is no ticket queue and no chatbot, just{' '}
               <Link
                 to="/contact"
                 className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

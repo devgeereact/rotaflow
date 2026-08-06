@@ -8,7 +8,7 @@ const FILLS = {
 } as const;
 
 /**
- * Coverage percentage over a thin progress track — the Coverage / Avg. Coverage
+ * Coverage percentage over a thin progress track. The Coverage / Avg. Coverage
  * column on both locations references. The number carries the meaning; the bar
  * only reinforces it (docs/DESIGN.md §5: never colour alone).
  *

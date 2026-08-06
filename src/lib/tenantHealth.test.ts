@@ -51,7 +51,7 @@ describe('healthBand', () => {
   });
 
   it('is suspended whatever else is true', () => {
-    // Active an hour ago and paying, but the account is suspended — that is
+    // Active an hour ago and paying, but the account is suspended, that is
     // still the fact a reader needs first.
     expect(healthBand(org({ status: 'suspended' }), 'active', NOW)).toBe('suspended');
   });

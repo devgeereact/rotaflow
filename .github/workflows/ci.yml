@@ -1,14 +1,13 @@
 name: CI
 
-# RotaFlow had no CI at all until this file existed — every commit went straight to
+# RotaFlow had no CI at all until this file existed. Every commit went straight to
 # main unverified, on a multi-tenant app where a bad build means a care rota nobody
 # can read. These are the gates that already pass today, so any red here is a real
 # regression introduced by the change under review, never pre-existing debt.
 #
 # The build deliberately runs with NO .env present. Vite inlines VITE_* at build time,
 # so a workflow that supplied real Supabase/Sentry keys would (a) put production
-# credentials in a public repo's logs and (b) hide the case that actually breaks —
-# a missing env var. src/lib/env.ts is written to degrade rather than throw, and this
+# credentials in a public repo's logs and (b) hide the case that actually breaks, # a missing env var. src/lib/env.ts is written to degrade rather than throw, and this
 # job is what keeps that true.
 
 on:
@@ -31,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     # Not the author's local zone. RotaFlow resolves shift wall-times through a
     # location's timezone, and the predecessor repo shipped a bug that was invisible
-    # on a UK machine and only appeared under UTC — it built the instant from a date
+    # on a UK machine and only appeared under UTC. It built the instant from a date
     # STRING, which parses in the system zone. Pinning UTC here means CI never shares
     # the developer's zone and cannot hide that class of bug again.
     env:
@@ -54,7 +53,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # --max-warnings 0, so warnings fail too. Currently 0 problems — keep it there.
+      # --max-warnings 0, so warnings fail too. Currently 0 problems. Keep it there.
       - name: Lint
         run: npm run lint
 
@@ -64,7 +63,7 @@ jobs:
       # Note for anyone hitting a surprise failure here: Prettier can move an
       # `eslint-disable-next-line` away from the line it suppresses, which turns a
       # working directive into an "unused disable directive" lint error. Anchor such
-      # comments directly above the reported line — see src/hooks/useOptimizedImage.ts.
+      # comments directly above the reported line. See src/hooks/useOptimizedImage.ts.
       - name: Format check
         run: npm run format:check
 
@@ -78,15 +77,14 @@ jobs:
       #
       # NOTE the zone. The `TZ: UTC` on this job is deliberate and stays (see
       # the comment at the top), but UTC has no DST, so a UTC-only run cannot
-      # see day-arithmetic bugs that only exist when the clocks change —
-      # `resolvePeriod` was returning a zero-length window on 25 Oct 2026 in
+      # see day-arithmetic bugs that only exist when the clocks change, # `resolvePeriod` was returning a zero-length window on 25 Oct 2026 in
       # Europe/London and every CI run here was green. vitest.config.ts pins
       # the suite to Europe/London for exactly that reason. Two zones, two
       # different bug classes; neither one covers the other.
       - name: Test
         run: npm test
 
-      - name: Build (no .env — must survive missing VITE_* vars)
+      - name: Build (no .env. Must survive missing VITE_* vars)
         run: npm run build
 
       # A PWA that builds but emits no service worker is a silent regression: the app
@@ -95,6 +93,6 @@ jobs:
       - name: Service worker and manifest were emitted
         run: |
           set -euo pipefail
-          test -f dist/sw.js || { echo "::error::dist/sw.js missing — the PWA build produced no service worker"; ls -R dist | head -40; exit 1; }
+          test -f dist/sw.js || { echo "::error::dist/sw.js missing. The PWA build produced no service worker"; ls -R dist | head -40; exit 1; }
           test -f dist/manifest.webmanifest || { echo "::error::dist/manifest.webmanifest missing"; exit 1; }
           echo "✅ sw.js + manifest.webmanifest present"

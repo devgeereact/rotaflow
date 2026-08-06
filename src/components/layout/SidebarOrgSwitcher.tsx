@@ -20,8 +20,8 @@ interface SidebarOrgSwitcherProps {
  *
  * The header's `OrgSwitcher` returns `null` below two memberships, which is
  * right for a control whose only job is switching. This one also answers
- * "which organisation am I looking at" — the question behind every
- * cross-tenant mistake in a multi-tenant product — so it always shows the
+ * "which organisation am I looking at". The question behind every
+ * cross-tenant mistake in a multi-tenant product, so it always shows the
  * name, and only becomes interactive when there is somewhere to switch to.
  *
  * ## Why it shows the role rather than a location count
@@ -29,8 +29,8 @@ interface SidebarOrgSwitcherProps {
  * The reference shows "3 locations" under the name. That needs a locations
  * query on every app load purely to label a nav element, and the sidebar
  * currently issues none. The role is already in `OrgContext`, costs nothing,
- * and answers a question the user is more likely to have — what am I allowed
- * to do here — particularly for someone who is a manager in one organisation
+ * and answers a question the user is more likely to have. What am I allowed
+ * to do here. Particularly for someone who is a manager in one organisation
  * and staff in another. Revisit if a location count lands in the context for
  * another reason.
  */
@@ -85,7 +85,7 @@ export function SidebarOrgSwitcher({
         aria-haspopup={canSwitch ? 'listbox' : undefined}
         aria-expanded={canSwitch ? open : undefined}
         // A button that cannot do anything should not take focus or announce
-        // itself as pressable — for a single-org user this is a label.
+        // itself as pressable, for a single-org user this is a label.
         disabled={!canSwitch}
         className={cn(
           'flex w-full items-center gap-2.5 rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-left',

@@ -22,7 +22,7 @@ import { DashboardView } from '@/components/dashboard/DashboardView';
 
 const DEFAULT_TZ = 'Europe/London';
 
-/** `/app/dashboard` — real data wiring; see DashboardView for the markup. */
+/** `/app/dashboard`. Real data wiring; see DashboardView for the markup. */
 export function DashboardPage(): JSX.Element {
   const { orgId } = useOrg();
   const { user } = useSupabaseAuth();

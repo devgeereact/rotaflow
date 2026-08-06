@@ -13,7 +13,7 @@ interface BenefitGridProps {
  */
 export function BenefitGrid({
   heading = 'One platform for the whole operation',
-  body = 'Everything below is built and working in RotaFlow today — not a roadmap.',
+  body = 'Everything below is built and working in RotaFlow today, not a roadmap.',
 }: BenefitGridProps): JSX.Element {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">

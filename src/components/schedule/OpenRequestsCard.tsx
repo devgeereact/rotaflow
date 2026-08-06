@@ -8,10 +8,10 @@ export interface ScheduleRequest {
   id: string;
   /** "Annual Leave", "Swap Request", "Overtime Request". */
   kind: string;
-  /** Requester's display name — split for the avatar's initials fallback. */
+  /** Requester's display name. Split for the avatar's initials fallback. */
   name: string;
   photoUrl: string | null;
-  /** The other party on a swap — rendered under the requester. */
+  /** The other party on a swap. Rendered under the requester. */
   counterpartName?: string | null;
   /** Pre-formatted, e.g. "30 May 2025". */
   dateLabel: string;
@@ -20,7 +20,7 @@ export interface ScheduleRequest {
 
 interface OpenRequestsCardProps {
   requests: ScheduleRequest[];
-  /** Where "View all" goes — leave requests and swaps have their own screens. */
+  /** Where "View all" goes. Leave requests and swaps have their own screens. */
   viewAllTo: string;
 }
 

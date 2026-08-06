@@ -11,14 +11,14 @@ export type TimesheetStatus = Timesheet['status'];
  *
  * ## Why the screen worked without it
  *
- * `/app/timesheets` derives hours from `clock_events` on every render — that
+ * `/app/timesheets` derives hours from `clock_events` on every render, that
  * is the honest source and it stays the source. What the table adds is the
  * thing derivation cannot express: a *decision*. "This period's hours are
  * agreed and may be paid" is a manager's act, not a calculation, and it has to
  * survive a later clock-event correction rather than silently recompute.
  *
  * So a row here is a sign-off record, and `total_minutes` is a snapshot of
- * what was agreed at the moment of approval — deliberately not kept in sync
+ * what was agreed at the moment of approval. Deliberately not kept in sync
  * with the derived figure afterwards. If the two later disagree, that is a
  * fact worth seeing, not a bug to paper over.
  */
@@ -47,8 +47,8 @@ export interface TimesheetApproval {
 /**
  * Approve a period for several people at once.
  *
- * There is no unique constraint on (org, staff, period) — see
- * `0002_rotaflow.sql` — so this cannot be a plain `upsert`. It reads what
+ * There is no unique constraint on (org, staff, period). See
+ * `0002_rotaflow.sql`, so this cannot be a plain `upsert`. It reads what
  * already exists for the period and splits the work into one update per known
  * row and a single insert for the rest, which also keeps a re-approval
  * idempotent instead of accumulating duplicate sign-offs for the same week.

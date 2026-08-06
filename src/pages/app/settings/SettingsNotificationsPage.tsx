@@ -18,7 +18,7 @@ import { Toggle } from '@/components/ui/Toggle';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 
 /**
- * `/app/settings/notifications` — design/SettingsNotifications.png.
+ * `/app/settings/notifications`. Design/SettingsNotifications.png.
  *
  * Organisation-wide defaults for which events notify staff, on which channel.
  * Individuals override these under My Profile → Preferences.
@@ -28,11 +28,11 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
  * The reference shows an **SMS column** and a library of **28 editable
  * templates** with per-template delivery analytics. Neither ships:
  *
- * - **SMS** — there is no SMS provider anywhere in the stack, no table
+ * - **SMS**. There is no SMS provider anywhere in the stack, no table
  *   recording a send, and no Edge Function that could place one. A toggle that
  *   an owner can switch on and that then sends nothing is actively harmful:
  *   they would believe their staff had been texted about a rota change.
- * - **Templates and delivery analytics** — both need tables that do not exist
+ * - **Templates and delivery analytics**, both need tables that do not exist
  *   (`notification_templates`, plus per-send delivery tracking). The
  *   notification path itself was only proven end to end at the infrastructure
  *   level; the application leg is still unverified (audit §P0-3).
@@ -195,7 +195,7 @@ export function SettingsNotificationsPage(): JSX.Element {
               SMS is not available
             </p>
             <p className="mt-1">
-              RotaFlow does not send SMS yet — there is no SMS provider connected. The
+              RotaFlow does not send SMS yet. There is no SMS provider connected. The
               channel is left out rather than shown switched off, so nobody enables it
               expecting texts to arrive.
             </p>

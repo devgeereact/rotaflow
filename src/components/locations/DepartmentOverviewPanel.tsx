@@ -18,7 +18,7 @@ interface DepartmentOverviewPanelProps {
 /**
  * Right-hand summary for the selected department
  * (design/Location-department.png): identity card with mini-stats, then a
- * separate activity card — two cards, unlike the locations panel's single one.
+ * separate activity card, two cards, unlike the locations panel's single one.
  */
 export function DepartmentOverviewPanel({
   department,
@@ -66,7 +66,7 @@ export function DepartmentOverviewPanel({
         />
       </Card>
 
-      {/* Hidden until `audit_logs` carries department events — see
+      {/* Hidden until `audit_logs` carries department events. See
           docs/audit01.md P1-5. */}
       {department.activity.length > 0 && (
         <Card className="p-4">

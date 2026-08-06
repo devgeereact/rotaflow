@@ -14,7 +14,7 @@ import { ADMIN_NAV, ADMIN_SECONDARY_NAV, adminNavForRole } from '@/lib/adminNav'
  * ## The bug this exists to prevent, which already happened once
  *
  * `settingsTabs.ts` shipped with fourteen routes and a unit test asserting the
- * tab *list* was correct. It was — and not one of those fourteen routes was
+ * tab *list* was correct. It was, and not one of those fourteen routes was
  * ever added to `App.tsx`. Nothing imported the module except its own test, so
  * every entry resolved to the `*` catch-all and rendered the 404 page.
  *
@@ -27,7 +27,7 @@ import { ADMIN_NAV, ADMIN_SECONDARY_NAV, adminNavForRole } from '@/lib/adminNav'
  * So this test reads the real route table out of `App.tsx` and checks the tabs
  * against it. It is deliberately a source-text parse rather than a render:
  * mounting the router would need a Supabase session, an org and a role, and
- * the question here is purely "does this path have a Route" — which the source
+ * the question here is purely "does this path have a Route", which the source
  * answers directly and cannot drift from.
  */
 
@@ -40,7 +40,7 @@ const APP_TSX = path.join(process.cwd(), 'src/App.tsx');
  * The nesting is resolved by tracking each `<Route>`'s depth, not by string
  * prefixing. An earlier draft simply emitted `/app/settings/<segment>` for
  * every relative segment it saw anywhere, which made two of these assertions
- * pass against a tree that did not contain the routes at all — the top-level
+ * pass against a tree that did not contain the routes at all. The top-level
  * `/app/notifications` was enough to satisfy `/app/settings/notifications`.
  * A test that reports success for a route that does not exist is worse than
  * no test, so the prefix has to come from the real enclosing element.
@@ -56,7 +56,7 @@ interface RouteTag {
  *
  * Scanning for the first `>` does not work: `element={<SettingsLayout />}` is
  * an attribute *value*, and its `/>` would be mistaken for the end of the
- * Route tag — which silently reclassifies every parent layout route as
+ * Route tag, which silently reclassifies every parent layout route as
  * self-closing and detaches its children. So the scan tracks JSX brace depth
  * and only accepts a bracket found at depth zero.
  */
@@ -98,7 +98,7 @@ function readTag(source: string, start: number): RouteTag {
  * Nesting is resolved from real tag structure, not string prefixing. An
  * earlier draft emitted `/app/settings/<segment>` for every relative segment
  * it saw anywhere, which made two assertions pass against a tree that did not
- * contain those routes — top-level `/app/notifications` was enough to satisfy
+ * contain those routes. Top-level `/app/notifications` was enough to satisfy
  * `/app/settings/notifications`. A test that reports success for a route that
  * does not exist is worse than no test.
  */
@@ -188,13 +188,13 @@ describe('navigation targets', () => {
         (tab) => [role, tab.label, tab.to] as const,
       ),
     ),
-  )('workspace tab for %s — %s (%s) has a route', (_role, _label, to) => {
+  )('workspace tab for %s, %s (%s) has a route', (_role, _label, to) => {
     expect(isRoutable(to)).toBe(true);
   });
 
   it('gives staff no workspace tab they cannot open', () => {
     // A single-item set renders no tab bar at all (WorkspaceHeader), which is
-    // the intended outcome — not an empty bar, and not a link to a 403.
+    // the intended outcome, not an empty bar, and not a link to a 403.
     expect(rotaWorkspaceTabs('staff')).toHaveLength(1);
     expect(teamWorkspaceTabs('staff')).toHaveLength(1);
     expect(rotaWorkspaceTabs('staff')[0]?.to).toBe('/app/schedule');
@@ -237,7 +237,7 @@ describe('navigation targets', () => {
 
   /*
    * The sidebar is the primary navigation, and every one of its targets was
-   * rewritten to NEW_STRUCTURE §4's order and spelling — "Staff" became "Team"
+   * rewritten to NEW_STRUCTURE §4's order and spelling, "Staff" became "Team"
    * at a new URL, Clock In moved, Integrations was added. A rename that misses
    * its route is a dead link on the most-used control in the app, so all three
    * roles are checked, not just the manager's superset.
@@ -256,7 +256,7 @@ describe('navigation targets', () => {
   });
 
   it('puts the team directory at the spec spelling, with the old one aliased', () => {
-    // §10/§34 name /app/team. /app/staff must keep resolving — links to it
+    // §10/§34 name /app/team. /app/staff must keep resolving. Links to it
     // have already been sent to staff.
     expect(isRoutable('/app/team')).toBe(true);
     expect(isRoutable('/app/staff')).toBe(true);
@@ -310,7 +310,7 @@ describe('navigation targets', () => {
   it.each(ADMIN_SECONDARY_NAV.map((item) => [item.label, item.to] as const))(
     'platform console secondary item %s (%s) has a route',
     (_label, to) => {
-      // These deliberately leave the console — documentation and support are
+      // These deliberately leave the console. Documentation and support are
       // marketing routes. That is exactly why they need checking: nothing else
       // in the console links to them, so a rename would go unnoticed.
       expect(isRoutable(to)).toBe(true);
@@ -320,7 +320,7 @@ describe('navigation targets', () => {
   it('gives every platform role a console it can actually navigate', () => {
     // Role filtering hides entries; it must never produce a dead one, and it
     // must never leave a role with nothing but the overview. `null` covers an
-    // administrator whose granular grant could not be read — they still get
+    // administrator whose granular grant could not be read. They still get
     // the unrestricted screens rather than an empty sidebar.
     for (const role of [
       'platform_owner',

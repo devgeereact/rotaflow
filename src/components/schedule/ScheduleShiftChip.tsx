@@ -42,7 +42,7 @@ export function ScheduleShiftChip({
       )}
     >
       <span className="block tabular-nums">
-        {start} – {end}
+        {start}, {end}
       </span>
       {shiftType?.name && (
         <span className="block truncate opacity-90">{shiftType.name}</span>

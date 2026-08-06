@@ -10,7 +10,7 @@ import {
 } from '@/lib/announcementsDemo';
 
 /**
- * Design-loop preview only — `/app/announcements` needs a real Supabase session
+ * Design-loop preview only, `/app/announcements` needs a real Supabase session
  * and a seeded organisation. This renders the same components against the
  * fixtures in `src/lib/announcementsDemo.ts`, reproducing
  * design/Announcements-Dashboard.png. Not wired to any service call; see

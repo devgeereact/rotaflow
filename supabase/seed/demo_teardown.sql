@@ -1,5 +1,5 @@
 -- =====================================================================
--- demo_teardown.sql — remove everything demo_seed.sql created
+-- demo_teardown.sql. Remove everything demo_seed.sql created
 --
 -- Deletes the demo organisations (cascading to every child row) and the
 -- eight demo login accounts, then clears the Super Admin flag.
@@ -7,7 +7,7 @@
 -- It only touches rows it can derive itself, so organisations created
 -- through the app are untouched.
 --
--- NOTE: it does NOT delete gakinz101@gmail.com — that is a real account.
+-- NOTE: it does NOT delete gakinz101@gmail.com, that is a real account.
 -- The Super Admin flag is cleared; comment that statement out to keep it.
 -- =====================================================================
 

@@ -10,12 +10,12 @@ import { Card } from '@/components/ui/Card';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 
 /**
- * `/app/account/sessions` — design/ProfileSettings.png, "Connected sessions".
+ * `/app/account/sessions`. Design/ProfileSettings.png, "Connected sessions".
  *
  * ## Why only one session is listed
  *
- * The reference lists three devices — Chrome on macOS, Safari on iPhone,
- * Chrome on Windows — each with a location and a "Sign out" button. That needs
+ * The reference lists three devices. Chrome on macOS, Safari on iPhone,
+ * Chrome on Windows. Each with a location and a "Sign out" button. That needs
  * a server-side session registry: Supabase's client SDK can only see the
  * session held by *this* browser. There is no `auth.sessions` read exposed to
  * an anon key, and no table in this schema recording device, user agent, IP or
@@ -25,7 +25,7 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
  * shows the one session that genuinely exists here, says plainly that other
  * devices are not listed, and offers the control that *does* work everywhere:
  * "sign out everywhere", which revokes every refresh token for the account
- * server-side — including the devices this page cannot enumerate.
+ * server-side, including the devices this page cannot enumerate.
  *
  * That is the useful half of the feature. Someone who has lost a phone needs
  * to revoke it, and `scope: 'global'` does exactly that without needing to see
@@ -111,7 +111,7 @@ export function SessionsPage(): JSX.Element {
         description="Sign out everywhere if you have lost a device or think someone else has access."
       >
         <p className="mb-5 text-sm text-content-muted dark:text-content-muted-dark">
-          RotaFlow cannot list your other signed-in devices — sessions are held by each
+          RotaFlow cannot list your other signed-in devices. Sessions are held by each
           browser, and nothing records them centrally. Signing out everywhere still
           revokes them all, including devices that are not shown here.
         </p>

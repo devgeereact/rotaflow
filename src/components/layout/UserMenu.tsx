@@ -62,8 +62,7 @@ export function UserMenu(): JSX.Element {
                 this existed a platform administrator had to type the URL.
                 It belongs here rather than in the sidebar: the sidebar is
                 the *organisation's* navigation, and `navigationTargets.test`
-                asserts no `/admin` target appears in it for any role —
-                correctly, since platform administration sits above the org
+                asserts no `/admin` target appears in it for any role. Correctly, since platform administration sits above the org
                 whose context that sidebar is rendering. Tinted `danger` to
                 match AdminShell's accent, so the change of altitude is
                 visible before the click, not after. */}

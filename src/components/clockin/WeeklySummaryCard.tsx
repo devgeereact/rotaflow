@@ -39,7 +39,7 @@ function widthClass(percent: number): string {
   return WIDTHS[Math.round((clamped / 100) * 12)] ?? 'w-0';
 }
 
-/** "Weekly Summary" card — hours booked vs worked, with a completion bar. */
+/** "Weekly Summary" card. Hours booked vs worked, with a completion bar. */
 export function WeeklySummaryCard({
   periodLabel,
   stats,

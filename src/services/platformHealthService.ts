@@ -15,7 +15,7 @@ import {
  * This is a static PWA. There is no server of ours to ask, so every number
  * here is measured from the administrator's own device: a real round trip to
  * Supabase, a real realtime handshake, the real session. That makes the
- * latencies honest but *local* — they include the viewer's network, so they
+ * latencies honest but *local*. They include the viewer's network, so they
  * answer "can I reach the platform, and how fast" rather than "what is the
  * platform's global p95".
  *
@@ -45,7 +45,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null
 async function checkDatabase(): Promise<HealthCheck> {
   const started = performance.now();
   const result = await withTimeout(
-    // `head: true` sends no rows back — this measures the round trip, not the
+    // `head: true` sends no rows back. This measures the round trip, not the
     // payload. RLS still applies, which is the point: it proves the path a real
     // request takes, not a privileged shortcut.
     Promise.resolve(
@@ -168,7 +168,7 @@ async function checkRealtime(): Promise<HealthCheck> {
 
 /**
  * Services we can only report configuration for. Marked `configuredOnly` so the
- * UI can say "configured" rather than implying a live probe happened — a key
+ * UI can say "configured" rather than implying a live probe happened, a key
  * being present proves the app will try, not that the far end is up.
  */
 function configuredServices(): HealthCheck[] {
@@ -189,37 +189,37 @@ function configuredServices(): HealthCheck[] {
       'File storage (ImageKit)',
       Boolean(env.imagekitUrlEndpoint),
       'Endpoint configured. Uploads are routed to ImageKit.',
-      'No endpoint configured — uploads fall back to local handling.',
+      'No endpoint configured. Uploads fall back to local handling.',
     ),
     entry(
       'Error monitoring (Sentry)',
       Boolean(env.sentryDsn),
       'DSN configured. Client errors are reported.',
-      'No DSN — client errors are not reported anywhere.',
+      'No DSN. Client errors are not reported anywhere.',
     ),
     entry(
       'Background workflows (Inngest)',
       Boolean(env.inngestEventKey),
       'Event key present. Queued and scheduled jobs are dispatched.',
-      'No event key — scheduled and queued jobs are not dispatched.',
+      'No event key. Scheduled and queued jobs are not dispatched.',
     ),
     entry(
       'Push notifications',
       Boolean(env.vapidPublicKey),
       'VAPID key present. Devices can subscribe to push.',
-      'No VAPID key — push subscriptions cannot be created.',
+      'No VAPID key. Push subscriptions cannot be created.',
     ),
     entry(
       'Single sign-on',
       env.oauthProviders.length > 0,
       `Providers offered: ${env.oauthProviders.join(', ')}.`,
-      'No OAuth providers declared — password sign-in only.',
+      'No OAuth providers declared. Password sign-in only.',
     ),
   ];
 }
 
 /**
- * Run every probe. Live checks run concurrently — they are independent, and
+ * Run every probe. Live checks run concurrently. They are independent, and
  * running them in series would make the page feel broken on a slow connection.
  */
 export async function runHealthChecks(): Promise<HealthCheck[]> {

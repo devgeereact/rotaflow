@@ -16,8 +16,8 @@ import type {
 } from '@/types';
 
 /**
- * Every case pins `now` explicitly. The rules are all relative to it — past
- * shifts are skipped, "within a week" escalates a shortage — so a suite that
+ * Every case pins `now` explicitly. The rules are all relative to it. Past
+ * shifts are skipped, "within a week" escalates a shortage, so a suite that
  * read the wall clock would pass in the morning and fail after lunch.
  *
  * TZ is Europe/London throughout, which is what the app uses and what the test
@@ -134,7 +134,7 @@ describe('computeRotaInsights', () => {
     expect(open.find((i) => i.shiftId === 's-later')?.severity).toBe('warning');
   });
 
-  it('ignores shifts that have already finished — nothing can be done about them', () => {
+  it('ignores shifts that have already finished. Nothing can be done about them', () => {
     const past = shift({
       id: 's-past',
       starts_at: '2026-08-03T06:00:00Z',
@@ -221,7 +221,7 @@ describe('computeRotaInsights', () => {
 
   it('flags less than eleven hours between consecutive shifts', () => {
     const person = staff({ id: 'p-1' });
-    // Off at 22:00 BST, back at 07:00 BST — nine hours.
+    // Off at 22:00 BST, back at 07:00 BST. Nine hours.
     const late = shift({
       id: 's-late',
       staff_profile_id: 'p-1',
@@ -339,7 +339,7 @@ describe('computeRotaInsights', () => {
     ).find((i) => i.kind === 'document_expiry');
     expect(flagged?.severity).toBe('critical');
 
-    // Nobody rostered — the certificate is still expired, but not a rota problem.
+    // Nobody rostered. The certificate is still expired, but not a rota problem.
     const notRostered = computeRotaInsights(
       input({ shifts: [], staff: [person], documents }),
     );
@@ -499,7 +499,7 @@ describe('suggestCoverForShift', () => {
 
   it('keeps someone who would go over contract, but says so', () => {
     // 30h already booked in the same week as the open shift, against a 32h
-    // contract — the 8h slot takes them over. Deliberately on other days, so
+    // contract. The 8h slot takes them over. Deliberately on other days, so
     // the only finding is the contract, not an overlap.
     const stretched = staff({ id: 'p-stretched', weekly_hours: 32 });
     const booked = [17, 18, 20].map((day) =>

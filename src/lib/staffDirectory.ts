@@ -2,7 +2,7 @@
  * View models for the Staff Directory and Staff Profile screens
  * (design/staff.png, design/Staff-Profile.png).
  *
- * These are presentation shapes, not database rows — a directory row folds in
+ * These are presentation shapes, not database rows, a directory row folds in
  * a department name, a location name and a derived availability meter that no
  * single `staff_profiles` row carries. Services map Supabase rows into these;
  * see `src/lib/staffDemo.ts` for the design-loop fixtures.

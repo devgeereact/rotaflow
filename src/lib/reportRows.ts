@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react';
  * and the design preview build identical rows from different sources.
  */
 
-/** The chip in the Category column — also picks the row's icon tint. */
+/** The chip in the Category column. Also picks the row's icon tint. */
 export type ReportCategory =
   | 'Scheduling'
   | 'Staffing'
@@ -42,7 +42,7 @@ export interface ReportRow {
 
 // Four tints cycle through the categories, matching the reference. Violet
 // comes from the `shift-tint` pair (its `-fg` is the only deep violet ink in
-// the system — `shift-violet` itself is a pale chip fill and would be
+// the system, `shift-violet` itself is a pale chip fill and would be
 // illegible as text). See docs/DESIGN.md §2.
 const VIOLET =
   'bg-shift-tint-violet text-shift-tint-violet-fg dark:bg-shift-deep-violet dark:text-shift-violet';

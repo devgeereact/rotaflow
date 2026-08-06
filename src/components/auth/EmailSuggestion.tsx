@@ -10,7 +10,7 @@ interface EmailSuggestionProps {
  * "Did you mean …?" under an email field, for well-formed but
  * probably-mistyped domains (`gmial.com` → `gmail.com`).
  *
- * Advisory by design — it never blocks submission. A mistyped domain is
+ * Advisory by design. It never blocks submission. A mistyped domain is
  * still a syntactically valid one, and wrongly blocking a real address is
  * worse than letting one bounce through. Renders nothing when the address
  * looks fine, which is the overwhelmingly common case.

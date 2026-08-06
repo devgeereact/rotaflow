@@ -90,7 +90,7 @@ export function AnnouncementTableRow({
       </td>
 
       <td className="w-40 pr-4">
-        <p className={PRIMARY_LINE}>{row.when ?? '–'}</p>
+        <p className={PRIMARY_LINE}>{row.when ?? ', '}</p>
         <p className={SECOND_LINE}>{row.whenLabel}</p>
       </td>
 

@@ -16,7 +16,7 @@ interface AnnouncementPreviewPanelProps {
   preview: AnnouncementPreview;
   /**
    * Follow-ups offered under the preview. Passed in rather than fixed so the
-   * live page can offer only what the schema can actually back — see
+   * live page can offer only what the schema can actually back. See
    * `AnnouncementsPage`.
    */
   quickActions: AnnouncementQuickAction[];
@@ -56,7 +56,7 @@ const QUICK_ACTION =
   'dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark';
 
 /**
- * The right rail on design/Announcements-Dashboard.png — the selected
+ * The right rail on design/Announcements-Dashboard.png. The selected
  * announcement rendered as it was sent, plus its delivery telemetry,
  * attachments and follow-up actions.
  */

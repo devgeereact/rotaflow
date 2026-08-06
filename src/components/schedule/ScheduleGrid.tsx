@@ -27,7 +27,7 @@ function isWeekend(dateIso: string): boolean {
  * Read-only staff × date grid for the published schedule, grouped by location.
  *
  * Staff are grouped by where they are actually rostered in this period, not by
- * a home location — `staff_profiles` has no location column, so anything else
+ * a home location, `staff_profiles` has no location column, so anything else
  * would be invented. Someone working two sites appears under both.
  */
 export function ScheduleGrid({
@@ -37,7 +37,7 @@ export function ScheduleGrid({
   shiftTypes,
   timezone,
 }: ScheduleGridProps): JSX.Element {
-  // One clock for the whole grid — see RotaGrid for why this is not per-chip.
+  // One clock for the whole grid. See RotaGrid for why this is not per-chip.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -143,7 +143,7 @@ export function ScheduleGrid({
                             className="block text-center text-content-muted/60 dark:text-content-muted-dark/60"
                             aria-label="No shift"
                           >
-                            –
+                            ,{' '}
                           </span>
                         ) : (
                           <div className="space-y-1">

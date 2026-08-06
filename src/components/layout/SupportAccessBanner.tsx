@@ -22,7 +22,7 @@ import {
  *
  * The console screen is for us. This is for them. A support-access system whose
  * only visible surface is the administrator's own console is a log we keep
- * about ourselves — the customer has to ask, and trust the answer. Showing it
+ * about ourselves. The customer has to ask, and trust the answer. Showing it
  * here, unprompted, with the reason and the case reference and a button that
  * ends it, is the difference between an audit trail and actual accountability.
  *
@@ -45,7 +45,7 @@ export function SupportAccessBanner(): JSX.Element | null {
       setSessions(await listActiveSessionsForOrg(orgId));
     } catch {
       // Deliberately silent. A failure to read the banner must not put an
-      // error toast in front of a care worker trying to clock in — the
+      // error toast in front of a care worker trying to clock in. The
       // console remains the authoritative record either way.
       setSessions([]);
     }
@@ -91,14 +91,14 @@ export function SupportAccessBanner(): JSX.Element | null {
           <p className="min-w-0 flex-1 text-sm text-content dark:text-content-dark">
             <span className="font-semibold">RotaFlow support is viewing your data.</span>{' '}
             {session.adminName} opened a {SCOPE_LABELS[session.scope].toLowerCase()}{' '}
-            session for case {session.caseRef} — “{session.reason}”. It ends automatically
+            session for case {session.caseRef}, “{session.reason}”. It ends automatically
             in{' '}
             <span className="font-semibold">
               {formatRemaining(millisecondsRemaining(session.expiresAt, now))}
             </span>
             .
           </p>
-          {/* Only an owner may end it — matching `revoke_support_access`, which
+          {/* Only an owner may end it. Matching `revoke_support_access`, which
               refuses anyone else. Showing a button that raises 42501 to a
               manager would be worse than not showing one. */}
           {role === 'owner' && (

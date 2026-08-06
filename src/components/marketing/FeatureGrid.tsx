@@ -19,7 +19,7 @@ interface Feature {
  * Every entry here describes a capability that actually exists in the shipped
  * product, not the full PRD scope. RotaFlow's PRD lists ~14 Phase 1 feature
  * families (conflict detection, GPS clock-in, leave, swaps, timesheets,
- * reports…) — most are not built yet. A marketing page for a real product
+ * reports…). Most are not built yet. A marketing page for a real product
  * should not advertise a feature list ahead of the build; do not add an entry
  * here without checking it against docs/SCREENS.md's `[Built]` column first.
  */
@@ -42,7 +42,7 @@ const FEATURES: Feature[] = [
   {
     icon: Download,
     title: 'One schedule everyone can see',
-    body: 'Staff see day, week or month views of exactly what has been published — never a draft still being moved around — and can subscribe with any calendar app.',
+    body: 'Staff see day, week or month views of exactly what has been published, never a draft still being moved around, and can subscribe with any calendar app.',
   },
   {
     icon: UserPlus,
@@ -64,7 +64,7 @@ export function FeatureGrid(): JSX.Element {
           Everything you need to build the rota
         </h2>
         <p className="mt-3 text-content-muted dark:text-content-muted-dark">
-          RotaFlow is under active development. This is what is built and working today —
+          RotaFlow is under active development. This is what is built and working today,
           not a promise of what is coming.
         </p>
       </div>

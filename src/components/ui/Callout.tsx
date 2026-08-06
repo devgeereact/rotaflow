@@ -13,7 +13,7 @@ interface CalloutProps {
 }
 
 /**
- * A toned note — the thing a console screen uses to say "this is not what you
+ * A toned note. The thing a console screen uses to say "this is not what you
  * think it is".
  *
  * ## Why this exists as a component
@@ -21,9 +21,9 @@ interface CalloutProps {
  * These blocks were being written as `Card` with
  * `border-warning/30 bg-warning/5` inline, and then, when the console moved to
  * `Panel`, several of them quietly lost their tone and became plain grey
- * panels. That mattered more than it sounds: every one of them is a caveat —
+ * panels. That mattered more than it sounds: every one of them is a caveat,
  * "suspending does not lock anyone out", "this is not a delivery rate",
- * "revenue is not built" — and a caveat that reads like body copy is a caveat
+ * "revenue is not built", and a caveat that reads like body copy is a caveat
  * nobody notices.
  *
  * The washes are the opaque semantic tokens (docs/DESIGN.md §2), not an alpha

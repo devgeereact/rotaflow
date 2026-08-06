@@ -18,13 +18,13 @@ const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 // Fixed decorative sweep for the 'active' state (design/appboot.png measures
 // ~144° / 40% on its one active stage). There is no per-stage progress signal
-// to drive this precisely, so every active step uses the same sweep — it
+// to drive this precisely, so every active step uses the same sweep. It
 // reads as "in motion", not a literal percentage.
 const ACTIVE_SWEEP = 0.4;
 
 /**
  * The circular step indicator in the app-boot stage tracker
- * (design/appboot.png): an icon inside a ring whose state reads at a glance —
+ * (design/appboot.png): an icon inside a ring whose state reads at a glance,
  * a uniform tinted ring for done/pending, a partial sweep for the step
  * currently running, and a checkmark badge once a step completes.
  */

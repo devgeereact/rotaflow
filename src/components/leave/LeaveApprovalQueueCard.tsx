@@ -22,7 +22,7 @@ const QUEUE_ICON: Record<string, LucideIcon> = {
 /**
  * The three request queues waiting on this manager (design/Leave.png).
  *
- * Counts render even at zero rather than the row disappearing — "nothing is
+ * Counts render even at zero rather than the row disappearing, "nothing is
  * waiting" and "this queue does not exist" are different states, and a queue
  * that vanishes when it empties reads as the latter.
  */

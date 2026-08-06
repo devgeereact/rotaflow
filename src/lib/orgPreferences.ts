@@ -8,7 +8,7 @@ import type { Organisation } from '@/types';
  * Onboarding, the Organisation screen, Roles, Policies and Notifications all
  * write into the same untyped blob. Nothing stops one of them storing
  * `week_start: "Monday"` while another reads `week_starts_on: 1`, and no
- * typecheck, lint or test would notice — the value simply reads back empty and
+ * typecheck, lint or test would notice. The value simply reads back empty and
  * the screen shows its default. That is a silent-wrong-value bug class, and it
  * is the same one `audit01` §7b found in the timesheet code.
  *
@@ -16,7 +16,7 @@ import type { Organisation } from '@/types';
  * index the blob directly.
  *
  * These are **preferences**, not enforcement. Nothing in this file constrains
- * what the database will accept — an overtime threshold set to 30 hours does
+ * what the database will accept, an overtime threshold set to 30 hours does
  * not stop a 40-hour week being written. The policy *engine* that would do
  * that is a separate project (audit01 §4 Tier 3); this is the settings surface
  * it will read from when it exists, which is why the shapes are worth getting
@@ -56,7 +56,7 @@ function bool(settings: Json, key: string, fallback: boolean): boolean {
 }
 
 /* ------------------------------------------------------------------ *
- * Role display labels — design/SettingsOrganisation.png, "Role Display
+ * Role display labels. Design/SettingsOrganisation.png, "Role Display
  * Labels".
  * ------------------------------------------------------------------ */
 
@@ -67,12 +67,12 @@ function bool(settings: Json, key: string, fallback: boolean): boolean {
  * `roles` table is a migration plus an RLS rewrite, not a screen.
  *
  * What the design actually asks for on this card is narrower than it looks:
- * a **display label** per system role — "Customise how roles are shown across
+ * a **display label** per system role, "Customise how roles are shown across
  * the platform". That is presentation, it is genuinely useful (a care home
  * calls a manager a "Deputy Manager"), and it fits the existing schema exactly.
  *
  * So this ships as relabelling of the three real roles. Custom roles with
- * their own permissions remain a schema decision — flagged on the screen so
+ * their own permissions remain a schema decision. Flagged on the screen so
  * nobody mistakes a renamed `manager` for a new permission set.
  */
 export const SYSTEM_ROLES = ['owner', 'manager', 'staff'] as const;
@@ -108,7 +108,7 @@ export function roleLabels(settings: Json): Record<SystemRole, string> {
 }
 
 /* ------------------------------------------------------------------ *
- * Scheduling policies — design/Settingspolicy.png, reduced to the rules
+ * Scheduling policies. Design/Settingspolicy.png, reduced to the rules
  * the current schema can actually express.
  * ------------------------------------------------------------------ */
 
@@ -167,7 +167,7 @@ export function policiesToSettings(p: SchedulingPolicies): Record<string, unknow
 }
 
 /* ------------------------------------------------------------------ *
- * Organisation notification defaults — design/SettingsNotifications.png.
+ * Organisation notification defaults. Design/SettingsNotifications.png.
  * ------------------------------------------------------------------ */
 
 /**
@@ -193,7 +193,7 @@ export type NotificationEventKey = (typeof NOTIFICATION_EVENTS)[number]['key'];
  * Channels. **SMS is deliberately absent** even though the reference shows an
  * SMS column: there is no SMS provider in the stack, no table recording
  * delivery, and no Edge Function that could send one. A toggle a customer can
- * switch on that silently sends nothing is worse than no toggle — they would
+ * switch on that silently sends nothing is worse than no toggle. They would
  * believe their staff were texted.
  */
 export const NOTIFICATION_CHANNELS = [

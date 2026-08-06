@@ -17,7 +17,7 @@ export interface UseGeolocation {
 /**
  * One-shot device position for GPS clock-in (docs/HOOKS.md §9).
  *
- * Resolves to null rather than throwing on denial/unavailability — a clock-in
+ * Resolves to null rather than throwing on denial/unavailability, a clock-in
  * screen must always fall back to manual entry, never hard-fail because a
  * browser permission was declined. `status` lets the UI show *why* GPS isn't
  * being used, without callers having to catch and interpret a raw

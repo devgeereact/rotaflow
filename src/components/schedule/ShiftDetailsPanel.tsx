@@ -31,11 +31,11 @@ export interface ShiftDetails {
   locationName: string;
   /** Pre-formatted, e.g. "Tue, 27 May 2025". */
   dateLabel: string;
-  /** Pre-formatted, e.g. "07:00 – 15:00 (8h)". */
+  /** Pre-formatted, e.g. "07:00-15:00 (8h)". */
   timeLabel: string;
   published: boolean;
   assigned: ShiftDetailsAssignee[];
-  /** Total slots for this shift — assigned plus still-open. */
+  /** Total slots for this shift. Assigned plus still-open. */
   slots: number;
   /** Union of the skills the assigned staff hold. */
   skills: string[];
@@ -58,7 +58,7 @@ const SECTION_RULE =
 /**
  * The expandable shift-details rail beside the grid
  * (design/published-schedule.png). Everything shown is derived from the
- * selected shift and the people on it — nothing here is a target or a
+ * selected shift and the people on it. Nothing here is a target or a
  * forecast, because the schema has neither.
  */
 export function ShiftDetailsPanel({

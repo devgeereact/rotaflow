@@ -38,12 +38,12 @@ function toneFor(severity: string): (typeof SEVERITY_TONE)[SeverityKey] {
 }
 
 /**
- * `/admin/audit` — NEW_STRUCTURE §34's platform audit.
+ * `/admin/audit`. NEW_STRUCTURE §34's platform audit.
  *
  * Shows the most recent {@link LIMIT} events across every organisation.
  * Deliberately capped rather than paginated: `audit_logs` is append-only and
  * grows without bound, and this is a "what just happened" view. The cap is
- * stated on screen — a truncated list that looks complete is how an
+ * stated on screen, a truncated list that looks complete is how an
  * investigation reaches the wrong conclusion.
  *
  * `metadata` is not rendered. It is free-form JSON written by whatever recorded
@@ -52,14 +52,14 @@ function toneFor(severity: string): (typeof SEVERITY_TONE)[SeverityKey] {
  *
  * ## Two kinds of row
  *
- * Since 0016 an event may be platform-scoped, carrying a null `org_id` — a
+ * Since 0016 an event may be platform-scoped, carrying a null `org_id`, a
  * platform role granted or revoked belongs to no customer. Those render as
  * "Platform" rather than "Unknown", which is the distinction that matters when
  * reading this list: one is an event about RotaFlow itself, the other would be
  * a lookup failure.
  *
  * A null `org_id` also arises the other way, when an organisation has been
- * deleted — the FK is `on delete set null` so the trail survives the tenant.
+ * deleted. The FK is `on delete set null` so the trail survives the tenant.
  * `org_name` is snapshotted at write time and is what those rows fall back to,
  * so a deleted customer's events still name the customer.
  */
@@ -69,7 +69,7 @@ function toneFor(severity: string): (typeof SEVERITY_TONE)[SeverityKey] {
  * `audit_logs.before_value` and `after_value` are real columns as of 0027, and
  * `audit_write` lifts a scalar out of the metadata into them on every write.
  * Rows written before that migration have nothing in the columns, so this falls
- * back to reading the same two keys out of `metadata` — otherwise the whole
+ * back to reading the same two keys out of `metadata`. Otherwise the whole
  * history before 05 August 2026 would show an em dash and look like a gap in
  * the record rather than a column that arrived late.
  *
@@ -104,7 +104,7 @@ function ChangeCell({
           : 'font-semibold text-content dark:text-content-dark'
       }`}
     >
-      {value ?? '—'}
+      {value ?? '-'}
     </span>
   );
 }
@@ -230,10 +230,10 @@ export function AdminAuditPage(): JSX.Element {
         width: 'w-[11%]',
         cell: (entry) => (
           // `table-fixed` gives this column a hard width, so an entity name
-          // longer than it — `support_access_session` — ran under the severity
+          // longer than it, `support_access_session`, ran under the severity
           // badge in the next column instead of clipping.
           <span className="block truncate font-mono text-xs text-content-muted dark:text-content-muted-dark">
-            {entry.entity_type ?? '—'}
+            {entry.entity_type ?? '-'}
           </span>
         ),
       },
@@ -255,7 +255,7 @@ export function AdminAuditPage(): JSX.Element {
         width: 'w-[9%]',
         cell: (entry) => (
           <span className="block truncate font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-            {entry.ip_address ?? '—'}
+            {entry.ip_address ?? '-'}
           </span>
         ),
       },
@@ -300,7 +300,7 @@ export function AdminAuditPage(): JSX.Element {
           <Button
             variant="secondary"
             disabled
-            title="Nothing stores a saved filter — there is no table for one"
+            title="Nothing stores a saved filter. There is no table for one"
           >
             Save filter
           </Button>
@@ -323,7 +323,7 @@ export function AdminAuditPage(): JSX.Element {
               Most writers are still to be added, so this log is thinner than it will be
               rather than incomplete. Before and After come from the columns of the same
               name, falling back to a row&rsquo;s <code>metadata</code> for events
-              recorded before those columns existed — and only ever a scalar, because an
+              recorded before those columns existed, and only ever a scalar, because an
               audit view is the wrong place to dump a payload that may hold personal data.
             </p>
           </Callout>

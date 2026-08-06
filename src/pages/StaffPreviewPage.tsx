@@ -5,7 +5,7 @@ import type { StaffSort } from '@/components/staff/StaffTable';
 import { DEMO_STAFF, DEMO_STAFF_DETAILS, DEMO_STATS } from '@/lib/staffDemo';
 
 /**
- * Design-loop preview only — `/app/staff` needs a real Supabase session and a
+ * Design-loop preview only, `/app/staff` needs a real Supabase session and a
  * seeded organisation. This renders the same components against the fixtures in
  * `src/lib/staffDemo.ts`, reproducing design/staff.png. Not wired to any
  * service call; see design/.loop/staff-log.md.

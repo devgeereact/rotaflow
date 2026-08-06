@@ -16,7 +16,7 @@ import type { ScheduleDayTotal, ScheduleLocationGroup } from '@/lib/publishedSch
 
 /**
  * Staff column, seven day columns, then the trailing per-row menu column. The
- * header band, every staff row and the totals footer share it — if one band
+ * header band, every staff row and the totals footer share it, if one band
  * uses a different template the grid visibly goes out of true.
  */
 const GRID_COLS =
@@ -26,11 +26,11 @@ interface PublishedScheduleGridProps {
   dates: string[];
   groups: ScheduleLocationGroup[];
   totals: ScheduleDayTotal[];
-  /** 'YYYY-MM-DD' — highlighted in the column header. */
+  /** 'YYYY-MM-DD'. Highlighted in the column header. */
   today: string;
   selectedChipId: string | null;
   onSelectChip: (chipId: string) => void;
-  /** Locations collapsed on first render — the reference opens only the first. */
+  /** Locations collapsed on first render. The reference opens only the first. */
   initiallyCollapsed?: string[];
 }
 
@@ -195,7 +195,7 @@ export function PublishedScheduleGrid({
                             className="block text-center text-sm text-content-muted/60 dark:text-content-muted-dark/60"
                             aria-label="Day off"
                           >
-                            –
+                            ,{' '}
                           </span>
                         ) : (
                           chips.map((chip) => (
@@ -250,7 +250,7 @@ export function PublishedScheduleGrid({
                   weekend ? 'text-danger' : 'text-content dark:text-content-dark',
                 )}
               >
-                {total ? `${total.staff} / ${total.shifts}` : '—'}
+                {total ? `${total.staff} / ${total.shifts}` : '-'}
               </p>
               <p
                 className={cn(
@@ -259,7 +259,7 @@ export function PublishedScheduleGrid({
                 )}
               >
                 {total?.coverage === null || total === undefined
-                  ? '—'
+                  ? '-'
                   : `${total.coverage}%`}
               </p>
             </div>

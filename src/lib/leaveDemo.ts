@@ -3,7 +3,7 @@
  *
  * `/app/leave` needs a real Supabase session and a seeded organisation, so
  * `/leave-preview` renders the same components against these fixed rows. The
- * numbers reproduce design/Leave.png exactly — do not "improve" them. Nothing
+ * numbers reproduce design/Leave.png exactly. Do not "improve" them. Nothing
  * here is used by the authenticated route.
  *
  * Three of the reference's values are not reproducible from real data and are
@@ -26,8 +26,8 @@ export const DEMO_LEAVE_ROWS: LeaveRow[] = [
     jobTitle: 'Care Assistant',
     photoUrl: null,
     type: 'annual',
-    dateLabel: '30 May – 1 June 2025',
-    dayLabel: 'Fri – Sun',
+    dateLabel: '30 May-1 June 2025',
+    dayLabel: 'Fri. Sun',
     durationLabel: '3 days',
     status: 'pending',
     statusNote: 'Needs approval',
@@ -71,8 +71,8 @@ export const DEMO_LEAVE_ROWS: LeaveRow[] = [
     jobTitle: 'Senior Nurse',
     photoUrl: null,
     type: 'annual',
-    dateLabel: '9 – 13 June 2025',
-    dayLabel: 'Mon – Fri',
+    dateLabel: '9-13 June 2025',
+    dayLabel: 'Mon. Fri',
     durationLabel: '5 days',
     status: 'approved',
     statusNote: 'Approved by you',
@@ -101,8 +101,8 @@ export const DEMO_LEAVE_ROWS: LeaveRow[] = [
     jobTitle: 'Care Assistant',
     photoUrl: null,
     type: 'annual',
-    dateLabel: '2 – 6 June 2025',
-    dayLabel: 'Mon – Fri',
+    dateLabel: '2-6 June 2025',
+    dayLabel: 'Mon. Fri',
     durationLabel: '5 days',
     status: 'cancelled',
     statusNote: 'Cancelled by staff',
@@ -134,7 +134,7 @@ export const DEMO_LEAVE_ROWS: LeaveRow[] = [
     dateLabel: '16 May 2025',
     dayLabel: 'Fri',
     // The reference's only half day. `leave_requests` stores whole dates, so
-    // the live page cannot produce this — it is a fixture-only string.
+    // the live page cannot produce this. It is a fixture-only string.
     durationLabel: '0.5 day',
     status: 'approved',
     statusNote: 'Approved by you',
@@ -188,7 +188,7 @@ export const DEMO_LEAVE_BALANCES: LeaveBalance[] = [
 
 export const DEMO_LEAVE_APPROVALS: LeaveApprovalCount[] = [
   { id: 'leave', label: 'Leave requests', note: 'Needs your approval', count: 6 },
-  // The reference labels this "2Swap requests" — the leading 2 is the count
+  // The reference labels this "2Swap requests". The leading 2 is the count
   // bleeding into the label in the mockup, not part of the name.
   { id: 'swaps', label: 'Swap requests', note: 'Needs your approval', count: 2 },
   { id: 'overtime', label: 'Overtime requests', note: 'Needs your approval', count: 1 },

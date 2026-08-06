@@ -123,7 +123,7 @@ export function ShiftTypeManagerModal({
       onChange(shiftTypes.filter((t) => t.id !== id));
     } catch (err) {
       reportError(err, { area: 'shift-types:delete' });
-      setError('Could not remove that shift type — it may be in use on the rota.');
+      setError('Could not remove that shift type. It may be in use on the rota.');
     }
   };
 
@@ -156,7 +156,7 @@ export function ShiftTypeManagerModal({
                   </span>
                   {type.default_start && type.default_end && (
                     <span className="font-mono text-xs text-content-muted dark:text-content-muted-dark">
-                      {type.default_start}–{type.default_end}
+                      {type.default_start}, {type.default_end}
                     </span>
                   )}
                 </span>

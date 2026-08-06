@@ -1,5 +1,5 @@
 /**
- * GitHub "octocat" mark for OAuth buttons — replaces the reference design's
+ * GitHub "octocat" mark for OAuth buttons. Replaces the reference design's
  * Microsoft icon, since this project's second OAuth provider is GitHub (see
  * `OAuthProvider` in `src/lib/env.ts`), not Microsoft/Azure.
  * Not a `lucide-react` icon: brand logos are fixed marks, not stylable

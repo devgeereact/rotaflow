@@ -1,7 +1,7 @@
 /**
  * View model for the Leave screen (design/Leave.png).
  *
- * The table and the rail are presentational — they render pre-formatted
+ * The table and the rail are presentational. They render pre-formatted
  * strings and never touch a Date, a timezone or a Supabase row. The live page
  * maps `leave_requests` into these shapes and the design preview supplies them
  * literally, so both feed the identical component tree.
@@ -26,21 +26,21 @@ export interface LeaveRow {
   jobTitle: string | null;
   photoUrl: string | null;
   type: LeaveTypeKey;
-  /** Pre-formatted, e.g. "30 May – 1 June 2025". */
+  /** Pre-formatted, e.g. "30 May-1 June 2025". */
   dateLabel: string;
-  /** Weekday span under the dates, e.g. "Fri – Sun". */
+  /** Weekday span under the dates, e.g. "Fri. Sun". */
   dayLabel: string;
   /** Pre-formatted, e.g. "3 days". */
   durationLabel: string;
   status: LeaveStatus;
   /**
-   * The muted line under the pill — "Needs approval", "Approved by you", a
+   * The muted line under the pill, "Needs approval", "Approved by you", a
    * decline reason. `null` where nothing is recorded; never invented.
    */
   statusNote: string | null;
   /** Pre-formatted, e.g. "Today, 09:15". */
   requestedLabel: string;
-  /** Who raised it — the muted line under the timestamp. */
+  /** Who raised it. The muted line under the timestamp. */
   requestedBy: string;
 }
 
@@ -57,14 +57,14 @@ export interface LeaveBalance {
   balanceDays: number;
   allowanceDays: number;
   /**
-   * Meter fill, 0–1, supplied rather than derived: an allowance of 0 (statutory
+   * Meter fill, 0-1, supplied rather than derived: an allowance of 0 (statutory
    * sick leave has no entitlement pot) makes `balance / allowance` undefined,
    * and the caller is the only place that knows what the bar should mean.
    */
   fraction: number;
 }
 
-/** A row in the rail's approval queue — leave, swaps, overtime. */
+/** A row in the rail's approval queue. Leave, swaps, overtime. */
 export interface LeaveApprovalCount {
   id: string;
   label: string;
@@ -102,7 +102,7 @@ export function leaveTypeKey(raw: string | null): LeaveTypeKey {
 /**
  * Date-only columns are parsed with `parseISO`, which reads "2025-05-30" as
  * local midnight. `new Date(string)` reads it as UTC and then formats in the
- * system zone, which silently shows the previous day west of Greenwich — the
+ * system zone, which silently shows the previous day west of Greenwich. The
  * bug class `.github/workflows/ci.yml` pins `TZ: UTC` over.
  */
 function parseDay(iso: string): Date {
@@ -111,7 +111,7 @@ function parseDay(iso: string): Date {
 
 /**
  * Inclusive calendar days, matching `sumApprovedLeaveDays` in
- * `services/leaveService.ts`. Not working days — the schema carries no working
+ * `services/leaveService.ts`. Not working days. The schema carries no working
  * pattern to exclude someone's off-days against, and a precise-looking wrong
  * number is worse than a coarse right one.
  */
@@ -121,38 +121,38 @@ export function leaveDayCount(startIso: string, endIso: string): number {
   return Math.max(1, Math.round((end - start) / 86_400_000) + 1);
 }
 
-/** "3 days" / "1 day" — the reference's Duration column. */
+/** "3 days" / "1 day". The reference's Duration column. */
 export function formatLeaveDuration(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
 /**
- * "28 May 2025" for one day, "9 – 13 June 2025" within a month, and
- * "30 May – 1 June 2025" across one, exactly as the reference writes them.
+ * "28 May 2025" for one day, "9-13 June 2025" within a month, and
+ * "30 May-1 June 2025" across one, exactly as the reference writes them.
  */
 export function formatLeaveRange(startIso: string, endIso: string): string {
   const start = parseDay(startIso);
   const end = parseDay(endIso);
   if (startIso === endIso) return format(start, 'd MMMM yyyy');
   if (isSameMonth(start, end) && isSameYear(start, end)) {
-    return `${format(start, 'd')} – ${format(end, 'd MMMM yyyy')}`;
+    return `${format(start, 'd')}-${format(end, 'd MMMM yyyy')}`;
   }
   if (isSameYear(start, end)) {
-    return `${format(start, 'd MMMM')} – ${format(end, 'd MMMM yyyy')}`;
+    return `${format(start, 'd MMMM')}-${format(end, 'd MMMM yyyy')}`;
   }
-  return `${format(start, 'd MMMM yyyy')} – ${format(end, 'd MMMM yyyy')}`;
+  return `${format(start, 'd MMMM yyyy')}-${format(end, 'd MMMM yyyy')}`;
 }
 
-/** "Fri – Sun" / "Wed" — the muted weekday span under the dates. */
+/** "Fri. Sun" / "Wed", the muted weekday span under the dates. */
 export function formatLeaveDays(startIso: string, endIso: string): string {
   const start = parseDay(startIso);
   const end = parseDay(endIso);
   if (startIso === endIso) return format(start, 'EEE');
-  return `${format(start, 'EEE')} – ${format(end, 'EEE')}`;
+  return `${format(start, 'EEE')}-${format(end, 'EEE')}`;
 }
 
 /**
- * "Today, 09:15" / "Yesterday, 16:30" / "21 May 2025" — the Requested column.
+ * "Today, 09:15" / "Yesterday, 16:30" / "21 May 2025". The Requested column.
  * `now` is injected so the caller controls the clock (and a test can too).
  */
 export function formatRequestedAt(iso: string, now: Date): string {
@@ -165,7 +165,7 @@ export function formatRequestedAt(iso: string, now: Date): string {
 }
 
 /**
- * Approved days per leave type across the given requests — the Leave Overview
+ * Approved days per leave type across the given requests. The Leave Overview
  * donut. Counts the same inclusive calendar days the balances use.
  */
 export function countLeaveDaysByType(

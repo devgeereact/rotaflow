@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import type { SwapShiftSide as SwapShiftSideModel } from '@/lib/swapRows';
 
 interface SwapShiftSideProps {
-  /** Which half of the exchange this is — drives the chip wording and tint. */
+  /** Which half of the exchange this is. Drives the chip wording and tint. */
   side: 'giving' | 'taking';
   shift: SwapShiftSideModel | null;
 }
@@ -18,7 +18,7 @@ const CHIP_LABEL: Record<SwapShiftSideProps['side'], string> = {
 };
 
 /**
- * One half of a swap — the chip, then date, time and location stacked under it
+ * One half of a swap. The chip, then date, time and location stacked under it
  * (design/Swap-Request.png).
  *
  * The chip is never colour alone: it always carries the words "Giving Away" or

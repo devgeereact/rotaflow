@@ -20,7 +20,7 @@ interface MeterRowsProps {
  * A ranked breakdown: label, proportional bar, figure.
  *
  * The platform console uses this wherever a total splits into four or five
- * parts — plans, organisation health, hours by department. A donut was the
+ * parts. Plans, organisation health, hours by department. A donut was the
  * obvious alternative and is worse here: these lists are read for *rank and
  * magnitude* ("which plan is biggest, by how much"), and arc lengths are the
  * hardest encoding to compare. `DonutChart` stays for the one-number-plus-

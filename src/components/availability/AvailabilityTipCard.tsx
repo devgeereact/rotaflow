@@ -7,7 +7,7 @@ interface AvailabilityTipCardProps {
   onAction: () => void;
 }
 
-/** Nudge card closing the rail — prompts managers to chase stale availability. */
+/** Nudge card closing the rail. Prompts managers to chase stale availability. */
 export function AvailabilityTipCard({
   title,
   body,

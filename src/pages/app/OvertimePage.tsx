@@ -48,13 +48,13 @@ const STATUS_LABEL: Record<OvertimeStatus, string> = {
  * `/app/overtime` (NEW_STRUCTURE §14 and §34).
  *
  * `overtime_requests` has been in the schema since 0001 with no reader and no
- * writer — audit01 P2-7. Staff could not offer overtime and managers could not
+ * writer. Audit01 P2-7. Staff could not offer overtime and managers could not
  * allocate it.
  *
  * Two views on one route, the same shape Availability uses: a staff member
  * sees and raises their own; a manager toggles to the whole organisation and
  * approves. Splitting them into two routes would mean a manager who is also on
- * the rota — the normal case in a small care home — has two places to look.
+ * the rota. The normal case in a small care home, has two places to look.
  */
 export function OvertimePage(): JSX.Element {
   const { orgId } = useOrg();
@@ -93,7 +93,7 @@ export function OvertimePage(): JSX.Element {
         // The roster is only needed to put names against other people's
         // requests, which only the Team view shows. Fetching it for a staff
         // member reads the whole directory to render one column they never
-        // see — the same reason AvailabilityPage skips it.
+        // see. The same reason AvailabilityPage skips it.
         const [mine, staffRows] = await Promise.all([
           getMyStaffProfile(orgId, user.id),
           teamMode ? listActiveStaff(orgId) : Promise.resolve<StaffProfile[]>([]),
@@ -153,7 +153,7 @@ export function OvertimePage(): JSX.Element {
     // Validated here as well as by the input's own min/max: a paste can put
     // anything in a number field, and an overtime row is a payroll figure.
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      showError('Enter how many hours you worked — more than zero.');
+      showError('Enter how many hours you worked. More than zero.');
       return;
     }
     if (parsed > 24) {

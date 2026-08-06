@@ -26,7 +26,7 @@ export function ProfileRedirect(): JSX.Element {
   const rest = params['*'] ?? '';
   /*
    * The spec calls the first tab "personal"; this app calls it "profile".
-   * Every other tab name matches, so only that one needs translating —
+   * Every other tab name matches, so only that one needs translating,
    * mapping the whole set would be a table that has to be kept in sync with
    * `PROFILE_TABS` for no benefit.
    */
@@ -35,13 +35,13 @@ export function ProfileRedirect(): JSX.Element {
 }
 
 /**
- * `/auth/callback` — where an OAuth provider or a magic link may return.
+ * `/auth/callback`, where an OAuth provider or a magic link may return.
  *
  * Sign-in already sets `redirectTo` straight at `/app/dashboard`, so nothing
  * in this app routes here today. It exists because the redirect target is
  * configured in the Supabase dashboard, not only in this code: if that
- * allowlist is ever changed to the conventional `/auth/callback` — or a
- * provider is added whose console has it prefilled — the user lands on a route
+ * allowlist is ever changed to the conventional `/auth/callback`, or a
+ * provider is added whose console has it prefilled. The user lands on a route
  * that must not be the 404 page while holding a valid session in the URL hash.
  *
  * The Supabase client parses the hash itself on load, so this only has to wait
@@ -51,8 +51,7 @@ export function AuthCallbackPage(): JSX.Element {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // `replace`, so the callback URL — which carries the token in its hash —
-    // never becomes a back-button destination.
+    // `replace`, so the callback URL, which carries the token in its hash, // never becomes a back-button destination.
     void navigate('/app/dashboard', { replace: true });
   }, [navigate]);
 

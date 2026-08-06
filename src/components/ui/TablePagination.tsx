@@ -6,7 +6,7 @@ interface TablePaginationProps {
   pageCount: number;
   pageSize: number;
   total: number;
-  /** How many rows this page actually shows — the last page is usually short. */
+  /** How many rows this page actually shows. The last page is usually short. */
   shown: number;
   /** Plural noun for the range summary: "…of 12 locations". */
   noun: string;
@@ -38,7 +38,7 @@ function pageItems(page: number, pageCount: number): (number | 'gap')[] {
 /**
  * Table footer: range summary, pager, rows-per-page. Drawn identically on
  * design/staff.png, design/Locations-Management.png and
- * design/Location-department.png — only the noun changes.
+ * design/Location-department.png, only the noun changes.
  */
 export function TablePagination({
   page,

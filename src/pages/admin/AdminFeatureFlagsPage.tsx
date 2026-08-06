@@ -24,14 +24,14 @@ import type { PlatformSettings } from '@/types';
 
 interface Capability {
   name: string;
-  /** The env var that decides it — a flag's real identifier. */
+  /** The env var that decides it, a flag's real identifier. */
   key: string;
   enabled: boolean;
   detail: string;
 }
 
 /**
- * `/admin/feature-flags` — what is switched on, and what can be.
+ * `/admin/feature-flags`. What is switched on, and what can be.
  *
  * ## The two real switches
  *
@@ -42,21 +42,20 @@ interface Capability {
  * claiming nothing could be toggled while two toggles sat one table away.
  *
  * They are shown here and changed in Platform Settings. One field, one write
- * path: `maintenance_mode` and `maintenance_message` are meaningless apart —
- * turning the platform off without saying why is not a state worth offering —
- * so the pair is edited together where the message lives, and this screen
+ * path: `maintenance_mode` and `maintenance_message` are meaningless apart,
+ * turning the platform off without saying why is not a state worth offering, * so the pair is edited together where the message lives, and this screen
  * reports and links rather than growing a second writer.
  *
  * ## Why per-tenant flags still are not here
  *
  * Turning a feature on for one organisation and not another needs a
  * `feature_flags` table and a service to read it. Neither exists in any
- * migration, so there is no rollout percentage, no targeting and no schedule —
+ * migration, so there is no rollout percentage, no targeting and no schedule,
  * a toggle that persisted nowhere would be worse than none.
  *
  * ## What moved out
  *
- * This page used to list every configured service — Sentry, ImageKit, Inngest.
+ * This page used to list every configured service. Sentry, ImageKit, Inngest.
  * That is `/admin/integrations`, which now covers external wiring properly and
  * alongside the tenants' own. What stays here is narrower and answers a
  * different question: which *product features* are available to users, rather
@@ -153,7 +152,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
     [retry, showError, showSuccess],
   );
 
-  // Product features, not service wiring — the services live on Integrations.
+  // Product features, not service wiring. The services live on Integrations.
   const capabilities: Capability[] = [
     {
       name: 'Single sign-on',
@@ -170,7 +169,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
       enabled: Boolean(env.vapidPublicKey),
       detail: env.vapidPublicKey
         ? 'Staff can opt in to push on their device'
-        : 'No VAPID key — push subscriptions cannot be created, so notifications stay in-app and by email',
+        : 'No VAPID key. Push subscriptions cannot be created, so notifications stay in-app and by email',
     },
   ];
 
@@ -344,7 +343,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
                     <p className="text-sm text-content-muted dark:text-content-muted-dark">
                       {settings.maintenance_message
                         ? `Message: “${settings.maintenance_message}”`
-                        : 'No message set — turning this on with nothing to say leaves customers guessing.'}
+                        : 'No message set. Turning this on with nothing to say leaves customers guessing.'}
                     </p>
                   </div>
                   <Badge tone={settings.maintenance_mode ? 'warning' : 'success'} dot>
@@ -360,7 +359,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
             </p>
           </Panel>
 
-          <Panel title="Product features — real" flush>
+          <Panel title="Product features. Real" flush>
             <ul>
               {capabilities.map((capability) => (
                 <li
@@ -408,7 +407,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
               the code that reads them.
             </p>
             <p>
-              A rollout below 100% is stable per organisation —{' '}
+              A rollout below 100% is stable per organisation,{' '}
               <code>flag_enabled_for_org</code> hashes the key with the tenant id, so
               raising a percentage only ever adds organisations and nobody sees a feature
               appear and vanish between page loads.

@@ -104,7 +104,7 @@ export function AssignShiftModal({
       onClose();
     } catch (err) {
       // A clash is a decision the manager can act on, so it is worth saying
-      // out loud. Anything else stays generic — §45 keeps database errors off
+      // out loud. Anything else stays generic, §45 keeps database errors off
       // the screen.
       setError(
         isShiftClashError(err)

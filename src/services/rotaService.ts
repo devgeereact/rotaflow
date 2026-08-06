@@ -66,7 +66,7 @@ async function listRotasForPeriod(input: RotaPeriodQuery): Promise<Rota[]> {
  *
  * A published rota outranks a draft: it is what staff are already looking at,
  * so it must never be shadowed. Filtering this lookup to `status = 'draft'` was
- * the pre-1.5 bug — publishing a week and then revisiting it found no draft,
+ * the pre-1.5 bug. Publishing a week and then revisiting it found no draft,
  * silently created an empty one, and the grid rendered as if the week had been
  * wiped (the shifts were still attached to the published rota, which nothing
  * ever read back).
@@ -79,7 +79,7 @@ export async function findRotaForPeriod(input: RotaPeriodQuery): Promise<Rota | 
 /**
  * Find the rota for this org/location/period, or create a draft.
  * A partial unique index (0004_rotas_draft_unique.sql) backs this against
- * concurrent callers — if two requests race past the find-check, the loser's
+ * concurrent callers, if two requests race past the find-check, the loser's
  * insert hits a 23505 unique-violation, and we just reload the winner's row.
  */
 export async function getOrCreateRotaForPeriod(
@@ -123,7 +123,7 @@ export async function publishRota(id: string): Promise<Rota> {
  * Return a published rota to draft so it can be amended before re-publishing.
  *
  * Can fail with 23505 against `rotas_draft_unique_*` if a stray draft already
- * exists for the same org/location/period — possible only for data created
+ * exists for the same org/location/period. Possible only for data created
  * before the `findRotaForPeriod` fix, which could leave a published rota and an
  * empty draft side by side. Callers surface that conflict rather than guessing
  * which of the two to discard.

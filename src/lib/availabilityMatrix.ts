@@ -1,7 +1,7 @@
 /**
  * Shapes and helpers for the team availability matrix
  * (design/Availability.png). Kept in `lib` so the live page and the design
- * preview compute identical rows — `pages → services → lib`, per RULES.md §1.
+ * preview compute identical rows, `pages → services → lib`, per RULES.md §1.
  */
 
 /**
@@ -76,7 +76,7 @@ export const STATE_DOT: Record<AvailabilityState, string> = {
   pending: 'bg-secondary dark:bg-secondary-dark',
 };
 
-/** Donut stroke per state — SVG needs a stroke colour, not a fill class. */
+/** Donut stroke per state. SVG needs a stroke colour, not a fill class. */
 export const STATE_STROKE: Record<AvailabilityState, string> = {
   available: 'stroke-success',
   partial: 'stroke-warning',

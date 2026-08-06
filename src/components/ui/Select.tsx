@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  /** Leading icon, e.g. `Briefcase` — rendered inside the field. */
+  /** Leading icon, e.g. `Briefcase`. Rendered inside the field. */
   icon?: LucideIcon;
 }
 

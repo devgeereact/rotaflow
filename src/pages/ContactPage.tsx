@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
  * public unauthenticated write endpoint, or hand the composed message to the
  * visitor's own mail client.
  *
- * The first is a lie — the brief's own rule is no dead buttons, and a fake
+ * The first is a lie. The brief's own rule is no dead buttons, and a fake
  * "thanks, we'll be in touch" is the worst kind because the visitor believes
  * it. The second is a public unauthenticated write on a multi-tenant database
  * holding staff PII: it needs rate limiting, spam handling and an RLS policy
@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
  * nothing useful on a device with no mail client configured, and a visitor who
  * hits that must still be able to reach us.
  *
- * Replace this with a real endpoint when one exists — the validation and the
+ * Replace this with a real endpoint when one exists. The validation and the
  * success state are already here and do not need to change.
  */
 
@@ -101,7 +101,7 @@ function composeMailto(fields: Fields): string {
     .join('\n');
 
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
-    `${label} — ${fields.organisation}`,
+    `${label}, ${fields.organisation}`,
   )}&body=${encodeURIComponent(body)}`;
 }
 
@@ -112,7 +112,7 @@ export function ContactPage(): JSX.Element {
 
   const set = <K extends keyof Fields>(key: K, value: Fields[K]): void => {
     setFields((prev) => ({ ...prev, [key]: value }));
-    // Clear the field's own error as soon as the user edits it — leaving it up
+    // Clear the field's own error as soon as the user edits it. Leaving it up
     // while they are fixing it reads as though the fix did not register.
     setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
   };
@@ -148,7 +148,7 @@ export function ContactPage(): JSX.Element {
       <PageHero
         eyebrow="Contact"
         heading="Talk to the people building it"
-        body="RotaFlow is small enough that your message reaches someone who works on the product. Ask anything — including what it does not do yet."
+        body="RotaFlow is small enough that your message reaches someone who works on the product. Ask anything, including what it does not do yet."
       />
 
       <section className="mx-auto max-w-6xl px-6 py-16">
@@ -163,7 +163,7 @@ export function ContactPage(): JSX.Element {
                   Your message is ready to send
                 </h2>
                 <p className="mx-auto mt-3 max-w-md leading-relaxed text-content-muted dark:text-content-muted-dark">
-                  We have opened it in your email app with everything filled in — press
+                  We have opened it in your email app with everything filled in. Press
                   send there and it reaches us. If nothing opened, email us directly at{' '}
                   <a
                     href={`mailto:${CONTACT_EMAIL}`}
@@ -250,9 +250,9 @@ export function ContactPage(): JSX.Element {
                       onChange={(e) => set('teamSize', e.target.value)}
                     >
                       <option value="">Prefer not to say</option>
-                      <option value="1–25">1–25</option>
-                      <option value="26–100">26–100</option>
-                      <option value="101–500">101–500</option>
+                      <option value="1-25">1-25</option>
+                      <option value="26-100">26-100</option>
+                      <option value="101-500">101-500</option>
                       <option value="500+">500+</option>
                     </Select>
                   </div>
@@ -366,7 +366,7 @@ export function ContactPage(): JSX.Element {
                 Already a customer?
               </h2>
               <p className="mt-1.5 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-                Sign in and use Help &amp; Support in the sidebar — it reaches the same
+                Sign in and use Help &amp; Support in the sidebar. It reaches the same
                 people, with your organisation already attached.
               </p>
               <Link to="/login" className="mt-4 block">

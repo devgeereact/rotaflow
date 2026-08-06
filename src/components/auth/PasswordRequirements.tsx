@@ -32,7 +32,7 @@ export function PasswordRequirements({
             <Check size={10} strokeWidth={3} />
           </span>
           {label}
-          <span className="sr-only">{met ? ' — met' : ' — not met'}</span>
+          <span className="sr-only">{met ? '. Met' : ', not met'}</span>
         </li>
       ))}
     </ul>

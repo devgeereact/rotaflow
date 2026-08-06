@@ -66,7 +66,7 @@ const ACTIVITY_ICON = {
  *
  * A prefix match rather than an exhaustive map: actions are namespaced
  * (`organisation.suspended`, `feature_flag.updated`), the list grows with every
- * writer added, and an unmapped action should still render — with the generic
+ * writer added, and an unmapped action should still render, with the generic
  * mark rather than not at all.
  */
 function activityIcon(
@@ -128,7 +128,7 @@ const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
 };
 
 /**
- * `/admin` — NEW_STRUCTURE §34's platform dashboard, built to the full shape of
+ * `/admin`. NEW_STRUCTURE §34's platform dashboard, built to the full shape of
  * `docs/PLATFORM_CONSOLE.html`.
  *
  * ## Which figures are real
@@ -143,7 +143,7 @@ const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
  * per-service uptime history and support cases are **placeholder values** from
  * `src/lib/adminOverviewDemo.ts`, at the owner's request, so the screen can be
  * finished to its intended shape before the schema can supply them. Every one
- * of them is a metric this deployment genuinely cannot compute — the reasons
+ * of them is a metric this deployment genuinely cannot compute. The reasons
  * are recorded in that file, alongside how to remove it. The notice at the foot
  * of this screen names them, so nobody reads a placeholder as a measurement.
  */
@@ -242,7 +242,7 @@ export function AdminOverviewPage(): JSX.Element {
 
       // `organisations.last_activity_at` is maintained by touch_org_activity()
       // (0023), so tenant activity is measurable. Per-*user* activity still is
-      // not — nothing records a session — so the tile counts tenants and says
+      // not. Nothing records a session, so the tile counts tenants and says
       // so rather than reporting a number of people nobody observed.
       activeTenants: tenantsActiveWithin(data.organisations, now),
       health: healthBreakdown(data.organisations, data.subscriptions, now),
@@ -360,8 +360,8 @@ export function AdminOverviewPage(): JSX.Element {
               />
               <p className="mt-1 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                 New organisations are counted in the month they signed up, and the current
-                month is partial. Active and new are real; churn is a placeholder —
-                nothing records the month an organisation left.
+                month is partial. Active and new are real; churn is a placeholder. Nothing
+                records the month an organisation left.
               </p>
             </Panel>
 
@@ -403,7 +403,7 @@ export function AdminOverviewPage(): JSX.Element {
                 />
                 <p className="mt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                   From account status, subscription state and last activity: suspended
-                  first, then a failed payment, then silence — over a fortnight needs
+                  first, then a failed payment, then silence. Over a fortnight needs
                   attention, over a month is at risk.
                 </p>
               </Panel>
@@ -411,7 +411,7 @@ export function AdminOverviewPage(): JSX.Element {
           </div>
 
           {/* Three equal columns that stretch to the tallest, as the reference
-              lays them out — `h-full` on each panel rather than a fixed height,
+              lays them out, `h-full` on each panel rather than a fixed height,
               so the row grows with whichever card has most in it. */}
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
             <Panel
@@ -576,8 +576,8 @@ export function AdminOverviewPage(): JSX.Element {
             <span className="font-semibold text-content dark:text-content-dark">
               Placeholder figures:
             </span>{' '}
-            {DEMO_SECTIONS.join(', ')}. These are demonstration values, not measurements —
-            see <code>src/lib/adminOverviewDemo.ts</code> for why each cannot yet be
+            {DEMO_SECTIONS.join(', ')}. These are demonstration values, not measurements.
+            See <code>src/lib/adminOverviewDemo.ts</code> for why each cannot yet be
             computed. Everything else is real: organisation counts and growth, users,
             published rotas, recurring revenue and the subscription mix from{' '}
             <code>subscriptions × plans</code>, the support queue, support access and the

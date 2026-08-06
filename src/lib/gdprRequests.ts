@@ -1,17 +1,17 @@
 /**
- * Data subject requests — the statutory clock.
+ * Data subject requests. The statutory clock.
  *
  * ## Why this is not `+ 30 * 86_400_000`
  *
  * Article 12(3) says *one month*, not thirty days, and the difference is not
  * academic: a request received on 31 January is due 28 February, and adding
- * thirty days would give 2 March — two days of breach that nobody notices
+ * thirty days would give 2 March, two days of breach that nobody notices
  * until someone complains. Everything here does calendar arithmetic on date
  * components.
  *
  * Nothing in this file touches the local clock either. Dates arrive as
  * `YYYY-MM-DD` strings from a `date` column and stay that way, so a machine in
- * UTC and a machine in Europe/London agree about which day it is — this
+ * UTC and a machine in Europe/London agree about which day it is. This
  * repository's suite deliberately runs in both.
  */
 
@@ -39,7 +39,7 @@ export interface GdprRequest {
   outcomeNote: string | null;
 }
 
-/** The Article 15–22 rights, in the order the regulation lists them. */
+/** The Article 15-22 rights, in the order the regulation lists them. */
 export const GDPR_KIND_LABELS: Record<GdprRequestKind, string> = {
   access: 'Access (Art. 15)',
   portability: 'Portability (Art. 20)',
@@ -96,7 +96,7 @@ export function extendedDueDate(dueOn: string): string {
   return addMonths(dueOn, 2);
 }
 
-/** The deadline that actually applies — the extension when one was granted. */
+/** The deadline that actually applies. The extension when one was granted. */
 export function effectiveDueDate(
   request: Pick<GdprRequest, 'dueOn' | 'extendedTo'>,
 ): string {
@@ -113,13 +113,13 @@ export function daysUntil(due: string, today: string): number {
   const toUtc = (s: string): number => {
     const [y, m, d] = s.split('-').map(Number);
     // A malformed date must not silently become NaN and propagate into a
-    // deadline calculation — the whole point of this module is that the number
+    // deadline calculation. The whole point of this module is that the number
     // is right. Treat it as epoch so the difference is obviously wrong rather
     // than quietly absent.
     //
     // `isFinite`, not `!== undefined`: the original check only caught a value
     // with too few parts. A full ISO timestamp has three, and its third is
-    // `"02T00:00:00.000Z"`, which `Number` turns into NaN — so the guard passed
+    // `"02T00:00:00.000Z"`, which `Number` turns into NaN, so the guard passed
     // and `Date.UTC` returned NaN, which reached the screen as "NaN days left".
     // Anything that is not a finite number is not a date.
     if (y === undefined || m === undefined || d === undefined) return 0;
@@ -199,7 +199,7 @@ export function closedWithin(
  * would drag a mean far past what the queue actually feels like, and this
  * figure is read as "how long does a request take here".
  *
- * Returns `null` when nothing has been closed — a turnaround of zero would
+ * Returns `null` when nothing has been closed, a turnaround of zero would
  * read as instant rather than as unknown.
  */
 export function medianTurnaroundDays(
@@ -217,7 +217,7 @@ export function medianTurnaroundDays(
   return Math.round(median * 10) / 10;
 }
 
-/** Open erasure requests — the ones that end in data actually being destroyed. */
+/** Open erasure requests. The ones that end in data actually being destroyed. */
 export function pendingErasures(
   requests: readonly Pick<GdprRequest, 'kind' | 'status'>[],
 ): number {

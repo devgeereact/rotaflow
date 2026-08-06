@@ -24,7 +24,7 @@ const DOT: Record<AvailabilityDay['tone'], string> = {
 };
 
 /**
- * "Availability This Week" — weekday, date, working window and a state dot.
+ * "Availability This Week". Weekday, date, working window and a state dot.
  * Days off show the word "Unavailable" as well as the red treatment, never
  * colour alone (docs/DESIGN.md §5).
  */

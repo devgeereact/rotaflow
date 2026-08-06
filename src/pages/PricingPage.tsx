@@ -9,13 +9,13 @@ import { cn } from '@/lib/utils';
 /**
  * `/pricing`.
  *
- * **No payment provider is integrated.** `subscriptions` is an empty seam —
+ * **No payment provider is integrated.** `subscriptions` is an empty seam,
  * `docs/SCREENS.md` §3 records that nothing reads or writes it, and the billing
  * Edge Functions it references were never built. So nothing on this page can
  * charge anyone, and the page says so in the banner rather than implying a card
  * will be taken at the end of a trial.
  *
- * Every plan CTA routes to `/signup` or `/contact` — real destinations. A
+ * Every plan CTA routes to `/signup` or `/contact`. Real destinations. A
  * "Subscribe" button that opens a checkout which does not exist would be the
  * single worst dead button on the site.
  */
@@ -81,7 +81,7 @@ export function PricingPage(): JSX.Element {
             >
               {/*
                 The badge row is rendered on every card, not just the featured
-                one — an empty span on the other two keeps all three headings,
+                one, an empty span on the other two keeps all three headings,
                 prices and feature lists on the same baseline. Rendering it
                 only when `featured` pushed the Team card ~40px down and left
                 the three cards visibly misaligned.

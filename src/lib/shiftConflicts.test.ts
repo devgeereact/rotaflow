@@ -47,7 +47,7 @@ describe('windowsOverlap', () => {
     ).toBe(true);
   });
 
-  it('detects an identical window — the copy-previous-week case', () => {
+  it('detects an identical window. The copy-previous-week case', () => {
     expect(windowsOverlap(base, { ...base })).toBe(true);
   });
 
@@ -62,7 +62,7 @@ describe('windowsOverlap', () => {
   });
 
   it('compares instants, not ISO text, across differing UTC offsets', () => {
-    // 07:00 BST is 06:00Z — the same moment written two ways.
+    // 07:00 BST is 06:00Z. The same moment written two ways.
     expect(
       windowsOverlap(base, {
         staffProfileId: 'p-1',
@@ -107,7 +107,7 @@ describe('findClashingShift', () => {
     ).toBeNull();
   });
 
-  it('never clashes an open shift — several may await cover in one window', () => {
+  it('never clashes an open shift. Several may await cover in one window', () => {
     expect(
       findClashingShift(
         {

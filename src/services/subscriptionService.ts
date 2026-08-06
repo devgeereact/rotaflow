@@ -11,7 +11,7 @@ import type { Subscription } from '@/types';
  *
  * So this returns `null` for every organisation today. The Billing screen
  * renders that as "no billing set up", names the plan the org is actually on,
- * and does **not** draw an invoice table with nothing in it — an empty table
+ * and does **not** draw an invoice table with nothing in it, an empty table
  * with column headings reads as "your invoices failed to load".
  */
 export async function getSubscription(orgId: string): Promise<Subscription | null> {

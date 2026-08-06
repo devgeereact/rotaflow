@@ -16,7 +16,7 @@ export type AnnouncementStatus = 'sent' | 'scheduled' | 'draft' | 'archived';
 export type AnnouncementTab = 'all' | 'scheduled' | 'drafts' | 'sent' | 'archived';
 
 /**
- * Drives the tinted icon tile beside each title. Purely presentational — the
+ * Drives the tinted icon tile beside each title. Purely presentational. The
  * schema has no category column, so live rows derive this from the announcement
  * (see `categoriseAnnouncement`) rather than storing it.
  */
@@ -26,7 +26,7 @@ export type AnnouncementCategory =
 export interface AnnouncementRow {
   id: string;
   title: string;
-  /** First line of the body, truncated by the cell — not by this string. */
+  /** First line of the body, truncated by the cell, not by this string. */
   excerpt: string;
   category: AnnouncementCategory;
   /** Renders the pin gutter marker on the left of the row. */
@@ -64,7 +64,7 @@ export interface AnnouncementPreview {
   title: string;
   category: AnnouncementCategory;
   status: AnnouncementStatus;
-  /** "Sent on 22 May 2025, 09:00" — already tense-matched to `status`. */
+  /** "Sent on 22 May 2025, 09:00". Already tense-matched to `status`. */
   sentLabel: string;
   authorLabel: string;
   body: string;
@@ -73,7 +73,7 @@ export interface AnnouncementPreview {
   /**
    * `null` where per-recipient delivery is not readable. `notifications` is
    * RLS-scoped to `user_id = auth.uid()`, so a manager cannot count another
-   * member's reads from the client — the panel hides the block rather than
+   * member's reads from the client. The panel hides the block rather than
    * showing a number that is really "how many of these I read myself".
    */
   delivery: AnnouncementDelivery | null;

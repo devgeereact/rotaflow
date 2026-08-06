@@ -57,7 +57,7 @@ function toUpcoming(shift: Shift, today: Date, locationName: string): UpcomingSh
       isSameMonth(starts, today) && starts.getDate() === today.getDate()
         ? `Today, ${format(starts, 'd MMM')}`
         : format(starts, 'EEE, d MMM'),
-    timeLabel: `${format(starts, 'HH:mm')} – ${format(ends, 'HH:mm')}`,
+    timeLabel: `${format(starts, 'HH:mm')}, ${format(ends, 'HH:mm')}`,
     typeName: hour < 12 ? 'Morning Shift' : hour < 18 ? 'Evening Shift' : 'Night Shift',
     typeTone: hour < 12 ? 'morning' : hour < 18 ? 'evening' : 'night',
     locationName,
@@ -77,7 +77,7 @@ export function buildProfile({
 }: ProfileSources): StaffProfileData {
   const department = departments.find((d) => d.id === staff.department_id);
   const location = locations.find((l) => l.id === department?.location_id);
-  const locationName = location?.name ?? '—';
+  const locationName = location?.name ?? '-';
 
   const work: StaffWorkInfoRow[] = [];
   if (staff.payroll_id) work.push({ label: 'Employee ID', value: staff.payroll_id });
@@ -158,8 +158,8 @@ export function buildProfile({
     firstName: staff.first_name,
     lastName: staff.last_name,
     photoUrl: staff.photo_url,
-    role: staff.job_title ?? '—',
-    department: department?.name ?? '—',
+    role: staff.job_title ?? '-',
+    department: department?.name ?? '-',
     location: locationName,
     active: staff.active,
     personal: {

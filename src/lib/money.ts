@@ -6,7 +6,7 @@
  * how a total ends up a penny out from the rows above it.
  */
 
-/** "£1,240" — no pence, for headline figures where the pence are noise. */
+/** "£1,240", no pence, for headline figures where the pence are noise. */
 export function formatMoney(pence: number, currency = 'GBP'): string {
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
@@ -15,7 +15,7 @@ export function formatMoney(pence: number, currency = 'GBP'): string {
   }).format(pence / 100);
 }
 
-/** "£1,240.00" — for a line item on an invoice, where they are not. */
+/** "£1,240.00", for a line item on an invoice, where they are not. */
 export function formatMoneyExact(pence: number, currency = 'GBP'): string {
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
@@ -26,7 +26,7 @@ export function formatMoneyExact(pence: number, currency = 'GBP'): string {
 }
 
 /**
- * "£12.4k" / "£1.2m" — for a tile where the exact figure would not fit.
+ * "£12.4k" / "£1.2m", for a tile where the exact figure would not fit.
  *
  * Only used where the precise number is available elsewhere on the same
  * screen. A rounded figure that appears nowhere in full is one nobody can

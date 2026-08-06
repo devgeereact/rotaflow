@@ -40,8 +40,8 @@ function formatExpiry(iso: string): string {
  * pending one.
  *
  * This was `/app/team`, a top-level sidebar item. The designed sidebar has no
- * Team entry, and what this screen actually does — decide who may join the
- * organisation and at what role — is organisation administration, which is
+ * Team entry, and what this screen actually does. Decide who may join the
+ * organisation and at what role, is organisation administration, which is
  * exactly what Settings → Permissions is for. So it moved in whole rather than
  * being rebuilt, and `/app/team` now redirects here so existing links and
  * bookmarks keep working.
@@ -68,7 +68,7 @@ export function TeamInviteManager(): JSX.Element {
   const [role, setRole] = useState<MembershipRole>('staff');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  // Held after a successful invite so the manager can copy the link — the raw
+  // Held after a successful invite so the manager can copy the link. The raw
   // token only exists in this response and is unrecoverable afterwards.
   const [lastLink, setLastLink] = useState<{ email: string; url: string } | null>(null);
 
@@ -147,7 +147,7 @@ export function TeamInviteManager(): JSX.Element {
         showSuccess('Invitation link copied.');
       } catch (err) {
         reportError(err, { area: 'team:copy-link' });
-        showError('Could not copy — select the link and copy it manually.');
+        showError('Could not copy. Select the link and copy it manually.');
       }
     },
     [showError, showSuccess],
@@ -186,8 +186,8 @@ export function TeamInviteManager(): JSX.Element {
             Invitation link for {lastLink.email}
           </h2>
           <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
-            Send this to them. It is shown once — RotaFlow stores only a hash of the
-            token, so it cannot be retrieved again. Revoke and reissue if it is lost.
+            Send this to them. It is shown once. RotaFlow stores only a hash of the token,
+            so it cannot be retrieved again. Revoke and reissue if it is lost.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
@@ -220,8 +220,7 @@ export function TeamInviteManager(): JSX.Element {
         ) : loadFailed ? (
           <div>
             <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
-              Could not load invitations — this is a connection problem, not an empty
-              list.
+              Could not load invitations. This is a connection problem, not an empty list.
             </p>
             <Button size="sm" onClick={() => setReloadKey((k) => k + 1)}>
               Retry
@@ -273,8 +272,8 @@ export function TeamInviteManager(): JSX.Element {
               placeholder="colleague@example.com"
             />
             <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-              They must accept using this exact address — the invitation cannot be
-              redeemed from any other account.
+              They must accept using this exact address. The invitation cannot be redeemed
+              from any other account.
             </p>
           </div>
 

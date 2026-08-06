@@ -21,7 +21,7 @@ interface AnnouncementIconProps {
 
 /**
  * The tinted glyph beside every announcement title
- * (design/Announcements-Dashboard.png). Decorative — the title next to it
+ * (design/Announcements-Dashboard.png). Decorative. The title next to it
  * carries the meaning, so no label is announced.
  */
 const CATEGORIES: Record<AnnouncementCategory, { icon: LucideIcon; tone: IconTileTone }> =

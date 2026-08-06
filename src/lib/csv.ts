@@ -2,7 +2,7 @@
  * Minimal RFC 4180 CSV output, plus a generic browser-download trigger
  * reused for both CSV reports and GDPR JSON exports. Same
  * Blob → object URL → temporary `<a download>` mechanics as `downloadIcs`
- * (`src/lib/ics.ts`) — this is the analogous helper for tabular/structured
+ * (`src/lib/ics.ts`). This is the analogous helper for tabular/structured
  * data instead of iCalendar.
  */
 

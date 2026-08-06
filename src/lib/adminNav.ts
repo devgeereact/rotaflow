@@ -29,7 +29,7 @@ export interface AdminNavItem {
   /**
    * Platform roles that may see this entry. Omit for "every administrator".
    *
-   * Presentation only — the tables behind these screens carry
+   * Presentation only. The tables behind these screens carry
    * `has_platform_role(...)` policies, so hiding the link is a courtesy, not a
    * control. It exists so a support administrator is not shown a billing screen
    * full of empty tables and left to conclude the product is broken.
@@ -67,10 +67,10 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   // "System Status" link pointed at the same route, so the console offered two
   // names for one screen and a reader had to discover they were the same thing.
   // System Status is the name people already use for it, so that is the one
-  // kept — the route is unchanged, so every existing link still resolves.
+  // kept. The route is unchanged, so every existing link still resolves.
   // Placeholder register, and the screen says so above the table. It is in the
-  // nav anyway because the decision it exists to force — who declares, who
-  // owns, and whether anyone outside this console may read it — is one nobody
+  // nav anyway because the decision it exists to force, who declares, who
+  // owns, and whether anyone outside this console may read it, is one nobody
   // makes while the screen is invisible.
   { label: 'Incidents', icon: AlertTriangle, to: '/admin/incidents' },
   { label: 'Integrations', icon: Plug, to: '/admin/integrations' },
@@ -103,7 +103,7 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
 ] as const;
 
 /**
- * The console's secondary navigation — the things that are not a platform
+ * The console's secondary navigation. The things that are not a platform
  * screen: reference material, and the way back out.
  *
  * Separate from `ADMIN_NAV` because `navigationTargets.test` asserts every
@@ -123,9 +123,9 @@ export const ADMIN_SECONDARY_NAV: readonly AdminNavItem[] = [
 /**
  * Filters the console nav for a role.
  *
- * A `null` role — which covers both "holds no granular grant" and "the grant
+ * A `null` role, which covers both "holds no granular grant" and "the grant
  * could not be read", since `OrgContext` swallows that failure so a missing RPC
- * cannot blank the tenant session — shows the unrestricted entries only. That
+ * cannot blank the tenant session. Shows the unrestricted entries only. That
  * degrades to less navigation, never to more.
  */
 export function adminNavForRole(role: PlatformRole | null): AdminNavItem[] {

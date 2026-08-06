@@ -27,9 +27,9 @@ interface OnboardingLayoutProps {
   steps: OnboardingStepMeta[];
   currentStep: number;
   children: ReactNode;
-  /** Top-right slot — "Back to sign in", language picker, "Need help?" link. */
+  /** Top-right slot, "Back to sign in", language picker, "Need help?" link. */
   action?: ReactNode;
-  /** Defaults to `BuildingIllustration` — step 3 swaps in `TeamIllustration`. */
+  /** Defaults to `BuildingIllustration`. Step 3 swaps in `TeamIllustration`. */
   illustration?: ReactNode;
 }
 
@@ -40,14 +40,14 @@ interface OnboardingLayoutProps {
  *
  * On the final step every prior step's subtitle switches from generic helper
  * text to the actual captured answer (Onboarding-Complete.png shows "Sunnyvale
- * Care Group", "3 locations", etc., all in the accent colour) — mid-wizard
+ * Care Group", "3 locations", etc., all in the accent colour). Mid-wizard
  * screens keep every non-active subtitle muted (Organisation-about.png shows
  * step 1's subtitle as the plain "Set up your organisation" hint even though
  * that step is done). `OnboardingPage` already threads real answers into
  * `subtitle` once known; this only changes the *colour* once the wizard is
  * fully finished, not what text is shown at each point.
  *
- * The two left columns collapse away below `lg` — the stepper is decoration
+ * The two left columns collapse away below `lg`. The stepper is decoration
  * once there is no room for it, and a five-step form on a phone should be the
  * form and nothing else.
  */

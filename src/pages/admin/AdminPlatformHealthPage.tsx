@@ -65,15 +65,15 @@ function probeFor(row: DemoServiceRow, checks: HealthCheck[]): HealthCheck | und
 }
 
 /**
- * `/admin/platform-health` — reached from **System Status** in the console rail.
+ * `/admin/platform-health`. Reached from **System Status** in the console rail.
  *
  * ## One screen, one name
  *
  * This route used to be listed twice: "Platform Health" in the primary nav and
  * "System Status" in the secondary, both pointing here. Two names for one screen
  * is something a reader has to discover, so the primary entry is gone and System
- * Status is the way in. The route is unchanged, so every existing link — from
- * the overview, from Integrations — still resolves.
+ * Status is the way in. The route is unchanged, so every existing link, from
+ * the overview, from Integrations. Still resolves.
  *
  * ## Three rows are measured; the rest are not
  *
@@ -83,9 +83,9 @@ function probeFor(row: DemoServiceRow, checks: HealthCheck[]): HealthCheck | und
  * do is call the platform and time the answer, which is what
  * `runHealthChecks()` does for the database, authentication and realtime.
  *
- * Those rows are marked **Live** and carry a real round trip. Everything else —
+ * Those rows are marked **Live** and carry a real round trip. Everything else,
  * the other services, every uptime percentage, the twelve-slot history strips,
- * the latency percentiles and the job queues — is placeholder from
+ * the latency percentiles and the job queues, is placeholder from
  * `src/lib/adminOverviewDemo.ts`.
  *
  * **Watch** re-probes on an interval and keeps the last twenty samples per live
@@ -170,7 +170,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
       <div className="space-y-4">
         <TileGrid>
           <StatTile
-            label="Overall — live"
+            label="Overall. Live"
             value={statusLabel(overall)}
             hint={
               ranAt
@@ -226,7 +226,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
                 const latency = probe
                   ? formatLatency(probe.latencyMs)
                   : row.latencyMs === null
-                    ? '—'
+                    ? '-'
                     : `${row.latencyMs} ms`;
                 const samples = probe ? (history.get(probe.name) ?? []) : [];
                 return (
@@ -271,7 +271,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
           <div className="grid content-start gap-4">
             <Panel title="API latency">
               <TrendChart
-                title="API latency percentiles over twelve hours — placeholder figures"
+                title="API latency percentiles over twelve hours. Placeholder figures"
                 labels={[...DEMO_LATENCY_LABELS]}
                 series={[
                   { name: 'p50', values: DEMO_LATENCY_P50, colour: '#3B6FE0' },
@@ -308,11 +308,11 @@ export function AdminPlatformHealthPage(): JSX.Element {
               holding the anon key cannot observe uptime, error rate, request volume,
               queue depth, or the latency of anyone other than you. It can call the
               platform and time the answer, which is what the rows marked{' '}
-              <strong>Live</strong> do — database, authentication and realtime.
+              <strong>Live</strong> do. Database, authentication and realtime.
             </p>
             <p>
-              Everything else here — the other services, every uptime percentage, the
-              history strips, the latency percentiles and the job queues — is placeholder
+              Everything else here. The other services, every uptime percentage, the
+              history strips, the latency percentiles and the job queues, is placeholder
               from <code>src/lib/adminOverviewDemo.ts</code>. <strong>Watch</strong> keeps
               the last twenty live samples in this tab only; nothing is stored, because
               one browser&rsquo;s timings are not platform uptime.
@@ -332,8 +332,8 @@ export function AdminPlatformHealthPage(): JSX.Element {
             <p className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
               What is still absent is the public status page. <code>is_public</code>
               exists on the table and no policy grants anonymous access, so it is a stored
-              intent rather than a live switch — publishing means a second surface with
-              its own hosting and its own audience. Environment:{' '}
+              intent rather than a live switch. Publishing means a second surface with its
+              own hosting and its own audience. Environment:{' '}
               {env.isProd ? 'production' : env.mode}, app v{__APP_VERSION__}.
             </p>
           </Panel>

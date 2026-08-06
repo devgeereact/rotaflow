@@ -5,7 +5,7 @@ export interface MyMembership extends Membership {
   organisation: Organisation;
 }
 
-/** Normalise a name into a URL-safe slug. No random suffix — the user owns it. */
+/** Normalise a name into a URL-safe slug. No random suffix. The user owns it. */
 export function slugify(name: string): string {
   return (
     name
@@ -43,7 +43,7 @@ export async function listMyMemberships(userId: string): Promise<MyMembership[]>
 }
 
 /**
- * Every active member's user_id — for fanning a notification out to the whole
+ * Every active member's user_id, for fanning a notification out to the whole
  * org (e.g. a published announcement). Excludes the given user (typically the
  * author) so publishing something doesn't notify yourself about it.
  */

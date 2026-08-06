@@ -13,7 +13,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
  *
  * The **organisation name** was rendered as a bare label on the left. It now
  * lives in the sidebar's `SidebarOrgSwitcher`, next to the switcher itself,
- * which is where someone looks to answer "which tenant am I in" — and it stops
+ * which is where someone looks to answer "which tenant am I in", and it stops
  * the name appearing twice on one screen saying the same thing.
  *
  * The **`OrgSwitcher` select** was here too, and is now the same sidebar

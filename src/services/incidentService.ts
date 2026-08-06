@@ -10,7 +10,7 @@ export type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 're
 /**
  * Platform incidents (0021).
  *
- * Reads are plain queries — `incidents_select` admits platform staff and
+ * Reads are plain queries, `incidents_select` admits platform staff and
  * nobody else. Every write is an RPC, because the migration revoked insert,
  * update and delete: the reference number, the mandatory resolution note and
  * the audit row are all things a client must not be able to skip.
@@ -37,7 +37,7 @@ export async function getIncident(id: string): Promise<Incident | null> {
   return data;
 }
 
-/** The timeline, oldest first — it is read as a narrative. */
+/** The timeline, oldest first. It is read as a narrative. */
 export async function listIncidentUpdates(incidentId: string): Promise<IncidentUpdate[]> {
   const { data, error } = await supabase
     .from('incident_updates')
@@ -80,7 +80,7 @@ export async function addIncidentUpdate(
 }
 
 /**
- * Close one. The resolution note is required by the function and by a CHECK —
+ * Close one. The resolution note is required by the function and by a CHECK,
  * a resolved incident nobody described is a hole in the mean-time-to-resolve.
  */
 export async function resolveIncident(

@@ -35,7 +35,7 @@ export async function listStaff(
  * The signed-in user's own staff profile in this org, if they have one.
  *
  * Returns null for a manager or owner who was never added to the staff
- * directory — a real case, since membership and staff record are separate
+ * directory, a real case, since membership and staff record are separate
  * things. Callers must handle it rather than assuming everyone is staff.
  */
 export async function getMyStaffProfile(
