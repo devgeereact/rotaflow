@@ -6,7 +6,12 @@ import { rotaWorkspaceTabs, teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
 import { navItemsForRole } from '@/lib/sidebarNav';
-import { ADMIN_NAV, ADMIN_SECONDARY_NAV, adminNavForRole } from '@/lib/adminNav';
+import {
+  ADMIN_NAV,
+  ADMIN_SECONDARY_NAV,
+  CONSOLE_MENU_TARGET,
+  adminNavForRole,
+} from '@/lib/adminNav';
 
 /**
  * Every tab must point at a route that exists.
@@ -169,6 +174,17 @@ describe('navigation targets', () => {
       expect(isRoutable(to)).toBe(true);
     },
   );
+
+  /*
+   * The console's user menu. It used to offer "Account settings" pointing at
+   * /app/settings/account, which has never been a route: account settings are
+   * /app/account/*, and Settings is organisation administration with no
+   * `account` child. Nothing caught it because the link was written inline in
+   * AdminShell rather than in a catalogue this file checks.
+   */
+  it('routes the console user menu', () => {
+    expect(isRoutable(CONSOLE_MENU_TARGET)).toBe(true);
+  });
 
   it('routes the Settings and Profile area roots', () => {
     expect(isRoutable('/app/settings')).toBe(true);

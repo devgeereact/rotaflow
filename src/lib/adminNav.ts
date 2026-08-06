@@ -121,6 +121,20 @@ export const ADMIN_SECONDARY_NAV: readonly AdminNavItem[] = [
 ] as const;
 
 /**
+ * Where the console's user menu sends someone leaving the platform area.
+ *
+ * A constant rather than a literal in `AdminShell` because `navigationTargets`
+ * checks the catalogues in this module against the real route table in
+ * `App.tsx`, and a link written inline in a component is checked by nobody.
+ * That gap is not hypothetical: the menu also carried an "Account settings"
+ * item pointing at `/app/settings/account`, which was never a route. Account
+ * settings live under `/app/account/*`; Settings is organisation
+ * administration and has no `account` child. Every click on it reached the 404
+ * page, and the suite stayed green throughout.
+ */
+export const CONSOLE_MENU_TARGET = '/app/dashboard';
+
+/**
  * Filters the console nav for a role.
  *
  * A `null` role, which covers both "holds no granular grant" and "the grant
