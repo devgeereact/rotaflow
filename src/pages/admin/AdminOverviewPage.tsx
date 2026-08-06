@@ -23,7 +23,6 @@ import { sessionStatus, type SupportAccessSession } from '@/lib/supportAccess';
 import { monthlyGrowth } from '@/lib/platformOverview';
 import {
   demoChurnTrend,
-  DEMO_ACTIVITY,
   DEMO_PUBLISHED_ROTAS_TREND,
   DEMO_SECTIONS,
   DEMO_SERVICES,
@@ -61,6 +60,34 @@ const ACTIVITY_ICON = {
   flag: Flag,
   plug: Plug,
 } as const;
+
+/**
+ * Which icon a real audit row gets, from the first segment of its action.
+ *
+ * A prefix match rather than an exhaustive map: actions are namespaced
+ * (`organisation.suspended`, `feature_flag.updated`), the list grows with every
+ * writer added, and an unmapped action should still render — with the generic
+ * mark rather than not at all.
+ */
+function activityIcon(
+  action: string,
+): (typeof ACTIVITY_ICON)[keyof typeof ACTIVITY_ICON] {
+  const prefix = action.split('.')[0] ?? '';
+  if (prefix.startsWith('organisation')) return ACTIVITY_ICON.building;
+  if (prefix.startsWith('invoice') || prefix.startsWith('subscription'))
+    return ACTIVITY_ICON.card;
+  if (prefix.startsWith('support_access') || prefix.startsWith('platform_role'))
+    return ACTIVITY_ICON.key;
+  if (prefix.startsWith('feature_flag')) return ACTIVITY_ICON.flag;
+  return ACTIVITY_ICON.plug;
+}
+
+const SEVERITY_TONE: Record<string, DemoActivityTone> = {
+  info: 'info',
+  notice: 'info',
+  warning: 'warning',
+  critical: 'danger',
+};
 
 const ACTIVITY_TONE: Record<DemoActivityTone, string> = {
   success: 'bg-success-wash text-success dark:bg-success-wash-dark',
@@ -435,29 +462,48 @@ export function AdminOverviewPage(): JSX.Element {
               flush
             >
               <ul>
-                {DEMO_ACTIVITY.map((item) => {
-                  const Icon = ACTIVITY_ICON[item.icon];
-                  return (
-                    <li
-                      key={item.title}
-                      className="flex gap-3 border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
-                    >
-                      <span
-                        className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg ${ACTIVITY_TONE[item.tone]}`}
+                {data.recentAudit.length === 0 ? (
+                  <li className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
+                    Nothing has been recorded yet.
+                  </li>
+                ) : (
+                  data.recentAudit.map((entry) => {
+                    const Icon = activityIcon(entry.action);
+                    const change =
+                      entry.before_value && entry.after_value
+                        ? `${entry.before_value} → ${entry.after_value}`
+                        : (entry.after_value ?? entry.entity_type ?? '');
+                    return (
+                      <li
+                        key={entry.id}
+                        className="flex gap-3 border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
                       >
-                        <Icon size={14} aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-sm leading-snug text-content dark:text-content-dark">
-                          {item.title}
+                        <span
+                          className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
+                            ACTIVITY_TONE[SEVERITY_TONE[entry.severity] ?? 'info']
+                          }`}
+                        >
+                          <Icon size={14} aria-hidden="true" />
                         </span>
-                        <span className="mt-0.5 block text-xs text-content-muted dark:text-content-muted-dark">
-                          {item.meta}
+                        <span className="min-w-0">
+                          <span className="block text-sm leading-snug text-content dark:text-content-dark">
+                            {entry.action}
+                            {entry.org_name ? ` · ${entry.org_name}` : ''}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-content-muted dark:text-content-muted-dark">
+                            {[
+                              change,
+                              entry.actor_name ?? 'System',
+                              new Date(entry.created_at).toLocaleString('en-GB'),
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
                         </span>
-                      </span>
-                    </li>
-                  );
-                })}
+                      </li>
+                    );
+                  })
+                )}
               </ul>
             </Panel>
 
