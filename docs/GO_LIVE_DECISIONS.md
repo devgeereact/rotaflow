@@ -143,11 +143,11 @@ job exists.** Building it is not urgent; promising it is the risk.
 
 **What is true.** Three RPCs exist, work, and are called from nowhere:
 
-- `mark_announcement_read` — so the announcement read rate can only ever be
+- `mark_announcement_read`, so the announcement read rate can only ever be
   what the seed wrote. No tenant-side UI marks anything read.
-- `rate_support_case` — so CSAT can never be collected. The Support Centre
+- `rate_support_case`, so CSAT can never be collected. The Support Centre
   reports 4.3 out of 5 from seeded rows and will never gain a real one.
-- `touch_org_activity` — so `organisations.last_activity_at` is only ever
+- `touch_org_activity`, so `organisations.last_activity_at` is only ever
   written by the seed. The Overview's "Tenants active today" will decay to zero
   as the seeded timestamps age past 24 hours.
 
