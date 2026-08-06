@@ -1,11 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listShiftTypes } from '@/services/shiftTypeService';
-import { listLocations } from '@/services/locationService';
+import { listLocations, listDepartments } from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgShiftSwaps } from '@/services/swapService';
 import { listAnnouncements } from '@/services/announcementService';
+import { listRotas } from '@/services/rotaService';
+import { shiftNetMinutes } from '@/lib/rotaInsights';
 import { resolvePeriod } from '@/lib/schedulePeriod';
 import type { Announcement, Location, Shift, ShiftType, StaffProfile } from '@/types';
 
@@ -198,4 +200,166 @@ export async function loadDashboardOverview(
     monthShiftsByDate,
     upcomingGroups: groupShifts(upcomingShifts, shiftTypes, locations).slice(0, 3),
   };
+}
+
+export interface WeeklyCoverDay {
+  date: string;
+  onShift: number;
+  required: number;
+}
+
+export interface DepartmentHours {
+  name: string;
+  hours: number;
+}
+
+/** A person whose rostered hours this week are flagged, over the statutory 48h weekly limit or over their own contract by a wide margin. */
+export interface OverLimitStaff {
+  staffName: string;
+  hours: number;
+  contractHours: number;
+  /** true = over the 48-hour statutory limit; false = over their own contract only. */
+  overStatutory: boolean;
+}
+
+export interface WeeklyRosterSummary {
+  totalHours: number;
+  coverByDate: WeeklyCoverDay[];
+  hoursByDepartment: DepartmentHours[];
+  overLimitStaff: OverLimitStaff[];
+  /** 'none' = no rota exists yet for this week at any location. */
+  rotaStatus: 'draft' | 'published' | 'none';
+}
+
+/**
+ * The manager's working week for the Dashboard's cover chart, rota status and
+ * hours-by-department cards (`docs/ORGANISATION_WORKSPACE.html`'s "Cover
+ * against minimum" / "Rota status" / "Hours by department").
+ *
+ * Deliberately draft-inclusive (`publishedOnly: false`): a manager builds the
+ * rota to hit this cover target *before* publishing, so a chart that only
+ * counted published shifts would show every day short until the moment they
+ * hit Publish, which is not a useful chart. Contrast `loadMyWeekSummary`
+ * below, which is staff-facing and stays published-only.
+ */
+export async function loadWeeklyRosterSummary(
+  orgId: string,
+  weekDates: string[],
+  fromIso: string,
+  toIso: string,
+  minStaffOnShift: number,
+  staff: StaffProfile[],
+): Promise<WeeklyRosterSummary> {
+  const [shifts, departments, rotas] = await Promise.all([
+    listShiftsForPeriod({ orgId, fromIso, toIso, publishedOnly: false }),
+    listDepartments(orgId),
+    listRotas(orgId),
+  ]);
+
+  const departmentById = new Map(departments.map((d) => [d.id, d.name]));
+  const staffById = new Map(staff.map((s) => [s.id, s]));
+
+  const coverByDate = new Map<string, number>(weekDates.map((d) => [d, 0]));
+  const hoursByDepartment = new Map<string, number>();
+  const hoursByStaff = new Map<string, number>();
+  let totalHours = 0;
+
+  for (const shift of shifts) {
+    if (!shift.staff_profile_id) continue;
+    const date = shift.starts_at.slice(0, 10);
+    if (coverByDate.has(date)) {
+      coverByDate.set(date, (coverByDate.get(date) ?? 0) + 1);
+    }
+
+    const hours = shiftNetMinutes(shift) / 60;
+    totalHours += hours;
+    hoursByStaff.set(
+      shift.staff_profile_id,
+      (hoursByStaff.get(shift.staff_profile_id) ?? 0) + hours,
+    );
+    const deptName = shift.department_id
+      ? (departmentById.get(shift.department_id) ?? 'Unassigned')
+      : 'Unassigned';
+    hoursByDepartment.set(deptName, (hoursByDepartment.get(deptName) ?? 0) + hours);
+  }
+
+  const overLimitStaff: OverLimitStaff[] = [];
+  for (const [staffId, hours] of hoursByStaff) {
+    const person = staffById.get(staffId);
+    if (!person) continue;
+    const contractHours = person.weekly_hours ?? 0;
+    const overStatutory = hours > 48;
+    if (overStatutory || hours > contractHours + 12) {
+      overLimitStaff.push({
+        staffName: `${person.first_name} ${person.last_name}`,
+        hours,
+        contractHours,
+        overStatutory,
+      });
+    }
+  }
+  overLimitStaff.sort((a, b) => b.hours - a.hours);
+
+  const weekStart = weekDates[0] ?? fromIso.slice(0, 10);
+  const weekEnd = weekDates[weekDates.length - 1] ?? weekStart;
+  const overlapping = rotas.filter(
+    (r) => r.period_start <= weekEnd && r.period_end >= weekStart,
+  );
+  const rotaStatus: WeeklyRosterSummary['rotaStatus'] =
+    overlapping.length === 0
+      ? 'none'
+      : overlapping.every((r) => r.status === 'published')
+        ? 'published'
+        : 'draft';
+
+  return {
+    totalHours,
+    coverByDate: weekDates.map((date) => ({
+      date,
+      onShift: coverByDate.get(date) ?? 0,
+      required: minStaffOnShift,
+    })),
+    hoursByDepartment: [...hoursByDepartment.entries()]
+      .map(([name, hours]) => ({ name, hours }))
+      .sort((a, b) => b.hours - a.hours),
+    overLimitStaff,
+    rotaStatus,
+  };
+}
+
+export interface MyWeekSummary {
+  hours: number;
+  shiftsBooked: number;
+}
+
+/** A staff member's own published week: hours and shift count for the "Your hours this week" / "Shifts booked" tiles. Published-only, unlike the manager's summary above; a shift not yet published is not theirs to see. */
+export async function loadMyWeekSummary(
+  orgId: string,
+  staffProfileId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<MyWeekSummary> {
+  const shifts = await listShiftsForPeriod({ orgId, fromIso, toIso, staffProfileId });
+  return {
+    hours: shifts.reduce((sum, s) => sum + shiftNetMinutes(s) / 60, 0),
+    shiftsBooked: shifts.length,
+  };
+}
+
+/**
+ * A staff member's own published upcoming shifts, for the "Your next shifts"
+ * card. `groupShifts` de-dupes multi-person shifts into one row; over a
+ * single person's own shifts it degenerates to one row per shift, which is
+ * exactly what a personal shift list is.
+ */
+export async function loadMyUpcomingShifts(
+  orgId: string,
+  staffProfileId: string,
+  fromIso: string,
+  toIso: string,
+  shiftTypes: ShiftType[],
+  locations: Location[],
+): Promise<ShiftGroup[]> {
+  const shifts = await listShiftsForPeriod({ orgId, fromIso, toIso, staffProfileId });
+  return groupShifts(shifts, shiftTypes, locations);
 }
