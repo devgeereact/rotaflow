@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, Panel } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import { PanelTabs } from '@/components/ui/PanelTabs';
+import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
@@ -82,6 +83,9 @@ const TABS = [
   { value: 'audit', label: 'Audit' },
   { value: 'data', label: 'Data' },
 ] as const satisfies readonly { value: Tab; label: string }[];
+
+/** The tabs that read tenant rows rather than the customer register. */
+const TENANT_TABS = new Set(['users', 'locations', 'usage', 'data']);
 
 const STATUS_TONE = {
   active: 'success',
@@ -377,6 +381,12 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   // support conversation actually starts with.
   const owner = detail.members.find((m) => m.role === 'owner') ?? null;
 
+  // Counts come from a definer function and are always available; the tenant
+  // rows behind the tabs do not. When the count says there are staff and the
+  // rows came back empty, the gate is what is closed rather than the tenant
+  // being empty.
+  const gateClosed = detail.usage.locations > 0 && detail.locations.length === 0;
+
   return (
     <AdminPage
       title={org.name}
@@ -573,6 +583,27 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           </div>
         )}
 
+        {gateClosed && TENANT_TABS.has(tab) && (
+          <Callout tone="info" title="This tab needs an active support session">
+            <p>
+              Since migration 0028 a platform administrator reads a tenant&rsquo;s staff
+              records, rotas, shifts, attendance and leave only through a support access
+              session for that organisation: one with a reason, a case reference and an
+              expiry. Without one these tabs are empty because the database refuses the
+              rows, not because the organisation has none.
+            </p>
+            <p>
+              The counts above still work. They come from a function that returns numbers
+              rather than rows, so the size of a tenant is readable without reading who is
+              in it. Request access from{' '}
+              <Link to="/admin/support-access" className="text-primary hover:underline">
+                Support Access
+              </Link>
+              .
+            </p>
+          </Callout>
+        )}
+
         {tab === 'users' && (
           <Card className="overflow-hidden p-0">
             <DataTable
@@ -758,14 +789,26 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             <Panel title="Outgoing email (SMTP)">
               {detail.smtp ? (
                 <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-                  <Field label="Host" value={detail.smtp.smtp_host} />
-                  <Field label="Port" value={String(detail.smtp.smtp_port)} />
-                  <Field label="Username" value={detail.smtp.smtp_user} />
-                  <Field label="From address" value={detail.smtp.from_email} />
+                  {/* Every column here is nullable: `org_smtp_settings_safe`
+                      is a view, and a view carries no NOT NULL for the
+                      generator to read. */}
+                  <Field label="Host" value={detail.smtp.smtp_host ?? '-'} />
+                  <Field
+                    label="Port"
+                    value={
+                      detail.smtp.smtp_port === null ? '-' : String(detail.smtp.smtp_port)
+                    }
+                  />
+                  <Field label="Username" value={detail.smtp.smtp_user ?? '-'} />
+                  <Field label="From address" value={detail.smtp.from_email ?? '-'} />
                   <Field label="From name" value={detail.smtp.from_name ?? '-'} />
                   <Field
                     label="Configured"
-                    value={new Date(detail.smtp.updated_at).toLocaleDateString('en-GB')}
+                    value={
+                      detail.smtp.updated_at
+                        ? new Date(detail.smtp.updated_at).toLocaleDateString('en-GB')
+                        : 'Never'
+                    }
                   />
                 </dl>
               ) : (

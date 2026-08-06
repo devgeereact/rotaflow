@@ -57,7 +57,7 @@ export async function setInvoiceStatus(
   const { error } = await supabase.rpc('set_invoice_status', {
     p_invoice: invoiceId,
     p_status: status,
-    p_reason: reason ?? null,
+    p_reason: reason ?? undefined,
   });
   if (error) throw error;
 }
@@ -72,7 +72,7 @@ export async function issueInvoice(
     p_org: orgId,
     p_period_start: periodStart,
     p_period_end: periodEnd,
-    p_amount_pence: amountPence ?? null,
+    p_amount_pence: amountPence ?? undefined,
   });
   if (error) throw error;
   return data;

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { touchOrgActivity } from '@/services/activityService';
 import type { Rota, RotaUpdate } from '@/types';
 
 export interface CreateDraftRotaInput {
@@ -113,10 +114,14 @@ export async function updateRota(id: string, patch: RotaUpdate): Promise<Rota> {
 }
 
 export async function publishRota(id: string): Promise<Rota> {
-  return updateRota(id, {
+  const rota = await updateRota(id, {
     status: 'published',
     published_at: new Date().toISOString(),
   });
+  // Publishing a rota is a deliberate act by a manager, which is exactly what
+  // "last activity" is meant to record.
+  touchOrgActivity(rota.org_id);
+  return rota;
 }
 
 /**

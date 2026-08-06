@@ -255,7 +255,7 @@ export function AdminAuditPage(): JSX.Element {
         width: 'w-[9%]',
         cell: (entry) => (
           <span className="block truncate font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-            {entry.ip_address ?? '-'}
+            {typeof entry.ip_address === 'string' ? entry.ip_address : '-'}
           </span>
         ),
       },

@@ -321,7 +321,7 @@ export function AdminIntegrationsPage(): JSX.Element {
             ) : (
               <ul>
                 {smtp.map((row) => {
-                  const org = orgById.get(row.org_id);
+                  const org = row.org_id ? orgById.get(row.org_id) : undefined;
                   return (
                     <li
                       key={row.org_id}
@@ -349,7 +349,9 @@ export function AdminIntegrationsPage(): JSX.Element {
                         {row.verified_at ? 'Verified' : 'Never tested'}
                       </Badge>
                       <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                        {new Date(row.updated_at).toLocaleDateString('en-GB')}
+                        {row.updated_at
+                          ? new Date(row.updated_at).toLocaleDateString('en-GB')
+                          : 'Never'}
                       </span>
                     </li>
                   );

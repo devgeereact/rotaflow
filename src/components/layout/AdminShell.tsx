@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, Menu, RefreshCw, X } from 'lucide-react';
+import { Menu, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { env } from '@/lib/env';
 import { useOrg } from '@/hooks/useOrg';
@@ -145,31 +145,6 @@ function ConsoleRole(): JSX.Element {
   );
 }
 
-/**
- * The way out of the console, pinned to the bottom of the rail.
- *
- * Sticky rather than one more entry in the list: the rail scrolls once the nav
- * is fifteen items long, and this is the one link that has to be reachable from
- * anywhere, a platform administrator who cannot find the way back to their own
- * organisation is stuck in an area they only meant to visit. It carries the
- * rail background and a top border so nav items scroll *under* it rather than
- * showing through.
- */
-function ReturnToOrganisation({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
-  return (
-    <div className="sticky bottom-0 -mx-3 mt-2 border-t border-surface-border bg-surface-rail px-5 pb-1 pt-2 dark:border-surface-border-dark dark:bg-surface-rail-dark">
-      <Link
-        to="/app/dashboard"
-        onClick={onNavigate}
-        className={cn(LINK_BASE, LINK_INACTIVE)}
-      >
-        <ArrowLeft size={16} aria-hidden="true" className="shrink-0 opacity-75" />
-        Return to Organisation
-      </Link>
-    </div>
-  );
-}
-
 /** Reference material and who you are. */
 function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
   const { user } = useSupabaseAuth();
@@ -219,7 +194,6 @@ function ConsoleRail({
         <NavList items={items} onNavigate={onNavigate} />
       </nav>
       <ConsoleFooter onNavigate={onNavigate} />
-      <ReturnToOrganisation onNavigate={onNavigate} />
     </>
   );
 }

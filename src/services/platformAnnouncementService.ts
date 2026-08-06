@@ -82,7 +82,7 @@ export async function createAnnouncement(input: {
     p_audience: input.audience ?? 'all',
     p_plans: input.plans ?? [],
     p_channel: input.channel ?? 'in_app',
-    p_scheduled_for: input.scheduledFor ?? null,
+    p_scheduled_for: input.scheduledFor ?? undefined,
   });
   if (error) throw error;
   return data;

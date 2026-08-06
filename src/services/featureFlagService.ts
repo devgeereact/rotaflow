@@ -65,9 +65,9 @@ export async function setFeatureFlag(
 ): Promise<void> {
   const { error } = await supabase.rpc('set_feature_flag', {
     p_key: key,
-    p_enabled: patch.enabled ?? null,
-    p_rollout: patch.rollout ?? null,
-    p_plans: patch.plans ?? null,
+    p_enabled: patch.enabled ?? undefined,
+    p_rollout: patch.rollout ?? undefined,
+    p_plans: patch.plans ?? undefined,
   });
   if (error) throw error;
 }

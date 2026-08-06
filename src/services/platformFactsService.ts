@@ -85,7 +85,7 @@ export async function recordHealthSample(
   const { error } = await supabase.rpc('record_health_sample', {
     p_service: service,
     p_status: status,
-    p_latency_ms: latencyMs,
+    p_latency_ms: latencyMs ?? undefined,
     p_source: source,
   });
   if (error) throw error;

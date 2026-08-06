@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { touchOrgActivity } from '@/services/activityService';
 import type { ClockEvent, ClockEventInsert } from '@/types';
 
 /**
@@ -13,6 +14,8 @@ export async function recordClockEvent(input: ClockEventInsert): Promise<ClockEv
     .select('*')
     .single();
   if (error) throw error;
+  // A clock-in is the clearest evidence a human is using this tenant today.
+  touchOrgActivity(data.org_id);
   return data;
 }
 
