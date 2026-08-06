@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Info } from 'lucide-react';
 import { Panel } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Sparkline } from '@/components/ui/TrendChart';
 import { MeterRows } from '@/components/ui/MeterRows';
 import { Callout } from '@/components/ui/Callout';
 import { StatTile } from '@/components/ui/StatTile';
@@ -23,17 +22,10 @@ import {
 } from '@/lib/platformNotifications';
 import { humaniseKey } from '@/lib/platformOverview';
 import {
-  DEMO_ANNOUNCEMENTS,
-  DEMO_DELIVERED,
-  DEMO_NOTIFICATIONS_FAILED,
-  DEMO_NOTIFICATIONS_FAILED_HINT,
-  DEMO_OPT_OUTS,
-  DEMO_READ_RATE,
-  DEMO_READ_TREND,
-  DEMO_SCHEDULED,
-  DEMO_SCHEDULED_HINT,
-  DEMO_SENT_30_DAYS,
-} from '@/lib/adminOverviewDemo';
+  countOptOuts,
+  listAnnouncements,
+  type AnnouncementRow,
+} from '@/services/platformAnnouncementService';
 import { reportError } from '@/lib/sentry';
 import type { Organisation } from '@/types';
 
@@ -69,6 +61,8 @@ export function AdminNotificationsPage(): JSX.Element {
   const [rows, setRows] = useState<NotificationRow[] | null>(null);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [pushDevices, setPushDevices] = useState(0);
+  const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
+  const [optOuts, setOptOuts] = useState(0);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -78,15 +72,20 @@ export function AdminNotificationsPage(): JSX.Element {
     setRows(null);
     void (async () => {
       try {
-        const [notifications, orgs, devices] = await Promise.all([
-          listRecentNotifications(WINDOW),
-          listAllOrganisations(),
-          countPushSubscriptions(),
-        ]);
+        const [notifications, orgs, devices, announcementRows, optOutCount] =
+          await Promise.all([
+            listRecentNotifications(WINDOW),
+            listAllOrganisations(),
+            countPushSubscriptions(),
+            listAnnouncements(),
+            countOptOuts(),
+          ]);
         if (!active) return;
         setRows(notifications);
         setOrganisations(orgs);
         setPushDevices(devices);
+        setAnnouncements(announcementRows);
+        setOptOuts(optOutCount);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'admin:notifications' });
@@ -97,6 +96,32 @@ export function AdminNotificationsPage(): JSX.Element {
       active = false;
     };
   }, [reloadKey]);
+
+  /**
+   * What the announcement register adds up to.
+   *
+   * Deliveries are counted from rows rather than a column on the announcement:
+   * a counter drifts the first time a fan-out half fails, and cannot answer
+   * "which organisations have not seen it", which is the question that follows
+   * the number.
+   */
+  const announceStats = useMemo(() => {
+    const scheduled = announcements.filter((a) => a.status === 'scheduled');
+    const next = scheduled
+      .map((a) => a.scheduled_for)
+      .filter((v): v is string => v !== null)
+      .sort()[0];
+    return {
+      sent: announcements.filter((a) => a.status === 'sent').length,
+      drafts: announcements.filter((a) => a.status === 'draft').length,
+      scheduled: scheduled.length,
+      nextScheduled: next
+        ? new Date(next).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+        : null,
+      recipients: announcements.reduce((t, a) => t + a.recipients, 0),
+      failed: announcements.reduce((t, a) => t + a.failed, 0),
+    };
+  }, [announcements]);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
@@ -124,30 +149,45 @@ export function AdminNotificationsPage(): JSX.Element {
         <div className="space-y-4">
           <TileGrid>
             <StatTile
-              label="Sent, 30 days"
-              value={DEMO_SENT_30_DAYS.toLocaleString('en-GB')}
+              label="Announcements sent"
+              value={announceStats.sent}
+              hint="Published to at least one tenant"
             />
-            <StatTile label="Delivered" value={DEMO_DELIVERED} />
             <StatTile
-              label="Read"
-              value={DEMO_READ_RATE}
-              chart={<Sparkline values={DEMO_READ_TREND} colour="#1EA06B" />}
+              label="Deliveries"
+              value={announceStats.recipients.toLocaleString('en-GB')}
+              hint="One row per recipient organisation"
             />
+            {/* No read rate. `mark_announcement_read` exists and nothing in the
+                tenant app calls it, so a percentage here could only ever be
+                what the seed wrote. It comes back with the banner that sets
+                it. */}
             <StatTile
               label="Failed"
-              value={DEMO_NOTIFICATIONS_FAILED}
+              value={announceStats.failed}
               hint={
-                <span className="font-semibold text-danger">
-                  {DEMO_NOTIFICATIONS_FAILED_HINT}
-                </span>
+                announceStats.failed > 0 ? (
+                  <span className="font-semibold text-danger">Provider rejected</span>
+                ) : (
+                  'Nothing rejected'
+                )
               }
             />
             <StatTile
               label="Scheduled"
-              value={DEMO_SCHEDULED}
-              hint={DEMO_SCHEDULED_HINT}
+              value={announceStats.scheduled}
+              hint={announceStats.nextScheduled ?? 'Nothing queued'}
             />
-            <StatTile label="Opt-outs" value={DEMO_OPT_OUTS} />
+            <StatTile
+              label="Drafts"
+              value={announceStats.drafts}
+              hint="Composed, not published"
+            />
+            <StatTile
+              label="Opt-outs"
+              value={optOuts}
+              hint="Organisations refusing non-essential mail"
+            />
           </TileGrid>
 
           <Panel title="Announcements" flush>
@@ -175,7 +215,7 @@ export function AdminNotificationsPage(): JSX.Element {
                       ['Audience', 'left'],
                       ['When', 'left'],
                       ['Sent', 'right'],
-                      ['Read', 'right'],
+                      ['Recipients', 'right'],
                       ['Status', 'left'],
                     ].map(([heading, align]) => (
                       <th
@@ -190,57 +230,86 @@ export function AdminNotificationsPage(): JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  {DEMO_ANNOUNCEMENTS.map((item) => (
-                    <tr
-                      key={item.title}
-                      className="border-b border-divider last:border-0 dark:border-divider-dark"
-                    >
-                      <td className="px-3 py-2.5 pl-4 font-medium text-content dark:text-content-dark">
-                        {item.title}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Badge tone="neutral">{item.type}</Badge>
-                      </td>
-                      <td className="truncate px-3 py-2.5 text-content dark:text-content-dark">
-                        {item.audience}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-content-muted dark:text-content-muted-dark">
-                        {item.when}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
-                        {item.sent === null ? '-' : item.sent.toLocaleString('en-GB')}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
-                        {item.read === null ? '-' : item.read.toLocaleString('en-GB')}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Badge
-                          tone={item.status === 'complete' ? 'success' : 'warning'}
-                          dot
-                        >
-                          {item.status === 'complete' ? 'Complete' : 'Pending'}
-                        </Badge>
+                  {announcements.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark"
+                      >
+                        No announcement has been composed.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    announcements.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b border-divider last:border-0 dark:border-divider-dark"
+                      >
+                        <td className="px-3 py-2.5 pl-4 font-medium text-content dark:text-content-dark">
+                          {item.title}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Badge tone="neutral">
+                            {item.kind.charAt(0).toUpperCase() + item.kind.slice(1)}
+                          </Badge>
+                        </td>
+                        <td className="truncate px-3 py-2.5 text-content dark:text-content-dark">
+                          {item.audience === 'all'
+                            ? 'All organisations'
+                            : item.audience_plans.join(', ')}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-content-muted dark:text-content-muted-dark">
+                          {item.sent_at
+                            ? `Sent ${new Date(item.sent_at).toLocaleDateString('en-GB')}`
+                            : item.scheduled_for
+                              ? `Scheduled ${new Date(item.scheduled_for).toLocaleDateString('en-GB')}`
+                              : 'Draft'}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
+                          {item.sent === 0 ? '-' : item.sent.toLocaleString('en-GB')}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
+                          {item.recipients === 0
+                            ? '-'
+                            : item.recipients.toLocaleString('en-GB')}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Badge
+                            tone={
+                              item.status === 'sent'
+                                ? 'success'
+                                : item.status === 'scheduled'
+                                  ? 'warning'
+                                  : 'neutral'
+                            }
+                            dot
+                          >
+                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </Panel>
 
-          <Callout tone="warning" title="The announcement register is placeholder">
+          <Callout tone="info" title="What these two records are">
             <p>
-              <code>notifications</code> rows are addressed to one user inside one
-              organisation, and the table has no client insert policy by design. Rows are
-              written by Edge Functions holding the service role. There is no
-              platform-wide message, no audience definition, no fan-out and no schedule,
-              so the register above and its six figures come from{' '}
-              <code>src/lib/adminOverviewDemo.ts</code>, and New announcement is disabled.
+              The register above is <code>platform_announcements</code>, and its
+              recipients are rows in <code>platform_announcement_deliveries</code>, one
+              per organisation. Publishing resolves the audience into those rows, so
+              &ldquo;sent to 96 organisations&rdquo; is a count the database made rather
+              than one this screen guessed.
             </p>
             <p>
-              What is real is the delivery record below: it is readable across every
-              tenant because <code>notifications_select</code> names{' '}
-              <code>is_platform_admin()</code> directly.
+              There is no read rate, because nothing marks one read.{' '}
+              <code>mark_announcement_read</code> exists and the tenant app never calls
+              it, so a percentage could only repeat what the seed wrote. It comes back
+              with the in-app banner that would set it. Delivery below is a different
+              record: <code>notifications</code>, addressed to one person inside one
+              organisation, written by Edge Functions holding the service role.
             </p>
           </Callout>
 

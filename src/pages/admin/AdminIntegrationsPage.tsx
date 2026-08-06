@@ -12,16 +12,7 @@ import { listAllSmtpSettings } from '@/services/smtpSettingsService';
 import { listAllOrganisations } from '@/services/platformService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { Button } from '@/components/ui/Button';
-import {
-  DEMO_CONNECTORS,
-  DEMO_DEGRADED_HINT,
-  DEMO_FAILED_24H,
-  DEMO_FAILED_24H_HINT,
-  DEMO_MEDIAN_SYNC,
-  DEMO_ORGS_CONNECTED,
-  DEMO_ORGS_CONNECTED_HINT,
-  DEMO_SYNCS_24H,
-} from '@/lib/adminOverviewDemo';
+import { listConnectorStats, type ConnectorStats } from '@/services/integrationService';
 import { reportError } from '@/lib/sentry';
 import type { HealthCheck } from '@/lib/platformHealth';
 import type { Organisation, OrgSmtpSettingsSafe } from '@/types';
@@ -49,6 +40,7 @@ export function AdminIntegrationsPage(): JSX.Element {
   const [checks, setChecks] = useState<HealthCheck[] | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [smtp, setSmtp] = useState<OrgSmtpSettingsSafe[]>([]);
+  const [connectors, setConnectors] = useState<ConnectorStats[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -67,13 +59,19 @@ export function AdminIntegrationsPage(): JSX.Element {
         // entire screen. Tiles, SMTP list, everything, sat on a skeleton for
         // eight seconds while data that had arrived in 40ms was held back. The
         // reads render immediately; the services panel fills in when it can.
-        const [smtpRows, orgs] = await Promise.all([
+        const [smtpRows, orgs, connectorRows] = await Promise.all([
           listAllSmtpSettings(),
           listAllOrganisations(),
+          // Aggregated in Postgres by `integration_connector_stats`. Pulling
+          // 812 sync runs to a browser to divide two numbers is the same
+          // answer at a hundred times the cost, and it gets worse every day
+          // the product runs.
+          listConnectorStats(),
         ]);
         if (!active) return;
         setSmtp(smtpRows);
         setOrganisations(orgs);
+        setConnectors(connectorRows);
         setLoaded(true);
 
         const health = await runHealthChecks();
@@ -92,6 +90,28 @@ export function AdminIntegrationsPage(): JSX.Element {
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
+
+  /**
+   * The estate totals, summed from the per-connector view.
+   *
+   * `medianMs` is a median of medians rather than a true median, which is
+   * close enough for a tile and honest about what it is: the alternative is
+   * reading every run to compute one number nobody sorts by.
+   */
+  const totals = useMemo(() => {
+    const medians = connectors
+      .map((c) => c.median_duration_ms)
+      .filter((v): v is number => v !== null)
+      .sort((a, b) => a - b);
+    return {
+      orgsConnected: connectors.reduce((t, c) => t + (c.orgs_connected ?? 0), 0),
+      runs24h: connectors.reduce((t, c) => t + (c.runs_24h ?? 0), 0),
+      failed24h: connectors.reduce((t, c) => t + (c.failed_24h ?? 0), 0),
+      degraded: connectors.filter((c) => c.status === 'degraded' || c.status === 'down')
+        .length,
+      medianMs: medians.length === 0 ? null : medians[Math.floor(medians.length / 2)]!,
+    };
+  }, [connectors]);
 
   const orgById = useMemo(
     () => new Map(organisations.map((o) => [o.id, o])),
@@ -120,28 +140,50 @@ export function AdminIntegrationsPage(): JSX.Element {
       ) : (
         <div className="space-y-4">
           <TileGrid>
-            <StatTile label="Connectors" value={DEMO_CONNECTORS.length} />
+            <StatTile label="Connectors" value={connectors.length} />
             <StatTile
               label="Organisations connected"
-              value={DEMO_ORGS_CONNECTED.toLocaleString('en-GB')}
-              hint={DEMO_ORGS_CONNECTED_HINT}
+              value={totals.orgsConnected.toLocaleString('en-GB')}
+              hint="Distinct tenants with a live connection"
             />
-            <StatTile label="Syncs, 24h" value={DEMO_SYNCS_24H.toLocaleString('en-GB')} />
+            <StatTile
+              label="Syncs, 24h"
+              value={totals.runs24h.toLocaleString('en-GB')}
+              hint="Across every connector"
+            />
             <StatTile
               label="Failed, 24h"
-              value={DEMO_FAILED_24H}
+              value={totals.failed24h}
               hint={
-                <span className="font-semibold text-danger">{DEMO_FAILED_24H_HINT}</span>
+                totals.failed24h > 0 ? (
+                  <span className="font-semibold text-danger">Needs attention</span>
+                ) : (
+                  'Nothing failed'
+                )
               }
             />
             <StatTile
               label="Degraded"
-              value={DEMO_CONNECTORS.filter((c) => c.status === 'degraded').length}
+              value={totals.degraded}
               hint={
-                <span className="font-semibold text-danger">{DEMO_DEGRADED_HINT}</span>
+                totals.degraded > 0 ? (
+                  <span className="font-semibold text-warning">Connector-side</span>
+                ) : (
+                  'All operational'
+                )
               }
             />
-            <StatTile label="Median sync" value={DEMO_MEDIAN_SYNC} />
+            <StatTile
+              label="Median sync"
+              value={
+                totals.medianMs === null ? '-' : `${(totals.medianMs / 1000).toFixed(1)}s`
+              }
+              hint={
+                totals.medianMs === null
+                  ? 'Nothing synced in seven days'
+                  : 'Last seven days'
+              }
+            />
           </TileGrid>
 
           <Panel title="Connector status" flush>
@@ -176,7 +218,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                       ['Success rate', 'right'],
                       ['Last sync', 'left'],
                       ['Failed', 'right'],
-                      ['Actions', 'right'],
+                      ['Median sync', 'right'],
                     ].map(([heading, align]) => (
                       <th
                         key={heading}
@@ -190,72 +232,85 @@ export function AdminIntegrationsPage(): JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  {DEMO_CONNECTORS.map((connector) => (
-                    <tr
-                      key={connector.name}
-                      className="border-b border-divider last:border-0 dark:border-divider-dark"
-                    >
-                      <td className="px-3 py-2.5 pl-4 font-medium text-content dark:text-content-dark">
-                        {connector.name}
-                      </td>
-                      <td className="px-3 py-2.5 text-content-muted dark:text-content-muted-dark">
-                        {connector.category}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
-                        {connector.organisations.toLocaleString('en-GB')}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Badge
-                          tone={
-                            connector.status === 'operational' ? 'success' : 'warning'
-                          }
-                          dot
-                        >
-                          {connector.status === 'operational'
-                            ? 'Operational'
-                            : 'Degraded'}
-                        </Badge>
-                      </td>
+                  {connectors.length === 0 ? (
+                    <tr>
                       <td
-                        className={`px-3 py-2.5 text-right font-mono tabular-nums ${
-                          connector.successRate < 95
-                            ? 'text-danger'
-                            : 'text-content dark:text-content-dark'
-                        }`}
+                        colSpan={8}
+                        className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark"
                       >
-                        {connector.successRate}%
-                      </td>
-                      <td className="px-3 py-2.5 text-content-muted dark:text-content-muted-dark">
-                        {connector.lastSync}
-                      </td>
-                      <td
-                        className={`px-3 py-2.5 text-right font-mono tabular-nums ${
-                          connector.failed
-                            ? 'font-semibold text-danger'
-                            : 'text-content-muted dark:text-content-muted-dark'
-                        }`}
-                      >
-                        {connector.failed}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className="flex justify-end gap-1.5">
-                          {['Logs', 'Retry', 'Disable'].map((label) => (
-                            <span
-                              key={label}
-                              title="No table records a sync, an attempt or a failure"
-                              className={`cursor-not-allowed whitespace-nowrap rounded-lg border px-2 py-1 text-xs font-medium opacity-60 ${
-                                label === 'Disable'
-                                  ? 'border-danger/34 text-danger'
-                                  : 'border-surface-border text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark'
-                              }`}
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </span>
+                        No connector is in the catalogue.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    connectors.map((connector) => (
+                      <tr
+                        key={connector.key ?? connector.name}
+                        className="border-b border-divider last:border-0 dark:border-divider-dark"
+                      >
+                        <td className="px-3 py-2.5 pl-4 font-medium text-content dark:text-content-dark">
+                          {connector.name}
+                        </td>
+                        <td className="px-3 py-2.5 capitalize text-content-muted dark:text-content-muted-dark">
+                          {connector.category}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
+                          {(connector.orgs_connected ?? 0).toLocaleString('en-GB')}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Badge
+                            tone={
+                              connector.status === 'operational'
+                                ? 'success'
+                                : connector.status === 'beta'
+                                  ? 'info'
+                                  : 'warning'
+                            }
+                            dot
+                          >
+                            {(connector.status ?? 'unknown').charAt(0).toUpperCase() +
+                              (connector.status ?? 'unknown').slice(1)}
+                          </Badge>
+                        </td>
+                        {/* Null rather than 100% when nothing ran: a connector
+                            nobody used is not one that worked perfectly. */}
+                        <td
+                          className={`px-3 py-2.5 text-right font-mono tabular-nums ${
+                            (connector.success_rate_7d ?? 100) < 95
+                              ? 'text-danger'
+                              : 'text-content dark:text-content-dark'
+                          }`}
+                        >
+                          {connector.success_rate_7d === null
+                            ? '-'
+                            : `${connector.success_rate_7d}%`}
+                        </td>
+                        <td className="px-3 py-2.5 text-content-muted dark:text-content-muted-dark">
+                          {connector.last_sync_at
+                            ? new Date(connector.last_sync_at).toLocaleString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : 'Never'}
+                        </td>
+                        <td
+                          className={`px-3 py-2.5 text-right font-mono tabular-nums ${
+                            connector.failed_24h
+                              ? 'font-semibold text-danger'
+                              : 'text-content-muted dark:text-content-muted-dark'
+                          }`}
+                        >
+                          {connector.failed_24h ?? 0}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content-muted dark:text-content-muted-dark">
+                          {connector.median_duration_ms === null
+                            ? '-'
+                            : `${(connector.median_duration_ms / 1000).toFixed(1)}s`}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -365,19 +420,20 @@ export function AdminIntegrationsPage(): JSX.Element {
             </p>
           </Panel>
 
-          <Callout tone="warning" title="The connector table is placeholder">
+          <Callout tone="info" title="Where these figures come from">
             <p>
-              No table holds a connection, a sync attempt or a failure, so every connector
-              above. Its organisations, success rate, last sync and failure count, comes
-              from <code>src/lib/adminOverviewDemo.ts</code>. Logs, Retry and Disable are
-              disabled rather than wired, because there is nothing to read, retry or
-              switch off.
+              Organisations connected, success rate, failures and median duration are
+              aggregated by <code>integration_connector_stats</code>, a view over{' '}
+              <code>org_integrations</code> and <code>integration_sync_runs</code>. A
+              success rate reads as a dash rather than 100% when nothing ran in seven
+              days, because a connector nobody used is not one that worked perfectly.
             </p>
             <p>
-              Real on this screen: the platform services read from build configuration,
-              and the tenant SMTP settings, which are rows customers created. The nearest
-              real connector is the CSV payroll export a manager runs from Reports, a
-              download rather than a connection, so there is nothing to monitor.
+              What is still absent is the syncing itself. No Edge Function talks to Sage,
+              Xero or BrightHR yet, so the runs in the table are the ones the seed wrote.
+              The nearest real integration is the CSV payroll export a manager downloads
+              from Reports, which is a file rather than a connection and has nothing to
+              monitor.
             </p>
           </Callout>
         </div>

@@ -20,9 +20,9 @@
 -- `create temp table` on a name that exists is a hard error rather than a
 -- no-op.
 --
--- SAFE: it only ever writes rows whose ids it derives itself, plus invoices,
--- integrations and announcement deliveries attached to organisations that
--- already exist. It never touches a tenant's rotas, staff or shifts.
+-- SAFE: it only ever writes rows whose ids it derives itself, and only ever
+-- against organisations flagged `is_demo` (0035). A real customer cannot be
+-- seeded by accident. It never touches a tenant's rotas, staff or shifts.
 --
 -- Run it AFTER demo_seed.sql, which creates the organisations this attaches
 -- to. With no organisations present it still succeeds. The org-scoped
@@ -75,10 +75,14 @@ select p.id, p.full_name, 1
  limit 1;
 
 drop table if exists pf_org;
+-- Demo organisations only (0035). This is the line that stops a real customer
+-- ever receiving fabricated invoices: the seed cannot reach an organisation
+-- that has not declared itself a demonstration, whatever anybody remembers.
 create temp table pf_org as
 select o.id, o.name, o.plan, row_number() over (order by o.created_at) as n
   from public.organisations o
- where o.status = 'active';
+ where o.status = 'active'
+   and o.is_demo;
 
 -- =====================================================================
 -- 1. Tenant profile. Industry, country, timezone, contact

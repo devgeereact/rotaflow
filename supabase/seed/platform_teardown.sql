@@ -16,6 +16,9 @@
 -- console survive, including incidents you declared and cases you answered.
 -- Health samples are matched on `source = 'manual'`, which only the seed sets.
 --
+-- Since 0035 the seed only ever writes to organisations flagged `is_demo`, so
+-- anything this removes was attached to a demonstration tenant by definition.
+--
 -- Deliberately NOT undone:
 --   organisations.industry / country / timezone / contact_email
 --   subscriptions.started_at / trial_ends_at / canceled_at
