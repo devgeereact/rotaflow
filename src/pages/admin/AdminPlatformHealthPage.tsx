@@ -26,7 +26,6 @@ import {
 } from '@/lib/platformHealth';
 import {
   DEMO_AUTH_SUCCESS,
-  DEMO_BACKGROUND_JOBS,
   DEMO_ERROR_RATE,
   DEMO_ERROR_RATE_CHANGE,
   DEMO_LATENCY_LABELS,
@@ -360,10 +359,24 @@ export function AdminPlatformHealthPage(): JSX.Element {
             </Panel>
 
             <Panel title="Background jobs">
-              <MeterRows
-                caption="Background job queues"
-                rows={DEMO_BACKGROUND_JOBS.map((job) => ({ ...job }))}
-              />
+              {queues.length === 0 ? (
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  Nothing is queued or running.
+                </p>
+              ) : (
+                <MeterRows
+                  caption="Background job queues"
+                  rows={queues.map((q) => ({
+                    label: q.queue,
+                    value: q.queued,
+                    display:
+                      q.failed > 0
+                        ? `${q.queued} queued, ${q.failed} failed`
+                        : `${q.queued} queued`,
+                    colour: q.failed > 0 ? '#E0A030' : undefined,
+                  }))}
+                />
+              )}
             </Panel>
           </div>
         </div>
