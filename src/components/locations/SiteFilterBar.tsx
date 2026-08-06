@@ -37,7 +37,7 @@ const CONTROL =
  * Search + scope selects + "Filters", sitting between the summary tiles and
  * the table on both locations references.
  *
- * The search field carries a magnifier at *both* ends — that is what the
+ * The search field carries a magnifier at *both* ends, that is what the
  * references draw, on the Locations and the Departments screen alike.
  */
 export function SiteFilterBar({

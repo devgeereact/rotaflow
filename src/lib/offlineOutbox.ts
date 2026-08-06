@@ -1,6 +1,6 @@
 /**
  * Raw IndexedDB wrapper for the offline write outbox (ARCHITECTURE.md §4,
- * "Offline write queue"). No dependency added for this — two object stores,
+ * "Offline write queue"). No dependency added for this, two object stores,
  * a handful of operations, doesn't justify idb/dexie.
  *
  * Every browser that runs this PWA supports IndexedDB (it's required for an
@@ -13,8 +13,8 @@
  *
  * Version 1 had only the queue, and `flushQueuedWrites` stopped at the first
  * failure and left the item in place. For a dropped connection that is correct.
- * For a permanent rejection — a revoked membership, a deleted shift, a CHECK
- * violation — it meant the item failed forever and blocked every write queued
+ * For a permanent rejection, a revoked membership, a deleted shift, a CHECK
+ * violation. It meant the item failed forever and blocked every write queued
  * behind it, on every reconnect, silently. A carer's clock-ins stopped reaching
  * the database while the UI kept reporting success, and the timesheet that
  * drives their pay went quietly wrong.
@@ -28,7 +28,7 @@ const DB_NAME = 'rotaflow-outbox';
 
 /**
  * v1 → v2 adds `attempts`/`lastError` to queued records and the `dead_letters`
- * store. Existing v1 rows are migrated in place — a staff member who was
+ * store. Existing v1 rows are migrated in place, a staff member who was
  * offline across the upgrade must not lose queued clock-ins.
  */
 const DB_VERSION = 2;
@@ -73,7 +73,7 @@ function openDb(): Promise<IDBDatabase> {
 
       // Backfill `attempts` on rows written by v1. Without this they arrive as
       // `undefined`, `attempts + 1` is NaN, NaN >= MAX is false, and the retry
-      // ceiling never trips — reintroducing the exact stuck-forever behaviour
+      // ceiling never trips. Reintroducing the exact stuck-forever behaviour
       // v2 exists to remove, for precisely the users who were mid-queue.
       if (upgrade.oldVersion > 0 && upgrade.oldVersion < 2 && tx) {
         const store = tx.objectStore(STORE);
@@ -115,7 +115,7 @@ function runTransaction<T>(
   );
 }
 
-/** Oldest first — writes replay in the order the user made them. */
+/** Oldest first. Writes replay in the order the user made them. */
 function byQueuedAt(a: OutboxRecord, b: OutboxRecord): number {
   return a.queuedAt.localeCompare(b.queuedAt);
 }
@@ -145,7 +145,7 @@ export async function outboxUpdate(record: OutboxRecord): Promise<void> {
 }
 
 /**
- * Move an item out of the queue and into the dead-letter store, atomically —
+ * Move an item out of the queue and into the dead-letter store, atomically,
  * both stores in one transaction, so a crash between the two can neither lose
  * the write nor leave it behind still blocking the queue.
  */
@@ -173,7 +173,7 @@ export async function deadLetterList(): Promise<DeadLetterRecord[]> {
   return records.sort(byQueuedAt);
 }
 
-/** Discard a dead-lettered write — only ever from an explicit user action. */
+/** Discard a dead-lettered write, only ever from an explicit user action. */
 export async function deadLetterRemove(id: string): Promise<void> {
   await runTransaction(DEAD_LETTER_STORE, 'readwrite', (store) => store.delete(id));
 }

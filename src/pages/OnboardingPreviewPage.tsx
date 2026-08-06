@@ -44,7 +44,7 @@ function isPreviewStep(value: number): value is PreviewStep {
 }
 
 /**
- * Design-loop preview only — `/onboarding` needs a real Supabase session and
+ * Design-loop preview only, `/onboarding` needs a real Supabase session and
  * writes real rows (org creation, locations, invites). This renders steps 1,
  * 2, 3 and 5 (the ones with reference designs) against local-only mock state,
  * so they can be screenshotted without auth or a database.
@@ -124,7 +124,7 @@ export function OnboardingPreviewPage(): JSX.Element {
 
   const copy = {
     1: {
-      headline: "Let's set up your",
+      headline: 'Set up your',
       headlineAccent: 'organisation',
       intro:
         'Create your organisation to start building shifts, teams and smarter schedules.',
@@ -260,7 +260,7 @@ export function OnboardingPreviewPage(): JSX.Element {
     5: {
       headline: "You're all set!",
       headlineAccent: 'Welcome to RotaFlow',
-      intro: "Your organisation is ready to go. Here's what you can do next.",
+      intro: 'Your organisation is ready. Three things worth doing first:',
       features: [
         {
           icon: BarChart3,

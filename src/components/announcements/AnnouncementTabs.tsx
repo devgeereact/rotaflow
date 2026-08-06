@@ -14,7 +14,7 @@ interface AnnouncementTabsProps {
 
 /**
  * Underlined tab bar above the announcements table
- * (design/Announcements-Dashboard.png). Only the active tab carries a rule —
+ * (design/Announcements-Dashboard.png). Only the active tab carries a rule,
  * the reference draws no full-width divider beneath the row.
  */
 export function AnnouncementTabs({

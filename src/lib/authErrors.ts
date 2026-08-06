@@ -4,7 +4,7 @@
  * ## Why this is not just `err.message`
  *
  * supabase-js wraps **any** HTTP 5xx from GoTrue in an `AuthRetryableFetchError`
- * whose `message` is the literal string `"{}"` — the JSON body is never
+ * whose `message` is the literal string `"{}"`. The JSON body is never
  * extracted, so the real reason ("Error sending confirmation email") is thrown
  * away before the app ever sees it. The object still passes `instanceof Error`,
  * so the obvious `err instanceof Error ? err.message : …` renders `{}` on screen
@@ -58,7 +58,7 @@ export function authErrorMessage(
       // Overwhelmingly this is the mail step: GoTrue returns 500
       // "Error sending confirmation email" when SMTP rejects the recipient or
       // is unreachable, and that body is what supabase-js discards.
-      return 'We could not send your email just now — the mail service rejected it or is unavailable. Check the address is right, then try again shortly.';
+      return 'We could not send your email just now. The mail service rejected it or is unavailable. Check the address is right, then try again shortly.';
     case 0:
       return 'Could not reach the server. Check your connection and try again.';
     default:

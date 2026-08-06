@@ -15,7 +15,7 @@ export interface ScheduleLocationOption {
 }
 
 interface ScheduleToolbarProps {
-  /** Pre-formatted period, e.g. "26 May – 1 June 2025". */
+  /** Pre-formatted period, e.g. "26 May-1 June 2025". */
   periodLabel: string;
   locations: ScheduleLocationOption[];
   locationId: string | null;

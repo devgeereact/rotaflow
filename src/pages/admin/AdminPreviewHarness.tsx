@@ -3,7 +3,7 @@ import { AdminShell } from '@/components/layout/AdminShell';
 import { OrgContext, type OrgContextValue } from '@/context/OrgContext';
 
 /**
- * Design-loop harness for `/admin/*` — **development only**.
+ * Design-loop harness for `/admin/*`, **development only**.
  *
  * ## Why this exists
  *
@@ -24,7 +24,7 @@ import { OrgContext, type OrgContextValue } from '@/context/OrgContext';
  *
  * ## Scope of the deception
  *
- * The interception is installed on mount and never removed — the harness is
+ * The interception is installed on mount and never removed. The harness is
  * expected to own the tab. It only answers PostgREST reads; anything it does
  * not recognise falls through to the real network, so an unmocked call fails
  * loudly rather than silently rendering an empty screen.
@@ -212,7 +212,7 @@ const DAY = (offsetDays: number): string =>
 
 // `kind` and `status` are CHECK-constrained enums and `due_on` / `received_on`
 // are DATE columns, so PostgREST returns 'YYYY-MM-DD'. Fixtures that drifted
-// from either rendered blank chips and "NaN days left" — worth keeping exact,
+// from either rendered blank chips and "NaN days left". Worth keeping exact,
 // since the whole point of the harness is that what renders here is what
 // renders in production.
 const GDPR_REQUESTS = [
@@ -300,8 +300,8 @@ const LOCATIONS = ORG_IDS.flatMap((org_id, i) =>
 );
 
 /* ------------------------------------------------------------------ *
- * 0021–0027: the tables the console gained when its placeholders were
- * replaced. Same rule as everything above — enough rows to exercise the
+ * 0021-0027: the tables the console gained when its placeholders were
+ * replaced. Same rule as everything above. Enough rows to exercise the
  * screen's states, and shapes that match the migration's CHECK constraints,
  * because a fixture the database would reject teaches the wrong thing.
  * ------------------------------------------------------------------ */
@@ -327,7 +327,7 @@ const INCIDENTS = [
   ],
   ['Payroll export queue backlog', 'medium', 'resolved', 'Background jobs', 128, 9, 205],
   [
-    'Sign-in outage — auth provider certificate expiry',
+    'Sign-in outage. Auth provider certificate expiry',
     'critical',
     'resolved',
     'Authentication',
@@ -436,7 +436,7 @@ const SUPPORT_CASES = [
     null,
   ],
   [
-    'Card payment declined — invoice unpaid',
+    'Card payment declined. Invoice unpaid',
     'billing',
     'high',
     'pending',
@@ -575,7 +575,7 @@ const INVOICES = ORG_IDS.flatMap((org_id, i) =>
 );
 
 const ANNOUNCEMENTS = [
-  ['Scheduled maintenance — 02:00–03:00 BST', 'maintenance', 'scheduled', null, 5],
+  ['Scheduled maintenance-02:00-03:00 BST', 'maintenance', 'scheduled', null, 5],
   ['New: cost forecasting in Reports', 'product', 'sent', 7, null],
   ['Action needed: card expiring this month', 'billing', 'sent', 11, null],
   ['Resolved: sign-in outage', 'incident', 'sent', 14, null],
@@ -763,7 +763,7 @@ function installFixtureFetch(): void {
 
     if (data === undefined) {
       // Loud rather than empty: an unmocked table should be obvious.
-      console.warn(`[admin-preview] no fixture for "${table}" — returning []`);
+      console.warn(`[admin-preview] no fixture for "${table}". Returning []`);
     }
 
     const rows = data === undefined ? [] : data;
@@ -799,7 +799,7 @@ export function AdminPreviewHarness(): JSX.Element {
    * A platform-owner session, supplied directly.
    *
    * `OrgProvider` resolves the platform role from `my_platform_role()`, and
-   * only after Supabase Auth has produced a user — which the harness has no way
+   * only after Supabase Auth has produced a user, which the harness has no way
    * to fake, and should not try to. Overriding the context here is both simpler
    * and more honest about what is being stubbed. It also matters for what this
    * harness is *for*: `adminNavForRole(null)` hides every role-gated entry, so

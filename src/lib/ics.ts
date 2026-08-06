@@ -4,14 +4,14 @@ import type { Shift, ShiftType } from '@/types';
  * Minimal RFC 5545 iCalendar output for a set of shifts.
  *
  * Timestamps are emitted as UTC (`...Z`), which is what `starts_at`/`ends_at`
- * already are — no timezone maths, and every calendar client renders them in
+ * already are, no timezone maths, and every calendar client renders them in
  * the viewer's own zone, which is the right behaviour for a person looking at
  * their own shifts.
  */
 
 const CRLF = '\r\n';
 
-/** Escape per RFC 5545 §3.3.11 — backslash first, or it double-escapes. */
+/** Escape per RFC 5545 §3.3.11. Backslash first, or it double-escapes. */
 function escapeText(value: string): string {
   return value
     .replace(/\\/g, '\\\\')

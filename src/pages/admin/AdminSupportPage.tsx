@@ -80,7 +80,7 @@ const WIDTHS = [
 ] as const;
 
 /**
- * `/admin/support` — the support desk, built to the shape of
+ * `/admin/support`. The support desk, built to the shape of
  * `docs/PLATFORM_CONSOLE.html`.
  *
  * ## The case queue is placeholder; the access log beside it is not
@@ -174,7 +174,7 @@ export function AdminSupportPage(): JSX.Element {
   }, [allCases, search, status, priority]);
 
   // Every figure below is derived from the rows, so the tiles and the table
-  // cannot disagree — and each reads "—" rather than zero when there is
+  // cannot disagree, and each reads "-" rather than zero when there is
   // nothing to measure.
   const counts = useMemo(
     () => ({
@@ -244,7 +244,7 @@ export function AdminSupportPage(): JSX.Element {
             />
             <StatTile
               label="CSAT"
-              value={counts.csat === null ? '—' : `${counts.csat} / 5`}
+              value={counts.csat === null ? '-' : `${counts.csat} / 5`}
               hint={
                 counts.csatCount === 0
                   ? 'Nobody has rated a case'
@@ -254,7 +254,7 @@ export function AdminSupportPage(): JSX.Element {
           </TileGrid>
 
           {open.length > 0 && (
-            <Panel title="Open right now — real" flush>
+            <Panel title="Open right now. Real" flush>
               <ul>
                 {open.map((session) => (
                   <li
@@ -425,9 +425,9 @@ export function AdminSupportPage(): JSX.Element {
           <Callout tone="info" title="Where these cases come from">
             <p>
               Every row above is a <code>support_cases</code> row, and the medians are
-              computed from the timestamps on them — first response is stamped once, by
-              the reply that caused it, so the number cannot drift with how a query
-              defines &ldquo;first&rdquo;.
+              computed from the timestamps on them. First response is stamped once, by the
+              reply that caused it, so the number cannot drift with how a query defines
+              &ldquo;first&rdquo;.
             </p>
             <p>
               What is not built is an inbound channel: nothing turns an email into a case

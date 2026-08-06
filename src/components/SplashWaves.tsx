@@ -34,7 +34,7 @@ export function SplashWaves(): JSX.Element {
       {/* Soft lift behind the lockup */}
       <rect width="1672" height="941" fill="url(#rf-splash-glow)" />
 
-      {/* Palest swoosh — a cool tint, not white: the reference crease reads
+      {/* Palest swoosh, a cool tint, not white: the reference crease reads
           bluer and slightly darker than the canvas */}
       <path
         d="M0 390C90 460 300 620 480 760C600 852 800 878 1050 865C1220 852 1330 760 1440 630C1520 540 1600 520 1672 505V941H0Z"
@@ -53,7 +53,7 @@ export function SplashWaves(): JSX.Element {
         fill="url(#rf-splash-dots)"
       />
 
-      {/* Mid-tone wave — surfaces above the deep wave on the right shoulder */}
+      {/* Mid-tone wave. Surfaces above the deep wave on the right shoulder */}
       <path
         d="M0 700C170 800 300 845 420 890C620 965 800 1000 1000 960C1130 933 1270 880 1400 795C1520 745 1620 680 1672 645V941H0Z"
         className="fill-brand-light"
@@ -72,7 +72,7 @@ export function SplashWaves(): JSX.Element {
         opacity="0.45"
       />
 
-      {/* Bottom-centre highlight — two stacked crests so the trough grades
+      {/* Bottom-centre highlight, two stacked crests so the trough grades
           out into the deep wave instead of ending on a hard edge */}
       <path
         d="M520 941C660 903 770 881 880 879C1000 878 1150 905 1290 941Z"

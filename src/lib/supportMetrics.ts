@@ -6,7 +6,7 @@
  * median is what the team actually experiences.
  *
  * Every function returns `null` when there is nothing to measure, and the
- * screen prints "—". A median first response of zero minutes would be the most
+ * screen prints "-". A median first response of zero minutes would be the most
  * flattering possible reading of having answered nothing.
  */
 
@@ -86,13 +86,13 @@ export function csatResponses(rows: readonly CaseLike[]): number {
 }
 
 /**
- * "2h 14m" / "35m" — durations in the units a support team talks in.
+ * "2h 14m" / "35m". Durations in the units a support team talks in.
  *
  * Days appear above 24 hours, because "38h" is a number people have to convert
  * in their head before it means anything.
  */
 export function formatMinutes(minutes: number | null): string {
-  if (minutes === null || !Number.isFinite(minutes)) return '—';
+  if (minutes === null || !Number.isFinite(minutes)) return '-';
   const total = Math.round(minutes);
   if (total < 60) return `${total}m`;
   if (total < 1440) {
@@ -105,7 +105,7 @@ export function formatMinutes(minutes: number | null): string {
   return h === 0 ? `${d}d` : `${d}d ${h}h`;
 }
 
-/** Open cases by priority, urgent first — the queue's shape at a glance. */
+/** Open cases by priority, urgent first. The queue's shape at a glance. */
 export function openByPriority(
   rows: readonly CaseLike[],
 ): { priority: string; count: number }[] {

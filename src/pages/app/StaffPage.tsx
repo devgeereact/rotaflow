@@ -277,7 +277,7 @@ export function StaffPage(): JSX.Element {
       selected,
       context,
       documents,
-      selected.payroll_id ?? '—',
+      selected.payroll_id ?? '-',
       startOfWeek(today, { weekStartsOn: 1 }),
       today,
     );
@@ -305,7 +305,7 @@ export function StaffPage(): JSX.Element {
       value: role,
       onChange: setRole,
       options: [...new Set(allRows.map((row) => row.role))]
-        .filter((title) => title !== '—')
+        .filter((title) => title !== '-')
         .map((title) => ({ value: title, label: title })),
     },
     {
@@ -347,7 +347,7 @@ export function StaffPage(): JSX.Element {
     }
   };
 
-  /** GDPR subject-access request — everything RotaFlow holds on this person, as a JSON file. */
+  /** GDPR subject-access request. Everything RotaFlow holds on this person, as a JSON file. */
   const handleExportData = async (person: StaffProfile): Promise<void> => {
     setError(null);
     setGdprBusyId(person.id);
@@ -365,14 +365,14 @@ export function StaffPage(): JSX.Element {
   /**
    * GDPR erasure request. Scrubs PII on the staff_profiles row and deletes
    * emergency_contacts/documents outright; every shift/timesheet/leave row
-   * stays intact, now pointing at an anonymized "Deleted Member" — see
+   * stays intact, now pointing at an anonymized "Deleted Member". See
    * 0011_gdpr_anonymize.sql. Does not delete their RotaFlow login, which may
    * span other organisations.
    */
   const handleAnonymize = async (person: StaffProfile): Promise<void> => {
     if (!orgId) return;
     // The one irreversible action in the product. It previously sat behind
-    // window.confirm — a dialog the browser is allowed to suppress in an
+    // window.confirm, a dialog the browser is allowed to suppress in an
     // installed PWA, which is not an acceptable guard for a GDPR erasure.
     const ok = await confirm({
       title: `Erase ${person.first_name} ${person.last_name}'s personal data?`,
@@ -448,7 +448,7 @@ export function StaffPage(): JSX.Element {
         {
           id: 'erase',
           label: 'Erase personal data',
-          description: 'GDPR erasure — cannot be undone',
+          description: 'GDPR erasure. Cannot be undone',
           icon: ShieldOff,
           tone: 'danger',
           disabled: gdprBusyId === person.id,

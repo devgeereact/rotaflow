@@ -34,7 +34,7 @@ export interface OrgContextValue {
   /**
    * Which kind of platform administrator, or `null` for none.
    *
-   * `isPlatformAdmin` answers "may act at platform level" — it is the flag
+   * `isPlatformAdmin` answers "may act at platform level". It is the flag
    * every RLS helper in 0002 folds in, and it gates the `/admin` area as a
    * whole. This answers "as what", and gates individual screens and actions
    * inside it. Both are needed: a support administrator belongs in the console
@@ -45,12 +45,12 @@ export interface OrgContextValue {
   loading: boolean;
   /**
    * True when the memberships query failed. Consumers MUST check this before
-   * treating `memberships: []` as "this user has no organisation" — otherwise
+   * treating `memberships: []` as "this user has no organisation". Otherwise
    * a dropped connection reads as a brand-new user and pushes an existing
    * owner into onboarding, where they can create a duplicate organisation.
    */
   loadFailed: boolean;
-  // Additive beyond docs/HOOKS.md §6 — needed by /onboarding and by any
+  // Additive beyond docs/HOOKS.md §6. Needed by /onboarding and by any
   // future "refresh after invite accepted" flow.
   createOrg: (name: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -87,7 +87,7 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
         listMyMemberships(user.id),
         getProfile(user.id),
         // Deliberately cannot reject. `my_platform_role()` arrives in 0015,
-        // and until that migration is applied the RPC does not exist — a
+        // and until that migration is applied the RPC does not exist, a
         // rejection here would land in the shared catch, set `loadFailed`,
         // and blank the tenant session for every user in the product over a
         // detail only the platform console needs. The role is additive UI
@@ -104,7 +104,7 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       setLoadFailed(false);
     } catch (error) {
       reportError(error, { area: 'org:refresh' });
-      // Deliberately leaves any previously loaded memberships in place — a
+      // Deliberately leaves any previously loaded memberships in place, a
       // failed refresh must not blank out a session that was working.
       setLoadFailed(true);
     } finally {

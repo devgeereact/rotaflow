@@ -73,7 +73,7 @@ export interface ReportsViewProps {
 const PANEL_ID = 'reports-panel';
 
 /**
- * `/app/reports` — the reporting workspace: the report catalogue with its
+ * `/app/reports`. The reporting workspace: the report catalogue with its
  * filters and per-row run/download actions, plus a rail of overview, recent
  * runs and shortcuts (design/Reports-Dashboard.png).
  *

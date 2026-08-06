@@ -16,7 +16,7 @@ import type { LeaveRequest } from '@/types';
  *
  * Every function here turns a stored `date` column into something a manager
  * reads before approving or refusing time off. A day lost to a timezone is a
- * shift someone is wrongly rostered for, and it never surfaces as an error —
+ * shift someone is wrongly rostered for, and it never surfaces as an error,
  * which is the bug class `.github/workflows/ci.yml` pins `TZ: UTC` over. CI
  * runs under UTC; these assertions must hold under any offset.
  */
@@ -67,7 +67,7 @@ describe('leaveTypeKey', () => {
   });
 
   it('falls back to `other` rather than dropping an unknown type', () => {
-    // The column is free text with no CHECK — an org can write anything.
+    // The column is free text with no CHECK, an org can write anything.
     expect(leaveTypeKey('sabbatical')).toBe('other');
     expect(leaveTypeKey('')).toBe('other');
     expect(leaveTypeKey(null)).toBe('other');
@@ -113,16 +113,16 @@ describe('formatLeaveRange', () => {
   });
 
   it('collapses the month when a range stays inside one', () => {
-    expect(formatLeaveRange('2025-06-09', '2025-06-13')).toBe('9 – 13 June 2025');
+    expect(formatLeaveRange('2025-06-09', '2025-06-13')).toBe('9-13 June 2025');
   });
 
   it('names both months when a range crosses one', () => {
-    expect(formatLeaveRange('2025-05-30', '2025-06-01')).toBe('30 May – 1 June 2025');
+    expect(formatLeaveRange('2025-05-30', '2025-06-01')).toBe('30 May-1 June 2025');
   });
 
   it('names both years when a range crosses one', () => {
     expect(formatLeaveRange('2025-12-30', '2026-01-02')).toBe(
-      '30 December 2025 – 2 January 2026',
+      '30 December 2025-2 January 2026',
     );
   });
 
@@ -139,8 +139,8 @@ describe('formatLeaveDays', () => {
   });
 
   it('renders a weekday span for a range', () => {
-    expect(formatLeaveDays('2025-05-30', '2025-06-01')).toBe('Fri – Sun');
-    expect(formatLeaveDays('2025-06-09', '2025-06-13')).toBe('Mon – Fri');
+    expect(formatLeaveDays('2025-05-30', '2025-06-01')).toBe('Fri-Sun');
+    expect(formatLeaveDays('2025-06-09', '2025-06-13')).toBe('Mon-Fri');
   });
 });
 

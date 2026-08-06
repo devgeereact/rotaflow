@@ -3,7 +3,7 @@
  *
  * `/app/staff` needs a real Supabase session and a seeded organisation, so the
  * `/staff-preview` routes render the same components against these fixed rows.
- * The numbers reproduce design/staff.png and design/Staff-Profile.png exactly —
+ * The numbers reproduce design/staff.png and design/Staff-Profile.png exactly,
  * do not "improve" them. Nothing here is used by the authenticated routes.
  */
 
@@ -194,11 +194,11 @@ export const DEMO_STAFF_DETAILS: StaffDetails = {
   status: 'active',
   skills: ['Nursing', 'Medication', 'Care Plan', 'Dementia Care', 'Safeguarding'],
   week: [
-    { weekday: 'Mon', date: '26 May', timeLabel: '07:00 – 15:00', tone: 'default' },
-    { weekday: 'Tue', date: '27 May', timeLabel: '07:00 – 15:00', tone: 'default' },
-    { weekday: 'Wed', date: '28 May', timeLabel: '15:00 – 23:00', tone: 'accent' },
-    { weekday: 'Thu', date: '29 May', timeLabel: '07:00 – 15:00', tone: 'default' },
-    { weekday: 'Fri', date: '30 May', timeLabel: '07:00 – 15:00', tone: 'default' },
+    { weekday: 'Mon', date: '26 May', timeLabel: '07:00-15:00', tone: 'default' },
+    { weekday: 'Tue', date: '27 May', timeLabel: '07:00-15:00', tone: 'default' },
+    { weekday: 'Wed', date: '28 May', timeLabel: '15:00-23:00', tone: 'accent' },
+    { weekday: 'Thu', date: '29 May', timeLabel: '07:00-15:00', tone: 'default' },
+    { weekday: 'Fri', date: '30 May', timeLabel: '07:00-15:00', tone: 'default' },
     { weekday: 'Sat', date: '31 May', timeLabel: null, tone: 'off' },
     { weekday: 'Sun', date: '1 Jun', timeLabel: null, tone: 'off' },
   ],
@@ -267,7 +267,7 @@ export const DEMO_PROFILE: StaffProfileData = {
     {
       id: 'shift-27',
       dateLabel: 'Today, 27 May',
-      timeLabel: '07:00 – 15:00',
+      timeLabel: '07:00-15:00',
       typeName: 'Morning Shift',
       typeTone: 'morning',
       locationName: 'Sunshine Care Home',
@@ -277,7 +277,7 @@ export const DEMO_PROFILE: StaffProfileData = {
     {
       id: 'shift-29',
       dateLabel: 'Thu, 29 May',
-      timeLabel: '07:00 – 15:00',
+      timeLabel: '07:00-15:00',
       typeName: 'Morning Shift',
       typeTone: 'morning',
       locationName: 'Sunshine Care Home',
@@ -287,7 +287,7 @@ export const DEMO_PROFILE: StaffProfileData = {
     {
       id: 'shift-30',
       dateLabel: 'Fri, 30 May',
-      timeLabel: '07:00 – 15:00',
+      timeLabel: '07:00-15:00',
       typeName: 'Morning Shift',
       typeTone: 'morning',
       locationName: 'Sunshine Care Home',
@@ -297,7 +297,7 @@ export const DEMO_PROFILE: StaffProfileData = {
     {
       id: 'shift-01',
       dateLabel: 'Sun, 1 June',
-      timeLabel: '15:00 – 23:00',
+      timeLabel: '15:00-23:00',
       typeName: 'Evening Shift',
       typeTone: 'evening',
       locationName: 'Sunshine Care Home',
@@ -333,7 +333,7 @@ export const DEMO_PROFILE: StaffProfileData = {
       id: 'act-3',
       kind: 'leave',
       title: 'Leave request approved',
-      detail: 'Annual Leave • 18–22 Aug 2025',
+      detail: 'Annual Leave • 18-22 Aug 2025',
       timeLabel: '20 May, 11:02',
     },
     {

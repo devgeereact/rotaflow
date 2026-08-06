@@ -14,7 +14,7 @@ import {
 } from '@/lib/leaveDemo';
 
 /**
- * Design-loop preview only — `/app/leave` needs a real Supabase session and a
+ * Design-loop preview only, `/app/leave` needs a real Supabase session and a
  * seeded organisation. This renders the same components against the fixtures
  * in `src/lib/leaveDemo.ts`, reproducing design/Leave.png. Not wired to any
  * service call; see design/.loop/leave-log.md.
@@ -101,7 +101,7 @@ export function LeavePreviewPage(): JSX.Element {
         onTabChange={setTab}
         onExport={noop}
         onRequestLeave={noop}
-        periodLabel="26 May – 1 June 2025"
+        periodLabel="26 May-1 June 2025"
         onPeriodClick={noop}
         selects={selects}
         onFilters={noop}

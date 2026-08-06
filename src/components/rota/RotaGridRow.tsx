@@ -6,7 +6,7 @@ import type { AiShiftSuggestion } from '@/services/aiRotaService';
 import type { Shift, ShiftType, StaffProfile } from '@/types';
 
 /**
- * The single column template every band of the grid shares — staff column,
+ * The single column template every band of the grid shares. Staff column,
  * seven day columns, then the trailing per-row "+" column. The header totals
  * and the daily-totals footer reuse it so all three stay aligned; changing the
  * shape in one place without the others is what knocks the grid out of true.
@@ -29,7 +29,7 @@ interface RotaGridRowProps {
   selectedShiftId: string | null;
   onAddShift: (staffProfileId: string | null, date: string) => void;
   onSelectShift: (shift: Shift) => void;
-  /** Omitted where the viewer cannot edit — that is what hides the chip's ×. */
+  /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
   onDeleteShift?: (shift: Shift) => void;
 }
 

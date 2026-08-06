@@ -4,7 +4,7 @@ import type { SupportAccessScope, SupportAccessSession } from '@/lib/supportAcce
 /**
  * Temporary support access.
  *
- * Reads are plain client queries — `support_access_select` in 0019 admits
+ * Reads are plain client queries, `support_access_select` in 0019 admits
  * platform staff to every row and a tenant's own members to their own, so the
  * same function serves the console list and the tenant-facing banner without
  * either needing a privileged path.
@@ -72,7 +72,7 @@ export async function listSupportAccessSessions(
 }
 
 /**
- * Open sessions against one organisation — what the tenant-facing banner asks.
+ * Open sessions against one organisation. What the tenant-facing banner asks.
  *
  * Filters on `revoked_at is null` and a future expiry in the query rather than
  * in JavaScript, so it uses 0019's partial index and returns nothing at all in
@@ -116,7 +116,7 @@ export async function requestSupportAccess(input: {
  * End a session early.
  *
  * Callable by the administrator who opened it, a platform owner or admin, or
- * an owner of the tenant being looked at — the last of those being the reason
+ * an owner of the tenant being looked at. The last of those being the reason
  * the tenant banner carries this button rather than only a countdown.
  */
 export async function revokeSupportAccess(

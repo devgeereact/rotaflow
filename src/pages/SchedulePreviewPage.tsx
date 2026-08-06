@@ -37,7 +37,7 @@ import type { ScheduleAnnouncement } from '@/components/schedule/ScheduleAnnounc
 import type { PublishEvent } from '@/components/schedule/PublishingHistoryCard';
 
 /**
- * Design-loop preview only — `/app/schedule` needs a real Supabase session and
+ * Design-loop preview only, `/app/schedule` needs a real Supabase session and
  * a published rota. This renders the same components against local mock data so
  * the screen can be screenshotted without auth or a database. Not wired to any
  * service call; see design/.loop/schedule-log.md.
@@ -81,7 +81,7 @@ function chipsFor(
         unfilled: false,
         confirmed: index === confirmedIndex,
         // This page reproduces a static reference PNG, in which every chip is
-        // coloured — so nothing here is "past", whatever today's date is.
+        // coloured, so nothing here is "past", whatever today's date is.
         timeState: 'future',
       },
     ];
@@ -149,7 +149,7 @@ const SELECTED_SHIFT: ShiftDetails = {
   colour: MORNING,
   locationName: 'Sunnyvale Care Home',
   dateLabel: 'Tue, 27 May 2025',
-  timeLabel: '07:00 – 15:00 (8h)',
+  timeLabel: '07:00-15:00 (8h)',
   published: true,
   slots: 7,
   skills: ['Nursing', 'Manual Handling'],
@@ -292,7 +292,7 @@ export function SchedulePreviewPage(): JSX.Element {
 
       <div className="mb-4">
         <ScheduleToolbar
-          periodLabel="26 May – 1 June 2025"
+          periodLabel="26 May-1 June 2025"
           locations={locations}
           locationId={locationId}
           onLocationChange={setLocationId}

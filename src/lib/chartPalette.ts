@@ -3,7 +3,7 @@
  *
  * ## Why this is not the rota grid's palette
  *
- * The obvious move was to reuse `shift-*` from `tailwind.config.ts` — the
+ * The obvious move was to reuse `shift-*` from `tailwind.config.ts`. The
  * product already has eight named hues and they look right together. Run
  * against the six checks, that set **fails** as a chart palette: clay and
  * violet sit at ΔE 14.1 for *normal* colour vision (below the 15 floor, so
@@ -19,21 +19,21 @@
  *
  * Colour follows the *entity*, never its rank: a filter that drops a series
  * must not repaint the survivors. Callers index by a stable key, never by
- * position in the filtered array. A ninth series is not a generated hue — fold
+ * position in the filtered array. A ninth series is not a generated hue. Fold
  * it into "Other" or facet the chart.
  *
- * ## CVD separation is in the 6–8 band, so secondary encoding is required
+ * ## CVD separation is in the 6-8 band, so secondary encoding is required
  *
  * Amber↔green is the worst adjacent pair (ΔE 7.9 protan in light, 9.5 deutan
  * in dark). That is legal *only* alongside a non-colour channel, so every
  * chart built on this palette ships a legend, and `ChartLegend` pairs each
- * swatch with its label — identity is never carried by colour alone.
+ * swatch with its label. Identity is never carried by colour alone.
  */
 
 export interface ChartSeriesColour {
   /** Light-mode step. */
   light: string;
-  /** Dark-mode step — chosen against the dark surface, not an automatic flip. */
+  /** Dark-mode step. Chosen against the dark surface, not an automatic flip. */
   dark: string;
 }
 
@@ -59,7 +59,7 @@ export const CHART_SERIES: readonly ChartSeriesColour[] = [
  * The colour for a series, by its position in the *unfiltered* series list.
  *
  * Wraps rather than throwing past the fifth entry so a chart cannot crash on
- * unexpected data — but wrapping means two series share a hue, which is why
+ * unexpected data, but wrapping means two series share a hue, which is why
  * callers must fold beyond five into "Other" rather than rely on this.
  */
 export function seriesColour(index: number, dark: boolean): string {

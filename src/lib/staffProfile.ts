@@ -41,7 +41,7 @@ export interface UpcomingShift {
   dateLabel: string;
   timeLabel: string;
   typeName: string;
-  /** Chip tint key — matches the rota shift-type tints. */
+  /** Chip tint key. Matches the rota shift-type tints. */
   typeTone: 'morning' | 'evening' | 'night';
   locationName: string;
   areaName: string;

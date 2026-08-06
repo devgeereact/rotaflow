@@ -5,11 +5,11 @@ import { cn } from '@/lib/utils';
 
 interface ScheduleStatCardProps {
   icon: LucideIcon;
-  /** Icon colour class, e.g. `text-primary` — the reference tiles are untinted. */
+  /** Icon colour class, e.g. `text-primary`. The reference tiles are untinted. */
   tint: string;
   label: string;
   value: string;
-  /** Small line under the value — a target, a delta, a breakdown. */
+  /** Small line under the value, a target, a delta, a breakdown. */
   hint?: ReactNode;
 }
 

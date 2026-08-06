@@ -93,7 +93,7 @@ export function DepartmentsTable({
                 <SiteTypePill label={row.type} tone={row.typeTone} />
               ) : (
                 <span className="text-sm text-content-muted dark:text-content-muted-dark">
-                  —
+                  ,{' '}
                 </span>
               )}
             </td>

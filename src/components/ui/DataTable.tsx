@@ -30,7 +30,7 @@ interface DataTableProps<Row, Key extends string> {
   columns: readonly DataTableColumn<Row, Key>[];
   rows: readonly Row[];
   rowKey: (row: Row) => string;
-  /** `null` is the collection's natural order — every header shows the neutral glyph. */
+  /** `null` is the collection's natural order. Every header shows the neutral glyph. */
   sort?: DataTableSort<Key> | null;
   onSortChange?: (sort: DataTableSort<Key>) => void;
   onRowClick?: (row: Row) => void;
@@ -50,7 +50,7 @@ const ALIGN = {
 /**
  * Column headings are labels, not headings.
  *
- * They were `text-sm font-semibold` in ink — the same weight and colour as the
+ * They were `text-sm font-semibold` in ink. The same weight and colour as the
  * data underneath, so on a forty-row table the header row read as just another
  * row. Small caps in the muted tone let the eye skip past them to the figures,
  * which is what a header row is for. docs/DESIGN.md caption scale.
@@ -69,7 +69,7 @@ const HEAD_LABEL =
  * console added seven more as raw `<table>` markup with no sorting, no
  * pagination and no empty state. They shared a *convention*, not a component,
  * so each one re-decided keyboard behaviour, `aria-sort`, the neutral sort
- * glyph and the zebra/hover treatment — and the console's seven simply
+ * glyph and the zebra/hover treatment, and the console's seven simply
  * skipped all of it.
  *
  * `locations/SiteTableHeader` was already most of the way here: it exports a
@@ -78,7 +78,7 @@ const HEAD_LABEL =
  * (rows, sort, onSortChange, selectedKey) as the surface, since nine screens
  * already speak it.
  *
- * Presentational only — no data fetching, no local sort state. The parent owns
+ * Presentational only, no data fetching, no local sort state. The parent owns
  * the sorted array, exactly as the existing tables do, so a page renders
  * identically from Supabase and from design-loop fixtures.
  */

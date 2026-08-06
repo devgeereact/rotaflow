@@ -13,11 +13,11 @@ import { FinalCta } from '@/components/marketing/FinalCta';
 import { HERO, TAGLINE } from '@/lib/marketing';
 
 /**
- * `/` — the public marketing homepage.
+ * `/`. The public marketing homepage.
  *
  * Copy is deliberately conservative: RotaFlow is a real, pre-launch product and
  * this is the first thing a prospective organisation sees. No fabricated stats,
- * testimonials or customer logos — none exist yet, and inventing them is both
+ * testimonials or customer logos. None exist yet, and inventing them is both
  * worse than a page that undersells slightly and a CAP Code breach on a live
  * site. `src/lib/marketing.ts` holds every word of copy and states the rule.
  */
@@ -30,9 +30,8 @@ export function HomePage(): JSX.Element {
         {/*
           Entrance animation is the CSS `fade-up` keyframe, not framer-motion.
           framer starts the element at `opacity: 0` and only reveals it once its
-          animation runs, so anything that stops that — a slow parse on a phone,
-          blocked JS, a crawler that does not execute it, or a headless render —
-          leaves the single most important block of copy on the site invisible.
+          animation runs, so anything that stops that, a slow parse on a phone,
+          blocked JS, a crawler that does not execute it, or a headless render. Leaves the single most important block of copy on the site invisible.
           That is exactly what happened here, and it was caught by screenshotting
           the page rather than by any gate.
 

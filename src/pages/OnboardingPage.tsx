@@ -161,7 +161,7 @@ function stepCopy(step: number): StepCopy {
       return {
         headline: "You're all set!",
         headlineAccent: 'Welcome to RotaFlow',
-        intro: "Your organisation is ready to go. Here's what you can do next.",
+        intro: 'Your organisation is ready. Three things worth doing first:',
         features: [
           {
             icon: BarChart3,
@@ -187,7 +187,7 @@ function stepCopy(step: number): StepCopy {
       };
     default:
       return {
-        headline: "Let's set up your",
+        headline: 'Set up your',
         headlineAccent: 'organisation',
         intro:
           'Create your organisation to start building shifts, teams and smarter schedules.',
@@ -217,7 +217,7 @@ function stepCopy(step: number): StepCopy {
   }
 }
 
-/** Top-right slot per step — only steps with a reference image get one. */
+/** Top-right slot per step, only steps with a reference image get one. */
 function stepAction(step: number, onBackToStep2: () => void): JSX.Element | null {
   if (step === 1) {
     return (
@@ -261,7 +261,7 @@ const EMPTY_LOCATION: AboutValues['locations'][number] = { name: '', address: ''
  * design/Onboarding-Complete.png), replacing the single-field create-only stub.
  *
  * The organisation is created at the end of step 1, not at the end of the
- * wizard: steps 2–4 need an org id to write against, and a user who abandons
+ * wizard: steps 2-4 need an org id to write against, and a user who abandons
  * midway still has a usable workspace rather than nothing. Every later step is
  * therefore an update, and every later step is skippable.
  */
@@ -296,7 +296,7 @@ export function OnboardingPage(): JSX.Element {
   const [plan, setPlan] = useState<PlanOption['value']>('professional');
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
 
-  // Someone who already belongs to an org has no business here — unless this
+  // Someone who already belongs to an org has no business here, unless this
   // wizard is the thing that just created it.
   useEffect(() => {
     if (!loading && memberships.length > 0 && orgId === null) {
@@ -427,7 +427,7 @@ export function OnboardingPage(): JSX.Element {
       if (failed > 0) {
         showError(`${failed} invitation${failed === 1 ? '' : 's'} could not be created.`);
       } else {
-        showSuccess('Invitations created — copy each link to send it.');
+        showSuccess('Invitations created. Copy each link to send it.');
       }
     } finally {
       setSubmitting(false);
@@ -458,7 +458,7 @@ export function OnboardingPage(): JSX.Element {
         showSuccess('Invitation link copied.');
       } catch (err) {
         reportError(err, { area: 'onboarding:copy-link' });
-        showError('Could not copy — select the link and copy it manually.');
+        showError('Could not copy. Select the link and copy it manually.');
       }
     },
     [showError, showSuccess],

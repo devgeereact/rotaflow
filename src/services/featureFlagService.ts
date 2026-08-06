@@ -7,8 +7,8 @@ export type FeatureFlagChange = Tables<'feature_flag_changes'>;
 /**
  * Feature flags (0022).
  *
- * Reads are open to every signed-in session — the tenant app has to know what
- * it may render — and every write is an RPC gated on the platform config
+ * Reads are open to every signed-in session. The tenant app has to know what
+ * it may render, and every write is an RPC gated on the platform config
  * roles. The history table is platform-staff only.
  */
 

@@ -4,7 +4,7 @@
  * Same split as `leaveRows`: everything that touches a Date, a timezone or a
  * Supabase row happens here, and the components render pre-formatted strings.
  * That is what lets the logic below be unit-tested without a database, and it
- * is why this module lives in `lib` rather than `services` — importing a
+ * is why this module lives in `lib` rather than `services`. Importing a
  * service pulls in the Supabase client, which needs a WebSocket Node 20 does
  * not have.
  */
@@ -17,7 +17,7 @@ import type { OvertimeRequest, StaffProfile } from '@/types';
  * enum, so the generated type is plain `string` and this narrows it.
  *
  * The four values are exactly what the constraint permits after
- * `0014_overtime_cancelled_status.sql` — 0002 created the column allowing only
+ * `0014_overtime_cancelled_status.sql`, 0002 created the column allowing only
  * the first three, which would have made the Withdraw control fail.
  *
  * The fallback is defensive rather than expected: nothing can currently write
@@ -77,7 +77,7 @@ export function formatOvertimeHours(hours: number): string {
   return `${h}h ${m}m`;
 }
 
-/** "Approved by you" / "Needs approval" — never invents a reviewer's name. */
+/** "Approved by you" / "Needs approval", never invents a reviewer's name. */
 function statusNote(
   status: OvertimeStatus,
   request: OvertimeRequest,
@@ -98,8 +98,8 @@ export interface BuildOvertimeRowsInput {
 }
 
 /**
- * Newest date first. A request whose staff profile is missing still renders —
- * with "Unknown staff member" — rather than vanishing: a silently dropped row
+ * Newest date first. A request whose staff profile is missing still renders,
+ * with "Unknown staff member", rather than vanishing: a silently dropped row
  * in an approval queue is a request nobody ever answers.
  */
 export function buildOvertimeRows({
@@ -144,7 +144,7 @@ export interface OvertimeSummary {
  * Totals for the metric row.
  *
  * Only approved and pending count towards hours. Rejected and withdrawn
- * requests are deliberately excluded — showing them in an hours total would
+ * requests are deliberately excluded. Showing them in an hours total would
  * overstate what the organisation is committed to paying.
  */
 export function summariseOvertime(rows: OvertimeRow[]): OvertimeSummary {

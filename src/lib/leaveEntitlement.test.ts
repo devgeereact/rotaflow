@@ -9,7 +9,7 @@ import type { LeaveRequest } from '@/types';
  *
  * The aggregate lives in `src/lib/leaveEntitlement.ts` rather than in
  * `leaveService.ts` precisely so this file can import it without constructing a
- * Supabase client — see that module's header.
+ * Supabase client. See that module's header.
  */
 
 let seq = 0;
@@ -93,7 +93,7 @@ describe('sumApprovedLeaveDays', () => {
     expect(total).toBe(0);
   });
 
-  it('is unaffected by DST — a week off is seven days in any season', () => {
+  it('is unaffected by DST, a week off is seven days in any season', () => {
     // Leave dates are 'YYYY-MM-DD', which parse as UTC midnight, so the day
     // arithmetic here is exact multiples of 24h regardless of local clocks.
     // This is the invariant that the schedule window helper got wrong.
@@ -129,7 +129,7 @@ describe('sumApprovedLeaveDays', () => {
   });
 
   it('never returns a negative for an inverted range', () => {
-    // Bad data — end before start. Clamped rather than subtracting from the
+    // Bad data. End before start. Clamped rather than subtracting from the
     // rest of the year's total.
     expect(
       sumApprovedLeaveDays([request('2026-06-19', '2026-06-15')], YEAR_START, YEAR_END),
@@ -145,7 +145,7 @@ describe('sumApprovedLeaveDays', () => {
     // than the part inside the window.
     //
     // So a person taking one week off across new year loses seven days from
-    // BOTH years' allowance — fourteen days for a seven-day holiday.
+    // BOTH years' allowance. Fourteen days for a seven-day holiday.
     //
     // Left as-is rather than silently changed: clamping is the obvious fix but
     // it alters every existing entitlement figure the moment it ships, and that

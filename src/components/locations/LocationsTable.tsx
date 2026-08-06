@@ -80,7 +80,7 @@ export function LocationsTable({
                 <SiteTypePill label={row.type} tone={row.typeTone} />
               ) : (
                 <span className="text-sm text-content-muted dark:text-content-muted-dark">
-                  —
+                  ,{' '}
                 </span>
               )}
             </td>
@@ -94,7 +94,7 @@ export function LocationsTable({
                   : 'text-content-muted dark:text-content-muted-dark',
               )}
             >
-              {row.region ?? '—'}
+              {row.region ?? '-'}
             </td>
 
             <td className={cn(CELL, NUMBER)}>{row.staff}</td>

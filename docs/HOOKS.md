@@ -1,7 +1,7 @@
 # Custom Hooks Specification
 
 Contracts for every reusable hook in `src/hooks`. Signatures here are the source
-of truth — implementations must match.
+of truth. Implementations must match.
 
 ## 1. `usePWAInstall`
 
@@ -29,7 +29,7 @@ export function useOnlineStatus(): boolean; // true when online
 ## 3. `useSupabaseAuth`
 
 `src/hooks/useSupabaseAuth.ts`
-Thin consumer of `AuthContext` — the single source of session truth. The provider
+Thin consumer of `AuthContext`. The single source of session truth. The provider
 (`src/context/AuthContext.tsx`) owns the listener; this hook exposes it.
 
 ```ts
@@ -51,7 +51,7 @@ Builds a transformed ImageKit URL (real-time resize + auto format/quality).
 interface ImageTransform {
   width?: number;
   height?: number;
-  quality?: number; // 1–100, default 80
+  quality?: number; // 1-100, default 80
   crop?: 'maintain_ratio' | 'force' | 'at_max';
 }
 export function useOptimizedImage(path: string, t?: ImageTransform): string;
@@ -79,7 +79,7 @@ export function useInngestDispatch(): UseInngestDispatch;
 ### 6. `useOrg`
 
 `src/hooks/useOrg.ts`
-Consumer of `OrgContext` — the active tenant and the caller's role within it.
+Consumer of `OrgContext`. The active tenant and the caller's role within it.
 
 ```ts
 type OrgRole = 'owner' | 'manager' | 'staff';
@@ -93,7 +93,7 @@ interface UseOrg {
   loading: boolean;
   // Whether the memberships query failed. See the rule below.
   loadFailed: boolean;
-  // Additive beyond the original spec — used by OnboardingPage and anywhere
+  // Additive beyond the original spec. Used by OnboardingPage and anywhere
   // that needs to force a re-fetch (e.g. after an invite is accepted).
   createOrg: (name: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -104,7 +104,7 @@ export function useOrg(): UseOrg;
 > **Rule: never treat `memberships: []` as "this user has no organisation"
 > without checking `loadFailed` first.** A failed query produces an empty list
 > too. Reading one as the other is what sent an existing owner to `/onboarding`
-> whenever the app was offline past the 5-minute API cache window — where they
+> whenever the app was offline past the 5-minute API cache window, where they
 > could create a duplicate organisation. `AppShell` and `OnboardingPage` both
 > check `loadFailed && memberships.length === 0` and offer a retry instead.
 
@@ -182,8 +182,7 @@ export function useToast(): UseToast;
 ```
 
 > **Rule: every user-initiated write reports its failure to the user, not just
-> to Sentry.** `reportError` alone leaves the user believing the action worked —
-> the rota builder silently dropped drag-and-drop shift assignments that way.
+> to Sentry.** `reportError` alone leaves the user believing the action worked, > the rota builder silently dropped drag-and-drop shift assignments that way.
 > Errors render with `role="alert"` and an 8s dwell; success uses `role="status"`.
 
 ### 11. `useRealtimeRefresh`
@@ -228,7 +227,7 @@ export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRef
 > deliberately ignored; `onChange` re-queries through the screen's normal
 > RLS-protected path. Realtime does apply RLS to `postgres_changes`, but DELETE
 > payloads carry only the primary key and cannot be filtered the way
-> INSERT/UPDATE are — so rendering a payload is the one way a row the viewer
+> INSERT/UPDATE are, so rendering a payload is the one way a row the viewer
 > could not otherwise read could reach the screen. Re-querying means the data
 > always arrives through a query the database has already authorised.
 
@@ -236,12 +235,11 @@ export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRef
 > never connects, every screen still loads and refetches exactly as before.
 > `connected` is exposed for diagnostics; no screen gates its rendering on it.
 
-Tables must also be in the `supabase_realtime` publication —
-`0012_realtime.sql`. Adding a table to `RealtimeTable` without adding it there
+Tables must also be in the `supabase_realtime` publication, `0012_realtime.sql`. Adding a table to `RealtimeTable` without adding it there
 silently produces a subscription that never fires.
 
 ## Conventions
 
 - Every hook is fully typed with an explicit return interface.
-- Hooks never read `import.meta.env` directly — they import from `@/lib/env`.
+- Hooks never read `import.meta.env` directly. They import from `@/lib/env`.
 - Side-effectful hooks clean up their listeners in the `useEffect` return.

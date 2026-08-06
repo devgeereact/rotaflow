@@ -13,7 +13,7 @@ const MIN_REASON = 5;
  * audit01 P0-2 was exactly this: five destructive actions sitting behind native
  * browser dialogs, all replaced with themed ones. A native prompt is unstyled,
  * unbranded, silently blocked in some contexts, and cannot show the caveat
- * below — which is the most important thing on this screen.
+ * below, which is the most important thing on this screen.
  *
  * ## What the caveat is doing here
  *
@@ -39,7 +39,7 @@ export function SuspendOrgModal({
   const [touched, setTouched] = useState(false);
 
   // Reopening must not show the previous attempt's text or its validation
-  // error — this is a fresh decision each time.
+  // error. This is a fresh decision each time.
   useEffect(() => {
     if (open) {
       setReason('');
@@ -91,7 +91,7 @@ export function SuspendOrgModal({
               role="alert"
               className="mt-1 text-xs text-danger"
             >
-              Give at least {MIN_REASON} characters — the organisation’s owner sees this.
+              Give at least {MIN_REASON} characters. The organisation’s owner sees this.
             </p>
           ) : (
             <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">

@@ -56,7 +56,7 @@ const FEATURES: AuthFeature[] = [
  * Carries an invite through the whole round trip. An invitee arriving from
  * `/invite/:token` gets their address pre-filled and locked, and every
  * redirect (email confirmation, magic link, OAuth) points back at the invite
- * rather than the dashboard — otherwise finishing sign-up strands them with no
+ * rather than the dashboard. Otherwise finishing sign-up strands them with no
  * way back to the invitation they were trying to accept.
  */
 export function SignupPage(): JSX.Element {
@@ -78,7 +78,7 @@ export function SignupPage(): JSX.Element {
   const requirements = evaluatePassword(password);
   const passwordValid = requirements.every((r) => r.met);
 
-  // OAuth/magic-link both bounce through Supabase and back — an invitee goes
+  // OAuth/magic-link both bounce through Supabase and back, an invitee goes
   // back to their invitation, everyone else goes straight into the app, not
   // the bare origin, or a signed-in user lands back on the marketing
   // homepage instead of the dashboard/onboarding.
@@ -122,7 +122,7 @@ export function SignupPage(): JSX.Element {
       }
       setMessage(
         inviteToken
-          ? 'Check your email to confirm your account — the link brings you straight back to this invitation.'
+          ? 'Check your email to confirm your account. The link brings you straight back to this invitation.'
           : 'Check your email to confirm your account.',
       );
     });
@@ -137,14 +137,14 @@ export function SignupPage(): JSX.Element {
       return Promise.resolve();
     }
     // shouldCreateUser is left at its default (true) here, unlike on
-    // /login — this is the signup page, so creating the account is the point.
+    // /login. This is the signup page, so creating the account is the point.
     return withBusy(async () => {
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: { emailRedirectTo: redirectTo },
       });
       if (otpError) throw otpError;
-      setMessage('Magic link sent — check your inbox.');
+      setMessage('Magic link sent. Check your inbox.');
     });
   };
 
@@ -293,7 +293,7 @@ export function SignupPage(): JSX.Element {
         {/* Naming what is outstanding, rather than leaving a dead button.
             The password rules above are a checklist someone reads once and
             then stops looking at, and nothing at all spoke for the two name
-            fields or a malformed address — so an incomplete form looked
+            fields or a malformed address, so an incomplete form looked
             exactly like a broken one. */}
         {blockingReason && !busy && (
           <p className="mt-2 text-center text-sm text-content-muted dark:text-content-muted-dark">

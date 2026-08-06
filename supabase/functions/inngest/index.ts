@@ -1,8 +1,8 @@
-// inngest — RotaFlow
+// inngest. RotaFlow
 //
-// Hosts RotaFlow's Inngest functions as a Supabase Edge Function — the
+// Hosts RotaFlow's Inngest functions as a Supabase Edge Function. The
 // documented architecture (CLAUDE.md §4.2: "the functions endpoint is
-// hosted on a Supabase Edge Function — never on cPanel"). Inngest Cloud has
+// hosted on a Supabase Edge Function, never on cPanel"). Inngest Cloud has
 // no dashboard "route event X to URL Y" webhook feature; functions are code
 // you host yourself, and Inngest discovers them by syncing this endpoint
 // (dashboard → Apps → sync app, pointed at this function's URL). Once
@@ -17,7 +17,7 @@
 //
 // Auth: deployed with --no-verify-jwt. Inngest's own request signing
 // (via INNGEST_SIGNING_KEY) is what authenticates calls into this function
-// — there is no end-user session, so Supabase's gateway-level JWT check
+//. There is no end-user session, so Supabase's gateway-level JWT check
 // would only ever reject Inngest's real requests. The outbound call to
 // send-notification still goes through Supabase's normal gateway, so it
 // carries SUPABASE_SERVICE_ROLE_KEY as its Authorization header.
@@ -25,14 +25,14 @@
 // Deploy: `supabase functions deploy inngest --no-verify-jwt`.
 // Secrets: `supabase secrets set INNGEST_EVENT_KEY=... INNGEST_SIGNING_KEY=...`
 // (same values already in .env). NOTIFICATION_FUNCTION_SECRET must already
-// be set — see send-notification's header.
+// be set. See send-notification's header.
 //
 // After deploying: Inngest dashboard → Apps → Sync new app, pointed at
 // <SUPABASE_URL>/functions/v1/inngest
 //
 // VERIFICATION STATUS (2026-08-01, docs/audit01.md P0-3)
 //
-// Deployed and ACTIVE (version 1, verify_jwt: false — correct, since Inngest
+// Deployed and ACTIVE (version 1, verify_jwt: false. Correct, since Inngest
 // cannot present a Supabase JWT). The thing that matters given the platform
 // gate is off is verified against the live project: an unsigned POST to
 // /functions/v1/inngest returns **401 {"message":"Unauthorized"}**, so the
@@ -64,7 +64,7 @@ interface NotifyEventData {
 }
 
 /**
- * One function per event name dispatched by useInngestDispatch — all four
+ * One function per event name dispatched by useInngestDispatch. All four
  * (leave/reviewed, rota/published, swap/reviewed, announcement/published)
  * already carry the exact shape send-notification expects.
  */

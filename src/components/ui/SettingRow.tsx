@@ -18,7 +18,7 @@ interface SettingRowProps {
  *
  * The console reference lays every settings tab out this way rather than as a
  * form of stacked labelled inputs, and the reason is scanning. A settings tab
- * is read far more often than it is edited — "is registration open on prod?" —
+ * is read far more often than it is edited, "is registration open on prod?",
  * and a column of controls at a predictable right edge answers that in one
  * pass, where labels above inputs make the reader zig-zag.
  *

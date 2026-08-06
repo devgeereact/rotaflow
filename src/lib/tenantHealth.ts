@@ -1,7 +1,7 @@
 /**
  * Tenant activity and account health, from columns that exist.
  *
- * Both of these were placeholder constants — "12,489 active users today" beside
+ * Both of these were placeholder constants, "12,489 active users today" beside
  * a real total of four, and an organisation-health split summing to 1,284 for
  * eight tenants. Neither could be computed at the time. Two of them can now:
  * 0023 added `organisations.last_activity_at`, maintained by
@@ -9,7 +9,7 @@
  * real.
  *
  * What is still not measurable is *user* activity. Nothing records a per-person
- * session, so "active users today" is not derivable at all — the tile it fed
+ * session, so "active users today" is not derivable at all. The tile it fed
  * now reports tenants rather than people, which is a different and true thing.
  */
 

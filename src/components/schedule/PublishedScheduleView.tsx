@@ -34,7 +34,7 @@ import type { TabItem } from '@/components/ui/Tabs';
 export interface ScheduleSummary {
   totalStaff: number;
   totalShifts: number;
-  /** Mean daily coverage, 0–100. `null` when the period has no shifts. */
+  /** Mean daily coverage, 0-100. `null` when the period has no shifts. */
   averageCoverage: number | null;
   scheduledHours: string;
   /** Hours beyond contracted `weekly_hours`, week view only. */
@@ -82,7 +82,7 @@ interface PublishedScheduleViewProps {
 }
 
 /**
- * The manager's published-rota screen — design/published-schedule.png,
+ * The manager's published-rota screen. Design/published-schedule.png,
  * design/live-schedule.png and design/Schedule-dashboard.png merged into one
  * view (see design/.loop/schedule-log.md).
  *
@@ -94,7 +94,7 @@ export function PublishedScheduleView(props: PublishedScheduleViewProps): JSX.El
 
   return (
     <div>
-      {/* Same workspace as the builder — see WorkspaceHeader. The Live badge
+      {/* Same workspace as the builder. See WorkspaceHeader. The Live badge
           rides in the actions slot so it stays beside the title. */}
       <WorkspaceHeader
         title="Rota"
@@ -151,7 +151,7 @@ export function PublishedScheduleView(props: PublishedScheduleViewProps): JSX.El
               tint="text-primary"
               label="Average Coverage"
               value={
-                summary.averageCoverage === null ? '—' : `${summary.averageCoverage}%`
+                summary.averageCoverage === null ? '-' : `${summary.averageCoverage}%`
               }
               hint="Slots filled"
             />
@@ -166,7 +166,7 @@ export function PublishedScheduleView(props: PublishedScheduleViewProps): JSX.El
               icon={Clock}
               tint="text-warning"
               label="Overtime (This Week)"
-              value={summary.overtime ?? '—'}
+              value={summary.overtime ?? '-'}
               hint={
                 summary.overtime === null ? 'Week view only' : 'Beyond contracted hours'
               }

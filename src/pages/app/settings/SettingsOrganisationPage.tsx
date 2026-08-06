@@ -27,7 +27,7 @@ import {
 } from '@/components/onboarding/constants';
 
 /**
- * `/app/settings/organisation` — design/SettingsOrganisation.png.
+ * `/app/settings/organisation`. Design/SettingsOrganisation.png.
  *
  * This replaces the flat `/app/settings` route, which held only the name and
  * the five onboarding "about" fields. The reference adds the contact block
@@ -37,10 +37,10 @@ import {
  *
  * Two cards on the reference are deliberately **not** built:
  *
- * - **Industry Pack** — templates, compliance rules and settings bundled per
+ * - **Industry Pack**. Templates, compliance rules and settings bundled per
  *   industry. There is no packs table, no template rows and no installer. A
  *   card reading "Care Homes · Active" would be a label over nothing.
- * - **Platform Support Access** — granting RotaFlow staff temporary access to
+ * - **Platform Support Access**. Granting RotaFlow staff temporary access to
  *   a tenant. That is a support-impersonation feature: it needs an
  *   access-grant table, an expiry job, and an audit event per grant, and it
  *   hands a third party a customer's staff PII. Not something to mock up.
@@ -342,8 +342,7 @@ export function SettingsOrganisationPage(): JSX.Element {
         </SettingsSection>
       )}
 
-      {/* Sticky so the Save control is reachable without scrolling back up —
-          this page is two screens tall on a laptop. */}
+      {/* Sticky so the Save control is reachable without scrolling back up. This page is two screens tall on a laptop. */}
       <div className="sticky bottom-0 -mx-1 flex justify-end gap-3 border-t border-surface-border bg-background/90 px-1 py-4 backdrop-blur dark:border-surface-border-dark dark:bg-background-dark/90">
         <Button onClick={() => void handleSave()} disabled={saving || !name.trim()}>
           {saving ? 'Saving…' : 'Save changes'}

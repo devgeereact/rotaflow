@@ -5,14 +5,14 @@ import type { Shift } from '@/types';
  *
  * NEW_STRUCTURE §41 requires the builder to validate overlapping shifts and to
  * refuse to "silently allow invalid assignments". Before this module, every
- * write path — add, drag, paste, copy-previous-week, auto-fill — called
+ * write path. Add, drag, paste, copy-previous-week, auto-fill, called
  * `createShift` unconditionally, so running "Copy previous week" onto a week
  * that already had a rota doubled every shift in it. That is exactly how the
  * live demo data ended up with each person rostered twice a day.
  *
  * The rule is deliberately narrow: two shifts clash only when the *same named
  * person* is on both and the time ranges intersect. Open (unassigned) shifts
- * never clash — several may legitimately sit in the same window awaiting cover,
+ * never clash. Several may legitimately sit in the same window awaiting cover,
  * which is what a shortage looks like.
  */
 
@@ -26,8 +26,8 @@ export interface ShiftWindow {
 
 /**
  * The fields a clash check actually reads. Kept narrower than `Shift` so
- * callers holding not-yet-inserted rows — the AI assistant checking its own
- * batch, for one — can take part without inventing a full database row.
+ * callers holding not-yet-inserted rows. The AI assistant checking its own
+ * batch, for one. Can take part without inventing a full database row.
  */
 export interface ShiftLike {
   id: string;
@@ -106,7 +106,7 @@ export function findClashingShift<T extends ShiftLike>(
 
 /**
  * Every pair of overlapping shifts already sitting in a set, keyed by the
- * later shift's id. Used to flag a rota that is *already* double-booked —
+ * later shift's id. Used to flag a rota that is *already* double-booked,
  * the guard above only stops new ones being written.
  */
 export function findExistingClashes<T extends ShiftLike>(shifts: readonly T[]): T[] {

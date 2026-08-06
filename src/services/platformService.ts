@@ -16,7 +16,7 @@ import type { AuditLog, Organisation, Profile, Subscription } from '@/types';
  * The consequence worth stating plainly: **for anyone who is not a platform
  * admin, every function here returns an empty list rather than an error.** RLS
  * filters rows, it does not raise. A screen that renders "no organisations"
- * for a non-admin is therefore doing exactly the right thing — and
+ * for a non-admin is therefore doing exactly the right thing, and
  * `RequirePlatformAdmin` exists so nobody ever sees that and mistakes it for a
  * bug.
  */
@@ -98,8 +98,8 @@ export async function countMembershipsByOrg(): Promise<Map<string, number>> {
  * Locations per organisation, across every tenant.
  *
  * Reads one column and tallies client-side, exactly as `countMembershipsByOrg`
- * does, because PostgREST has no GROUP BY. That is affordable here — a location
- * is a building, so the row count is small even across a large deployment — and
+ * does, because PostgREST has no GROUP BY. That is affordable here, a location
+ * is a building, so the row count is small even across a large deployment, and
  * it is not affordable for shifts, which is why there is no equivalent for
  * those.
  *
@@ -118,7 +118,7 @@ export async function countLocationsByOrg(): Promise<Map<string, number>> {
   return counts;
 }
 
-/** Published rotas across every tenant — the platform-wide total. */
+/** Published rotas across every tenant. The platform-wide total. */
 export async function countPublishedRotas(): Promise<number> {
   const { count, error } = await supabase
     .from('rotas')
@@ -135,7 +135,7 @@ export async function countPublishedRotas(): Promise<number> {
  *
  * It used to write `is_platform_admin` directly, and it did not work. `profiles`
  * RLS was still 0001's own-row-only policy, so the update matched zero rows and
- * PostgREST returned 204 with no error — a control that reported success and
+ * PostgREST returned 204 with no error, a control that reported success and
  * changed nothing. 0015 fixes the read side and closes the write side entirely:
  * the UPDATE privilege on that column no longer exists for `authenticated`, so
  * the old call would now fail loudly rather than silently.

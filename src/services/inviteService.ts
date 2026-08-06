@@ -13,13 +13,13 @@ import type { Invite, MembershipRole } from '@/types';
  * `accept_invite()` instead (see supabase/migrations/0006_invites.sql).
  *
  * Only a sha256 hash of the token is stored. `createInvite` returns the raw
- * token exactly once — if it is not put into the link there and then, it is
+ * token exactly once, if it is not put into the link there and then, it is
  * unrecoverable and the invite has to be reissued.
  */
 
 export interface CreatedInvite {
   inviteId: string;
-  /** Raw token. Returned once, never persisted — put it straight into the link. */
+  /** Raw token. Returned once, never persisted. Put it straight into the link. */
   token: string;
   expiresAt: string;
   /** Ready-to-send URL for the invitee. */
@@ -38,7 +38,7 @@ export interface InvitePreview {
  *
  * Built from the current origin, so an invite minted on localhost is
  * acceptable on localhost. It previously preferred `VITE_APP_URL` despite a
- * comment claiming it fell back to the origin in dev — it could not, because
+ * comment claiming it fell back to the origin in dev. It could not, because
  * that fallback only fires when the variable is empty (see lib/appOrigin.ts).
  * In production the two are the same value; in dev only one of them works.
  */
@@ -46,7 +46,7 @@ export function buildAcceptUrl(token: string): string {
   return appUrlFor(`/invite/${token}`);
 }
 
-/** Mint an invite. Owners/managers only — enforced in the database. */
+/** Mint an invite. Owners/managers only. Enforced in the database. */
 export async function createInvite(
   orgId: string,
   email: string,
@@ -115,7 +115,7 @@ export async function listPendingInvites(orgId: string): Promise<Invite[]> {
 }
 
 /**
- * Revoke an invite. Soft — the row stays for audit, and the partial unique
+ * Revoke an invite. Soft. The row stays for audit, and the partial unique
  * index treats it as no longer live so the address can be re-invited.
  */
 export async function revokeInvite(inviteId: string): Promise<void> {

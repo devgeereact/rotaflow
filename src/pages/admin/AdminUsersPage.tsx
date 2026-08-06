@@ -43,12 +43,12 @@ import type { PlatformRole, Profile } from '@/types';
 type UserSortKey = 'account' | 'organisations' | 'role' | 'access' | 'status' | 'login';
 
 /**
- * `/admin/users` — NEW_STRUCTURE §34's platform users.
+ * `/admin/users`. NEW_STRUCTURE §34's platform users.
  *
  * ## This screen did not work before 0015
  *
  * `profiles` RLS was still 0001's own-row-only policy, so `listAllProfiles()`
- * returned exactly one row — the reader's own — and the toggle wrote to zero
+ * returned exactly one row. The reader's own, and the toggle wrote to zero
  * rows and got back a 204 with no error. It rendered a one-account table and a
  * button that reported success and changed nothing. 0015 widens the read to
  * platform administrators and moves the write onto RPCs that enforce their
@@ -56,7 +56,7 @@ type UserSortKey = 'account' | 'organisations' | 'role' | 'access' | 'status' | 
  *
  * The one write here is still the most dangerous switch in the product: it
  * grants read access to every tenant's data. So it confirms, it says what it
- * grants in plain words, and it refuses to strand the platform — a rule now
+ * grants in plain words, and it refuses to strand the platform, a rule now
  * held in `revoke_platform_role` as well as here, because a guard that lives
  * only in the browser is not a guard.
  */
@@ -210,7 +210,7 @@ export function AdminUsersPage(): JSX.Element {
           ? `Grant platform administrator to ${who}?`
           : `Remove platform administrator from ${who}?`,
         message: granting
-          ? 'They will be able to read data belonging to every organisation on RotaFlow, including staff records and rotas. They are granted the Platform Support role — the most limited one — and can be promoted from the administrators roster. Grant this only to people who support the platform itself.'
+          ? 'They will be able to read data belonging to every organisation on RotaFlow, including staff records and rotas. They are granted the Platform Support role. The most limited one, and can be promoted from the administrators roster. Grant this only to people who support the platform itself.'
           : 'They will lose access to the platform administration area and to other organisations’ data. Their own organisation membership is unchanged.',
         confirmLabel: granting ? 'Grant access' : 'Remove access',
         tone: 'danger',
@@ -273,7 +273,7 @@ export function AdminUsersPage(): JSX.Element {
                 to={`/admin/users/${profile.id}`}
                 className="block truncate font-medium text-content hover:text-primary dark:text-content-dark"
               >
-                {profile.full_name ?? '—'}
+                {profile.full_name ?? '-'}
                 {profile.id === user?.id && (
                   <span className="ml-1.5 text-xs font-normal text-content-muted dark:text-content-muted-dark">
                     (you)
@@ -318,7 +318,7 @@ export function AdminUsersPage(): JSX.Element {
           return roles.length ? (
             <Badge tone="neutral">{roles[0]}</Badge>
           ) : (
-            <span className="text-content-muted dark:text-content-muted-dark">—</span>
+            <span className="text-content-muted dark:text-content-muted-dark">-</span>
           );
         },
       },
@@ -330,7 +330,7 @@ export function AdminUsersPage(): JSX.Element {
         cell: (profile) => {
           if (!profile.is_platform_admin) {
             return (
-              <span className="text-content-muted dark:text-content-muted-dark">—</span>
+              <span className="text-content-muted dark:text-content-muted-dark">-</span>
             );
           }
           const role = roleByUser.get(profile.id);
@@ -407,7 +407,7 @@ export function AdminUsersPage(): JSX.Element {
               </Link>
               {/* The reference's second action is "Reset". Granting or removing
                   platform access is the dangerous switch this screen actually
-                  owns, so that is what sits here — a password reset would need
+                  owns, so that is what sits here, a password reset would need
                   the Auth Admin API, which a static client cannot call. */}
               <button
                 type="button"
@@ -569,7 +569,7 @@ export function AdminUsersPage(): JSX.Element {
           </Card>
 
           {/* These columns render, so the notice has to say they are invented
-              rather than that they are missing — the previous wording said
+              rather than that they are missing. The previous wording said
               "none is shown", which stopped being true the moment placeholders
               filled them in. */}
           <p className="text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
@@ -578,7 +578,7 @@ export function AdminUsersPage(): JSX.Element {
             </span>{' '}
             Active, Inactive 90 days, Unverified and Suspended, plus the Status, MFA and
             Last login columns. All of those live in <code>auth.users</code>, which is
-            readable only from a service-role Edge Function and not from this client — see{' '}
+            readable only from a service-role Edge Function and not from this client. See{' '}
             <code>src/lib/adminOverviewDemo.ts</code>. Accounts, organisations,
             organisation roles and platform roles are real.
           </p>

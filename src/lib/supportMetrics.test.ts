@@ -134,6 +134,6 @@ describe('formatMinutes', () => {
   });
 
   it('is an em dash when there is nothing to measure', () => {
-    expect(formatMinutes(null)).toBe('—');
+    expect(formatMinutes(null)).toBe('-');
   });
 });

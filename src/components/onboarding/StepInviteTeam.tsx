@@ -23,7 +23,7 @@ export interface StagedInvite {
   role: MembershipRole;
   /**
    * Department/location are staged locally for the reviewer's own planning
-   * only — `createInvite` (src/services/inviteService.ts) takes just
+   * only, `createInvite` (src/services/inviteService.ts) takes just
    * org/email/role, and the `invites` table has no columns for either yet.
    * Shown in the review table below to match design/Team-onboarding.png, but
    * not persisted; a future migration would be needed to actually save them.
@@ -93,7 +93,7 @@ export function StepInviteTeam({
       .filter(Boolean);
     if (parsed.length === 0) return;
 
-    // Anything malformed is held back rather than staged — it would only be
+    // Anything malformed is held back rather than staged. It would only be
     // rejected later by create_invite's regex, after the wizard had moved on,
     // where the failure is invisible.
     const [valid, invalid] = parsed.reduce<[string[], string[]]>(
@@ -177,8 +177,8 @@ export function StepInviteTeam({
               {invalidCount > 0 && (
                 <p className="mt-1 text-xs text-danger" role="alert">
                   {invalidCount === 1
-                    ? "That address doesn't look valid — it's been left above so you can correct it."
-                    : `${invalidCount} addresses don't look valid — they've been left above so you can correct them.`}
+                    ? "That address doesn't look valid. It's been left above so you can correct it."
+                    : `${invalidCount} addresses don't look valid. They've been left above so you can correct them.`}
                 </p>
               )}
             </div>
@@ -306,10 +306,10 @@ export function StepInviteTeam({
                         </span>
                       </td>
                       <td className="px-4 py-3 text-content-muted dark:text-content-muted-dark">
-                        {invite.department ?? '—'}
+                        {invite.department ?? '-'}
                       </td>
                       <td className="px-4 py-3 text-content-muted dark:text-content-muted-dark">
-                        {invite.location ?? '—'}
+                        {invite.location ?? '-'}
                       </td>
                       <td className="px-4 py-3">
                         {invite.error ? (

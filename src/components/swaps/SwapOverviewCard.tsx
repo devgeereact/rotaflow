@@ -15,7 +15,7 @@ const SIZE = 104;
 const STROKE = 14;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-// A 2px surface gap between adjacent segments — without it neighbouring arcs
+// A 2px surface gap between adjacent segments, without it neighbouring arcs
 // read as one continuous band.
 const GAP = 2;
 

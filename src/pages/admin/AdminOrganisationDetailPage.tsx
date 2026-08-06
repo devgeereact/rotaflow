@@ -67,7 +67,7 @@ type Tab =
 
 /**
  * The console reference lists ten tabs. Nine are here; the tenth, Activity, is
- * not — a tenant activity timeline would have to come from `audit_logs`, which
+ * not, a tenant activity timeline would have to come from `audit_logs`, which
  * still has essentially one writer, so it would show a couple of rows and imply
  * nothing else had happened. Stated on the Data tab rather than shown empty.
  */
@@ -103,7 +103,7 @@ interface Detail {
 }
 
 /**
- * `/admin/organisations/:organisationId` — one tenant, in depth.
+ * `/admin/organisations/:organisationId`, one tenant, in depth.
  *
  * Tabs are `PanelTabs` (state) rather than `Tabs` (routes): the sections swap
  * content for one already-addressed organisation, and minting six routes per
@@ -113,7 +113,7 @@ interface Detail {
  * ## The one write here
  *
  * Suspend and reactivate, and both are careful about what they claim.
- * `organisations.status` is read by no RLS policy — see the header of 0017 — so
+ * `organisations.status` is read by no RLS policy. See the header of 0017, so
  * suspending a customer does not stop their staff signing in or clocking in.
  * The screen says exactly that, in the confirm dialog and beside the badge,
  * because a control that looks like a lockout and is not one is worse than no
@@ -146,7 +146,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // In the URL rather than in component state, so a link can point at a
-  // particular tab — "see the audit tab on this tenant" is a message people
+  // particular tab, "see the audit tab on this tenant" is a message people
   // send, and it was unlinkable before.
   const [params, setParams] = useSearchParams();
   const requestedTab = params.get('tab');
@@ -296,7 +296,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             className="block min-w-0 hover:underline"
           >
             <p className="truncate font-medium text-content dark:text-content-dark">
-              {row.fullName ?? '—'}
+              {row.fullName ?? '-'}
             </p>
             <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
               {row.email ?? 'No email recorded'}
@@ -373,7 +373,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
 
   const { organisation: org } = detail;
   const status = (org.status as OrganisationStatus) ?? 'active';
-  // The tenant's own owner, not a platform administrator — this is who a
+  // The tenant's own owner, not a platform administrator. This is who a
   // support conversation actually starts with.
   const owner = detail.members.find((m) => m.role === 'owner') ?? null;
 
@@ -444,9 +444,9 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             )}
             {/* The honest caveat, on screen and not only in the migration. */}
             <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
-              This is a billing and support state. It does not block access — staff at
-              this organisation can still sign in, view rotas and clock in. Enforcing a
-              lockout requires a change to row-level security that has not been made.
+              This is a billing and support state. It does not block access. Staff at this
+              organisation can still sign in, view rotas and clock in. Enforcing a lockout
+              requires a change to row-level security that has not been made.
             </p>
           </Card>
         )}
@@ -513,7 +513,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                   <Row label="Created">
                     {new Date(org.created_at).toLocaleDateString('en-GB')}
                   </Row>
-                  {/* Everything below is placeholder — `organisations` records
+                  {/* Everything below is placeholder, `organisations` records
                       none of it. Chipped rather than footnoted, so a reader
                       scanning the column cannot mistake one for the other. */}
                   {DEMO_ORG_PROFILE.map((row) => (
@@ -644,7 +644,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             )}
             <p className="mt-4 border-t border-surface-border pt-4 text-sm text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
               No payment provider is integrated, so there are no invoices, payments or
-              amounts to show here — <code>subscriptions</code> records plan state only.
+              amounts to show here, <code>subscriptions</code> records plan state only.
             </p>
           </Card>
         )}
@@ -747,7 +747,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                   {org.support_access_allowed ? 'permitted' : 'refused'}
                 </span>{' '}
                 by this organisation. A tenant can withdraw consent, and the request form
-                honours it — the toggle belongs to the customer, not to the console.
+                honours it. The toggle belongs to the customer, not to the console.
               </p>
             </Panel>
           </div>
@@ -762,7 +762,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                   <Field label="Port" value={String(detail.smtp.smtp_port)} />
                   <Field label="Username" value={detail.smtp.smtp_user} />
                   <Field label="From address" value={detail.smtp.from_email} />
-                  <Field label="From name" value={detail.smtp.from_name ?? '—'} />
+                  <Field label="From name" value={detail.smtp.from_name ?? '-'} />
                   <Field
                     label="Configured"
                     value={new Date(detail.smtp.updated_at).toLocaleDateString('en-GB')}
@@ -774,7 +774,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                   the platform sender.
                 </p>
               )}
-              {/* The password is not merely hidden here — the view this reads,
+              {/* The password is not merely hidden here. The view this reads,
                   `org_smtp_settings_safe`, omits the column, so the console
                   cannot show it even by accident. */}
               <p className="mt-3 text-xs text-content-muted dark:text-content-muted-dark">
@@ -787,7 +787,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             <Panel title="Other integrations">
               <p className="text-sm text-content-muted dark:text-content-muted-dark">
                 SMTP is the only per-organisation integration this deployment has.
-                Payroll, HR, calendar and identity connectors are not built — there are no
+                Payroll, HR, calendar and identity connectors are not built. There are no
                 tables holding a connection, a sync state or a failure count, so there is
                 nothing here to report on rather than a list of connectors showing a green
                 tick for something that does not run.

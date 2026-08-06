@@ -1,14 +1,14 @@
 import { env } from '@/lib/env';
 
 /**
- * The origin to send a user back to after they leave the app and return —
+ * The origin to send a user back to after they leave the app and return,
  * OAuth, magic links, email confirmation, password reset, invitations.
  *
  * ## Why this is the browser's origin and not `VITE_APP_URL`
  *
  * Every one of these flows was written as `env.appUrl || window.location.origin`,
  * which reads like "the configured URL, falling back to wherever we are" and
- * behaves like "the configured URL, always" — the fallback only fires when
+ * behaves like "the configured URL, always". The fallback only fires when
  * `VITE_APP_URL` is *empty*, and it never is, because `.env.example` ships it
  * and every real `.env` copies it.
  *

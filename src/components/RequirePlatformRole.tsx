@@ -16,7 +16,7 @@ import type { PlatformRole } from '@/types';
  * `RequirePlatformAdmin` is the outer gate on the whole area: may you be here
  * at all. This is the inner one: a platform *support* administrator belongs in
  * the console and belongs nowhere near billing or release flags. Both are
- * needed, and they read different sources — the outer one reads
+ * needed, and they read different sources. The outer one reads
  * `profiles.is_platform_admin` (the flag 0002's RLS helpers fold in), this one
  * reads `platform_admins.role` via `my_platform_role()`.
  *
@@ -30,7 +30,7 @@ import type { PlatformRole } from '@/types';
  * ## Degrading when the role cannot be read
  *
  * `platformRole` is `null` both for "holds no platform role" and for "the
- * grant could not be read" — `OrgContext` swallows that failure deliberately
+ * grant could not be read", `OrgContext` swallows that failure deliberately
  * so a missing RPC cannot blank the tenant session. Null therefore denies:
  * for a permission check, unknown must mean no.
  */

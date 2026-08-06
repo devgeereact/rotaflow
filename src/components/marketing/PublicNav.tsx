@@ -19,7 +19,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
  * nothing happened.
  *
  * The mobile menu is a real dialog: focus moves into it, Escape closes it and
- * Tab is trapped — the same treatment `Sidebar` gives its drawer. A nav that
+ * Tab is trapped. The same treatment `Sidebar` gives its drawer. A nav that
  * traps a keyboard user is the kind of thing a click-through test never finds.
  */
 export function PublicNav(): JSX.Element {

@@ -52,7 +52,7 @@ import type {
 
 /**
  * The `clock_events.type` column is `text` + a check constraint, not a
- * Postgres enum, so the generated `ClockEvent['type']` is plain `string` —
+ * Postgres enum, so the generated `ClockEvent['type']` is plain `string`,
  * too wide to index the lookups below safely. This is the app's own narrower
  * view of that same constraint.
  */
@@ -101,18 +101,18 @@ function nameById<T extends { id: string }>(
 }
 
 /**
- * `/app/clock` — the live clock-in screen, matching design/clockin.png.
+ * `/app/clock`. The live clock-in screen, matching design/clockin.png.
  *
  * Everything on it is computed from real rows: the shift and its break from
  * `shifts`, the day's schedule from the same, recent activity and both weeks'
  * hours from `clock_events` paired through `@/lib/hours`. The mapping lives in
  * `@/lib/clockRows` so `/clockin-preview` drives the identical component tree
- * from fixtures — the design loop screenshots what actually ships.
+ * from fixtures. The design loop screenshots what actually ships.
  *
- * GPS + manual only; QR and PIN are deferred — see `ClockActionPane`.
+ * GPS + manual only; QR and PIN are deferred. See `ClockActionPane`.
  *
  * The offline path is the point of this screen existing in Phase 5: a failed
- * insert — network genuinely down, not a server rejection — queues via
+ * insert. Network genuinely down, not a server rejection, queues via
  * useSyncQueue's 'clock' kind instead of failing the action outright.
  */
 export function ClockInPage(): JSX.Element {
@@ -133,8 +133,8 @@ export function ClockInPage(): JSX.Element {
   const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
 
   // The hero clock ticks every second, exactly as the reference shows it. Held
-  // in state rather than read inline so every derived label — the countdown
-  // pill, the time-window caption, "Today" — re-renders with it instead of
+  // in state rather than read inline so every derived label. The countdown
+  // pill, the time-window caption, "Today". Re-renders with it instead of
   // going stale on a screen someone leaves open across their whole shift.
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
@@ -157,7 +157,7 @@ export function ClockInPage(): JSX.Element {
     void (async () => {
       try {
         // One window covering last week, this week and today, partitioned in
-        // memory below — one range query rather than three overlapping ones.
+        // memory below, one range query rather than three overlapping ones.
         const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
         const fromIso = subWeeks(weekStart, 1).toISOString();
         const toIso = addWeeks(weekStart, 1).toISOString();
@@ -243,7 +243,7 @@ export function ClockInPage(): JSX.Element {
       schedule: buildTodaySchedule(todayShifts, lookups, now),
       activity: buildRecentActivity(data.events, now),
       weekly: {
-        periodLabel: `${format(weekStart, 'd MMM')} – ${format(addDays(weekStart, 6), 'd MMM yyyy')}`,
+        periodLabel: `${format(weekStart, 'd MMM')}, ${format(addDays(weekStart, 6), 'd MMM yyyy')}`,
         stats: thisWeek.stats,
         completedPercent: thisWeek.completedPercent,
         progressLabel: thisWeek.progressLabel,
@@ -307,7 +307,7 @@ export function ClockInPage(): JSX.Element {
         if (!online) {
           await enqueue('clock', input);
           // Reflects the action locally so the button and status update
-          // immediately — the row does not exist in Postgres until the outbox
+          // immediately. The row does not exist in Postgres until the outbox
           // flushes, so this is a client-only optimistic event, never read back
           // from the server.
           const stamp = new Date().toISOString();
@@ -325,7 +325,7 @@ export function ClockInPage(): JSX.Element {
             events: [...current.events, optimistic],
           }));
           showSuccess(
-            `${ACTION_LABEL[type]} saved offline — it will sync automatically when you're back online.`,
+            `${ACTION_LABEL[type]} saved offline. It will sync automatically when you're back online.`,
           );
           return;
         }
@@ -338,7 +338,7 @@ export function ClockInPage(): JSX.Element {
         }));
         showSuccess(
           geofenceNote
-            ? `${ACTION_LABEL[type]} recorded — ${geofenceNote}.`
+            ? `${ACTION_LABEL[type]} recorded, ${geofenceNote}.`
             : `${ACTION_LABEL[type]} recorded.`,
         );
       } catch (err) {
@@ -362,7 +362,7 @@ export function ClockInPage(): JSX.Element {
   );
 
   // Primary moves the shift forward; secondary is the alternate route to the
-  // same place — manual instead of GPS before the shift, breaks once it is
+  // same place. Manual instead of GPS before the shift, breaks once it is
   // under way. Clocking out is reachable from both 'working' and 'break', so
   // nobody is trapped on a break they forgot to end.
   const onPrimary = useCallback((): void => {
@@ -440,14 +440,14 @@ export function ClockInPage(): JSX.Element {
         </div>
       )}
       {/* Queued-and-waiting and queued-but-rejected are different states and
-          must not look alike. The banner above is reassuring on purpose — those
+          must not look alike. The banner above is reassuring on purpose. Those
           events will send. This one has to correct a belief: the person tapped
           Clock in, saw it succeed, and is not clocked in. */}
       <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mt-6" />
     </>
   );
 
-  // Only needed when no rostered shift names the site — otherwise the shift's
+  // Only needed when no rostered shift names the site. Otherwise the shift's
   // own location is authoritative and a picker would only invite a wrong answer.
   const picker =
     !view.shift && data.locations.length > 1 ? (
@@ -509,7 +509,7 @@ export function ClockInPage(): JSX.Element {
             <>
               <p>
                 Clock in from {CLOCK_IN_WINDOW_MINUTES} minutes before your shift starts
-                until the moment it ends. A late clock-in is recorded but never blocked —
+                until the moment it ends. A late clock-in is recorded but never blocked,
                 an hour you worked must not go unpaid because a screen refused you.
               </p>
               <p>
@@ -553,7 +553,7 @@ export function ClockInPage(): JSX.Element {
                 edit any event from Timesheets.
               </p>
               <p>
-                Nothing you do here is lost — an event that could not be sent is queued on
+                Nothing you do here is lost, an event that could not be sent is queued on
                 this device and retried, and one that was rejected is shown to you rather
                 than silently dropped.
               </p>

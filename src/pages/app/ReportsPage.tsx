@@ -31,13 +31,13 @@ import type { ReportsOverviewSegment } from '@/components/reports/ReportsOvervie
 import type { ReportQuickAction } from '@/components/reports/ReportsQuickActionsCard';
 
 /**
- * `/app/reports` — the reporting workspace (design/Reports-Dashboard.png).
+ * `/app/reports`. The reporting workspace (design/Reports-Dashboard.png).
  *
  * Every row is an export that genuinely exists: the catalogue in
  * `src/lib/reportsCatalogue.ts` maps one-to-one onto `reportsService` queries,
  * and RLS already scopes each of them to this organisation, so the CSV is
  * produced entirely client-side. "Last Run", the overview split and the Recent
- * Reports rail come from this browser's own run log — no server-side run
+ * Reports rail come from this browser's own run log, no server-side run
  * history exists to read (see `src/lib/reportPrefs.ts`).
  */
 export function ReportsPage(): JSX.Element {
@@ -54,7 +54,7 @@ export function ReportsPage(): JSX.Element {
 
   /**
    * The window the charts read. Recomputed only when the range or the org
-   * changes — `new Date()` inside the memo would give it a new identity on
+   * changes, `new Date()` inside the memo would give it a new identity on
    * every render and refetch the charts in a loop.
    */
   const analyticsPeriod = useMemo<ReportPeriod | null>(() => {
@@ -71,7 +71,7 @@ export function ReportsPage(): JSX.Element {
   );
 
   // `useState` initialisers run once, but `orgId` is null until OrgContext
-  // resolves and changes again when the user switches organisation — without
+  // resolves and changes again when the user switches organisation, without
   // this, one org's starred reports and run log would show under another.
   useEffect(() => {
     setFavourites(orgId ? readFavourites(orgId) : []);
@@ -291,7 +291,7 @@ export function ReportsPage(): JSX.Element {
 
   // Belt and braces behind the route's own `RequireRole` gate: this page is
   // also reachable by a future route that forgets to declare one. `RequireRole`
-  // renders the full explanation (role held, role required, way back) — this
+  // renders the full explanation (role held, role required, way back). This
   // just makes sure the manager UI never renders for a non-manager.
   if (!canManageStaff) {
     return <PermissionDenied area="reports" allowed={['owner', 'manager']} />;

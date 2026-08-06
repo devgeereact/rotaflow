@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 
 /**
- * `/reset-password` — where the recovery link lands.
+ * `/reset-password`, where the recovery link lands.
  *
  * Supabase turns the recovery token in the URL into a real session before this
  * component mounts, and fires a PASSWORD_RECOVERY event. So the page cannot
@@ -87,7 +87,7 @@ export function ResetPasswordPage(): JSX.Element {
         ) : !ready ? (
           <>
             <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
-              This reset link is invalid or has expired. Request a new one — links are
+              This reset link is invalid or has expired. Request a new one. Links are
               valid for one hour.
             </p>
             <Button className="w-full" onClick={() => void navigate('/forgot-password')}>

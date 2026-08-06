@@ -15,7 +15,7 @@ import {
   type GdprRequestStatus,
 } from '@/lib/gdprRequests';
 
-describe('addMonths — calendar arithmetic, not 30 days', () => {
+describe('addMonths. Calendar arithmetic, not 30 days', () => {
   it('adds a plain month', () => {
     expect(addMonths('2026-03-10', 1)).toBe('2026-04-10');
   });
@@ -166,10 +166,10 @@ describe('todayIso', () => {
   });
 });
 
-describe('daysUntil — malformed input', () => {
+describe('daysUntil. Malformed input', () => {
   /**
    * The bug this pins: the guard checked for a *missing* part, so a full ISO
-   * timestamp slipped through — it has three parts and its third is
+   * timestamp slipped through. It has three parts and its third is
    * "02T00:00:00.000Z", which `Number` turns into NaN. `Date.UTC` then returned
    * NaN and the console rendered "NaN days left" on every row.
    */
@@ -238,7 +238,7 @@ describe('medianTurnaroundDays', () => {
         { receivedOn: '2026-07-01', closedAt: '2026-07-03T00:00:00Z' },
         { receivedOn: '2026-07-01', closedAt: '2026-07-06T00:00:00Z' },
       ]),
-      // Two days and five days — the middle pair averages to three and a half.
+      // Two days and five days. The middle pair averages to three and a half.
     ).toBe(3.5);
   });
 

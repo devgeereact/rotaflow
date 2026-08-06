@@ -3,14 +3,14 @@ import { CAPABILITIES, TRACTION } from '@/lib/marketing';
 /**
  * The "platform statistics" band.
  *
- * A landing page normally fills this slot with traction — active users,
+ * A landing page normally fills this slot with traction. Active users,
  * organisations, shifts scheduled, uptime. RotaFlow has not launched, so every
  * one of those numbers would be invented, and this band is the most prominent
  * place on the page to publish a false factual claim. See `src/lib/marketing.ts`
  * for the full reasoning.
  *
- * So it renders `TRACTION` when real figures exist and `CAPABILITIES` — product
- * facts checkable against the repository — until they do. The switch is
+ * So it renders `TRACTION` when real figures exist and `CAPABILITIES`. Product
+ * facts checkable against the repository, until they do. The switch is
  * automatic: fill `TRACTION` and this band changes with no edit here.
  */
 export function StatsBand(): JSX.Element {

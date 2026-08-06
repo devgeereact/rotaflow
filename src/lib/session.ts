@@ -2,8 +2,8 @@
  * Client-side teardown that must run whenever a session ends.
  *
  * `supabase.auth.signOut()` only drops the auth token. Everything below
- * survives it, and on a shared device — a ward tablet, a warehouse terminal,
- * a site office PC, which is most of RotaFlow's market — that means the next
+ * survives it, and on a shared device, a ward tablet, a warehouse terminal,
+ * a site office PC, which is most of RotaFlow's market, that means the next
  * person to sign in can be served the previous user's tenant data.
  *
  * Two stores hold that data, both configured in `vite.config.ts`:

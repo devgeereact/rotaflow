@@ -15,8 +15,7 @@ const SIZE = 117;
 const STROKE = 16;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-// A 2px surface gap between adjacent segments, per the dataviz mark spec —
-// without it neighbouring arcs read as one continuous band.
+// A 2px surface gap between adjacent segments, per the dataviz mark spec, // without it neighbouring arcs read as one continuous band.
 const GAP = 2;
 
 /**

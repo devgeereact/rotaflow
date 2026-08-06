@@ -14,7 +14,7 @@
 export type SiteStatus = 'active' | 'maintenance' | 'inactive';
 
 /**
- * Tint for a location/department type chip. Named by token, not by meaning —
+ * Tint for a location/department type chip. Named by token, not by meaning,
  * "Care Home" is violet because the reference draws it violet, and an org can
  * define types this file has never heard of.
  */
@@ -50,7 +50,7 @@ export interface LocationRow {
   address: string;
   /** Site photograph. `null` renders the building-icon fallback. */
   photoUrl: string | null;
-  /** `null` where the org has not classified the site — there is no column for it. */
+  /** `null` where the org has not classified the site. There is no column for it. */
   type: string | null;
   typeTone: SiteTone;
   region: string | null;
@@ -103,7 +103,7 @@ export interface SiteInfoRow {
   id: string;
   label: string;
   value: string;
-  /** Renders an avatar before the value — the reference's Manager row. */
+  /** Renders an avatar before the value. The reference's Manager row. */
   avatarName?: string;
   avatarUrl?: string | null;
 }
@@ -147,7 +147,7 @@ export const SITE_STATUS_LABELS: Record<SiteStatus, string> = {
 
 /**
  * Coverage bar colour. Thresholds read off the references: 90%+ draws green,
- * the 85–89% rows draw amber and the 78% row draws red.
+ * the 85-89% rows draw amber and the 78% row draws red.
  */
 export function coverageTone(percent: number): 'success' | 'warning' | 'danger' {
   if (percent >= 90) return 'success';

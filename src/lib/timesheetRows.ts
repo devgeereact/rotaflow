@@ -1,7 +1,7 @@
 /**
  * View model for the timesheets screen (design/Timesheets-Dashboard.png).
  *
- * The table is presentational — it renders pre-formatted strings and never
+ * The table is presentational. It renders pre-formatted strings and never
  * touches a Date, a timezone or a Supabase row. Everything real is computed by
  * the page from `clock_events` (see `src/lib/hours.ts`) and mapped into these
  * shapes, so the live page and the design preview feed the same components.
@@ -16,10 +16,10 @@ export interface TimesheetRow {
   lastName: string;
   jobTitle: string | null;
   photoUrl: string | null;
-  /** Pre-formatted, e.g. "26 May – 1 Jun 2025". */
+  /** Pre-formatted, e.g. "26 May-1 Jun 2025". */
   weekLabel: string;
   shifts: number;
-  /** Two-decimal hour strings — the reference aligns them as decimal hours. */
+  /** Two-decimal hour strings. The reference aligns them as decimal hours. */
   regularHours: string;
   overtimeHours: string;
   /** `null` where the org has no double-time rule to compute against. */
@@ -47,7 +47,7 @@ export function decimalHours(minutes: number): string {
  *
  * `staff_profiles.weekly_hours` is the only contracted-hours figure in the
  * schema, so it is the threshold. With no contract on file everything counts as
- * regular — inventing a default (37.5? 40?) would silently mis-state someone's
+ * regular. Inventing a default (37.5? 40?) would silently mis-state someone's
  * overtime, which is a payroll error, not a display bug.
  */
 export function splitOvertime(

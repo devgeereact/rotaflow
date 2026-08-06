@@ -3,7 +3,7 @@ import { env } from '@/lib/env';
 export interface ImageTransform {
   width?: number;
   height?: number;
-  /** 1–100; defaults to 80. */
+  /** 1-100; defaults to 80. */
   quality?: number;
   crop?: 'maintain_ratio' | 'force' | 'at_max';
 }

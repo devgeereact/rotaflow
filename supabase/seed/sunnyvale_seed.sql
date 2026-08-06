@@ -1,5 +1,5 @@
 -- =====================================================================
--- sunnyvale_seed.sql — the "Sunnyvale Care Group" showcase organisation
+-- sunnyvale_seed.sql. The "Sunnyvale Care Group" showcase organisation
 --
 -- A single large, multi-site care organisation: 248 staff across 3 sites
 -- and 8 departments, sized so the dashboard shows the figures the product
@@ -7,7 +7,7 @@
 -- 7 pending leave, ~92% coverage).
 --
 -- WHY IT IS A SEPARATE FILE, not part of demo_seed.sql
---   demo_seed.sql builds five *small* orgs — 5 of everything — so every
+--   demo_seed.sql builds five *small* orgs-5 of everything, so every
 --   screen can be read at a glance in a demo. Sunnyvale exists for the
 --   opposite reason: to prove the product holds up at a realistic size,
 --   where pagination, filters, coverage maths and the staff directory are
@@ -20,7 +20,7 @@
 --
 -- RUN IT:  paste the whole file into the Supabase SQL editor and run once,
 --          or POST it to /v1/projects/<ref>/database/query. Run it as a
---          single unit — it uses a session-local helper function.
+--          single unit. It uses a session-local helper function.
 --
 -- IDEMPOTENT BY RESET: re-running DELETES the Sunnyvale org (cascading to
 -- every child row) and rebuilds it, re-centred on the current week.
@@ -30,7 +30,7 @@
 -- never touches organisations created through the app.
 --
 -- ⚠️ THIS IS NOT A MIGRATION and must never be moved into
---    supabase/migrations/ — those auto-apply on merge to main, and demo
+--    supabase/migrations/. Those auto-apply on merge to main, and demo
 --    data must never ship that way.
 --
 -- Teardown: supabase/seed/sunnyvale_teardown.sql
@@ -89,7 +89,7 @@ declare
   -- ---------- departments (brief §"Example departments") ------------
   -- location index each department belongs to.
   dep_names text[] := array[
-    'Care Home – Floor 1','Care Home – Floor 2','Care Home – Floor 3',
+    'Care Home. Floor 1','Care Home, Floor 2','Care Home, Floor 3',
     'Nursing','Kitchen','Maintenance','Administration','Head Office'];
   dep_loc   int[]   := array[1,1,1,1,2,2,3,3];
 
@@ -116,7 +116,7 @@ declare
   -- Job titles per department, as a flat lookup keyed by
   -- (department_index, variant). A nested `int[][]` was the obvious shape
   -- and does not work: Postgres multidimensional arrays must be
-  -- rectangular, and these rows have 1–3 entries each, so the literal
+  -- rectangular, and these rows have 1-3 entries each, so the literal
   -- fails to parse at declaration time. Two variants per department,
   -- picked by parity, keeps it rectangular and readable.
   dep_job_a text[] := array[
@@ -136,7 +136,7 @@ declare
 begin
   if c_password = 'CHANGE-ME-BEFORE-SEEDING' then
     raise exception
-      'Set c_password before running this seed — see supabase/seed/README.md.';
+      'Set c_password before running this seed. See supabase/seed/README.md.';
   end if;
 
   v_has_pid := exists (
@@ -146,7 +146,7 @@ begin
   select id into v_admin from auth.users where lower(email) = c_admin_email;
   if v_admin is null then
     raise exception
-      'No auth user for % — sign up in the app first, then re-run this seed.', c_admin_email;
+      'No auth user for %. Sign up in the app first, then re-run this seed.', c_admin_email;
   end if;
 
   -- ---------------------------------------------------------------
@@ -241,8 +241,8 @@ begin
   -- ---------------------------------------------------------------
   -- 4. 248 staff.
   --
-  -- Distribution is deliberately uneven — 60/25/15 across the three
-  -- sites — because an evenly split workforce makes every per-site
+  -- Distribution is deliberately uneven-60/25/15 across the three
+  -- sites, because an evenly split workforce makes every per-site
   -- filter and coverage figure look identical, which hides exactly the
   -- bugs a multi-site dataset exists to expose.
   --
@@ -297,7 +297,7 @@ begin
   -- ---- assigned shifts -------------------------------------------
   -- Every active staff member works 4 of the 7 days. The day offsets
   -- are derived from the staff index so the pattern is stable across
-  -- re-runs but different per person — a rota where everyone works the
+  -- re-runs but different per person, a rota where everyone works the
   -- same four days has no coverage variation to look at.
   insert into public.shifts (
     id, org_id, rota_id, location_id, department_id, staff_profile_id,
@@ -402,7 +402,7 @@ begin
   where sh.org_id = v_org and sh.staff_profile_id is not null and sh.ends_at < now()
     -- One in every 40 finished shifts has no clock-out on purpose. That
     -- is the "forgot to clock out" case, and `pairClockEvents` must flag
-    -- it for review rather than silently dropping the day — a real bug
+    -- it for review rather than silently dropping the day, a real bug
     -- this repository has already shipped once.
     and (extract(epoch from sh.starts_at)::bigint % 40) <> 0;
 
@@ -417,7 +417,7 @@ begin
      'The rota for the next four weeks is now live. Please check your shifts and raise any swaps by Friday.',
      false, now() - interval '2 days'),
     (pg_temp.sv_uuid('ann:2'), v_org, u_ids[2], 'location', pg_temp.sv_uuid('loc:1'), null,
-     'Fire drill — Thursday 10:00',
+     'Fire drill. Thursday 10:00',
      'A full evacuation drill will run on Floor 1 and Floor 2. Please brief residents on Wednesday evening.',
      true, now() - interval '18 hours'),
     (pg_temp.sv_uuid('ann:3'), v_org, u_ids[1], 'org', null, null,

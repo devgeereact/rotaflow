@@ -10,7 +10,7 @@ export interface SwapActivityEntry {
   kind: SwapActivityKind;
   /** "Aisha Patel's swap was approved". */
   title: string;
-  /** "With Grace Thompson" — the other party. */
+  /** "With Grace Thompson". The other party. */
   detail: string;
   /** Pre-formatted, e.g. "Today, 10:15". */
   timeLabel: string;

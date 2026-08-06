@@ -37,7 +37,7 @@ const TONES: Record<
   },
 };
 
-/** "Attendance Status" card — the reassurance panel plus two-week accuracy. */
+/** "Attendance Status" card. The reassurance panel plus two-week accuracy. */
 export function AttendanceStatusCard({
   tone,
   statusTitle,

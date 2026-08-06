@@ -7,7 +7,7 @@ import type { ReportCategory, ReportFormat } from '@/lib/reportRows';
  * Deliberately local. There is no `report_runs` or `saved_reports` table in
  * `docs/SCHEMA.md`, and inventing server-side run history to fill the "Last
  * Run" column would be fabricating data. What this does record is true: it is
- * this browser's own record of exports it produced. Best-effort throughout —
+ * this browser's own record of exports it produced. Best-effort throughout,
  * a blocked or full localStorage degrades to "never run", never to an error.
  */
 
@@ -21,7 +21,7 @@ export interface ReportRunRecord {
   format: ReportFormat;
   /** ISO timestamp of the run. */
   at: string;
-  /** False when the export threw — the Overview counts these as failed. */
+  /** False when the export threw. The Overview counts these as failed. */
   ok: boolean;
 }
 
@@ -93,10 +93,10 @@ const DATE = new Intl.DateTimeFormat('en-GB', {
   year: 'numeric',
 });
 
-/** "Today, 09:15" / "Yesterday, 16:30" / "24 May 2025" — the reference's format. */
+/** "Today, 09:15" / "Yesterday, 16:30" / "24 May 2025". The reference's format. */
 export function formatRunLabel(iso: string): string {
   const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return '—';
+  if (Number.isNaN(at.getTime())) return '-';
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);

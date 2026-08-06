@@ -610,10 +610,10 @@ const SERVICES = [
 ];
 
 const INCIDENTS = [
-  { id:'INC-0142', title:'Elevated push notification failures (APNs)', sev:'High', status:'monitoring', svc:'Push notifications', start:'04 Aug 2026 07:14', end:'—', owner:'Idris Okafor', impact:'≈8% of staff devices did not receive shift-change pushes for 46 minutes.' },
-  { id:'INC-0141', title:'Database read replica lag above 30s', sev:'Medium', status:'investigating', svc:'PostgreSQL database', start:'04 Aug 2026 05:52', end:'—', owner:'Sarah Okonjo', impact:'Reports and exports served stale figures; writes unaffected.' },
+  { id:'INC-0142', title:'Elevated push notification failures (APNs)', sev:'High', status:'monitoring', svc:'Push notifications', start:'04 Aug 2026 07:14', end:'-', owner:'Idris Okafor', impact:'≈8% of staff devices did not receive shift-change pushes for 46 minutes.' },
+  { id:'INC-0141', title:'Database read replica lag above 30s', sev:'Medium', status:'investigating', svc:'PostgreSQL database', start:'04 Aug 2026 05:52', end:'-', owner:'Sarah Okonjo', impact:'Reports and exports served stale figures; writes unaffected.' },
   { id:'INC-0139', title:'Payroll export queue backlog', sev:'Medium', status:'resolved', svc:'Background jobs', start:'31 Jul 2026 22:10', end:'01 Aug 2026 01:35', owner:'Idris Okafor', impact:'412 payroll exports delayed by up to 3h 25m. All completed.' },
-  { id:'INC-0138', title:'Sign-in outage — auth provider certificate expiry', sev:'Critical', status:'resolved', svc:'Authentication', start:'22 Jul 2026 09:03', end:'22 Jul 2026 09:41', owner:'Sarah Okonjo', impact:'All sign-ins failed for 38 minutes across every tenant.' },
+  { id:'INC-0138', title:'Sign-in outage. Auth provider certificate expiry', sev:'Critical', status:'resolved', svc:'Authentication', start:'22 Jul 2026 09:03', end:'22 Jul 2026 09:41', owner:'Sarah Okonjo', impact:'All sign-ins failed for 38 minutes across every tenant.' },
 ];
 const SEV = { Critical:'bad', High:'warn', Medium:'info', Low:'neutral' };
 
@@ -673,7 +673,7 @@ const INVOICES = [
 ];
 
 const ANNOUNCEMENTS = [
-  { title:'Scheduled maintenance — 10 Aug, 02:00–03:00 BST', type:'Maintenance', aud:'All organisations', when:'Scheduled 08 Aug 2026', sent:0, read:0, status:'pending' },
+  { title:'Scheduled maintenance-10 Aug, 02:00-03:00 BST', type:'Maintenance', aud:'All organisations', when:'Scheduled 08 Aug 2026', sent:0, read:0, status:'pending' },
   { title:'New: cost forecasting in Reports', type:'Product release', aud:'Business, Enterprise', when:'Sent 29 Jul 2026', sent:355, read:241, status:'complete' },
   { title:'Action needed: card expiring this month', type:'Billing', aud:'96 organisations', when:'Sent 25 Jul 2026', sent:96, read:88, status:'complete' },
   { title:'Resolved: sign-in outage on 22 July', type:'Platform incident', aud:'All organisations', when:'Sent 22 Jul 2026', sent:1284, read:1102, status:'complete' },
@@ -684,11 +684,11 @@ const AUDIT = [
   { ts:'04 Aug 2026 09:41:02', who:'Idris Okafor', org:'org_1c5b83', act:'feature_flag.rollout_changed', ent:'new_rota_builder', from:'8%', to:'12%', ip:'82.14.203.11', ok:true },
   { ts:'04 Aug 2026 09:12:47', who:'Sarah Okonjo', org:'org_8f7a35', act:'organisation.suspended', ent:'org_8f7a35', from:'active', to:'suspended', ip:'82.14.203.44', ok:true },
   { ts:'04 Aug 2026 08:55:19', who:'Leah Marchetti', org:'org_0a4f76', act:'subscription.trial_extended', ent:'sub_0a4f76', from:'21 Aug 2026', to:'04 Sep 2026', ip:'91.203.44.87', ok:true },
-  { ts:'04 Aug 2026 08:31:04', who:'Idris Okafor', org:'org_9d1e57', act:'support_access.granted', ent:'sa_31f8', from:'—', to:'60 minutes', ip:'82.14.203.11', ok:true },
-  { ts:'04 Aug 2026 07:58:22', who:'Sarah Okonjo', org:'—', act:'platform_admin.invited', ent:'leah.marchetti@rotaflow.co.uk', from:'—', to:'Platform Finance', ip:'82.14.203.44', ok:true },
-  { ts:'03 Aug 2026 22:14:56', who:'system', org:'—', act:'auth.admin_signin_blocked', ent:'unknown@example.com', from:'—', to:'IP not allowlisted', ip:'203.0.113.77', ok:false },
+  { ts:'04 Aug 2026 08:31:04', who:'Idris Okafor', org:'org_9d1e57', act:'support_access.granted', ent:'sa_31f8', from:'-', to:'60 minutes', ip:'82.14.203.11', ok:true },
+  { ts:'04 Aug 2026 07:58:22', who:'Sarah Okonjo', org:'-', act:'platform_admin.invited', ent:'leah.marchetti@rotaflow.co.uk', from:'-', to:'Platform Finance', ip:'82.14.203.44', ok:true },
+  { ts:'03 Aug 2026 22:14:56', who:'system', org:'-', act:'auth.admin_signin_blocked', ent:'unknown@example.com', from:'-', to:'IP not allowlisted', ip:'203.0.113.77', ok:false },
   { ts:'03 Aug 2026 17:02:11', who:'Leah Marchetti', org:'org_4a6f22', act:'invoice.credit_issued', ent:'INV-2026-4409', from:'£640', to:'£560', ip:'91.203.44.87', ok:true },
-  { ts:'03 Aug 2026 14:40:33', who:'Idris Okafor', org:'—', act:'platform_settings.security_updated', ent:'mfa_required', from:'false', to:'true', ip:'82.14.203.11', ok:true },
+  { ts:'03 Aug 2026 14:40:33', who:'Idris Okafor', org:'-', act:'platform_settings.security_updated', ent:'mfa_required', from:'false', to:'true', ip:'82.14.203.11', ok:true },
 ];
 
 const ADMINS = [
@@ -719,7 +719,7 @@ function nowStamp() {
   const p = x => String(x).padStart(2, '0');
   return `${p(d.getDate())} Aug 2026 ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
-function logAudit(act, { org = '—', ent = '—', from = '—', to = '—', ok = true } = {}) {
+function logAudit(act, { org = '-', ent = '-', from = '-', to = '-', ok = true } = {}) {
   state.audit.unshift({ ts:nowStamp(), who:ME.name, org, act, ent, from, to, ip:'82.14.203.44', ok });
 }
 </script>
@@ -788,7 +788,7 @@ function renderBanner() {
     <span class="dot"></span>
     <span><strong>Support access active.</strong> You are temporarily viewing
       <a href="#/organisations/${org.id}">${esc(org.name)}</a> · ${esc(state.session.scope)}</span>
-    <span>Expires in <span class="clock" id="saClock">—</span></span>
+    <span>Expires in <span class="clock" id="saClock">-</span></span>
     <button class="btn sm d" style="margin-left:auto" onclick="endSession('Exited')">Exit support session</button>
   </div>`;
   tickClock();
@@ -970,7 +970,7 @@ function requestAccess(orgId) {
       state.session = { org:org.id, reason:v.reason, scope:v.scope, ref:v.ref, until:Date.now() + mins * 60000 };
       state.sessions.unshift({ org:org.id, admin:ME.name, reason:v.reason, scope:v.scope,
         start:nowStamp(), exp:`+${mins} min`, status:'active', ref:v.ref, live:true });
-      logAudit('support_access.granted', { org:org.id, ent:'support session', from:'—', to:`${mins} minutes` });
+      logAudit('support_access.granted', { org:org.id, ent:'support session', from:'-', to:`${mins} minutes` });
       renderBanner(); route();
       toast(`Support access to ${org.name} granted for ${mins} minutes.`);
     },
@@ -988,7 +988,7 @@ function toggleFlag(key) {
   };
   if (f.critical) {
     modal({ title:`${turningOff ? 'Disable' : 'Enable'} ${f.name}?`, danger:turningOff,
-      sub:`<span class="mono">${esc(key)}</span> is marked critical — it changes behaviour for live tenants immediately.`,
+      sub:`<span class="mono">${esc(key)}</span> is marked critical. It changes behaviour for live tenants immediately.`,
       confirm:turningOff ? 'Disable flag' : 'Enable flag', reason:true, reauth:true, onOk:go });
   } else go();
 }
@@ -1048,7 +1048,7 @@ SCREENS.overview = () => {
         <option>Last 30 days</option><option>Last 7 days</option>
         <option>Last 90 days</option><option selected>Last 12 months</option>
       </select>
-      <button class="btn" onclick="toast('Platform report queued — you will be emailed a CSV.')">Export report</button>
+      <button class="btn" onclick="toast('Platform report queued. You will be emailed a CSV.')">Export report</button>
     </div>
   </div>
 
@@ -1170,7 +1170,7 @@ SCREENS.organisations = (id) => {
     <div class="acts">
       <button class="btn" onclick="toast('Import accepts a CSV of organisation name, plan and owner email.')">Import</button>
       <button class="btn" onclick="toast('1,284 organisations exported to CSV.')">Export</button>
-      <button class="btn p" onclick="toast('New organisation form — name, plan, owner email, country.')">Add organisation</button>
+      <button class="btn p" onclick="toast('New organisation form. Name, plan, owner email, country.')">Add organisation</button>
     </div>
   </div>
 
@@ -1255,7 +1255,7 @@ SCREENS.orgDetail = (orgId) => {
         { lbl:'Published rotas', val:n(o.rotas), sub:'lifetime' },
         { lbl:'Monthly shifts', val:n(o.shifts) },
         { lbl:'Storage', val:o.storage },
-        { lbl:'MRR', val:o.mrr ? gbp(o.mrr) : '—', sub:o.mrr ? 'billed monthly' : 'trial' },
+        { lbl:'MRR', val:o.mrr ? gbp(o.mrr) : '-', sub:o.mrr ? 'billed monthly' : 'trial' },
       ])}
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:16px">
         <section class="card"><header><h3>Organisation</h3></header><div class="body">
@@ -1313,13 +1313,13 @@ SCREENS.orgDetail = (orgId) => {
           <dl class="dl">
             <dt>Status</dt><dd>${pill(o.status === 'trial' ? 'trial' : 'active')}</dd>
             <dt>Billing cycle</dt><dd>Monthly</dd>
-            <dt>Value</dt><dd class="mono">${o.mrr ? gbp(o.mrr) + ' / month' : 'Trial — no charge'}</dd>
+            <dt>Value</dt><dd class="mono">${o.mrr ? gbp(o.mrr) + ' / month' : 'Trial, no charge'}</dd>
             <dt>Renews</dt><dd>01 Sep 2026</dd>
             <dt>Payment</dt><dd>${pill(o.status === 'suspended' ? 'failed' : 'paid')}</dd>
             <dt>Billing contact</dt><dd class="mono">${esc(o.email)}</dd>
           </dl>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-            <button class="btn sm" onclick="toast('Plan change previewed — prorated at £${o.mrr}.')">Change plan</button>
+            <button class="btn sm" onclick="toast('Plan change previewed. Prorated at £${o.mrr}.')">Change plan</button>
             <button class="btn sm" onclick="toast('14-day trial extension applied.')">Extend trial</button>
             <button class="btn sm d" onclick="modal({title:'Cancel subscription?',danger:true,confirm:'Cancel subscription',reason:true,reauth:true,sub:'Access continues until the end of the paid period.',onOk(){logAudit('subscription.cancelled',{org:'${o.id}',ent:'${o.id}',from:'active',to:'cancelled'});toast('Subscription cancelled at period end.')}})">Cancel</button>
           </div></div></section>
@@ -1384,7 +1384,7 @@ SCREENS.orgDetail = (orgId) => {
       <section class="card"><header><h3>Data management</h3></header>
         ${table([{h:'Action'},{h:'Effect'},{h:''}], [
           ['Export organisation data', 'Full JSON + CSV bundle, delivered by signed link valid 24 hours.',
-            `<button class="btn sm" onclick="modal({title:'Export ${esc(o.name)} data?',confirm:'Queue export',reason:true,onOk(){logAudit('data.export_requested',{org:'${o.id}',ent:'${o.id}',to:'queued'});toast('Export queued — link emailed when ready.')}})">Export</button>`],
+            `<button class="btn sm" onclick="modal({title:'Export ${esc(o.name)} data?',confirm:'Queue export',reason:true,onOk(){logAudit('data.export_requested',{org:'${o.id}',ent:'${o.id}',to:'queued'});toast('Export queued. Link emailed when ready.')}})">Export</button>`],
           ['Request data deletion', 'Schedules erasure of all tenant records after a 30-day grace period.',
             `<button class="btn sm d" onclick="modal({title:'Schedule deletion of ${esc(o.name)}?',danger:true,confirm:'Schedule deletion',reason:true,reauth:true,sub:'${n(o.users)} user records and ${n(o.shifts)} shifts are erased after 30 days. This cannot be undone once the grace period ends.',onOk(){logAudit('data.deletion_scheduled',{org:'${o.id}',ent:'${o.id}',to:'+30 days'});toast('Deletion scheduled for 03 Sep 2026.')}})">Request deletion</button>`],
           ['Retention status', `Rota history kept 7 years · attendance 3 years · audit indefinitely.`,
@@ -1407,7 +1407,7 @@ SCREENS.users = (id) => {
         <span class="s mono">${esc(u.email)}</span></span></div></td>
       <td><a href="#/organisations/${org.id}">${esc(org.name)}</a></td>
       <td><span class="pill neutral plain">${esc(u.role)}</span></td>
-      <td>${u.plat ? `<span class="pill info">${esc(ROLES[u.plat].name)}</span>` : '<span class="dim">—</span>'}</td>
+      <td>${u.plat ? `<span class="pill info">${esc(ROLES[u.plat].name)}</span>` : '<span class="dim">-</span>'}</td>
       <td>${pill(u.status)}${u.verified ? '' : ' ' + pill('unverified')}</td>
       <td>${u.mfa ? '<span class="pill ok">On</span>' : '<span class="dim">Off</span>'}</td>
       <td><span class="dim">${esc(u.last)}</span></td>
@@ -1481,11 +1481,11 @@ SCREENS.userDetail = (userId) => {
       <section class="card"><header><h3>Access</h3></header><div class="body"><dl class="dl">
         <dt>Organisation</dt><dd><a href="#/organisations/${org.id}">${esc(org.name)}</a></dd>
         <dt>Organisation role</dt><dd><span class="pill neutral plain">${esc(u.role)}</span></dd>
-        <dt>Platform role</dt><dd>${u.plat ? `<span class="pill info">${esc(ROLES[u.plat].name)}</span>` : '<span class="dim">None — customer account</span>'}</dd>
+        <dt>Platform role</dt><dd>${u.plat ? `<span class="pill info">${esc(ROLES[u.plat].name)}</span>` : '<span class="dim">None. Customer account</span>'}</dd>
         <dt>MFA</dt><dd>${u.mfa ? pill('ok') + ' Enforced' : pill('warn') + ' Not enrolled'}</dd>
       </dl>
       ${u.plat ? `<button class="btn sm d" style="margin-top:14px"
-        onclick="modal({title:'Remove platform access?',danger:true,confirm:'Remove platform access',reason:true,reauth:true,sub:'The organisation membership is untouched — only the platform permission is revoked.',onOk(){logAudit('platform_admin.removed',{ent:'${u.email}',from:'${u.plat}',to:'none'});toast('Platform access removed from ${esc(u.name)}.')}})">Remove platform access</button>` : ''}
+        onclick="modal({title:'Remove platform access?',danger:true,confirm:'Remove platform access',reason:true,reauth:true,sub:'The organisation membership is untouched, only the platform permission is revoked.',onOk(){logAudit('platform_admin.removed',{ent:'${u.email}',from:'${u.plat}',to:'none'});toast('Platform access removed from ${esc(u.name)}.')}})">Remove platform access</button>` : ''}
       </div></section></div>`, true)}
 
     ${panel('Organisations', `<section class="card"><header><h3>Memberships</h3></header>
@@ -1499,7 +1499,7 @@ SCREENS.userDetail = (userId) => {
       <div class="body"><dl class="dl">
         <dt>Organisation</dt><dd>${esc(u.role)} in ${esc(org.name)}</dd>
         <dt>Platform</dt><dd>${u.plat ? ROLES[u.plat].name : 'None'}</dd>
-        <dt>Can reach /admin</dt><dd>${u.plat ? pill('ok') + ' Yes' : pill('bad') + ' No — blocked at route, API and RLS'}</dd>
+        <dt>Can reach /admin</dt><dd>${u.plat ? pill('ok') + ' Yes' : pill('bad') + ' No. Blocked at route, API and RLS'}</dd>
       </dl></div></section>`)}
 
     ${panel('Sessions', `<section class="card"><header><h3>Active sessions</h3><span class="spacer"></span>
@@ -1546,7 +1546,7 @@ SCREENS.subscriptions = () => {
     <td><span class="pill neutral plain">${esc(o.plan)}</span></td>
     <td>${pill(o.status === 'trial' ? 'trial' : o.status === 'suspended' ? 'past_due' : 'active')}</td>
     <td>Monthly</td>
-    <td class="num">${o.mrr ? gbp(o.mrr) : '—'}</td>
+    <td class="num">${o.mrr ? gbp(o.mrr) : '-'}</td>
     <td class="dim">01 Sep 2026</td>
     <td>${pill(o.status === 'suspended' ? 'failed' : o.status === 'trial' ? 'pending' : 'paid')}</td>
     <td class="num">${o.usage}%</td>
@@ -1621,7 +1621,7 @@ SCREENS.billing = () => {
       ${table([{h:'Organisation'},{h:'Amount',num:true},{h:'Attempts',num:true},{h:'Actions'}],
         INVOICES.filter(i => i.status === 'failed' || i.status === 'past_due').map(i => [
           `<a href="#/organisations/${i.org}">${esc(orgById(i.org).name)}</a>`, gbp(i.amt), 3,
-          `<button class="btn sm" onclick="toast('Payment retried — awaiting processor.')">Retry</button>`]),
+          `<button class="btn sm" onclick="toast('Payment retried. Awaiting processor.')">Retry</button>`]),
         { empty:'No failed payments.' })}
       <div class="body"><p class="lede" style="margin:0">Dunning retries on days 1, 3 and 7, then the
         organisation is suspended on day 14 unless a platform administrator intervenes.</p></div>
@@ -1681,8 +1681,8 @@ SCREENS.caseDetail = (caseId) => {
   const org = orgById(c.org);
   crumbs(['Support Centre', c.id]);
   const thread = [
-    { who:c.by, side:'customer', when:c.made, text:'Three of our sites cannot publish next week’s rota — the button spins then returns "could not save". The other six sites publish fine.' },
-    { who:ME.name, side:'agent', when:'04 Aug 2026 08:31', text:'Thanks — I can see failed publish jobs against those three locations. Requesting read-only support access so I can check the shift records directly.' },
+    { who:c.by, side:'customer', when:c.made, text:'Three of our sites cannot publish next week’s rota. The button spins then returns "could not save". The other six sites publish fine.' },
+    { who:ME.name, side:'agent', when:'04 Aug 2026 08:31', text:'Thanks. I can see failed publish jobs against those three locations. Requesting read-only support access so I can check the shift records directly.' },
     { who:'Internal note · ' + ME.name, side:'note', when:'04 Aug 2026 08:34', text:'Rota publish fails where a location has more than 200 shifts in one week. Matches INC-0141 replica lag. Not customer-facing yet.' },
     { who:c.by, side:'customer', when:'04 Aug 2026 09:02', text:'Access approved from our side. Rota needs to go out before 17:00 today.' },
   ];
@@ -1711,10 +1711,10 @@ SCREENS.caseDetail = (caseId) => {
             <span class="dim mono" style="font-size:11.5px;margin-left:auto">${esc(m.when)}</span></div>
           <p style="margin:0;font-size:13.5px;line-height:1.55">${esc(m.text)}</p></article>`).join('')}
         <div class="field"><label for="reply">Reply to customer</label>
-          <textarea id="reply" placeholder="Written in plain English — the customer sees this verbatim."></textarea>
+          <textarea id="reply" placeholder="Written in plain English. The customer sees this verbatim."></textarea>
           <div style="display:flex;gap:8px">
             <button class="btn p" onclick="toast('Reply sent to ${esc(c.by)}.')">Send reply</button>
-            <button class="btn" onclick="toast('Internal note added — not visible to the customer.')">Add internal note</button>
+            <button class="btn" onclick="toast('Internal note added, not visible to the customer.')">Add internal note</button>
           </div></div>
       </div></section>
     <div class="grid" style="align-content:start">
@@ -1727,7 +1727,7 @@ SCREENS.caseDetail = (caseId) => {
       <section class="card"><header><h3>Related platform events</h3></header>
         <ul class="feed">
           <li><span class="fi" style="background:var(--danger-wash);color:var(--danger)">${ico('alert')}</span>
-            <span><span class="ft"><a href="#/incidents">INC-0141 — replica lag above 30s</a></span>
+            <span><span class="ft"><a href="#/incidents">INC-0141. Replica lag above 30s</a></span>
             <span class="fm">Investigating · same window as first report</span></span></li>
           <li><span class="fi" style="background:var(--warning-wash);color:var(--warning)">${ico('key')}</span>
             <span><span class="ft">Support access granted, 60 minutes</span>
@@ -1759,7 +1759,7 @@ SCREENS['support-access'] = () => {
 
   <div class="callout ${state.session ? 'warn' : 'info'}" style="margin-bottom:16px">${ico('key','ico')}
     <span>${state.session
-      ? `A session against <b>${esc(orgById(state.session.org).name)}</b> is active right now — see the banner
+      ? `A session against <b>${esc(orgById(state.session.org).name)}</b> is active right now. See the banner
          above. Reason recorded: “${esc(state.session.reason)}”.`
       : 'No support session is currently active. Granting one writes an immutable audit record before the first byte of tenant data is read.'}</span></div>
 
@@ -1802,7 +1802,7 @@ SCREENS['platform-health'] = () => {
       <span class="dim" style="font-size:12px">last 12 hours</span></header>
       ${SERVICES.map(s => `<div class="svc">
         <span class="nm">${esc(s.name)}</span>${pill(s.status)}
-        <span class="mono dim" style="font-size:12px;margin-left:8px">${s.ms ? s.ms + ' ms' : '—'}</span>
+        <span class="mono dim" style="font-size:12px;margin-left:8px">${s.ms ? s.ms + ' ms' : '-'}</span>
         <span class="bars">${s.hist.map(h => `<i class="${h === 2 ? 'w' : h === 3 ? 'b' : ''}"></i>`).join('')}</span>
         <span class="mono dim" style="font-size:12px;width:56px;text-align:right">${esc(s.up)}</span></div>`).join('')}
     </section>
@@ -1888,7 +1888,7 @@ SCREENS.notifications = () => {
   crumbs(['Notifications']);
   return `
   <div class="pagehead"><div><h1>Platform notifications</h1>
-    <p class="lede">Announcements sent to tenants — maintenance, incidents, billing and releases.</p></div>
+    <p class="lede">Announcements sent to tenants. Maintenance, incidents, billing and releases.</p></div>
     <div class="acts"><button class="btn p" onclick="modal({title:'New announcement',confirm:'Schedule announcement',
       body:'<div class=&quot;field&quot;><label for=&quot;nT&quot;>Title</label><input id=&quot;nT&quot; data-val=&quot;t&quot; placeholder=&quot;What changes, and when&quot;></div><div class=&quot;field&quot;><label for=&quot;nK&quot;>Type</label><select id=&quot;nK&quot; data-val=&quot;k&quot;><option>Maintenance</option><option>Service update</option><option>Security</option><option>Product release</option><option>Billing</option><option>Platform incident</option></select></div><div class=&quot;field&quot;><label for=&quot;nA&quot;>Audience</label><select id=&quot;nA&quot; data-val=&quot;a&quot;><option>All organisations</option><option>Enterprise only</option><option>Business and Enterprise</option><option>Trial organisations</option></select></div>',
       onOk(v){logAudit('notification.scheduled',{ent:v.t||'announcement',to:v.a});toast('Announcement scheduled.')}})">New announcement</button></div></div>
@@ -1903,7 +1903,7 @@ SCREENS.notifications = () => {
     ${table([{h:'Announcement'},{h:'Type'},{h:'Audience'},{h:'When'},{h:'Sent',num:true},{h:'Read',num:true},{h:'Status'}],
       ANNOUNCEMENTS.map(a => [`<span class="strong">${esc(a.title)}</span>`,
         `<span class="pill neutral plain">${esc(a.type)}</span>`, esc(a.aud), `<span class="dim">${esc(a.when)}</span>`,
-        a.sent ? n(a.sent) : '—', a.read ? n(a.read) : '—', pill(a.status)]))}</section>`;
+        a.sent ? n(a.sent) : '-', a.read ? n(a.read) : '-', pill(a.status)]))}</section>`;
 };
 
 /* ============================ screen: audit ============================ */
@@ -1913,7 +1913,7 @@ SCREENS.audit = () => {
     data-ok="${a.ok ? 'ok' : 'fail'}" data-who="${esc(a.who)}">
     <td><span class="mono">${esc(a.ts)}</span></td>
     <td>${esc(a.who)}</td>
-    <td>${a.org === '—' ? '<span class="dim">Platform</span>' : `<a href="#/organisations/${a.org}">${esc(orgById(a.org).name)}</a>`}</td>
+    <td>${a.org === '-' ? '<span class="dim">Platform</span>' : `<a href="#/organisations/${a.org}">${esc(orgById(a.org).name)}</a>`}</td>
     <td><span class="mono">${esc(a.act)}</span></td>
     <td><span class="mono dim">${esc(a.ent)}</span></td>
     <td><span class="dim">${esc(a.from)}</span></td>
@@ -1926,9 +1926,9 @@ SCREENS.audit = () => {
       deleted by anyone, including a Platform Owner.</p></div>
     <div class="acts">
       <button class="btn" onclick="toast('Filter saved as “Failed actions, 7 days”.')">Save filter</button>
-      <button class="btn" onclick="toast('Audit export queued — signed CSV.')">Export</button></div></div>
+      <button class="btn" onclick="toast('Audit export queued. Signed CSV.')">Export</button></div></div>
   <div class="callout info" style="margin-bottom:16px">${ico('scroll','ico')}
-    <span>Actions you take in this prototype are written to the top of this table — try suspending an
+    <span>Actions you take in this prototype are written to the top of this table. Try suspending an
       organisation or toggling a feature flag, then come back.</span></div>
   <section class="card" data-filter>
     <div class="filters">
@@ -2024,7 +2024,7 @@ SCREENS.gdpr = () => {
       ${table([{h:'Data'},{h:'Retained'}], [
         ['Rota and shift history', '7 years'], ['Attendance and clock-in', '3 years'],
         ['Leave records', '6 years'], ['Support cases', '3 years'],
-        ['Platform audit log', 'Indefinite — immutable'], ['Deleted tenant data', '30-day grace, then erased'],
+        ['Platform audit log', 'Indefinite. Immutable'], ['Deleted tenant data', '30-day grace, then erased'],
       ])}
       <div class="body"><p class="lede" style="margin:0">Retention is enforced by a nightly job, not by
         manual clean-up. The audit log is deliberately exempt from erasure.</p></div></section>
@@ -2094,7 +2094,7 @@ SCREENS.settings = () => {
       ${setting('Administrator session timeout', 'Idle time before the console locks.',
         '<select class="btn"><option>15 minutes</option><option selected>30 minutes</option><option>1 hour</option></select>')}
       ${setting('IP allowlist', 'Only these ranges may reach /admin. Four ranges configured.',
-        '<button class="btn sm" onclick="toast(\'IP allowlist opened — 4 ranges.\')">Manage</button>')}
+        '<button class="btn sm" onclick="toast(\'IP allowlist opened-4 ranges.\')">Manage</button>')}
       ${setting('Sign-in alerts', 'Email every administrator when a new device signs in to the console.', sw(true, 'Sign-in alerts'))}
       ${setting('Maximum concurrent sessions', 'Per administrator account.',
         '<select class="btn"><option>1</option><option selected>2</option><option>5</option></select>')}
@@ -2129,12 +2129,12 @@ SCREENS.settings = () => {
 
     ${panel('Administrators', `
       <div class="callout info" style="margin-bottom:16px">${ico('users','ico')}
-        <span>The last remaining Platform Owner cannot be removed or demoted — the control is disabled below,
+        <span>The last remaining Platform Owner cannot be removed or demoted. The control is disabled below,
         not merely hidden.</span></div>
       <section class="card"><header><h3>Platform administrators</h3><span class="spacer"></span>
         <button class="btn sm p" onclick="modal({title:'Invite platform administrator',confirm:'Send invitation',reason:true,
           body:'<div class=&quot;field&quot;><label for=&quot;aE&quot;>Email address</label><input id=&quot;aE&quot; data-val=&quot;e&quot; placeholder=&quot;name@rotaflow.co.uk&quot;></div><div class=&quot;field&quot;><label for=&quot;aR&quot;>Platform role</label><select id=&quot;aR&quot; data-val=&quot;r&quot;><option>Platform Owner</option><option selected>Platform Administrator</option><option>Platform Support</option><option>Platform Finance</option></select></div>',
-          onOk(v){logAudit('platform_admin.invited',{ent:v.e||'invitee',to:v.r});toast('Invitation sent — MFA enrolment required before first sign-in.')}})">Invite administrator</button></header>
+          onOk(v){logAudit('platform_admin.invited',{ent:v.e||'invitee',to:v.r});toast('Invitation sent. MFA enrolment required before first sign-in.')}})">Invite administrator</button></header>
         ${table([{h:'Administrator'},{h:'Platform role'},{h:'MFA'},{h:'Last login'},{h:'Status'},{h:'Actions'}],
           state.admins.map(a => {
             const owners = state.admins.filter(x => x.role === 'owner' && x.status === 'active').length;
@@ -2163,10 +2163,10 @@ SCREENS.settings = () => {
         <span>Maintenance mode signs out every user on every tenant and returns a holding page. Use it only
         for migrations that cannot run online.</span></div>
       <section class="card"><div class="body">
-      ${setting('Maintenance mode', 'Currently off — the platform is serving normally.',
-        `<button class="btn d" onclick="modal({title:'Enable maintenance mode?',danger:true,confirm:'Enable maintenance mode',reason:true,reauth:true,sub:'48,726 users across 1,284 organisations lose access immediately.',onOk(){logAudit('platform.maintenance_enabled',{ent:'maintenance_mode',from:'false',to:'true'});toast('Maintenance mode enabled — holding page live.',true)}})">Enable</button>`)}
-      ${setting('Scheduled window', 'Announced to tenants seven days ahead.', '<span class="mono">10 Aug 2026 02:00–03:00 BST</span>')}
-      ${setting('Read-only mode', 'A softer option — sign-in works, writes are refused.', sw(false, 'Read-only mode'))}
+      ${setting('Maintenance mode', 'Currently off. The platform is serving normally.',
+        `<button class="btn d" onclick="modal({title:'Enable maintenance mode?',danger:true,confirm:'Enable maintenance mode',reason:true,reauth:true,sub:'48,726 users across 1,284 organisations lose access immediately.',onOk(){logAudit('platform.maintenance_enabled',{ent:'maintenance_mode',from:'false',to:'true'});toast('Maintenance mode enabled. Holding page live.',true)}})">Enable</button>`)}
+      ${setting('Scheduled window', 'Announced to tenants seven days ahead.', '<span class="mono">10 Aug 2026 02:00-03:00 BST</span>')}
+      ${setting('Read-only mode', 'A softer option. Sign-in works, writes are refused.', sw(false, 'Read-only mode'))}
       </div></section>`)}
   </div>`;
 };

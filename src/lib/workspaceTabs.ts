@@ -15,7 +15,7 @@ function isManager(role: MembershipRole | null): boolean {
 }
 
 /**
- * **Rota** — building a week and reading the published result are two halves of
+ * **Rota**. Building a week and reading the published result are two halves of
  * one job, and they were two sidebar entries with no way across.
  *
  * Staff get a single tab. They cannot open the builder (`RequireRole` refuses
@@ -30,7 +30,7 @@ export function rotaWorkspaceTabs(role: MembershipRole | null): TabItem[] {
 }
 
 /**
- * **Team** — the directory and the availability matrix answer "who works here"
+ * **Team**. The directory and the availability matrix answer "who works here"
  * and "when can they work", which is one question asked twice.
  *
  * Staff again get a single tab: `/app/team` is managerial, but availability is

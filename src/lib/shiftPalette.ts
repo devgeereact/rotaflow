@@ -1,6 +1,6 @@
 /**
  * The 8-colour shift-type palette (docs/DESIGN.md §2). Shift-type colours are
- * constrained to these swatches only — never a free hex input — so chips can
+ * constrained to these swatches only, never a free hex input, so chips can
  * render via a token-class lookup and never touch a raw hex in a component.
  */
 export const SHIFT_PALETTE = [
@@ -75,8 +75,8 @@ export const SHIFT_PALETTE = [
  *
  * A rota is read forwards: colour is what draws the eye to the work still to
  * come, so spending it on shifts that have already been worked competes with
- * the part a manager can still act on. Past shifts stay fully legible — same
- * layout, same times — but drop out of the colour system. This is a *token*
+ * the part a manager can still act on. Past shifts stay fully legible. Same
+ * layout, same times, but drop out of the colour system. This is a *token*
  * swap rather than a `grayscale`/`opacity` filter so the result is a
  * deliberate colour in both themes, not a washed-out approximation of one.
  */
@@ -91,14 +91,14 @@ export function paletteTokenForColour(hex: string | null | undefined): string {
   return match?.bgClass ?? 'bg-secondary';
 }
 
-/** Complete `/20`-opacity class string for a swatch, keyed by hex — Tailwind can't purge a dynamically concatenated class. */
+/** Complete `/20`-opacity class string for a swatch, keyed by hex. Tailwind can't purge a dynamically concatenated class. */
 export function paletteToken20ForColour(hex: string | null | undefined): string {
   const match = SHIFT_PALETTE.find((p) => p.hex.toLowerCase() === hex?.toLowerCase());
   return match?.bg20Class ?? 'bg-secondary/20';
 }
 
 /**
- * Pale-wash background + saturated ink + hairline ring for a swatch — the rota
+ * Pale-wash background + saturated ink + hairline ring for a swatch. The rota
  * grid chip in design/Rota-Builder.png. Written out in full (never
  * concatenated) so Tailwind's content scan can see every class.
  */

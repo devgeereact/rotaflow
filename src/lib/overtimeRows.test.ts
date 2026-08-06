@@ -86,11 +86,11 @@ describe('formatOvertimeHours', () => {
   });
 
   it('rounds to the nearest minute', () => {
-    // 1.008h is 60.48 minutes — down to 60, which is a whole hour.
+    // 1.008h is 60.48 minutes. Down to 60, which is a whole hour.
     expect(formatOvertimeHours(1.008)).toBe('1h');
-    // 1.02h is 61.2 minutes — down to 61.
+    // 1.02h is 61.2 minutes. Down to 61.
     expect(formatOvertimeHours(1.02)).toBe('1h 1m');
-    // 1.999h is 119.94 minutes — up to 120, a whole hour rather than "1h 60m".
+    // 1.999h is 119.94 minutes, up to 120, a whole hour rather than "1h 60m".
     expect(formatOvertimeHours(1.999)).toBe('2h');
   });
 });

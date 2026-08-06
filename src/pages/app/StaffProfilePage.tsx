@@ -23,8 +23,8 @@ import type {
 
 /**
  * One person's profile (design/Staff-Profile.png). Cards whose data the schema
- * does not yet carry — competency levels, qualifications, shift ratings, the
- * activity feed — are omitted rather than filled with placeholders; see
+ * does not yet carry. Competency levels, qualifications, shift ratings, the
+ * activity feed. Are omitted rather than filled with placeholders; see
  * design/.loop/staff-log.md.
  */
 export function StaffProfilePage(): JSX.Element {

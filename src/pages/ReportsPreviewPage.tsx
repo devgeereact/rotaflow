@@ -9,7 +9,7 @@ import type { ReportsTab } from '@/components/reports/ReportsTabs';
 import type { ReportQuickAction } from '@/components/reports/ReportsQuickActionsCard';
 
 /**
- * Design-loop preview only — `/app/reports` needs a real Supabase session and a
+ * Design-loop preview only, `/app/reports` needs a real Supabase session and a
  * seeded organisation. This renders the same components against the fixtures in
  * `src/lib/reportsDemo.ts`, reproducing design/Reports-Dashboard.png. Not wired
  * to any service call; see design/.loop/reports-log.md.

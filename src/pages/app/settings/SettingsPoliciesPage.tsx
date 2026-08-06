@@ -76,14 +76,14 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
 ];
 
 /**
- * `/app/settings/policies` — design/Settingspolicy.png, scoped honestly.
+ * `/app/settings/policies`. Design/Settingspolicy.png, scoped honestly.
  *
  * ## Why this is six rules and not fifty-five
  *
  * The reference is a policy *engine*: roughly 55 policies across 10
  * categories, each with its own scope, status, version history, templates,
  * import/export, and live validation against the rota as it is built. That is
- * a project — its own tables, its own evaluation pass in the rota builder, its
+ * a project. Its own tables, its own evaluation pass in the rota builder, its
  * own conflict surface. Building the screen first would produce fifty toggles
  * that store a value nothing ever reads, which is indistinguishable from a
  * working feature until someone relies on it.
@@ -95,7 +95,7 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
  * The honesty matters more than the count, so the screen states it directly:
  * these are defaults and reporting inputs, and nothing here blocks a rota from
  * being saved. An owner who sets "maximum 6 consecutive days" and assumes the
- * builder will refuse the seventh has been misled by a checkbox — that is the
+ * builder will refuse the seventh has been misled by a checkbox, that is the
  * failure this note exists to prevent.
  */
 export function SettingsPoliciesPage(): JSX.Element {
@@ -177,7 +177,7 @@ export function SettingsPoliciesPage(): JSX.Element {
                   value={String(policies[policy.key])}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     const parsed = Number(e.target.value);
-                    // Reject NaN rather than storing it — an empty field
+                    // Reject NaN rather than storing it, an empty field
                     // parses to NaN, which would serialise into the jsonb as
                     // null and read back as the default with no warning.
                     if (!Number.isFinite(parsed)) return;
@@ -234,7 +234,7 @@ export function SettingsPoliciesPage(): JSX.Element {
             <p className="mt-1">
               RotaFlow uses these values when calculating timesheets and when suggesting
               shifts, and reports flag rotas that fall outside them. They do not currently
-              block a rota from being saved — a manager can still roster a seventh
+              block a rota from being saved, a manager can still roster a seventh
               consecutive day. Automatic validation while building a rota is planned
               separately.
             </p>

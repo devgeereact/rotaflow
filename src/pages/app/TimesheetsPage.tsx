@@ -75,7 +75,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 /**
- * `/app/timesheets` — hours from `clock_events`, computed client-side via
+ * `/app/timesheets`. Hours from `clock_events`, computed client-side via
  * `pairClockEvents`, laid out to match design/Timesheets-Dashboard.png.
  *
  * Not the `timesheets` table's submit/approve/export workflow: that table has
@@ -280,7 +280,7 @@ export function TimesheetsPage(): JSX.Element {
           /*
            * Derived hours are always "submitted" until a manager signs the
            * period off. `signOffs` holds the real decision (see
-           * timesheetService.ts) — the hours themselves are recomputed from
+           * timesheetService.ts). The hours themselves are recomputed from
            * clock events on every render and can never be "approved" on
            * their own.
            */
@@ -293,7 +293,7 @@ export function TimesheetsPage(): JSX.Element {
       .sort((a, b) => a.lastName.localeCompare(b.lastName));
   }, [segmentsByStaff, staffById, myProfile, teamMode, shifts, period.label, signOffs]);
 
-  /** Worked minutes per staff id — what an approval snapshots. */
+  /** Worked minutes per staff id. What an approval snapshots. */
   const workedMinutesByStaff = useMemo(() => {
     const map = new Map<string, number>();
     for (const [staffId, segments] of segmentsByStaff.entries()) {
@@ -365,7 +365,7 @@ export function TimesheetsPage(): JSX.Element {
 
   /**
    * The approval queue: every row for the period that has not been signed off.
-   * Derived from `rows`, not `visibleRows` — the queue is what still needs a
+   * Derived from `rows`, not `visibleRows`. The queue is what still needs a
    * decision, and a department filter applied to the table should not make
    * outstanding work appear to have been dealt with.
    */
@@ -477,8 +477,8 @@ export function TimesheetsPage(): JSX.Element {
               }}
             />
             <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-              Hides anyone below this many worked hours in the period — useful for
-              spotting short weeks before they reach payroll.
+              Hides anyone below this many worked hours in the period. Useful for spotting
+              short weeks before they reach payroll.
             </p>
           </div>
           <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-content dark:text-content-dark">
@@ -520,7 +520,7 @@ export function TimesheetsPage(): JSX.Element {
         onClose={() => setDetailStaffId(null)}
         title={
           detailRow
-            ? `${detailRow.firstName} ${detailRow.lastName} — ${detailRow.weekLabel}`
+            ? `${detailRow.firstName} ${detailRow.lastName}, ${detailRow.weekLabel}`
             : ''
         }
       >
@@ -569,7 +569,7 @@ export function TimesheetsPage(): JSX.Element {
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-content dark:text-content-dark">
                           {format(new Date(segment.clockIn.event_at), 'EEE d MMM, HH:mm')}
-                          {' – '}
+                          {'. '}
                           {segment.clockOut
                             ? format(new Date(segment.clockOut.event_at), 'HH:mm')
                             : 'still clocked in'}
@@ -578,14 +578,14 @@ export function TimesheetsPage(): JSX.Element {
                           {formatHours(segment.minutes)} h
                         </span>
                       </div>
-                      {/* The honest-ambiguity flag from lib/hours.ts — a
+                      {/* The honest-ambiguity flag from lib/hours.ts, a
                           forgotten clock-out must be visible, never guessed. */}
                       {segment.reviewReason && (
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs text-warning">
                           <AlertTriangle size={13} aria-hidden="true" />
                           {segment.reviewReason === 'missing_clock_out'
-                            ? 'No clock-out recorded — needs review before pay.'
-                            : 'Break not closed — deducted to clock-out.'}
+                            ? 'No clock-out recorded. Needs review before pay.'
+                            : 'Break not closed. Deducted to clock-out.'}
                         </p>
                       )}
                     </li>
@@ -628,7 +628,7 @@ export function TimesheetsPage(): JSX.Element {
           <div>
             <h3 className="mb-1 font-semibold">Flagged rows</h3>
             <p className="text-content-muted dark:text-content-muted-dark">
-              Where the events are ambiguous — most often a forgotten clock-out — the
+              Where the events are ambiguous. Most often a forgotten clock-out, the
               segment is shown with a warning and zero minutes instead of a guess. Open
               the row to see which segment needs attention. A timesheet feeds
               someone&rsquo;s pay, so an estimate is never presented as a fact.
@@ -639,8 +639,7 @@ export function TimesheetsPage(): JSX.Element {
             <p className="text-content-muted dark:text-content-muted-dark">
               Approving a period records a sign-off with a snapshot of the agreed hours.
               If a clock event is corrected afterwards the derived figure moves and the
-              snapshot does not — that disagreement is deliberate, and worth
-              investigating.
+              snapshot does not. That disagreement is deliberate, and worth investigating.
             </p>
           </div>
         </div>
@@ -895,7 +894,7 @@ export function TimesheetsPage(): JSX.Element {
                       className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm"
                     >
                       <span className="text-content dark:text-content-dark">
-                        {format(new Date(segment.clockIn.event_at), 'EEE d MMM, HH:mm')} –{' '}
+                        {format(new Date(segment.clockIn.event_at), 'EEE d MMM, HH:mm')},{' '}
                         {segment.clockOut
                           ? format(new Date(segment.clockOut.event_at), 'HH:mm')
                           : 'ongoing'}
@@ -907,7 +906,7 @@ export function TimesheetsPage(): JSX.Element {
                         )}
                         {/* An ambiguous event stream. `pairClockEvents` produces
                             the reading the evidence supports, but only a human
-                            knows what actually happened — and this row feeds
+                            knows what actually happened, and this row feeds
                             someone's pay, so it must not look like a fact. */}
                         {segment.reviewReason && (
                           <span

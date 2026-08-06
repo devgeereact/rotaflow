@@ -13,7 +13,7 @@ const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
 const LINK_INACTIVE =
   'text-content-muted hover:bg-surface hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark';
-// Soft-tint highlight, not the old white-pill/left-border treatment — same
+// Soft-tint highlight, not the old white-pill/left-border treatment. Same
 // bg-X/10 text-X idiom already used for status badges elsewhere in the app
 // (e.g. AvailabilityPage, LeavePage), so the active nav item reads as "this
 // app's highlight colour", not a one-off style.
@@ -36,8 +36,7 @@ function NavList({
           to={to}
           onClick={onNavigate}
           // `title` is the tooltip when collapsed. The label also stays in
-          // the accessibility tree via `sr-only` rather than being dropped —
-          // a collapsed sidebar of eleven unlabelled icons is unusable with
+          // the accessibility tree via `sr-only` rather than being dropped, // a collapsed sidebar of eleven unlabelled icons is unusable with
           // a screen reader, and `title` alone is not reliably announced.
           title={collapsed ? label : undefined}
           className={({ isActive }) =>
@@ -109,7 +108,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
       {/*
         `h-full` against AppShell's viewport-height row, so the sidebar is
         pinned and never scrolls with the page. If the nav list outgrows the
-        space, `NavList`'s own `overflow-y-auto` scrolls just the links — the
+        space, `NavList`'s own `overflow-y-auto` scrolls just the links. The
         logo, organisation switcher and profile footer stay put, which is the
         point of pinning it at all.
       */}

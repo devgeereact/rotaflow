@@ -41,7 +41,7 @@ import type { Organisation } from '@/types';
 const WINDOW = 1000;
 
 /**
- * `/admin/notifications` — what the platform has actually delivered.
+ * `/admin/notifications`. What the platform has actually delivered.
  *
  * ## Why there is no composer here
  *
@@ -49,8 +49,8 @@ const WINDOW = 1000;
  * audience, a schedule, and delivery statistics afterwards. None of it can be
  * built on this schema. `notifications` rows are addressed to one user inside
  * one organisation; there is no platform-wide message, no audience definition
- * and no fan-out. The table also has **no client insert policy** by design —
- * rows are written by Edge Functions holding the service role — so a compose
+ * and no fan-out. The table also has **no client insert policy** by design,
+ * rows are written by Edge Functions holding the service role, so a compose
  * form in a static console would have nowhere to post.
  *
  * What is real is the delivery record, cross-tenant, because
@@ -60,7 +60,7 @@ const WINDOW = 1000;
  *
  * ## The one word this screen refuses to use
  *
- * "Delivered". The schema records `read_at` and nothing else — no sent, no
+ * "Delivered". The schema records `read_at` and nothing else, no sent, no
  * bounced, no failed. An unread notification may have arrived perfectly and
  * simply not been opened, so calling the read share a delivery rate would
  * invent a measurement out of an absence.
@@ -109,7 +109,7 @@ export function AdminNotificationsPage(): JSX.Element {
   return (
     <AdminPage
       title="Platform notifications"
-      description="Announcements sent to tenants — maintenance, incidents, billing and releases."
+      description="Announcements sent to tenants. Maintenance, incidents, billing and releases."
       action={
         <Button disabled title="There is no announcement table to write to">
           New announcement
@@ -208,10 +208,10 @@ export function AdminNotificationsPage(): JSX.Element {
                         {item.when}
                       </td>
                       <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
-                        {item.sent === null ? '—' : item.sent.toLocaleString('en-GB')}
+                        {item.sent === null ? '-' : item.sent.toLocaleString('en-GB')}
                       </td>
                       <td className="px-3 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
-                        {item.read === null ? '—' : item.read.toLocaleString('en-GB')}
+                        {item.read === null ? '-' : item.read.toLocaleString('en-GB')}
                       </td>
                       <td className="px-3 py-2.5">
                         <Badge
@@ -231,7 +231,7 @@ export function AdminNotificationsPage(): JSX.Element {
           <Callout tone="warning" title="The announcement register is placeholder">
             <p>
               <code>notifications</code> rows are addressed to one user inside one
-              organisation, and the table has no client insert policy by design — rows are
+              organisation, and the table has no client insert policy by design. Rows are
               written by Edge Functions holding the service role. There is no
               platform-wide message, no audience definition, no fan-out and no schedule,
               so the register above and its six figures come from{' '}
@@ -244,7 +244,7 @@ export function AdminNotificationsPage(): JSX.Element {
             </p>
           </Callout>
 
-          <Panel title="Actual delivery — real">
+          <Panel title="Actual delivery. Real">
             <dl className="grid gap-4 sm:grid-cols-4">
               {[
                 ['Notifications recorded', summary.total.toLocaleString('en-GB')],
@@ -307,7 +307,7 @@ export function AdminNotificationsPage(): JSX.Element {
               The only engagement signal in the schema is <code>read_at</code>. There is
               no sent, delivered, bounced or failed column, so an unread notification may
               have arrived perfectly and simply not been opened. Read that percentage as
-              attention, not as delivery — and for whether the mail path itself works, see{' '}
+              attention, not as delivery, and for whether the mail path itself works, see{' '}
               <Link to="/admin/integrations" className="text-primary hover:underline">
                 Integrations
               </Link>

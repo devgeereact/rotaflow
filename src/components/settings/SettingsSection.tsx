@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/Card';
 interface SettingsSectionProps {
   title: string;
   description?: string;
-  /** Right-aligned control in the card header — usually Edit or Save. */
+  /** Right-aligned control in the card header, usually Edit or Save. */
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -44,7 +44,7 @@ export function SettingsSection({
 }
 
 /**
- * Label/value row for read-only detail lists — the "Organisation Name /
+ * Label/value row for read-only detail lists. The "Organisation Name /
  * Sunnyvale Care Group" pairs on the Organisation tab.
  */
 export function DetailRow({
@@ -60,7 +60,7 @@ export function DetailRow({
         {label}
       </dt>
       <dd className="mt-1 text-sm text-content dark:text-content-dark">
-        {value || <span className="text-content-muted">—</span>}
+        {value || <span className="text-content-muted">-</span>}
       </dd>
     </div>
   );

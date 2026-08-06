@@ -1,8 +1,8 @@
 # RotaFlow demo dataset
 
 A reusable showcase dataset: five organisations carrying a **rolling three-month
-rota** — this month plus the two after it, with three weeks of completed history
-behind it — plus nine sign-in-able accounts covering every role.
+rota**. This month plus the two after it, with three weeks of completed history
+behind it, plus nine sign-in-able accounts covering every role.
 
 Built for client demos and for end-to-end manual testing, which is why it is not
 a tidy rota: a set of problems is planted on purpose so the warnings, conflict
@@ -19,14 +19,13 @@ and shortage paths get exercised, not just the happy one.
 ## Running it
 
 **First, set `c_password` near the top of `demo_seed.sql`.** It ships as
-`CHANGE-ME-BEFORE-SEEDING` and the seed raises an exception until you change it —
-see [Accounts](#accounts) for why.
+`CHANGE-ME-BEFORE-SEEDING` and the seed raises an exception until you change it. See [Accounts](#accounts) for why.
 
 Then paste the file into the Supabase SQL editor and run it as one unit, or POST
 it to the Management API:
 
 ```bash
-# PROJECT_REF is deliberately not hard-coded here — pass the project you mean.
+# PROJECT_REF is deliberately not hard-coded here. Pass the project you mean.
 PROJECT_REF=<your-project-ref> python3 - <<'PY'
 import json, os, subprocess, urllib.request
 sql = open('supabase/seed/demo_seed.sql').read()
@@ -41,7 +40,7 @@ PY
 ```
 
 If you substitute the password programmatically, replace **only the assignment**
-(`constant text := '…'`), never every occurrence — a blanket find-and-replace also
+(`constant text := '…'`), never every occurrence, a blanket find-and-replace also
 rewrites the guard's comparison, which makes it true again and aborts the run.
 
 The seed ends with a verification `SELECT` printing a row per organisation with a
@@ -64,7 +63,7 @@ credential. `c_password` therefore ships as a placeholder and the seed refuses t
 run until you set it. Keep the value you choose out of the repo.
 
 Unlike v1, **the seed rotates the password of accounts that already exist**, so
-whatever you set in `c_password` is always the live value — no guessing whether an
+whatever you set in `c_password` is always the live value, no guessing whether an
 older run set something different.
 
 The blast radius is bounded even so: these accounts are members of the demo
@@ -74,24 +73,24 @@ scribbled-on demo, which a re-run repairs.
 | Sign in as | Email | Role |
 | ---------- | ----- | ---- |
 | Gideon Akinlotan | `gakinz101@gmail.com` | **Super Admin** + owner of all 5 orgs; on the Northgate rota |
-| Amelia Hart | `gakinz101+demo.owner@gmail.com` | Owner — Harbour View only |
-| Daniel Okafor | `gakinz101+demo.manager1@gmail.com` | Manager — Northgate, Harbour View, + 3 more |
-| Priya Raman | `gakinz101+demo.manager2@gmail.com` | Manager — Northgate |
-| James Whitfield | `gakinz101+demo.staff1@gmail.com` | Staff — Northgate |
-| Sofia Marchetti | `gakinz101+demo.staff2@gmail.com` | Staff — Northgate |
-| Tomas Nowak | `gakinz101+demo.staff3@gmail.com` | Staff — Harbour View |
-| Grace Adeyemi | `gakinz101+demo.staff4@gmail.com` | Staff — Harbour View |
-| **Maya Whitfield** | `gakinz101+demo.worker@gmail.com` | **Staff — the worker test account** |
+| Amelia Hart | `gakinz101+demo.owner@gmail.com` | Owner. Harbour View only |
+| Daniel Okafor | `gakinz101+demo.manager1@gmail.com` | Manager. Northgate, Harbour View, + 3 more |
+| Priya Raman | `gakinz101+demo.manager2@gmail.com` | Manager. Northgate |
+| James Whitfield | `gakinz101+demo.staff1@gmail.com` | Staff. Northgate |
+| Sofia Marchetti | `gakinz101+demo.staff2@gmail.com` | Staff. Northgate |
+| Tomas Nowak | `gakinz101+demo.staff3@gmail.com` | Staff. Harbour View |
+| Grace Adeyemi | `gakinz101+demo.staff4@gmail.com` | Staff. Harbour View |
+| **Maya Whitfield** | `gakinz101+demo.worker@gmail.com` | **Staff. The worker test account** |
 
 The demo addresses are plus-addressed on the owner's real mailbox, so password
-resets and magic links genuinely arrive and **nothing can bounce** — a fake domain
+resets and magic links genuinely arrive and **nothing can bounce**, a fake domain
 would hard-bounce, and Supabase has already warned this project about bounce rate.
 
 ### The worker account
 
 `+demo.worker` (Maya Whitfield, Northgate House) exists to be signed into as an
 ordinary member of staff. She is on the six-pattern roster's alternating
-early/late rotation — Saturday to Wednesday, swapping pattern week by week — so
+early/late rotation. Saturday to Wednesday, swapping pattern week by week, so
 her Schedule shows a real rhythm rather than five identical days. She carries
 worked history with clock events, shifts across all three months, and four unread
 notifications so the bell has a badge on first sign-in.
@@ -100,14 +99,14 @@ notifications so the bell has a badge on first sign-in.
 
 | Org | Sector | Plan | Roster |
 | --- | ------ | ---- | ------ |
-| Northgate Care Group | Healthcare | business | **30 staff on six rotating patterns** — the flagship |
+| Northgate Care Group | Healthcare | business | **30 staff on six rotating patterns**. The flagship |
 | Harbour View Hotels | Hospitality | professional | 15 on three patterns; separate owner, proves tenant isolation |
 | Brightside Retail | Retail | professional | 15 on three patterns; head-office logins only |
 | Clearway Logistics | Logistics | starter | 15 on three patterns; head-office logins only |
 | Meridian Security | Security | business | 15 on three patterns; head-office logins only |
 
 Each has 5 locations, 5 departments, 6 shift types, 18 templates, **85 rotas (one
-per site per week for 17 weeks)** and 1,200–2,500 shifts, plus leave, overtime,
+per site per week for 17 weeks)** and 1,200-2,500 shifts, plus leave, overtime,
 swaps, timesheets, availability, documents, announcements, notifications, invites,
 audit entries and a subscription.
 
@@ -125,16 +124,16 @@ the week and the grid reads as a real rolling rota:
 
 | Pattern | Shift | Days |
 | ------- | ----- | ---- |
-| 1 | Early 07:00–15:00 | Mon–Fri |
-| 2 | Late 14:00–22:00 | Mon–Fri |
-| 3 | Night 21:45–07:15 | Wed–Sun |
-| 4 | Long Day 08:00–20:00 | Mon–Wed + weekend |
-| 5 | Twilight 17:00–23:00 | Thu–Sun |
-| 6 | Early/Late, alternating week by week | Sat–Wed |
+| 1 | Early 07:00-15:00 | Mon, Fri |
+| 2 | Late 14:00-22:00 | Mon, Fri |
+| 3 | Night 21:45-07:15 | Wed, Sun |
+| 4 | Long Day 08:00-20:00 | Mon, Wed + weekend |
+| 5 | Twilight 17:00-23:00 | Thu, Sun |
+| 6 | Early/Late, alternating week by week | Sat, Wed |
 
 Shift-type colours come from the **eight-swatch palette in
 `src/lib/shiftPalette.ts`**. Anything outside it falls through
-`paletteTintForColour()` to the grey default — which is exactly why every chip in
+`paletteTintForColour()` to the grey default, which is exactly why every chip in
 the v1 demo rendered colourless.
 
 ## The planted problems
@@ -143,10 +142,10 @@ A demo that only shows a healthy rota never exercises the warnings. On purpose:
 
 | # | Problem | Where to find it |
 | - | ------- | ---------------- |
-| a | **Unfilled weekend nights and twilights** | Sites 2 and 4, weeks +2, +4, +6, +9 and +11 — an "Unfilled" row on the grid |
+| a | **Unfilled weekend nights and twilights** | Sites 2 and 4, weeks +2, +4, +6, +9 and +11, an "Unfilled" row on the grid |
 | b | **Double booking** | One person, two overlapping shifts, next week |
 | c | **Approved leave with shifts still rostered inside it** | Two weeks out |
-| d | **Rest breach** | A late finishing 22:00 followed by an early at 07:00 — 9h, under the WTR's 11 |
+| d | **Rest breach** | A late finishing 22:00 followed by an early at 07:00-9h, under the WTR's 11 |
 | e | **Unavailability clash** | Someone unavailable every Monday who works Mondays |
 | f | **Documents** | One DBS already expired, one expiring this week, one in three weeks |
 | g | **No-shows** | Two recent past shifts per org with no clock events at all |
@@ -160,7 +159,7 @@ proposes ranked cover for (a).
 ## Attendance
 
 - Every finished shift in the last four weeks has a realistic clock in/out pair
-  with deterministic minute jitter — a repeatable minority run 18–30 minutes late.
+  with deterministic minute jitter, a repeatable minority run 18-30 minutes late.
 - Long shifts (45+ minute breaks) also carry `break_start` / `break_end` events.
 - **Whoever is genuinely mid-shift right now is clocked in**, so the Clock In
   screen has a live state whatever hour the demo runs. A fallback covers the case
@@ -168,8 +167,8 @@ proposes ranked cover for (a).
 
 ## Not seeded, on purpose
 
-- `org_smtp_settings` — a fake SMTP row would break the real "Test SMTP" button.
-- `push_subscriptions` — device-bound; only a real browser can create a valid one.
+- `org_smtp_settings`, a fake SMTP row would break the real "Test SMTP" button.
+- `push_subscriptions`. Device-bound; only a real browser can create a valid one.
 
 ## Removing it
 

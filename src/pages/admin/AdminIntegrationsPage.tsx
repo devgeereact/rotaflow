@@ -27,7 +27,7 @@ import type { HealthCheck } from '@/lib/platformHealth';
 import type { Organisation, OrgSmtpSettingsSafe } from '@/types';
 
 /**
- * `/admin/integrations` — what this deployment is wired to, and which tenants
+ * `/admin/integrations`. What this deployment is wired to, and which tenants
  * have wired something of their own.
  *
  * ## Two different kinds of integration, kept apart
@@ -36,12 +36,12 @@ import type { Organisation, OrgSmtpSettingsSafe } from '@/types';
  * Inngest, push keys. They are the same entries `/admin/platform-health`
  * reports as "configured", read from the same source, and they answer "will
  * this deployment try to use the service". They do **not** prove the far end is
- * up — nothing here probes it, and a green tick that means "a key is present"
+ * up. Nothing here probes it, and a green tick that means "a key is present"
  * must not be mistaken for one that means "we just called it".
  *
  * **Tenant integrations** are rows a customer created. There is exactly one:
- * per-organisation SMTP. Everything else the console reference lists — payroll,
- * HR, calendar, identity, webhooks — has no table holding a connection, a sync
+ * per-organisation SMTP. Everything else the console reference lists. Payroll,
+ * HR, calendar, identity, webhooks. Has no table holding a connection, a sync
  * state or a failure count, so those connectors are absent rather than listed
  * with a fabricated success rate.
  */
@@ -64,7 +64,7 @@ export function AdminIntegrationsPage(): JSX.Element {
         //
         // `runHealthChecks` probes the realtime socket and waits up to eight
         // seconds for a handshake. Awaiting it alongside the reads meant the
-        // entire screen — tiles, SMTP list, everything — sat on a skeleton for
+        // entire screen. Tiles, SMTP list, everything, sat on a skeleton for
         // eight seconds while data that had arrived in 40ms was held back. The
         // reads render immediately; the services panel fills in when it can.
         const [smtpRows, orgs] = await Promise.all([
@@ -261,10 +261,10 @@ export function AdminIntegrationsPage(): JSX.Element {
             </div>
           </Panel>
 
-          <Panel title="Platform services — real" flush>
+          <Panel title="Platform services. Real" flush>
             <p className="border-b border-divider px-4 py-2.5 text-sm text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
               Read from this deployment&rsquo;s build configuration. A key being present
-              proves it will try to use the service — for whether it answers, see{' '}
+              proves it will try to use the service, for whether it answers, see{' '}
               <Link to="/admin/platform-health" className="text-primary hover:underline">
                 System Status
               </Link>
@@ -366,7 +366,7 @@ export function AdminIntegrationsPage(): JSX.Element {
           <Callout tone="warning" title="The connector table is placeholder">
             <p>
               No table holds a connection, a sync attempt or a failure, so every connector
-              above — its organisations, success rate, last sync and failure count — comes
+              above. Its organisations, success rate, last sync and failure count, comes
               from <code>src/lib/adminOverviewDemo.ts</code>. Logs, Retry and Disable are
               disabled rather than wired, because there is nothing to read, retry or
               switch off.
@@ -374,7 +374,7 @@ export function AdminIntegrationsPage(): JSX.Element {
             <p>
               Real on this screen: the platform services read from build configuration,
               and the tenant SMTP settings, which are rows customers created. The nearest
-              real connector is the CSV payroll export a manager runs from Reports — a
+              real connector is the CSV payroll export a manager runs from Reports, a
               download rather than a connection, so there is nothing to monitor.
             </p>
           </Callout>

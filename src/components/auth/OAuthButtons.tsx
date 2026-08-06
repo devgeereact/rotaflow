@@ -24,8 +24,8 @@ interface OAuthButtonsProps {
 
 /**
  * The Google/GitHub row on the auth screens (design/signup.png shows
- * Google + Microsoft; this project's second provider is GitHub — see
- * `OAuthProvider` in src/lib/env.ts — so GitHub replaces it here).
+ * Google + Microsoft; this project's second provider is GitHub. See
+ * `OAuthProvider` in src/lib/env.ts, so GitHub replaces it here).
  *
  * Only renders providers `env.oauthProviders` actually has enabled upstream
  * in Supabase; a button for a disabled provider is a dead end for the user.

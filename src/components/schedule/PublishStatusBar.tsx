@@ -2,7 +2,7 @@ import { CheckCircle2, Eye, History } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 interface PublishStatusBarProps {
-  /** "Published by James Davis" — null when the rota has never been published. */
+  /** "Published by James Davis". Null when the rota has never been published. */
   publishedBy: string | null;
   /** Pre-formatted, e.g. "Today, 10:24". */
   publishedAtLabel: string | null;

@@ -28,7 +28,7 @@ const EYEBROW =
  * Which deployment this is.
  *
  * Production is the restrained red; anything else is amber. The distinction
- * carries real weight here — the entire point of an environment badge on an
+ * carries real weight here. The entire point of an environment badge on an
  * admin console is that "I thought I was on staging" is a sentence which
  * precedes a very bad afternoon. `env.mode` is Vite's build mode, so this
  * reports what was actually built rather than what anyone assumed.
@@ -86,8 +86,8 @@ function NavList({
 /**
  * Brand, area and environment.
  *
- * The mark is the product's own — this area is RotaFlow, not a separate
- * product — and everything that says "you are not in a tenant" is carried by
+ * The mark is the product's own. This area is RotaFlow, not a separate
+ * product, and everything that says "you are not in a tenant" is carried by
  * the eyebrow and the environment badge underneath it rather than by recolouring
  * the console.
  *
@@ -125,7 +125,7 @@ function ConsoleIdentity(): JSX.Element {
  * The role this session is actually acting as.
  *
  * The reference renders a role *switcher* here, which is a prototype
- * affordance — it exists so the reader can see the console re-resolve. A real
+ * affordance. It exists so the reader can see the console re-resolve. A real
  * platform role comes from `platform_admins` and is enforced by the route
  * guards and by `has_platform_role(...)` in the policies, so it is read here,
  * never chosen.
@@ -137,7 +137,7 @@ function ConsoleRole(): JSX.Element {
       <p className={EYEBROW}>Signed in as</p>
       <p className="rounded-lg border border-surface-border bg-surface px-2.5 py-[7px] text-[0.8rem] font-medium text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark">
         {/* Never "Administrator" as a guess. If the granular role could not be
-            read, say so — this line is how someone checks what they are about
+            read, say so. This line is how someone checks what they are about
             to act as. */}
         {platformRole ? PLATFORM_ROLE_LABELS[platformRole] : 'Platform role unavailable'}
       </p>
@@ -150,7 +150,7 @@ function ConsoleRole(): JSX.Element {
  *
  * Sticky rather than one more entry in the list: the rail scrolls once the nav
  * is fifteen items long, and this is the one link that has to be reachable from
- * anywhere — a platform administrator who cannot find the way back to their own
+ * anywhere, a platform administrator who cannot find the way back to their own
  * organisation is stuck in an area they only meant to visit. It carries the
  * rail background and a top border so nav items scroll *under* it rather than
  * showing through.
@@ -245,7 +245,7 @@ function useCrumbs(items: readonly AdminNavItem[]): string | null {
  *
  * `AppShell` is built around an organisation: it renders the org switcher, the
  * role-filtered sidebar and the tenant-scoped search, and every one of those is
- * meaningless — or actively misleading — in an area whose whole point is that
+ * meaningless, or actively misleading, in an area whose whole point is that
  * it sits *above* organisations. A platform admin here is not acting as a
  * member of the org they happen to have selected, and a shell implying they are
  * invites exactly the mistake this area must not make.
@@ -260,12 +260,12 @@ function useCrumbs(items: readonly AdminNavItem[]): string | null {
  * "suspend this organisation", and a console that is red all over is a console
  * where red stops meaning anything. Separation is carried instead by the
  * PLATFORM CONSOLE eyebrow, the environment badge, the rail treatment and the
- * standing cross-tenant banner — all of which stay.
+ * standing cross-tenant banner. All of which stay.
  *
  * ## The mobile drawer
  *
  * The console's navigation used to live inline inside the warning banner on
- * small screens — a wrapped row of plain links, which was proportionate when
+ * small screens, a wrapped row of plain links, which was proportionate when
  * there were seven of them and none was role-filtered. It is now a proper
  * drawer sharing `useFocusTrap` with `Sidebar`, so both shells trap focus,
  * close on Escape and hide the page behind them by the same code rather than
@@ -303,8 +303,8 @@ export function AdminShell(): JSX.Element {
 
         <div className="flex min-w-0 flex-col">
           {/* Standing reminder of whose data is on screen. A banner rather than a
-              one-time toast because the risk — acting on a customer's live data
-              believing it is your own — lasts as long as the session does. */}
+              one-time toast because the risk. Acting on a customer's live data
+              believing it is your own. Lasts as long as the session does. */}
           <div className="flex items-center gap-3 border-b border-danger/20 bg-danger-wash px-4 py-2 dark:bg-danger-wash-dark">
             <button
               type="button"
@@ -316,7 +316,7 @@ export function AdminShell(): JSX.Element {
               <Menu size={18} aria-hidden="true" />
             </button>
             <p className="text-xs font-medium text-danger">
-              Platform administration — you are viewing data belonging to every
+              Platform administration. You are viewing data belonging to every
               organisation on RotaFlow.
             </p>
           </div>
@@ -336,7 +336,7 @@ export function AdminShell(): JSX.Element {
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {/* Absent, rather than dead, until the screen under it offers a
-                  refetch — see `useConsoleRefresh`. */}
+                  refetch. See `useConsoleRefresh`. */}
               {refresh ? (
                 <button
                   type="button"

@@ -1,5 +1,5 @@
 /**
- * Platform health — the pure half.
+ * Platform health. The pure half.
  *
  * Status derivation, thresholds and summarising live here rather than in
  * `services/` so they can be unit-tested under Node. Anything importing
@@ -24,7 +24,7 @@ export interface HealthCheck {
   status: HealthStatus;
   /** Round-trip in milliseconds, where the check measured one. */
   latencyMs?: number;
-  /** One line explaining the status. Always populated — never leave a bare pill. */
+  /** One line explaining the status. Always populated, never leave a bare pill. */
   detail: string;
   /**
    * True when the answer comes from configuration rather than a live probe.
@@ -52,7 +52,7 @@ export function statusForLatency(ms: number): HealthStatus {
 }
 
 /**
- * The worst status across a set of checks — that is what the page headline
+ * The worst status across a set of checks, that is what the page headline
  * should report. A single hard failure outranks any number of green ticks.
  */
 export function overallStatus(checks: readonly HealthCheck[]): HealthStatus {
@@ -103,7 +103,7 @@ export function statusLabel(status: HealthStatus): string {
  * than a spuriously precise "0.4 ms".
  */
 export function formatLatency(ms: number | undefined): string {
-  if (ms === undefined) return '—';
+  if (ms === undefined) return '-';
   if (ms < 1) return '<1 ms';
   if (ms < 1_000) return `${Math.round(ms)} ms`;
   return `${(ms / 1_000).toFixed(1)} s`;

@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 interface BrandMarkProps {
-  /** Sizing/spacing classes. The mark is square — set both height and width. */
+  /** Sizing/spacing classes. The mark is square. Set both height and width. */
   className?: string;
   /**
    * Accessible name. Pass `null` when the mark sits next to a visible
@@ -11,10 +11,10 @@ interface BrandMarkProps {
 }
 
 /**
- * The RotaFlow app icon — rounded-square brand tile with the stylised "R"
+ * The RotaFlow app icon. Rounded-square brand tile with the stylised "R"
  * (bar + bowl + leg), the accent tile and the 2×2 shift-grid dots.
  *
- * The single source of the mark across the whole product — app sidebar and
+ * The single source of the mark across the whole product. App sidebar and
  * header, marketing nav and footer, auth, onboarding, splash, app boot, the
  * invitation screen and the platform console. Geometry is traced from
  * design/splash-screen.png at its native 266×269.

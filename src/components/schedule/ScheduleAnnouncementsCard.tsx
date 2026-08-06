@@ -8,7 +8,7 @@ export interface ScheduleAnnouncement {
   body: string;
   /** Pre-formatted, e.g. "2 hours ago". */
   timeLabel: string;
-  /** Drives the icon tile — announcements have no type column, so the caller decides. */
+  /** Drives the icon tile. Announcements have no type column, so the caller decides. */
   tone: 'general' | 'training';
 }
 

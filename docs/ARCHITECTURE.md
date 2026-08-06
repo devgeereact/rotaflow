@@ -22,7 +22,7 @@
 ```
 
 The static bundle talks to each managed service directly over HTTPS. cPanel only
-serves files — it never runs application logic.
+serves files. It never runs application logic.
 
 ## 2. Directory layout
 
@@ -68,7 +68,7 @@ and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
 ### Information architecture / routes (RotaFlow)
 
 Routes are organisation-scoped once a tenant is selected. Everything below is
-**built and routed** — there are no disabled "Soon" nav items left.
+**built and routed**. There are no disabled "Soon" nav items left.
 
 `src/lib/navigationTargets.test.ts` parses this route table out of `App.tsx` and
 asserts that every Settings tab, Profile tab, marketing nav link, footer link and
@@ -77,21 +77,21 @@ Settings tab bar once shipped with fourteen routes, none of which had been added
 to `App.tsx`; every one rendered the 404 page while all five gates stayed green.
 
 ```text
-PUBLIC — marketing
+PUBLIC. Marketing
 /                         landing: hero, product shot, benefits, sectors, stats, CTA
 /features /solutions /pricing /resources /about /contact
                           copy lives in src/lib/marketing.ts (see its header for
                           the no-invented-traction rule)
 
-PUBLIC — auth
+PUBLIC. Auth
 /login /signup /forgot-password /reset-password /splash
-/invite/:token            public on purpose — an invitee has no account yet
+/invite/:token            public on purpose, an invitee has no account yet
 /onboarding               create an organisation (auth required)
 
-TENANT SHELL — /app (requires membership, else redirects to /onboarding)
+TENANT SHELL, /app (requires membership, else redirects to /onboarding)
   /app/dashboard          today's coverage, queues, activity
-  /app/rota               rota builder — drag-drop, AI auto-fill, publish   [manager]
-  /app/schedule           published schedule — day/week/month/agenda + ICS
+  /app/rota               rota builder. Drag-drop, AI auto-fill, publish   [manager]
+  /app/schedule           published schedule. Day/week/month/agenda + ICS
   /app/clock              GPS clock in/out with an offline queue
   /app/staff              staff directory                                   [manager]
   /app/staff/:staffId     staff profile                                     [manager]
@@ -114,12 +114,12 @@ TENANT SHELL — /app (requires membership, else redirects to /onboarding)
 
 `[manager]` = gated by `RequireRole` on the `<Route>`, rendering
 `PermissionDenied` (area, role held, role required, way back) rather than
-silently redirecting. **This is presentation only — RLS is the real boundary**,
+silently redirecting. **This is presentation only. RLS is the real boundary**,
 and it holds whether or not the gate renders. The gate exists so an honest wrong
 turn produces an explanation instead of a screen of controls that fail silently.
 
 Role determines which nav items and routes render; the server enforces access via
-RLS. Shift-type management has no dedicated route — it is a modal opened from the
+RLS. Shift-type management has no dedicated route. It is a modal opened from the
 rota builder's toolbar, since it is tightly coupled to rota-building.
 
 ### App shell
@@ -129,7 +129,7 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 | Sidebar                   | `layout/Sidebar`                          | Role-resolved items; collapse persisted in `localStorage`, read during initial `useState` so the page does not jump on load                                                     |
 | Org identity + switcher   | `layout/SidebarOrgSwitcher`               | Always shows the org name; interactive only with >1 membership                                                                                                                  |
 | Profile / help / collapse | `layout/SidebarFooter`                    |                                                                                                                                                                                 |
-| Global search             | `layout/GlobalSearch`, `lib/globalSearch` | `⌘K`. Searches **screens and actions, not records** — a per-keystroke `ilike` fan-out across a dozen tables is a query storm at real tenant size. Role-filtered before matching |
+| Global search             | `layout/GlobalSearch`, `lib/globalSearch` | `⌘K`. Searches **screens and actions, not records**, a per-keystroke `ilike` fan-out across a dozen tables is a query storm at real tenant size. Role-filtered before matching |
 | Mobile tab bar            | `layout/MobileTabBar`                     | Home · Schedule · Clock in · Leave · More; `More` opens the sidebar drawer, whose open state is owned by `AppShell` so both controls share it                                   |
 
 ## 4. State management
@@ -140,9 +140,9 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 - **Tenant state:** an `OrgProvider` (Context) holds the active organisation + the
   caller's role/membership, resolved after auth. Every service call passes `org_id`;
   the org switcher (`switchOrg`, persisted to `localStorage`) updates this context.
-  `usePermissions()` derives UI capability flags from the active role — cosmetic
-  gating only, RLS is the real enforcement (see `docs/HOOKS.md` §6–7).
-- **UI/theme state:** `ThemeProvider` (Context) — **light by default** (see
+  `usePermissions()` derives UI capability flags from the active role. Cosmetic
+  gating only, RLS is the real enforcement (see `docs/HOOKS.md` §6-7).
+- **UI/theme state:** `ThemeProvider` (Context), **light by default** (see
   `docs/DESIGN.md` §1; a deliberate brand choice, not `prefers-color-scheme`),
   with a user override persisted to `localStorage`.
 - **Offline write queue:** clock-ins, leave requests and swap responses made offline are
@@ -178,7 +178,7 @@ RotaBuilderPage (manager, org-scoped)
       → Inngest invokes a Supabase Edge Function which:
           • inserts notifications rows (channel: push/email)
           • sends Web Push (VAPID) + email via SMTP        // secrets stay server-side
-          • (sms channel reserved — not delivered in V1)
+          • (sms channel reserved, not delivered in V1)
 
 Offline example (staff clock-in with no signal)
   → clockService.clockIn(orgId, staffProfileId, geo)
@@ -189,7 +189,7 @@ Offline example (staff clock-in with no signal)
 
 ## 7. Build & deploy pipeline
 
-The server has **no Node/npm** — the build runs locally (or in CI) and only the static
+The server has **no Node/npm**. The build runs locally (or in CI) and only the static
 artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 
 1. `npm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps).
@@ -218,7 +218,7 @@ standalone page. Three tabs, in the order a manager works:
 | **Fill gaps** | Ranked cover for each open shift, with the reasoning shown    | No               |
 | **Ask AI**    | Free-text drafting via OpenRouter                             | Yes              |
 
-### 9a. The deterministic half — `src/lib/rotaInsights.ts`
+### 9a. The deterministic half, `src/lib/rotaInsights.ts`
 
 Review and Fill gaps are **pure functions over rows the org already has**, so they
 work offline, with no API key, and cannot invent a name or a date. They are the
@@ -230,13 +230,13 @@ overlapping shifts, rest gaps under the WTR's 11 hours, weeks scheduled over
 contracted hours, and documents expiring while their holder is still on the rota.
 
 `suggestCoverForShift` ranks who could work an open shift. Approved leave, an
-overlapping shift and a declared unavailability are **hard blockers** — they remove
+overlapping shift and a declared unavailability are **hard blockers**. They remove
 a candidate rather than costing points, because no amount of good fit makes it
 legal to roster someone who is on holiday. Contract overrun and a tight rest gap
 stay visible instead, so a manager can take the decision knowingly.
 
 There is no required-skills column on `shifts`, so "right skills" means overlapping
-with the people who already work that pattern at that site — an observation, not an
+with the people who already work that pattern at that site, an observation, not an
 invented rule. Both functions take `now` as a parameter so every rule agrees on one
 instant and the tests can pin it (`src/lib/rotaInsights.test.ts`).
 
@@ -255,9 +255,9 @@ RotaBuilderPage → RotaAssistantPanel (owner/manager, org-scoped)
     → supabase.functions.invoke('ai-rota-assistant', { body })
         // Authorization header = the calling user's JWT, forwarded automatically.
       → Edge Function `supabase/functions/ai-rota-assistant`:
-          • creates its Supabase client with that JWT (anon key) — RLS scopes every
+          • creates its Supabase client with that JWT (anon key). RLS scopes every
             query to the caller's org; no service-role key is used or needed
-          • checks has_org_role(org, ['owner','manager']) — 403s otherwise
+          • checks has_org_role(org, ['owner','manager'])-403s otherwise
           • reads staff_profiles, shift_types, locations, existing and open
             shifts, approved leave and declared unavailability for the period,
             plus hours already scheduled per person
@@ -266,10 +266,10 @@ RotaBuilderPage → RotaAssistantPanel (owner/manager, org-scoped)
             project secret, never in the client bundle
           • validates every suggestion's staffProfileId/shiftTypeId against the
             org's real rows before returning (never trusts the model's ids)
-  → nothing is written yet — suggestions preview as dashed chips on the live grid
+  → nothing is written yet. Suggestions preview as dashed chips on the live grid
   → manager clicks "Apply": shiftService.createShifts writes into the rota
     *already open in the builder* (via rotaService.getOrCreateDraftRota), not a
-    disconnected new draft — RLS: has_org_role(org,['owner','manager']), same as
+    disconnected new draft. RLS: has_org_role(org,['owner','manager']), same as
     any other rota-builder write
 ```
 

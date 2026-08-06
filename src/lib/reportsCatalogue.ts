@@ -15,7 +15,7 @@ import type { ReportCategory, ReportFormat } from '@/lib/reportRows';
  * in `src/services/reportsService.ts`. The design reference lists more report
  * types (labour cost, compliance, overtime, new starters and so on); they are
  * deliberately absent rather than shown greyed out, because there is nothing
- * behind them yet — see design/.loop/reports-log.md.
+ * behind them yet. See design/.loop/reports-log.md.
  */
 
 export interface ReportDefinition {
@@ -34,7 +34,7 @@ export const REPORT_CATALOGUE: ReportDefinition[] = [
     id: 'scheduled-rota',
     name: 'Scheduled Rota Report',
     category: 'Scheduling',
-    description: 'The published rota for this period — who worked where and when.',
+    description: 'The published rota for this period, who worked where and when.',
     icon: CalendarDays,
     format: 'CSV',
     run: async (period, suffix) => {
@@ -161,14 +161,14 @@ export function resolveRange(id: ReportRangeId, now: Date): ResolvedRange {
   }
 }
 
-/** Local calendar date — `toISOString()` would shift east-of-UTC midnights back a day. */
+/** Local calendar date, `toISOString()` would shift east-of-UTC midnights back a day. */
 function isoDate(date: Date): string {
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-/** `2025-05-01_2025-05-31` — the suffix on every generated filename. */
+/** `2025-05-01_2025-05-31`. The suffix on every generated filename. */
 export function rangeFileSuffix({ from, to }: ResolvedRange): string {
   const lastDay = new Date(to);
   lastDay.setDate(lastDay.getDate() - 1);

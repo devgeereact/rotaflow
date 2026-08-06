@@ -25,7 +25,7 @@ interface TabItem {
  *
  * The drawer is fine for the full eleven-item nav, but it costs a tap to open
  * before you can do anything. The things a staff member opens on a phone are a
- * short, predictable list — what am I working, clock in, book time off — and
+ * short, predictable list. What am I working, clock in, book time off, and
  * those should be one thumb-reach away, which is what this is for.
  *
  * The drawer stays: `More` opens it, so nothing is unreachable and the tab bar
@@ -40,8 +40,8 @@ interface TabItem {
  */
 /*
  * NEW_STRUCTURE §22's five: Home, Schedule, Clock In, Requests, More.
- * "Requests" lands on Leave because that screen is the requests hub — it holds
- * the leave queue and links the swap queue beside it — so the label describes
+ * "Requests" lands on Leave because that screen is the requests hub. It holds
+ * the leave queue and links the swap queue beside it, so the label describes
  * where it goes rather than overpromising a screen that does not exist.
  */
 const TABS: readonly TabItem[] = [
@@ -52,7 +52,7 @@ const TABS: readonly TabItem[] = [
 ] as const;
 
 interface MobileTabBarProps {
-  /** Opens the navigation drawer — the `More` tab. */
+  /** Opens the navigation drawer. The `More` tab. */
   onOpenMore: () => void;
 }
 

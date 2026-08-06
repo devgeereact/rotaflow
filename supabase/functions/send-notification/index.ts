@@ -1,16 +1,16 @@
-// send-notification — RotaFlow
+// send-notification. RotaFlow
 //
 // Creates in-app notification rows and delivers them by push and/or email.
 // Invoked by an Inngest function (per docs/ARCHITECTURE.md §6's documented
 // flow: client → useInngestDispatch → Inngest → this function), never
-// directly by a browser — there is no end user to hold an Authorization JWT
+// directly by a browser. There is no end user to hold an Authorization JWT
 // for a call that writes notifications for OTHER people.
 //
 // notifications has no client insert policy (0002_rotaflow.sql: "inserts are
 // performed by Edge Functions (service role)") specifically so a browser
 // session can never write into someone else's inbox. That is also why this
 // function runs as service_role rather than forwarding a caller's JWT the way
-// ai-rota-assistant does — there is no caller-scoped RLS path that could ever
+// ai-rota-assistant does. There is no caller-scoped RLS path that could ever
 // satisfy this function's job.
 //
 // Auth: a shared secret header, not a user JWT (see above). Set
@@ -18,18 +18,18 @@
 // value on the Inngest function that calls this endpoint.
 //
 // Email: an org's own SMTP account (org_smtp_settings, 0010) is preferred
-// when configured — see resolveSmtpConfig — falling back to the global
+// when configured. See resolveSmtpConfig, falling back to the global
 // SMTP_* secrets below, and skipped entirely if neither exists.
 //
 // Deploy: `supabase functions deploy send-notification`.
 // Secrets: `supabase secrets set NOTIFICATION_FUNCTION_SECRET=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=...`
-//   (SMTP_HOST/PORT/USER/PASS/FROM optional — email is skipped without them,
+//   (SMTP_HOST/PORT/USER/PASS/FROM optional. Email is skipped without them,
 //   unless the recipient org has configured its own SMTP)
 //
 // VERIFICATION STATUS (2026-08-01, docs/audit01.md P0-3)
 //
 // Deployed and ACTIVE (version 3, verify_jwt: true). Its AUTH is verified
-// against the live project — probed, not assumed:
+// against the live project. Probed, not assumed:
 //   * no Authorization header        -> 401 UNAUTHORIZED_NO_AUTH_HEADER (platform gate)
 //   * valid anon JWT, no secret      -> 401 {"error":"Unauthorized"}   (this function)
 //   * valid anon JWT, wrong secret   -> 401 {"error":"Unauthorized"}   (this function)
@@ -42,7 +42,7 @@
 // arrive on a device or an email land in a mailbox. Proving that needs an org
 // owner's session and sends real messages to real people, so it is a deliberate
 // manual step, not something to trigger from a dev session. Until someone does
-// it, treat push/email delivery as unproven — the auth path is not the whole
+// it, treat push/email delivery as unproven. The auth path is not the whole
 // journey.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
@@ -61,7 +61,7 @@ interface RequestBody {
   type: string;
   title: string;
   body?: string;
-  /** Defaults to both — most notifications should reach a device on whichever channel works. */
+  /** Defaults to both. Most notifications should reach a device on whichever channel works. */
   channels?: ('push' | 'email')[];
 }
 
@@ -90,7 +90,7 @@ interface SmtpTransportConfig {
 /**
  * An org's own SMTP account (0010_org_smtp_settings.sql) if it has one
  * configured, so mail comes from their domain/mailbox rather than a shared
- * system sender. Falls back to the global SMTP_* secrets otherwise — the
+ * system sender. Falls back to the global SMTP_* secrets otherwise. The
  * same posture as before org-level settings existed. Reads smtp_pass via the
  * service-role client, which is the only role that ever can (see the
  * migration's file header).
@@ -107,7 +107,7 @@ async function resolveSmtpConfig(
 
   if (orgSmtpError) {
     // A transient lookup failure must not silently look identical to "this
-    // org has no SMTP configured" — that's exactly the shared-sender outcome
+    // org has no SMTP configured". That's exactly the shared-sender outcome
     // this feature exists to avoid. Never log the row itself: it carries
     // smtp_pass.
     console.error('resolveSmtpConfig: org SMTP lookup failed', orgSmtpError.message);
@@ -177,12 +177,12 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      // service_role — deliberate, see the file header. Never forward this
+      // service_role. Deliberate, see the file header. Never forward this
       // key or a caller's JWT beyond this function.
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Row per recipient — read_at and delivery are per-person, so the row has
+    // Row per recipient. Read_at and delivery are per-person, so the row has
     // to be too; a single shared row could not track who has seen it.
     const { error: insertError } = await supabase.from('notifications').insert(
       userIds.map((userId) => ({
@@ -229,7 +229,7 @@ Deno.serve(async (req: Request) => {
       if (!smtpConfig) {
         // Matches the SMS posture elsewhere in this project: the channel is
         // reserved in the schema, but not live until real credentials exist
-        // — either the org's own, or the global fallback.
+        //. Either the org's own, or the global fallback.
         results.email.skipped = userIds.length;
       } else {
         const { default: nodemailer } = await import('npm:nodemailer@6');
@@ -237,7 +237,7 @@ Deno.serve(async (req: Request) => {
           host: smtpConfig.host,
           port: smtpConfig.port,
           // 465 is implicit TLS; every other port (587 included) starts plain
-          // and upgrades via STARTTLS — secure:true there breaks the handshake.
+          // and upgrades via STARTTLS. Secure:true there breaks the handshake.
           secure: smtpConfig.port === 465,
           auth: { user: smtpConfig.user, pass: smtpConfig.pass },
           // A bad owner-provided host must fail fast, not hang the function.

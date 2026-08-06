@@ -17,7 +17,7 @@ export interface SchedulePeriod {
   fromIso: string;
   /** Exclusive instant for the end of the window. */
   toIso: string;
-  /** Human label for the period selector, e.g. "26 May – 1 Jun 2025". */
+  /** Human label for the period selector, e.g. "26 May-1 Jun 2025". */
   label: string;
 }
 
@@ -75,14 +75,14 @@ export function resolvePeriod(
   //
   // This used to add a fixed 24 hours to local midnight. On the day the clocks
   // go back that day is 25 hours long, so midnight + 24h landed at 23:00 the
-  // SAME day and formatted back to the same date — `toIso` equalled `fromIso`,
+  // SAME day and formatted back to the same date, `toIso` equalled `fromIso`,
   // the query window was zero-length, and the schedule rendered empty. One day
   // a year (25 Oct 2026 in Europe/London), in the primary market, silently:
   // an empty result set looks exactly like "nobody is rostered".
   //
   // It was worse than a UK-only bug. The arithmetic ran in the *browser's*
   // zone, so a New York location's window also collapsed on the UK's
-  // transition date — a zone that was not even having a DST change.
+  // transition date, a zone that was not even having a DST change.
   //
   // CI could never have caught it: .github/workflows/ci.yml pins TZ=UTC, and
   // UTC has no DST. The test suite deliberately runs in Europe/London instead
@@ -109,11 +109,11 @@ function formatPeriodLabel(view: ScheduleView, first: string, last: string): str
   const sameMonth = sameYear && start.getMonth() === end.getMonth();
 
   if (sameMonth) {
-    return `${format(start, 'd')} – ${format(end, 'd MMM yyyy')}`;
+    return `${format(start, 'd')}-${format(end, 'd MMM yyyy')}`;
   }
   return sameYear
-    ? `${format(start, 'd MMM')} – ${format(end, 'd MMM yyyy')}`
-    : `${format(start, 'd MMM yyyy')} – ${format(end, 'd MMM yyyy')}`;
+    ? `${format(start, 'd MMM')}-${format(end, 'd MMM yyyy')}`
+    : `${format(start, 'd MMM yyyy')}-${format(end, 'd MMM yyyy')}`;
 }
 
 /** Move the anchor one period forward (+1) or back (-1). */

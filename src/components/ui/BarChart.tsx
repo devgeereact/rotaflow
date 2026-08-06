@@ -4,7 +4,7 @@ import { seriesColour } from '@/lib/chartPalette';
 import { cn } from '@/lib/utils';
 
 export interface BarSeries {
-  /** Stable key — colour follows this, never the position after filtering. */
+  /** Stable key. Colour follows this, never the position after filtering. */
   id: string;
   label: string;
 }
@@ -42,7 +42,7 @@ function niceMax(value: number): number {
  *
  * ## Why bars
  *
- * Every measure this is used for — hours per day, requests per week — is a
+ * Every measure this is used for. Hours per day, requests per week, is a
  * *magnitude* read against a common baseline and compared between a handful of
  * named categories. That is the bar's job. A line would imply continuity
  * between days that are really discrete buckets.
@@ -52,20 +52,20 @@ function niceMax(value: number): number {
  * - **Anchored to zero.** A bar's length *is* the value; a truncated axis makes
  *   a 3% difference look like a doubling. There is no `min` prop for that
  *   reason.
- * - **One axis.** Never two y-scales — two measures of different magnitude go
+ * - **One axis.** Never two y-scales, two measures of different magnitude go
  *   in two charts. (Dual axes are the single most common charting mistake.)
  * - **Thin marks, 4px rounded ends** at the top only, so the bar still reads as
  *   sitting *on* the baseline.
  * - **A 2px surface gap** between adjacent bars, so touching fills do not read
  *   as one shape.
- * - **Recessive grid** — three hairlines behind the marks, never over them.
+ * - **Recessive grid**. Three hairlines behind the marks, never over them.
  * - **Text wears text tokens**, never the series colour; the swatch beside a
  *   label carries identity.
  *
  * ## Accessibility
  *
  * A legend is always drawn for two or more series, and never for one (the title
- * names it). Identity is therefore never colour-alone — which also discharges
+ * names it). Identity is therefore never colour-alone, which also discharges
  * the secondary-encoding requirement the palette's CVD band carries (see
  * `chartPalette.ts`). The same data is available as a real `<table>` behind a
  * disclosure, so a screen reader and a colourblind reader both have a path that
@@ -92,7 +92,7 @@ export function BarChart({
    * Thin marks, centred in their slot.
    *
    * The first cut sized bars at the full group width minus a hair, which made
-   * a single-series chart a row of slabs touching each other — the ink was the
+   * a single-series chart a row of slabs touching each other. The ink was the
    * chart rather than the data, and the rounded ends were invisible at that
    * width. The cluster is capped at 62% of the slot and centred, so there is
    * real space between groups and the bar reads as a mark on an axis.
@@ -174,7 +174,7 @@ export function BarChart({
           aria-label={`${title}. The same figures are available as a table below.`}
           className="h-40 w-full"
         >
-          {/* Recessive grid — behind the marks, hairline, never labelled twice. */}
+          {/* Recessive grid. Behind the marks, hairline, never labelled twice. */}
           {[0.25, 0.5, 0.75].map((f) => (
             <line
               key={f}

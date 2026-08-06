@@ -33,13 +33,13 @@ import {
  * independently: _"do not fabricate testimonials or logos"_.
  *
  * So the sections a SaaS landing page normally fills with social proof are
- * built, designed and wired here — and populated with claims that are **true
+ * built, designed and wired here, and populated with claims that are **true
  * today and checkable against the repository**. The moment real figures exist,
  * fill `TRACTION` and `TESTIMONIALS`: both render automatically, and nothing
  * else has to change.
  *
  * Adding an entry to `PRODUCT_BENEFITS` follows the same rule the feature grid
- * already states — check it against `docs/SCREENS.md` first. A marketing page
+ * already states. Check it against `docs/SCREENS.md` first. A marketing page
  * for a real product must not advertise ahead of the build.
  */
 
@@ -66,7 +66,7 @@ export const TAGLINE = 'Smarter Rota. Stronger Teams.';
  * form composes a message to it; if nothing delivers here, every enquiry the
  * site generates is lost silently, which is worse than having no form.
  *
- * A personal address is deliberately not used — publishing one on a live
+ * A personal address is deliberately not used. Publishing one on a live
  * marketing site is a privacy decision for the owner, not a default. Set up
  * `info@` as an alias in cPanel (or change this constant) as part of launch.
  */
@@ -80,7 +80,7 @@ export const HERO = {
   /**
    * The three trust points under the hero CTAs. These are product facts, not
    * marketing claims: there is genuinely no card capture anywhere in the signup
-   * flow (`/signup` collects name, email, org and password — nothing else) and
+   * flow (`/signup` collects name, email, org and password. Nothing else) and
    * no billing provider is integrated, so nothing can charge anyone.
    */
   trust: ['14-day free trial', 'No credit card required', 'Cancel anytime'],
@@ -94,7 +94,7 @@ export interface Benefit {
 
 /**
  * The eight product benefits, each mapping to a screen that is built and
- * working today — verified against `docs/SCREENS.md` §2, not against the PRD's
+ * working today. Verified against `docs/SCREENS.md` §2, not against the PRD's
  * full Phase-1 wish list.
  */
 export const PRODUCT_BENEFITS: readonly Benefit[] = [
@@ -106,7 +106,7 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
   {
     icon: Users,
     title: 'Staff management',
-    body: 'One directory for every person across every site — roles, departments, contracted hours, qualifications, documents and emergency contacts.',
+    body: 'One directory for every person across every site. Roles, departments, contracted hours, qualifications, documents and emergency contacts.',
   },
   {
     icon: Clock3,
@@ -116,7 +116,7 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
   {
     icon: Repeat2,
     title: 'Leave and shift swaps',
-    body: 'Staff request leave and swap shifts from their phone. Managers approve in one place, and the rota updates itself — no re-keying.',
+    body: 'Staff request leave and swap shifts from their phone. Managers approve in one place and the rota updates itself, so nobody re-keys anything.',
   },
   {
     icon: Sparkles,
@@ -126,7 +126,7 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
   {
     icon: BarChart3,
     title: 'Reporting and insights',
-    body: 'Coverage, labour hours, attendance, absence and overtime — filtered by site and department, exportable for payroll.',
+    body: 'Coverage, labour hours, attendance, absence and overtime. Filtered by site and department, exportable for payroll.',
   },
   {
     icon: MapPinned,
@@ -218,7 +218,7 @@ export interface Stat {
 }
 
 /**
- * Traction figures — user counts, organisation counts, uptime.
+ * Traction figures. User counts, organisation counts, uptime.
  *
  * **Deliberately empty.** RotaFlow has not launched, so every one of these
  * numbers would be invented. `StatsBand` renders `CAPABILITIES` instead while
@@ -232,7 +232,7 @@ export const TRACTION: readonly Stat[] = [] as const;
 
 /**
  * What the stats band shows until real traction exists. Every figure here is a
- * property of the shipped product and is checkable against the repository —
+ * property of the shipped product and is checkable against the repository,
  * they are capability claims, not performance claims.
  */
 export const CAPABILITIES: readonly Stat[] = [
@@ -278,7 +278,7 @@ export const WHY_ROTAFLOW: readonly Reason[] = [
   },
   {
     title: 'Maintain compliance',
-    body: 'Rest periods, contracted hours, qualification expiry and an auditable attendance record — visible before they become a problem.',
+    body: 'Rest periods, contracted hours, qualification expiry and an auditable attendance record. Visible before they become a problem.',
   },
   {
     title: 'Increase workforce visibility',
@@ -294,7 +294,7 @@ export interface Testimonial {
 }
 
 /**
- * **Deliberately empty** — see this file's header. RotaFlow has no customers,
+ * **Deliberately empty**. See this file's header. RotaFlow has no customers,
  * so it has no testimonials, and attributing an invented quote to a named
  * person at a named company is the single most actionable false claim a
  * pre-launch SaaS site can make.
@@ -317,7 +317,7 @@ export interface Plan {
 /**
  * Pricing.
  *
- * No payment provider is integrated — `subscriptions` is an empty seam and
+ * No payment provider is integrated, `subscriptions` is an empty seam and
  * `docs/SCREENS.md` §3 records that nothing reads or writes it. So every plan
  * routes to `/signup`, and the page says plainly that billing is not live
  * rather than implying a card will be charged at the end of a trial.
@@ -378,7 +378,7 @@ export interface FooterColumn {
 }
 
 /**
- * Footer columns. Every link resolves to a real route — `navigationTargets`
+ * Footer columns. Every link resolves to a real route, `navigationTargets`
  * asserts it. The previous footer deliberately carried no social or contact
  * row because none existed; `/contact` now does, so it is linked, and the
  * social row is still absent for the same reason as before.

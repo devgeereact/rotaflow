@@ -55,7 +55,7 @@ const STATUS_TONE: Record<OrganisationStatus, 'success' | 'warning' | 'neutral'>
   archived: 'neutral',
 };
 
-/** `/admin/organisations` — NEW_STRUCTURE §34's tenant management. */
+/** `/admin/organisations`. NEW_STRUCTURE §34's tenant management. */
 export function AdminOrganisationsPage(): JSX.Element {
   const [organisations, setOrganisations] = useState<Organisation[] | null>(null);
   const [members, setMembers] = useState<Map<string, number>>(new Map());
@@ -146,7 +146,7 @@ export function AdminOrganisationsPage(): JSX.Element {
       return o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q);
     });
 
-    // `null` sort keeps the service's own order — newest tenant first — which
+    // `null` sort keeps the service's own order. Newest tenant first, which
     // is the more useful default on this screen than any column.
     if (!sort) return filtered;
 
@@ -440,7 +440,7 @@ export function AdminOrganisationsPage(): JSX.Element {
             </div>
 
             {/* The table scrolls inside its own container so the page never
-                does — the pattern §27 asks for on wide data. `DataTable` owns
+                does. The pattern §27 asks for on wide data. `DataTable` owns
                 that, along with the sort affordance and the empty row. */}
             <DataTable
               caption="Organisations on this deployment"

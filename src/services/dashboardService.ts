@@ -74,7 +74,7 @@ export interface PendingRequest {
 
 /**
  * Pending leave requests + shift swaps, merged newest-first. Overtime is
- * deliberately not included — overtime_requests exists in the schema but has
+ * deliberately not included. Overtime_requests exists in the schema but has
  * no service built on it yet, and querying the table directly here would
  * bypass RULES.md's "all Supabase access via src/services/*".
  */
@@ -99,7 +99,7 @@ export async function getPendingRequests(
       kind: 'leave',
       staffName: staffName(r.staff_profile_id),
       detail: `${r.type} leave`,
-      dateLabel: `${r.start_date} – ${r.end_date}`,
+      dateLabel: `${r.start_date}, ${r.end_date}`,
       createdAt: r.created_at,
     }));
 
@@ -121,8 +121,8 @@ export async function getPendingRequests(
 
 /**
  * Distinct staff with at least one expired compliance document (DBS, RTW,
- * etc. — see the `documents` table). No dedicated service exists for
- * `documents` yet, so this queries it directly — still inside src/services,
+ * etc.. See the `documents` table). No dedicated service exists for
+ * `documents` yet, so this queries it directly. Still inside src/services,
  * per RULES.md.
  */
 export async function countStaffWithExpiredDocuments(orgId: string): Promise<number> {

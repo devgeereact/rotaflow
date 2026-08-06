@@ -24,7 +24,7 @@ interface DocumentsModalProps {
 const BLANK = { type: '', name: '', fileUrl: '', issuedAt: '', expiresAt: '' };
 
 /**
- * Add + delete only, no edit — same call as `EmergencyContactsModal`.
+ * Add + delete only, no edit. Same call as `EmergencyContactsModal`.
  *
  * `fileUrl` is a plain link field, not a file upload: this repo has no
  * ImageKit (or any storage) integration wired anywhere yet, so a real
@@ -70,7 +70,7 @@ export function DocumentsModal({
     const fileUrl = form.fileUrl.trim();
     // The "Add document" button is type="button" with a direct onClick, not
     // a form submit, so the input's type="url" constraint validation never
-    // runs — and even when it does, it accepts any scheme, javascript:
+    // runs, and even when it does, it accepts any scheme, javascript:
     // included. This is rendered as a real <a href> below, so an
     // unvalidated scheme here is a stored-XSS vector, not just bad data.
     if (!/^https?:\/\//i.test(fileUrl)) {
@@ -102,7 +102,7 @@ export function DocumentsModal({
   const handleDelete = async (doc: StaffDocument): Promise<void> => {
     const ok = await confirm({
       title: 'Remove document record?',
-      message: `"${doc.name}" will be removed from this staff member's file. This only removes the record in RotaFlow — the file itself stays wherever it is hosted.`,
+      message: `"${doc.name}" will be removed from this staff member's file. This only removes the record in RotaFlow. The file itself stays wherever it is hosted.`,
       confirmLabel: 'Remove',
       tone: 'danger',
     });
@@ -117,7 +117,7 @@ export function DocumentsModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Documents — ${staffName}`}>
+    <Modal open={open} onClose={onClose} title={`Documents, ${staffName}`}>
       <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
         {loading ? (
           <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>

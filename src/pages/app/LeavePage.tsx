@@ -64,7 +64,7 @@ const TAB_STATUS: Record<Exclude<LeaveTab, 'all'>, LeaveStatus> = {
 
 const TYPE_KEYS: LeaveTypeKey[] = ['annual', 'sick', 'personal', 'carer', 'other'];
 
-/** One decimal at most — `holiday_allowance` is `numeric(6,2)`. */
+/** One decimal at most, `holiday_allowance` is `numeric(6,2)`. */
 function days(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -92,7 +92,7 @@ function statusNoteFor(request: LeaveRequest, viewerId: string | null): string |
 }
 
 /**
- * `/app/leave` — the request table, its filters and the balances rail
+ * `/app/leave`. The request table, its filters and the balances rail
  * (design/Leave.png). Staff see their own history; managers and owners see the
  * whole organisation and can approve.
  *
@@ -149,7 +149,7 @@ export function LeavePage(): JSX.Element {
    * until someone sets it.
    *
    * A request is kept when it *overlaps* the window rather than when it starts
-   * inside it — a fortnight of leave beginning in March is still March leave
+   * inside it, a fortnight of leave beginning in March is still March leave
    * when you ask for April, and dropping it would hide someone who is away.
    */
   const [fromDate, setFromDate] = useState('');
@@ -283,7 +283,7 @@ export function LeavePage(): JSX.Element {
       if (statusFilter && row.status !== statusFilter) return false;
       if (typeFilter && row.type !== typeFilter) return false;
       if (scopedStaffIds && !scopedStaffIds.has(request.staff_profile_id)) return false;
-      // Overlap, not containment — see the `fromDate`/`toDate` note above.
+      // Overlap, not containment. See the `fromDate`/`toDate` note above.
       if (fromDate && request.end_date < fromDate) return false;
       if (toDate && request.start_date > toDate) return false;
       return true;
@@ -417,7 +417,7 @@ export function LeavePage(): JSX.Element {
         if (!online) {
           await enqueue('leave', input);
           showSuccess(
-            'Leave request saved offline — it will sync when you’re back online.',
+            'Leave request saved offline. It will sync when you’re back online.',
           );
         } else {
           const created = await createLeaveRequest(input);
@@ -447,7 +447,7 @@ export function LeavePage(): JSX.Element {
         showSuccess(`Leave request ${verb}.`);
 
         // Fire-and-forget, after the write already succeeded and the UI
-        // already reflects it — a failed dispatch must not undo the review.
+        // already reflects it, a failed dispatch must not undo the review.
         const recipientUserId = staffById.get(updated.staff_profile_id)?.user_id;
         if (recipientUserId) {
           void send('leave/reviewed', {
@@ -519,19 +519,19 @@ export function LeavePage(): JSX.Element {
    *
    * Same arithmetic as `balances` above, applied per staff profile instead of
    * only to the signed-in user. Staff with no `holiday_allowance` recorded are
-   * omitted rather than shown as zero — zero remaining is a very different
+   * omitted rather than shown as zero. Zero remaining is a very different
    * statement from "nobody has entered an allowance".
    */
   /**
    * What the period control reads. Reflects the actual window rather than
-   * always printing today's month, which is what it used to do — a label that
+   * always printing today's month, which is what it used to do, a label that
    * never changes while the data behind it does is worse than no label.
    */
   const periodLabel = useMemo(() => {
     if (!fromDate && !toDate) return 'All dates';
     const pretty = (iso: string): string =>
       format(new Date(`${iso}T00:00:00`), 'd MMM yyyy');
-    if (fromDate && toDate) return `${pretty(fromDate)} – ${pretty(toDate)}`;
+    if (fromDate && toDate) return `${pretty(fromDate)}, ${pretty(toDate)}`;
     return fromDate ? `From ${pretty(fromDate)}` : `Until ${pretty(toDate)}`;
   }, [fromDate, toDate]);
 

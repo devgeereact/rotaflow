@@ -20,13 +20,13 @@ import type { TimesheetRule } from '@/components/timesheets/TimesheetRulesCard';
 import type { QuickAction } from '@/components/timesheets/QuickActionsCard';
 
 /**
- * Design-loop preview only — `/app/timesheets` needs a real Supabase session
+ * Design-loop preview only, `/app/timesheets` needs a real Supabase session
  * and clock events. This renders the same components against local mock data so
  * the screen can be screenshotted without auth or a database. Not wired to any
  * service call; see design/.loop/timesheets-log.md.
  */
 
-const WEEK = '26 May – 1 Jun 2025';
+const WEEK = '26 May-1 Jun 2025';
 
 const ROWS: TimesheetRow[] = [
   {
@@ -297,7 +297,7 @@ export function TimesheetsPreviewPage(): JSX.Element {
         onTabChange={setActiveTab}
         onExport={noop}
         onApproveSelected={noop}
-        periodLabel="26 May – 1 June 2025"
+        periodLabel="26 May-1 June 2025"
         onPeriodClick={noop}
         locations={[
           { id: 'loc-sunnyvale', name: 'Sunnyvale Care Home' },

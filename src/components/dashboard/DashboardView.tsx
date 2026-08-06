@@ -80,7 +80,7 @@ function timeRange(startsAt: string, endsAt: string, timezone: string): [string,
   ];
 }
 
-/** "On going" / "Starts in 2h" / "Ended" — read against the live clock, not a snapshot. */
+/** "On going" / "Starts in 2h" / "Ended". Read against the live clock, not a snapshot. */
 function shiftStatusLabel(group: ShiftGroup, now: Date): { label: string; tone: string } {
   const start = new Date(group.startsAt).getTime();
   const end = new Date(group.endsAt).getTime();
@@ -136,7 +136,7 @@ export interface DashboardViewProps {
 }
 
 /**
- * Pure presentation for `/app/dashboard` (design/Workforce-Dashboard.png) —
+ * Pure presentation for `/app/dashboard` (design/Workforce-Dashboard.png),
  * separated from `DashboardPage` so the same markup can be driven by real
  * Supabase data there and by fixed mock data in `DashboardPreviewPage`
  * (`/dashboard-preview`, design-loop only: the real page needs a live
@@ -146,7 +146,7 @@ export interface DashboardViewProps {
  * `brand` blue the newer marketing/auth screens (splash, sign-in, sign-up,
  * onboarding) sample from their references. This screen sits in the same
  * sidebar/shell as SchedulePage, RotaBuilderPage and StaffPage, which are
- * already built against `primary` — matching those neighbours matters more
+ * already built against `primary`. Matching those neighbours matters more
  * here than matching this one reference's exact hue, which would make the
  * dashboard look like a different app from the pages one click away from it.
  */
@@ -181,7 +181,7 @@ export function DashboardView({
    * It renders one row per shift-type-and-location group, so it grows with
    * both: five sites × six shift types is thirty rows, and the card ran three
    * times the height of the two beside it, pushing the rest of the dashboard
-   * below the fold. A dashboard is a summary — the full list is one click away
+   * below the fold. A dashboard is a summary. The full list is one click away
    * and the remainder is counted rather than dropped silently.
    */
   const visibleDayGroups = dayGroups.slice(0, DAY_GROUP_LIMIT);
@@ -205,7 +205,7 @@ export function DashboardView({
 
       {/* The five metrics NEW_STRUCTURE §7 asks for, in its order. Compliance
           keeps its place as a hint on Total Staff rather than a card of its
-          own — the spec's set is what a manager opens this screen for. */}
+          own. The spec's set is what a manager opens this screen for. */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           icon={Users}
@@ -321,7 +321,7 @@ export function DashboardView({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-content-muted dark:text-content-muted-dark">
-                        {start} – {end}
+                        {start}, {end}
                       </p>
                       <p className="truncate text-sm font-medium text-content dark:text-content-dark">
                         {group.shiftTypeName}
@@ -500,7 +500,7 @@ export function DashboardView({
                         {format(new Date(group.startsAt), 'EEE d MMM')}
                       </p>
                       <p>
-                        {start} – {end}
+                        {start}, {end}
                       </p>
                     </div>
                     <div className="min-w-0 flex-1">
@@ -575,7 +575,7 @@ interface MonthlyOverviewProps {
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-/** The current month's dates arranged into fixed Mon–Sun weeks, with leading/trailing days from neighbouring months for grid alignment. */
+/** The current month's dates arranged into fixed Mon, Sun weeks, with leading/trailing days from neighbouring months for grid alignment. */
 function MonthlyOverview({ overview, onSelectDate }: MonthlyOverviewProps): JSX.Element {
   const monthLabel = format(new Date(), 'MMMM yyyy');
   const today = todayIso();

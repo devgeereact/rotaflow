@@ -43,7 +43,7 @@ describe('daysUntil', () => {
   /**
    * And the consequence of choosing calendar days: they are the *reader's*
    * days. This suite runs in Europe/London, where 23:55 UTC on the 6th is
-   * already 00:55 on the 7th, so it is two days out — not one. That is correct
+   * already 00:55 on the 7th, so it is two days out, not one. That is correct
    * for a UK product whose organisations are on Europe/London: "renews
    * tomorrow" should mean the tomorrow the manager is living in. It is pinned
    * because it is surprising, and because a future move to UTC-day arithmetic

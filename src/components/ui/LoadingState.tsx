@@ -39,7 +39,7 @@ export interface LoadingStateProps {
  * ## Why this exists
  *
  * There were 31 hand-rolled `<p>Loading…</p>` blocks across the app, plus
- * `AdminLoading` in the platform console — audit01 P2-2, which notes that a
+ * `AdminLoading` in the platform console. Audit01 P2-2, which notes that a
  * shared skeleton "would also fix the layout shift each one causes". A bare
  * "Loading…" line is one line tall; the table that replaces it is forty. Every
  * one of those screens visibly jumps.

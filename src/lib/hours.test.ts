@@ -11,7 +11,7 @@ import type { ClockEvent } from '@/types';
  * This module converts clock events into the hours a person is paid for.
  * It is the single highest-consequence piece of arithmetic in the codebase:
  * every bug here is a payslip that is wrong in someone's favour or, worse,
- * against them — and none of it throws, so nothing surfaces it.
+ * against them, and none of it throws, so nothing surfaces it.
  *
  * Cases are written from what actually happens on a ward or in a kitchen:
  * people forget to clock out, clock in twice, start a break and never end it,
@@ -56,7 +56,7 @@ function event(type: string, at: string): ClockEvent {
   };
 }
 
-describe('pairClockEvents — the ordinary cases', () => {
+describe('pairClockEvents. The ordinary cases', () => {
   it('pairs a simple in/out into worked minutes', () => {
     const segments = pairClockEvents([
       event('in', '2026-06-15T09:00:00Z'),
@@ -133,7 +133,7 @@ describe('pairClockEvents — the ordinary cases', () => {
   });
 });
 
-describe('pairClockEvents — night shifts and DST', () => {
+describe('pairClockEvents. Night shifts and DST', () => {
   it('counts a shift that crosses midnight', () => {
     const segments = pairClockEvents([
       event('in', '2026-06-15T22:00:00Z'),
@@ -172,7 +172,7 @@ describe('pairClockEvents — night shifts and DST', () => {
   });
 });
 
-describe('pairClockEvents — the messy cases that cost money', () => {
+describe('pairClockEvents. The messy cases that cost money', () => {
   it('keeps an ongoing shift open against `now` rather than dropping it', () => {
     const segments = pairClockEvents(
       [event('in', '2026-06-15T09:00:00Z')],
@@ -256,7 +256,7 @@ describe('pairClockEvents — the messy cases that cost money', () => {
   });
 
   it('counts an unclosed break rather than paying through it', () => {
-    // Someone starts a break and clocks out without ending it — common when a
+    // Someone starts a break and clocks out without ending it. Common when a
     // shift is cut short. The break time is real: they were not working. Paying
     // the full 09:00-17:00 would be paying for a break they took.
     const segments = pairClockEvents([
@@ -271,7 +271,7 @@ describe('pairClockEvents — the messy cases that cost money', () => {
 
   it('does not silently discard a shift when someone forgets to clock out', () => {
     // Monday: in at 09:00, forgot to clock out. Tuesday: in at 09:00, out at
-    // 17:00. The Monday shift must not vanish — the person worked it, and an
+    // 17:00. The Monday shift must not vanish. The person worked it, and an
     // unpaid day is the single worst outcome this module can produce.
     const segments = pairClockEvents([
       event('in', '2026-06-15T09:00:00Z'),
@@ -290,7 +290,7 @@ describe('pairClockEvents — the messy cases that cost money', () => {
   });
 });
 
-describe('reviewReason — ambiguity is surfaced, never guessed silently', () => {
+describe('reviewReason. Ambiguity is surfaced, never guessed silently', () => {
   it('leaves a complete shift unflagged', () => {
     const segments = pairClockEvents([
       event('in', '2026-06-15T09:00:00Z'),
@@ -303,7 +303,7 @@ describe('reviewReason — ambiguity is surfaced, never guessed silently', () =>
     expect(segmentsNeedingReview(segments)).toHaveLength(0);
   });
 
-  it('leaves an ongoing shift unflagged — still clocked in is not an error', () => {
+  it('leaves an ongoing shift unflagged. Still clocked in is not an error', () => {
     const segments = pairClockEvents(
       [event('in', '2026-06-15T09:00:00Z')],
       new Date('2026-06-15T12:00:00Z'),

@@ -24,7 +24,7 @@ function formatWeekRange(dates: string[]): string {
   const first = dates[0];
   const last = dates[dates.length - 1];
   if (!first || !last) return '';
-  return `${format(new Date(`${first}T00:00:00`), 'd MMM')} – ${format(new Date(`${last}T00:00:00`), 'd MMM yyyy')}`;
+  return `${format(new Date(`${first}T00:00:00`), 'd MMM')}, ${format(new Date(`${last}T00:00:00`), 'd MMM yyyy')}`;
 }
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -319,7 +319,7 @@ const SHIFTS = buildShifts();
 const DEFAULT_TZ = 'Europe/London';
 
 /**
- * Design-loop preview only — `/app/rota` needs a real Supabase session, real
+ * Design-loop preview only, `/app/rota` needs a real Supabase session, real
  * org data and real shifts. This renders the same components with local mock
  * data so the screen can be screenshotted without auth or a database. Not
  * wired to any service call.

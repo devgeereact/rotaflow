@@ -17,7 +17,7 @@ interface LeaveTableProps {
   /** `null` = the query's natural order (newest first); headers show the neutral glyph. */
   sort: LeaveSort | null;
   onSortChange: (sort: LeaveSort) => void;
-  /** Opens the row — "Review" while it still needs a decision, else "View". */
+  /** Opens the row, "Review" while it still needs a decision, else "View". */
   onOpenRow: (id: string) => void;
   onRowMenu: (id: string) => void;
   emptyMessage: string;
@@ -45,7 +45,7 @@ const COLUMNS: {
 const HEAD_CELL =
   'whitespace-nowrap px-2 py-3.5 text-left text-[0.8rem] font-semibold text-content dark:text-content-dark';
 
-/** The leave request list — one row per request (design/Leave.png). */
+/** The leave request list, one row per request (design/Leave.png). */
 export function LeaveTable({
   rows,
   sort,

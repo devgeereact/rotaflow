@@ -32,7 +32,7 @@ import {
  * project does, and `lazy` insists on a default.
  *
  * The dynamic `import()` stays a literal inside the caller's arrow function so
- * Rollup can still see it statically and split the chunk — passing a pre-built
+ * Rollup can still see it statically and split the chunk. Passing a pre-built
  * promise here would defeat that silently.
  */
 function lazyPage<K extends string>(
@@ -43,7 +43,7 @@ function lazyPage<K extends string>(
 }
 
 /**
- * A preview page — DEV only, and **absent from the production bundle**.
+ * A preview page. DEV only, and **absent from the production bundle**.
  *
  * The routes below were already gated behind `import.meta.env.DEV`, which
  * correctly made them unreachable in production. But the `lazyPage(...)` calls
@@ -51,7 +51,7 @@ function lazyPage<K extends string>(
  * saw thirteen live `import()` expressions and emitted a chunk for each. Those
  * chunks were written to `dist/assets/`, listed in the service worker's
  * precache manifest, and therefore **downloaded by every user on first visit**
- * — 87 kB of fabricated staff names, invented metrics and mock organisations,
+ *, 87 kB of fabricated staff names, invented metrics and mock organisations,
  * on the phone of a carer on ward wifi.
  *
  * Gating the definition rather than only the usage is what actually removes
@@ -76,7 +76,7 @@ function devPage<K extends string>(
  * and every settings screen before they could clock in.
  *
  * HomePage, LoginPage and NotFoundPage stay EAGER on purpose: they are the
- * public entry points, and on a genuinely first visit — no service worker yet —
+ * public entry points, and on a genuinely first visit, no service worker yet,
  * lazy-loading them would add a round trip to the moment first impressions are
  * made. Everything behind auth is lazy; by then the service worker has
  * precached every chunk, so those loads come from cache and offline still works.
@@ -84,7 +84,7 @@ function devPage<K extends string>(
 /*
  * Marketing routes. Lazy for the same reason the app routes are: a visitor
  * landing on `/` should not download the pricing FAQ and the contact form's
- * validation before the hero paints. `HomePage` itself stays eager below —
+ * validation before the hero paints. `HomePage` itself stays eager below,
  * it is the entry point, and on a genuinely first visit (no service worker
  * yet) lazy-loading it would add a round trip to the first impression.
  */
@@ -202,7 +202,7 @@ const RotaBuilderPage = lazyPage(
 );
 
 /*
- * Settings and My Profile — the fourteen tabbed sections.
+ * Settings and My Profile. The fourteen tabbed sections.
  *
  * `settingsTabs.ts` has listed these routes since #62 and NOTHING rendered
  * them: the file was imported only by its own unit test, so every tab in the
@@ -371,13 +371,13 @@ export function App(): JSX.Element {
               <BrowserRouter>
                 {/* Covers the lazy PUBLIC routes (signup, onboarding, invite,
                   password reset). /app/* has its own boundary inside AppShell
-                  so the chrome survives navigation — see there. */}
+                  so the chrome survives navigation. See there. */}
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
                     <Route path="/" element={<HomePage />} />
                     {/* Public marketing site. Every one of these is linked from
                       PublicNav or PublicFooter, and navigationTargets.test.ts
-                      asserts each link resolves to a Route declared here — the
+                      asserts each link resolves to a Route declared here. The
                       nav and the route table cannot drift apart silently. */}
                     <Route path="/features" element={<FeaturesPage />} />
                     <Route path="/solutions" element={<SolutionsPage />} />
@@ -395,7 +395,7 @@ export function App(): JSX.Element {
                       redirects straight to the dashboard. */}
                     <Route path="/auth/callback" element={<AuthCallbackPage />} />
                     {/* ---------------------------------------------------------
-                    Design-loop preview routes — DEV ONLY.
+                    Design-loop preview routes. DEV ONLY.
 
                     Every screen below lives behind auth in the real product and
                     needs a Supabase session, an org and seeded rows that the
@@ -413,7 +413,7 @@ export function App(): JSX.Element {
                     `import.meta.env.DEV` is statically replaced with `false` at
                     build time, so Rollup drops this whole branch AND tree-shakes
                     the preview pages and their mock modules out of the bundle.
-                    The loop is unaffected — it drives the dev server, where DEV
+                    The loop is unaffected. It drives the dev server, where DEV
                     is true. Keep new preview routes inside this block.
                     --------------------------------------------------------- */}
                     {import.meta.env.DEV && (
@@ -455,7 +455,7 @@ export function App(): JSX.Element {
                         {/* design/clockin.png. */}
                         <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
                         {/* The whole platform console against fixtures, with the
-                        real shell and the real page components — the only way to
+                        real shell and the real page components. The only way to
                         look at `/admin/*` without a seeded platform-admin
                         session. See `AdminPreviewHarness`. */}
                         <Route path="/admin-preview" element={<AdminPreviewHarness />}>
@@ -556,8 +556,7 @@ export function App(): JSX.Element {
                       {/* Manager-only areas.
 
                         The gate used to live inside whichever page remembered
-                        it — as a one-line card, worded differently each time —
-                        and the staff directory, staff profiles and locations
+                        it, as a one-line card, worded differently each time, and the staff directory, staff profiles and locations
                         had none at all, so a staff member who deep-linked to
                         them got the full manager interface with every write
                         failing silently on RLS. Declaring it on the Route means
@@ -567,7 +566,7 @@ export function App(): JSX.Element {
                       {/* NEW_STRUCTURE §10/§34: the workforce directory lives
                       at /app/team, and the sidebar entry is "Team". It was
                       built at /app/staff, so that spelling now redirects here
-                      rather than the other way round — every bookmark and
+                      rather than the other way round. Every bookmark and
                       every link already sent to staff still resolves. */}
                       <Route
                         path="team"
@@ -606,7 +605,7 @@ export function App(): JSX.Element {
                         }
                       />
                       {/* §34's location detail. Same workspace with one site
-                      opened rather than a parallel screen — see LocationsPage.
+                      opened rather than a parallel screen. See LocationsPage.
                       Declared after `locations/departments` so that literal
                       path is never captured as a :locationId. */}
                       <Route
@@ -693,7 +692,7 @@ export function App(): JSX.Element {
                     {/* Platform administration (NEW_STRUCTURE §34). Outside
                     `/app` deliberately: this area sits above organisations, and
                     it is gated on `profiles.is_platform_admin` rather than on a
-                    membership role — §2 is explicit that Super Admin is not one.
+                    membership role, §2 is explicit that Super Admin is not one.
                     `ProtectedRoute` still applies, so an anonymous visitor is
                     sent to sign in rather than told the area exists. */}
                     <Route
@@ -740,7 +739,7 @@ export function App(): JSX.Element {
                       itself: `adminNavForRole` hides them from a support
                       administrator, and §34 is explicit that restricted routes
                       "must not rely only on hidden navigation". So the route
-                      gates too — a hidden link that still renders when typed is
+                      gates too, a hidden link that still renders when typed is
                       not a permission, it is a decoration. The role lists mirror
                       the `has_platform_role(...)` predicates in the migrations. */}
                       <Route
@@ -766,7 +765,7 @@ export function App(): JSX.Element {
                       {/* Config roles only: this reads every tenant's delivery
                       record, which is a cross-tenant view of who was told what.
                       The nav hides it for support and finance, and so does the
-                      route — a hidden link that renders when typed is not a
+                      route, a hidden link that renders when typed is not a
                       permission. */}
                       <Route
                         path="notifications"

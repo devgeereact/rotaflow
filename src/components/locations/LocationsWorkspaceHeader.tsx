@@ -18,7 +18,7 @@ const COPY: Record<LocationsWorkspaceTab, { title: string; subtitle: string }> =
  * Title, subtitle and the Locations / Departments switch.
  *
  * The two references are separate full screens with the same skeleton; the
- * brief merges them, and this strip is the seam. It appears in neither PNG —
+ * brief merges them, and this strip is the seam. It appears in neither PNG,
  * see design/.loop/locations-log.md.
  *
  * These are **routes**, not in-page panels, so it uses `ui/Tabs` rather than

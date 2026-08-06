@@ -49,7 +49,7 @@ const STATUS_TONE: Record<SupportAccessStatus, BadgeTone> = {
 type ColumnKey = 'org' | 'admin' | 'reason' | 'scope' | 'granted' | 'expires' | 'status';
 
 /**
- * `/admin/support-access` — NEW_STRUCTURE §34's temporary support access.
+ * `/admin/support-access`. NEW_STRUCTURE §34's temporary support access.
  *
  * ## What a row here means, precisely
  *
@@ -228,7 +228,7 @@ export function AdminSupportAccessPage(): JSX.Element {
                   <span className="font-medium text-content dark:text-content-dark">
                     {session.adminName}
                   </span>{' '}
-                  is viewing {session.orgName} — expires in{' '}
+                  is viewing {session.orgName}. Expires in{' '}
                   {formatRemaining(millisecondsRemaining(session.expiresAt, now))} (
                   {session.caseRef})
                 </li>
@@ -255,7 +255,7 @@ export function AdminSupportAccessPage(): JSX.Element {
           <StatTile label="Granted this month" value={stats.grantedThisMonth} />
           <StatTile
             label="Median duration"
-            value={stats.medianMinutes === null ? '—' : `${stats.medianMinutes}m`}
+            value={stats.medianMinutes === null ? '-' : `${stats.medianMinutes}m`}
             hint={stats.medianMinutes === null ? 'No session has ended yet' : undefined}
           />
           <StatTile
@@ -265,12 +265,12 @@ export function AdminSupportAccessPage(): JSX.Element {
           />
           <StatTile label="Expired" value={stats.expired} hint="Ran to the deadline" />
           {/* The reference calls this "Denied by owner". A refusal is not
-              recorded anywhere — `request_support_access` simply raises — so
+              recorded anywhere, `request_support_access` simply raises, so
               this is the one placeholder on an otherwise measured screen. */}
           <StatTile
             label="Denied by owner"
             value={DEMO_DENIED_BY_OWNER}
-            hint="Placeholder — refusals are not recorded"
+            hint="Placeholder. Refusals are not recorded"
           />
         </TileGrid>
 
@@ -302,7 +302,7 @@ export function AdminSupportAccessPage(): JSX.Element {
             <strong className="text-content dark:text-content-dark">
               It is not the thing that grants access
             </strong>{' '}
-            — platform staff already hold cross-tenant read, and making that read
+            . Platform staff already hold cross-tenant read, and making that read
             conditional on an open session touches every policy in the platform-roles
             migration. Saying otherwise to a customer would be wrong.
           </p>

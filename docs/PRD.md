@@ -1,4 +1,4 @@
-# Product Requirements Document (PRD) — RotaFlow
+# Product Requirements Document (PRD). RotaFlow
 
 ## 1. Overview
 
@@ -11,7 +11,7 @@ behaviour offloaded to Supabase and other managed services.
 **Problem it solves:** rota management is still done in spreadsheets, WhatsApp groups
 and paper. Managers waste hours rebuilding schedules; staff never know their shifts;
 clock-in and leave are untracked. RotaFlow gives each organisation a single, reliable,
-mobile-first system — with tenant-isolated data — that replaces all of that.
+mobile-first system, with tenant-isolated data, that replaces all of that.
 
 **Positioning:** an intelligent workforce scheduling platform that suits many
 industries (care homes, NHS/agency, domiciliary care, hospitality, retail, warehouses,
@@ -20,7 +20,7 @@ with minimal industry-specific customisation.
 
 ## 2. Target users
 
-- **Public / anyone** — any organisation self-serves and onboards its own team.
+- **Public / anyone**. Any organisation self-serves and onboards its own team.
 - Four roles per tenant (see §4): **Super Admin** (platform), **Organisation Owner**,
   **Manager**, **Staff** (the largest user group).
 
@@ -45,38 +45,38 @@ with minimal industry-specific customisation.
 | **Staff**              | Self                     | View rota, receive notifications, clock in/out, request leave & overtime, request/accept shift swaps, set availability, view hours, download rota, manage emergency contact, calendar sync. |
 
 All permissions are enforced by **Supabase RLS predicates** scoped by `org_id` and
-role membership — never in the client alone.
+role membership, never in the client alone.
 
 ## 5. Feature set (full platform, phased)
 
-### Phase 1 — Core scheduling loop
+### Phase 1. Core scheduling loop
 
-1. **Multi-tenant foundation** — organisations, locations, departments; every record
+1. **Multi-tenant foundation**. Organisations, locations, departments; every record
    `org_id`-scoped with RLS isolation; role-based memberships.
-2. **Staff management** — profiles (photo, job title, department, skills, contract
+2. **Staff management**. Profiles (photo, job title, department, skills, contract
    type, working hours, holiday allowance, emergency contact, documents, payroll ID).
-3. **Rota builder** — weekly/fortnightly/monthly grid, drag-and-drop, shift templates,
+3. **Rota builder**. Weekly/fortnightly/monthly grid, drag-and-drop, shift templates,
    copy-previous-week, duplicate day/week, undo/redo, colour coding, conflict
    detection (double-booking, availability, leave, max hours, min rest).
-4. **Shift types & templates** — reusable, org-defined (Morning, Late, Night, Split,
+4. **Shift types & templates**. Reusable, org-defined (Morning, Late, Night, Split,
    Weekend, On-Call, Bank, Training, etc.).
-5. **Staff mobile rota view** — installable PWA, offline-first, calendar month/week/day
+5. **Staff mobile rota view**. Installable PWA, offline-first, calendar month/week/day
    views, ICS calendar subscription.
-6. **Availability** — staff submit available/unavailable/preferred/recurring; managers
+6. **Availability**. Staff submit available/unavailable/preferred/recurring; managers
    schedule around it.
-7. **Leave** — request, approve/reject, entitlement tracking, calendar conflicts.
-8. **Shift swaps** — staff request → colleague → manager approval → rota updates.
-9. **GPS clock in/out** — QR + GPS + manual, timesheets, hours dashboard.
-10. **Notifications** — Web Push + email (SMTP) for assignments, changes, approvals,
+7. **Leave**. Request, approve/reject, entitlement tracking, calendar conflicts.
+8. **Shift swaps**. Staff request → colleague → manager approval → rota updates.
+9. **GPS clock in/out**. QR + GPS + manual, timesheets, hours dashboard.
+10. **Notifications**. Web Push + email (SMTP) for assignments, changes, approvals,
     reminders, announcements.
-11. **Announcements / communication centre** — org/department/location broadcasts.
-12. **Reports & exports** — hours, absence, holiday, overtime; CSV/Excel payroll export;
+11. **Announcements / communication centre**. Org/department/location broadcasts.
+12. **Reports & exports**. Hours, absence, holiday, overtime; CSV/Excel payroll export;
     per-employee/department/location rota export.
-13. **Offline + background sync** — view rota, clock in/out, request leave, read
+13. **Offline + background sync**. View rota, clock in/out, request leave, read
     announcements offline; reconcile on reconnect.
-14. **GDPR essentials** — consent, audit logging, data export/delete.
+14. **GDPR essentials**. Consent, audit logging, data export/delete.
 
-### Phase 2 — Intelligence, enterprise & billing
+### Phase 2. Intelligence, enterprise & billing
 
 - AI scheduling / auto-fill, demand forecasting, burnout detection, natural-language
   scheduling ("schedule three nurses for nights next weekend").
@@ -84,7 +84,7 @@ role membership — never in the client alone.
 - Advanced analytics (labour cost, utilisation, coverage gaps).
 - Documents with expiry reminders (DBS, Right to Work, visas, certificates).
 - SSO, custom per-tenant branding, open API, advanced compliance.
-- **Subscription billing** — Apple Pay, Google Pay, PayPal (and similar) via a
+- **Subscription billing**. Apple Pay, Google Pay, PayPal (and similar) via a
   pluggable payment-provider abstraction; plan gating (Starter / Professional /
   Business). Built **last**, but the architecture accommodates it from the start.
 

@@ -7,11 +7,11 @@ import { SectorGrid } from '@/components/marketing/SectorGrid';
 import { FinalCta } from '@/components/marketing/FinalCta';
 
 /**
- * `/solutions` — the same product, framed by sector.
+ * `/solutions`. The same product, framed by sector.
  *
  * `SECTORS` in `src/lib/marketing.ts` carries the detail. What this page adds
  * is the honest framing: these are sectors RotaFlow is *designed for*, not
- * sectors it has customers in. No logos, no named accounts, no case studies —
+ * sectors it has customers in. No logos, no named accounts, no case studies,
  * none exist, and the sector page is where a pre-launch product is most tempted
  * to imply otherwise.
  */
@@ -53,7 +53,7 @@ export function SolutionsPage(): JSX.Element {
       <PageHero
         eyebrow="Solutions"
         heading="Built for the sectors that run on shifts"
-        body="Healthcare, hospitality, retail, education, security and facilities management all schedule differently — but they break in the same four places. RotaFlow is built around those."
+        body="Healthcare, hospitality, retail, education, security and facilities management all schedule differently, but they break in the same four places. RotaFlow is built around those."
       >
         <Link to="/signup">
           <Button size="lg">
@@ -110,7 +110,7 @@ export function SolutionsPage(): JSX.Element {
 
           <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-content-muted dark:text-content-muted-dark">
             Working in a sector that is not listed? If your team works shifts, RotaFlow
-            almost certainly fits —{' '}
+            almost certainly fits,{' '}
             <Link
               to="/contact"
               className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -124,7 +124,7 @@ export function SolutionsPage(): JSX.Element {
 
       <FinalCta
         heading="See it against your own rota"
-        body="Create an organisation, add your sites, and build a real week — it takes about ten minutes."
+        body="Create an organisation, add your sites, and build a real week. It takes about ten minutes."
       />
     </MarketingLayout>
   );

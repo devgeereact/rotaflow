@@ -36,8 +36,8 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h1>
           <p className="mb-6 text-content-muted dark:text-content-muted-dark">
-            The error has been logged. Try reloading — if it keeps happening, please let
-            us know.
+            The error has been logged. Try reloading, if it keeps happening, please let us
+            know.
           </p>
           <Button onClick={this.handleReset}>Reload app</Button>
         </div>

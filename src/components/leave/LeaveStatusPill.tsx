@@ -8,7 +8,7 @@ interface LeaveStatusPillProps {
 }
 
 /**
- * Request state as a tinted pill. Always spelled out in words — status is
+ * Request state as a tinted pill. Always spelled out in words. Status is
  * never carried by colour alone (docs/DESIGN.md §5).
  */
 export function LeaveStatusPill({

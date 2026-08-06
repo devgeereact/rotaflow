@@ -14,7 +14,7 @@ interface NeedHelpCardProps {
   links: HelpLink[];
 }
 
-/** "Need Help?" rail card — support entry points, one row per topic. */
+/** "Need Help?" rail card. Support entry points, one row per topic. */
 export function NeedHelpCard({ links }: NeedHelpCardProps): JSX.Element {
   return (
     <Card className="h-full rounded-xl p-6">

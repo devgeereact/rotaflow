@@ -8,7 +8,7 @@ import { useOrg } from '@/hooks/useOrg';
 import { settingsTabsForRole } from '@/lib/settingsTabs';
 
 /**
- * `/app/settings/*` — the eight-section organisation administration area from
+ * `/app/settings/*`. The eight-section organisation administration area from
  * `design/SettingsOrganisation.png`.
  *
  * ## Why the tab bar lives in a layout route and not in each page
@@ -21,7 +21,7 @@ import { settingsTabsForRole } from '@/lib/settingsTabs';
  *
  * Putting it in a layout route is what stops that recurring. A new section is
  * now a `<Route>` plus an entry in `SETTINGS_TABS`, and if either is missing
- * the gap is visible immediately — you either see a tab that 404s or a page
+ * the gap is visible immediately. You either see a tab that 404s or a page
  * with no tab pointing at it. There is no state in which the bar silently
  * does not exist.
  */
@@ -40,7 +40,7 @@ export function SettingsLayout(): JSX.Element {
   return (
     <div>
       <PageHeader
-        title={active ? `Settings — ${active.label}` : 'Settings'}
+        title={active ? `Settings, ${active.label}` : 'Settings'}
         description={`Manage ${orgName || 'your organisation'}'s details, preferences and platform configuration.`}
         below={<Tabs items={tabs} label="Settings sections" />}
       />
@@ -55,7 +55,7 @@ export function SettingsLayout(): JSX.Element {
 }
 
 /**
- * Shared "this section is owner-only" panel. Presentation only — RLS in
+ * Shared "this section is owner-only" panel. Presentation only. RLS in
  * `0002_rotaflow.sql` is the real boundary and refuses regardless of what the
  * UI renders.
  */

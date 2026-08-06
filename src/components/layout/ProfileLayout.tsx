@@ -6,7 +6,7 @@ import { RouteFallback } from '@/components/RouteFallback';
 import { profileTabs } from '@/lib/settingsTabs';
 
 /**
- * `/app/account/*` — the six-section personal area from
+ * `/app/account/*`. The six-section personal area from
  * `design/ProfileSettings.png`.
  *
  * Every signed-in user has one regardless of role, which is the whole reason

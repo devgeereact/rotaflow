@@ -10,7 +10,7 @@ interface LeaveTipBannerProps {
 /**
  * The tinted hint strip under the request table (design/Leave.png).
  *
- * Sized for this reference — its rows are taller and its type a step larger
+ * Sized for this reference. Its rows are taller and its type a step larger
  * than `TimesheetTipBanner`'s, which is otherwise the same idea. Worth
  * collapsing into one `ui/` primitive once both screens are settled.
  */

@@ -15,7 +15,7 @@ export type SwapTab = 'all' | SwapDisplayStatus;
 export interface SwapParty {
   firstName: string;
   lastName: string;
-  /** "Care Assistant" — the line under the name. */
+  /** "Care Assistant". The line under the name. */
   jobTitle: string | null;
   photoUrl: string | null;
 }
@@ -24,7 +24,7 @@ export interface SwapParty {
 export interface SwapShiftSide {
   /** Pre-formatted, e.g. "Tue 27 May 2025". */
   dateLabel: string;
-  /** Pre-formatted, e.g. "07:00 – 15:00". */
+  /** Pre-formatted, e.g. "07:00-15:00". */
   timeLabel: string;
   locationName: string | null;
 }
@@ -33,7 +33,7 @@ export interface SwapRow {
   id: string;
   /** The person giving their shift away. */
   from: SwapParty;
-  /** The colleague taking it — null when the request is open to anyone. */
+  /** The colleague taking it. Null when the request is open to anyone. */
   to: SwapParty | null;
   /**
    * The shift changing hands. Both halves of the Shifts column render from

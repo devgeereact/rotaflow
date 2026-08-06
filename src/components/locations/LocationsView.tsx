@@ -42,7 +42,7 @@ interface LocationsViewProps {
 /**
  * The Locations tab of the workspace (design/Locations-Management.png):
  * summary tiles, filters, the sites table, the selected site's panel and the
- * advisory strip. Presentational — the caller owns filtering, sorting and
+ * advisory strip. Presentational. The caller owns filtering, sorting and
  * paging so this renders identically from Supabase data and from the
  * design-loop fixtures.
  */

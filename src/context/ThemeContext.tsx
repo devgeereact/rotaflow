@@ -20,7 +20,7 @@ const STORAGE_KEY = 'pwa-theme';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 /**
- * RotaFlow ships light-first (docs/DESIGN.md §1) — the app defaults to
+ * RotaFlow ships light-first (docs/DESIGN.md §1). The app defaults to
  * 'light' regardless of system preference, and only switches once a user
  * makes an explicit, persisted choice. This is a deliberate brand decision,
  * not an oversight: don't reintroduce a `prefers-color-scheme` fallback here.

@@ -2,12 +2,12 @@
  * The six figures the incident screen reports, derived from incident rows.
  *
  * In `lib` rather than beside the service because these are pure arithmetic
- * over data already fetched, and the suite runs them in Node — importing a
+ * over data already fetched, and the suite runs them in Node. Importing a
  * service would pull in the Supabase client, which needs a WebSocket Node
  * does not have.
  *
  * Every function here returns `null` rather than a zero when there is nothing
- * to measure. A mean time to resolve of "0m" reads as instant recovery; "—"
+ * to measure. A mean time to resolve of "0m" reads as instant recovery; "-"
  * reads as what it is.
  */
 
@@ -28,14 +28,14 @@ function minutesBetween(from: string | null, to: string | null): number | null {
 }
 
 /**
- * "4m 20s" — the shape an incident review reads in.
+ * "4m 20s". The shape an incident review reads in.
  *
  * Seconds are kept below an hour and dropped above it: nobody cares that the
  * outage lasted 1h 06m 12s, and the extra precision makes the number harder to
  * compare at a glance.
  */
 export function formatDuration(minutes: number | null): string {
-  if (minutes === null || !Number.isFinite(minutes)) return '—';
+  if (minutes === null || !Number.isFinite(minutes)) return '-';
   const total = Math.round(minutes * 60);
   if (total < 60) return `${total}s`;
   if (total < 3600) {

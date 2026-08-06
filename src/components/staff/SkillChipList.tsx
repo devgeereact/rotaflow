@@ -6,7 +6,7 @@ interface SkillChipListProps {
   tone?: 'primary' | 'neutral';
   /**
    * Roughly how much label text fits on one line before the rest collapse into
-   * a `+N` chip. Character count stands in for measured width — the reference's
+   * a `+N` chip. Character count stands in for measured width. The reference's
    * table row fits about 30 characters of chips. Omit to show all.
    */
   maxChars?: number;

@@ -1,13 +1,13 @@
-// test-smtp — RotaFlow
+// test-smtp. RotaFlow
 //
 // Sends a real test email through an org's own SMTP credentials, so an owner
 // configuring Integrations gets a genuine pass/fail rather than "settings
 // saved" being mistaken for "settings work". On success, stamps
-// org_smtp_settings.verified_at — the one place that column is ever written.
+// org_smtp_settings.verified_at. The one place that column is ever written.
 //
 // Auth: the caller's JWT is forwarded (like ai-rota-assistant) so RLS proves
 // org ownership via has_org_role before anything happens. That check alone
-// can't read smtp_pass, though — it's excluded from the column-level SELECT
+// can't read smtp_pass, though. It's excluded from the column-level SELECT
 // grant on org_smtp_settings entirely (0010_org_smtp_settings.sql), by
 // design, so nothing short of service_role can read the password back,
 // including this function's own owner check. A second, service_role-backed
@@ -54,7 +54,7 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'orgId is required' }, 400);
     }
 
-    // Scoped as the calling user — this is the actual authorization check.
+    // Scoped as the calling user. This is the actual authorization check.
     const callerClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
       .single();
     if (profileError) throw profileError;
 
-    // Ownership is confirmed — only now do we touch the one client that can
+    // Ownership is confirmed, only now do we touch the one client that can
     // actually read smtp_pass. See the file header for why this must be two
     // separate clients rather than one.
     const adminClient = createClient(
@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
       host: settings.smtp_host,
       port: settings.smtp_port,
       // 465 is implicit TLS; every other port (587 included) starts plain
-      // and upgrades via STARTTLS — secure:true there breaks the handshake.
+      // and upgrades via STARTTLS. Secure:true there breaks the handshake.
       secure: settings.smtp_port === 465,
       auth: { user: settings.smtp_user, pass: settings.smtp_pass },
       // A bad owner-provided host must fail fast, not hang the function.
@@ -122,7 +122,7 @@ Deno.serve(async (req: Request) => {
           ? `"${settings.from_name}" <${settings.from_email}>`
           : settings.from_email,
         to: profile.email,
-        subject: 'RotaFlow — SMTP test',
+        subject: 'RotaFlow. SMTP test',
         text: 'This is a test email from RotaFlow. Your organisation SMTP settings are working correctly.',
       });
     } catch (sendError) {

@@ -68,7 +68,7 @@ function event(overrides: Partial<ClockEvent> = {}): ClockEvent {
 
 const LOOKUPS: ClockLookups = {
   locationNames: { 'loc-1': 'Sunnyvale Care Home' },
-  departmentNames: { 'dep-1': 'Care Home – Floor 2' },
+  departmentNames: { 'dep-1': 'Care Home, Floor 2' },
   shiftTypeNames: { 'type-1': 'Day Shift' },
   jobTitle: 'Senior Care Assistant',
 };
@@ -199,7 +199,7 @@ describe('clockWindow', () => {
     });
   });
 
-  it('stays open for a late clock-in — being late must never block you', () => {
+  it('stays open for a late clock-in. Being late must never block you', () => {
     expect(clockWindow(shift(), new Date('2026-05-14T11:30:00')).within).toBe(true);
   });
 
@@ -221,11 +221,11 @@ describe('buildCurrentShift', () => {
   const info = buildCurrentShift(shift(), LOOKUPS, new Date('2026-05-14T08:48:00'));
 
   it('reproduces the reference values', () => {
-    expect(info.timeRange).toBe('09:00 – 17:00');
+    expect(info.timeRange).toBe('09:00-17:00');
     expect(info.dateLabel).toBe('Today, 14 May 2026');
     expect(info.countdownLabel).toBe('Starts in 12 min');
     expect(info.locationName).toBe('Sunnyvale Care Home');
-    expect(info.areaName).toBe('Care Home – Floor 2');
+    expect(info.areaName).toBe('Care Home, Floor 2');
     expect(info.roleName).toBe('Senior Care Assistant');
     expect(info.shiftTypeName).toBe('Day Shift');
     expect(info.breakDuration).toBe('(30 min)');
@@ -260,7 +260,7 @@ describe('buildTodaySchedule', () => {
     const rows = buildTodaySchedule([shift()], LOOKUPS, new Date('2026-05-14T08:48:00'));
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
-      timeRange: '09:00 – 17:00',
+      timeRange: '09:00-17:00',
       title: 'Senior Care Assistant',
       badgeLabel: 'Upcoming',
       tone: 'upcoming',
@@ -339,7 +339,7 @@ describe('buildRecentActivity', () => {
 
 describe('segmentsInRange', () => {
   it('keeps a shift that started inside the week but ended after it', () => {
-    // Clocks in 23:00 Sunday and out 07:00 Monday — the segment belongs
+    // Clocks in 23:00 Sunday and out 07:00 Monday. The segment belongs
     // wholly to the week it started in, and must not be split or double-counted.
     const events = [
       event({ id: 'in', type: 'in', event_at: '2026-05-17T23:00:00' }),
@@ -426,8 +426,8 @@ describe('buildAttendance', () => {
 
   it('shows a dash, not 0%, for a week with nothing scheduled', () => {
     const summary = buildAttendance(null, null);
-    expect(summary.thisWeekValue).toBe('—');
-    expect(summary.lastWeekValue).toBe('—');
+    expect(summary.thisWeekValue).toBe('-');
+    expect(summary.lastWeekValue).toBe('-');
     expect(summary.statusBody).toBe('Nothing scheduled this week.');
   });
 });

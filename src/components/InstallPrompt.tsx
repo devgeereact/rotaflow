@@ -13,7 +13,7 @@ export function InstallPrompt(): JSX.Element | null {
           Install this app
         </p>
         <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          Faster, offline-ready, no store.
+          Loads faster and works offline. It installs from the browser.
         </p>
       </div>
       <Button size="sm" onClick={() => void promptInstall()}>

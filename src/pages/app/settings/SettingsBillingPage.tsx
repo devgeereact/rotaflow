@@ -25,12 +25,12 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
 };
 
 /**
- * `/app/settings/billing` — design/Settingsbilling.png.
+ * `/app/settings/billing`. Design/Settingsbilling.png.
  *
  * ## Why this screen shows less than the reference
  *
- * There is no payment provider. `subscriptions` exists as a real table — org-
- * unique, `plan` and `status` both CHECKed, owner-only RLS — but `provider`
+ * There is no payment provider. `subscriptions` exists as a real table. Org-
+ * unique, `plan` and `status` both CHECKed, owner-only RLS, but `provider`
  * and `provider_ref` are an empty seam, and there is no invoices table, no
  * payment-methods table, no usage metering and no credits ledger. Choosing the
  * provider is a business decision, not an engineering one.
@@ -39,7 +39,7 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
  * those as empty tables would be the wrong call: a table with column headings
  * and no rows reads as *"your invoices failed to load"*, and a £0.00 balance
  * reads as *"you owe nothing"* rather than *"billing is not connected"*. So
- * the screen states the real position and shows what is genuinely known — the
+ * the screen states the real position and shows what is genuinely known. The
  * plan on the row, its status, and the live staff count that any future plan
  * limit will be measured against.
  */
@@ -121,7 +121,7 @@ export function SettingsBillingPage(): JSX.Element {
               Staff on the roster
             </span>
             <span className="tabular-nums text-content-muted dark:text-content-muted-dark">
-              {staffCount ?? '—'}
+              {staffCount ?? '-'}
             </span>
           </li>
           <li className="flex items-center justify-between gap-4">

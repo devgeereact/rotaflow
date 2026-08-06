@@ -13,7 +13,7 @@ import { useOrg } from '@/hooks/useOrg';
  * NEW_STRUCTURE §2 is explicit: "Do not treat Super Admin as a standard
  * organisation membership role. Super Admin is a separate platform-level
  * permission." `RequireRole` compares `memberships.role`, which is
- * `owner | manager | staff` — an owner of one tenant is not a platform
+ * `owner | manager | staff`, an owner of one tenant is not a platform
  * administrator, and conflating the two would hand every customer's owner the
  * keys to every other customer's data.
  *
@@ -55,7 +55,7 @@ export function RequirePlatformAdmin({ children }: { children: ReactNode }): JSX
             administrators.
           </p>
           <p className="mb-5 text-sm text-content-muted dark:text-content-muted-dark">
-            Being an owner of your own organisation does not grant it — that is a separate
+            Being an owner of your own organisation does not grant it, that is a separate
             permission held on your RotaFlow account.
           </p>
           <Link to="/app/dashboard">

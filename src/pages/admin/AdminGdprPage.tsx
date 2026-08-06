@@ -66,7 +66,7 @@ const STATUS_TONE: Record<GdprRequestStatus, BadgeTone> = {
 type ColumnKey = 'subject' | 'kind' | 'org' | 'received' | 'due' | 'status' | 'actions';
 
 /**
- * `/admin/gdpr` — NEW_STRUCTURE §34's GDPR and data management.
+ * `/admin/gdpr`. NEW_STRUCTURE §34's GDPR and data management.
  *
  * ## Why this is a deadline board, not a data browser
  *
@@ -82,7 +82,7 @@ type ColumnKey = 'subject' | 'kind' | 'org' | 'received' | 'due' | 'status' | 'a
  * the only form of this screen worth building.
  *
  * The deadline is computed by the database on insert, not supplied by this
- * page, and closing a request needs an outcome note — both enforced in 0020,
+ * page, and closing a request needs an outcome note, both enforced in 0020,
  * so neither can be skipped by a caller that forgets.
  */
 export function AdminGdprPage(): JSX.Element {
@@ -222,7 +222,7 @@ export function AdminGdprPage(): JSX.Element {
         cell: (r) =>
           isClosed(r.status) ? (
             <span className="text-xs text-content-muted dark:text-content-muted-dark">
-              {r.outcomeNote ? 'Outcome recorded' : '—'}
+              {r.outcomeNote ? 'Outcome recorded' : '-'}
             </span>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -284,7 +284,7 @@ export function AdminGdprPage(): JSX.Element {
           />
           <StatTile
             label="Median turnaround"
-            value={counts.median === null ? '—' : `${counts.median} days`}
+            value={counts.median === null ? '-' : `${counts.median} days`}
             hint={<span className="font-semibold text-success">statutory 30 days</span>}
           />
           <StatTile
@@ -306,8 +306,8 @@ export function AdminGdprPage(): JSX.Element {
           >
             <p>
               Under Article 12(3) the lateness is itself the breach, regardless of the
-              eventual answer. If a request is complex, extend it and tell the subject why
-              — an extension taken late is worth more than none at all.
+              eventual answer. If a request is complex, extend it and tell the subject
+              why, an extension taken late is worth more than none at all.
             </p>
           </Callout>
         )}
@@ -364,7 +364,7 @@ export function AdminGdprPage(): JSX.Element {
             <p className="border-t border-divider px-4 py-3 text-xs leading-relaxed text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
               These are intended periods, not enforced ones. No table records a retention
               rule and no job deletes a rota when it turns seven, so treat this as the
-              policy to build to. The audit row is the exception and is true today —
+              policy to build to. The audit row is the exception and is true today,{' '}
               <code> audit_logs</code> has no update or delete policy at all.
             </p>
           </Panel>
@@ -374,14 +374,14 @@ export function AdminGdprPage(): JSX.Element {
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
             It records the obligation: what was asked, by whom, when it arrived and when
             it must be answered. Deadlines are computed by the database from the date of
-            receipt, and closing a request requires an outcome note — neither can be
+            receipt, and closing a request requires an outcome note. Neither can be
             skipped from this screen.
           </p>
           <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
             It does not perform the work. Exporting or erasing a person&rsquo;s data is
             done by their organisation&rsquo;s owner from the staff record, which is where
             the data actually lives and where the right permissions apply. Telling the
-            subject about an extension is an email someone still has to send — this
+            subject about an extension is an email someone still has to send. This
             database cannot do it, so it does not pretend the box being ticked means the
             person was informed.
           </p>
@@ -534,7 +534,7 @@ function LogRequestModal({
           </Select>
         </div>
         <p className="text-xs text-content-muted dark:text-content-muted-dark">
-          The deadline is calculated from the date of receipt — one calendar month, per
+          The deadline is calculated from the date of receipt, one calendar month, per
           Article 12(3). Logging this on {todayIso()} for a request received {receivedOn}{' '}
           gives a deadline of {statutoryDueDate(receivedOn)}.
         </p>
@@ -570,7 +570,7 @@ function CloseRequestModal({
 
   const submit = async (): Promise<void> => {
     if (note.trim().length < 10) {
-      setError('Say what was done — this is the record you would be asked to produce.');
+      setError('Say what was done. This is the record you would be asked to produce.');
       return;
     }
     setError('');
@@ -648,7 +648,7 @@ function ExtendRequestModal({
   const submit = async (): Promise<void> => {
     if (reason.trim().length < 15) {
       setError(
-        'Give a reason of at least 15 characters — complexity, or number of requests.',
+        'Give a reason of at least 15 characters. Complexity, or number of requests.',
       );
       return;
     }

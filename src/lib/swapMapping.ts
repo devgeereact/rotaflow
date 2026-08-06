@@ -8,7 +8,7 @@ import type { Location, StaffProfile } from '@/types';
 export interface SwapMappingContext {
   staffById: Map<string, StaffProfile>;
   locationsById: Map<string, Location>;
-  /** Manager/owner — drives "Needs your approval" and the Review button. */
+  /** Manager/owner. Drives "Needs your approval" and the Review button. */
   canApprove: boolean;
   /** The signed-in user's `auth.users.id`, for "Approved by you". */
   userId: string | null;
@@ -40,7 +40,7 @@ export function requestedLabel(iso: string): string {
 
 /**
  * The line under the status pill. Only states we can actually evidence get a
- * note — a rejection reason is not stored, so declined rows carry none rather
+ * note, a rejection reason is not stored, so declined rows carry none rather
  * than an invented one.
  */
 function statusNote(
@@ -82,7 +82,7 @@ export function toSwapRow(
     shift: shift
       ? {
           dateLabel: format(new Date(shift.starts_at), 'EEE d MMM yyyy'),
-          timeLabel: `${format(new Date(shift.starts_at), 'HH:mm')} – ${format(
+          timeLabel: `${format(new Date(shift.starts_at), 'HH:mm')}, ${format(
             new Date(shift.ends_at),
             'HH:mm',
           )}`,
@@ -100,7 +100,7 @@ export function toSwapRow(
 
 /**
  * The "Recent Activity" rail, newest first. Derived from the swaps already
- * loaded rather than a separate feed — there is no activity table, and
+ * loaded rather than a separate feed. There is no activity table, and
  * inventing one would show entries the database cannot back.
  */
 export function toSwapActivity(

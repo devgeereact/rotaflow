@@ -19,7 +19,7 @@ interface StepChoosePlanProps {
   error: string | null;
 }
 
-/** Yearly is billed as ten months — the "save 2 months" offer in the design. */
+/** Yearly is billed as ten months. The "save 2 months" offer in the design. */
 function priceFor(monthly: number, period: BillingPeriod): number {
   return period === 'yearly' ? Math.round((monthly * 10) / 12) : monthly;
 }
@@ -157,7 +157,7 @@ export function StepChoosePlan({
                   )}
                   title={
                     enquiryOnly
-                      ? 'Enterprise is arranged directly — get in touch with the team'
+                      ? 'Enterprise is arranged directly. Get in touch with the team'
                       : undefined
                   }
                   onClick={() => {

@@ -23,7 +23,7 @@ interface StepCompleteProps {
 /**
  * Destinations that actually exist. design/Onboarding-Complete.png shows
  * "Set up shift types" / "Customise notifications" linking to a shift-types
- * page and a settings page — neither exists in this app (shift types are
+ * page and a settings page. Neither exists in this app (shift types are
  * configured from a modal inside the rota builder, and there is no settings
  * route yet). Substituted with the two other real setup surfaces
  * (Locations, Staff) rather than link to something that 404s.
@@ -82,7 +82,7 @@ export function StepComplete({
       label: `${inviteCount} invitation${inviteCount === 1 ? '' : 's'}`,
       hint: inviteCount > 0 ? 'Links ready to send' : 'None yet',
     },
-    // The reference shows a "Next billing: 1 Jun 2025" date here — there is no
+    // The reference shows a "Next billing: 1 Jun 2025" date here. There is no
     // billing engine behind plan selection (see PLANS in constants.ts: "No
     // charge is taken anywhere"), so a real date would be a fabricated claim.
     { icon: ShieldCheck, label: 'No billing set up', hint: 'No payment taken' },

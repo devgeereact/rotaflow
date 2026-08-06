@@ -9,7 +9,7 @@ interface TimesheetTableProps {
   selectedIds: string[];
   onToggleRow: (id: string) => void;
   onToggleAll: () => void;
-  /** Opens the row — "Review" when it still needs a decision, else "View". */
+  /** Opens the row, "Review" when it still needs a decision, else "View". */
   onOpenRow: (id: string) => void;
   onRowMenu: (id: string) => void;
   /** Hidden entirely when no pay rate exists to cost the hours with. */
@@ -24,7 +24,7 @@ const HEAD_CELL =
 const NUM_CELL =
   'px-1.5 py-2.5 text-center text-[0.76rem] font-semibold leading-4 tabular-nums text-content dark:text-content-dark';
 
-/** The timesheet list — one row per person per week (design/Timesheets-Dashboard.png). */
+/** The timesheet list, one row per person per week (design/Timesheets-Dashboard.png). */
 export function TimesheetTable({
   rows,
   selectedIds,
@@ -144,10 +144,10 @@ export function TimesheetTable({
                 <td className={NUM_CELL}>{row.regularHours}</td>
                 <td className={NUM_CELL}>{row.overtimeHours}</td>
                 {showDoubleTime && (
-                  <td className={NUM_CELL}>{row.doubleTimeHours ?? '—'}</td>
+                  <td className={NUM_CELL}>{row.doubleTimeHours ?? '-'}</td>
                 )}
                 <td className={NUM_CELL}>{row.totalHours}</td>
-                {showCost && <td className={NUM_CELL}>{row.totalCost ?? '—'}</td>}
+                {showCost && <td className={NUM_CELL}>{row.totalCost ?? '-'}</td>}
 
                 <td className="px-0 py-2.5 text-center">
                   <TimesheetStatusPill status={row.status} />

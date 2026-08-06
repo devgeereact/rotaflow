@@ -21,7 +21,7 @@ const TONES: Record<ScheduleEntryTone, string> = {
   done: 'bg-surface-subtle text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark',
 };
 
-/** "Today's Schedule" rail card — the day's shift plus its unpaid break. */
+/** "Today's Schedule" rail card. The day's shift plus its unpaid break. */
 export function TodayScheduleCard({
   entries,
   onViewFull,

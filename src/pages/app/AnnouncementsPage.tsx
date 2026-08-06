@@ -56,13 +56,13 @@ const TABS = [
 ] as const;
 
 /**
- * `/app/announcements` — the communications workspace in
+ * `/app/announcements`. The communications workspace in
  * design/Announcements-Dashboard.png.
  *
  * The schema is narrower than the screen (see `src/lib/announcementsMapping.ts`):
  * status is derived from `published_at`, and there is no archive, attachment or
  * read-receipt store. The Archived tab is therefore always empty and the preview
- * panel omits its Delivery and Attachments blocks — the design is honoured
+ * panel omits its Delivery and Attachments blocks. The design is honoured
  * without inventing data the database cannot back.
  */
 export function AnnouncementsPage(): JSX.Element {
@@ -316,7 +316,7 @@ export function AnnouncementsPage(): JSX.Element {
 
   // Only the follow-ups the schema can actually back. The reference's "Archive
   // Announcement" is deliberately renamed: `announcements` has no archived
-  // state, so the only thing that row could do is delete — and it says so.
+  // state, so the only thing that row could do is delete, and it says so.
   const quickActions: AnnouncementQuickAction[] = canManageStaff
     ? [
         {
@@ -353,7 +353,7 @@ export function AnnouncementsPage(): JSX.Element {
     );
   }
 
-  /** CSV of the filtered feed — §47 requires exports to honour the filters. */
+  /** CSV of the filtered feed, §47 requires exports to honour the filters. */
   const handleExport = (): void => {
     if (filtered.length === 0) {
       showError('There are no announcements matching these filters to export.');
@@ -380,7 +380,7 @@ export function AnnouncementsPage(): JSX.Element {
   const emptyMessage = loading
     ? 'Loading announcements…'
     : activeTab === 'archived'
-      ? 'Nothing archived — RotaFlow does not archive announcements yet.'
+      ? 'Nothing archived. RotaFlow does not archive announcements yet.'
       : 'No announcements match these filters.';
 
   return (
@@ -408,7 +408,7 @@ export function AnnouncementsPage(): JSX.Element {
                 </option>
               ))}
             </Select>
-            {/* Derived, not stored — `announcements` has no category column. */}
+            {/* Derived, not stored, `announcements` has no category column. */}
             <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
               Categories are worked out from each announcement&rsquo;s wording, not stored
               against it.
@@ -455,7 +455,7 @@ export function AnnouncementsPage(): JSX.Element {
             <h3 className="mb-1 font-semibold">Who receives it</h3>
             <p className="text-content-muted dark:text-content-muted-dark">
               Audience narrows by location and department. Choosing both sends only to
-              people who match both — a department at one site, not that department
+              people who match both, a department at one site, not that department
               everywhere.
             </p>
           </div>
@@ -479,7 +479,7 @@ export function AnnouncementsPage(): JSX.Element {
             <h3 className="mb-1 font-semibold">Pinning</h3>
             <p className="text-content-muted dark:text-content-muted-dark">
               Pinned announcements stay at the top of everyone&rsquo;s feed. Reserve it
-              for things that stay true for a while — pinning everything is the same as
+              for things that stay true for a while. Pinning everything is the same as
               pinning nothing.
             </p>
           </div>

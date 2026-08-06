@@ -18,7 +18,7 @@ const FEATURES: SplashFeature[] = [
 ];
 
 interface SplashScreenProps {
-  /** Boot completion, 0–100. Drives the progress bar width. */
+  /** Boot completion, 0-100. Drives the progress bar width. */
   progress?: number;
   /** Caption under the bar; reflects whatever the shell is waiting on. */
   message?: string;
@@ -27,7 +27,7 @@ interface SplashScreenProps {
 /**
  * Cold-start splash (design/splash-screen.png).
  *
- * Deliberately presentational — it owns no boot logic. The only live signal is
+ * Deliberately presentational. It owns no boot logic. The only live signal is
  * connectivity, so a staff member on bad ward wifi sees "Offline" instead of a
  * bar that implies progress the app is not making.
  */
@@ -79,7 +79,7 @@ export function SplashScreen({
             />
           </div>
           <p className="mt-5 text-lg text-ink-soft dark:text-content-muted-dark">
-            {online ? message : "You're offline — showing your cached rota."}
+            {online ? message : "You're offline. Showing your cached rota."}
           </p>
         </div>
       </main>

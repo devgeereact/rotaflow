@@ -77,12 +77,12 @@ const EXPORT_COLUMNS: CsvColumn<SwapRow>[] = [
 ];
 
 /**
- * `/app/swaps` — the shift-swap queue (design/Swap-Request.png): request as
+ * `/app/swaps`. The shift-swap queue (design/Swap-Request.png): request as
  * staff, respond as the targeted colleague, approve or decline as a manager.
  *
  * Approving moves the shift. It used to only mark the row `approved`, leaving
  * reassignment to the rota builder so that screen's conflict and coverage
- * context stayed in play — but that left the rota, which is what staff
+ * context stayed in play, but that left the rota, which is what staff
  * actually read, disagreeing with the decision both parties had just been
  * notified about. See `handleReview`.
  *
@@ -177,7 +177,7 @@ export function SwapsPage(): JSX.Element {
         }
 
         // Managers review the whole org; staff only see swaps they are part of.
-        // RLS enforces the same split — this just avoids asking for rows the
+        // RLS enforces the same split. This just avoids asking for rows the
         // policy would drop anyway.
         const rows = canApprove
           ? await listOrgShiftSwaps(orgId)
@@ -341,18 +341,18 @@ export function SwapsPage(): JSX.Element {
 
   /**
    * Reflects the window actually applied. This used to print the current week
-   * unconditionally while the list showed every swap ever raised — a label
+   * unconditionally while the list showed every swap ever raised, a label
    * that describes a filter nothing is applying is worse than no label.
    */
   const periodLabel = useMemo(() => {
     if (!fromDate && !toDate) return 'All dates';
     const pretty = (iso: string): string =>
       format(new Date(`${iso}T00:00:00`), 'd MMM yyyy');
-    if (fromDate && toDate) return `${pretty(fromDate)} – ${pretty(toDate)}`;
+    if (fromDate && toDate) return `${pretty(fromDate)}, ${pretty(toDate)}`;
     return fromDate ? `From ${pretty(fromDate)}` : `Until ${pretty(toDate)}`;
   }, [fromDate, toDate]);
 
-  /** Sets the window to the current week — the old hard-coded label's range. */
+  /** Sets the window to the current week. The old hard-coded label's range. */
   const applyThisWeek = useCallback((): void => {
     const now = new Date();
     setFromDate(format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
@@ -374,7 +374,7 @@ export function SwapsPage(): JSX.Element {
 
       if (!online) {
         await enqueue('swap', input);
-        showSuccess('Swap request saved offline — it will sync when you’re back online.');
+        showSuccess('Swap request saved offline. It will sync when you’re back online.');
       } else {
         await requestShiftSwap(input);
         showSuccess('Swap request submitted.');
@@ -410,7 +410,7 @@ export function SwapsPage(): JSX.Element {
         setOpenSwapId(null);
         showSuccess(
           status === 'accepted'
-            ? 'Swap accepted — awaiting manager approval.'
+            ? 'Swap accepted. Awaiting manager approval.'
             : 'Swap declined.',
         );
       } catch (err) {
@@ -435,7 +435,7 @@ export function SwapsPage(): JSX.Element {
          * This used to stop at marking the row approved, on the reasoning that
          * reassignment belongs in the rota builder where the conflict and
          * coverage context lives. That reasoning is wrong in the one way that
-         * matters: it leaves the rota — the thing staff actually read —
+         * matters: it leaves the rota. The thing staff actually read,
          * disagreeing with the decision they were just notified about. Someone
          * whose swap was approved still sees the shift on their schedule, and
          * the colleague who took it does not see it on theirs. The manager
@@ -467,7 +467,7 @@ export function SwapsPage(): JSX.Element {
             : 'Swap declined.',
         );
 
-        // Notifies the requester — the swap outcome is theirs, even when the
+        // Notifies the requester. The swap outcome is theirs, even when the
         // target colleague accepted it first. Fire-and-forget after the write
         // already succeeded and the UI already reflects it.
         const recipientUserId = swap
@@ -692,8 +692,8 @@ export function SwapsPage(): JSX.Element {
             <p className="text-content-muted dark:text-content-muted-dark">
               You offer one of your own published shifts, optionally naming a colleague.
               They accept or decline. A manager then approves or declines the accepted
-              swap — both steps are required, so nobody is handed a shift without a
-              manager seeing it.
+              swap, both steps are required, so nobody is handed a shift without a manager
+              seeing it.
             </p>
           </div>
           <div>
@@ -708,8 +708,8 @@ export function SwapsPage(): JSX.Element {
             <h3 className="mb-1 font-semibold">What the system does not check for you</h3>
             <p className="text-content-muted dark:text-content-muted-dark">
               Those checks are not automated yet, so approval is a human judgement here.
-              The screen will not stop you approving a swap that breaks a rest period —
-              read the shift details before approving.
+              The screen will not stop you approving a swap that breaks a rest period.
+              Read the shift details before approving.
             </p>
           </div>
           <div>
@@ -809,7 +809,7 @@ export function SwapsPage(): JSX.Element {
             )}
             <p className="text-sm text-content-muted dark:text-content-muted-dark">
               {SWAP_STATUS_LABEL[openRow.status]}
-              {openRow.statusNote ? ` — ${openRow.statusNote}` : ''}
+              {openRow.statusNote ? `, ${openRow.statusNote}` : ''}
             </p>
 
             <div className="flex flex-wrap gap-2 pt-1">

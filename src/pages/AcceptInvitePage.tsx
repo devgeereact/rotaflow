@@ -23,7 +23,7 @@ const ROLE_LABELS: Record<string, string> = {
 /**
  * Landing page for `/invite/:token`.
  *
- * Reachable signed out on purpose — `preview_invite` is granted to `anon` so
+ * Reachable signed out on purpose, `preview_invite` is granted to `anon` so
  * the invitee can see who invited them before deciding to create an account.
  * Redemption itself always requires a session, and the database additionally
  * requires the signed-in email to match the invited address, so a forwarded
@@ -77,7 +77,7 @@ export function AcceptInvitePage(): JSX.Element {
     } catch (err) {
       reportError(err, { area: 'invite:accept' });
       // The database raises specific, user-safe messages for the cases that
-      // matter (wrong email, expired, revoked, already used) — surfacing them
+      // matter (wrong email, expired, revoked, already used). Surfacing them
       // verbatim is more useful than a generic failure.
       const message =
         err instanceof Error && err.message
@@ -138,7 +138,7 @@ export function AcceptInvitePage(): JSX.Element {
             Sign in or create an account with that address to accept.
           </p>
           {/* Carry the token so the confirmation email returns here, not to
-              the dashboard — otherwise confirming strands the invitee. */}
+              the dashboard. Otherwise confirming strands the invitee. */}
           <Link
             to={`/signup?email=${encodeURIComponent(preview.email)}&invite=${encodeURIComponent(token)}`}
           >

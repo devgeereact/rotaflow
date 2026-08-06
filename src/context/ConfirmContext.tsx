@@ -11,7 +11,7 @@ export interface ConfirmOptions {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** `danger` for destructive actions — deletes, revokes, anonymisation. */
+  /** `danger` for destructive actions. Deletes, revokes, anonymisation. */
   tone?: 'danger' | 'primary';
 }
 
@@ -29,7 +29,7 @@ export const ConfirmContext = createContext<ConfirmContextValue | null>(null);
  *
  * Five destructive actions were gated on `window.confirm`: delete a shift
  * type, remove an emergency contact, delete a staff document, disconnect SMTP,
- * and **anonymise a staff member** — that last one being irreversible by
+ * and **anonymise a staff member**, that last one being irreversible by
  * design, because it exists to satisfy a UK GDPR erasure request.
  *
  * `window.confirm` is unstyled, unthemeable and untestable, but the reason it
@@ -37,7 +37,7 @@ export const ConfirmContext = createContext<ConfirmContextValue | null>(null);
  * it.** Chrome suppresses repeated dialogs and drops them entirely from
  * cross-origin frames, and an installed PWA is exactly the context where users
  * tick "don't show again". A suppressed `confirm()` returns `false`, so a
- * suppressed *guard* fails closed — but the user is then left clicking a
+ * suppressed *guard* fails closed, but the user is then left clicking a
  * button that silently does nothing, with no way to find out why.
  *
  * The API stays await-shaped so call sites read almost identically to the

@@ -23,7 +23,7 @@ interface ShiftChipProps {
 }
 
 /**
- * A placed shift on the grid — draggable to reassign, click to select in the
+ * A placed shift on the grid. Draggable to reassign, click to select in the
  * inspector, and removable from the chip itself.
  *
  * ## Why the delete control lives here
@@ -38,12 +38,12 @@ interface ShiftChipProps {
  * The chip is a `<button>` carrying dnd-kit's drag listeners, and a button
  * inside a button is invalid HTML that browsers silently reparent. So the two
  * are siblings inside a wrapper, and the delete button stops pointer events
- * propagating — otherwise pressing it starts a drag instead of a click.
+ * propagating. Otherwise pressing it starts a drag instead of a click.
  *
  * ## Why it is not permanently visible
  *
  * A full grid is 50+ chips; an always-on × on each is exactly the visual noise
- * §3 rules out. It appears on hover and on keyboard focus — and is
+ * §3 rules out. It appears on hover and on keyboard focus, and is
  * *permanently* visible where there is no hover (`hover: none`, i.e. touch),
  * because on a tablet a hover-only affordance is an invisible one.
  */
@@ -84,7 +84,7 @@ export function ShiftChip({
         )}
       >
         <span className="block truncate text-[0.68rem] font-semibold leading-4 tracking-tight tabular-nums">
-          {startTime} – {endTime}
+          {startTime}, {endTime}
         </span>
         <span className="block truncate text-[0.63rem] font-medium leading-4 opacity-80">
           {shiftType?.name ?? 'Shift'}

@@ -23,14 +23,14 @@ interface PopoverProps {
  * A small click-outside/Escape-dismissed panel anchored to its trigger.
  *
  * Written because three screens each had a "Filters" or "Display settings"
- * button whose only behaviour was a toast reading "coming soon" — the exact
+ * button whose only behaviour was a toast reading "coming soon". The exact
  * thing §24 of the build prompt forbids. A filter panel is a popover, not a
  * modal: it must not trap the page behind a scrim while someone compares the
  * grid against the filter they are choosing.
  *
  * Dismissal is bound on `pointerdown`, not `click`. A `click` listener fires
  * after the target's own handler, so clicking a second popover's trigger while
- * this one is open would close this and immediately reopen it — the panel
+ * this one is open would close this and immediately reopen it. The panel
  * appears not to respond. `pointerdown` closes first, then the trigger runs.
  */
 export function Popover({

@@ -26,7 +26,7 @@ interface ReviewerProfile {
   email: string;
 }
 
-/** Who reviewed a leave/swap request — reviewed_by references profiles, not staff_profiles. */
+/** Who reviewed a leave/swap request. Reviewed_by references profiles, not staff_profiles. */
 async function reviewerNamesByProfileId(orgId: string): Promise<Map<string, string>> {
   const { data, error } = await supabase
     .from('memberships')
@@ -52,7 +52,7 @@ export interface TimesheetReportRow {
 
 /**
  * One row per worked segment (clock in → out), reusing the exact
- * `pairClockEvents` math `/app/timesheets` already shows — a report whose
+ * `pairClockEvents` math `/app/timesheets` already shows, a report whose
  * numbers disagree with the screen it's reporting on is worse than no report.
  */
 export async function getTimesheetReportRows(

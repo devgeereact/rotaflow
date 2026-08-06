@@ -22,7 +22,7 @@ interface StaffTableProps {
 }
 
 /**
- * Column widths as a share of the table, measured off design/staff.png — the
+ * Column widths as a share of the table, measured off design/staff.png. The
  * Skills column carries chips and needs roughly twice any other column.
  */
 const COLUMNS: { key: StaffSortKey; label: string; width: string }[] = [
@@ -35,7 +35,7 @@ const COLUMNS: { key: StaffSortKey; label: string; width: string }[] = [
   { key: 'status', label: 'Status', width: 'w-[10%]' },
 ];
 
-/** The staff directory table — header, sortable columns and rows. */
+/** The staff directory table. Header, sortable columns and rows. */
 export function StaffTable({
   rows,
   sort,

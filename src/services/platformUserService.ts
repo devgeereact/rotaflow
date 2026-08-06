@@ -6,7 +6,7 @@ import type { AuditLog, Profile } from '@/types';
  *
  * These work because 0015 widened `profiles_select_own` to admit platform
  * administrators. Before that migration this whole file would return one row
- * or none — which is exactly the defect `/admin/users` shipped with.
+ * or none, which is exactly the defect `/admin/users` shipped with.
  */
 
 export async function getProfileById(userId: string): Promise<Profile | null> {
@@ -68,7 +68,7 @@ export interface UserMembershipSummary {
  * an organisation column for every account on the deployment, and doing that
  * per row is the N+1 that makes a forty-account page take forty round trips.
  *
- * Readable cross-tenant for the same reason the rest of the console is —
+ * Readable cross-tenant for the same reason the rest of the console is,
  * `memberships` select policy admits `is_platform_admin()`. A non-administrator
  * calling this gets their own rows, which is harmless rather than misleading:
  * the screen it feeds is behind the platform route guard.
@@ -114,7 +114,7 @@ export async function summariseMembershipsByUser(): Promise<
 /**
  * What this account has done, across every tenant.
  *
- * Cross-tenant by design — the question a platform administrator brings to
+ * Cross-tenant by design. The question a platform administrator brings to
  * this screen is "what has this person been doing", and scoping it to one
  * organisation would answer a different one. Only a platform administrator can
  * run it: the read policy admits other readers to their *own* actions only.

@@ -76,7 +76,7 @@ describe('summarise', () => {
 
 describe('formatLatency', () => {
   it('renders an em dash when nothing was measured', () => {
-    expect(formatLatency(undefined)).toBe('—');
+    expect(formatLatency(undefined)).toBe('-');
   });
 
   it('avoids spurious precision below a millisecond', () => {

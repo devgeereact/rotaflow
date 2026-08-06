@@ -21,7 +21,7 @@ import type {
 } from '@/lib/availabilityMatrix';
 
 /**
- * Design-loop preview only — `/app/availability` needs a real Supabase session
+ * Design-loop preview only, `/app/availability` needs a real Supabase session
  * and availability rows across the org. This renders the same components
  * against fixed mock data so the screen can be screenshotted without auth or a
  * database, reproducing design/Availability.png's figures.
@@ -43,10 +43,10 @@ const DAY = (state: AvailabilityState, timeRange?: string): AvailabilityCellData
   timeRange,
 });
 
-const EARLY = '07:00 – 19:00';
-const SHORT = '07:00 – 15:00';
-const LATE = '15:00 – 23:00';
-const NIGHT = '19:00 – 23:00';
+const EARLY = '07:00-19:00';
+const SHORT = '07:00-15:00';
+const LATE = '15:00-23:00';
+const NIGHT = '19:00-23:00';
 
 const ROWS: AvailabilityRowData[] = [
   {
@@ -209,7 +209,7 @@ const PENDING: PendingAvailabilityRequest[] = [
     firstName: 'Emily',
     lastName: 'Davis',
     summary: 'Change 31 May',
-    detail: '15:00 – 23:00',
+    detail: '15:00-23:00',
     statusLabel: 'Pending',
   },
   {
@@ -294,7 +294,7 @@ export function AvailabilityPreviewPage(): JSX.Element {
     <div className="min-h-screen bg-background px-5 py-6 dark:bg-background-dark">
       <AvailabilityView
         statCards={statCards}
-        periodLabel="26 May – 1 June 2025"
+        periodLabel="26 May-1 June 2025"
         locationLabel="All Locations"
         onPrev={noop}
         onNext={noop}

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { Availability, AvailabilityInsert } from '@/types';
 
-/** One person's availability entries — recurring weekday patterns and specific dates alike. */
+/** One person's availability entries. Recurring weekday patterns and specific dates alike. */
 export async function listMyAvailability(
   staffProfileId: string,
 ): Promise<Availability[]> {
@@ -16,7 +16,7 @@ export async function listMyAvailability(
   return data ?? [];
 }
 
-/** Every entry across the org — manager's team-availability view. */
+/** Every entry across the org. Manager's team-availability view. */
 export async function listOrgAvailability(orgId: string): Promise<Availability[]> {
   const { data, error } = await supabase
     .from('availability')

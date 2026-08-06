@@ -16,8 +16,8 @@ interface EmptyStateProps {
  *
  * Thirteen screens hand-rolled this, most as a bare centred sentence
  * ("No documents on file yet."). An empty list is the single most common
- * first-run state in a scheduling app — a new organisation sees it on almost
- * every screen — so it is worth one component that reliably tells the user
+ * first-run state in a scheduling app, a new organisation sees it on almost
+ * every screen, so it is worth one component that reliably tells the user
  * what to do next rather than only that there is nothing to see.
  */
 export function EmptyState({

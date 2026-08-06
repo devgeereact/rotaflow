@@ -45,7 +45,7 @@ interface RotaAssistantPanelProps {
   open: boolean;
   onClose: () => void;
   orgId: string;
-  /** The shifts currently on the grid — what the assistant reasons about. */
+  /** The shifts currently on the grid. What the assistant reasons about. */
   shifts: Shift[];
   staff: StaffProfile[];
   shiftTypes: ShiftType[];
@@ -92,7 +92,7 @@ const SEVERITY_STYLE: Record<
  * Three tabs, in the order a manager actually works: see what is wrong
  * (Review), fill the holes (Fill gaps), then ask for something bespoke (Ask
  * AI). The first two are computed locally in `lib/rotaInsights` and always
- * work — offline, with no API key, and with no possibility of an invented
+ * work. Offline, with no API key, and with no possibility of an invented
  * name or date. Only the third calls a language model, and it degrades to a
  * plain message when one is not configured, because a demo that dies on a
  * missing environment variable is worse than one that says so.
@@ -148,7 +148,7 @@ export function RotaAssistantPanel({
   }, [open, resetAsk]);
 
   // Leave, availability and document expiry are not part of the builder's own
-  // load, so the assistant fetches them itself — and only when it is opened,
+  // load, so the assistant fetches them itself, and only when it is opened,
   // so the grid's first paint is never waiting on them.
   useEffect(() => {
     if (!open || !orgId) return;
@@ -269,7 +269,7 @@ export function RotaAssistantPanel({
     } catch (err) {
       reportError(err, { area: 'rota:assistant-generate' });
       setError(
-        'The AI drafting service is not available right now. Review and Fill gaps still work — they run on this device.',
+        'The AI drafting service is not available right now. Review and Fill gaps still work. They run on this device.',
       );
     } finally {
       setGenerating(false);
@@ -337,7 +337,7 @@ export function RotaAssistantPanel({
         // Reuses the panel's status line: the apply succeeded, but a manager
         // needs to know it did not do everything the preview showed.
         setError(
-          `${accepted.length} added. ${skipped} skipped — those people were already rostered at the same time.`,
+          `${accepted.length} added. ${skipped} skipped. Those people were already rostered at the same time.`,
         );
       }
       onPreview([]);
@@ -475,7 +475,7 @@ export function RotaAssistantPanel({
 
                     {candidates.length === 0 ? (
                       <p className="text-xs text-warning">
-                        Nobody on the roster is free for this one — everyone is on leave,
+                        Nobody on the roster is free for this one. Everyone is on leave,
                         already working, or has marked themselves unavailable.
                       </p>
                     ) : (
@@ -535,8 +535,8 @@ export function RotaAssistantPanel({
         {tab === 'ask' && (
           <div className="space-y-3">
             <p className="text-sm text-content-muted dark:text-content-muted-dark">
-              Describe what you need for this week. Suggestions preview on the grid —
-              nothing is saved until you apply them.
+              Describe what you need for this week. Suggestions preview on the grid.
+              Nothing is saved until you apply them.
             </p>
 
             <label htmlFor="assistant-prompt" className="sr-only">
@@ -577,7 +577,7 @@ export function RotaAssistantPanel({
                   {suggestions.map((s, i) => (
                     <li key={i}>
                       {s.staffName} · {formatDayLabel(s.date).weekday}{' '}
-                      {formatDayLabel(s.date).day} · {s.startTime}–{s.endTime}
+                      {formatDayLabel(s.date).day} · {s.startTime}, {s.endTime}
                       {s.shiftTypeName ? ` · ${s.shiftTypeName}` : ''}
                     </li>
                   ))}
@@ -594,7 +594,7 @@ export function RotaAssistantPanel({
                   </Button>
                 ) : (
                   <p className="text-sm text-warning">
-                    Select a single location in the filters above to apply these — a shift
+                    Select a single location in the filters above to apply these, a shift
                     has to be written into one site&rsquo;s rota.
                   </p>
                 )}

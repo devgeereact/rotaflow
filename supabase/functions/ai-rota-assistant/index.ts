@@ -1,21 +1,21 @@
-// AI rota assistant — RotaFlow
+// AI rota assistant. RotaFlow
 //
 // Two tasks, one function, because both need the same grounding query and the
 // same RLS-scoped client:
 //
-//   task: 'rota'         — turn a staffing request into shift suggestions
-//   task: 'announcement' — draft an announcement about what is actually
+//   task: 'rota'. Turn a staffing request into shift suggestions
+//   task: 'announcement'. Draft an announcement about what is actually
 //                          happening on the rota this period
 //
 // Runs as the calling user (their JWT is forwarded into the Supabase client
-// below), so Postgres RLS — not a service-role bypass — is what scopes every
+// below), so Postgres RLS, not a service-role bypass, is what scopes every
 // query to their org. Only OPENROUTER_API_KEY needs to stay server-side.
 //
 // WHAT THIS FUNCTION IS NOT: the decision-maker. Coverage gaps, leave clashes,
 // rest breaches and who-can-cover are computed deterministically on the client
 // in `src/lib/rotaInsights.ts`, and they work with no API key at all. This
 // function reads the same facts and writes prose about them. Keeping the
-// judgement out of the model is what stops a demo — or a manager — acting on a
+// judgement out of the model is what stops a demo, or a manager, acting on a
 // confidently invented name, date or shortage.
 //
 // Deploy: `supabase functions deploy ai-rota-assistant`.
@@ -61,7 +61,7 @@ function jsonResponse(body: unknown, status = 200): Response {
  *
  * Overlap has to be judged in the zone the rota is written in: the model
  * returns a local date and "HH:MM", while stored shifts are UTC instants, and
- * comparing those two directly is wrong by the offset. `h23` matters — some
+ * comparing those two directly is wrong by the offset. `h23` matters, some
  * engines render midnight as "24" under `hour12: false`.
  */
 function zonedMinutes(iso: string, timeZone: string): number {
@@ -97,7 +97,7 @@ function extractJson(content: string): unknown {
 }
 
 const ROTA_SYSTEM_PROMPT = `You are RotaFlow's rota-drafting assistant for a workforce scheduling app. \
-You suggest shifts for a manager based on real staff data. Never invent staff or shift types — only use \
+You suggest shifts for a manager based on real staff data. Never invent staff or shift types, only use \
 the ids given in the context.
 
 Hard rules, in priority order. Breaking one makes the whole suggestion useless:
@@ -109,8 +109,8 @@ Hard rules, in priority order. Breaking one makes the whole suggestion useless:
 (the Working Time Regulations rest period).
 5. Prefer people whose scheduledHours are below their weeklyHours, and prefer zero-hours staff \
 (weeklyHours 0) for extra cover over pushing a contracted person into overtime.
-6. Prefer people who already work the same shiftTypeId at the same location — they know the pattern.
-7. Never give the same person two shifts on the same date, and never give one person every open shift — spread the work across the roster.
+6. Prefer people who already work the same shiftTypeId at the same location. They know the pattern.
+7. Never give the same person two shifts on the same date, and never give one person every open shift. Spread the work across the roster.
 8. When you set a shiftTypeId, use that type's defaultStart and defaultEnd as startTime and endTime unless the manager explicitly asked for different hours. The shift type owns its times.
 
 Respond with ONLY a single JSON object (no markdown, no commentary outside the JSON) matching exactly:
@@ -176,13 +176,13 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(
         {
           error:
-            'AI drafting is not configured — OPENROUTER_API_KEY has not been set on this project.',
+            'AI drafting is not configured. OPENROUTER_API_KEY has not been set on this project.',
         },
         503,
       );
     }
 
-    // Scoped as the calling user — RLS enforces org membership on every query.
+    // Scoped as the calling user. RLS enforces org membership on every query.
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -401,7 +401,7 @@ Deno.serve(async (req: Request) => {
     // So: ids are checked against real rows, times are snapped to the chosen
     // shift type's own defaults, and anything that still overlaps an existing
     // shift or an already-accepted suggestion is dropped. What was dropped is
-    // reported in the summary rather than silently disappearing — a suggestion
+    // reported in the summary rather than silently disappearing, a suggestion
     // list that quietly shrinks is indistinguishable from a model that had
     // less to say.
     const timezone = locations?.[0]?.timezone || 'Europe/London';
@@ -455,7 +455,7 @@ Deno.serve(async (req: Request) => {
       const shiftType = s.shiftTypeId ? shiftTypeById.get(s.shiftTypeId) : undefined;
 
       // A shift type owns its hours. If the model named one, its defaults win
-      // over whatever times came back — that is also exactly what dragging the
+      // over whatever times came back, that is also exactly what dragging the
       // type onto the grid does, so the two routes agree.
       let startTime = s.startTime!;
       let endTime = s.endTime!;

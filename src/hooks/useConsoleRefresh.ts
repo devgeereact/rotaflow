@@ -8,7 +8,7 @@ import { createContext, useContext, useEffect } from 'react';
  * cross-tenant state and "is this still true?" is the question an administrator
  * asks most. But a shell cannot know how to refetch a page it does not own, and
  * a button wired to `location.reload()` throws away the filters, the open tab
- * and the scroll position the administrator just set up — the console's tables
+ * and the scroll position the administrator just set up. The console's tables
  * are long, and reloading to re-read six numbers is a bad trade.
  *
  * So the direction is inverted: a screen *registers* its refetch, and the shell
@@ -35,7 +35,7 @@ export function useConsoleRefresh(): ConsoleRefreshValue {
 /**
  * Offer this screen's refetch to the console topbar.
  *
- * Pass a stable callback — wrap it in `useCallback`, as the data hooks already
+ * Pass a stable callback. Wrap it in `useCallback`, as the data hooks already
  * return their `refetch`. Registration is cleared on unmount, so navigating to
  * a screen that has not adopted this removes the button rather than leaving the
  * previous screen's refetch behind it.

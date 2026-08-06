@@ -7,14 +7,14 @@ export interface AiRotaRequest {
   periodEnd: string; // date, 'YYYY-MM-DD'
 }
 
-/** Same grounding inputs as a rota request — the Edge Function branches on `task`. */
+/** Same grounding inputs as a rota request. The Edge Function branches on `task`. */
 export type AiAnnouncementRequest = AiRotaRequest;
 
 export interface AiAnnouncementDraft {
   title: string;
   body: string;
   urgent: boolean;
-  /** Which facts the model drew on — shown so the manager can sanity-check it. */
+  /** Which facts the model drew on. Shown so the manager can sanity-check it. */
   reasoning: string;
 }
 
@@ -37,7 +37,7 @@ export interface AiRotaResponse {
 /**
  * Ask the AI rota assistant (Supabase Edge Function → OpenRouter) to draft
  * shift suggestions from a natural-language prompt, grounded in the org's
- * real staff, skills and existing shifts. Returns suggestions only — nothing
+ * real staff, skills and existing shifts. Returns suggestions only. Nothing
  * is written until the manager applies them via `shiftService.createShifts`.
  */
 export async function generateRotaSuggestions(
@@ -54,7 +54,7 @@ export async function generateRotaSuggestions(
 
 /**
  * Ask the same Edge Function to draft a staff announcement grounded in the
- * period's real rota — open shifts, approved leave, who is on. Returns a
+ * period's real rota. Open shifts, approved leave, who is on. Returns a
  * draft only; nothing is published until the manager posts it from the
  * composer, so a bad draft costs an edit, never a notification to the team.
  */

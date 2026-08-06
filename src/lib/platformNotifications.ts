@@ -46,8 +46,8 @@ function tally(rows: readonly string[]): { label: string; value: number }[] {
 /**
  * Summarise a window of notifications.
  *
- * `read_at` is the only signal of engagement in the schema — there is no
- * delivered, bounced or failed column — so "read" here means the recipient
+ * `read_at` is the only signal of engagement in the schema. There is no
+ * delivered, bounced or failed column, so "read" here means the recipient
  * opened it in the app, and an unread notification may have been delivered
  * perfectly and simply not looked at. The screen must not call this a delivery
  * rate.
@@ -89,7 +89,7 @@ export const NOTIFICATION_GAPS: readonly { title: string; detail: string }[] = [
   {
     title: 'No platform announcements',
     detail:
-      'The notifications table addresses rows to one user inside one organisation. There is no table for a platform-wide message, no audience definition, and no fan-out — so there is nothing to compose here.',
+      'The notifications table addresses rows to one user inside one organisation. There is no table for a platform-wide message, no audience definition, and no fan-out, so there is nothing to compose here.',
   },
   {
     title: 'No delivery telemetry',
@@ -99,7 +99,7 @@ export const NOTIFICATION_GAPS: readonly { title: string; detail: string }[] = [
   {
     title: 'Client cannot insert',
     detail:
-      'The notifications table has no client insert policy by design — rows are written by Edge Functions holding the service role. A compose form in this console would have nowhere to post.',
+      'The notifications table has no client insert policy by design. Rows are written by Edge Functions holding the service role. A compose form in this console would have nowhere to post.',
   },
   {
     title: 'No scheduling',

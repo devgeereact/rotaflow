@@ -141,7 +141,7 @@ export function DepartmentsView({
         )}
       </aside>
 
-      {/* Spans both columns — the reference runs the shortcuts full width. */}
+      {/* Spans both columns. The reference runs the shortcuts full width. */}
       <div className="xl:col-span-2">
         <DepartmentQuickActions onSelect={onQuickAction} />
       </div>

@@ -28,9 +28,9 @@ export const ORG_TYPES = [
 ] as const;
 
 export const ORG_SIZES = [
-  { value: '1-25', label: '1 – 25', hint: 'people' },
-  { value: '26-100', label: '26 – 100', hint: 'people' },
-  { value: '101-500', label: '101 – 500', hint: 'people' },
+  { value: '1-25', label: '1-25', hint: 'people' },
+  { value: '26-100', label: '26-100', hint: 'people' },
+  { value: '101-500', label: '101-500', hint: 'people' },
   { value: '500+', label: '500+', hint: 'people' },
 ] as const;
 
@@ -56,10 +56,10 @@ export const TIMEZONES = [
 ] as const;
 
 export const WORKING_WEEKS = [
-  { value: 'mon-sun', label: 'Monday – Sunday' },
-  { value: 'mon-fri', label: 'Monday – Friday' },
-  { value: 'sun-sat', label: 'Sunday – Saturday' },
-  { value: 'sat-fri', label: 'Saturday – Friday' },
+  { value: 'mon-sun', label: 'Monday. Sunday' },
+  { value: 'mon-fri', label: 'Monday. Friday' },
+  { value: 'sun-sat', label: 'Sunday. Saturday' },
+  { value: 'sat-fri', label: 'Saturday. Friday' },
 ] as const;
 
 export type BillingPeriod = 'monthly' | 'yearly';
@@ -76,9 +76,9 @@ export interface PlanOption {
 }
 
 /**
- * Yearly is billed as ten months — "save 2 months" in the design.
+ * Yearly is billed as ten months, "save 2 months" in the design.
  * No charge is taken anywhere: selecting a plan only sets a column. Billing is
- * the final phase of the roadmap (PRD §5, Phase 2 — subscription billing).
+ * the final phase of the roadmap (PRD §5, Phase 2. Subscription billing).
  */
 export const PLANS: PlanOption[] = [
   {

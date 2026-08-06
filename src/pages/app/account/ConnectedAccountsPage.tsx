@@ -33,25 +33,25 @@ function formatWhen(iso: string | undefined): string | null {
 }
 
 /**
- * `/app/account/accounts` — NEW_STRUCTURE §21's "Connected Accounts" tab.
+ * `/app/account/accounts`. NEW_STRUCTURE §21's "Connected Accounts" tab.
  *
  * ## What is real here
  *
  * Everything on this page comes from `auth.getUserIdentities()`, which is the
- * account's actual identity list — the sign-in methods that genuinely work.
+ * account's actual identity list. The sign-in methods that genuinely work.
  * Linking uses `linkIdentity` and unlinking `unlinkIdentity`, both of which
  * change the account server-side. Nothing is mocked.
  *
  * ## Why the list of offerable providers is short
  *
  * §21 names Google, Microsoft and Apple. What can actually be offered is
- * whatever `VITE_OAUTH_PROVIDERS` declares — the same list the sign-in screen
+ * whatever `VITE_OAUTH_PROVIDERS` declares. The same list the sign-in screen
  * reads, and for the same reason (`lib/env.ts`): rendering a button for a
  * provider that is disabled in the Supabase dashboard is a dead end for the
  * user. `OAuthProvider` is `google | github` today, so Microsoft and Apple are
  * not offered rather than being shown as buttons that cannot work. Adding one
  * means widening that union, enabling it in the dashboard and listing it in
- * the env var — no change here.
+ * the env var, no change here.
  *
  * An identity for a provider that is *already linked* still renders, even if
  * it is no longer offerable, so nothing a user has connected can silently
@@ -61,7 +61,7 @@ function formatWhen(iso: string | undefined): string | null {
  *
  * Supabase refuses it server-side, and rightly: removing the only sign-in
  * method locks the account out permanently. The button is disabled with the
- * reason shown rather than left clickable to fail — but the server check is
+ * reason shown rather than left clickable to fail, but the server check is
  * the real guard, not this.
  */
 export function ConnectedAccountsPage(): JSX.Element {
@@ -97,7 +97,7 @@ export function ConnectedAccountsPage(): JSX.Element {
       try {
         const { error } = await supabase.auth.linkIdentity({ provider });
         // Success navigates away to the provider, so there is nothing to
-        // report here — only the failure path returns to this line.
+        // report here, only the failure path returns to this line.
         if (error) throw error;
       } catch (err) {
         reportError(err, { area: 'account:link-identity' });
@@ -197,7 +197,7 @@ export function ConnectedAccountsPage(): JSX.Element {
                     disabled={busy || isOnlyIdentity}
                     title={
                       isOnlyIdentity
-                        ? 'This is your only way to sign in — connect another method first'
+                        ? 'This is your only way to sign in. Connect another method first'
                         : undefined
                     }
                     onClick={() => void handleUnlink(identity)}

@@ -10,7 +10,7 @@ interface ReportIconProps {
 
 /**
  * The small tinted square holding a report's icon, in the table's first column
- * and in the Recent Reports rail (design/Reports-Dashboard.png). Decorative —
+ * and in the Recent Reports rail (design/Reports-Dashboard.png). Decorative,
  * the report name beside it carries the meaning.
  */
 export function ReportIcon({

@@ -9,7 +9,7 @@ interface LeaveTypeChipProps {
 
 /**
  * Leave type as a tinted chip with its glyph (design/Leave.png). Always
- * spelled out beside the icon — type is never carried by colour alone
+ * spelled out beside the icon. Type is never carried by colour alone
  * (docs/DESIGN.md §5).
  */
 export function LeaveTypeChip({ type, className }: LeaveTypeChipProps): JSX.Element {

@@ -9,8 +9,8 @@ export type SyncRun = Tables<'integration_sync_runs'>;
  * Integration connectors and their reliability (0026).
  *
  * The per-connector figures come from the `integration_connector_stats` view,
- * which aggregates in Postgres. The alternative — pulling every sync run to a
- * browser to divide two numbers — is the same answer at a hundred times the
+ * which aggregates in Postgres. The alternative. Pulling every sync run to a
+ * browser to divide two numbers, is the same answer at a hundred times the
  * cost, and gets slower every day the product runs.
  */
 export async function listConnectorStats(): Promise<ConnectorStats[]> {

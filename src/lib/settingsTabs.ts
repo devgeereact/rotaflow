@@ -9,7 +9,7 @@ import type { MembershipRole } from '@/types';
  * against these, and a tab bar that differs by one item between two pages is
  * the kind of thing nobody notices until a customer does.
  *
- * Routes are the intended shape, not all built yet — `docs/SCREENS.md` §3/§4
+ * Routes are the intended shape, not all built yet, `docs/SCREENS.md` §3/§4
  * tracks which exist. A tab whose route has no page yet still belongs here, so
  * the bar is complete and the gap is visible rather than silently missing.
  */
@@ -39,7 +39,7 @@ export const PROFILE_TABS: readonly TabItem[] = [
 /**
  * Settings tabs visible to a role.
  *
- * The whole Settings area is organisation administration — billing, policies,
+ * The whole Settings area is organisation administration. Billing, policies,
  * permissions, the audit trail. `memberships.role` is a fixed
  * `owner | manager | staff` CHECK, and staff have no business in any of it, so
  * they get nothing rather than a bar full of links that all 403.
@@ -47,7 +47,7 @@ export const PROFILE_TABS: readonly TabItem[] = [
  * Owner-only rather than manager-visible: Billing spends money and Permissions
  * can grant someone else the ability to. Everything else is shared with
  * managers. This mirrors the RLS already in `0002_rotaflow.sql`, which is the
- * real boundary — hiding a tab is presentation, not enforcement, and the server
+ * real boundary. Hiding a tab is presentation, not enforcement, and the server
  * must keep refusing regardless of what the bar shows.
  */
 export function settingsTabsForRole(role: MembershipRole | null): TabItem[] {

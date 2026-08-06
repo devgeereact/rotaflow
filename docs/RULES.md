@@ -14,7 +14,7 @@ do not merge.
 
 ## 2. TypeScript
 
-- `"strict": true`. **No implicit `any`** — `@typescript-eslint/no-explicit-any`
+- `"strict": true`. **No implicit `any`**, `@typescript-eslint/no-explicit-any`
   is an error.
 - Explicit return types on exported functions and all hooks.
 - Prefer `type`/`interface` over inline anonymous shapes for anything reused.
@@ -38,7 +38,7 @@ do not merge.
 
 - All Supabase access via `src/services/*` (or `src/lib/supabase.ts`); components
   don't build raw queries inline.
-- Assume RLS is the last line of defense — still scope every query to the user.
+- Assume RLS is the last line of defense. Still scope every query to the user.
 - Never ship a secret. Browser-exposed keys must be write-only or RLS-guarded.
   The `service_role` key and Inngest signing key are server-only.
 
@@ -52,27 +52,27 @@ do not merge.
 
 - Small, atomic commits; imperative messages (`feat: add install prompt`).
 - Every PR must pass `typecheck` + `lint` (zero warnings) before review.
-- **CodeRabbit only reviews pull requests** — use branch → PR → merge. Work pushed
+- **CodeRabbit only reviews pull requests**. Use branch → PR → merge. Work pushed
   straight to the default branch is never reviewed.
 - **CodeRabbit** checks: no unused vars/imports, correct RLS scoping, no leaked
   credentials or unsanitized keys, adherence to this file.
 
 ## 8. Deploy hygiene (see `docs/DEPLOYMENT.md`)
 
-- Build locally; ship only `dist/` — the server has no Node.
+- Build locally; ship only `dist/`. The server has no Node.
 - Deploy into this app's own docroot; **never** mirror-with-delete a shared docroot,
   and dry-run any delete first.
-- **Never place backups (`*.bak`/`*.zip`/`*.sql`) inside a webroot** — Apache serves
+- **Never place backups (`*.bak`/`*.zip`/`*.sql`) inside a webroot**. Apache serves
   them as plaintext and leaks their contents. Backups live outside every docroot.
 
 ## 9. RotaFlow domain rules (project-specific)
 
 - **Multi-tenancy is non-negotiable.** Every domain table carries `org_id`. Every
-  query and mutation is scoped to the active `org_id` from `OrgContext` — never query
+  query and mutation is scoped to the active `org_id` from `OrgContext`, never query
   across tenants from the client. Each new table ships with RLS enabled and
   membership-scoped policies (see `docs/SCHEMA.md`).
 - **RLS is the source of truth for access; role checks in the UI are cosmetic.** Never
-  rely on hiding a button for security — the policy must also forbid it.
+  rely on hiding a button for security. The policy must also forbid it.
 - **Never trust client role state for writes.** `usePermissions` gates UI only; the DB
   policy (`has_org_role`, `is_org_member`) is what actually protects data.
 - **Naming:** tables and columns are `snake_case`; TS types are `PascalCase`
@@ -85,5 +85,5 @@ do not merge.
 - **Notifications channel `sms` is reserved, not delivered in V1.** Do not wire a
   Twilio/SMS send; the column value and seam exist for later.
 - **Secrets stay server-side.** SMTP credentials, payment-provider secrets, VAPID
-  private key and Inngest signing key live only in Supabase Edge Functions — never in
+  private key and Inngest signing key live only in Supabase Edge Functions, never in
   the client bundle or a `VITE_` var.

@@ -80,7 +80,7 @@ export interface TimesheetsViewProps {
 }
 
 /**
- * `/app/timesheets` — worked hours, overtime and the approval queue
+ * `/app/timesheets`. Worked hours, overtime and the approval queue
  * (design/Timesheets-Dashboard.png).
  *
  * Presentational only: every figure arrives already computed, so the live page

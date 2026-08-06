@@ -22,13 +22,13 @@ import type { ClockEventInsert, LeaveRequestInsert, ShiftSwapInsert } from '@/ty
  * A write made with no connection is appended here instead of failing. On
  * reconnect (`useSyncQueue`, driven by `useOnlineStatus`), every queued item
  * replays against Supabase in the order it was made and is removed once it
- * lands. Nothing here is a full offline-first data layer — it is a durable
+ * lands. Nothing here is a full offline-first data layer. It is a durable
  * queue for a small, fixed set of write shapes.
  */
 
 /** Maps a queued kind to the real insert it replays as. Extend this, and the
  * `OutboxKind` union in offlineOutbox.ts, together when a new offline write
- * is added — never let them drift apart. */
+ * is added, never let them drift apart. */
 const REPLAYERS: {
   [K in OutboxKind]: (payload: unknown) => Promise<void>;
 } = {
@@ -53,12 +53,12 @@ export type FailureKind = 'permanent' | 'transient';
 
 /**
  * SQLSTATE classes that mean "try again later" rather than "this write is
- * invalid": connection exceptions (08), transaction rollback — serialization
+ * invalid": connection exceptions (08), transaction rollback. Serialization
  * failures and deadlocks (40), insufficient resources (53), operator
  * intervention (57), system error (58).
  *
- * Everything else with a SQLSTATE — unique violation, check violation, FK
- * violation, insufficient privilege — is the server refusing this payload, and
+ * Everything else with a SQLSTATE. Unique violation, check violation, FK
+ * violation, insufficient privilege, is the server refusing this payload, and
  * refusing it a thousand more times cannot help.
  */
 const TRANSIENT_SQLSTATE_CLASSES = new Set(['08', '40', '53', '57', '58']);
@@ -80,7 +80,7 @@ function messageOf(error: unknown): string {
  *
  * The default for anything unrecognised is **transient**, on purpose. A
  * transient item is retried and then dead-lettered after `MAX_ATTEMPTS`, so it
- * is never lost and never blocks the queue forever — the worst case is a delay.
+ * is never lost and never blocks the queue forever. The worst case is a delay.
  * Defaulting to permanent would set aside a write that a retry would have
  * delivered, and that is the outcome that actually costs someone their pay.
  */
@@ -101,7 +101,7 @@ export function classifyFailure(error: unknown): FailureKind {
   if (candidate && typeof candidate.code === 'string') {
     const { code } = candidate;
 
-    // PostgREST's own codes. PGRST301 is an expired/invalid JWT — recoverable
+    // PostgREST's own codes. PGRST301 is an expired/invalid JWT. Recoverable
     // once supabase-js refreshes the session, so retry rather than discard a
     // clock-in because a token aged out while the device was in a pocket.
     if (code === 'PGRST301') return 'transient';
@@ -148,7 +148,7 @@ export interface FlushResult {
   synced: number;
   /** Still queued, will be retried on the next reconnect. */
   failed: number;
-  /** Set aside permanently — needs a human. */
+  /** Set aside permanently. Needs a human. */
   deadLettered: number;
 }
 
@@ -161,18 +161,18 @@ export interface FlushResult {
  *
  * ## What happens to a failure
  *
- * - **Transient** (offline again, 5xx, rate limited, expired JWT) — the item
+ * - **Transient** (offline again, 5xx, rate limited, expired JWT). The item
  *   stays queued, its attempt count goes up, and the flush **stops**. If the
  *   network just dropped, every item after it would fail too; better to leave
  *   them for the next reconnect than burn an attempt on each. After
  *   `MAX_ATTEMPTS` it is dead-lettered rather than retried forever.
- * - **Permanent** (RLS denial, constraint violation, deleted shift) — the item
+ * - **Permanent** (RLS denial, constraint violation, deleted shift). The item
  *   is moved to the dead-letter store and the loop **continues**.
  *
  * That distinction is the whole point of this function. Before it existed,
  * every failure was treated as transient and left in place, so a single
  * permanently-rejected write blocked everything queued behind it forever, on
- * every reconnect, in silence — the UI had reported those writes as accepted,
+ * every reconnect, in silence. The UI had reported those writes as accepted,
  * because they were, into IndexedDB. Someone's clock-ins stopped reaching the
  * database and the first anyone knew about it was a wrong payslip.
  *

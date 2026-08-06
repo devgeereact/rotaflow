@@ -7,7 +7,7 @@ import {
 } from '@/lib/settingsTabs';
 
 /**
- * Tab visibility is presentation, not enforcement — RLS in
+ * Tab visibility is presentation, not enforcement. RLS in
  * `0002_rotaflow.sql` is the real boundary. These tests exist anyway, because
  * the failure they prevent is a staff member being shown a Billing link that
  * 403s, which reads as a broken product rather than a locked door.
@@ -28,7 +28,7 @@ describe('settingsTabsForRole', () => {
   });
 
   it('shows staff nothing at all', () => {
-    // Not "an empty-looking bar" — no bar. Settings is org administration and
+    // Not "an empty-looking bar", no bar. Settings is org administration and
     // staff have no reachable tab in it.
     expect(settingsTabsForRole('staff')).toEqual([]);
   });
@@ -68,7 +68,7 @@ describe('settingsTabsForRole', () => {
 });
 
 describe('profileTabs', () => {
-  it('shows every tab — it is the person’s own account', () => {
+  it('shows every tab. It is the person’s own account', () => {
     expect(profileTabs()).toHaveLength(PROFILE_TABS.length);
   });
 

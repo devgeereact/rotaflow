@@ -7,19 +7,19 @@ import { BenefitGrid } from '@/components/marketing/BenefitGrid';
 import { FinalCta } from '@/components/marketing/FinalCta';
 
 /**
- * `/features` — the product tour.
+ * `/features`. The product tour.
  *
  * Structured as the day-to-day loop a scheduling manager actually runs, because
  * that is how the product is evaluated: build the rota, publish it, staff
  * respond, hours come back, the numbers are reported. Every step below is a
- * screen that exists — cross-checked against `docs/SCREENS.md` §2.
+ * screen that exists. Cross-checked against `docs/SCREENS.md` §2.
  */
 
 const WORKFLOW = [
   {
     step: 'Build',
     title: 'Draft the week on a staff-by-day grid',
-    body: 'Drag shifts onto the grid or auto-fill from last week. RotaFlow flags double-bookings, rest-period breaches, unavailability and missing qualifications while you build — with running labour hours and estimated cost as you go.',
+    body: 'Drag shifts onto the grid or auto-fill from last week. RotaFlow flags double-bookings, rest-period breaches, unavailability and missing qualifications while you build, with running labour hours and estimated cost as you go.',
     points: [
       'Weekly and daily views, per location and department',
       'Copy the previous week, or clear and start again',
@@ -29,8 +29,8 @@ const WORKFLOW = [
   },
   {
     step: 'Publish',
-    title: 'Release it when it is ready — not before',
-    body: 'A rota stays a draft while you move it around. Publishing shows exactly what is about to change — the date range, how many shifts, how many still open, and any unresolved conflicts — and then notifies the team.',
+    title: 'Release it when it is ready, not before',
+    body: 'A rota stays a draft while you move it around. Publishing shows exactly what is about to change. The date range, how many shifts, how many still open, and any unresolved conflicts, and then notifies the team.',
     points: [
       'Draft and published are genuinely separate states',
       'Staff only ever see what has been published',
@@ -41,7 +41,7 @@ const WORKFLOW = [
   {
     step: 'Respond',
     title: 'Staff handle their own availability, leave and swaps',
-    body: 'People submit availability before the rota is built, request leave against a live balance, and arrange swaps between themselves — all from a phone. Managers approve in one queue, and the rota updates itself.',
+    body: 'People submit availability before the rota is built, request leave against a live balance, and arrange swaps between themselves. All from a phone. Managers approve in one queue, and the rota updates itself.',
     points: [
       'Recurring and one-off availability',
       'Leave requests with entitlement and balance',
@@ -74,7 +74,7 @@ const WORKFLOW = [
   {
     step: 'Report',
     title: 'See the whole operation',
-    body: 'Coverage, staffing levels, labour hours and cost, attendance, absence, leave, swaps and overtime — filtered by date range, site and department, and exportable for payroll or a board pack.',
+    body: 'Coverage, staffing levels, labour hours and cost, attendance, absence, leave, swaps and overtime. Filtered by date range, site and department, and exportable for payroll or a board pack.',
     points: [
       'Filter by period, location and department',
       'CSV export from any report',
@@ -87,7 +87,7 @@ const WORKFLOW = [
 const PLATFORM = [
   {
     title: 'Installs like an app',
-    body: 'RotaFlow installs to a phone or tablet home screen from the browser. No app store, no separate build, no waiting for a review.',
+    body: 'RotaFlow installs to a phone or tablet home screen straight from the browser, so there is no app store listing to maintain and no review to wait for.',
   },
   {
     title: 'Works offline',
@@ -103,7 +103,7 @@ const PLATFORM = [
   },
   {
     title: 'Live updating',
-    body: 'Approve a leave request and every open screen showing it updates — no refresh, no stale queue on somebody else’s monitor.',
+    body: 'Approve a leave request and every open screen showing it updates, no refresh, no stale queue on somebody else’s monitor.',
   },
   {
     title: 'Accessible and keyboard-driven',
@@ -117,7 +117,7 @@ export function FeaturesPage(): JSX.Element {
       <PageHero
         eyebrow="Features"
         heading="Everything scheduling touches, in one place"
-        body="RotaFlow covers the full loop — building the rota, publishing it, collecting what staff need, tracking attendance, producing the timesheet and reporting on all of it."
+        body="RotaFlow covers the full loop. Building the rota, publishing it, collecting what staff need, tracking attendance, producing the timesheet and reporting on all of it."
       >
         <Link to="/signup">
           <Button size="lg">
@@ -139,7 +139,7 @@ export function FeaturesPage(): JSX.Element {
               How a week runs in RotaFlow
             </h2>
             <p className="mt-3 text-content-muted dark:text-content-muted-dark">
-              The same loop every scheduling manager already runs — with the manual parts
+              The same loop every scheduling manager already runs, with the manual parts
               removed.
             </p>
           </div>

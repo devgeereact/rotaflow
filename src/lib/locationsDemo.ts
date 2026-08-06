@@ -4,7 +4,7 @@
  * `/app/locations` needs a real Supabase session and a seeded organisation, so
  * `/locations-preview` renders the same components against these fixed rows.
  * The numbers reproduce design/Locations-Management.png and
- * design/Location-department.png exactly — do not "improve" them. Nothing here
+ * design/Location-department.png exactly. Do not "improve" them. Nothing here
  * is used by the authenticated routes.
  */
 

@@ -20,7 +20,7 @@ import {
 } from '@/lib/locationsDemo';
 
 /**
- * Design-loop preview only — `/app/locations` needs a real Supabase session and
+ * Design-loop preview only, `/app/locations` needs a real Supabase session and
  * a seeded organisation. This renders the same components against the fixtures
  * in `src/lib/locationsDemo.ts`, reproducing design/Locations-Management.png
  * and design/Location-department.png. Not wired to any service call; see

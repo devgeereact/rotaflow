@@ -4,7 +4,7 @@ import type { LeaveRequest } from '@/types';
  * Leave entitlement arithmetic.
  *
  * Lives in `src/lib`, not `src/services`, because it is pure: it takes rows and
- * returns a number, and touches no SDK. That is not a stylistic preference —
+ * returns a number, and touches no SDK. That is not a stylistic preference,
  * `src/services/leaveService.ts` imports `@/lib/supabase`, which calls
  * `createClient` at module scope, which initialises Realtime, which needs a
  * global `WebSocket`. Node 20 does not have one, so merely importing the
@@ -14,7 +14,7 @@ import type { LeaveRequest } from '@/types';
  */
 
 /**
- * Approved leave days used within [fromDate, toDate) — for the entitlement
+ * Approved leave days used within [fromDate, toDate), for the entitlement
  * summary against `staff_profiles.holiday_allowance`. Counts inclusive
  * calendar days per request (end_date - start_date + 1), not working days:
  * the schema has no working-pattern data to exclude weekends/off-days

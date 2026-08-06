@@ -6,7 +6,7 @@ import { GROUP_ORDER, searchEntries, type SearchEntry } from '@/lib/globalSearch
 import { cn } from '@/lib/utils';
 
 /**
- * Global search — the `⌘K` palette in the app header.
+ * Global search. The `⌘K` palette in the app header.
  *
  * Searches screens and their actions rather than database records; see
  * `src/lib/globalSearch.ts` for why, and for what would change when record
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
  * `⌘K` / `Ctrl+K` opens from anywhere, arrows move, Enter navigates, Escape
  * closes. The listbox is wired with `aria-activedescendant` rather than moving
  * DOM focus onto each option, so the input keeps focus and typing continues to
- * filter while the selection moves — the pattern every command palette uses and
+ * filter while the selection moves. The pattern every command palette uses and
  * the one screen readers announce correctly.
  */
 export function GlobalSearch(): JSX.Element {

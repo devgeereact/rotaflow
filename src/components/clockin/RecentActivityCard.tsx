@@ -16,7 +16,7 @@ const KINDS: Record<ClockActivityEntry['kind'], string> = {
   break: 'text-warning',
 };
 
-/** "Recent Activity" rail card — the last few clock events. */
+/** "Recent Activity" rail card. The last few clock events. */
 export function RecentActivityCard({
   entries,
   onViewAll,

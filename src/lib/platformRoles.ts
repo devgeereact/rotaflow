@@ -20,12 +20,13 @@ export const PLATFORM_ROLE_SCOPES: Record<PlatformRole, string> = {
   platform_owner: 'Full platform access, including managing other administrators.',
   platform_admin:
     'Manage organisations, users, support and releases. Cannot change roles.',
-  platform_support: 'Find organisations and work support cases. No billing, no releases.',
+  platform_support:
+    'Find organisations and work support cases. Billing and releases are out of scope.',
   platform_finance: 'Subscriptions and billing state only. No operational tenant data.',
 };
 
 /**
- * Roles permitted to change platform configuration — feature flags, incidents,
+ * Roles permitted to change platform configuration. Feature flags, incidents,
  * platform settings. Deliberately excludes support and finance: neither has any
  * business flipping a release for every tenant at once.
  *
@@ -44,5 +45,5 @@ export const PLATFORM_BILLING_ROLES: readonly PlatformRole[] = [
   'platform_finance',
 ];
 
-/** Only an owner may grant or revoke a platform role — enforced in the RPC. */
+/** Only an owner may grant or revoke a platform role. Enforced in the RPC. */
 export const PLATFORM_ROLE_ADMIN_ROLES: readonly PlatformRole[] = ['platform_owner'];

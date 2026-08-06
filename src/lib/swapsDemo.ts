@@ -13,7 +13,7 @@ import type { SwapRule } from '@/components/swaps/SwapRulesCard';
 import type { SwapRow, SwapStatusCount } from '@/lib/swapRows';
 
 /**
- * Fixtures for `/swaps-preview` — the exact people, shifts and figures printed
+ * Fixtures for `/swaps-preview`. The exact people, shifts and figures printed
  * on design/Swap-Request.png, so the design loop can screenshot the screen
  * without a Supabase session, an org or seeded rows. Nothing here reaches the
  * live `/app/swaps`; see design/.loop/swaps-log.md.
@@ -23,7 +23,7 @@ const SUNSHINE = 'Sunshine Care Home';
 const RIVERSIDE = 'Riverside House';
 const OAKVIEW = 'Oakview Care Home';
 
-export const DEMO_SWAP_PERIOD = '26 May – 1 June 2025';
+export const DEMO_SWAP_PERIOD = '26 May-1 June 2025';
 
 export const DEMO_SWAP_ROWS: SwapRow[] = [
   {
@@ -42,7 +42,7 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
     },
     shift: {
       dateLabel: 'Tue 27 May 2025',
-      timeLabel: '07:00 – 15:00',
+      timeLabel: '07:00-15:00',
       locationName: SUNSHINE,
     },
     requestedLabel: 'Today, 09:15',
@@ -67,7 +67,7 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
     },
     shift: {
       dateLabel: 'Wed 28 May 2025',
-      timeLabel: '15:00 – 23:00',
+      timeLabel: '15:00-23:00',
       locationName: RIVERSIDE,
     },
     requestedLabel: 'Yesterday, 16:40',
@@ -92,7 +92,7 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
     },
     shift: {
       dateLabel: 'Thu 29 May 2025',
-      timeLabel: '07:00 – 15:00',
+      timeLabel: '07:00-15:00',
       locationName: SUNSHINE,
     },
     requestedLabel: '25 May 2025, 11:20',
@@ -117,7 +117,7 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
     },
     shift: {
       dateLabel: 'Fri 30 May 2025',
-      timeLabel: '15:00 – 23:00',
+      timeLabel: '15:00-23:00',
       locationName: OAKVIEW,
     },
     requestedLabel: '24 May 2025, 13:05',
@@ -142,7 +142,7 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
     },
     shift: {
       dateLabel: 'Sat 31 May 2025',
-      timeLabel: '07:00 – 15:00',
+      timeLabel: '07:00-15:00',
       locationName: RIVERSIDE,
     },
     requestedLabel: '24 May 2025, 08:45',
@@ -167,7 +167,7 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
     },
     shift: {
       dateLabel: 'Sun 1 June 2025',
-      timeLabel: '15:00 – 23:00',
+      timeLabel: '15:00-23:00',
       locationName: SUNSHINE,
     },
     requestedLabel: '23 May 2025, 17:30',
@@ -179,7 +179,7 @@ export const DEMO_SWAP_ROWS: SwapRow[] = [
 ];
 
 /**
- * The reference shows 12 requests across 2 pages while listing 6 — these are
+ * The reference shows 12 requests across 2 pages while listing 6. These are
  * the whole-period totals behind the tabs and the donut, not a count of
  * `DEMO_SWAP_ROWS`.
  */

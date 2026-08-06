@@ -7,7 +7,7 @@ export interface FilterOption {
 }
 
 interface TimesheetFilterBarProps {
-  /** Pre-formatted period, e.g. "26 May – 1 June 2025". */
+  /** Pre-formatted period, e.g. "26 May-1 June 2025". */
   periodLabel: string;
   onPeriodClick: () => void;
   locations: FilterOption[];

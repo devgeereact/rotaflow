@@ -12,7 +12,7 @@ import { Toggle } from '@/components/ui/Toggle';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 
 /**
- * `/app/account/preferences` — design/profileprefrence.png.
+ * `/app/account/preferences`. Design/profileprefrence.png.
  *
  * Everything here is a real stored preference: `app_settings.theme` and
  * `app_settings.notifications_enabled` per user, plus the browser's own push

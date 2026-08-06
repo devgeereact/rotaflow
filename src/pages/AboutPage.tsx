@@ -9,7 +9,7 @@ import { FinalCta } from '@/components/marketing/FinalCta';
  * `/about`.
  *
  * No invented founding date, headcount, funding round or office. RotaFlow is a
- * small, pre-launch UK product and the page says so — a prospective buyer in
+ * small, pre-launch UK product and the page says so, a prospective buyer in
  * care or hospitality is choosing who holds their staff records, and finding
  * out later that the "50-person team" was one person is a worse outcome than
  * being told up front.
@@ -18,11 +18,11 @@ import { FinalCta } from '@/components/marketing/FinalCta';
 const PRINCIPLES = [
   {
     title: 'A wrong number is worse than no number',
-    body: 'Timesheets drive pay. Where clock events are ambiguous — a missing clock-out, an unclosed break — RotaFlow shows the reading the evidence supports and flags it for a human, rather than quietly guessing and presenting the guess as a fact.',
+    body: 'Timesheets drive pay. Where clock events are ambiguous, a missing clock-out, an unclosed break, RotaFlow shows the reading the evidence supports and flags it for a human, rather than quietly guessing and presenting the guess as a fact.',
   },
   {
     title: 'It has to work with no signal',
-    body: 'Care homes have dead zones, warehouses have thick walls, and a carer should not have to walk outside to clock in. Attendance is written to the device first and synced after — and anything the server rejects is shown to the person, never silently dropped.',
+    body: 'Care homes have dead zones, warehouses have thick walls, and a carer should not have to walk outside to clock in. Attendance is written to the device first and synced after, and anything the server rejects is shown to the person, never silently dropped.',
   },
   {
     title: 'Tenants are separated by the database',
@@ -59,9 +59,9 @@ export function AboutPage(): JSX.Element {
             somebody re-keys paper timesheets into payroll and hopes.
           </p>
           <p>
-            None of that is a technology problem — it is a problem of information living
-            in five places at once. RotaFlow puts it in one: build the rota, publish it,
-            let staff request and swap against it, record attendance where it actually
+            None of that is a technology problem. It is a problem of information living in
+            five places at once. RotaFlow puts it in one: build the rota, publish it, let
+            staff request and swap against it, record attendance where it actually
             happens, and produce the timesheet from that record rather than from what the
             rota said should have happened.
           </p>
@@ -70,7 +70,7 @@ export function AboutPage(): JSX.Element {
             <strong className="font-semibold text-content dark:text-content-dark">
               progressive web app
             </strong>{' '}
-            for a specific reason. The people who use it most are not at a desk — they are
+            for a specific reason. The people who use it most are not at a desk. They are
             on a ward, on a shop floor, or in a stairwell with no signal. RotaFlow
             installs to a phone without an app store, and keeps working when the
             connection does not.

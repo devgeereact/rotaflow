@@ -37,8 +37,8 @@ interface RotaActionRailProps {
  * Far-right quick-actions rail.
  *
  * Every one of these used to report "coming soon" on click except Auto-fill.
- * They now do the things §8 of the build prompt names — copy previous week,
- * copy rota, clear rota, shift templates, print — against the same rota
+ * They now do the things §8 of the build prompt names. Copy previous week,
+ * copy rota, clear rota, shift templates, print. Against the same rota
  * service the rest of the screen uses.
  *
  * The old "More" button is gone. It had no defined contents, and a menu

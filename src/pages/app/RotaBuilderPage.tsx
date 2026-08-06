@@ -95,8 +95,8 @@ const DEFAULT_TZ = 'Europe/London';
  * the week inside it, and editing across one would fragment a week's shifts
  * over incompatible rotas.
  *
- * They are removed rather than made to work. The alternative — loading five
- * weekly rotas behind a "Month" tab — creates rota rows as a side effect of
+ * They are removed rather than made to work. The alternative. Loading five
+ * weekly rotas behind a "Month" tab. Creates rota rows as a side effect of
  * looking at a calendar, and the publish button then means something different
  * depending on which tab is open. Two honest views beat four where half are
  * decoration.
@@ -109,7 +109,7 @@ type RotaViewMode = (typeof VIEW_TABS)[number];
 
 /**
  * One shift on the clipboard, stored relative to its week rather than on an
- * absolute date. `dayOffset` is 0–6 from that week's Monday, so pasting into
+ * absolute date. `dayOffset` is 0-6 from that week's Monday, so pasting into
  * a different week keeps Tuesday on Tuesday.
  */
 interface CopiedShift {
@@ -147,8 +147,8 @@ function formatWeekRange(dates: string[]): string {
   const end = new Date(`${last}T00:00:00`);
   const sameMonth = start.getMonth() === end.getMonth();
   return sameMonth
-    ? `${format(start, 'd MMM')} – ${format(end, 'd MMM yyyy')}`
-    : `${format(start, 'd MMM')} – ${format(end, 'd MMM yyyy')}`;
+    ? `${format(start, 'd MMM')}-${format(end, 'd MMM yyyy')}`
+    : `${format(start, 'd MMM')}-${format(end, 'd MMM yyyy')}`;
 }
 
 export function RotaBuilderPage(): JSX.Element {
@@ -168,7 +168,7 @@ export function RotaBuilderPage(): JSX.Element {
   // The clash guard has to see every shift already written this tick. A bulk
   // paste awaits one insert at a time and React will not have re-rendered
   // between them, so reading `shifts` from the closure would check each new
-  // shift against a snapshot taken before the loop started — and let the whole
+  // shift against a snapshot taken before the loop started, and let the whole
   // batch through.
   const shiftsRef = useRef<Shift[]>([]);
   useEffect(() => {
@@ -235,7 +235,7 @@ export function RotaBuilderPage(): JSX.Element {
   const weekEnd = dates[6] ?? weekStart;
 
   /**
-   * The columns the grid draws. Day view narrows the *display* only — the
+   * The columns the grid draws. Day view narrows the *display* only. The
    * week's rota stays loaded, so publishing and the coverage totals continue
    * to mean "this week".
    */
@@ -273,7 +273,7 @@ export function RotaBuilderPage(): JSX.Element {
     })();
   }, [orgId, reloadKey, showError]);
 
-  // Rota + shifts for every location, for the selected week — the builder
+  // Rota + shifts for every location, for the selected week. The builder
   // shows all locations at once (design/Rota-Builder.png), so every
   // location needs its own rota/shift fetch, not just the filtered one.
   useEffect(() => {
@@ -367,7 +367,7 @@ export function RotaBuilderPage(): JSX.Element {
     [shifts, filteredLocations],
   );
   /**
-   * The week's real problems — double-bookings, rest breaches, people rostered
+   * The week's real problems. Double-bookings, rest breaches, people rostered
    * on approved leave or against their availability, contract overruns and
    * unfilled shifts.
    *
@@ -409,7 +409,7 @@ export function RotaBuilderPage(): JSX.Element {
     [warnings],
   );
 
-  /** Shifts named by at least one warning — powers the "needs attention" filter. */
+  /** Shifts named by at least one warning. Powers the "needs attention" filter. */
   const problemShiftIds = useMemo(
     () =>
       new Set(warnings.map((w) => w.shiftId).filter((id): id is string => id !== null)),
@@ -484,7 +484,7 @@ export function RotaBuilderPage(): JSX.Element {
   /**
    * Grouped by location. A single selected location shows its whole roster
    * (so a manager can schedule someone's first shift there); "All Locations"
-   * groups by who is *actually rostered* this week — the same rule
+   * groups by who is *actually rostered* this week. The same rule
    * ScheduleGrid uses, since staff_profiles has no location column and
    * showing everyone under every location would be fabricated, not derived.
    */
@@ -492,7 +492,7 @@ export function RotaBuilderPage(): JSX.Element {
     if (locationFilter !== 'all') {
       const loc = filteredLocations[0];
       if (!loc) return [];
-      // Showing the whole roster is deliberate — it is how you give someone
+      // Showing the whole roster is deliberate. It is how you give someone
       // their first shift at a site. On a 30-person org that is a lot of empty
       // rows, so "Hide staff with no shifts this week" trims it back.
       if (!hideEmptyStaff) return [{ location: loc, staff: staffFiltered }];
@@ -641,7 +641,7 @@ export function RotaBuilderPage(): JSX.Element {
         day: 'numeric',
         month: 'short',
       });
-      return `${who} is already rostered ${start}–${end} on ${day}.`;
+      return `${who} is already rostered ${start}-${end} on ${day}.`;
     },
     [locationById, staffById],
   );
@@ -679,7 +679,7 @@ export function RotaBuilderPage(): JSX.Element {
         })
           .then((result) => {
             if (!result.ok && result.reason === 'clash') {
-              showError(`Not added — ${describeClash(result.clash)}`);
+              showError(`Not added, ${describeClash(result.clash)}`);
             }
           })
           .catch((err) => {
@@ -704,14 +704,14 @@ export function RotaBuilderPage(): JSX.Element {
 
         // Dragging a shift onto someone who is already working that window is
         // the same double-booking as creating one there, so it is refused the
-        // same way — the shift stays where it was.
+        // same way. The shift stays where it was.
         const moveClash = findClashingShift(
           { staffProfileId: cellStaffProfileId ?? null, startsAt, endsAt },
           shiftsRef.current,
           { ignoreShiftId: shiftId },
         );
         if (moveClash) {
-          showError(`Not moved — ${describeClash(moveClash)}`);
+          showError(`Not moved, ${describeClash(moveClash)}`);
           return;
         }
 
@@ -789,8 +789,7 @@ export function RotaBuilderPage(): JSX.Element {
   const handleDuplicateShift = useCallback(
     (shift: Shift): void => {
       if (!orgId) return;
-      // A copy of an assigned shift is the same person in the same hours —
-      // always a double-booking. Duplicating is still useful, though: it is
+      // A copy of an assigned shift is the same person in the same hours, // always a double-booking. Duplicating is still useful, though: it is
       // how a manager adds a second slot on a busy shift. So the copy is made
       // open, and the toast says so rather than quietly changing the meaning.
       const assigned = shift.staff_profile_id !== null;
@@ -813,7 +812,7 @@ export function RotaBuilderPage(): JSX.Element {
           setLastSavedAt(new Date());
           showSuccess(
             assigned
-              ? 'Duplicated as an open shift — one person cannot work the same hours twice. Assign someone to cover it.'
+              ? 'Duplicated as an open shift. One person cannot work the same hours twice, so assign someone to cover it.'
               : 'Shift duplicated.',
           );
         })
@@ -845,7 +844,7 @@ export function RotaBuilderPage(): JSX.Element {
    * Delete straight from the chip's ×.
    *
    * Confirmed, because §1 requires it of every destructive action and because
-   * this control now sits *on* the shift rather than behind a panel — the
+   * this control now sits *on* the shift rather than behind a panel. The
    * distance that used to make an accidental delete unlikely is gone by design,
    * so the guard has to replace it.
    *
@@ -872,7 +871,7 @@ export function RotaBuilderPage(): JSX.Element {
       void (async () => {
         const ok = await confirm({
           title: 'Remove this shift?',
-          message: `${startTime}–${endTime} on ${when} for ${who} will be deleted. This cannot be undone.`,
+          message: `${startTime}, ${endTime} on ${when} for ${who} will be deleted. This cannot be undone.`,
           confirmLabel: 'Remove shift',
           tone: 'danger',
         });
@@ -888,12 +887,12 @@ export function RotaBuilderPage(): JSX.Element {
 
     // §41: a critical issue "cannot publish without resolution". Publishing is
     // what tells staff the week is real, so sending out a rota that has
-    // somebody in two places at once — or working through approved leave — is
+    // somebody in two places at once, or working through approved leave, is
     // the one thing worth stopping outright rather than warning about.
     if (criticalWarnings.length > 0) {
       const [first] = criticalWarnings;
       setPublishError(
-        `${criticalWarnings.length} critical ${criticalWarnings.length === 1 ? 'issue' : 'issues'} must be resolved before publishing — ${first?.title ?? ''}. See the Warnings tab.`,
+        `${criticalWarnings.length} critical ${criticalWarnings.length === 1 ? 'issue' : 'issues'} must be resolved before publishing, ${first?.title ?? ''}. See the Warnings tab.`,
       );
       return;
     }
@@ -1044,7 +1043,7 @@ export function RotaBuilderPage(): JSX.Element {
         const summary = `${created} ${created === 1 ? 'shift' : 'shifts'} added to ${formatWeekRange(dates)}.`;
         if (skipped > 0) {
           showSuccess(
-            `${summary} ${skipped} skipped — ${skipped === 1 ? 'that person was' : 'those people were'} already rostered at the same time.`,
+            `${summary} ${skipped} skipped, ${skipped === 1 ? 'that person was' : 'those people were'} already rostered at the same time.`,
           );
         } else {
           showSuccess(summary);
@@ -1052,7 +1051,7 @@ export function RotaBuilderPage(): JSX.Element {
       } catch (err) {
         reportError(err, { area: 'rota:paste-shifts' });
         showError(
-          'Could not paste every shift. The ones already added have been kept — check the grid before retrying.',
+          'Could not paste every shift. The ones already added have been kept. Check the grid before retrying.',
         );
       } finally {
         setBusyAction(null);
@@ -1145,7 +1144,7 @@ export function RotaBuilderPage(): JSX.Element {
 
     if (draftShiftIds.length === 0) {
       showError(
-        'There are no draft shifts in view to clear. Published shifts are left alone — unpublish the rota first.',
+        'There are no draft shifts in view to clear. Published shifts are left alone. Unpublish the rota first.',
       );
       return;
     }
@@ -1193,7 +1192,7 @@ export function RotaBuilderPage(): JSX.Element {
             { ignoreShiftId: shiftId },
           );
           if (clash) {
-            showError(`Not assigned — ${describeClash(clash)}`);
+            showError(`Not assigned, ${describeClash(clash)}`);
             return;
           }
         }
@@ -1235,7 +1234,7 @@ export function RotaBuilderPage(): JSX.Element {
     setAutoFillOpen(true);
   };
 
-  // Belt and braces behind the route's own `RequireRole` gate — see the
+  // Belt and braces behind the route's own `RequireRole` gate. See the
   // equivalent note in ReportsPage.
   if (!canBuildRota) {
     return <PermissionDenied area="the rota builder" allowed={['owner', 'manager']} />;
@@ -1246,7 +1245,7 @@ export function RotaBuilderPage(): JSX.Element {
       <Card>
         <p className="mb-4 text-content-muted dark:text-content-muted-dark">
           Could not load this organisation&rsquo;s staff and locations. This is a
-          connection problem, not an empty organisation — nothing has been lost.
+          connection problem, not an empty organisation. Nothing has been lost.
         </p>
         <Button size="sm" onClick={() => setReloadKey((k) => k + 1)}>
           Retry
@@ -1259,7 +1258,7 @@ export function RotaBuilderPage(): JSX.Element {
     return (
       <Card>
         <p className="text-content-muted dark:text-content-muted-dark">
-          Add a location before building a rota — see the Locations page.
+          Add a location before building a rota. See the Locations page.
         </p>
       </Card>
     );
@@ -1645,7 +1644,7 @@ export function RotaBuilderPage(): JSX.Element {
           </span>
           {/* Only the three states the grid can actually render. The
               reference also lists "Overstaffed", but no required-headcount
-              column exists to compute it — see design/.loop/rota-log.md. */}
+              column exists to compute it. See design/.loop/rota-log.md. */}
           <div className="flex flex-wrap items-center gap-5 text-xs text-content-muted dark:text-content-muted-dark">
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-success" /> Optimal
@@ -1747,8 +1746,8 @@ export function RotaBuilderPage(): JSX.Element {
             <span>
               Only show shifts that need attention
               <span className="block text-xs text-content-muted dark:text-content-muted-dark">
-                Double-bookings, rest breaches, leave clashes and unfilled cover —
-                everything on the Warnings tab.
+                Double-bookings, rest breaches, leave clashes and unfilled cover.
+                Everything on the Warnings tab.
               </span>
             </span>
           </label>
@@ -1799,8 +1798,7 @@ export function RotaBuilderPage(): JSX.Element {
         Note the gating difference. Auto-fill needed a single location up front,
         because it WRITES a draft into one rota. The assistant's Review and
         Fill-gaps tabs read across every location on screen, so the panel opens
-        regardless and `applyTarget` is null until one location is selected —
-        which is what stops a generated draft from silently rostering people at
+        regardless and `applyTarget` is null until one location is selected, which is what stops a generated draft from silently rostering people at
         the wrong site.
       */}
       {orgId && (

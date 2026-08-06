@@ -17,14 +17,14 @@ import {
  * ## Why the migration gets its own file
  *
  * Every test in `syncQueue.test.ts` starts from a fresh `IDBFactory`, so the
- * database is created at v2 directly and `oldVersion` is 0 — the migration
+ * database is created at v2 directly and `oldVersion` is 0. The migration
  * branch in `openDb` never executes there. That is a blind spot with unusually
  * bad consequences, because the migration is the path that runs for **every
  * existing user who has writes queued right now**.
  *
  * If it fails to backfill `attempts`, a v1 record arrives with
  * `attempts: undefined`. Then `undefined + 1` is `NaN`, `NaN >= MAX_ATTEMPTS`
- * is `false`, and the item is never dead-lettered — which is exactly the
+ * is `false`, and the item is never dead-lettered, which is exactly the
  * block-the-queue-forever bug the v2 work exists to remove, reintroduced for
  * precisely the people who were already suffering from it.
  *
@@ -44,7 +44,7 @@ interface V1Record {
 
 /**
  * Create the v1 schema and seed it, using the raw IndexedDB API rather than
- * this module — the point is to reproduce what is on a real device, not what
+ * this module. The point is to reproduce what is on a real device, not what
  * the current code would write.
  */
 function seedV1Database(records: V1Record[]): Promise<void> {
@@ -165,7 +165,7 @@ describe('v1 → v2 migration', () => {
     expect(dead[0]?.payload).toEqual({ seq: 1 });
   });
 
-  it('is idempotent — a second open does not re-run or corrupt anything', async () => {
+  it('is idempotent, a second open does not re-run or corrupt anything', async () => {
     await seedV1Database([
       { id: 'a', kind: 'clock', payload: {}, queuedAt: '2026-07-01T09:00:00Z' },
     ]);

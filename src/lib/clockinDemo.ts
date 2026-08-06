@@ -9,7 +9,7 @@ import type {
 } from '@/lib/clockRows';
 
 /**
- * Fixtures for `/clockin-preview` — the exact shift, times and figures printed
+ * Fixtures for `/clockin-preview`. The exact shift, times and figures printed
  * on design/clockin.png (including its frozen 08:48:37 clock), so the design
  * loop can screenshot the screen without a Supabase session, a staff profile or
  * a rostered shift. Nothing here reaches the live `/app/clock`, which computes
@@ -23,7 +23,7 @@ const HOME = 'Sunnyvale Care Home';
 export const DEMO_CLOCK_TIME = '08:48:37';
 export const DEMO_CLOCK_DATE = 'Thursday, 14 May 2026';
 export const DEMO_WINDOW_LABEL = 'Within time window';
-export const DEMO_WEEK_LABEL = '10 – 16 May 2026';
+export const DEMO_WEEK_LABEL = '10-16 May 2026';
 
 export const DEMO_POLICY = {
   title: 'Important',
@@ -32,13 +32,13 @@ export const DEMO_POLICY = {
 
 export const DEMO_SHIFT: CurrentShiftInfo = {
   countdownLabel: 'Starts in 12 min',
-  timeRange: '09:00 – 17:00',
+  timeRange: '09:00-17:00',
   dateLabel: 'Today, 14 May 2026',
   locationName: HOME,
-  areaName: 'Care Home – Floor 2',
+  areaName: 'Care Home, Floor 2',
   roleName: 'Senior Care Assistant',
   shiftTypeName: 'Day Shift',
-  breakRange: '12:30 – 13:00',
+  breakRange: '12:30-13:00',
   breakDuration: '(30 min)',
   paidHours: '7h 30m',
   reminder: {
@@ -50,7 +50,7 @@ export const DEMO_SHIFT: CurrentShiftInfo = {
 export const DEMO_SCHEDULE: TodayScheduleEntry[] = [
   {
     id: 'shift',
-    timeRange: '09:00 – 17:00',
+    timeRange: '09:00-17:00',
     title: 'Senior Care Assistant',
     locationName: HOME,
     badgeLabel: 'Upcoming',
@@ -58,7 +58,7 @@ export const DEMO_SCHEDULE: TodayScheduleEntry[] = [
   },
   {
     id: 'break',
-    timeRange: '12:30 – 13:00',
+    timeRange: '12:30-13:00',
     title: 'Unpaid Break',
     badgeLabel: 'Break',
     tone: 'break',

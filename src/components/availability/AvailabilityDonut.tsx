@@ -12,14 +12,14 @@ const SIZE = 88;
 const STROKE = 13;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-// 2px of surface between adjacent segments, per the dataviz mark spec — the
+// 2px of surface between adjacent segments, per the dataviz mark spec. The
 // reference shows the same hairline break between arcs.
 const GAP = 2;
 
 /**
  * Availability mix as a donut (design/Availability.png).
  *
- * These are the reserved *status* colours, not a categorical palette — the
+ * These are the reserved *status* colours, not a categorical palette. The
  * segments are states (available / partially available / unavailable /
  * preference only / pending), so identity comes from the labelled legend beside
  * it and never from colour alone. Values and labels stay in text tokens; only

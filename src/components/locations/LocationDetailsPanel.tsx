@@ -35,7 +35,7 @@ const SECTION = 'px-3.5 py-3.5';
  * identity, contact, an Overview tab of mini-stats, key information and the
  * activity feed, stacked in one card with hairline dividers.
  *
- * Only Overview has content — the reference shows the other four as labels
+ * Only Overview has content. The reference shows the other four as labels
  * only, so they render an explicit "not built yet" note rather than a blank.
  */
 export function LocationDetailsPanel({

@@ -18,7 +18,7 @@ const LABELS: Record<DocumentStatus, string> = {
   expired: 'Expired',
 };
 
-/** Compliance documents with their expiry state — the panel and profile rail share this. */
+/** Compliance documents with their expiry state. The panel and profile rail share this. */
 export function DocumentList({ documents }: DocumentListProps): JSX.Element {
   return (
     <ul className="space-y-3.5">

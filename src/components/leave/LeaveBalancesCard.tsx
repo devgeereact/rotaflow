@@ -9,7 +9,7 @@ interface LeaveBalancesCardProps {
 }
 
 /**
- * 0–100% in 5% steps, written out so Tailwind's content scan sees every class
+ * 0-100% in 5% steps, written out so Tailwind's content scan sees every class
  * (a templated `w-[${n}%]` is purged at build time, and an inline style is
  * forbidden by docs/RULES.md §4). 5% is finer than the 250px bar can resolve.
  */
@@ -41,7 +41,7 @@ const METER_WIDTH: Record<number, string> = {
  * Remaining days per leave type, each with a meter against its allowance
  * (design/Leave.png).
  *
- * The meter is decoration over numbers that are always spelled out — a type
+ * The meter is decoration over numbers that are always spelled out, a type
  * with no allowance to measure against (statutory sick leave has no
  * entitlement pot) still reads correctly, it just has nothing to fill.
  */

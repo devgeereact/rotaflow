@@ -9,7 +9,7 @@ export interface PendingAvailabilityRequest {
   photoUrl?: string | null;
   /** What is being asked for, e.g. "Change 31 May". */
   summary: string;
-  /** The window or days it applies to, e.g. "15:00 – 23:00". */
+  /** The window or days it applies to, e.g. "15:00-23:00". */
   detail: string;
   statusLabel: string;
 }

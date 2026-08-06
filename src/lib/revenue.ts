@@ -34,7 +34,7 @@ export function monthKey(iso: string): string {
  * Monthly recurring revenue, in pence.
  *
  * Active and past-due count; trialing and cancelled do not. A past-due
- * subscription is still a customer with a contract — writing it out of MRR the
+ * subscription is still a customer with a contract. Writing it out of MRR the
  * day a card fails makes the number swing on payment retries rather than on
  * customers.
  */
@@ -116,7 +116,7 @@ export function collectedByMonth(
   return keys.map((month) => ({ month, pence: collectedInMonth(invoices, month) }));
 }
 
-/** MRR split by plan, largest first — the mix the Subscriptions screen charts. */
+/** MRR split by plan, largest first. The mix the Subscriptions screen charts. */
 export function revenueByPlan(
   subscriptions: readonly SubscriptionLike[],
   planPrices: ReadonlyMap<string, number>,
@@ -136,7 +136,7 @@ export function revenueByPlan(
 /**
  * Churn over a window: cancellations as a share of what was there at the start.
  *
- * Returns null when the starting population was zero — a churn rate out of no
+ * Returns null when the starting population was zero, a churn rate out of no
  * customers is a division by zero dressed as 0%.
  */
 export function churnRate(cancelled: number, startingCount: number): number | null {

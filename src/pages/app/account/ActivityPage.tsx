@@ -20,7 +20,7 @@ function formatTimestamp(iso: string): string {
 }
 
 /**
- * `/app/account/activity` — design/ProfileSettings.png, "Recent account
+ * `/app/account/activity`. Design/ProfileSettings.png, "Recent account
  * activity".
  *
  * Reads the same `audit_logs` table as Settings → Audit, filtered to this
@@ -32,7 +32,7 @@ function formatTimestamp(iso: string): string {
  * before treating a blank list as "you have done nothing": `audit_logs_select`
  * is an **owner-only** policy. A staff member or manager reading their own
  * activity is filtered out by RLS, not by an absence of events. The screen
- * does not try to distinguish these two cases, because it cannot — it says the
+ * does not try to distinguish these two cases, because it cannot. It says the
  * trail is incomplete either way rather than asserting a clean record.
  */
 export function ActivityPage(): JSX.Element {
@@ -80,7 +80,7 @@ export function ActivityPage(): JSX.Element {
           </p>
         ) : loadFailed ? (
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            Could not load your activity — this is a connection problem, not an empty
+            Could not load your activity. This is a connection problem, not an empty
             record.
           </p>
         ) : entries.length === 0 ? (

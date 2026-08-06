@@ -11,7 +11,7 @@ interface PublishedScheduleChipProps {
 }
 
 /**
- * A published shift in the schedule grid — pale wash, saturated ink, times on
+ * A published shift in the schedule grid. Pale wash, saturated ink, times on
  * top and the shift-type name beneath (design/published-schedule.png).
  *
  * Read-only by design: unlike the rota builder's chip this is not draggable,
@@ -37,7 +37,7 @@ export function PublishedScheduleChip({
       )}
     >
       <span className="block truncate text-[0.75rem] font-semibold leading-[1.15rem] tabular-nums">
-        {chip.startTime} – {chip.endTime}
+        {chip.startTime}, {chip.endTime}
       </span>
       <span className="block truncate text-[0.72rem] font-medium leading-[1.05rem] opacity-90">
         {chip.unfilled ? 'Unfilled' : chip.label}

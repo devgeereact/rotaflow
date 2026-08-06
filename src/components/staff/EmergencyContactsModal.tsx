@@ -30,7 +30,7 @@ const BLANK = {
 };
 
 /**
- * Add + delete only, no edit — a contact you got wrong is faster to remove
+ * Add + delete only, no edit, a contact you got wrong is faster to remove
  * and re-add than to build an edit flow for, matching the same "edit-only
  * where it earns its keep" call `locationService.ts` makes for locations.
  */
@@ -110,7 +110,7 @@ export function EmergencyContactsModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Emergency contacts — ${staffName}`}>
+    <Modal open={open} onClose={onClose} title={`Emergency contacts, ${staffName}`}>
       <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
         {loading ? (
           <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
@@ -207,7 +207,7 @@ export function EmergencyContactsModal({
             <Label htmlFor="ec-medical">
               Medical notes{' '}
               <span className="text-content-muted dark:text-content-muted-dark">
-                (optional — special-category data, only what's needed in an emergency)
+                (optional. Special-category data, only what's needed in an emergency)
               </span>
             </Label>
             <Input

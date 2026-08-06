@@ -7,13 +7,13 @@ import type { AuditLog } from '@/types';
  *
  * ## What this table contains
  *
- * Until 0016 it had exactly one writer in the whole system — the
- * `anonymize_staff_member` RPC in 0011 — so for almost every organisation this
+ * Until 0016 it had exactly one writer in the whole system. The
+ * `anonymize_staff_member` RPC in 0011, so for almost every organisation this
  * query correctly returned nothing (audit01 §P1-5). 0016 adds the writers:
  * database triggers for events the database can observe (membership role and
  * status changes, rota publish/unpublish, invites issued/revoked/accepted,
  * organisation plan/name/settings changes, platform role grants) and a
- * whitelisted `log_audit_event` RPC for the ones it cannot — exports, which
+ * whitelisted `log_audit_event` RPC for the ones it cannot. Exports, which
  * are reads and leave no row behind.
  *
  * Shifts are deliberately not audited individually: publishing a rota writes
@@ -24,7 +24,7 @@ import type { AuditLog } from '@/types';
  *
  * The previous implementation joined `profiles!audit_logs_actor_user_id_fkey`.
  * That join resolved to `null` for every actor except the reader themselves,
- * because `profiles` RLS was own-row-only — so the screen showed "—" in the
+ * because `profiles` RLS was own-row-only, so the screen showed "-" in the
  * actor column for everything. 0016 snapshots `actor_name`/`actor_email` onto
  * the row at write time instead, which fixes the display without widening
  * `profiles` so co-members can read each other's email addresses. It is also
@@ -35,7 +35,7 @@ import type { AuditLog } from '@/types';
  *
  * `audit_logs_select` (0016) admits a non-platform reader only to rows with
  * `visibility = 'org'` and a non-null `org_id` where they hold owner in that
- * org — or where they are the actor, which is what makes
+ * org, or where they are the actor, which is what makes
  * `/app/account/activity` work for everyone. Platform-scoped rows carry a null
  * `org_id` and `visibility = 'platform_only'` and are unreachable from a tenant
  * session. There is still no client write policy at all.
@@ -98,7 +98,7 @@ export async function listMyAuditLogs(
  * Record an event the database cannot observe for itself.
  *
  * Only exports qualify today: an export is a read, so no trigger can see it.
- * The action strings are whitelisted in the RPC — a client-callable audit
+ * The action strings are whitelisted in the RPC, a client-callable audit
  * writer records intent, not proof, and without the whitelist it would be a
  * tool for seeding a plausible false trail.
  *

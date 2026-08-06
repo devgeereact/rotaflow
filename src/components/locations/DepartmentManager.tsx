@@ -87,7 +87,7 @@ export function DepartmentManager({
       setDepartments((prev) => prev.filter((d) => d.id !== id));
     } catch (err) {
       reportError(err, { area: 'departments:delete' });
-      setError('Could not remove that department — it may still have staff assigned.');
+      setError('Could not remove that department. It may still have staff assigned.');
     }
   };
 

@@ -15,7 +15,7 @@ interface TimesheetRulesCardProps {
 
 /**
  * The payroll rules a timesheet is measured against
- * (design/Timesheets-Dashboard.png). Every row is passed in — this component
+ * (design/Timesheets-Dashboard.png). Every row is passed in. This component
  * never assumes a default threshold, because a wrong one mis-states overtime.
  */
 export function TimesheetRulesCard({

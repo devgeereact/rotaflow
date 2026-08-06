@@ -4,7 +4,7 @@ import { IDBFactory } from 'fake-indexeddb';
 
 // The replayers are the boundary to Supabase. Mocking them lets these tests
 // drive the real IndexedDB code path (via fake-indexeddb) while deciding
-// exactly how the server responds — which is the whole subject here.
+// exactly how the server responds, which is the whole subject here.
 vi.mock('@/services/clockService', () => ({
   recordClockEvent: vi.fn(),
   getLatestClockEvent: vi.fn(),
@@ -54,7 +54,7 @@ function networkError(): TypeError {
 }
 
 beforeEach(() => {
-  // A fresh database per test — IndexedDB is process-global and would
+  // A fresh database per test. IndexedDB is process-global and would
   // otherwise leak queued items between cases.
   // fake-indexeddb/auto installs a global; swapping it per test is the
   // documented way to get a clean database. eslint sees a read-only global.
@@ -79,14 +79,14 @@ describe('classifyFailure', () => {
     expect(classifyFailure(httpError(408))).toBe('transient');
   });
 
-  it('treats an expired JWT as transient — the session refreshes itself', () => {
+  it('treats an expired JWT as transient. The session refreshes itself', () => {
     // Discarding a clock-in because a token aged out while the phone was in
     // someone's pocket would be exactly the wrong call.
     expect(classifyFailure(postgrestError('PGRST301', 'JWT expired'))).toBe('transient');
   });
 
   it('treats an RLS denial as permanent', () => {
-    // 42501 insufficient_privilege — the membership was revoked. Retrying for
+    // 42501 insufficient_privilege. The membership was revoked. Retrying for
     // the rest of time cannot make this succeed.
     expect(classifyFailure(postgrestError('42501'))).toBe('permanent');
   });
@@ -94,11 +94,11 @@ describe('classifyFailure', () => {
   it('treats constraint violations as permanent', () => {
     expect(classifyFailure(postgrestError('23505'))).toBe('permanent'); // unique
     expect(classifyFailure(postgrestError('23514'))).toBe('permanent'); // check
-    expect(classifyFailure(postgrestError('23503'))).toBe('permanent'); // FK — deleted shift
+    expect(classifyFailure(postgrestError('23503'))).toBe('permanent'); // FK. Deleted shift
   });
 
   it('treats a serialization failure as transient', () => {
-    // 40001 — two writes collided. This one genuinely does succeed on retry.
+    // 40001, two writes collided. This one genuinely does succeed on retry.
     expect(classifyFailure(postgrestError('40001'))).toBe('transient');
   });
 
@@ -123,7 +123,7 @@ describe('classifyFailure', () => {
   });
 });
 
-describe('flushQueuedWrites — the happy path', () => {
+describe('flushQueuedWrites. The happy path', () => {
   it('replays and removes every queued write', async () => {
     mockedRecordClockEvent.mockResolvedValue({} as never);
     await enqueueWrite('clock', { type: 'in' });
@@ -159,7 +159,7 @@ describe('flushQueuedWrites — the happy path', () => {
   });
 });
 
-describe('flushQueuedWrites — a permanent rejection must not block the queue', () => {
+describe('flushQueuedWrites, a permanent rejection must not block the queue', () => {
   it('sets the bad write aside and delivers everything behind it', async () => {
     // THE REGRESSION THIS SUITE EXISTS FOR.
     //
@@ -192,7 +192,7 @@ describe('flushQueuedWrites — a permanent rejection must not block the queue',
     expect(first(dead).reason).toBe('permanent');
   });
 
-  it('never deletes the rejected write — it is kept for the user', async () => {
+  it('never deletes the rejected write. It is kept for the user', async () => {
     // Losing it silently would be no better than the deadlock it replaced.
     await enqueueWrite('clock', { shiftId: 'deleted-shift' });
     mockedRecordClockEvent.mockRejectedValue(postgrestError('23503'));
@@ -237,7 +237,7 @@ describe('flushQueuedWrites — a permanent rejection must not block the queue',
   });
 });
 
-describe('flushQueuedWrites — a transient failure is retried, then bounded', () => {
+describe('flushQueuedWrites, a transient failure is retried, then bounded', () => {
   it('keeps the write queued and stops the flush', async () => {
     await enqueueWrite('clock', { seq: 1 });
     await new Promise((r) => setTimeout(r, 2));
@@ -310,8 +310,8 @@ describe('flushQueuedWrites — a transient failure is retried, then bounded', (
     // Burn item 1's attempts.
     for (let i = 0; i < MAX_ATTEMPTS; i++) await flushQueuedWrites();
 
-    // Item 2 was blocked while item 1 retried — correct, that is the transient
-    // policy — but once item 1 is set aside the next flush must deliver it.
+    // Item 2 was blocked while item 1 retried. Correct, that is the transient
+    // policy, but once item 1 is set aside the next flush must deliver it.
     const result = await flushQueuedWrites();
 
     expect(result.synced).toBe(1);

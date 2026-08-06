@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { Announcement, AnnouncementInsert } from '@/types';
 
-/** Every announcement in the org, newest first — RLS (org-shared) scopes this to members. */
+/** Every announcement in the org, newest first. RLS (org-shared) scopes this to members. */
 export async function listAnnouncements(orgId: string): Promise<Announcement[]> {
   const { data, error } = await supabase
     .from('announcements')
@@ -12,7 +12,7 @@ export async function listAnnouncements(orgId: string): Promise<Announcement[]> 
   return data ?? [];
 }
 
-/** Publishes immediately — `published_at` is set here, not left null for a later "publish" step. */
+/** Publishes immediately, `published_at` is set here, not left null for a later "publish" step. */
 export async function createAnnouncement(
   input: AnnouncementInsert,
 ): Promise<Announcement> {

@@ -33,7 +33,7 @@ const METRIC_STYLES: { icon: LucideIcon; tone: IconTileTone }[] = [
 
 /**
  * The Staff Profile overview (design/Staff-Profile.png): identity header, tab
- * strip, then a three-column body — personal/work facts, the shift record, and
+ * strip, then a three-column body. Personal/work facts, the shift record, and
  * a skills/qualifications/documents rail. Presentational; the caller supplies
  * the data and handles the actions.
  */

@@ -19,11 +19,11 @@ import { Label } from '@/components/ui/Label';
 import type { OrgSmtpSettingsSafe } from '@/types';
 
 /**
- * `/app/integrations` — owner-only. Lets an org connect its own SMTP account
+ * `/app/integrations`. Owner-only. Lets an org connect its own SMTP account
  * so notification emails go out from their domain/mailbox instead of
  * RotaFlow's shared sender. The password is never re-displayed once saved
- * (excluded from the column-level SELECT grant on org_smtp_settings — see
- * 0010_org_smtp_settings.sql) — editing host/username/from-address leaves it
+ * (excluded from the column-level SELECT grant on org_smtp_settings. See
+ * 0010_org_smtp_settings.sql). Editing host/username/from-address leaves it
  * untouched, and changing it requires typing a new one.
  */
 export function SettingsIntegrationsPage(): JSX.Element {
@@ -103,8 +103,7 @@ export function SettingsIntegrationsPage(): JSX.Element {
           smtp_pass: smtpPass.trim(),
           from_email: fromEmail.trim(),
           from_name: fromName.trim() || null,
-          // A credential change invalidates any prior "verified" claim —
-          // only test-smtp gets to set this again.
+          // A credential change invalidates any prior "verified" claim, // only test-smtp gets to set this again.
           verified_at: null,
         });
       } else {
@@ -171,7 +170,7 @@ export function SettingsIntegrationsPage(): JSX.Element {
     const ok = await confirm({
       title: 'Remove SMTP settings?',
       message:
-        'Notifications will immediately fall back to the shared sender, and the password cannot be recovered — you will need to re-enter it to reconnect.',
+        'Notifications will immediately fall back to the shared sender, and the password cannot be recovered. You will need to re-enter it to reconnect.',
       confirmLabel: 'Remove',
       tone: 'danger',
     });
@@ -242,11 +241,11 @@ export function SettingsIntegrationsPage(): JSX.Element {
           </p>
         ) : existing ? (
           <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
-            Saved but not yet tested — send a test email to confirm it works.
+            Saved but not yet tested. Send a test email to confirm it works.
           </p>
         ) : (
           <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
-            Not configured — notifications currently use RotaFlow's shared sender.
+            Not configured. Notifications currently use RotaFlow's shared sender.
           </p>
         )}
 

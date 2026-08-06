@@ -70,7 +70,7 @@ function compare<T extends LocationRow | DepartmentRow>(
 }
 
 /**
- * Locations & Departments — one workspace, two tabs, reproducing
+ * Locations & Departments, one workspace, two tabs, reproducing
  * design/Locations-Management.png and design/Location-department.png.
  *
  * Coverage, staff counts and upcoming-shift counts are derived from real
@@ -84,7 +84,7 @@ export function LocationsPage(): JSX.Element {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  // Which half is showing comes from the URL, not from state — see
+  // Which half is showing comes from the URL, not from state. See
   // `LocationsWorkspaceHeader`.
   const tab: LocationsWorkspaceTab = pathname.endsWith('/departments')
     ? 'departments'
@@ -159,7 +159,7 @@ export function LocationsPage(): JSX.Element {
       setShifts(shiftRows);
       // A URL-named site wins over "first in the list": arriving on
       // /app/locations/<id> must open that site, not whichever sorts first.
-      // Falls back to the first row when the id is unknown — a stale bookmark
+      // Falls back to the first row when the id is unknown, a stale bookmark
       // to a deleted site should still land somewhere usable.
       setSelectedLocationId((current) => {
         if (routeLocationId && locationRows.some((l) => l.id === routeLocationId)) {
@@ -293,7 +293,7 @@ export function LocationsPage(): JSX.Element {
   /**
    * `DepartmentManager` is per-site inline CRUD and predates this screen. It
    * moves into a dialog here so the Departments tab keeps every capability the
-   * old two-column page had — add, rename, delete — without breaking the
+   * old two-column page had. Add, rename, delete, without breaking the
    * reference layout. Departments with no `location_id` stay unmanageable, as
    * they were before.
    */
@@ -456,7 +456,7 @@ export function LocationsPage(): JSX.Element {
             <p className="text-content-muted dark:text-content-muted-dark">
               A location is a physical site with its own address and timezone. A
               department belongs to one location and is what staff are actually assigned
-              to — so someone&rsquo;s site is inferred from their department.
+              to, so someone&rsquo;s site is inferred from their department.
             </p>
           </div>
           <div>
@@ -465,15 +465,15 @@ export function LocationsPage(): JSX.Element {
               Shift times are stored as instants and displayed in the location&rsquo;s
               timezone, not the viewer&rsquo;s. A manager in one country sees a
               site&rsquo;s 07:00 start as 07:00 local to that site. Set it correctly when
-              adding a location — changing it later moves how every existing shift reads.
+              adding a location. Changing it later moves how every existing shift reads.
             </p>
           </div>
           <div>
             <h3 className="mb-1 font-semibold">Coverage</h3>
             <p className="text-content-muted dark:text-content-muted-dark">
               Coverage compares assigned shifts against the total scheduled for the
-              period. It does not know a required headcount — no such column exists — so
-              it reports how much of what was planned is filled, not whether the plan was
+              period. It does not know a required headcount, no such column exists, so it
+              reports how much of what was planned is filled, not whether the plan was
               adequate.
             </p>
           </div>
@@ -500,7 +500,7 @@ export function LocationsPage(): JSX.Element {
           setDepartmentsModalFor(null);
           void load();
         }}
-        title={`Departments — ${
+        title={`Departments, ${
           locations.find((l) => l.id === departmentsModalFor)?.name ?? 'Site'
         }`}
       >
