@@ -71,6 +71,16 @@ const ORGANISATIONS = [
   suspended_at: status === 'suspended' ? ISO(12) : null,
   suspended_reason: status === 'suspended' ? 'Unresolved chargeback' : null,
   settings: {},
+  // 0023's activity column. Deliberately the real clock rather than `ISO(0)`:
+  // every other date here is anchored to a fixed day so screenshots stay
+  // stable, but "active in the last 24 hours" is measured against *now*, and an
+  // anchored value silently ages out of the window overnight.
+  last_activity_at: new Date(Date.now() - (i % 3) * 3_600_000).toISOString(),
+  industry: 'Residential care',
+  country: 'United Kingdom',
+  timezone: 'Europe/London',
+  contact_email: null,
+  contact_phone: null,
   created_by: USER_IDS[0],
   created_at: ISO(age as number),
   updated_at: ISO(1),
@@ -143,6 +153,8 @@ const AUDIT_LOGS = [
   ['gdpr_request.closed', 'gdpr_request', 'notice', 1],
   ['organisation.suspended', 'organisation', 'warning', 4],
 ].map(([action, entity_type, severity, orgIndex], i) => ({
+  before_value: i % 2 === 0 ? 'active' : null,
+  after_value: i % 2 === 0 ? 'suspended' : null, // audit_before
   id: `audit-${i}`,
   action,
   entity_type,

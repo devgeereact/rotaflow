@@ -319,20 +319,21 @@ export function AdminPlatformHealthPage(): JSX.Element {
             </p>
           </Callout>
 
-          <Panel title="Incidents are not recorded">
+          <Panel title="Incidents are recorded elsewhere">
             <p className="text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-              The console reference lists an incident register — severity, affected
-              services, a timeline, a resolution note and a published status page. There
-              is no table behind any of it, so the route is absent rather than a form that
-              writes nowhere. Building it means a migration and a decision about who
-              outside the console may read it.
+              The register lives on{' '}
+              <Link to="/admin/incidents" className="text-primary hover:underline">
+                Incidents
+              </Link>
+              , backed by the <code>incidents</code> table: severity, affected service,
+              owner, a timeline of updates and a resolution note that the database
+              requires before an incident can close.
             </p>
             <p className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-              In the meantime the{' '}
-              <Link to="/admin/audit" className="text-primary hover:underline">
-                audit log
-              </Link>{' '}
-              is the closest real record of what platform staff did and when. Environment:{' '}
+              What is still absent is the public status page. <code>is_public</code>
+              exists on the table and no policy grants anonymous access, so it is a stored
+              intent rather than a live switch — publishing means a second surface with
+              its own hosting and its own audience. Environment:{' '}
               {env.isProd ? 'production' : env.mode}, app v{__APP_VERSION__}.
             </p>
           </Panel>
