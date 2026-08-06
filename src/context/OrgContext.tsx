@@ -17,6 +17,7 @@ import { getProfile } from '@/services/profileService';
 import { getMyPlatformRole } from '@/services/platformRoleService';
 import { reportError } from '@/lib/sentry';
 import { ACTIVE_ORG_STORAGE_KEY } from '@/lib/session';
+import { isOrgStateStale } from '@/lib/orgLoading';
 import type { MembershipRole, PlatformRole } from '@/types';
 
 export interface OrgMembershipSummary {
@@ -60,7 +61,7 @@ export interface OrgContextValue {
 export const OrgContext = createContext<OrgContextValue | null>(null);
 
 export function OrgProvider({ children }: { children: ReactNode }): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user, loading: authLoading } = useSupabaseAuth();
   const [memberships, setMemberships] = useState<MyMembership[]>([]);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformRole, setPlatformRole] = useState<PlatformRole | null>(null);
@@ -71,6 +72,11 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
   );
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  /**
+   * Whose organisations the state below describes. `isOrgStateStale` explains
+   * why a finished query is not the same question as a usable answer.
+   */
+  const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!user) {
@@ -78,6 +84,7 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       setIsPlatformAdmin(false);
       setPlatformRole(null);
       setLoadFailed(false);
+      setLoadedForUserId(null);
       setLoading(false);
       return;
     }
@@ -108,6 +115,10 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       // failed refresh must not blank out a session that was working.
       setLoadFailed(true);
     } finally {
+      // Set even when the query threw. Otherwise a failure would hold the
+      // whole app on the boot screen for ever, instead of reaching the
+      // "Couldn't load your organisations" card with its Retry button.
+      setLoadedForUserId(user.id);
       setLoading(false);
     }
   }, [user]);
@@ -147,7 +158,12 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       isPlatformAdmin,
       platformRole,
       switchOrg,
-      loading,
+      loading: isOrgStateStale({
+        authLoading,
+        queryLoading: loading,
+        userId: user?.id ?? null,
+        loadedForUserId,
+      }),
       loadFailed,
       createOrg,
       refresh,
@@ -159,6 +175,9 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
     platformRole,
     switchOrg,
     loading,
+    authLoading,
+    user,
+    loadedForUserId,
     loadFailed,
     createOrg,
     refresh,
