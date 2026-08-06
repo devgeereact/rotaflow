@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, ChevronUp, LogOut, Menu, RefreshCw, Settings, X } from 'lucide-react';
+import { ArrowLeft, ChevronUp, LogOut, Menu, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { env } from '@/lib/env';
 import { useOrg } from '@/hooks/useOrg';
@@ -10,7 +10,12 @@ import {
   ConsoleRefreshContext,
   type ConsoleRefreshValue,
 } from '@/hooks/useConsoleRefresh';
-import { ADMIN_SECONDARY_NAV, adminNavForRole, type AdminNavItem } from '@/lib/adminNav';
+import {
+  ADMIN_SECONDARY_NAV,
+  CONSOLE_MENU_TARGET,
+  adminNavForRole,
+  type AdminNavItem,
+} from '@/lib/adminNav';
 import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
@@ -205,7 +210,7 @@ function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element
               className="absolute bottom-full left-0 z-50 mb-1 w-full overflow-hidden rounded-lg border border-surface-border bg-surface py-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
             >
               <Link
-                to="/app/dashboard"
+                to={CONSOLE_MENU_TARGET}
                 role="menuitem"
                 onClick={() => {
                   setMenuOpen(false);
@@ -215,18 +220,6 @@ function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element
               >
                 <ArrowLeft size={15} aria-hidden="true" />
                 Return to organisation
-              </Link>
-              <Link
-                to="/app/settings/account"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onNavigate?.();
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
-              >
-                <Settings size={15} aria-hidden="true" />
-                Account settings
               </Link>
               <button
                 type="button"

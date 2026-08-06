@@ -173,7 +173,7 @@ export function AdminOverviewPage(): JSX.Element {
           listAllOrganisations(),
           listAllProfiles(),
           listAllSubscriptions(),
-          listPlatformAuditLogs(8),
+          listPlatformAuditLogs(4),
           countMembershipsByOrg(),
           listSupportAccessSessions(20),
           countPublishedRotas(),
@@ -411,8 +411,19 @@ export function AdminOverviewPage(): JSX.Element {
           </div>
 
           {/* Three equal columns that stretch to the tallest, as the reference
-              lays them out, `h-full` on each panel rather than a fixed height,
-              so the row grows with whichever card has most in it. */}
+              lays them out, `h-full` on each panel rather than a fixed height.
+
+              Which makes the tallest card everyone else's problem. The audit
+              feed asked for eight entries and its rows run to two lines each,
+              so it stood 529px tall and set a 584px row. System health drew
+              six services in 265px and left 202 empty below them; Support drew
+              its tiles and cases in 313 and left 154. The short cards looked
+              broken, and the cause was in neither of them.
+
+              Four entries sits the feed between the other two: measured bodies
+              are now 265, 296 and 313 in a 368px row, where they were 265, 529
+              and 313 in a 584px one. The rest of the log was never the point of
+              an overview panel carrying an "Audit log" link in its corner. */}
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
             <Panel
               className="h-full"
