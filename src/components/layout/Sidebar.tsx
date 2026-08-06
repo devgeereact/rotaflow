@@ -187,7 +187,10 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
                 type="button"
                 onClick={() => setMobileOpen(false)}
                 aria-label="Close navigation menu"
-                className={cn('rounded-lg p-1 text-white/60 hover:bg-white/10', FOCUS_RING)}
+                className={cn(
+                  'rounded-lg p-1 text-white/60 hover:bg-white/10',
+                  FOCUS_RING,
+                )}
               >
                 <X size={18} aria-hidden="true" />
               </button>

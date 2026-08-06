@@ -111,7 +111,11 @@ export function SidebarOrgSwitcher({
           </span>
         </span>
         {canSwitch && (
-          <ChevronsUpDown size={16} aria-hidden="true" className="shrink-0 text-white/50" />
+          <ChevronsUpDown
+            size={16}
+            aria-hidden="true"
+            className="shrink-0 text-white/50"
+          />
         )}
       </button>
 

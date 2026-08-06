@@ -98,7 +98,12 @@ export function DepartmentManager({
         Departments
       </h3>
       {loading ? (
-        <LoadingState variant="text" rows={2} label="Loading departments…" className="mb-3" />
+        <LoadingState
+          variant="text"
+          rows={2}
+          label="Loading departments…"
+          className="mb-3"
+        />
       ) : (
         <ul className="mb-3 space-y-1">
           {departments.map((dept) => (
