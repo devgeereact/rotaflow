@@ -23,25 +23,20 @@ import { sessionStatus, type SupportAccessSession } from '@/lib/supportAccess';
 import { monthlyGrowth } from '@/lib/platformOverview';
 import {
   demoChurnTrend,
-  DEMO_ACTIVE_USERS_SHARE,
-  DEMO_ACTIVE_USERS_TODAY,
-  DEMO_ACTIVE_USERS_TREND,
   DEMO_ACTIVITY,
-  DEMO_CASES,
-  DEMO_MONTHLY_REVENUE,
-  DEMO_OPEN_CASES,
-  DEMO_ORG_HEALTH,
   DEMO_PUBLISHED_ROTAS_TREND,
-  DEMO_REVENUE_CHANGE,
-  DEMO_REVENUE_TREND,
   DEMO_SECTIONS,
   DEMO_SERVICES,
-  DEMO_SUBSCRIPTION_MIX,
-  DEMO_URGENT_CASES,
   DEMO_USERS_TREND,
   type DemoActivityTone,
   type DemoServiceState,
 } from '@/lib/adminOverviewDemo';
+import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
+import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
+import { formatMoney } from '@/lib/money';
+import { collectedByMonth, monthlyRecurringPence, revenueByPlan } from '@/lib/revenue';
+import { openCases, urgentOpenCases } from '@/lib/supportMetrics';
+import { healthBreakdown, tenantsActiveWithin } from '@/lib/tenantHealth';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { reportError } from '@/lib/sentry';
 import type { AuditLog, Organisation, Profile, Subscription } from '@/types';
@@ -54,6 +49,9 @@ interface Snapshot {
   members: Map<string, number>;
   sessions: SupportAccessSession[];
   publishedRotas: number;
+  plans: { code: string; monthly_price_pence: number }[];
+  invoices: Invoice[];
+  supportCases: SupportCaseRow[];
 }
 
 const ACTIVITY_ICON = {
@@ -88,11 +86,19 @@ function StatusBars({ history }: { history: readonly DemoServiceState[] }): JSX.
   );
 }
 
-const CASE_TONE = {
-  Urgent: 'danger',
-  High: 'warning',
-  Normal: 'info',
-} as const;
+const HEALTH_COLOUR: Record<string, string> = {
+  healthy: '#1EA06B',
+  attention: '#E0A030',
+  at_risk: '#D94A3A',
+  suspended: '#6B7280',
+};
+
+const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
+  urgent: 'danger',
+  high: 'warning',
+  normal: 'info',
+  low: 'neutral',
+};
 
 /**
  * `/admin` — NEW_STRUCTURE §34's platform dashboard, built to the full shape of
@@ -133,6 +139,9 @@ export function AdminOverviewPage(): JSX.Element {
           members,
           sessions,
           publishedRotas,
+          plans,
+          invoices,
+          supportCases,
         ] = await Promise.all([
           listAllOrganisations(),
           listAllProfiles(),
@@ -141,6 +150,9 @@ export function AdminOverviewPage(): JSX.Element {
           countMembershipsByOrg(),
           listSupportAccessSessions(20),
           countPublishedRotas(),
+          listPlans(),
+          listInvoices(),
+          listSupportCases(),
         ]);
         if (!active) return;
         setData({
@@ -151,6 +163,9 @@ export function AdminOverviewPage(): JSX.Element {
           members,
           sessions,
           publishedRotas,
+          plans,
+          invoices,
+          supportCases,
         });
       } catch (err) {
         if (!active) return;
@@ -178,6 +193,32 @@ export function AdminOverviewPage(): JSX.Element {
         ? `${((active / data.organisations.length) * 100).toFixed(1)}% of all tenants`
         : 'No tenants yet',
       newThisMonth: growth[growth.length - 1]?.created ?? 0,
+
+      // Revenue and the support queue are real tables now (0023, 0024), so the
+      // overview computes them from the same functions Billing and the Support
+      // Centre use. Two screens quoting one number is only safe when they share
+      // the arithmetic.
+      mrr: monthlyRecurringPence(
+        data.subscriptions,
+        new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
+      ),
+      revenueTrend: collectedByMonth(data.invoices, 12, now).map((t) =>
+        Math.round(t.pence / 100),
+      ),
+      planMix: revenueByPlan(
+        data.subscriptions,
+        new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
+      ),
+      openCases: openCases(data.supportCases),
+      urgentCases: urgentOpenCases(data.supportCases),
+      recentCases: data.supportCases.slice(0, 4),
+
+      // `organisations.last_activity_at` is maintained by touch_org_activity()
+      // (0023), so tenant activity is measurable. Per-*user* activity still is
+      // not — nothing records a session — so the tile counts tenants and says
+      // so rather than reporting a number of people nobody observed.
+      activeTenants: tenantsActiveWithin(data.organisations, now),
+      health: healthBreakdown(data.organisations, data.subscriptions, now),
       openSessions: data.sessions.filter((s) => sessionStatus(s, now) === 'active')
         .length,
     };
@@ -236,10 +277,14 @@ export function AdminOverviewPage(): JSX.Element {
               chart={<Sparkline values={DEMO_USERS_TREND} />}
             />
             <StatTile
-              label="Active users today"
-              value={DEMO_ACTIVE_USERS_TODAY.toLocaleString('en-GB')}
-              hint={DEMO_ACTIVE_USERS_SHARE}
-              chart={<Sparkline values={DEMO_ACTIVE_USERS_TREND} colour="#388FD4" />}
+              label="Tenants active today"
+              value={derived.activeTenants.toLocaleString('en-GB')}
+              hint={
+                data.organisations.length
+                  ? `${((derived.activeTenants / data.organisations.length) * 100).toFixed(0)}% of all tenants`
+                  : 'No tenants yet'
+              }
+              to="/admin/organisations"
             />
             <StatTile
               label="Published rotas"
@@ -248,17 +293,11 @@ export function AdminOverviewPage(): JSX.Element {
               chart={<Sparkline values={DEMO_PUBLISHED_ROTAS_TREND} colour="#1EA06B" />}
             />
             <StatTile
-              label="Monthly revenue"
-              value={DEMO_MONTHLY_REVENUE}
-              hint={
-                <>
-                  <span className="font-semibold text-success">
-                    {DEMO_REVENUE_CHANGE}
-                  </span>{' '}
-                  from last month
-                </>
-              }
-              chart={<Sparkline values={DEMO_REVENUE_TREND} colour="#E0A030" />}
+              label="Monthly recurring revenue"
+              value={formatMoney(derived.mrr)}
+              hint="Active and past due"
+              to="/admin/billing"
+              chart={<Sparkline values={derived.revenueTrend} colour="#E0A030" />}
             />
           </TileGrid>
 
@@ -301,10 +340,20 @@ export function AdminOverviewPage(): JSX.Element {
 
             <div className="grid content-start gap-4">
               <Panel title="Subscription mix">
-                <MeterRows
-                  caption="Organisations by plan"
-                  rows={DEMO_SUBSCRIPTION_MIX.map((r) => ({ ...r }))}
-                />
+                {derived.planMix.length === 0 ? (
+                  <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                    No subscription is active or past due.
+                  </p>
+                ) : (
+                  <MeterRows
+                    caption="Subscriptions by plan"
+                    rows={derived.planMix.map((r) => ({
+                      label: `${r.plan.charAt(0).toUpperCase()}${r.plan.slice(1)}`,
+                      value: r.count,
+                      display: `${r.count} · ${formatMoney(r.pence)}`,
+                    }))}
+                  />
+                )}
               </Panel>
               <Panel
                 title="Organisation health"
@@ -318,9 +367,18 @@ export function AdminOverviewPage(): JSX.Element {
                 }
               >
                 <MeterRows
-                  caption="Organisations by health"
-                  rows={DEMO_ORG_HEALTH.map((r) => ({ ...r }))}
+                  caption="Organisations by account health"
+                  rows={derived.health.map((row) => ({
+                    label: row.label,
+                    value: row.count,
+                    colour: HEALTH_COLOUR[row.band],
+                  }))}
                 />
+                <p className="mt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
+                  From account status, subscription state and last activity: suspended
+                  first, then a failed payment, then silence — over a fortnight needs
+                  attention, over a month is at risk.
+                </p>
               </Panel>
             </div>
           </div>
@@ -421,7 +479,7 @@ export function AdminOverviewPage(): JSX.Element {
                     Open cases
                   </p>
                   <p className="mt-1 font-display text-[1.7rem] font-semibold leading-tight tabular-nums text-content dark:text-content-dark">
-                    {DEMO_OPEN_CASES}
+                    {derived.openCases}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-surface-border p-3.5 dark:border-surface-border-dark">
@@ -429,32 +487,39 @@ export function AdminOverviewPage(): JSX.Element {
                     Urgent
                   </p>
                   <p className="mt-1 font-display text-[1.7rem] font-semibold leading-tight tabular-nums text-content dark:text-content-dark">
-                    {DEMO_URGENT_CASES}
+                    {derived.urgentCases}
                   </p>
                 </div>
               </div>
 
-              <ul className="mt-3 space-y-3">
-                {DEMO_CASES.map((item) => (
-                  <li key={item.subject} className="flex gap-2.5">
-                    <Badge
-                      tone={CASE_TONE[item.priority]}
-                      dot
-                      className="mt-0.5 shrink-0"
-                    >
-                      {item.priority}
-                    </Badge>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold leading-snug text-content dark:text-content-dark">
-                        {item.subject}
+              {derived.recentCases.length === 0 ? (
+                <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
+                  No support case has been raised.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {derived.recentCases.map((item) => (
+                    <li key={item.id} className="flex gap-2.5">
+                      <Badge
+                        tone={CASE_TONE[item.priority] ?? 'neutral'}
+                        dot
+                        className="mt-0.5 shrink-0"
+                      >
+                        {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
+                      </Badge>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold leading-snug text-content dark:text-content-dark">
+                          {item.subject}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-content-muted dark:text-content-muted-dark">
+                          {item.orgName ?? 'Not identified'} ·{' '}
+                          {new Date(item.created_at).toLocaleDateString('en-GB')}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-xs text-content-muted dark:text-content-muted-dark">
-                        {item.meta}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Panel>
           </div>
 
@@ -467,8 +532,10 @@ export function AdminOverviewPage(): JSX.Element {
             </span>{' '}
             {DEMO_SECTIONS.join(', ')}. These are demonstration values, not measurements —
             see <code>src/lib/adminOverviewDemo.ts</code> for why each cannot yet be
-            computed. Organisation counts, growth, users, published rotas, support access
-            and the audit feed are real.
+            computed. Everything else is real: organisation counts and growth, users,
+            published rotas, recurring revenue and the subscription mix from{' '}
+            <code>subscriptions × plans</code>, the support queue, support access and the
+            audit feed.
           </p>
         </div>
       )}

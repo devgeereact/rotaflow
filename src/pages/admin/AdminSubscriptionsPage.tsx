@@ -20,21 +20,14 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { daysUntil, needsAttention } from '@/lib/platformBilling';
 import { humaniseKey } from '@/lib/platformOverview';
 import { downloadCsv } from '@/lib/csv';
+import { demoSubscriptionFacts, type DemoPaymentState } from '@/lib/adminOverviewDemo';
+import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
+import { formatMoney, formatMoneyShort } from '@/lib/money';
 import {
-  demoSubscriptionFacts,
-  DEMO_ACTIVE_SUBSCRIPTIONS,
-  DEMO_ARR_SHORT,
-  DEMO_CHURN_CHANGE,
-  DEMO_CHURN_RATE,
-  DEMO_MRR,
-  DEMO_MRR_CHANGE,
-  DEMO_PAST_DUE,
-  DEMO_PAST_DUE_HINT,
-  DEMO_REVENUE_TREND,
-  DEMO_TRIALS,
-  DEMO_TRIALS_HINT,
-  type DemoPaymentState,
-} from '@/lib/adminOverviewDemo';
+  annualRunRatePence,
+  collectedByMonth,
+  monthlyRecurringPence,
+} from '@/lib/revenue';
 import { Sparkline } from '@/components/ui/TrendChart';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, Subscription } from '@/types';
@@ -90,6 +83,9 @@ interface Row {
  */
 export function AdminSubscriptionsPage(): JSX.Element {
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [planPrices, setPlanPrices] = useState<Map<string, number>>(new Map());
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
@@ -103,11 +99,16 @@ export function AdminSubscriptionsPage(): JSX.Element {
     setRows(null);
     void (async () => {
       try {
-        const [orgs, subs] = await Promise.all([
+        const [orgs, subs, planRows, invoiceRows] = await Promise.all([
           listAllOrganisations(),
           listAllSubscriptions(),
+          listPlans(),
+          listInvoices(),
         ]);
         if (!active) return;
+        setSubscriptions(subs);
+        setPlanPrices(new Map(planRows.map((p) => [p.code, p.monthly_price_pence])));
+        setInvoices(invoiceRows);
         const byOrg = new Map(subs.map((s) => [s.org_id, s]));
         setRows(
           orgs.map((organisation) => ({
@@ -125,6 +126,28 @@ export function AdminSubscriptionsPage(): JSX.Element {
       active = false;
     };
   }, [reloadKey]);
+
+  /**
+   * The money, from the same functions Billing uses.
+   *
+   * Recomputed on every render pass rather than cached: two screens quoting one
+   * figure is only safe while they share the arithmetic, and a cache is where
+   * they start to drift.
+   */
+  const money = useMemo(() => {
+    const mrr = monthlyRecurringPence(subscriptions, planPrices);
+    return {
+      mrr,
+      arr: annualRunRatePence(mrr),
+      trend: collectedByMonth(invoices, 12, new Date()).map((t) =>
+        Math.round(t.pence / 100),
+      ),
+      active: subscriptions.filter((s) => s.status === 'active').length,
+      trialing: subscriptions.filter((s) => s.status === 'trialing').length,
+      pastDue: subscriptions.filter((s) => s.status === 'past_due').length,
+      cancelled: subscriptions.filter((s) => s.status === 'canceled').length,
+    };
+  }, [subscriptions, planPrices, invoices]);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
@@ -378,49 +401,56 @@ export function AdminSubscriptionsPage(): JSX.Element {
           <TileGrid>
             <StatTile
               label="MRR"
-              value={DEMO_MRR}
-              hint={<span className="font-semibold text-success">{DEMO_MRR_CHANGE}</span>}
-              chart={<Sparkline values={DEMO_REVENUE_TREND} colour="#1EA06B" />}
+              value={formatMoney(money.mrr)}
+              hint="Active and past due"
+              to="/admin/billing"
+              chart={<Sparkline values={money.trend} colour="#1EA06B" />}
             />
-            <StatTile label="ARR" value={DEMO_ARR_SHORT} hint="run rate" />
             <StatTile
-              label="Active subscriptions"
-              value={DEMO_ACTIVE_SUBSCRIPTIONS.toLocaleString('en-GB')}
+              label="ARR"
+              value={formatMoneyShort(money.arr)}
+              hint="Run rate"
+              to="/admin/billing"
             />
-            <StatTile label="Trials" value={DEMO_TRIALS} hint={DEMO_TRIALS_HINT} />
+            <StatTile label="Active subscriptions" value={money.active} />
+            <StatTile
+              label="Trials"
+              value={money.trialing}
+              hint={money.trialing === 0 ? 'None running' : 'Not yet converted'}
+            />
             <StatTile
               label="Past due"
-              value={DEMO_PAST_DUE}
+              value={money.pastDue}
               hint={
-                <span className="font-semibold text-danger">{DEMO_PAST_DUE_HINT}</span>
+                money.pastDue > 0 ? (
+                  <span className="font-semibold text-danger">Payment failed</span>
+                ) : (
+                  'All payments current'
+                )
               }
             />
             <StatTile
-              label="Churn rate"
-              value={DEMO_CHURN_RATE}
-              hint={
-                <>
-                  <span className="font-semibold text-success">{DEMO_CHURN_CHANGE}</span>{' '}
-                  vs July
-                </>
-              }
+              label="Cancelled"
+              value={money.cancelled}
+              hint="Recorded as canceled"
             />
           </TileGrid>
 
-          <Callout tone="warning" title="Value, payment state and usage are placeholder">
+          <Callout tone="info" title="What is measured here, and what is not">
             <p>
-              <code>subscriptions</code> records a plan, a status and a period end and
-              nothing else — no amount, no currency, no billing interval — and no payment
-              provider is connected. MRR, ARR, churn, the Value and Payment columns and
-              the Usage percentage are demonstration figures from{' '}
-              <code>src/lib/adminOverviewDemo.ts</code>, not measurements.
+              MRR is the sum of each subscription&rsquo;s negotiated price, falling back
+              to its plan price from <code>plans</code>, over the rows that are active or
+              past due — the same arithmetic{' '}
+              <Link to="/admin/billing" className="text-primary hover:underline">
+                Billing
+              </Link>{' '}
+              uses, so the two screens cannot disagree.
             </p>
             <p>
-              Real on this screen: which organisation is on which plan, its subscription
-              status, its account status, and when the recorded period ends. Most rows
-              show “no record”, because nothing writes to <code>subscriptions</code> yet
-              either — the plan then falls back to <code>organisations.plan</code>, chosen
-              at sign-up.
+              Churn is not shown: nothing records the month an organisation left, so a
+              rate would be a guess. The Usage column is still a placeholder — no plan
+              carries a seat or location cap anywhere in the schema, so there is no
+              ceiling to measure against.
             </p>
           </Callout>
 

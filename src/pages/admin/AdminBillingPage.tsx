@@ -14,44 +14,46 @@ import { listAllOrganisations, listAllSubscriptions } from '@/services/platformS
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { needsAttention, renewalBreakdown } from '@/lib/platformBilling';
 import { monthlyGrowth } from '@/lib/platformOverview';
+import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
+import { formatMoney, formatMoneyExact, formatMoneyShort } from '@/lib/money';
 import {
-  DEMO_ARPO,
-  DEMO_ARR_FULL,
-  DEMO_COLLECTED,
-  DEMO_COLLECTED_HINT,
-  DEMO_DUNNING_NOTE,
-  DEMO_FAILED_PAYMENTS,
-  DEMO_INVOICES,
-  DEMO_MRR,
-  DEMO_MRR_CHANGE,
-  DEMO_OUTSTANDING,
-  DEMO_OUTSTANDING_HINT,
-  DEMO_REFUNDS,
-  DEMO_REFUNDS_HINT,
-  DEMO_REVENUE_BY_PLAN,
-  DEMO_REVENUE_TREND,
-  type DemoPaymentState,
-} from '@/lib/adminOverviewDemo';
+  annualRunRatePence,
+  averageRevenuePerOrgPence,
+  collectedByMonth,
+  collectedInMonth,
+  monthKey,
+  monthlyRecurringPence,
+  outstandingPence,
+  pastDuePence,
+  refundedInMonth,
+  revenueByPlan,
+} from '@/lib/revenue';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, Subscription } from '@/types';
 
-const INVOICE_TONE: Record<
-  DemoPaymentState | 'past_due',
-  'success' | 'warning' | 'danger' | 'neutral'
-> = {
+const INVOICE_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+  draft: 'neutral',
+  open: 'warning',
   paid: 'success',
-  pending: 'warning',
-  past_due: 'warning',
-  failed: 'danger',
+  past_due: 'danger',
   refunded: 'neutral',
+  void: 'neutral',
 };
 
-const INVOICE_LABEL: Record<DemoPaymentState | 'past_due', string> = {
+const INVOICE_LABEL: Record<string, string> = {
+  draft: 'Draft',
+  open: 'Open',
   paid: 'Paid',
-  pending: 'Pending',
   past_due: 'Past due',
-  failed: 'Failed',
   refunded: 'Refunded',
+  void: 'Void',
+};
+
+const PLAN_COLOUR: Record<string, string> = {
+  enterprise: '#3B6FE0',
+  business: '#1EA06B',
+  professional: '#388FD4',
+  starter: '#E0A030',
 };
 
 const RENEWAL_COLOUR: Record<string, string> = {
@@ -64,32 +66,40 @@ const RENEWAL_COLOUR: Record<string, string> = {
 };
 
 /**
- * `/admin/billing` — built to the shape of `docs/PLATFORM_CONSOLE.html`.
+ * `/admin/billing` — platform revenue, over the real tables.
  *
- * ## Everything with a currency symbol on it is invented
+ * ## Every figure is a sum, and the sums are in one place
  *
- * `subscriptions` is described in docs/SCHEMA.md as "the billing seam": it
- * records which plan a tenant is on and when the period ends, and its
- * `provider` is pluggable because charging is built last. There is no amount
- * anywhere in the schema, and no invoice, payment, credit, refund or dunning
- * table at all — so MRR, ARR, collections, outstanding balances, refunds, ARPO,
- * the revenue chart, the invoice list and the failed-payment queue are all
- * placeholder values from `src/lib/adminOverviewDemo.ts`.
+ * MRR, ARR, collected, outstanding, refunds and ARPO all come from
+ * `src/lib/revenue.ts`, over `invoices` and `subscriptions × plans` (0023).
+ * Nothing is stored pre-aggregated and nothing is cached, so this screen and
+ * Subscriptions cannot report different revenue for the same month.
  *
- * Their buttons are disabled rather than wired, because there is nothing behind
- * them to open, credit or retry. A control that looks live and does nothing is
- * the failure this console has spent eleven phases avoiding.
+ * Amounts are integer pence everywhere and are divided by 100 exactly once, in
+ * `lib/money.ts`. Two divisions in two components is how a total ends up a
+ * penny out from the rows printed beneath it.
  *
- * ## What is real
+ * ## The definitions, stated because they are choices
  *
- * The subscription records themselves — how many exist, how many are active,
- * how many organisations have none — and the renewal windows computed from
- * `current_period_end`. Kept on the screen and labelled as real, because they
- * are the only part someone can act on today.
+ * MRR counts **active and past due**. A past-due subscription is still a
+ * customer with a contract; writing it out the day a card fails makes the
+ * headline swing on payment retries rather than on customers. Collected is by
+ * *payment* date, not issue date. Outstanding is not scoped to a month — an
+ * invoice from March that is still open is money owed today, and dropping it
+ * because the month has passed is how a debt vanishes from a dashboard.
+ *
+ * ## What is still not here
+ *
+ * A payment provider. `invoices.provider` and `provider_ref` exist and nothing
+ * writes them, so Credit and Retry are disabled: the row can be marked
+ * refunded in this database, but no money moves. Dunning is a described policy
+ * rather than a scheduled job.
  */
 export function AdminBillingPage(): JSX.Element {
   const [subscriptions, setSubscriptions] = useState<Subscription[] | null>(null);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [planPrices, setPlanPrices] = useState<Map<string, number>>(new Map());
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -99,13 +109,17 @@ export function AdminBillingPage(): JSX.Element {
     setSubscriptions(null);
     void (async () => {
       try {
-        const [subs, orgs] = await Promise.all([
+        const [subs, orgs, invoiceRows, plans] = await Promise.all([
           listAllSubscriptions(),
           listAllOrganisations(),
+          listInvoices(),
+          listPlans(),
         ]);
         if (!active) return;
         setSubscriptions(subs);
         setOrganisations(orgs);
+        setInvoices(invoiceRows);
+        setPlanPrices(new Map(plans.map((p) => [p.code, p.monthly_price_pence])));
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'admin:billing' });
@@ -120,22 +134,77 @@ export function AdminBillingPage(): JSX.Element {
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
-  const orgByName = useMemo(
-    () => new Map(organisations.map((o) => [o.name, o])),
+  // By id, not by name: an invoice references `org_id`, and matching on a name
+  // breaks the moment two tenants share one.
+  const orgById = useMemo(
+    () => new Map(organisations.map((o) => [o.id, o])),
     [organisations],
   );
 
   const derived = useMemo(() => {
     if (!subscriptions) return null;
     const now = new Date();
+    const thisMonth = monthKey(now.toISOString());
+    const mrr = monthlyRecurringPence(subscriptions, planPrices);
+    const paying = subscriptions.filter(
+      (s) => s.status === 'active' || s.status === 'past_due',
+    ).length;
+    const trend = collectedByMonth(invoices, 12, now);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const collectedNow = collectedInMonth(invoices, thisMonth);
+    const collectedBefore = collectedInMonth(invoices, monthKey(lastMonth.toISOString()));
+
     return {
       renewals: renewalBreakdown(subscriptions, now),
       flagged: needsAttention(subscriptions, now),
       active: subscriptions.filter((s) => s.status === 'active').length,
       withoutRecord: organisations.length - subscriptions.length,
       months: monthlyGrowth(organisations, now).map((g) => g.label),
+
+      mrr,
+      arr: annualRunRatePence(mrr),
+      arpo: averageRevenuePerOrgPence(mrr, paying),
+      collected: collectedNow,
+      // Month over month on collections, not on MRR: MRR is a snapshot with no
+      // history behind it, so a change figure on it would be invented.
+      collectedChange:
+        collectedBefore === 0
+          ? null
+          : Math.round(((collectedNow - collectedBefore) / collectedBefore) * 1000) / 10,
+      outstanding: outstandingPence(invoices),
+      pastDue: pastDuePence(invoices),
+      pastDueCount: invoices.filter((i) => i.status === 'past_due').length,
+      openCount: invoices.filter((i) => i.status === 'open' || i.status === 'past_due')
+        .length,
+      refunds: refundedInMonth(invoices, thisMonth),
+      refundCount: invoices.filter(
+        (i) => i.refunded_at !== null && monthKey(i.refunded_at) === thisMonth,
+      ).length,
+      trendValues: trend.map((t) => Math.round(t.pence / 100)),
+      trendLabels: trend.map((t) => {
+        const [, month] = t.month.split('-');
+        return (
+          [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ][Number(month) - 1] ?? t.month
+        );
+      }),
+      byPlan: revenueByPlan(subscriptions, planPrices),
+      recent: invoices.slice(0, 8),
+      failing: invoices.filter((i) => i.status === 'past_due').slice(0, 6),
     };
-  }, [subscriptions, organisations]);
+  }, [subscriptions, organisations, invoices, planPrices]);
 
   return (
     <AdminPage
@@ -152,30 +221,59 @@ export function AdminBillingPage(): JSX.Element {
           <TileGrid>
             <StatTile
               label="MRR"
-              value={DEMO_MRR}
-              hint={
-                <>
-                  <span className="font-semibold text-success">{DEMO_MRR_CHANGE}</span>{' '}
-                  MoM
-                </>
-              }
-              chart={<Sparkline values={DEMO_REVENUE_TREND} colour="#1EA06B" />}
+              value={formatMoney(derived.mrr)}
+              hint="Active and past due"
+              chart={<Sparkline values={derived.trendValues} colour="#1EA06B" />}
             />
-            <StatTile label="ARR" value={DEMO_ARR_FULL} />
+            <StatTile
+              label="ARR"
+              value={formatMoney(derived.arr)}
+              hint="Twelve months at today's rate"
+            />
             <StatTile
               label="Collected this month"
-              value={DEMO_COLLECTED}
-              hint={DEMO_COLLECTED_HINT}
+              value={formatMoney(derived.collected)}
+              hint={
+                derived.collectedChange === null ? (
+                  'By payment date'
+                ) : (
+                  <>
+                    <span
+                      className={`font-semibold ${
+                        derived.collectedChange >= 0 ? 'text-success' : 'text-danger'
+                      }`}
+                    >
+                      {derived.collectedChange >= 0 ? '+' : ''}
+                      {derived.collectedChange}%
+                    </span>{' '}
+                    on last month
+                  </>
+                )
+              }
             />
             <StatTile
               label="Outstanding"
-              value={DEMO_OUTSTANDING}
+              value={formatMoney(derived.outstanding)}
               hint={
-                <span className="font-semibold text-danger">{DEMO_OUTSTANDING_HINT}</span>
+                derived.pastDueCount > 0 ? (
+                  <span className="font-semibold text-danger">
+                    {formatMoney(derived.pastDue)} past due
+                  </span>
+                ) : (
+                  `${derived.openCount} open`
+                )
               }
             />
-            <StatTile label="Refunds" value={DEMO_REFUNDS} hint={DEMO_REFUNDS_HINT} />
-            <StatTile label="ARPO" value={DEMO_ARPO} hint="per organisation" />
+            <StatTile
+              label="Refunds"
+              value={formatMoney(derived.refunds)}
+              hint={`${derived.refundCount} this month`}
+            />
+            <StatTile
+              label="ARPO"
+              value={derived.arpo === null ? '—' : formatMoney(derived.arpo)}
+              hint="Per paying organisation"
+            />
           </TileGrid>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -185,24 +283,39 @@ export function AdminBillingPage(): JSX.Element {
               actions={<Badge tone="neutral">12 months</Badge>}
             >
               <TrendChart
-                title="Monthly recurring revenue by month — placeholder figures"
-                labels={derived.months}
+                title="Collected per month, in pounds, by payment date"
+                labels={derived.trendLabels}
                 series={[
                   {
-                    name: 'Monthly recurring revenue',
-                    values: DEMO_REVENUE_TREND,
+                    name: 'Collected',
+                    values: derived.trendValues,
                     colour: '#1EA06B',
                   },
                 ]}
                 height={250}
               />
+              <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
+                Collected, not billed — a month with no payments is drawn as zero rather
+                than skipped, so a bad month is visible instead of smoothed over.
+              </p>
             </Panel>
 
             <Panel title="Revenue by plan">
-              <MeterRows
-                caption="Revenue by plan"
-                rows={DEMO_REVENUE_BY_PLAN.map((r) => ({ ...r }))}
-              />
+              {derived.byPlan.length === 0 ? (
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  No subscription is active or past due, so there is no revenue to split.
+                </p>
+              ) : (
+                <MeterRows
+                  caption="Monthly recurring revenue by plan"
+                  rows={derived.byPlan.map((r) => ({
+                    label: `${r.plan.charAt(0).toUpperCase()}${r.plan.slice(1)}`,
+                    value: r.pence,
+                    display: formatMoneyShort(r.pence),
+                    colour: PLAN_COLOUR[r.plan],
+                  }))}
+                />
+              )}
             </Panel>
           </div>
 
@@ -228,54 +341,65 @@ export function AdminBillingPage(): JSX.Element {
                     </tr>
                   </thead>
                   <tbody>
-                    {DEMO_INVOICES.map((invoice) => {
-                      const org = orgByName.get(invoice.organisation);
-                      return (
-                        <tr
-                          key={invoice.id}
-                          className="border-b border-divider last:border-0 dark:border-divider-dark"
+                    {derived.recent.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark"
                         >
-                          <td className="px-4 py-2.5 font-mono text-xs tabular-nums text-content dark:text-content-dark">
-                            {invoice.id}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            {org ? (
-                              <Link
-                                to={`/admin/organisations/${org.id}`}
-                                className="text-primary hover:underline"
-                              >
-                                {invoice.organisation}
-                              </Link>
-                            ) : (
-                              <span className="text-content dark:text-content-dark">
-                                {invoice.organisation}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
-                            {invoice.amount}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <Badge tone={INVOICE_TONE[invoice.status]} dot>
-                              {INVOICE_LABEL[invoice.status]}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span className="flex justify-end gap-1.5">
-                              {['View', 'Credit'].map((label) => (
-                                <span
-                                  key={label}
-                                  title="There is no invoice record to open or credit"
-                                  className="cursor-not-allowed rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
+                          No invoice has been issued.
+                        </td>
+                      </tr>
+                    ) : (
+                      derived.recent.map((invoice) => {
+                        const org = orgById.get(invoice.org_id);
+                        return (
+                          <tr
+                            key={invoice.id}
+                            className="border-b border-divider last:border-0 dark:border-divider-dark"
+                          >
+                            <td className="px-4 py-2.5 font-mono text-xs tabular-nums text-content dark:text-content-dark">
+                              {invoice.number}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {org ? (
+                                <Link
+                                  to={`/admin/organisations/${org.id}`}
+                                  className="text-primary hover:underline"
                                 >
-                                  {label}
+                                  {org.name}
+                                </Link>
+                              ) : (
+                                <span className="text-content-muted dark:text-content-muted-dark">
+                                  Organisation deleted
                                 </span>
-                              ))}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono tabular-nums text-content dark:text-content-dark">
+                              {formatMoneyExact(invoice.amount_pence, invoice.currency)}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <Badge tone={INVOICE_TONE[invoice.status] ?? 'neutral'} dot>
+                                {INVOICE_LABEL[invoice.status] ?? invoice.status}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className="flex justify-end gap-1.5">
+                                {['View', 'Credit'].map((label) => (
+                                  <span
+                                    key={label}
+                                    title="No payment provider is wired up, so nothing can be opened or credited from here"
+                                    className="cursor-not-allowed rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
+                                  >
+                                    {label}
+                                  </span>
+                                ))}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -289,54 +413,64 @@ export function AdminBillingPage(): JSX.Element {
                 </Badge>
               }
             >
-              <ul className="space-y-2.5">
-                {DEMO_FAILED_PAYMENTS.map((payment) => {
-                  const org = orgByName.get(payment.organisation);
-                  return (
-                    <li
-                      key={payment.organisation}
-                      className="flex flex-wrap items-center gap-2 border-b border-divider pb-2.5 last:border-0 last:pb-0 dark:border-divider-dark"
-                    >
-                      <AlertTriangle
-                        size={15}
-                        aria-hidden="true"
-                        className="shrink-0 text-danger"
-                      />
-                      {org ? (
-                        <Link
-                          to={`/admin/organisations/${org.id}`}
-                          className="text-sm font-medium text-primary hover:underline"
-                        >
-                          {payment.organisation}
-                        </Link>
-                      ) : (
-                        <span className="text-sm text-content dark:text-content-dark">
-                          {payment.organisation}
+              {derived.failing.length === 0 ? (
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  No invoice is past due.
+                </p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {derived.failing.map((invoice) => {
+                    const org = orgById.get(invoice.org_id);
+                    return (
+                      <li
+                        key={invoice.id}
+                        className="flex flex-wrap items-center gap-2 border-b border-divider pb-2.5 last:border-0 last:pb-0 dark:border-divider-dark"
+                      >
+                        <AlertTriangle
+                          size={15}
+                          aria-hidden="true"
+                          className="shrink-0 text-danger"
+                        />
+                        {org ? (
+                          <Link
+                            to={`/admin/organisations/${org.id}`}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            {org.name}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-content dark:text-content-dark">
+                            {invoice.number}
+                          </span>
+                        )}
+                        <span className="ml-auto flex items-center gap-3">
+                          <span className="font-mono text-xs tabular-nums text-content dark:text-content-dark">
+                            {formatMoney(invoice.amount_pence, invoice.currency)}
+                          </span>
+                          <span className="font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                            {invoice.attempts} {invoice.attempts === 1 ? 'try' : 'tries'}
+                          </span>
                         </span>
-                      )}
-                      <span className="ml-auto flex items-center gap-3">
-                        <span className="font-mono text-xs tabular-nums text-content dark:text-content-dark">
-                          {payment.amount}
-                        </span>
-                        <span className="font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                          {payment.attempts} tries
-                        </span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+                        {invoice.failure_reason && (
+                          <span className="basis-full pl-[23px] text-xs text-content-muted dark:text-content-muted-dark">
+                            {invoice.failure_reason}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
               <p className="mt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
-                {DEMO_DUNNING_NOTE}
+                Marking an invoice past due records the provider&rsquo;s reason and
+                increments its attempt count. Nothing retries a payment on a schedule —
+                dunning is a policy this console can describe and not yet a job it runs.
               </p>
             </Panel>
           </div>
 
-          {/* The measured part, kept on the screen rather than moved away — a
-              billing page with nothing real on it is a page nobody can act
-              from. */}
           <div className="grid gap-4 lg:grid-cols-2">
-            <Panel title="Renewal windows — real">
+            <Panel title="Renewal windows">
               <MeterRows
                 caption="Subscriptions by renewal window"
                 rows={derived.renewals.map((r) => ({
@@ -352,19 +486,19 @@ export function AdminBillingPage(): JSX.Element {
               </p>
             </Panel>
 
-            <Callout tone="warning" title="Every figure with a £ on it is placeholder">
+            <Callout tone="info" title="Where these figures come from">
               <p>
-                <code>subscriptions</code> carries a plan, a status and a period end — no
-                amount, no currency, no interval — and there is no invoice, payment,
-                credit, refund or dunning table. No provider is connected, so nothing has
-                ever been charged or collected.
+                MRR is the sum of <code>subscriptions.price_pence</code>, falling back to
+                the plan price, over the subscriptions that are active or past due.
+                Collected, outstanding and refunds are sums over <code>invoices</code> —
+                collected by payment date, outstanding by status regardless of age.
+                Nothing is stored pre-aggregated, so this screen cannot drift from the
+                rows below it.
               </p>
               <p>
-                MRR, ARR, collections, outstanding, refunds, ARPO, the revenue chart, the
-                invoice list and the failed-payment queue come from{' '}
-                <code>src/lib/adminOverviewDemo.ts</code>. Their buttons are disabled
-                rather than wired, because there is nothing behind them to open, credit or
-                retry.
+                No payment provider is connected. An invoice can be marked paid, past due
+                or refunded in this database and no money moves, so View and Credit stay
+                disabled and dunning is a described policy rather than a job that runs.
               </p>
             </Callout>
           </div>

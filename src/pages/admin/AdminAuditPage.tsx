@@ -64,17 +64,24 @@ function toneFor(severity: string): (typeof SEVERITY_TONE)[SeverityKey] {
  * so a deleted customer's events still name the customer.
  */
 /**
- * Read one named key out of an audit row's free-form metadata — and only when
- * it is a scalar.
+ * The prior or resulting value for one audit row.
  *
- * The reference shows Before and After columns; `audit_logs` has no such
- * columns, so the values can only come from `metadata`, which is written by
- * whatever recorded the event. §44 is explicit that sensitive information must
- * not surface in a standard audit view, so this never renders an object or an
- * array — a nested payload is exactly where a phone number or an address would
- * be hiding. Anything that is not a string, number or boolean reads as "—".
+ * `audit_logs.before_value` and `after_value` are real columns as of 0027, and
+ * `audit_write` lifts a scalar out of the metadata into them on every write.
+ * Rows written before that migration have nothing in the columns, so this falls
+ * back to reading the same two keys out of `metadata` — otherwise the whole
+ * history before 05 August 2026 would show an em dash and look like a gap in
+ * the record rather than a column that arrived late.
+ *
+ * Only scalars, in both paths. §44 is explicit that sensitive information must
+ * not surface in a standard audit view, and a nested payload is exactly where a
+ * phone number or an address would be hiding.
  */
-function scalarFromMetadata(metadata: unknown, key: 'before' | 'after'): string | null {
+function changeValue(entry: AuditLog, key: 'before' | 'after'): string | null {
+  const column = key === 'before' ? entry.before_value : entry.after_value;
+  if (column !== null && column !== undefined) return column;
+
+  const metadata = entry.metadata;
   if (typeof metadata !== 'object' || metadata === null) return null;
   const value = (metadata as Record<string, unknown>)[key];
   if (typeof value === 'string' || typeof value === 'number') return String(value);
@@ -212,7 +219,7 @@ export function AdminAuditPage(): JSX.Element {
       {
         key: 'action',
         label: 'Action',
-        width: 'w-[19%]',
+        width: 'w-[17%]',
         cell: (entry) => (
           <span className="block truncate font-medium">{entry.action}</span>
         ),
@@ -220,7 +227,7 @@ export function AdminAuditPage(): JSX.Element {
       {
         key: 'entity',
         label: 'Entity',
-        width: 'w-[12%]',
+        width: 'w-[11%]',
         cell: (entry) => (
           // `table-fixed` gives this column a hard width, so an entity name
           // longer than it — `support_access_session` — ran under the severity
@@ -233,23 +240,19 @@ export function AdminAuditPage(): JSX.Element {
       {
         key: 'entity',
         label: 'Before',
-        width: 'w-[6%]',
-        cell: (entry) => (
-          <ChangeCell value={scalarFromMetadata(entry.metadata, 'before')} muted />
-        ),
+        width: 'w-[8%]',
+        cell: (entry) => <ChangeCell value={changeValue(entry, 'before')} muted />,
       },
       {
         key: 'entity',
         label: 'After',
-        width: 'w-[6%]',
-        cell: (entry) => (
-          <ChangeCell value={scalarFromMetadata(entry.metadata, 'after')} />
-        ),
+        width: 'w-[9%]',
+        cell: (entry) => <ChangeCell value={changeValue(entry, 'after')} />,
       },
       {
         key: 'entity',
         label: 'IP',
-        width: 'w-[10%]',
+        width: 'w-[9%]',
         cell: (entry) => (
           <span className="block truncate font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
             {entry.ip_address ?? '—'}
@@ -259,7 +262,7 @@ export function AdminAuditPage(): JSX.Element {
       {
         key: 'severity',
         label: 'Result',
-        width: 'w-[11%]',
+        width: 'w-[10%]',
         cell: (entry) => (
           <Badge tone={toneFor(entry.severity)} dot>
             {entry.severity}
@@ -318,9 +321,10 @@ export function AdminAuditPage(): JSX.Element {
           <Callout tone="info">
             <p>
               Most writers are still to be added, so this log is thinner than it will be
-              rather than incomplete. Before and After are read from a row&rsquo;s{' '}
-              <code>metadata</code> and only when the value is a scalar — an audit view is
-              the wrong place to dump a payload that may hold personal data.
+              rather than incomplete. Before and After come from the columns of the same
+              name, falling back to a row&rsquo;s <code>metadata</code> for events
+              recorded before those columns existed — and only ever a scalar, because an
+              audit view is the wrong place to dump a payload that may hold personal data.
             </p>
           </Callout>
 

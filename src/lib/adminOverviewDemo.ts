@@ -35,13 +35,8 @@
 
 /** Marks a card whose figures are placeholder, for the on-screen notice. */
 export const DEMO_SECTIONS = [
-  'Active users today',
-  'Monthly revenue',
-  'Subscription mix',
-  'Organisation health',
   'Churn on the growth chart',
   'System health history',
-  'Support cases',
 ] as const;
 
 export const DEMO_ACTIVE_USERS_TODAY = 12_489;
