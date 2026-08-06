@@ -21,9 +21,7 @@ import {
 } from '@/lib/supportAccess';
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
 import {
-  averageCsat,
   awaitingFirstResponse,
-  csatResponses,
   formatMinutes,
   medianFirstResponseMinutes,
   medianResolutionMinutes,
@@ -183,8 +181,11 @@ export function AdminSupportPage(): JSX.Element {
       awaiting: awaitingFirstResponse(allCases),
       firstResponse: medianFirstResponseMinutes(allCases),
       resolution: medianResolutionMinutes(allCases),
-      csat: averageCsat(allCases),
-      csatCount: csatResponses(allCases),
+      resolved30: allCases.filter(
+        (c) =>
+          c.resolved_at !== null &&
+          Date.parse(c.resolved_at) > Date.now() - 30 * 86_400_000,
+      ).length,
     }),
     [allCases],
   );
@@ -242,14 +243,15 @@ export function AdminSupportPage(): JSX.Element {
               value={formatMinutes(counts.resolution)}
               hint="Across resolved cases"
             />
+            {/* No CSAT tile. `rate_support_case` exists and no tenant-side
+                screen calls it, so the only ratings that can ever appear are
+                the ones the seed wrote. A satisfaction score nobody can submit
+                is a dashboard telling you something false about your own
+                support. It returns with the rating form. */}
             <StatTile
-              label="CSAT"
-              value={counts.csat === null ? '-' : `${counts.csat} / 5`}
-              hint={
-                counts.csatCount === 0
-                  ? 'Nobody has rated a case'
-                  : `${counts.csatCount} response${counts.csatCount === 1 ? '' : 's'}`
-              }
+              label="Resolved, 30 days"
+              value={counts.resolved30}
+              hint="Closed or resolved"
             />
           </TileGrid>
 

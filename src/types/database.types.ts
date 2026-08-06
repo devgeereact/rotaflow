@@ -1440,6 +1440,7 @@ export type Database = {
           created_by: string | null;
           id: string;
           industry: string | null;
+          is_demo: boolean;
           last_activity_at: string | null;
           name: string;
           plan: string;
@@ -1460,6 +1461,7 @@ export type Database = {
           created_by?: string | null;
           id?: string;
           industry?: string | null;
+          is_demo?: boolean;
           last_activity_at?: string | null;
           name: string;
           plan?: string;
@@ -1480,6 +1482,7 @@ export type Database = {
           created_by?: string | null;
           id?: string;
           industry?: string | null;
+          is_demo?: boolean;
           last_activity_at?: string | null;
           name?: string;
           plan?: string;

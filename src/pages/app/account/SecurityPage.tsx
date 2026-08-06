@@ -50,9 +50,29 @@ export function SecurityPage(): JSX.Element {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+
+      // End every other session, explicitly.
+      //
+      // The panel has always promised this and never done it: whether a
+      // password change revokes other refresh tokens is a GoTrue server
+      // setting, so the claim was true or false depending on configuration
+      // nobody here controls. `scope: 'others'` revokes them and leaves this
+      // device signed in, which is exactly what someone changing a password
+      // after a compromise needs. A failure here is reported rather than
+      // swallowed: "your password changed but the attacker may still be
+      // signed in" is not something to keep quiet about.
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'others' });
+      if (signOutError) {
+        reportError(signOutError, { area: 'account-security:revoke-others' });
+        showError(
+          'Password changed, but other sessions could not be ended. Sign out everywhere from Sessions.',
+        );
+      } else {
+        showSuccess('Password changed and every other session ended.');
+      }
+
       setNewPassword('');
       setConfirmPassword('');
-      showSuccess('Password changed.');
     } catch (err) {
       reportError(err, { area: 'account-security:change-password' });
       showError('Could not change your password. Please try again.');

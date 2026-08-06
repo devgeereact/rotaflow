@@ -726,6 +726,47 @@ const TABLES: Record<string, unknown> = {
   retention_policies: RETENTION_POLICIES,
   platform_ip_allowlist: [],
   background_jobs: BACKGROUND_JOBS,
+
+  // RPCs the console calls. Keyed by the path segment after `/rpc/`, so the
+  // interceptor can serve them exactly like a table. Without these the screens
+  // that moved onto SECURITY DEFINER functions render dashes in the preview
+  // while showing real numbers in production, which teaches the reviewer the
+  // wrong thing about their own console.
+  'rpc/platform_auth_facts_summary': [
+    {
+      total_accounts: 12,
+      unverified: 1,
+      active_30d: 11,
+      inactive_90d: 1,
+      mfa_enrolled: 0,
+      banned: 0,
+    },
+  ],
+  'rpc/platform_totals': [
+    {
+      organisations: ORGANISATIONS.length,
+      active_orgs: ORGANISATIONS.filter((o) => o.status === 'active').length,
+      profiles: PROFILES.length,
+      staff_profiles: 91,
+      published_rotas: 96,
+      shifts_month: 4210,
+    },
+  ],
+  'rpc/platform_tenant_counts': [
+    {
+      staff_total: 24,
+      staff_active: 21,
+      locations: 4,
+      departments: 6,
+      published_rotas: 18,
+      shifts_month: 412,
+    },
+  ],
+  'rpc/my_feature_access': [
+    { feature: 'gps_clock_in', source: 'plan' },
+    { feature: 'advanced_reporting', source: 'plan' },
+    { feature: 'ai_rota_assistant', source: 'flag' },
+  ],
 };
 
 /** Everything the console reads, keyed by the PostgREST path segment. */
@@ -758,7 +799,10 @@ function installFixtureFetch(): void {
     if (!href.includes('/rest/v1/')) return original(input, init);
 
     const url = new URL(href);
-    const table = url.pathname.split('/rest/v1/')[1]?.split('?')[0] ?? '';
+    const path = url.pathname.split('/rest/v1/')[1]?.split('?')[0] ?? '';
+    // An RPC is `rpc/<name>`; a table is just the name. Both are looked up in
+    // the same map, so adding a fixture for either is one line.
+    const table = path;
     const data = fixtureFor(table, url);
 
     if (data === undefined) {

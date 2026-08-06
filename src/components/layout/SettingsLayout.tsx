@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';
 import { RouteFallback } from '@/components/RouteFallback';
@@ -42,7 +42,25 @@ export function SettingsLayout(): JSX.Element {
       <PageHeader
         title={active ? `Settings, ${active.label}` : 'Settings'}
         description={`Manage ${orgName || 'your organisation'}'s details, preferences and platform configuration.`}
-        below={<Tabs items={tabs} label="Settings sections" />}
+        below={
+          <>
+            <Tabs items={tabs} label="Settings sections" />
+            {/* Settings is the organisation. A password is personal, and lives
+                under Account. That split is defensible and it is not
+                discoverable: somebody worried about a compromised password
+                looks here first, so here is where the pointer belongs. */}
+            <p className="mt-3 text-xs text-content-muted dark:text-content-muted-dark">
+              Looking for your own password, sessions or two-factor?{' '}
+              <Link
+                to="/app/account/security"
+                className="font-medium text-primary hover:underline"
+              >
+                Account security
+              </Link>{' '}
+              has them. Changing your password there ends every other session.
+            </p>
+          </>
+        }
       />
       {/* Scoped Suspense: a boundary above this would unmount the tab bar
           while the next section's chunk loads, so every tab click would blank
