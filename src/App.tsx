@@ -144,6 +144,10 @@ const LeavePreviewPage = devPage(
   'LeavePreviewPage',
   () => import('@/pages/LeavePreviewPage'),
 );
+const AppShellPreviewPage = devPage(
+  'AppShellPreviewPage',
+  () => import('@/pages/AppShellPreviewPage'),
+);
 const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
@@ -529,6 +533,12 @@ export function App(): JSX.Element {
                         <Route path="/reports-preview" element={<ReportsPreviewPage />} />
                         {/* design/Leave.png's numbers. */}
                         <Route path="/leave-preview" element={<LeavePreviewPage />} />
+                        {/* The whole organisation workspace shell (rail, org
+                        switcher, topbar, mobile tab bar) against a stubbed
+                        OrgContext, with the real *PreviewPage components
+                        routed inside it. See AppShellPreviewPage.
+                        ?role=owner|manager|staff switches the stubbed role. */}
+                        <Route path="/app-preview/*" element={<AppShellPreviewPage />} />
                       </>
                     )}
                     {/* Public on purpose: an invitee has no account yet, and

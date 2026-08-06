@@ -42,6 +42,25 @@ export async function listOrgLeaveRequests(orgId: string): Promise<LeaveRequest[
   return data ?? [];
 }
 
+/**
+ * How many requests are still pending, for the sidebar's Leave badge.
+ *
+ * `head: true` returns the count from the response header without pulling any
+ * rows, so a manager with a long history does not download it just to render
+ * a number. RLS decides what "pending" means here: a manager sees the org
+ * queue, a staff member sees only their own, which is exactly the count each
+ * of them can act on.
+ */
+export async function countPendingLeaveRequests(orgId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('leave_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .eq('status', 'pending');
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** Manager approve/reject. RLS (has_org_role) is the real enforcement. */
 export async function reviewLeaveRequest(
   id: string,

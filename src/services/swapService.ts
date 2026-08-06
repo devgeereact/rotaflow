@@ -46,6 +46,21 @@ export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShi
 }
 
 /**
+ * How many swaps are still pending, for the sidebar's Shift Swaps badge. See
+ * `countPendingLeaveRequests` for why `head: true` and why RLS alone is
+ * enough to make this the right number for both a manager and a staff member.
+ */
+export async function countPendingShiftSwaps(orgId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('shift_swaps')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .eq('status', 'pending');
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
  * The target colleague accepting or declining. Permitted by
  * shift_swaps_target_respond, which only allows a still-pending row to move
  * to 'accepted' or 'rejected'. A manager still has to approve an accepted
