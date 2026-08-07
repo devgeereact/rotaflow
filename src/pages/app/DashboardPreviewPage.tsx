@@ -1,15 +1,16 @@
-import { useState } from 'react';
 import { format } from 'date-fns';
-import { DashboardView } from '@/components/dashboard/DashboardView';
+import { ManagerDashboard } from '@/components/dashboard/ManagerDashboard';
+import { StaffDashboard } from '@/components/dashboard/StaffDashboard';
 import type {
   DashboardOverview,
+  MyWeekSummary,
   PendingRequest,
   ShiftGroup,
+  WeeklyRosterSummary,
 } from '@/services/dashboardService';
 import type { Announcement, Location, StaffProfile } from '@/types';
 
 const TODAY = format(new Date(), 'yyyy-MM-dd');
-/** Fixed "now" so Ongoing / Starts-in labels always read the way the reference shows them, regardless of when this is screenshotted. */
 const NOW = new Date(`${TODAY}T13:00:00`);
 
 function at(time: string, dayOffset = 0): string {
@@ -17,6 +18,16 @@ function at(time: string, dayOffset = 0): string {
   d.setDate(d.getDate() + dayOffset);
   return d.toISOString();
 }
+
+/** Monday of the current week, so the cover chart's dates land on real weekdays. */
+const MONDAY = (() => {
+  const d = new Date(`${TODAY}T00:00:00`);
+  const day = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - day);
+  return d;
+})();
+const weekDate = (offset: number): string =>
+  format(new Date(MONDAY.getTime() + offset * 86_400_000), 'yyyy-MM-dd');
 
 const LOCATIONS: Location[] = [
   'Sunnyvale Care Home',
@@ -64,49 +75,6 @@ const STAFF: StaffProfile[] = [
   };
 });
 
-const DAY_GROUPS: ShiftGroup[] = [
-  {
-    key: '1',
-    shiftTypeName: 'Morning Care Shift',
-    colour: '#3B6FE0',
-    locationName: 'Sunnyvale Care Home',
-    startsAt: at('07:00'),
-    endsAt: at('15:00'),
-    filled: 8,
-    total: 10,
-  },
-  {
-    key: '2',
-    shiftTypeName: 'Day Shift',
-    colour: '#6CA0EB',
-    locationName: 'Riverside House',
-    startsAt: at('09:00'),
-    endsAt: at('17:00'),
-    filled: 6,
-    total: 7,
-  },
-  {
-    key: '3',
-    shiftTypeName: 'Evening Shift',
-    colour: '#C69A45',
-    locationName: 'Oakview Care Home',
-    startsAt: at('15:00'),
-    endsAt: at('23:00'),
-    filled: 6,
-    total: 6,
-  },
-  {
-    key: '4',
-    shiftTypeName: 'Night Shift',
-    colour: '#4FB39A',
-    locationName: 'Riverside House',
-    startsAt: at('23:00'),
-    endsAt: at('07:00', 1),
-    filled: 2,
-    total: 4,
-  },
-];
-
 const PENDING: PendingRequest[] = [
   {
     id: 'p1',
@@ -114,7 +82,7 @@ const PENDING: PendingRequest[] = [
     staffName: 'Sarah Johnson',
     detail: 'Annual leave',
     dateLabel: '2-6 Jun',
-    createdAt: NOW.toISOString(),
+    createdAt: new Date(NOW.getTime() - 16 * 86_400_000).toISOString(),
   },
   {
     id: 'p2',
@@ -179,46 +147,11 @@ const ANNOUNCEMENTS: Announcement[] = [
   },
 ];
 
-const UPCOMING: ShiftGroup[] = [
-  {
-    key: 'u1',
-    shiftTypeName: 'Morning Care Shift',
-    colour: '#3B6FE0',
-    locationName: 'Sunnyvale Care Home',
-    startsAt: at('07:00', 1),
-    endsAt: at('15:00', 1),
-    filled: 10,
-    total: 10,
-  },
-  {
-    key: 'u2',
-    shiftTypeName: 'Evening Shift',
-    colour: '#C69A45',
-    locationName: 'Oakview Care Home',
-    startsAt: at('15:00', 2),
-    endsAt: at('23:00', 2),
-    filled: 6,
-    total: 6,
-  },
-  {
-    key: 'u3',
-    shiftTypeName: 'Night Shift',
-    colour: '#4FB39A',
-    locationName: 'Riverside House',
-    startsAt: at('23:00', 3),
-    endsAt: at('07:00', 4),
-    filled: 4,
-    total: 4,
-  },
-];
-
 const monthShiftsByDate = new Map<string, { total: number; filled: number }>();
 for (let day = 1; day <= 31; day++) {
   const date = new Date(NOW.getFullYear(), NOW.getMonth(), day);
   if (date.getMonth() !== NOW.getMonth()) continue;
   const iso = format(date, 'yyyy-MM-dd');
-  // Weekends lighter, and every 6th day shown understaffed, just enough
-  // variation to demonstrate both calendar dot colours.
   const weekday = date.getDay();
   if (weekday === 0 || weekday === 6) {
     monthShiftsByDate.set(iso, { total: 4, filled: 4 });
@@ -234,36 +167,83 @@ const OVERVIEW: DashboardOverview = {
   announcements: ANNOUNCEMENTS,
   compliancePercent: 96,
   monthShiftsByDate,
-  upcomingGroups: UPCOMING,
+  upcomingGroups: [],
 };
+
+const WEEKLY: WeeklyRosterSummary = {
+  totalHours: 365,
+  coverByDate: [6, 6, 6, 5, 6, 5, 4].map((onShift, i) => ({
+    date: weekDate(i),
+    onShift,
+    required: 6,
+  })),
+  hoursByDepartment: [
+    { name: 'Nursing', hours: 267 },
+    { name: 'Dementia', hours: 78 },
+    { name: 'Wellbeing', hours: 20 },
+  ],
+  overLimitStaff: [
+    { staffName: 'Amara Osei', hours: 49, contractHours: 37.5, overStatutory: true },
+  ],
+  rotaStatus: 'draft',
+};
+
+const MY_WEEK: MyWeekSummary = { hours: 32, shiftsBooked: 4 };
+
+const MY_UPCOMING: ShiftGroup[] = [
+  {
+    key: 'u1',
+    shiftTypeName: 'Morning Care Shift',
+    colour: '#3B6FE0',
+    locationName: 'Sunnyvale Care Home',
+    startsAt: at('07:00', 1),
+    endsAt: at('15:00', 1),
+    filled: 1,
+    total: 1,
+  },
+  {
+    key: 'u2',
+    shiftTypeName: 'Evening Shift',
+    colour: '#C69A45',
+    locationName: 'Oakview Care Home',
+    startsAt: at('15:00', 2),
+    endsAt: at('23:00', 2),
+    filled: 1,
+    total: 1,
+  },
+];
 
 /**
  * Design-loop preview only, at `/dashboard-preview`. The real `/app/dashboard`
- * needs a live Supabase session and a seeded organisation (shifts, staff,
- * requests, announcements), neither of which a screenshot tool has. Renders
- * the same `DashboardView` against fixed mock data shaped to match
- * design/Workforce-Dashboard.png's numbers, so the screen can be verified
- * visually without a real account.
+ * needs a live Supabase session and a seeded organisation, neither of which a
+ * screenshot tool has. Renders the real `ManagerDashboard`/`StaffDashboard`
+ * against fixed mock data shaped to match
+ * `docs/ORGANISATION_WORKSPACE.html`'s numbers. `?role=staff` switches branch.
  */
 export function DashboardPreviewPage(): JSX.Element {
-  const [dayLabel, setDayLabel] = useState(format(new Date(TODAY), 'EEEE, d MMMM yyyy'));
+  const role = new URLSearchParams(window.location.search).get('role');
 
   return (
     <div className="p-8">
-      <DashboardView
-        firstName="James"
-        overview={OVERVIEW}
-        pending={PENDING}
-        dayGroups={DAY_GROUPS}
-        dayLoading={false}
-        dayLabel={dayLabel}
-        timezone="Europe/London"
-        now={NOW}
-        onPrevDay={() => setDayLabel('Previous day (preview only)')}
-        onNextDay={() => setDayLabel('Next day (preview only)')}
-        onToday={() => setDayLabel('Today')}
-        onSelectDate={() => setDayLabel('Selected date (preview only)')}
-      />
+      {role === 'staff' ? (
+        <StaffDashboard
+          firstName="Priya"
+          overview={OVERVIEW}
+          myWeek={MY_WEEK}
+          myUpcoming={MY_UPCOMING}
+          leaveRemaining={11}
+          holidayAllowance={28}
+          openSwaps={2}
+        />
+      ) : (
+        <ManagerDashboard
+          firstName="Marcus"
+          orgName="Sunnyvale Care Group"
+          overview={OVERVIEW}
+          pending={PENDING}
+          weekly={WEEKLY}
+        />
+      )}
     </div>
   );
 }

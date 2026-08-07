@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { cn } from '@/lib/utils';
 
@@ -8,6 +8,16 @@ const ROLE_LABEL: Record<string, string> = {
   manager: 'Manager',
   staff: 'Staff',
 };
+
+/** "Sunnyvale Care Group" → "SC". Same shape as the rail's other avatar chips. */
+function orgInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('');
+}
 
 interface SidebarOrgSwitcherProps {
   collapsed: boolean;
@@ -68,9 +78,9 @@ export function SidebarOrgSwitcher({
       <div className="px-3 pb-3">
         <span
           title={`${orgName} · ${summary}`}
-          className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"
+          className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-sm font-bold text-primary-fg"
         >
-          <Building2 size={18} aria-hidden="true" />
+          {orgInitials(orgName)}
           <span className="sr-only">{orgName}</span>
         </span>
       </div>
@@ -95,8 +105,8 @@ export function SidebarOrgSwitcher({
           !canSwitch && 'cursor-default',
         )}
       >
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Building2 size={16} aria-hidden="true" />
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand text-[13px] font-bold text-primary-fg">
+          {orgInitials(orgName)}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-content dark:text-content-dark">

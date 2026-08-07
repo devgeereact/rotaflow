@@ -238,6 +238,24 @@ export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRef
 Tables must also be in the `supabase_realtime` publication, `0012_realtime.sql`. Adding a table to `RealtimeTable` without adding it there
 silently produces a subscription that never fires.
 
+### 12. `useNavBadges`
+
+`src/hooks/useNavBadges.ts`
+Live pending-count badges for the sidebar's Leave and Shift Swaps rows.
+
+```ts
+interface NavBadgeCounts {
+  leave: number;
+  swaps: number;
+}
+export function useNavBadges(orgId: string | null): NavBadgeCounts;
+```
+
+Both counts come back pre-scoped by RLS: a manager gets the org's pending
+queue, a staff member gets only their own still-pending requests. No role
+branching in the hook. Built on `useRealtimeRefresh`, so an approval
+elsewhere updates the badge without a poll or a manual refresh.
+
 ## Conventions
 
 - Every hook is fully typed with an explicit return interface.

@@ -43,13 +43,11 @@ export function NotificationBell(): JSX.Element {
       aria-label={
         unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
       }
-      className="relative rounded-lg p-2 text-content-muted hover:bg-surface-subtle hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark"
+      className="relative grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[10px] border border-surface-border bg-surface text-content-muted hover:bg-surface-subtle hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark"
     >
-      <Bell size={18} aria-hidden="true" />
+      <Bell size={17} aria-hidden="true" />
       {unreadCount > 0 && (
-        <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-danger px-1 text-[0.65rem] font-semibold text-white">
-          {unreadCount > 9 ? '9+' : unreadCount}
-        </span>
+        <span className="absolute right-[5px] top-[5px] h-[7px] w-[7px] rounded-full border-[1.5px] border-surface bg-danger dark:border-surface-dark" />
       )}
     </Link>
   );

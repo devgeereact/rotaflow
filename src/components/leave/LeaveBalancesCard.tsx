@@ -118,6 +118,12 @@ export function LeaveBalancesCard({
           );
         })}
       </ul>
+
+      <p className="mt-3 border-t border-divider pt-2.5 text-[0.7rem] leading-4 text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
+        Balances show <span className="font-semibold">annual leave only</span>. Sickness,
+        unpaid and compassionate leave are recorded and approved here but are not deducted
+        from a separate allowance.
+      </p>
     </Card>
   );
 }

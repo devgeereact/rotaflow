@@ -1,64 +1,113 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { useCallback, useEffect, useState } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useNavBadges } from '@/hooks/useNavBadges';
 import { getProfile } from '@/services/profileService';
-import { listShiftsForPeriod } from '@/services/shiftService';
+import { getOrganisation } from '@/services/orgService';
+import { getMyStaffProfile } from '@/services/staffService';
+import { listMyLeaveRequests } from '@/services/leaveService';
 import {
   getPendingRequests,
-  groupShifts,
   loadDashboardOverview,
+  loadWeeklyRosterSummary,
+  loadMyWeekSummary,
+  loadMyUpcomingShifts,
   type DashboardOverview,
+  type MyWeekSummary,
   type PendingRequest,
   type ShiftGroup,
+  type WeeklyRosterSummary,
 } from '@/services/dashboardService';
-import { resolvePeriod, stepPeriod, todayIso } from '@/lib/schedulePeriod';
+import { schedulingPolicies } from '@/lib/orgPreferences';
+import { sumApprovedLeaveDays } from '@/lib/leaveEntitlement';
+import { resolvePeriod, todayIso } from '@/lib/schedulePeriod';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { DashboardView } from '@/components/dashboard/DashboardView';
+import { ManagerDashboard } from '@/components/dashboard/ManagerDashboard';
+import { StaffDashboard } from '@/components/dashboard/StaffDashboard';
 
 const DEFAULT_TZ = 'Europe/London';
 
-/** `/app/dashboard`. Real data wiring; see DashboardView for the markup. */
+/** `/app/dashboard`. Real data wiring; see ManagerDashboard/StaffDashboard for the markup. */
 export function DashboardPage(): JSX.Element {
-  const { orgId } = useOrg();
+  const { orgId, orgName, role } = useOrg();
   const { user } = useSupabaseAuth();
   const { showError } = useToast();
+  const isManager = role === 'owner' || role === 'manager';
+  const badges = useNavBadges(orgId);
 
   const [firstName, setFirstName] = useState<string | null>(null);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [pending, setPending] = useState<PendingRequest[]>([]);
-  const [dayAnchor, setDayAnchor] = useState(todayIso);
-  const [dayGroups, setDayGroups] = useState<ShiftGroup[]>([]);
+  const [weekly, setWeekly] = useState<WeeklyRosterSummary | null>(null);
+  const [myWeek, setMyWeek] = useState<MyWeekSummary | null>(null);
+  const [myUpcoming, setMyUpcoming] = useState<ShiftGroup[]>([]);
+  const [leaveRemaining, setLeaveRemaining] = useState<number | null>(null);
+  const [holidayAllowance, setHolidayAllowance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dayLoading, setDayLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const timezone = overview?.locations[0]?.timezone ?? DEFAULT_TZ;
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId || !user) return;
     setLoading(true);
     setLoadFailed(false);
     try {
-      const [profile, data] = await Promise.all([
+      const [profile, data, org] = await Promise.all([
         getProfile(user.id),
         loadDashboardOverview(orgId, DEFAULT_TZ, todayIso()),
+        getOrganisation(orgId),
       ]);
       setFirstName(profile?.full_name?.split(' ')[0] ?? null);
       setOverview(data);
 
-      const staffById = new Map(data.staff.map((s) => [s.id, s]));
-      setPending(await getPendingRequests(orgId, staffById));
+      const week = resolvePeriod('week', todayIso(), DEFAULT_TZ);
+      const policies = schedulingPolicies(org.settings);
+
+      if (isManager) {
+        const staffById = new Map(data.staff.map((s) => [s.id, s]));
+        const [pendingRows, weeklySummary] = await Promise.all([
+          getPendingRequests(orgId, staffById),
+          loadWeeklyRosterSummary(
+            orgId,
+            week.dates,
+            week.fromIso,
+            week.toIso,
+            policies.minStaffOnShift,
+            data.staff,
+          ),
+        ]);
+        setPending(pendingRows);
+        setWeekly(weeklySummary);
+      } else {
+        const me = await getMyStaffProfile(orgId, user.id);
+        if (me) {
+          const sevenDaysFrom = resolvePeriod('day', todayIso(), DEFAULT_TZ).fromIso;
+          const sevenDaysTo = resolvePeriod('week', todayIso(), DEFAULT_TZ).toIso;
+          const [mine, upcoming, myLeave] = await Promise.all([
+            loadMyWeekSummary(orgId, me.id, week.fromIso, week.toIso),
+            loadMyUpcomingShifts(
+              orgId,
+              me.id,
+              sevenDaysFrom,
+              sevenDaysTo,
+              data.shiftTypes,
+              data.locations,
+            ),
+            listMyLeaveRequests(me.id),
+          ]);
+          setMyWeek(mine);
+          setMyUpcoming(upcoming);
+          const yearStart = `${new Date().getFullYear()}-01-01`;
+          const yearEnd = `${new Date().getFullYear()}-12-31`;
+          const used = sumApprovedLeaveDays(myLeave, yearStart, yearEnd);
+          const allowance = me.holiday_allowance ?? 0;
+          setLeaveRemaining(Math.max(0, allowance - used));
+          setHolidayAllowance(allowance);
+        }
+      }
     } catch (error) {
       reportError(error, { area: 'dashboard:load' });
       setLoadFailed(true);
@@ -66,7 +115,7 @@ export function DashboardPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [orgId, user, showError]);
+  }, [orgId, user, showError, isManager]);
 
   useEffect(() => {
     void load();
@@ -74,39 +123,10 @@ export function DashboardPage(): JSX.Element {
 
   // Live updates: refetch when someone else changes this data.
   useRealtimeRefresh({
-    tables: ['shifts', 'leave_requests', 'shift_swaps', 'announcements'],
+    tables: ['shifts', 'rotas', 'leave_requests', 'shift_swaps', 'announcements'],
     scope: { column: 'org_id', value: orgId },
     onChange: () => void load(),
   });
-
-  // Re-fetched separately so stepping through days doesn't reload the whole page.
-  useEffect(() => {
-    if (!orgId || !overview) return;
-    let cancelled = false;
-    setDayLoading(true);
-    const period = resolvePeriod('day', dayAnchor, timezone);
-    listShiftsForPeriod({ orgId, fromIso: period.fromIso, toIso: period.toIso })
-      .then((shifts) => {
-        if (cancelled) return;
-        setDayGroups(groupShifts(shifts, overview.shiftTypes, overview.locations));
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        reportError(error, { area: 'dashboard:day-shifts' });
-        showError('Could not load the schedule for that day.');
-      })
-      .finally(() => {
-        if (!cancelled) setDayLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [orgId, overview, dayAnchor, timezone, showError]);
-
-  const dayLabel = useMemo(
-    () => format(new Date(`${dayAnchor}T00:00:00`), 'EEEE, d MMMM yyyy'),
-    [dayAnchor],
-  );
 
   if (loading) {
     return <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>;
@@ -123,20 +143,27 @@ export function DashboardPage(): JSX.Element {
     );
   }
 
+  if (isManager) {
+    return (
+      <ManagerDashboard
+        firstName={firstName}
+        orgName={orgName ?? ''}
+        overview={overview!}
+        pending={pending}
+        weekly={weekly}
+      />
+    );
+  }
+
   return (
-    <DashboardView
+    <StaffDashboard
       firstName={firstName}
       overview={overview!}
-      pending={pending}
-      dayGroups={dayGroups}
-      dayLoading={dayLoading}
-      dayLabel={dayLabel}
-      timezone={timezone}
-      now={now}
-      onPrevDay={() => setDayAnchor((d) => stepPeriod('day', d, -1))}
-      onNextDay={() => setDayAnchor((d) => stepPeriod('day', d, 1))}
-      onToday={() => setDayAnchor(todayIso())}
-      onSelectDate={setDayAnchor}
+      myWeek={myWeek}
+      myUpcoming={myUpcoming}
+      leaveRemaining={leaveRemaining}
+      holidayAllowance={holidayAllowance}
+      openSwaps={badges.swaps}
     />
   );
 }

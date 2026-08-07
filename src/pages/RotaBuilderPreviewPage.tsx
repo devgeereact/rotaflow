@@ -27,6 +27,7 @@ function formatWeekRange(dates: string[]): string {
   return `${format(new Date(`${first}T00:00:00`), 'd MMM')}, ${format(new Date(`${last}T00:00:00`), 'd MMM yyyy')}`;
 }
 import { Button } from '@/components/ui/Button';
+import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
@@ -475,6 +476,11 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               </div>
             </div>
           </div>
+
+          <Callout tone="danger" title="Draft, not visible to staff" className="mb-4">
+            {warnings.filter((w) => w.severity === 'critical').length} critical issues
+            block publication. See the Warnings tab.
+          </Callout>
 
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Select className="w-auto py-2" defaultValue="all">

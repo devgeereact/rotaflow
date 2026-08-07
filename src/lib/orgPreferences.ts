@@ -125,6 +125,15 @@ export interface SchedulingPolicies {
   roundingMinutes: number;
   /** How many days ahead a rota should be published. */
   publishLeadDays: number;
+  /**
+   * The fewest people who should be on shift at once, across the org. Below
+   * this, the dashboard's cover chart and "Shifts to fill" tile treat the day
+   * as short. One org-wide number rather than one per weekday or per site:
+   * the schema has nowhere to store either without a table of its own, and a
+   * single figure is still a real, configurable improvement over the
+   * hard-coded "6" the reference design shows.
+   */
+  minStaffOnShift: number;
 }
 
 export const DEFAULT_POLICIES: SchedulingPolicies = {
@@ -134,6 +143,7 @@ export const DEFAULT_POLICIES: SchedulingPolicies = {
   breaksArePaid: false,
   roundingMinutes: 15,
   publishLeadDays: 14,
+  minStaffOnShift: 3,
 };
 
 export function schedulingPolicies(settings: Json): SchedulingPolicies {
@@ -144,6 +154,11 @@ export function schedulingPolicies(settings: Json): SchedulingPolicies {
       DEFAULT_POLICIES.overtimeThresholdHours,
     ),
     minRestHours: num(settings, 'min_rest_hours', DEFAULT_POLICIES.minRestHours),
+    minStaffOnShift: num(
+      settings,
+      'min_staff_on_shift',
+      DEFAULT_POLICIES.minStaffOnShift,
+    ),
     maxConsecutiveDays: num(
       settings,
       'max_consecutive_days',
@@ -163,6 +178,7 @@ export function policiesToSettings(p: SchedulingPolicies): Record<string, unknow
     breaks_are_paid: p.breaksArePaid,
     rounding_minutes: p.roundingMinutes,
     publish_lead_days: p.publishLeadDays,
+    min_staff_on_shift: p.minStaffOnShift,
   };
 }
 

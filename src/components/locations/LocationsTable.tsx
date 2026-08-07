@@ -57,7 +57,7 @@ export function LocationsTable({
             className={cn(
               'cursor-pointer border-b border-divider transition-colors last:border-0 dark:border-divider-dark',
               row.id === selectedId
-                ? 'bg-primary/[0.04] dark:bg-primary/10'
+                ? 'bg-primary-wash dark:bg-primary-wash-dark'
                 : 'hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
             )}
           >

@@ -73,6 +73,15 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
     max: 90,
     step: 1,
   },
+  {
+    key: 'minStaffOnShift',
+    label: 'Minimum staff on shift',
+    hint: 'The fewest people who should be rostered at once. The dashboard flags any day that falls short.',
+    unit: 'people',
+    min: 0,
+    max: 200,
+    step: 1,
+  },
 ];
 
 /**
