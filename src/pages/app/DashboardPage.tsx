@@ -113,6 +113,13 @@ export function DashboardPage(): JSX.Element {
         }
       }
     } catch (error) {
+      // eslint-disable-next-line no-console -- temporary debug instrumentation
+      console.error(
+        '[dashboard debug]',
+        error instanceof Error
+          ? `${error.name}: ${error.message}\n${error.stack ?? ''}`
+          : JSON.stringify(error),
+      );
       reportError(error, { area: 'dashboard:load' });
       setLoadFailed(true);
       showError('Could not load the dashboard. Please try again.');

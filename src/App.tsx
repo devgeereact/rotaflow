@@ -148,6 +148,10 @@ const AppShellPreviewPage = devPage(
   'AppShellPreviewPage',
   () => import('@/pages/AppShellPreviewPage'),
 );
+const DashboardLivePreviewPage = devPage(
+  'DashboardLivePreviewPage',
+  () => import('@/pages/app/DashboardLivePreviewPage'),
+);
 const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
@@ -539,6 +543,15 @@ export function App(): JSX.Element {
                         routed inside it. See AppShellPreviewPage.
                         ?role=owner|manager|staff switches the stubbed role. */}
                         <Route path="/app-preview/*" element={<AppShellPreviewPage />} />
+                        {/* The real DashboardPage, hooks and service calls
+                        included, against a fetch-intercepted Supabase client
+                        with realistic edge-case fixtures (null settings, a
+                        null holiday_allowance, an orphaned leave request, a
+                        null department_id). See DashboardLivePreviewPage. */}
+                        <Route
+                          path="/dashboard-live-preview"
+                          element={<DashboardLivePreviewPage />}
+                        />
                       </>
                     )}
                     {/* Public on purpose: an invitee has no account yet, and
