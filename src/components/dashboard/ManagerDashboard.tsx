@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { AlertTriangle, CalendarDays, Megaphone, Repeat2, Umbrella } from 'lucide-react';
+import { CalendarDays, Megaphone, Repeat2, Umbrella } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
 import { timeAgo, hoursLabel } from '@/components/dashboard/dashboardFormat';
@@ -112,28 +113,18 @@ export function ManagerDashboard({
       </div>
 
       {blockers.length > 0 && (
-        <Card className="mb-6 border-danger/30 bg-danger-wash p-4 dark:bg-danger-wash-dark">
-          <div className="flex gap-3">
-            <AlertTriangle
-              size={18}
-              className="mt-0.5 shrink-0 text-danger"
-              aria-hidden="true"
-            />
-            <p className="text-sm text-content dark:text-content-dark">
-              <span className="font-semibold">
-                {blockers.length}{' '}
-                {blockers.length === 1 ? 'conflict needs' : 'conflicts need'} attention
-                before this week publishes.
-              </span>{' '}
-              {blockers[0]!.message}
-              {blockers.length > 1 ? ` And ${blockers.length - 1} more.` : ''}{' '}
-              <Link to="/app/rota" className="font-medium text-primary hover:underline">
-                Open the rota builder
-              </Link>
-              .
-            </p>
-          </div>
-        </Card>
+        <Callout
+          tone="danger"
+          className="mb-6"
+          title={`${blockers.length} ${blockers.length === 1 ? 'conflict needs' : 'conflicts need'} attention before this week publishes.`}
+        >
+          {blockers[0]!.message}
+          {blockers.length > 1 ? ` And ${blockers.length - 1} more.` : ''}{' '}
+          <Link to="/app/rota" className="font-medium text-primary hover:underline">
+            Open the rota builder
+          </Link>
+          .
+        </Callout>
       )}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

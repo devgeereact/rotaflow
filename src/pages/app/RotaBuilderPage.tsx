@@ -56,6 +56,7 @@ import {
 import { findClashingShift, ShiftClashError } from '@/lib/shiftConflicts';
 import { computeRotaInsights } from '@/lib/rotaInsights';
 import { Button } from '@/components/ui/Button';
+import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
@@ -1433,11 +1434,26 @@ export function RotaBuilderPage(): JSX.Element {
           </div>
         </div>
 
-        {publishError && (
-          <p className="mb-4 text-sm text-danger" role="alert">
+        {/* ---- Publish status ---- */}
+        {publishError ? (
+          <Callout tone="danger" title="Can't publish yet" className="mb-4">
             {publishError}
-          </p>
-        )}
+          </Callout>
+        ) : allPublished ? (
+          <Callout tone="success" title="Published" className="mb-4">
+            Staff can see this week. Editing a shift returns its rota to draft.
+          </Callout>
+        ) : criticalWarnings.length > 0 ? (
+          <Callout tone="danger" title="Draft, not visible to staff" className="mb-4">
+            {criticalWarnings.length} critical{' '}
+            {criticalWarnings.length === 1 ? 'issue blocks' : 'issues block'} publication.
+            See the Warnings tab.
+          </Callout>
+        ) : rotasInScope.length > 0 ? (
+          <Callout tone="info" title="Draft, not visible to staff" className="mb-4">
+            No blocking issues. Ready to publish.
+          </Callout>
+        ) : null}
 
         {/* ---- Filters row ---- */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
