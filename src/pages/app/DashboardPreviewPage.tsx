@@ -242,6 +242,7 @@ export function DashboardPreviewPage(): JSX.Element {
           overview={OVERVIEW}
           pending={PENDING}
           weekly={WEEKLY}
+          hoursTrend={[402, 418, 396, 441, 428, 449, 462]}
         />
       )}
     </div>

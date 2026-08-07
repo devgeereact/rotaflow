@@ -8,7 +8,7 @@ import { listOrgShiftSwaps } from '@/services/swapService';
 import { listAnnouncements } from '@/services/announcementService';
 import { listRotas } from '@/services/rotaService';
 import { shiftNetMinutes } from '@/lib/rotaInsights';
-import { resolvePeriod } from '@/lib/schedulePeriod';
+import { resolvePeriod, stepPeriod } from '@/lib/schedulePeriod';
 import type { Announcement, Location, Shift, ShiftType, StaffProfile } from '@/types';
 
 export interface ShiftGroup {
@@ -362,4 +362,52 @@ export async function loadMyUpcomingShifts(
 ): Promise<ShiftGroup[]> {
   const shifts = await listShiftsForPeriod({ orgId, fromIso, toIso, staffProfileId });
   return groupShifts(shifts, shiftTypes, locations);
+}
+
+/**
+ * Total rostered hours for each of the last `weeks` weeks, oldest first, for
+ * the "Rostered this week" sparkline (`docs/ORGANISATION_WORKSPACE.html`'s
+ * `spark` array). Draft-inclusive like `loadWeeklyRosterSummary`, so this
+ * week's still-unpublished shifts count the same way past published ones do.
+ *
+ * One query across the whole span rather than `weeks` separate ones: the
+ * range is contiguous, and a week-per-request fan-out would be `weeks` round
+ * trips for data one query already returns.
+ */
+export async function loadRosteredHoursTrend(
+  orgId: string,
+  currentWeekAnchor: string,
+  timezone: string,
+  weeks = 7,
+): Promise<number[]> {
+  const anchors: string[] = [];
+  let anchor = currentWeekAnchor;
+  for (let i = 0; i < weeks; i++) {
+    anchors.unshift(anchor);
+    anchor = stepPeriod('week', anchor, -1);
+  }
+  const windows = anchors.map((a) => resolvePeriod('week', a, timezone));
+  const fromIso = windows[0]!.fromIso;
+  const toIso = windows[windows.length - 1]!.toIso;
+
+  const shifts = await listShiftsForPeriod({
+    orgId,
+    fromIso,
+    toIso,
+    publishedOnly: false,
+  });
+  const totals = new Array(weeks).fill(0) as number[];
+
+  for (const shift of shifts) {
+    if (!shift.staff_profile_id) continue;
+    const date = shift.starts_at.slice(0, 10);
+    const weekIndex = windows.findIndex(
+      (w) => date >= w.dates[0]! && date <= w.dates[w.dates.length - 1]!,
+    );
+    if (weekIndex >= 0) {
+      totals[weekIndex] = (totals[weekIndex] ?? 0) + shiftNetMinutes(shift) / 60;
+    }
+  }
+
+  return totals;
 }

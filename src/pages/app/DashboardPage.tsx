@@ -14,6 +14,7 @@ import {
   loadWeeklyRosterSummary,
   loadMyWeekSummary,
   loadMyUpcomingShifts,
+  loadRosteredHoursTrend,
   type DashboardOverview,
   type MyWeekSummary,
   type PendingRequest,
@@ -43,6 +44,7 @@ export function DashboardPage(): JSX.Element {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [pending, setPending] = useState<PendingRequest[]>([]);
   const [weekly, setWeekly] = useState<WeeklyRosterSummary | null>(null);
+  const [hoursTrend, setHoursTrend] = useState<number[]>([]);
   const [myWeek, setMyWeek] = useState<MyWeekSummary | null>(null);
   const [myUpcoming, setMyUpcoming] = useState<ShiftGroup[]>([]);
   const [leaveRemaining, setLeaveRemaining] = useState<number | null>(null);
@@ -68,7 +70,7 @@ export function DashboardPage(): JSX.Element {
 
       if (isManager) {
         const staffById = new Map(data.staff.map((s) => [s.id, s]));
-        const [pendingRows, weeklySummary] = await Promise.all([
+        const [pendingRows, weeklySummary, trend] = await Promise.all([
           getPendingRequests(orgId, staffById),
           loadWeeklyRosterSummary(
             orgId,
@@ -78,9 +80,11 @@ export function DashboardPage(): JSX.Element {
             policies.minStaffOnShift,
             data.staff,
           ),
+          loadRosteredHoursTrend(orgId, todayIso(), DEFAULT_TZ),
         ]);
         setPending(pendingRows);
         setWeekly(weeklySummary);
+        setHoursTrend(trend);
       } else {
         const me = await getMyStaffProfile(orgId, user.id);
         if (me) {
@@ -151,6 +155,7 @@ export function DashboardPage(): JSX.Element {
         overview={overview!}
         pending={pending}
         weekly={weekly}
+        hoursTrend={hoursTrend}
       />
     );
   }

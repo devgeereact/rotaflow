@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CalendarDays, Megaphone, Repeat2, Umbrella } from 'lucide-react';
+import { CalendarDays, Repeat2, Umbrella } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
-import { timeAgo, hoursLabel } from '@/components/dashboard/dashboardFormat';
+import { Sparkline } from '@/components/ui/TrendChart';
+import { hoursLabel } from '@/components/dashboard/dashboardFormat';
 import type { DashboardOverview, PendingRequest } from '@/services/dashboardService';
 import type { WeeklyRosterSummary } from '@/services/dashboardService';
 
@@ -15,6 +16,8 @@ export interface ManagerDashboardProps {
   overview: DashboardOverview;
   pending: PendingRequest[];
   weekly: WeeklyRosterSummary | null;
+  /** Total rostered hours for each of the last 7 weeks, oldest first. */
+  hoursTrend: number[];
 }
 
 interface Blocker {
@@ -54,6 +57,7 @@ export function ManagerDashboard({
   overview,
   pending,
   weekly,
+  hoursTrend,
 }: ManagerDashboardProps): JSX.Element {
   const blockers = weekly ? blockersFor(weekly) : [];
   const shiftsToFill = weekly
@@ -132,6 +136,7 @@ export function ManagerDashboard({
           label="Rostered this week"
           value={weekly ? hoursLabel(weekly.totalHours) : '—'}
           hint={`across ${overview.staff.length} staff`}
+          chart={<Sparkline values={hoursTrend} />}
         />
         <StatTile
           label="Shifts to fill"
@@ -313,53 +318,6 @@ export function ManagerDashboard({
           </Card>
         </div>
       </div>
-
-      <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold text-content dark:text-content-dark">
-            Announcements
-          </h2>
-          <Link
-            to="/app/announcements"
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            View all
-          </Link>
-        </div>
-        {overview.announcements.length === 0 ? (
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            No announcements yet.
-          </p>
-        ) : (
-          <ul className="grid gap-4 sm:grid-cols-3">
-            {overview.announcements.slice(0, 3).map((a) => (
-              <li key={a.id} className="flex gap-3">
-                <span
-                  className={cn(
-                    'grid h-9 w-9 shrink-0 place-items-center rounded-full',
-                    a.urgent
-                      ? 'bg-danger-wash text-danger dark:bg-danger-wash-dark'
-                      : 'bg-primary-wash text-primary dark:bg-primary-wash-dark',
-                  )}
-                >
-                  <Megaphone size={16} aria-hidden="true" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-content dark:text-content-dark">
-                    {a.title}
-                  </p>
-                  <p className="line-clamp-2 text-xs text-content-muted dark:text-content-muted-dark">
-                    {a.body}
-                  </p>
-                  <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-                    {timeAgo(a.created_at)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
     </div>
   );
 }
