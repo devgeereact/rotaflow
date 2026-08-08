@@ -353,37 +353,59 @@ function ShiftDetails({
 function CoverageList({ dailyTotals }: { dailyTotals: DailyTotal[] }): JSX.Element {
   return (
     <ul className="space-y-2">
-      {dailyTotals.map((t) => (
-        <li
-          key={t.date}
-          className="flex items-center justify-between rounded-lg border border-surface-border px-3 py-2 text-sm dark:border-surface-border-dark"
-        >
-          <span className="text-content dark:text-content-dark">
-            {new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-            })}
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="font-mono text-content-muted dark:text-content-muted-dark">
-              {t.staffCount} / {t.shiftCount}
-            </span>
-            <span
-              className={cn(
-                'text-xs font-medium',
-                t.status === 'understaffed' ? 'text-danger' : 'text-success',
-              )}
-            >
-              {t.status === 'understaffed'
-                ? 'Understaffed'
-                : t.status === 'empty'
-                  ? '-'
-                  : 'Optimal'}
-            </span>
-          </span>
-        </li>
-      ))}
+      {dailyTotals.map((t) => {
+        const short = t.required > 0 && t.staffCount < t.required;
+        return (
+          <li
+            key={t.date}
+            className="rounded-lg border border-surface-border px-3 py-2 text-sm dark:border-surface-border-dark"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-content dark:text-content-dark">
+                {new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="font-mono text-content-muted dark:text-content-muted-dark">
+                  {t.staffCount} / {t.shiftCount}
+                </span>
+                <span
+                  className={cn(
+                    'text-xs font-medium',
+                    t.status === 'understaffed' ? 'text-danger' : 'text-success',
+                  )}
+                >
+                  {t.status === 'understaffed'
+                    ? 'Understaffed'
+                    : t.status === 'empty'
+                      ? '-'
+                      : 'Optimal'}
+                </span>
+              </span>
+            </div>
+            {/* Separate from the row above on purpose: shift-fill and the
+                staffing minimum are different questions. Every shift on the
+                rota could be filled and the day still fall short of the
+                minimum, if too few shifts were ever created for it. */}
+            {t.required > 0 && (
+              <p
+                className={cn(
+                  'mt-1 font-mono text-xs',
+                  short
+                    ? 'text-danger'
+                    : 'text-content-muted dark:text-content-muted-dark',
+                )}
+              >
+                {t.staffCount} / {t.required} against the staffing minimum
+                {short ? ' — below minimum' : ''}
+              </p>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

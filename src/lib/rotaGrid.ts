@@ -1,6 +1,6 @@
 import { addDays, format, startOfWeek } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
-import type { Shift } from '@/types';
+import type { Location, MinimumCoverRule, Shift } from '@/types';
 
 const UNASSIGNED_KEY = 'unassigned';
 
@@ -135,24 +135,46 @@ export interface DailyTotal {
   shiftCount: number;
   openCount: number;
   status: DailyStatus;
+  /**
+   * Summed staffing minimum across every site in scope that has one set for
+   * this weekday (0036_minimum_cover_rules.sql). 0 means no site in scope has
+   * a minimum configured, not a minimum of zero. See `computeDailyTotals`.
+   */
+  required: number;
 }
 
 /**
  * Per-day staff/shift counts for the totals row, "Optimal" means every shift
  * that day has someone assigned; "Understaffed" means at least one is still
- * `open`. There is no schema-backed target headcount to compare against, so
- * this deliberately doesn't fabricate an "Overstaffed" signal or a coverage
- * percentage. See rota-log.md.
+ * `open`. This is about the shifts that exist, never a target headcount, so
+ * it deliberately doesn't fabricate an "Overstaffed" signal or a coverage
+ * percentage from it. See rota-log.md.
+ *
+ * `required` is a separate, real number as of 0036_minimum_cover_rules.sql: a
+ * manager's own staffing minimum, set per site per weekday. Optional and
+ * defaults to 0 (no minimum) so the design-loop preview page, which has no
+ * rules to pass, keeps compiling and keeps its previous behaviour.
  */
 export function computeDailyTotals(
   shifts: Shift[],
   dates: string[],
   timezone: string,
+  minimumCoverRules: MinimumCoverRule[] = [],
+  locations: Location[] = [],
 ): DailyTotal[] {
   const byDate = new Map<string, Shift[]>();
   for (const shift of shifts) {
     const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
     byDate.set(date, [...(byDate.get(date) ?? []), shift]);
+  }
+
+  const locationIdsInScope = new Set(locations.map((l) => l.id));
+  const rulesByLocation = new Map<string, Map<number, number>>();
+  for (const rule of minimumCoverRules) {
+    if (!locationIdsInScope.has(rule.location_id)) continue;
+    const byWeekday = rulesByLocation.get(rule.location_id) ?? new Map<number, number>();
+    byWeekday.set(rule.weekday, rule.min_staff);
+    rulesByLocation.set(rule.location_id, byWeekday);
   }
 
   return dates.map((date) => {
@@ -163,7 +185,21 @@ export function computeDailyTotals(
     const openCount = dayShifts.filter((s) => !s.staff_profile_id).length;
     const status: DailyStatus =
       dayShifts.length === 0 ? 'empty' : openCount > 0 ? 'understaffed' : 'optimal';
-    return { date, staffCount, shiftCount: dayShifts.length, openCount, status };
+
+    const weekday = new Date(`${date}T00:00:00`).getDay();
+    let required = 0;
+    for (const byWeekday of rulesByLocation.values()) {
+      required += byWeekday.get(weekday) ?? 0;
+    }
+
+    return {
+      date,
+      staffCount,
+      shiftCount: dayShifts.length,
+      openCount,
+      status,
+      required,
+    };
   });
 }
 

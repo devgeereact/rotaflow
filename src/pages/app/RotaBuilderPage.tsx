@@ -60,6 +60,7 @@ import {
 import { findClashingShift, ShiftClashError } from '@/lib/shiftConflicts';
 import { computeRotaInsights } from '@/lib/rotaInsights';
 import { Button } from '@/components/ui/Button';
+import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
@@ -560,8 +561,15 @@ export function RotaBuilderPage(): JSX.Element {
   }, [previewSuggestions]);
 
   const dailyTotals = useMemo(
-    () => computeDailyTotals(shiftsForDisplay, dates, DEFAULT_TZ),
-    [shiftsForDisplay, dates],
+    () =>
+      computeDailyTotals(
+        shiftsForDisplay,
+        dates,
+        DEFAULT_TZ,
+        minimumCoverRules,
+        filteredLocations,
+      ),
+    [shiftsForDisplay, dates, minimumCoverRules, filteredLocations],
   );
 
   const totalStaff = useMemo(
@@ -1569,6 +1577,28 @@ export function RotaBuilderPage(): JSX.Element {
             )}
           </div>
         </div>
+
+        {/* Status of the week in scope, above the grid it describes. Mirrors
+            the button label ("Publish" vs "Unpublish"), but that only reads
+            as a status once you already know which state means what; this
+            says it outright, and for a draft, whether it can be published at
+            all. Silent when a filter has no rota to report on. */}
+        {rotasInScope.length > 0 &&
+          (allPublished ? (
+            <Callout tone="success" title="Published.">
+              Staff can see this week and were notified. Editing a cell returns it to
+              draft and re-notifies only the people whose shifts change.
+            </Callout>
+          ) : (
+            <Callout
+              tone={criticalWarnings.length > 0 ? 'danger' : 'info'}
+              title="Draft, not visible to staff."
+            >
+              {criticalWarnings.length > 0
+                ? `${criticalWarnings.length} ${criticalWarnings.length === 1 ? 'issue' : 'issues'} must be resolved before publishing. See the Warnings tab.`
+                : 'No blocking issues. Ready to publish.'}
+            </Callout>
+          ))}
 
         {/* ---- Main: grid | inspector | action rail ---- */}
         {loading || orgDataLoading ? (
