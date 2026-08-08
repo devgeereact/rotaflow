@@ -4,37 +4,37 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrg } from '@/hooks/useOrg';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { useNavBadgeCounts, type NavBadgeCounts } from '@/hooks/useNavBadgeCounts';
+import { useNavBadgeCounts } from '@/hooks/useNavBadgeCounts';
 import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
 import { SidebarFooter } from '@/components/layout/SidebarFooter';
+import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
 import { BrandMark } from '@/components/ui/BrandMark';
 
 const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
 const LINK_INACTIVE =
-  'text-content-muted hover:bg-surface hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark';
-// Soft-tint highlight, not the old white-pill/left-border treatment. Same
-// bg-X/10 text-X idiom already used for status badges elsewhere in the app
-// (e.g. AvailabilityPage, LeavePage), so the active nav item reads as "this
-// app's highlight colour", not a one-off style.
-const LINK_ACTIVE = 'bg-primary/10 text-primary dark:bg-primary/15';
+  'text-content-muted hover:bg-primary-wash hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark';
+// Solid fill, not the earlier soft-tint idiom (`bg-primary/10 text-primary`):
+// see docs/DESIGN.md §6, "Sidebar nav, active item" for the 2026-08-06 change
+// against `docs/ORGANISATION_WORKSPACE.html`.
+const LINK_ACTIVE = 'bg-primary text-primary-fg';
 
 function NavList({
   items,
-  collapsed = false,
   badges,
+  collapsed = false,
   onNavigate,
 }: {
   items: NavItem[];
+  badges: { leave: number; swaps: number };
   collapsed?: boolean;
-  badges: NavBadgeCounts;
   onNavigate?: () => void;
 }): JSX.Element {
   return (
-    <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3">
-      {items.map(({ label, icon: Icon, to, badgeKey }) => {
-        const count = badgeKey ? badges[badgeKey] : 0;
+    <nav aria-label="Main" className="flex-1 space-y-0.5 overflow-y-auto px-3">
+      {items.map(({ label, icon: Icon, to, badge }) => {
+        const count = badge ? badges[badge] : 0;
         return (
           <NavLink
             key={label}
@@ -52,23 +52,24 @@ function NavList({
               )
             }
           >
-            <span className="relative shrink-0">
-              <Icon size={18} aria-hidden="true" />
-              {collapsed && count > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-warning" />
-              )}
-            </span>
-            {collapsed ? (
-              <span className="sr-only">
-                {label}
-                {count > 0 ? `, ${count} pending` : ''}
-              </span>
-            ) : (
+            {({ isActive }) => (
               <>
-                <span className="flex-1">{label}</span>
-                {count > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-warning px-1.5 text-[0.7rem] font-semibold text-white">
-                    {count > 99 ? '99+' : count}
+                <Icon size={18} aria-hidden="true" className="shrink-0" />
+                {collapsed ? (
+                  <span className="sr-only">{label}</span>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                )}
+                {!collapsed && count > 0 && (
+                  <span
+                    className={cn(
+                      'ml-auto shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none',
+                      isActive
+                        ? 'bg-white/25 text-primary-fg'
+                        : 'bg-warning text-[#3A2A08]',
+                    )}
+                  >
+                    {count}
                   </span>
                 )}
               </>
@@ -97,7 +98,7 @@ interface SidebarProps {
 
 /** Fixed left navigation for the /app/* tenant shell. Only routed items are real links. */
 export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.Element {
-  const { orgId, role } = useOrg();
+  const { role, orgId } = useOrg();
   const items = navItemsForRole(role);
   const badges = useNavBadgeCounts(orgId);
   const setMobileOpen = onMobileOpenChange;
@@ -157,15 +158,20 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
               <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
                 Rota<span className="text-primary">Flow</span>
               </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
-                Workforce scheduling
+              <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
+                Smarter rota. Stronger teams.
               </span>
             </span>
           )}
         </div>
 
         <SidebarOrgSwitcher collapsed={collapsed} />
-        <NavList items={items} collapsed={collapsed} badges={badges} />
+        {!collapsed && (
+          <div className="px-3 pb-2">
+            <GlobalSearch variant="rail" />
+          </div>
+        )}
+        <NavList items={items} badges={badges} collapsed={collapsed} />
         <SidebarFooter collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
 
@@ -192,8 +198,8 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
                   <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
                     Rota<span className="text-primary">Flow</span>
                   </span>
-                  <span className="block text-[10px] font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
-                    Workforce scheduling
+                  <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
+                    Smarter rota. Stronger teams.
                   </span>
                 </span>
               </div>
@@ -208,6 +214,9 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
             </div>
             {/* The drawer is always full width, so it never renders collapsed. */}
             <SidebarOrgSwitcher collapsed={false} />
+            <div className="px-3 pb-2">
+              <GlobalSearch variant="rail" onNavigate={() => setMobileOpen(false)} />
+            </div>
             <NavList
               items={items}
               badges={badges}

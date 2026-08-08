@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   UserCircle,
+  LifeBuoy,
   type LucideIcon,
 } from 'lucide-react';
 import type { MembershipRole } from '@/types';
@@ -32,35 +33,32 @@ export interface NavItem {
    * typecheck failure rather than a chip a user clicks twice and gives up on.
    */
   to: string;
-  /** Which count from `useNavBadgeCounts` this row shows, if any. */
-  badgeKey?: 'leave' | 'swaps';
+  /** Which live count, if any, decorates this row. See `useNavBadges`. */
+  badge?: 'leave' | 'swaps';
 }
 
 /**
- * The sidebar, resolved against the signed-in role.
+ * The primary sidebar, resolved against the signed-in role.
  *
  * Lives in `lib` rather than beside the component so `navigationTargets.test`
  * can check every target against the real route table without importing a
  * React tree, and so exporting it does not cost the component fast refresh.
  *
- * ## Order and labels
+ * ## Order and labels: `docs/ORGANISATION_WORKSPACE.html`
  *
- * NEW_STRUCTURE §4's list, verbatim and in its order: Dashboard, Rota Builder,
- * Schedule, Team, Availability, Leave, Swaps, Timesheets, Clock In, Reports,
- * Announcements, Locations, Settings, Integrations.
+ * Dashboard, Rota Builder, Schedule, Clock in, Timesheets, Availability,
+ * Leave, Shift Swaps, Overtime, Team, Locations, Announcements, Reports.
  *
- * **Team** had been folded into Settings → Permissions on the reasoning that
- * invite/revoke is administration and the designs showed no Team entry; §10 and
- * §34 are explicit that `/app/team` is the workforce directory, so it is
- * top-level again and the directory moved to that URL.
- *
- * **Integrations is deliberately NOT here**, against §4's list. It briefly
- * appeared in both the sidebar and the Settings tab bar, pointing at the same
- * `/app/settings/integrations` route, so the identical destination had two
- * entries in the navigation, and the sidebar row lit up as "active" while the
- * Settings tab bar simultaneously showed you were inside Settings. One
- * destination, one home: it is a Settings tab, which is also where every
- * reference screen puts it.
+ * **Rota Builder and Schedule are separate rows again**, and so are **Team
+ * and Availability**. An earlier pass merged each pair into one destination
+ * with an in-page tab bar (`workspaceTabs.ts`) on the reasoning that building
+ * a week and reading the published one were "one workspace, two halves". The
+ * organisation workspace reference treats them as two separate journeys with
+ * their own sidebar rows instead (a manager builds the rota far more often
+ * than they read the read-only view of it, and burying "Schedule" a click
+ * inside "Rota" cost it a place a keyboard-driven user could jump straight
+ * to). `workspaceTabs.ts` still exists and the two pages still cross-link via
+ * their own tab bar; that is now a secondary path, not the only one.
  *
  * ## Why Clock In is shown to managers too
  *
@@ -73,10 +71,6 @@ export interface NavItem {
  *
  * Gating on "has a staff_profile" would be more precise, but the sidebar has
  * no such query and adding one to render navigation is a poor trade for a row.
- *
- * Staff see the subset §2 grants them, with Settings replaced by My Profile,
- * `settingsTabsForRole('staff')` is empty, so a Settings link would land them
- * on a redirect every time.
  */
 export function navItemsForRole(role: MembershipRole | null): NavItem[] {
   const isManager = role === 'owner' || role === 'manager';
@@ -85,53 +79,47 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
     { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard' },
   ];
 
-  /*
-   * Two merged workspaces, one entry each.
-   *
-   * **Rota** was "Rota Builder" + "Schedule": building a week and reading the
-   * published result, with no way across but the sidebar. **Team** was "Team" +
-   * "Availability": who works here, and when they can work. Each pair is now
-   * one destination with section tabs (see `workspaceTabs.ts`), which is four
-   * sidebar rows collapsed into two without losing a screen.
-   *
-   * A manager lands on the half they act on. The builder, the directory. Staff
-   * cannot open either of those, so their entry points straight at the half
-   * they can use and the tab bar does not render at all.
-   */
-  items.push(
-    isManager
-      ? { label: 'Rota', icon: CalendarDays, to: '/app/rota' }
-      : { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
-    isManager
-      ? { label: 'Team', icon: Users, to: '/app/team' }
-      : { label: 'Availability', icon: Clock3, to: '/app/availability' },
-  );
-
-  items.push(
-    { label: 'Leave', icon: Umbrella, to: '/app/leave', badgeKey: 'leave' },
-    { label: 'Swaps', icon: Repeat2, to: '/app/swaps', badgeKey: 'swaps' },
-    // §2 lists "Request overtime" among what a staff member can do, so this
-    // sits outside the managerial block. The page's own Team toggle is what
-    // gates the approval queue.
-    { label: 'Overtime', icon: TimerReset, to: '/app/overtime' },
-    { label: 'Timesheets', icon: Timer, to: '/app/timesheets' },
-    { label: 'Clock In', icon: LogIn, to: '/app/clock' },
-  );
+  if (isManager) {
+    items.push({ label: 'Rota Builder', icon: CalendarDays, to: '/app/rota' });
+  }
+  items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });
+  items.push({ label: 'Clock In', icon: LogIn, to: '/app/clock' });
+  items.push({ label: 'Timesheets', icon: Timer, to: '/app/timesheets' });
+  items.push({ label: 'Availability', icon: Clock3, to: '/app/availability' });
+  items.push({ label: 'Leave', icon: Umbrella, to: '/app/leave', badge: 'leave' });
+  items.push({ label: 'Shift Swaps', icon: Repeat2, to: '/app/swaps', badge: 'swaps' });
+  // §2 lists "Request overtime" among what a staff member can do, so this
+  // sits outside the managerial block. The page's own Team toggle is what
+  // gates the approval queue.
+  items.push({ label: 'Overtime', icon: TimerReset, to: '/app/overtime' });
 
   if (isManager) {
-    items.push({ label: 'Reports', icon: BarChart3, to: '/app/reports' });
+    items.push({ label: 'Team', icon: Users, to: '/app/team' });
+    items.push({ label: 'Locations', icon: MapPin, to: '/app/locations' });
   }
 
   items.push({ label: 'Announcements', icon: Megaphone, to: '/app/announcements' });
 
   if (isManager) {
-    items.push(
-      { label: 'Locations', icon: MapPin, to: '/app/locations' },
-      { label: 'Settings', icon: Settings, to: '/app/settings' },
-    );
-  } else {
-    items.push({ label: 'My Profile', icon: UserCircle, to: '/app/account' });
+    items.push({ label: 'Reports', icon: BarChart3, to: '/app/reports' });
   }
 
   return items;
+}
+
+/**
+ * The rail's second, quieter nav group: account-level destinations rather
+ * than workspace ones. A manager gets Settings; staff get My Profile in the
+ * same slot, `settingsTabsForRole('staff')` is empty, so a Settings link
+ * would land them on a redirect every time. Help & Support is common to both.
+ */
+export function footerNavItemsForRole(role: MembershipRole | null): NavItem[] {
+  const isManager = role === 'owner' || role === 'manager';
+
+  return [
+    isManager
+      ? { label: 'Settings', icon: Settings, to: '/app/settings' }
+      : { label: 'My Profile', icon: UserCircle, to: '/app/account' },
+    { label: 'Help & Support', icon: LifeBuoy, to: '/contact' },
+  ];
 }

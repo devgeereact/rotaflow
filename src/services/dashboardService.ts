@@ -2,16 +2,25 @@ import { supabase } from '@/lib/supabase';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import {
-  listDepartments,
   listLocations,
+  listDepartments,
   listMinimumCoverRulesForOrg,
 } from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgShiftSwaps } from '@/services/swapService';
 import { listAnnouncements } from '@/services/announcementService';
-import { resolvePeriod } from '@/lib/schedulePeriod';
-import type { Announcement, Location, Shift, ShiftType, StaffProfile } from '@/types';
+import { listRotas } from '@/services/rotaService';
+import { shiftNetMinutes } from '@/lib/rotaInsights';
+import { resolvePeriod, stepPeriod } from '@/lib/schedulePeriod';
+import type {
+  Announcement,
+  Location,
+  MinimumCoverRule,
+  Shift,
+  ShiftType,
+  StaffProfile,
+} from '@/types';
 
 export interface ShiftGroup {
   key: string;
@@ -148,16 +157,6 @@ export interface DashboardOverview {
   compliancePercent: number;
   monthShiftsByDate: Map<string, { total: number; filled: number }>;
   upcomingGroups: ShiftGroup[];
-  /**
-   * Today through the end of this week's staffing against each site's
-   * minimum (0036_minimum_cover_rules.sql), summed across every site that
-   * has one set. `required` is 0 for a date where no site has a rule, not a
-   * claim that zero people are needed. Unlike `upcomingGroups`, this window
-   * includes today.
-   */
-  weekCover: { date: string; required: number; onShift: number }[];
-  /** Hours rostered today through the end of this week, by department. Staff with no department are omitted, not zeroed. */
-  hoursByDepartment: { departmentId: string; departmentName: string; hours: number }[];
 }
 
 /** Everything the dashboard needs except the selected day's schedule (fetched separately for its own nav). */
@@ -167,37 +166,25 @@ export async function loadDashboardOverview(
   todayDate: string,
 ): Promise<DashboardOverview> {
   const month = resolvePeriod('month', todayDate, timezone);
-  const week = resolvePeriod('week', todayDate, timezone);
-  const today = resolvePeriod('day', todayDate, timezone);
-  const upcomingFrom = today.toIso;
-  const upcomingTo = week.toIso;
+  const upcomingFrom = resolvePeriod('day', todayDate, timezone).toIso;
+  const upcomingTo = resolvePeriod('week', todayDate, timezone).toIso;
 
   const [
     staff,
     locations,
-    departments,
     shiftTypes,
     announcements,
     expiredDocStaffCount,
     monthShifts,
     upcomingShifts,
-    // Starts at today, not tomorrow: `upcomingShifts` deliberately excludes
-    // today (the "Today's Schedule" card covers it separately), but
-    // weekCover/hoursByDepartment below both need today included, or today
-    // always reads as fully unstaffed regardless of the real rota.
-    weekShifts,
-    minimumCoverRules,
   ] = await Promise.all([
     listActiveStaff(orgId),
     listLocations(orgId),
-    listDepartments(orgId),
     listShiftTypes(orgId),
     listAnnouncements(orgId),
     countStaffWithExpiredDocuments(orgId),
     listShiftsForPeriod({ orgId, fromIso: month.fromIso, toIso: month.toIso }),
     listShiftsForPeriod({ orgId, fromIso: upcomingFrom, toIso: upcomingTo }),
-    listShiftsForPeriod({ orgId, fromIso: today.fromIso, toIso: week.toIso }),
-    listMinimumCoverRulesForOrg(orgId),
   ]);
 
   const monthShiftsByDate = new Map<string, { total: number; filled: number }>();
@@ -215,61 +202,6 @@ export async function loadDashboardOverview(
       ? 100
       : Math.round(100 * ((staff.length - expiredDocStaffCount) / staff.length));
 
-  // ---- Week cover vs each site's staffing minimum ----
-  const rulesByLocation = new Map<string, Map<number, number>>();
-  for (const rule of minimumCoverRules) {
-    const byWeekday = rulesByLocation.get(rule.location_id) ?? new Map<number, number>();
-    byWeekday.set(rule.weekday, rule.min_staff);
-    rulesByLocation.set(rule.location_id, byWeekday);
-  }
-  // Distinct staff on shift, per site per date. Two shifts for the same
-  // person the same day still count once.
-  const onShiftByLocationDate = new Map<string, Set<string>>();
-  for (const shift of weekShifts) {
-    if (!shift.staff_profile_id || !shift.location_id) continue;
-    const date = shift.starts_at.slice(0, 10);
-    const key = `${shift.location_id}|${date}`;
-    const set = onShiftByLocationDate.get(key) ?? new Set<string>();
-    set.add(shift.staff_profile_id);
-    onShiftByLocationDate.set(key, set);
-  }
-  const weekDates = week.dates.filter((d) => d >= todayDate);
-  const weekCover = weekDates.map((date) => {
-    const weekday = new Date(`${date}T00:00:00`).getDay();
-    let required = 0;
-    let onShift = 0;
-    for (const [locationId, byWeekday] of rulesByLocation) {
-      const minStaff = byWeekday.get(weekday);
-      if (minStaff === undefined) continue;
-      required += minStaff;
-      onShift += onShiftByLocationDate.get(`${locationId}|${date}`)?.size ?? 0;
-    }
-    return { date, required, onShift };
-  });
-
-  // ---- Hours rostered this week, by department ----
-  const staffDeptById = new Map(staff.map((s) => [s.id, s.department_id]));
-  const departmentNameById = new Map(departments.map((d) => [d.id, d.name]));
-  const hoursByDeptId = new Map<string, number>();
-  for (const shift of weekShifts) {
-    if (!shift.staff_profile_id) continue;
-    const deptId = staffDeptById.get(shift.staff_profile_id);
-    if (!deptId) continue;
-    const hours =
-      Math.max(
-        0,
-        new Date(shift.ends_at).getTime() - new Date(shift.starts_at).getTime(),
-      ) /
-        3_600_000 -
-      shift.break_minutes / 60;
-    hoursByDeptId.set(deptId, (hoursByDeptId.get(deptId) ?? 0) + Math.max(0, hours));
-  }
-  const hoursByDepartment = Array.from(hoursByDeptId, ([departmentId, hours]) => ({
-    departmentId,
-    departmentName: departmentNameById.get(departmentId) ?? 'Unknown department',
-    hours,
-  })).sort((a, b) => b.hours - a.hours);
-
   return {
     staff,
     locations,
@@ -278,25 +210,243 @@ export async function loadDashboardOverview(
     compliancePercent,
     monthShiftsByDate,
     upcomingGroups: groupShifts(upcomingShifts, shiftTypes, locations).slice(0, 3),
-    weekCover,
-    hoursByDepartment,
+  };
+}
+
+export interface WeeklyCoverDay {
+  date: string;
+  onShift: number;
+  required: number;
+}
+
+export interface DepartmentHours {
+  name: string;
+  hours: number;
+}
+
+/** A person whose rostered hours this week are flagged, over the statutory 48h weekly limit or over their own contract by a wide margin. */
+export interface OverLimitStaff {
+  staffName: string;
+  hours: number;
+  contractHours: number;
+  /** true = over the 48-hour statutory limit; false = over their own contract only. */
+  overStatutory: boolean;
+}
+
+export interface WeeklyRosterSummary {
+  totalHours: number;
+  coverByDate: WeeklyCoverDay[];
+  hoursByDepartment: DepartmentHours[];
+  overLimitStaff: OverLimitStaff[];
+  /** 'none' = no rota exists yet for this week at any location. */
+  rotaStatus: 'draft' | 'published' | 'none';
+}
+
+/** Summed staffing minimum across `locations`, for one weekday, from each site's own rule (0036_minimum_cover_rules.sql). A site with no rule for that weekday contributes 0, not a fabricated default: silence means no policy, not a minimum of zero. */
+function requiredForWeekday(
+  weekday: number,
+  locations: Location[],
+  minimumCoverRules: MinimumCoverRule[],
+): number {
+  const locationIds = new Set(locations.map((l) => l.id));
+  let required = 0;
+  for (const rule of minimumCoverRules) {
+    if (rule.weekday !== weekday) continue;
+    if (!locationIds.has(rule.location_id)) continue;
+    required += rule.min_staff;
+  }
+  return required;
+}
+
+/**
+ * The manager's working week for the Dashboard's cover chart, rota status and
+ * hours-by-department cards (`docs/ORGANISATION_WORKSPACE.html`'s "Cover
+ * against minimum" / "Rota status" / "Hours by department").
+ *
+ * Deliberately draft-inclusive (`publishedOnly: false`): a manager builds the
+ * rota to hit this cover target *before* publishing, so a chart that only
+ * counted published shifts would show every day short until the moment they
+ * hit Publish, which is not a useful chart. Contrast `loadMyWeekSummary`
+ * below, which is staff-facing and stays published-only.
+ *
+ * The staffing minimum itself is per site per weekday
+ * (0036_minimum_cover_rules.sql), summed across every site in scope for the
+ * day in question, the same computation `computeDailyTotals` and
+ * `computeRotaInsights` use in the rota builder, so the dashboard, the
+ * Coverage tab and the publish gate can never disagree about what "short"
+ * means.
+ */
+export async function loadWeeklyRosterSummary(
+  orgId: string,
+  weekDates: string[],
+  fromIso: string,
+  toIso: string,
+  staff: StaffProfile[],
+): Promise<WeeklyRosterSummary> {
+  const [shifts, departments, rotas, locations, minimumCoverRules] = await Promise.all([
+    listShiftsForPeriod({ orgId, fromIso, toIso, publishedOnly: false }),
+    listDepartments(orgId),
+    listRotas(orgId),
+    listLocations(orgId),
+    listMinimumCoverRulesForOrg(orgId),
+  ]);
+
+  const departmentById = new Map(departments.map((d) => [d.id, d.name]));
+  const staffById = new Map(staff.map((s) => [s.id, s]));
+
+  const onShiftByDate = new Map<string, Set<string>>(
+    weekDates.map((d) => [d, new Set()]),
+  );
+  const hoursByDepartment = new Map<string, number>();
+  const hoursByStaff = new Map<string, number>();
+  let totalHours = 0;
+
+  for (const shift of shifts) {
+    if (!shift.staff_profile_id) continue;
+    const date = shift.starts_at.slice(0, 10);
+    onShiftByDate.get(date)?.add(shift.staff_profile_id);
+
+    const hours = shiftNetMinutes(shift) / 60;
+    totalHours += hours;
+    hoursByStaff.set(
+      shift.staff_profile_id,
+      (hoursByStaff.get(shift.staff_profile_id) ?? 0) + hours,
+    );
+    const deptName = shift.department_id
+      ? (departmentById.get(shift.department_id) ?? 'Unassigned')
+      : 'Unassigned';
+    hoursByDepartment.set(deptName, (hoursByDepartment.get(deptName) ?? 0) + hours);
+  }
+
+  const overLimitStaff: OverLimitStaff[] = [];
+  for (const [staffId, hours] of hoursByStaff) {
+    const person = staffById.get(staffId);
+    if (!person) continue;
+    const contractHours = person.weekly_hours ?? 0;
+    const overStatutory = hours > 48;
+    if (overStatutory || hours > contractHours + 12) {
+      overLimitStaff.push({
+        staffName: `${person.first_name} ${person.last_name}`,
+        hours,
+        contractHours,
+        overStatutory,
+      });
+    }
+  }
+  overLimitStaff.sort((a, b) => b.hours - a.hours);
+
+  const weekStart = weekDates[0] ?? fromIso.slice(0, 10);
+  const weekEnd = weekDates[weekDates.length - 1] ?? weekStart;
+  const overlapping = rotas.filter(
+    (r) => r.period_start <= weekEnd && r.period_end >= weekStart,
+  );
+  const rotaStatus: WeeklyRosterSummary['rotaStatus'] =
+    overlapping.length === 0
+      ? 'none'
+      : overlapping.every((r) => r.status === 'published')
+        ? 'published'
+        : 'draft';
+
+  return {
+    totalHours,
+    coverByDate: weekDates.map((date) => ({
+      date,
+      onShift: onShiftByDate.get(date)?.size ?? 0,
+      required: requiredForWeekday(
+        new Date(`${date}T00:00:00`).getDay(),
+        locations,
+        minimumCoverRules,
+      ),
+    })),
+    hoursByDepartment: [...hoursByDepartment.entries()]
+      .map(([name, hours]) => ({ name, hours }))
+      .sort((a, b) => b.hours - a.hours),
+    overLimitStaff,
+    rotaStatus,
+  };
+}
+
+export interface MyWeekSummary {
+  hours: number;
+  shiftsBooked: number;
+}
+
+/** A staff member's own published week: hours and shift count for the "Your hours this week" / "Shifts booked" tiles. Published-only, unlike the manager's summary above; a shift not yet published is not theirs to see. */
+export async function loadMyWeekSummary(
+  orgId: string,
+  staffProfileId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<MyWeekSummary> {
+  const shifts = await listShiftsForPeriod({ orgId, fromIso, toIso, staffProfileId });
+  return {
+    hours: shifts.reduce((sum, s) => sum + shiftNetMinutes(s) / 60, 0),
+    shiftsBooked: shifts.length,
   };
 }
 
 /**
- * One person's own shifts, today through the end of this week, published
- * only. Same window as `loadDashboardOverview`'s `weekCover`/`upcomingGroups`,
- * for a staff member's "Your next shifts" card, which needs the individual
- * shift instances rather than the org-wide headcount groups `upcomingGroups`
- * carries.
+ * A staff member's own published upcoming shifts, for the "Your next shifts"
+ * card. `groupShifts` de-dupes multi-person shifts into one row; over a
+ * single person's own shifts it degenerates to one row per shift, which is
+ * exactly what a personal shift list is.
  */
 export async function loadMyUpcomingShifts(
   orgId: string,
   staffProfileId: string,
+  fromIso: string,
+  toIso: string,
+  shiftTypes: ShiftType[],
+  locations: Location[],
+): Promise<ShiftGroup[]> {
+  const shifts = await listShiftsForPeriod({ orgId, fromIso, toIso, staffProfileId });
+  return groupShifts(shifts, shiftTypes, locations);
+}
+
+/**
+ * Total rostered hours for each of the last `weeks` weeks, oldest first, for
+ * the "Rostered this week" sparkline (`docs/ORGANISATION_WORKSPACE.html`'s
+ * `spark` array). Draft-inclusive like `loadWeeklyRosterSummary`, so this
+ * week's still-unpublished shifts count the same way past published ones do.
+ *
+ * One query across the whole span rather than `weeks` separate ones: the
+ * range is contiguous, and a week-per-request fan-out would be `weeks` round
+ * trips for data one query already returns.
+ */
+export async function loadRosteredHoursTrend(
+  orgId: string,
+  currentWeekAnchor: string,
   timezone: string,
-  todayDate: string,
-): Promise<Shift[]> {
-  const week = resolvePeriod('week', todayDate, timezone);
-  const fromIso = resolvePeriod('day', todayDate, timezone).toIso;
-  return listShiftsForPeriod({ orgId, fromIso, toIso: week.toIso, staffProfileId });
+  weeks = 7,
+): Promise<number[]> {
+  const anchors: string[] = [];
+  let anchor = currentWeekAnchor;
+  for (let i = 0; i < weeks; i++) {
+    anchors.unshift(anchor);
+    anchor = stepPeriod('week', anchor, -1);
+  }
+  const windows = anchors.map((a) => resolvePeriod('week', a, timezone));
+  const fromIso = windows[0]!.fromIso;
+  const toIso = windows[windows.length - 1]!.toIso;
+
+  const shifts = await listShiftsForPeriod({
+    orgId,
+    fromIso,
+    toIso,
+    publishedOnly: false,
+  });
+  const totals = new Array(weeks).fill(0) as number[];
+
+  for (const shift of shifts) {
+    if (!shift.staff_profile_id) continue;
+    const date = shift.starts_at.slice(0, 10);
+    const weekIndex = windows.findIndex(
+      (w) => date >= w.dates[0]! && date <= w.dates[w.dates.length - 1]!,
+    );
+    if (weekIndex >= 0) {
+      totals[weekIndex] = (totals[weekIndex] ?? 0) + shiftNetMinutes(shift) / 60;
+    }
+  }
+
+  return totals;
 }

@@ -1453,11 +1453,26 @@ export function RotaBuilderPage(): JSX.Element {
           </div>
         </div>
 
-        {publishError && (
-          <p className="mb-4 text-sm text-danger" role="alert">
+        {/* ---- Publish status ---- */}
+        {publishError ? (
+          <Callout tone="danger" title="Can't publish yet" className="mb-4">
             {publishError}
-          </p>
-        )}
+          </Callout>
+        ) : allPublished ? (
+          <Callout tone="success" title="Published" className="mb-4">
+            Staff can see this week. Editing a shift returns its rota to draft.
+          </Callout>
+        ) : criticalWarnings.length > 0 ? (
+          <Callout tone="danger" title="Draft, not visible to staff" className="mb-4">
+            {criticalWarnings.length} critical{' '}
+            {criticalWarnings.length === 1 ? 'issue blocks' : 'issues block'} publication.
+            See the Warnings tab.
+          </Callout>
+        ) : rotasInScope.length > 0 ? (
+          <Callout tone="info" title="Draft, not visible to staff" className="mb-4">
+            No blocking issues. Ready to publish.
+          </Callout>
+        ) : null}
 
         {/* ---- Filters row ---- */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -1577,28 +1592,6 @@ export function RotaBuilderPage(): JSX.Element {
             )}
           </div>
         </div>
-
-        {/* Status of the week in scope, above the grid it describes. Mirrors
-            the button label ("Publish" vs "Unpublish"), but that only reads
-            as a status once you already know which state means what; this
-            says it outright, and for a draft, whether it can be published at
-            all. Silent when a filter has no rota to report on. */}
-        {rotasInScope.length > 0 &&
-          (allPublished ? (
-            <Callout tone="success" title="Published.">
-              Staff can see this week and were notified. Editing a cell returns it to
-              draft and re-notifies only the people whose shifts change.
-            </Callout>
-          ) : (
-            <Callout
-              tone={criticalWarnings.length > 0 ? 'danger' : 'info'}
-              title="Draft, not visible to staff."
-            >
-              {criticalWarnings.length > 0
-                ? `${criticalWarnings.length} ${criticalWarnings.length === 1 ? 'issue' : 'issues'} must be resolved before publishing. See the Warnings tab.`
-                : 'No blocking issues. Ready to publish.'}
-            </Callout>
-          ))}
 
         {/* ---- Main: grid | inspector | action rail ---- */}
         {loading || orgDataLoading ? (
