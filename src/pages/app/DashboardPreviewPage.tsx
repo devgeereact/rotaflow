@@ -227,6 +227,20 @@ for (let day = 1; day <= 31; day++) {
   }
 }
 
+/** One day short of the minimum, three days out, same pattern the seeded demo plants on purpose. */
+const weekCover: DashboardOverview['weekCover'] = Array.from({ length: 7 }, (_, i) => {
+  const date = new Date(NOW);
+  date.setDate(date.getDate() + i);
+  const required = 9;
+  return { date: format(date, 'yyyy-MM-dd'), required, onShift: i === 3 ? 7 : required };
+});
+
+const hoursByDepartment: DashboardOverview['hoursByDepartment'] = [
+  { departmentId: 'dept-nursing', departmentName: 'Nursing', hours: 284 },
+  { departmentId: 'dept-dementia', departmentName: 'Dementia Care', hours: 112 },
+  { departmentId: 'dept-wellbeing', departmentName: 'Wellbeing', hours: 61 },
+];
+
 const OVERVIEW: DashboardOverview = {
   staff: STAFF,
   locations: LOCATIONS,
@@ -235,6 +249,8 @@ const OVERVIEW: DashboardOverview = {
   compliancePercent: 96,
   monthShiftsByDate,
   upcomingGroups: UPCOMING,
+  weekCover,
+  hoursByDepartment,
 };
 
 /**
@@ -252,8 +268,10 @@ export function DashboardPreviewPage(): JSX.Element {
     <div className="p-8">
       <DashboardView
         firstName="James"
+        canManage
         overview={OVERVIEW}
         pending={PENDING}
+        myShifts={[]}
         dayGroups={DAY_GROUPS}
         dayLoading={false}
         dayLabel={dayLabel}

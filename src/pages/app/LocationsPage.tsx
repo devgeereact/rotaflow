@@ -18,6 +18,7 @@ import { Modal } from '@/components/ui/Modal';
 import { DepartmentManager } from '@/components/locations/DepartmentManager';
 import { DepartmentsView } from '@/components/locations/DepartmentsView';
 import { LocationsView } from '@/components/locations/LocationsView';
+import { MinimumCoverEditor } from '@/components/locations/MinimumCoverEditor';
 import {
   LocationsWorkspaceHeader,
   type LocationsWorkspaceTab,
@@ -354,6 +355,17 @@ export function LocationsPage(): JSX.Element {
           }}
           onViewActivity={() => goTo('/app/settings/audit')}
           onOpenGuide={() => setGuideOpen(true)}
+          renderSettings={
+            orgId
+              ? (loc) => (
+                  <MinimumCoverEditor
+                    orgId={orgId}
+                    locationId={loc.id}
+                    canEdit={canManageStaff}
+                  />
+                )
+              : undefined
+          }
         />
       ) : (
         <DepartmentsView
@@ -472,9 +484,10 @@ export function LocationsPage(): JSX.Element {
             <h3 className="mb-1 font-semibold">Coverage</h3>
             <p className="text-content-muted dark:text-content-muted-dark">
               Coverage compares assigned shifts against the total scheduled for the
-              period. It does not know a required headcount, no such column exists, so it
-              reports how much of what was planned is filled, not whether the plan was
-              adequate.
+              period, how much of what was planned is filled. A site&rsquo;s staffing
+              minimum is a separate, per-day number set from its Settings tab here; the
+              rota builder blocks publishing under it, and the dashboard charts it against
+              who is actually on shift.
             </p>
           </div>
           <div>

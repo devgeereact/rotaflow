@@ -100,6 +100,10 @@ export type Location = Database['public']['Tables']['locations']['Row'];
 export type LocationInsert = Database['public']['Tables']['locations']['Insert'];
 export type LocationUpdate = Database['public']['Tables']['locations']['Update'];
 
+export type MinimumCoverRule = Database['public']['Tables']['minimum_cover_rules']['Row'];
+export type MinimumCoverRuleUpsert =
+  Database['public']['Tables']['minimum_cover_rules']['Insert'];
+
 export type Department = Database['public']['Tables']['departments']['Row'];
 export type DepartmentInsert = Database['public']['Tables']['departments']['Insert'];
 export type DepartmentUpdate = Database['public']['Tables']['departments']['Update'];

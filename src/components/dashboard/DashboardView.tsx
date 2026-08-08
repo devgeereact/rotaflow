@@ -19,12 +19,18 @@ import {
 import { todayIso } from '@/lib/schedulePeriod';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/Card';
+import { BarChart, type BarGroup } from '@/components/ui/BarChart';
+import {
+  CoverAgainstMinimumChart,
+  type CoverDay,
+} from '@/components/dashboard/CoverAgainstMinimumChart';
 import { StatCard } from '@/components/dashboard/StatCard';
 import type {
   DashboardOverview,
   PendingRequest,
   ShiftGroup,
 } from '@/services/dashboardService';
+import type { Shift } from '@/types';
 
 interface QuickAction {
   icon: typeof CalendarPlus;
@@ -122,8 +128,12 @@ function initials(name: string): string {
 
 export interface DashboardViewProps {
   firstName: string | null;
+  /** Owner/manager gets the org-wide operational view; staff gets their own shifts. */
+  canManage: boolean;
   overview: DashboardOverview;
   pending: PendingRequest[];
+  /** Only meaningful for staff; a manager's dashboard has no "your shifts" card. */
+  myShifts: Shift[];
   dayGroups: ShiftGroup[];
   dayLoading: boolean;
   dayLabel: string;
@@ -152,8 +162,10 @@ export interface DashboardViewProps {
  */
 export function DashboardView({
   firstName,
+  canManage,
   overview,
   pending,
+  myShifts,
   dayGroups,
   dayLoading,
   dayLabel,
@@ -164,6 +176,18 @@ export function DashboardView({
   onToday,
   onSelectDate,
 }: DashboardViewProps): JSX.Element {
+  if (!canManage) {
+    return (
+      <StaffDashboardView
+        firstName={firstName}
+        overview={overview}
+        pending={pending}
+        myShifts={myShifts}
+        timezone={timezone}
+      />
+    );
+  }
+
   const todaySlots = dayGroups.reduce((sum, g) => sum + g.total, 0);
   const todayFilled = dayGroups.reduce((sum, g) => sum + g.filled, 0);
   const todayShortages = dayGroups.reduce(
@@ -192,15 +216,55 @@ export function DashboardView({
   const hiddenUpcomingCount =
     overview.upcomingGroups.length - visibleUpcomingGroups.length;
 
+  /**
+   * On shift against each site's staffing minimum, summed across every site
+   * that has one set (see DashboardOverview.weekCover). All zero when no site
+   * has a minimum configured yet, which reads as an honestly-empty chart
+   * rather than a fabricated one.
+   */
+  const coverDays: CoverDay[] = overview.weekCover.map((day) => ({
+    date: day.date,
+    label: format(new Date(`${day.date}T00:00:00`), 'EEE d'),
+    required: day.required,
+    onShift: day.onShift,
+  }));
+  const hasCoverMinimums = overview.weekCover.some((day) => day.required > 0);
+  const shortDayCount = overview.weekCover.filter(
+    (day) => day.required > 0 && day.onShift < day.required,
+  ).length;
+
+  const hoursByDeptGroups: BarGroup[] = overview.hoursByDepartment.map((d) => ({
+    label: d.departmentName,
+    values: [Math.round(d.hours * 10) / 10],
+  }));
+
   return (
     <div className="max-w-[1600px]">
-      <div className="mb-6">
-        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-          Dashboard
-        </h1>
-        <p className="text-content-muted dark:text-content-muted-dark">
-          Welcome back{firstName ? `, ${firstName}` : ''} 👋
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
+            Dashboard
+          </h1>
+          <p className="text-content-muted dark:text-content-muted-dark">
+            Welcome back{firstName ? `, ${firstName}` : ''} 👋
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link
+            to="/app/announcements"
+            className="flex h-10 items-center gap-2 rounded-xl border border-surface-border bg-surface px-4 text-sm font-semibold text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+          >
+            <Megaphone size={16} aria-hidden="true" />
+            Post announcement
+          </Link>
+          <Link
+            to="/app/rota"
+            className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <CalendarPlus size={16} aria-hidden="true" />
+            Open rota builder
+          </Link>
+        </div>
       </div>
 
       {/* The five metrics NEW_STRUCTURE §7 asks for, in its order. Compliance
@@ -413,60 +477,7 @@ export function DashboardView({
           </Link>
         </Card>
 
-        <Card className="p-5 lg:col-span-1">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold text-content dark:text-content-dark">
-              Announcements
-            </h2>
-            <Link
-              to="/app/announcements"
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              View all
-            </Link>
-          </div>
-
-          {overview.announcements.length === 0 ? (
-            <p className="text-sm text-content-muted dark:text-content-muted-dark">
-              No announcements yet.
-            </p>
-          ) : (
-            <ul className="space-y-4">
-              {overview.announcements.slice(0, 3).map((a) => (
-                <li key={a.id} className="flex gap-3">
-                  <span
-                    className={cn(
-                      'grid h-9 w-9 shrink-0 place-items-center rounded-full',
-                      a.urgent
-                        ? 'bg-danger/10 text-danger'
-                        : 'bg-primary/10 text-primary',
-                    )}
-                  >
-                    <Megaphone size={16} aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-content dark:text-content-dark">
-                      {a.title}
-                    </p>
-                    <p className="line-clamp-2 text-xs text-content-muted dark:text-content-muted-dark">
-                      {a.body}
-                    </p>
-                    <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-                      {timeAgo(a.created_at)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <Link
-            to="/app/announcements"
-            className="mt-4 flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            View all announcements <ChevronRight size={14} aria-hidden="true" />
-          </Link>
-        </Card>
+        <AnnouncementsCard announcements={overview.announcements} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -563,6 +574,246 @@ export function DashboardView({
         </Card>
 
         <MonthlyOverview overview={overview} onSelectDate={onSelectDate} />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <Card className="p-5 lg:col-span-2">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-content dark:text-content-dark">
+              Cover Against Minimum
+            </h2>
+            {shortDayCount > 0 && (
+              <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger">
+                {shortDayCount} {shortDayCount === 1 ? 'day' : 'days'} below minimum
+              </span>
+            )}
+          </div>
+          <p className="mb-4 text-xs text-content-muted dark:text-content-muted-dark">
+            On shift against each site&rsquo;s staffing minimum, today through the end of
+            this week.
+          </p>
+          {hasCoverMinimums ? (
+            <CoverAgainstMinimumChart days={coverDays} />
+          ) : (
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              No site has a staffing minimum set yet. Set one from a site&rsquo;s Settings
+              tab in Locations.
+            </p>
+          )}
+        </Card>
+
+        <Card className="p-5 lg:col-span-1">
+          <h2 className="mb-1 font-semibold text-content dark:text-content-dark">
+            Hours by Department
+          </h2>
+          <p className="mb-4 text-xs text-content-muted dark:text-content-muted-dark">
+            Rostered today through the end of this week.
+          </p>
+          {hoursByDeptGroups.length > 0 ? (
+            <BarChart
+              title="Hours by department"
+              unit="h"
+              series={[{ id: 'hours', label: 'Hours' }]}
+              groups={hoursByDeptGroups}
+            />
+          ) : (
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              No department has hours rostered this week.
+            </p>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+interface AnnouncementsCardProps {
+  announcements: DashboardOverview['announcements'];
+}
+
+/** Shared between the manager and staff dashboards; the content itself carries no role logic. */
+function AnnouncementsCard({ announcements }: AnnouncementsCardProps): JSX.Element {
+  return (
+    <Card className="p-5 lg:col-span-1">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-semibold text-content dark:text-content-dark">
+          Announcements
+        </h2>
+        <Link
+          to="/app/announcements"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          View all
+        </Link>
+      </div>
+
+      {announcements.length === 0 ? (
+        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          No announcements yet.
+        </p>
+      ) : (
+        <ul className="space-y-4">
+          {announcements.slice(0, 3).map((a) => (
+            <li key={a.id} className="flex gap-3">
+              <span
+                className={cn(
+                  'grid h-9 w-9 shrink-0 place-items-center rounded-full',
+                  a.urgent ? 'bg-danger/10 text-danger' : 'bg-primary/10 text-primary',
+                )}
+              >
+                <Megaphone size={16} aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-content dark:text-content-dark">
+                  {a.title}
+                </p>
+                <p className="line-clamp-2 text-xs text-content-muted dark:text-content-muted-dark">
+                  {a.body}
+                </p>
+                <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+                  {timeAgo(a.created_at)}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Link
+        to="/app/announcements"
+        className="mt-4 flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        View all announcements <ChevronRight size={14} aria-hidden="true" />
+      </Link>
+    </Card>
+  );
+}
+
+interface StaffDashboardViewProps {
+  firstName: string | null;
+  overview: DashboardOverview;
+  pending: PendingRequest[];
+  myShifts: Shift[];
+  timezone: string;
+}
+
+/**
+ * A staff member's home: their own next shifts and hours, not the org's
+ * operational numbers. `Pending Requests` on the manager dashboard is
+ * everyone's; RLS already narrows a staff caller's `getPendingRequests` to
+ * their own rows (docs/SCHEMA.md §4, "personal data"), so `pending` here is
+ * already just theirs, no separate filtering needed.
+ */
+function StaffDashboardView({
+  firstName,
+  overview,
+  pending,
+  myShifts,
+  timezone,
+}: StaffDashboardViewProps): JSX.Element {
+  const typeById = new Map(overview.shiftTypes.map((t) => [t.id, t]));
+  const locationById = new Map(overview.locations.map((l) => [l.id, l]));
+  const sortedShifts = [...myShifts].sort((a, b) =>
+    a.starts_at.localeCompare(b.starts_at),
+  );
+  const weekHours = sortedShifts.reduce((total, s) => {
+    const minutes =
+      (new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60_000 -
+      s.break_minutes;
+    return total + Math.max(0, minutes) / 60;
+  }, 0);
+
+  return (
+    <div className="max-w-[1600px]">
+      <div className="mb-6">
+        <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
+          Dashboard
+        </h1>
+        <p className="text-content-muted dark:text-content-muted-dark">
+          Welcome back{firstName ? `, ${firstName}` : ''} 👋
+        </p>
+      </div>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={CalendarDays}
+          tint="bg-primary/10 text-primary"
+          label="Your Hours This Week"
+          value={`${(Math.round(weekHours * 10) / 10).toFixed(1)}h`}
+          hint={null}
+        />
+        <StatCard
+          icon={Users}
+          tint="bg-shift-violet/15 text-shift-violet"
+          label="Shifts Booked"
+          value={sortedShifts.length}
+          hint={null}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          tint="bg-warning/10 text-warning"
+          label="Your Pending Requests"
+          value={pending.length}
+          hint={pending.length > 0 ? 'Awaiting a decision' : null}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-content dark:text-content-dark">
+              Your Next Shifts
+            </h2>
+            <Link
+              to="/app/schedule"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Full schedule
+            </Link>
+          </div>
+          {sortedShifts.length === 0 ? (
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              Nothing scheduled this week.
+            </p>
+          ) : (
+            <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
+              {sortedShifts.map((shift) => {
+                const type = shift.shift_type_id
+                  ? typeById.get(shift.shift_type_id)
+                  : undefined;
+                const location = shift.location_id
+                  ? locationById.get(shift.location_id)
+                  : undefined;
+                const [start, end] = timeRange(shift.starts_at, shift.ends_at, timezone);
+                return (
+                  <li
+                    key={shift.id}
+                    className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <span
+                      className="h-10 w-1 shrink-0 rounded-full"
+                      style={{ backgroundColor: type?.colour ?? '#3B6FE0' }}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-content-muted dark:text-content-muted-dark">
+                        {format(new Date(shift.starts_at), 'EEE d MMM')} · {start}, {end}
+                      </p>
+                      <p className="truncate text-sm font-medium text-content dark:text-content-dark">
+                        {type?.name ?? 'Shift'}
+                      </p>
+                      <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
+                        {location?.name ?? 'Unassigned location'}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        <AnnouncementsCard announcements={overview.announcements} />
       </div>
     </div>
   );

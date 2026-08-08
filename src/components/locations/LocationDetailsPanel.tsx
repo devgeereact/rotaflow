@@ -5,6 +5,7 @@ import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StaffLinkButton } from '@/components/staff/StaffLinkButton';
 import { StaffSectionHeader } from '@/components/staff/StaffSectionHeader';
 import { PanelTabs, type PanelTabItem } from '@/components/ui/PanelTabs';
+import type { ReactNode } from 'react';
 import { LocationThumb } from '@/components/locations/LocationThumb';
 import { SiteActivityList } from '@/components/locations/SiteActivityList';
 import { SiteMetricGrid } from '@/components/locations/SiteMetricGrid';
@@ -18,6 +19,8 @@ interface LocationDetailsPanelProps {
   onEditInfo: () => void;
   onFollowMetric: (id: string) => void;
   onViewActivity: () => void;
+  /** Settings tab content. Falls back to "not built yet" when omitted (design previews). */
+  renderSettings?: (location: LocationDetails) => ReactNode;
 }
 
 const TABS: PanelTabItem<LocationPanelTab>[] = [
@@ -44,6 +47,7 @@ export function LocationDetailsPanel({
   onEditInfo,
   onFollowMetric,
   onViewActivity,
+  renderSettings,
 }: LocationDetailsPanelProps): JSX.Element {
   const [tab, setTab] = useState<LocationPanelTab>('overview');
 
@@ -170,6 +174,8 @@ export function LocationDetailsPanel({
             </section>
           )}
         </>
+      ) : tab === 'settings' && renderSettings ? (
+        <section className={SECTION}>{renderSettings(location)}</section>
       ) : (
         <section className={SECTION}>
           <p className="text-sm text-content-muted dark:text-content-muted-dark">

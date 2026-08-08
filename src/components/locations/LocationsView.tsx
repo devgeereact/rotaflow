@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { TablePagination } from '@/components/ui/TablePagination';
@@ -37,6 +38,8 @@ interface LocationsViewProps {
   onFollowMetric: (id: string) => void;
   onViewActivity: () => void;
   onOpenGuide: () => void;
+  /** Settings tab content for the selected site. Omitted in design previews, which have no live org to save against. */
+  renderSettings?: (location: LocationDetails) => ReactNode;
 }
 
 /**
@@ -71,6 +74,7 @@ export function LocationsView({
   onFollowMetric,
   onViewActivity,
   onOpenGuide,
+  renderSettings,
 }: LocationsViewProps): JSX.Element {
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -142,6 +146,7 @@ export function LocationsView({
             onEditInfo={onEditInfo}
             onFollowMetric={onFollowMetric}
             onViewActivity={onViewActivity}
+            renderSettings={renderSettings}
           />
         )}
       </aside>

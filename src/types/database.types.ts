@@ -1259,6 +1259,51 @@ export type Database = {
           },
         ];
       };
+      minimum_cover_rules: {
+        Row: {
+          created_at: string;
+          id: string;
+          location_id: string;
+          min_staff: number;
+          org_id: string;
+          updated_at: string;
+          weekday: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          location_id: string;
+          min_staff?: number;
+          org_id: string;
+          updated_at?: string;
+          weekday: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          location_id?: string;
+          min_staff?: number;
+          org_id?: string;
+          updated_at?: string;
+          weekday?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'minimum_cover_rules_location_id_fkey';
+            columns: ['location_id'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'minimum_cover_rules_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       notifications: {
         Row: {
           body: string | null;

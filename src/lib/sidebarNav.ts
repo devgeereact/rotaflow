@@ -32,6 +32,8 @@ export interface NavItem {
    * typecheck failure rather than a chip a user clicks twice and gives up on.
    */
   to: string;
+  /** Which count from `useNavBadgeCounts` this row shows, if any. */
+  badgeKey?: 'leave' | 'swaps';
 }
 
 /**
@@ -106,8 +108,8 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
   );
 
   items.push(
-    { label: 'Leave', icon: Umbrella, to: '/app/leave' },
-    { label: 'Swaps', icon: Repeat2, to: '/app/swaps' },
+    { label: 'Leave', icon: Umbrella, to: '/app/leave', badgeKey: 'leave' },
+    { label: 'Swaps', icon: Repeat2, to: '/app/swaps', badgeKey: 'swaps' },
     // §2 lists "Request overtime" among what a staff member can do, so this
     // sits outside the managerial block. The page's own Team toggle is what
     // gates the approval queue.

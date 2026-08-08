@@ -5,6 +5,7 @@ import type {
   StaffDocument,
   LeaveRequest,
   Location,
+  MinimumCoverRule,
   Shift,
   ShiftType,
   StaffProfile,
@@ -48,7 +49,8 @@ export type InsightKind =
   | 'double_booked'
   | 'rest_breach'
   | 'over_contract'
-  | 'document_expiry';
+  | 'document_expiry'
+  | 'under_minimum_cover';
 
 export interface RotaInsight {
   id: string;
@@ -71,6 +73,21 @@ export interface RotaInsightInput {
   leave: LeaveRequest[];
   availability: Availability[];
   documents: StaffDocument[];
+  /**
+   * Each site's staffing minimum, one row per weekday. See
+   * 0036_minimum_cover_rules.sql. Optional and defaults to none, so callers
+   * that predate this check (the assistant panel, the shift inspector, the
+   * preview page) keep compiling and keep their old behaviour untouched.
+   */
+  minimumCoverRules?: MinimumCoverRule[];
+  /**
+   * The calendar dates ('YYYY-MM-DD', local) the minimum-cover check should
+   * walk, independent of which dates actually have a shift. Without this a
+   * site with a minimum set and zero shifts assigned on a given day would
+   * never be flagged, the exact case the check exists for. Optional; the
+   * check is skipped entirely when omitted.
+   */
+  coverDates?: string[];
   timezone: string;
   /** Injected so every rule agrees on "now" and tests can pin it. */
   now: number;
@@ -155,7 +172,7 @@ function weekKey(iso: string, timezone: string): string {
  */
 export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
   const { shifts, staff, shiftTypes, locations, leave, availability, documents } = input;
-  const { timezone, now } = input;
+  const { minimumCoverRules = [], coverDates = [], timezone, now } = input;
 
   const staffById = new Map(staff.map((s) => [s.id, s]));
   const typeById = new Map(shiftTypes.map((t) => [t.id, t]));
@@ -196,6 +213,59 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
       staffProfileId: null,
       shiftId: first.id,
     });
+  }
+
+  // ---- 1b. Below a site's staffing minimum for the day ----
+  // The minimum is set per site per weekday (0036_minimum_cover_rules.sql).
+  // A day with no rule at all is not flagged: silence means the manager has
+  // not set a minimum for that site, not that zero people are required.
+  //
+  // Walked from `locations` x `coverDates`, not from the shifts that happen
+  // to exist, so a site with a minimum set and nobody at all assigned that
+  // day is still flagged. Grouping by the shifts present would silently miss
+  // exactly that case.
+  if (minimumCoverRules.length > 0 && coverDates.length > 0) {
+    const rulesByLocation = new Map<string, Map<number, number>>();
+    for (const rule of minimumCoverRules) {
+      const byWeekday =
+        rulesByLocation.get(rule.location_id) ?? new Map<number, number>();
+      byWeekday.set(rule.weekday, rule.min_staff);
+      rulesByLocation.set(rule.location_id, byWeekday);
+    }
+
+    // Distinct staff actually on shift, per site per local date. Two shifts
+    // for the same person the same day still count once.
+    const onShiftByLocationDate = new Map<string, Set<string>>();
+    for (const shift of upcoming) {
+      if (!shift.staff_profile_id || !shift.location_id) continue;
+      const key = `${shift.location_id}|${localDate(shift.starts_at, timezone)}`;
+      const staffOnShift = onShiftByLocationDate.get(key) ?? new Set<string>();
+      staffOnShift.add(shift.staff_profile_id);
+      onShiftByLocationDate.set(key, staffOnShift);
+    }
+
+    const today = localDate(new Date(now).toISOString(), timezone);
+    for (const [locationId, byWeekday] of rulesByLocation) {
+      const location = locationById.get(locationId);
+      for (const date of coverDates) {
+        if (date < today) continue; // past days can no longer be changed
+        const minStaff = byWeekday.get(weekdayOf(date));
+        if (minStaff === undefined || minStaff === 0) continue;
+        const onShift = onShiftByLocationDate.get(`${locationId}|${date}`)?.size ?? 0;
+        if (onShift >= minStaff) continue;
+        const short = minStaff - onShift;
+        insights.push({
+          id: `cover:${locationId}:${date}`,
+          kind: 'under_minimum_cover',
+          severity: 'critical',
+          title: `${dayLabel(date)} is ${short} short of the ${minStaff}-person minimum`,
+          detail: `${location?.name ?? 'This site'} has ${onShift} on shift against a minimum of ${minStaff}.`,
+          date,
+          staffProfileId: null,
+          shiftId: null,
+        });
+      }
+    }
   }
 
   // ---- Per-person rules ------------------------------------------------

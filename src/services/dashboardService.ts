@@ -1,7 +1,11 @@
 import { supabase } from '@/lib/supabase';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listShiftTypes } from '@/services/shiftTypeService';
-import { listLocations } from '@/services/locationService';
+import {
+  listDepartments,
+  listLocations,
+  listMinimumCoverRulesForOrg,
+} from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgShiftSwaps } from '@/services/swapService';
@@ -144,6 +148,16 @@ export interface DashboardOverview {
   compliancePercent: number;
   monthShiftsByDate: Map<string, { total: number; filled: number }>;
   upcomingGroups: ShiftGroup[];
+  /**
+   * Today through the end of this week's staffing against each site's
+   * minimum (0036_minimum_cover_rules.sql), summed across every site that
+   * has one set. `required` is 0 for a date where no site has a rule, not a
+   * claim that zero people are needed. Unlike `upcomingGroups`, this window
+   * includes today.
+   */
+  weekCover: { date: string; required: number; onShift: number }[];
+  /** Hours rostered today through the end of this week, by department. Staff with no department are omitted, not zeroed. */
+  hoursByDepartment: { departmentId: string; departmentName: string; hours: number }[];
 }
 
 /** Everything the dashboard needs except the selected day's schedule (fetched separately for its own nav). */
@@ -153,25 +167,37 @@ export async function loadDashboardOverview(
   todayDate: string,
 ): Promise<DashboardOverview> {
   const month = resolvePeriod('month', todayDate, timezone);
-  const upcomingFrom = resolvePeriod('day', todayDate, timezone).toIso;
-  const upcomingTo = resolvePeriod('week', todayDate, timezone).toIso;
+  const week = resolvePeriod('week', todayDate, timezone);
+  const today = resolvePeriod('day', todayDate, timezone);
+  const upcomingFrom = today.toIso;
+  const upcomingTo = week.toIso;
 
   const [
     staff,
     locations,
+    departments,
     shiftTypes,
     announcements,
     expiredDocStaffCount,
     monthShifts,
     upcomingShifts,
+    // Starts at today, not tomorrow: `upcomingShifts` deliberately excludes
+    // today (the "Today's Schedule" card covers it separately), but
+    // weekCover/hoursByDepartment below both need today included, or today
+    // always reads as fully unstaffed regardless of the real rota.
+    weekShifts,
+    minimumCoverRules,
   ] = await Promise.all([
     listActiveStaff(orgId),
     listLocations(orgId),
+    listDepartments(orgId),
     listShiftTypes(orgId),
     listAnnouncements(orgId),
     countStaffWithExpiredDocuments(orgId),
     listShiftsForPeriod({ orgId, fromIso: month.fromIso, toIso: month.toIso }),
     listShiftsForPeriod({ orgId, fromIso: upcomingFrom, toIso: upcomingTo }),
+    listShiftsForPeriod({ orgId, fromIso: today.fromIso, toIso: week.toIso }),
+    listMinimumCoverRulesForOrg(orgId),
   ]);
 
   const monthShiftsByDate = new Map<string, { total: number; filled: number }>();
@@ -189,6 +215,61 @@ export async function loadDashboardOverview(
       ? 100
       : Math.round(100 * ((staff.length - expiredDocStaffCount) / staff.length));
 
+  // ---- Week cover vs each site's staffing minimum ----
+  const rulesByLocation = new Map<string, Map<number, number>>();
+  for (const rule of minimumCoverRules) {
+    const byWeekday = rulesByLocation.get(rule.location_id) ?? new Map<number, number>();
+    byWeekday.set(rule.weekday, rule.min_staff);
+    rulesByLocation.set(rule.location_id, byWeekday);
+  }
+  // Distinct staff on shift, per site per date. Two shifts for the same
+  // person the same day still count once.
+  const onShiftByLocationDate = new Map<string, Set<string>>();
+  for (const shift of weekShifts) {
+    if (!shift.staff_profile_id || !shift.location_id) continue;
+    const date = shift.starts_at.slice(0, 10);
+    const key = `${shift.location_id}|${date}`;
+    const set = onShiftByLocationDate.get(key) ?? new Set<string>();
+    set.add(shift.staff_profile_id);
+    onShiftByLocationDate.set(key, set);
+  }
+  const weekDates = week.dates.filter((d) => d >= todayDate);
+  const weekCover = weekDates.map((date) => {
+    const weekday = new Date(`${date}T00:00:00`).getDay();
+    let required = 0;
+    let onShift = 0;
+    for (const [locationId, byWeekday] of rulesByLocation) {
+      const minStaff = byWeekday.get(weekday);
+      if (minStaff === undefined) continue;
+      required += minStaff;
+      onShift += onShiftByLocationDate.get(`${locationId}|${date}`)?.size ?? 0;
+    }
+    return { date, required, onShift };
+  });
+
+  // ---- Hours rostered this week, by department ----
+  const staffDeptById = new Map(staff.map((s) => [s.id, s.department_id]));
+  const departmentNameById = new Map(departments.map((d) => [d.id, d.name]));
+  const hoursByDeptId = new Map<string, number>();
+  for (const shift of weekShifts) {
+    if (!shift.staff_profile_id) continue;
+    const deptId = staffDeptById.get(shift.staff_profile_id);
+    if (!deptId) continue;
+    const hours =
+      Math.max(
+        0,
+        new Date(shift.ends_at).getTime() - new Date(shift.starts_at).getTime(),
+      ) /
+        3_600_000 -
+      shift.break_minutes / 60;
+    hoursByDeptId.set(deptId, (hoursByDeptId.get(deptId) ?? 0) + Math.max(0, hours));
+  }
+  const hoursByDepartment = Array.from(hoursByDeptId, ([departmentId, hours]) => ({
+    departmentId,
+    departmentName: departmentNameById.get(departmentId) ?? 'Unknown department',
+    hours,
+  })).sort((a, b) => b.hours - a.hours);
+
   return {
     staff,
     locations,
@@ -197,5 +278,25 @@ export async function loadDashboardOverview(
     compliancePercent,
     monthShiftsByDate,
     upcomingGroups: groupShifts(upcomingShifts, shiftTypes, locations).slice(0, 3),
+    weekCover,
+    hoursByDepartment,
   };
+}
+
+/**
+ * One person's own shifts, today through the end of this week, published
+ * only. Same window as `loadDashboardOverview`'s `weekCover`/`upcomingGroups`,
+ * for a staff member's "Your next shifts" card, which needs the individual
+ * shift instances rather than the org-wide headcount groups `upcomingGroups`
+ * carries.
+ */
+export async function loadMyUpcomingShifts(
+  orgId: string,
+  staffProfileId: string,
+  timezone: string,
+  todayDate: string,
+): Promise<Shift[]> {
+  const week = resolvePeriod('week', todayDate, timezone);
+  const fromIso = resolvePeriod('day', todayDate, timezone).toIso;
+  return listShiftsForPeriod({ orgId, fromIso, toIso: week.toIso, staffProfileId });
 }

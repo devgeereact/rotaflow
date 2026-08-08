@@ -24,7 +24,11 @@ import { PermissionDenied } from '@/components/PermissionDenied';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useInngestDispatch } from '@/hooks/useInngestDispatch';
-import { listLocations, listDepartments } from '@/services/locationService';
+import {
+  listLocations,
+  listDepartments,
+  listMinimumCoverRulesForOrg,
+} from '@/services/locationService';
 import { listActiveStaff } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
@@ -76,6 +80,7 @@ import type {
   Department,
   LeaveRequest,
   Location,
+  MinimumCoverRule,
   Rota,
   Shift,
   ShiftType,
@@ -179,6 +184,7 @@ export function RotaBuilderPage(): JSX.Element {
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [documents, setDocuments] = useState<StaffDocument[]>([]);
+  const [minimumCoverRules, setMinimumCoverRules] = useState<MinimumCoverRule[]>([]);
   // One clock for every rule, ticked once a minute. Reading Date.now() inside
   // the memo would make "is this shift in the past" depend on render timing.
   const [insightsNow, setInsightsNow] = useState(() => Date.now());
@@ -253,16 +259,18 @@ export function RotaBuilderPage(): JSX.Element {
     setOrgDataFailed(false);
     void (async () => {
       try {
-        const [locs, deptRows, staffRows, typeRows] = await Promise.all([
+        const [locs, deptRows, staffRows, typeRows, coverRules] = await Promise.all([
           listLocations(orgId),
           listDepartments(orgId),
           listActiveStaff(orgId),
           listShiftTypes(orgId),
+          listMinimumCoverRulesForOrg(orgId),
         ]);
         setLocations(locs);
         setDepartments(deptRows);
         setStaff(staffRows);
         setShiftTypes(typeRows);
+        setMinimumCoverRules(coverRules);
       } catch (err) {
         reportError(err, { area: 'rota:load-org-data' });
         setOrgDataFailed(true);
@@ -389,6 +397,8 @@ export function RotaBuilderPage(): JSX.Element {
         leave,
         availability,
         documents,
+        minimumCoverRules,
+        coverDates: dates,
         timezone: DEFAULT_TZ,
         now: insightsNow,
       }),
@@ -400,6 +410,8 @@ export function RotaBuilderPage(): JSX.Element {
       leave,
       availability,
       documents,
+      minimumCoverRules,
+      dates,
       insightsNow,
     ],
   );

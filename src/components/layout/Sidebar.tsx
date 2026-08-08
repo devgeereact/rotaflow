@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrg } from '@/hooks/useOrg';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useNavBadgeCounts, type NavBadgeCounts } from '@/hooks/useNavBadgeCounts';
 import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
 import { SidebarFooter } from '@/components/layout/SidebarFooter';
 import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
@@ -22,35 +23,59 @@ const LINK_ACTIVE = 'bg-primary/10 text-primary dark:bg-primary/15';
 function NavList({
   items,
   collapsed = false,
+  badges,
   onNavigate,
 }: {
   items: NavItem[];
   collapsed?: boolean;
+  badges: NavBadgeCounts;
   onNavigate?: () => void;
 }): JSX.Element {
   return (
     <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3">
-      {items.map(({ label, icon: Icon, to }) => (
-        <NavLink
-          key={label}
-          to={to}
-          onClick={onNavigate}
-          // `title` is the tooltip when collapsed. The label also stays in
-          // the accessibility tree via `sr-only` rather than being dropped, // a collapsed sidebar of eleven unlabelled icons is unusable with
-          // a screen reader, and `title` alone is not reliably announced.
-          title={collapsed ? label : undefined}
-          className={({ isActive }) =>
-            cn(
-              LINK_BASE,
-              isActive ? LINK_ACTIVE : LINK_INACTIVE,
-              collapsed && 'justify-center px-0',
-            )
-          }
-        >
-          <Icon size={18} aria-hidden="true" />
-          {collapsed ? <span className="sr-only">{label}</span> : label}
-        </NavLink>
-      ))}
+      {items.map(({ label, icon: Icon, to, badgeKey }) => {
+        const count = badgeKey ? badges[badgeKey] : 0;
+        return (
+          <NavLink
+            key={label}
+            to={to}
+            onClick={onNavigate}
+            // `title` is the tooltip when collapsed. The label also stays in
+            // the accessibility tree via `sr-only` rather than being dropped, // a collapsed sidebar of eleven unlabelled icons is unusable with
+            // a screen reader, and `title` alone is not reliably announced.
+            title={collapsed ? label : undefined}
+            className={({ isActive }) =>
+              cn(
+                LINK_BASE,
+                isActive ? LINK_ACTIVE : LINK_INACTIVE,
+                collapsed && 'justify-center px-0',
+              )
+            }
+          >
+            <span className="relative shrink-0">
+              <Icon size={18} aria-hidden="true" />
+              {collapsed && count > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-warning" />
+              )}
+            </span>
+            {collapsed ? (
+              <span className="sr-only">
+                {label}
+                {count > 0 ? `, ${count} pending` : ''}
+              </span>
+            ) : (
+              <>
+                <span className="flex-1">{label}</span>
+                {count > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-warning px-1.5 text-[0.7rem] font-semibold text-white">
+                    {count > 99 ? '99+' : count}
+                  </span>
+                )}
+              </>
+            )}
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }
@@ -72,8 +97,9 @@ interface SidebarProps {
 
 /** Fixed left navigation for the /app/* tenant shell. Only routed items are real links. */
 export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.Element {
-  const { role } = useOrg();
+  const { orgId, role } = useOrg();
   const items = navItemsForRole(role);
+  const badges = useNavBadgeCounts(orgId);
   const setMobileOpen = onMobileOpenChange;
   const drawerRef = useRef<HTMLDivElement | null>(null);
 
@@ -139,7 +165,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
         </div>
 
         <SidebarOrgSwitcher collapsed={collapsed} />
-        <NavList items={items} collapsed={collapsed} />
+        <NavList items={items} collapsed={collapsed} badges={badges} />
         <SidebarFooter collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
 
@@ -182,7 +208,11 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
             </div>
             {/* The drawer is always full width, so it never renders collapsed. */}
             <SidebarOrgSwitcher collapsed={false} />
-            <NavList items={items} onNavigate={() => setMobileOpen(false)} />
+            <NavList
+              items={items}
+              badges={badges}
+              onNavigate={() => setMobileOpen(false)}
+            />
             <SidebarFooter collapsed={false} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>

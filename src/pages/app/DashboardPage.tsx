@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getProfile } from '@/services/profileService';
+import { getMyStaffProfile } from '@/services/staffService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import {
   getPendingRequests,
   groupShifts,
   loadDashboardOverview,
+  loadMyUpcomingShifts,
   type DashboardOverview,
   type PendingRequest,
   type ShiftGroup,
@@ -19,18 +22,22 @@ import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DashboardView } from '@/components/dashboard/DashboardView';
+import type { Shift } from '@/types';
 
 const DEFAULT_TZ = 'Europe/London';
 
 /** `/app/dashboard`. Real data wiring; see DashboardView for the markup. */
 export function DashboardPage(): JSX.Element {
   const { orgId } = useOrg();
+  const { canManageStaff } = usePermissions();
   const { user } = useSupabaseAuth();
   const { showError } = useToast();
 
   const [firstName, setFirstName] = useState<string | null>(null);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [pending, setPending] = useState<PendingRequest[]>([]);
+  /** Only fetched for staff: a manager's dashboard doesn't show "your shifts". */
+  const [myShifts, setMyShifts] = useState<Shift[]>([]);
   const [dayAnchor, setDayAnchor] = useState(todayIso);
   const [dayGroups, setDayGroups] = useState<ShiftGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +66,17 @@ export function DashboardPage(): JSX.Element {
 
       const staffById = new Map(data.staff.map((s) => [s.id, s]));
       setPending(await getPendingRequests(orgId, staffById));
+
+      if (!canManageStaff) {
+        const myProfile = await getMyStaffProfile(orgId, user.id);
+        setMyShifts(
+          myProfile
+            ? await loadMyUpcomingShifts(orgId, myProfile.id, DEFAULT_TZ, todayIso())
+            : [],
+        );
+      } else {
+        setMyShifts([]);
+      }
     } catch (error) {
       reportError(error, { area: 'dashboard:load' });
       setLoadFailed(true);
@@ -66,7 +84,7 @@ export function DashboardPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [orgId, user, showError]);
+  }, [orgId, user, canManageStaff, showError]);
 
   useEffect(() => {
     void load();
@@ -126,8 +144,10 @@ export function DashboardPage(): JSX.Element {
   return (
     <DashboardView
       firstName={firstName}
+      canManage={canManageStaff}
       overview={overview!}
       pending={pending}
+      myShifts={myShifts}
       dayGroups={dayGroups}
       dayLoading={dayLoading}
       dayLabel={dayLabel}
