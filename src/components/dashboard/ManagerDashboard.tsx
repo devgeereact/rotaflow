@@ -231,9 +231,16 @@ export function ManagerDashboard({
             })}
           </div>
           <p className="mt-3 text-xs text-content-muted dark:text-content-muted-dark">
-            The dashed line is the {weekly?.coverByDate[0]?.required ?? 0}-person staffing
-            minimum set in Settings → Policies. Bars below it are the days that block
-            publication.
+            The dashed line is each day&rsquo;s staffing minimum, summed from every
+            site&rsquo;s own setting in{' '}
+            <Link
+              to="/app/locations"
+              className="font-medium text-primary hover:underline"
+            >
+              Locations
+            </Link>
+            . It can differ by day and by site, a bigger Saturday minimum shows as a
+            taller line. Bars below it are the days that block publication.
           </p>
         </Card>
 
