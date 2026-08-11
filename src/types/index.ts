@@ -64,6 +64,7 @@ export type AvailabilityInsert = Database['public']['Tables']['availability']['I
 
 export type ClockEvent = Database['public']['Tables']['clock_events']['Row'];
 export type ClockEventInsert = Database['public']['Tables']['clock_events']['Insert'];
+export type ClockEventUpdate = Database['public']['Tables']['clock_events']['Update'];
 
 export type LeaveRequest = Database['public']['Tables']['leave_requests']['Row'];
 export type LeaveRequestInsert = Database['public']['Tables']['leave_requests']['Insert'];

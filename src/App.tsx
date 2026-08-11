@@ -106,7 +106,7 @@ const RotaBuilderPreviewPage = devPage(
 );
 const TimesheetsPreviewPage = devPage(
   'TimesheetsPreviewPage',
-  () => import('@/pages/TimesheetsPreviewPage'),
+  () => import('@/pages/app/TimesheetsPreviewPage'),
 );
 const ClockInPreviewPage = devPage(
   'ClockInPreviewPage',

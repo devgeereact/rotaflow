@@ -6,7 +6,7 @@ import { DashboardPreviewPage } from '@/pages/app/DashboardPreviewPage';
 import { RotaBuilderPreviewPage } from '@/pages/RotaBuilderPreviewPage';
 import { SchedulePreviewPage } from '@/pages/app/SchedulePreviewPage';
 import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
-import { TimesheetsPreviewPage } from '@/pages/TimesheetsPreviewPage';
+import { TimesheetsPreviewPage } from '@/pages/app/TimesheetsPreviewPage';
 import { AvailabilityPreviewPage } from '@/pages/AvailabilityPreviewPage';
 import { LeavePreviewPage } from '@/pages/LeavePreviewPage';
 import { SwapsPreviewPage } from '@/pages/SwapsPreviewPage';

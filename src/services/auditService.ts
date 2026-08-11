@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import type { AuditLog } from '@/types';
+import type { Json } from '@/types/database.types';
 
 /**
  * Reader for `audit_logs`.
@@ -97,26 +98,37 @@ export async function listMyAuditLogs(
 /**
  * Record an event the database cannot observe for itself.
  *
- * Only exports qualify today: an export is a read, so no trigger can see it.
- * The action strings are whitelisted in the RPC, a client-callable audit
- * writer records intent, not proof, and without the whitelist it would be a
- * tool for seeding a plausible false trail.
+ * Exports qualify because an export is a read, so no trigger can see it;
+ * `timesheet.amended` (0039) qualifies because `clock_events` has no history
+ * column of its own, so this RPC call is the only record a correction
+ * happened at all, beyond the row's bumped `updated_at`. The action strings
+ * are whitelisted in the RPC, a client-callable audit writer records intent,
+ * not proof, and without the whitelist it would be a tool for seeding a
+ * plausible false trail.
  *
- * Deliberately swallows its error. Failing to record an export must not fail
- * the export the user asked for; the alternative is a screen that refuses to
- * hand over data it already assembled because the audit write timed out.
+ * Deliberately swallows its error. Failing to record the event must not fail
+ * the action the user asked for; the alternative is a screen that refuses an
+ * export it already assembled, or an amendment it already saved, because the
+ * audit write timed out.
  */
 export async function logAuditEvent(
   orgId: string,
-  action: 'gdpr.export' | 'report.exported' | 'timesheet.exported' | 'staff.exported',
+  action:
+    | 'gdpr.export'
+    | 'report.exported'
+    | 'timesheet.exported'
+    | 'staff.exported'
+    | 'timesheet.amended',
   entityType?: string,
   entityId?: string,
+  metadata?: Record<string, Json>,
 ): Promise<void> {
   const { error } = await supabase.rpc('log_audit_event', {
     p_org: orgId,
     p_action: action,
     p_entity_type: entityType ?? undefined,
     p_entity_id: entityId ?? undefined,
+    p_metadata: metadata ?? undefined,
   });
   if (error) reportError(error, { area: 'audit:log' });
 }
