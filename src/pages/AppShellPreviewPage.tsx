@@ -4,7 +4,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { OrgContext, type OrgContextValue } from '@/context/OrgContext';
 import { DashboardPreviewPage } from '@/pages/app/DashboardPreviewPage';
 import { RotaBuilderPreviewPage } from '@/pages/RotaBuilderPreviewPage';
-import { SchedulePreviewPage } from '@/pages/SchedulePreviewPage';
+import { SchedulePreviewPage } from '@/pages/app/SchedulePreviewPage';
 import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
 import { TimesheetsPreviewPage } from '@/pages/TimesheetsPreviewPage';
 import { AvailabilityPreviewPage } from '@/pages/AvailabilityPreviewPage';

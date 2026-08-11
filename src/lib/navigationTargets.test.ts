@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
-import { rotaWorkspaceTabs, teamWorkspaceTabs } from '@/lib/workspaceTabs';
+import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
 import { navItemsForRole } from '@/lib/sidebarNav';
@@ -192,17 +192,14 @@ describe('navigation targets', () => {
   });
 
   /*
-   * The merged workspaces (Rota = build + published, Team = directory +
-   * availability). Both roles are checked because the tab sets differ: a
-   * manager gets both halves, staff get only the half they may open, and a tab
-   * pointing at a route that does not exist would 404 for one role while
-   * looking fine for the other.
+   * The merged workspace (Team = directory + availability). Both roles are
+   * checked because the tab sets differ: a manager gets both halves, staff
+   * get only the half they may open, and a tab pointing at a route that does
+   * not exist would 404 for one role while looking fine for the other.
    */
   it.each(
     (['owner', 'manager', 'staff'] as const).flatMap((role) =>
-      [...rotaWorkspaceTabs(role), ...teamWorkspaceTabs(role)].map(
-        (tab) => [role, tab.label, tab.to] as const,
-      ),
+      teamWorkspaceTabs(role).map((tab) => [role, tab.label, tab.to] as const),
     ),
   )('workspace tab for %s, %s (%s) has a route', (_role, _label, to) => {
     expect(isRoutable(to)).toBe(true);
@@ -211,9 +208,7 @@ describe('navigation targets', () => {
   it('gives staff no workspace tab they cannot open', () => {
     // A single-item set renders no tab bar at all (WorkspaceHeader), which is
     // the intended outcome, not an empty bar, and not a link to a 403.
-    expect(rotaWorkspaceTabs('staff')).toHaveLength(1);
     expect(teamWorkspaceTabs('staff')).toHaveLength(1);
-    expect(rotaWorkspaceTabs('staff')[0]?.to).toBe('/app/schedule');
     expect(teamWorkspaceTabs('staff')[0]?.to).toBe('/app/availability');
   });
 

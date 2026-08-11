@@ -57,8 +57,10 @@ export interface NavItem {
  * their own sidebar rows instead (a manager builds the rota far more often
  * than they read the read-only view of it, and burying "Schedule" a click
  * inside "Rota" cost it a place a keyboard-driven user could jump straight
- * to). `workspaceTabs.ts` still exists and the two pages still cross-link via
- * their own tab bar; that is now a secondary path, not the only one.
+ * to). Rota Builder and Schedule dropped the cross-link entirely, matching
+ * the reference's own nav (two rows, no shared tab bar); Team and Availability
+ * keep theirs, since `workspaceTabs.ts`'s `teamWorkspaceTabs` is still wired
+ * into both pages.
  *
  * ## Why Clock In is shown to managers too
  *

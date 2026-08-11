@@ -104,10 +104,6 @@ const RotaBuilderPreviewPage = devPage(
   'RotaBuilderPreviewPage',
   () => import('@/pages/RotaBuilderPreviewPage'),
 );
-const SchedulePreviewPage = devPage(
-  'SchedulePreviewPage',
-  () => import('@/pages/SchedulePreviewPage'),
-);
 const TimesheetsPreviewPage = devPage(
   'TimesheetsPreviewPage',
   () => import('@/pages/TimesheetsPreviewPage'),
@@ -194,6 +190,10 @@ const DashboardPage = lazyPage(
 const DashboardPreviewPage = devPage(
   'DashboardPreviewPage',
   () => import('@/pages/app/DashboardPreviewPage'),
+);
+const SchedulePreviewPage = devPage(
+  'SchedulePreviewPage',
+  () => import('@/pages/app/SchedulePreviewPage'),
 );
 const StaffPage = lazyPage('StaffPage', () => import('@/pages/app/StaffPage'));
 const StaffProfilePage = lazyPage(
@@ -454,7 +454,7 @@ export function App(): JSX.Element {
                           path="/rota-builder-preview"
                           element={<RotaBuilderPreviewPage />}
                         />
-                        {/* design/published-schedule.png's numbers. */}
+                        {/* Renders the real ManagerSchedule/StaffSchedule; ?role=staff switches branch. */}
                         <Route
                           path="/schedule-preview"
                           element={<SchedulePreviewPage />}
