@@ -6,6 +6,7 @@ module.exports = {
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:jsx-a11y/recommended',
   ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
@@ -14,7 +15,7 @@ module.exports = {
     project: ['./tsconfig.json'],
     tsconfigRootDir: __dirname,
   },
-  plugins: ['@typescript-eslint', 'react-hooks', 'react-refresh'],
+  plugins: ['@typescript-eslint', 'react-hooks', 'react-refresh', 'jsx-a11y'],
   ignorePatterns: [
     'dist',
     'dev-dist',
@@ -35,7 +36,10 @@ module.exports = {
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
     '@typescript-eslint/no-explicit-any': 'error',
-    '@typescript-eslint/explicit-function-return-type': ['warn', { allowExpressions: true }],
+    '@typescript-eslint/explicit-function-return-type': [
+      'warn',
+      { allowExpressions: true },
+    ],
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
   },

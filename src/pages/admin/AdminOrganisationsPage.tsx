@@ -41,7 +41,8 @@ type OrgSortKey =
   | 'plan'
   | 'status'
   | 'usage'
-  | 'activity';
+  | 'activity'
+  | 'actions';
 
 const STATUS_TONE: Record<OrganisationStatus, 'success' | 'warning' | 'neutral'> = {
   active: 'success',
@@ -168,8 +169,13 @@ export function AdminOrganisationsPage(): JSX.Element {
         case 'usage':
           return (facts(a).usage - facts(b).usage) * direction;
         case 'activity':
+          // The real column, not created_at: `activity` sorts the same field
+          // the "Last activity" cell now shows and the "At risk" tile above
+          // already reads (tenantHealth.ts) — three places that used to be
+          // free to disagree about which organisations look neglected.
           return (
-            (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) *
+            ((a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0) -
+              (b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0)) *
             direction
           );
         default:
@@ -278,14 +284,20 @@ export function AdminOrganisationsPage(): JSX.Element {
         label: 'Last activity',
         width: 'w-[11%]',
         sortable: true,
+        // The real organisations.last_activity_at, not the demo fixture's
+        // fabricated string — a tenant the "At risk" tile above counts as
+        // never-active (this same column, tenantHealth.ts) used to show
+        // "today" one column across, and the two could never agree.
         cell: (org) => (
           <span className="whitespace-nowrap text-content-muted dark:text-content-muted-dark">
-            {facts(org).lastActivity}
+            {org.last_activity_at
+              ? new Date(org.last_activity_at).toLocaleDateString('en-GB')
+              : 'Never'}
           </span>
         ),
       },
       {
-        key: 'organisation',
+        key: 'actions',
         label: 'Actions',
         width: 'w-[18%]',
         align: 'right',
@@ -326,6 +338,12 @@ export function AdminOrganisationsPage(): JSX.Element {
   // Exports what is on screen, not the whole table: the filters above are the
   // question being asked, and an export that quietly ignores them is the wrong
   // answer to it.
+  // Industry and Usage % are deliberately NOT here — both come from
+  // demoOrgFacts, a fixture keyed by row position, not real data (see
+  // `facts` above). AdminSubscriptionsPage's export already omits its own
+  // demo columns for the same reason; this file's own on-screen table
+  // discloses them as placeholders, but a CSV leaves the product and lands
+  // in someone's real reporting with no such disclosure attached.
   const exportCsv = useCallback(() => {
     downloadCsv(`organisations_${new Date().toISOString().slice(0, 10)}`, visible, [
       { label: 'Name', value: (org) => org.name },
@@ -334,11 +352,10 @@ export function AdminOrganisationsPage(): JSX.Element {
       { label: 'Status', value: (org) => org.status },
       { label: 'Members', value: (org) => members.get(org.id) ?? 0 },
       { label: 'Sites', value: (org) => sites.get(org.id) ?? 0 },
-      { label: 'Industry', value: (org) => facts(org).industry },
-      { label: 'Usage %', value: (org) => facts(org).usage },
+      { label: 'Last activity', value: (org) => org.last_activity_at ?? 'Never' },
       { label: 'Created', value: (org) => org.created_at },
     ]);
-  }, [visible, members, sites, planOf, facts]);
+  }, [visible, members, sites, planOf]);
 
   return (
     <AdminPage

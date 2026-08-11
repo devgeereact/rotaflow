@@ -22,7 +22,7 @@ import { humaniseKey } from '@/lib/platformOverview';
 import { downloadCsv } from '@/lib/csv';
 import { demoSubscriptionFacts, type DemoPaymentState } from '@/lib/adminOverviewDemo';
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
-import { formatMoney, formatMoneyShort } from '@/lib/money';
+import { formatMoney } from '@/lib/money';
 import {
   annualRunRatePence,
   collectedByMonth,
@@ -53,7 +53,16 @@ function toneFor(status: string): (typeof STATUS_TONE)[keyof typeof STATUS_TONE]
   return STATUS_TONE[status as keyof typeof STATUS_TONE] ?? 'neutral';
 }
 
-type SubSortKey = 'organisation' | 'plan' | 'status' | 'value' | 'period' | 'usage';
+type SubSortKey =
+  | 'organisation'
+  | 'plan'
+  | 'status'
+  | 'value'
+  | 'period'
+  | 'usage'
+  | 'cycle'
+  | 'payment'
+  | 'actions';
 
 interface Row {
   organisation: Organisation;
@@ -276,7 +285,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
           ),
       },
       {
-        key: 'plan',
+        key: 'cycle',
         label: 'Cycle',
         width: 'w-[8%]',
         cell: (row) => facts(row).cycle,
@@ -319,7 +328,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         },
       },
       {
-        key: 'status',
+        key: 'payment',
         label: 'Payment',
         width: 'w-[10%]',
         cell: (row) => {
@@ -340,7 +349,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         cell: (row) => `${facts(row).usage}%`,
       },
       {
-        key: 'organisation',
+        key: 'actions',
         label: 'Actions',
         width: 'w-[17%]',
         align: 'right',
@@ -408,7 +417,10 @@ export function AdminSubscriptionsPage(): JSX.Element {
             />
             <StatTile
               label="ARR"
-              value={formatMoneyShort(money.arr)}
+              // Same figure as Billing's own ARR tile, and to the same
+              // precision — `formatMoneyShort`'s rounding is only sound when
+              // the exact number is elsewhere on this screen, and it isn't.
+              value={formatMoney(money.arr)}
               hint="Run rate"
               to="/admin/billing"
             />

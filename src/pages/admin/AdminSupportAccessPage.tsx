@@ -27,6 +27,7 @@ import {
   revokeSupportAccess,
 } from '@/services/supportAccessService';
 import {
+  MIN_REASON_LENGTH,
   SCOPE_LABELS,
   SUPPORT_ACCESS_DURATIONS,
   formatRemaining,
@@ -75,6 +76,8 @@ export function AdminSupportAccessPage(): JSX.Element {
   const [failed, setFailed] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [revoking, setRevoking] = useState<SupportAccessSession | null>(null);
+  const [revokingBusy, setRevokingBusy] = useState(false);
 
   // One clock for the whole render pass, ticking once a minute. Every row and
   // the countdown agree about "now" rather than each sampling it separately.
@@ -114,16 +117,20 @@ export function AdminSupportAccessPage(): JSX.Element {
     [sessions, now],
   );
 
-  const handleRevoke = useCallback(
-    async (session: SupportAccessSession): Promise<void> => {
+  const submitRevoke = useCallback(
+    async (session: SupportAccessSession, reason: string): Promise<void> => {
+      setRevokingBusy(true);
       try {
-        await revokeSupportAccess(session.id, 'Revoked from the platform console');
+        await revokeSupportAccess(session.id, reason);
         showSuccess(`Access to ${session.orgName} revoked.`);
+        setRevoking(null);
         await load();
       } catch (error) {
         showError(
           error instanceof Error ? error.message : 'Could not revoke that session.',
         );
+      } finally {
+        setRevokingBusy(false);
       }
     },
     [load, showError, showSuccess],
@@ -189,11 +196,7 @@ export function AdminSupportAccessPage(): JSX.Element {
             <div className="flex items-center gap-2">
               <Badge tone={STATUS_TONE[status]}>{status}</Badge>
               {status === 'active' && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void handleRevoke(s)}
-                >
+                <Button size="sm" variant="secondary" onClick={() => setRevoking(s)}>
                   Revoke
                 </Button>
               )}
@@ -202,7 +205,7 @@ export function AdminSupportAccessPage(): JSX.Element {
         },
       },
     ],
-    [now, handleRevoke],
+    [now],
   );
 
   return (
@@ -337,6 +340,13 @@ export function AdminSupportAccessPage(): JSX.Element {
             setSubmitting(false);
           }
         }}
+      />
+
+      <RevokeModal
+        session={revoking}
+        busy={revokingBusy}
+        onClose={() => setRevoking(null)}
+        onSubmit={submitRevoke}
       />
     </AdminPage>
   );
@@ -481,6 +491,81 @@ function RequestModal({
           </Button>
           <Button onClick={submit} disabled={busy}>
             {busy ? 'Opening…' : 'Request access'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Ending a session is as auditable as opening one: a reason is required, not
+ * a fixed string every row would share regardless of why access actually
+ * ended, and it asks first, since this is what stops a misclick from cutting
+ * off support mid-investigation.
+ */
+function RevokeModal({
+  session,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  session: SupportAccessSession | null;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (session: SupportAccessSession, reason: string) => Promise<void>;
+}): JSX.Element {
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setReason('');
+    setError(null);
+  }, [session]);
+
+  const submit = (): void => {
+    if (!session) return;
+    if (reason.trim().length < MIN_REASON_LENGTH) {
+      setError(
+        `Explain why this session is ending, at least ${MIN_REASON_LENGTH} characters.`,
+      );
+      return;
+    }
+    void onSubmit(session, reason.trim());
+  };
+
+  return (
+    <Modal
+      open={session !== null}
+      onClose={onClose}
+      title={session ? `Revoke access to ${session.orgName}?` : 'Revoke access'}
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          {session?.adminName} will immediately lose the cross-tenant read this session
+          grants. This cannot be undone.
+        </p>
+        <div>
+          <Label htmlFor="sa-revoke-reason">Reason for ending it early</Label>
+          <textarea
+            id="sa-revoke-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="Investigation complete, no further access needed."
+            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+          />
+          <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+            Recorded permanently and visible to the organisation&rsquo;s owner.
+          </p>
+          {error && <FieldError message={error} />}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={submit} disabled={busy}>
+            {busy ? 'Revoking…' : 'Revoke access'}
           </Button>
         </div>
       </div>

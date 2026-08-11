@@ -4,6 +4,7 @@ import {
   PLATFORM_BILLING_ROLES,
   PLATFORM_CONFIG_ROLES,
   PLATFORM_ROLE_ADMIN_ROLES,
+  PLATFORM_SUPPORT_ROLES,
 } from '@/lib/platformRoles';
 
 export interface Permissions {
@@ -18,6 +19,8 @@ export interface Permissions {
   canManagePlatformConfig: boolean;
   /** Grant and revoke platform roles. Owner only. */
   canManagePlatformAdmins: boolean;
+  /** Change a support case's status or assignee. Owner, admin, support. */
+  canManageSupportCases: boolean;
 }
 
 /**
@@ -49,6 +52,7 @@ export function usePermissions(): Permissions {
       canManagePlatformBilling: holds(PLATFORM_BILLING_ROLES),
       canManagePlatformConfig: holds(PLATFORM_CONFIG_ROLES),
       canManagePlatformAdmins: holds(PLATFORM_ROLE_ADMIN_ROLES),
+      canManageSupportCases: holds(PLATFORM_SUPPORT_ROLES),
     };
   }, [role, isPlatformAdmin, platformRole]);
 }

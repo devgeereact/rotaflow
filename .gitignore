@@ -13,6 +13,7 @@ dev-dist/
 web-build/
 build/
 .output/
+stats.html
 
 # Cache & temp
 .vite/
@@ -42,6 +43,7 @@ design/.loop/
 # committed into the repo it is a copy of.
 .claude/worktrees/
 .claude/settings.local.json
+.claude/*.local.md
 supabase/.temp/
 
 # Vitest coverage output

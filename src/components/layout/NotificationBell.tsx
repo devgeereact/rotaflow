@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { listMyNotifications } from '@/services/notificationService';
+import { countMyUnreadNotifications } from '@/services/notificationService';
 import { reportError } from '@/lib/sentry';
 
 const POLL_MS = 60_000;
@@ -22,9 +22,9 @@ export function NotificationBell(): JSX.Element {
     let active = true;
 
     const refresh = (): void => {
-      void listMyNotifications(user.id)
-        .then((rows) => {
-          if (active) setUnreadCount(rows.filter((n) => !n.read_at).length);
+      void countMyUnreadNotifications(user.id)
+        .then((count) => {
+          if (active) setUnreadCount(count);
         })
         .catch((err: unknown) => reportError(err, { area: 'notificationBell:poll' }));
     };

@@ -146,8 +146,10 @@ export function AdminSupportPage(): JSX.Element {
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
-  const orgByName = useMemo(
-    () => new Map((organisations ?? []).map((o) => [o.name, o])),
+  // Keyed by id, not name: two organisations can share a display name, and a
+  // name lookup would link a case to the wrong tenant's admin page.
+  const orgById = useMemo(
+    () => new Map((organisations ?? []).map((o) => [o.id, o])),
     [organisations],
   );
 
@@ -364,14 +366,19 @@ export function AdminSupportPage(): JSX.Element {
                     </tr>
                   ) : (
                     cases.map((item) => {
-                      const org = item.orgName ? orgByName.get(item.orgName) : undefined;
+                      const org = item.org_id ? orgById.get(item.org_id) : undefined;
                       return (
                         <tr
                           key={item.id}
                           className="border-b border-divider last:border-0 dark:border-divider-dark"
                         >
                           <td className="px-3 py-2.5 pl-4 font-mono text-xs tabular-nums text-content dark:text-content-dark">
-                            {item.reference}
+                            <Link
+                              to={`/admin/support/${item.id}`}
+                              className="hover:underline"
+                            >
+                              {item.reference}
+                            </Link>
                           </td>
                           <td className="px-3 py-2.5">
                             <Badge tone={PRIORITY_TONE[item.priority] ?? 'neutral'} dot>
@@ -380,9 +387,12 @@ export function AdminSupportPage(): JSX.Element {
                             </Badge>
                           </td>
                           <td className="px-3 py-2.5">
-                            <span className="block truncate font-medium text-content dark:text-content-dark">
+                            <Link
+                              to={`/admin/support/${item.id}`}
+                              className="block truncate font-medium text-content hover:text-primary hover:underline dark:text-content-dark"
+                            >
                               {item.subject}
-                            </span>
+                            </Link>
                             <span className="block truncate text-xs text-content-muted dark:text-content-muted-dark">
                               {item.category}
                             </span>

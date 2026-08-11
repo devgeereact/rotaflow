@@ -67,6 +67,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
 
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [rolloutDrafts, setRolloutDrafts] = useState<Map<string, number>>(new Map());
   const [targets, setTargets] = useState<Map<string, number>>(new Map());
   const [lastChanges, setLastChanges] = useState<Map<string, FeatureFlagChange>>(
     new Map(),
@@ -144,12 +145,34 @@ export function AdminFeatureFlagsPage(): JSX.Element {
       } catch (err) {
         reportError(err, { area: 'admin:feature-flags:rollout' });
         showError(err instanceof Error ? err.message : 'Could not change that rollout.');
+        // Write refused: drop the draft so the slider snaps back to the
+        // server's real value instead of showing the rejected one forever.
+        setRolloutDrafts((prev) => {
+          const next = new Map(prev);
+          next.delete(flag.key);
+          return next;
+        });
       } finally {
         setBusyKey(null);
         retry();
       }
     },
     [retry, showError, showSuccess],
+  );
+
+  /**
+   * Commits on release (pointer up / key up), not on every intermediate
+   * value: a Tab press fires `onKeyUp` too, with the value unchanged, which
+   * used to write, log, and toast from a keystroke that changed nothing.
+   */
+  const commitRollout = useCallback(
+    (flag: FeatureFlag, value: number) => {
+      setRolloutDrafts((prev) => new Map(prev).set(flag.key, value));
+      if (value !== flag.rollout) {
+        void changeRollout(flag, value);
+      }
+    },
+    [changeRollout],
   );
 
   // Product features, not service wiring. The services live on Integrations.
@@ -196,6 +219,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
             {flags.map((flag) => {
               const change = lastChanges.get(flag.key);
               const targeted = targets.get(flag.key) ?? 0;
+              const draftRollout = rolloutDrafts.get(flag.key) ?? flag.rollout;
               return (
                 <Card key={flag.key} className="flex flex-col gap-3 p-4">
                   <div className="flex items-start gap-3">
@@ -233,7 +257,9 @@ export function AdminFeatureFlagsPage(): JSX.Element {
 
                   {/* A range input, not a slider component: it is the one
                       control here that has to land on an exact integer, and
-                      the native one does that with a keyboard too. */}
+                      the native one does that with a keyboard too. Controlled
+                      by `draftRollout` so a refused write snaps the handle
+                      back instead of leaving it wherever the user left it. */}
                   <div className="flex items-center gap-2.5">
                     <label
                       htmlFor={`rollout-${flag.key}`}
@@ -247,20 +273,23 @@ export function AdminFeatureFlagsPage(): JSX.Element {
                       min={0}
                       max={100}
                       step={1}
-                      defaultValue={flag.rollout}
+                      value={draftRollout}
                       disabled={!canManagePlatformConfig || busyKey === flag.key}
-                      // On release, not on every pixel: `onChange` would write
-                      // once per step and fill the history with noise.
-                      onMouseUp={(e) =>
-                        void changeRollout(flag, Number(e.currentTarget.value))
+                      // Drag/press updates the handle locally; only release
+                      // commits, and only if the value actually moved.
+                      onChange={(e) =>
+                        setRolloutDrafts((prev) =>
+                          new Map(prev).set(flag.key, Number(e.currentTarget.value)),
+                        )
                       }
-                      onKeyUp={(e) =>
-                        void changeRollout(flag, Number(e.currentTarget.value))
+                      onPointerUp={(e) =>
+                        commitRollout(flag, Number(e.currentTarget.value))
                       }
+                      onKeyUp={(e) => commitRollout(flag, Number(e.currentTarget.value))}
                       className="h-2 flex-1 accent-primary"
                     />
                     <span className="w-10 text-right font-mono text-xs tabular-nums text-content dark:text-content-dark">
-                      {flag.rollout}%
+                      {draftRollout}%
                     </span>
                   </div>
 

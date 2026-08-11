@@ -54,7 +54,9 @@ export function SettingsRolesPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const canEdit = role === 'owner' || role === 'manager';
+  // `organisations_update` (0002_rotaflow.sql) is owner-only — a manager
+  // could see this form enabled and have every save silently rejected by RLS.
+  const canEdit = role === 'owner';
 
   useEffect(() => {
     if (!orgId) return;

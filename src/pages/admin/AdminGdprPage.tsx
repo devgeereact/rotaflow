@@ -131,6 +131,24 @@ export function AdminGdprPage(): JSX.Element {
     };
   }, [requests, today]);
 
+  /**
+   * The board's own order, not the query's `due_on` order: that column is the
+   * unextended deadline, so an extended request sorted by its old date rather
+   * than the one that actually applies. And with no status split, a closed
+   * request with a long-past `due_on` sat above open, urgent ones — a
+   * "closed" state is not a deadline you can miss again.
+   */
+  const sortedRequests = useMemo(() => {
+    const open: GdprRequest[] = [];
+    const closed: GdprRequest[] = [];
+    for (const r of requests ?? []) {
+      (isClosed(r.status) ? closed : open).push(r);
+    }
+    open.sort((a, b) => effectiveDueDate(a).localeCompare(effectiveDueDate(b)));
+    closed.sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? ''));
+    return [...open, ...closed];
+  }, [requests]);
+
   const exportRegister = useCallback(() => {
     downloadCsv(`gdpr-register_${today}`, requests ?? [], [
       { label: 'Subject', value: (r) => r.subjectName ?? '' },
@@ -322,9 +340,9 @@ export function AdminGdprPage(): JSX.Element {
               <AdminEmpty message="No data subject request has been logged." />
             ) : (
               <DataTable
-                caption="Data subject requests, earliest deadline first"
+                caption="Data subject requests, open and earliest deadline first, closed last"
                 columns={columns}
-                rows={requests}
+                rows={sortedRequests}
                 rowKey={(r) => r.id}
               />
             )}

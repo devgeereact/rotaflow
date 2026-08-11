@@ -33,6 +33,7 @@ import {
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
 import { formatMoney } from '@/lib/money';
+import { downloadCsv } from '@/lib/csv';
 import { collectedByMonth, monthlyRecurringPence, revenueByPlan } from '@/lib/revenue';
 import { openCases, urgentOpenCases } from '@/lib/supportMetrics';
 import { healthBreakdown, tenantsActiveWithin } from '@/lib/tenantHealth';
@@ -151,6 +152,7 @@ export function AdminOverviewPage(): JSX.Element {
   const [data, setData] = useState<Snapshot | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [periodMonths, setPeriodMonths] = useState(12);
 
   useEffect(() => {
     let active = true;
@@ -211,7 +213,7 @@ export function AdminOverviewPage(): JSX.Element {
   const derived = useMemo(() => {
     if (!data) return null;
     const now = new Date();
-    const growth = monthlyGrowth(data.organisations, now);
+    const growth = monthlyGrowth(data.organisations, now, periodMonths);
     const active = data.organisations.filter((o) => o.status === 'active').length;
     return {
       growth,
@@ -229,7 +231,7 @@ export function AdminOverviewPage(): JSX.Element {
         data.subscriptions,
         new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
       ),
-      revenueTrend: collectedByMonth(data.invoices, 12, now).map((t) =>
+      revenueTrend: collectedByMonth(data.invoices, periodMonths, now).map((t) =>
         Math.round(t.pence / 100),
       ),
       planMix: revenueByPlan(
@@ -249,7 +251,20 @@ export function AdminOverviewPage(): JSX.Element {
       openSessions: data.sessions.filter((s) => sessionStatus(s, now) === 'active')
         .length,
     };
-  }, [data]);
+  }, [data, periodMonths]);
+
+  const exportReport = useCallback(() => {
+    if (!derived) return;
+    downloadCsv(
+      `platform-overview_${new Date().toISOString().slice(0, 10)}`,
+      derived.growth,
+      [
+        { label: 'Month', value: (g) => g.label },
+        { label: 'Total organisations', value: (g) => String(g.total) },
+        { label: 'New organisations', value: (g) => String(g.created) },
+      ],
+    );
+  }, [derived]);
 
   return (
     <AdminPage
@@ -257,12 +272,19 @@ export function AdminOverviewPage(): JSX.Element {
       description="Organisations, users, subscriptions and platform performance across every RotaFlow tenant."
       action={
         <>
-          <Select aria-label="Reporting period" className="w-auto" defaultValue="12">
+          <Select
+            aria-label="Reporting period"
+            className="w-auto"
+            value={String(periodMonths)}
+            onChange={(e) => setPeriodMonths(Number(e.target.value))}
+          >
             <option value="12">Last 12 months</option>
-            <option value="3">Last 90 days</option>
-            <option value="1">Last 30 days</option>
+            <option value="3">Last 3 months</option>
+            <option value="1">Last month</option>
           </Select>
-          <Button variant="secondary">Export report</Button>
+          <Button variant="secondary" onClick={exportReport} disabled={!derived}>
+            Export report
+          </Button>
         </>
       }
     >

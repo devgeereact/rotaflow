@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/lib/supabase';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listShiftTypes } from '@/services/shiftTypeService';
@@ -190,7 +192,7 @@ export async function loadDashboardOverview(
   const monthShiftsByDate = new Map<string, { total: number; filled: number }>();
   for (const date of month.dates) monthShiftsByDate.set(date, { total: 0, filled: 0 });
   for (const shift of monthShifts) {
-    const date = shift.starts_at.slice(0, 10);
+    const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
     const bucket = monthShiftsByDate.get(date) ?? { total: 0, filled: 0 };
     bucket.total += 1;
     if (shift.staff_profile_id) bucket.filled += 1;
@@ -282,6 +284,7 @@ export async function loadWeeklyRosterSummary(
   fromIso: string,
   toIso: string,
   staff: StaffProfile[],
+  timezone: string,
 ): Promise<WeeklyRosterSummary> {
   const [shifts, departments, rotas, locations, minimumCoverRules] = await Promise.all([
     listShiftsForPeriod({ orgId, fromIso, toIso, publishedOnly: false }),
@@ -303,7 +306,13 @@ export async function loadWeeklyRosterSummary(
 
   for (const shift of shifts) {
     if (!shift.staff_profile_id) continue;
-    const date = shift.starts_at.slice(0, 10);
+    // Local date, not `starts_at`'s raw UTC calendar day — under BST a
+    // shift starting before 01:00 stores as the previous UTC day, so a
+    // string slice buckets it onto a date `onShiftByDate` never seeded and
+    // the add silently no-ops. `computeRotaInsights` (the computation this
+    // is meant to agree with, per the docstring above) uses this same
+    // local-date conversion.
+    const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
     onShiftByDate.get(date)?.add(shift.staff_profile_id);
 
     const hours = shiftNetMinutes(shift) / 60;
@@ -322,9 +331,14 @@ export async function loadWeeklyRosterSummary(
   for (const [staffId, hours] of hoursByStaff) {
     const person = staffById.get(staffId);
     if (!person) continue;
+    // Zero-hours / no contract on file means no contractual ceiling to
+    // measure against — only the 48h statutory limit still applies.
+    // `computeRotaInsights` already treats this case the same way; without
+    // this, every zero-hours worker over 12h in a week showed here as
+    // "20h against a 0h contract", which the other screen never says.
     const contractHours = person.weekly_hours ?? 0;
     const overStatutory = hours > 48;
-    if (overStatutory || hours > contractHours + 12) {
+    if (overStatutory || (contractHours > 0 && hours > contractHours + 12)) {
       overLimitStaff.push({
         staffName: `${person.first_name} ${person.last_name}`,
         hours,
@@ -439,7 +453,7 @@ export async function loadRosteredHoursTrend(
 
   for (const shift of shifts) {
     if (!shift.staff_profile_id) continue;
-    const date = shift.starts_at.slice(0, 10);
+    const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
     const weekIndex = windows.findIndex(
       (w) => date >= w.dates[0]! && date <= w.dates[w.dates.length - 1]!,
     );

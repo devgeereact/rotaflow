@@ -74,6 +74,7 @@ export function DashboardPage(): JSX.Element {
             week.fromIso,
             week.toIso,
             data.staff,
+            DEFAULT_TZ,
           ),
           loadRosteredHoursTrend(orgId, todayIso(), DEFAULT_TZ),
         ]);

@@ -16,6 +16,7 @@ import { needsAttention, renewalBreakdown } from '@/lib/platformBilling';
 import { monthlyGrowth } from '@/lib/platformOverview';
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
 import { formatMoney, formatMoneyExact, formatMoneyShort } from '@/lib/money';
+import { downloadCsv } from '@/lib/csv';
 import {
   annualRunRatePence,
   averageRevenuePerOrgPence,
@@ -141,6 +142,18 @@ export function AdminBillingPage(): JSX.Element {
     [organisations],
   );
 
+  const exportReport = useCallback(() => {
+    downloadCsv(`billing-invoices_${new Date().toISOString().slice(0, 10)}`, invoices, [
+      { label: 'Invoice', value: (i) => i.number },
+      { label: 'Organisation', value: (i) => orgById.get(i.org_id)?.name ?? '' },
+      { label: 'Amount', value: (i) => formatMoneyExact(i.amount_pence, i.currency) },
+      { label: 'Status', value: (i) => INVOICE_LABEL[i.status] ?? i.status },
+      { label: 'Issued', value: (i) => i.issued_on },
+      { label: 'Due', value: (i) => i.due_on },
+      { label: 'Paid', value: (i) => i.paid_at ?? '' },
+    ]);
+  }, [invoices, orgById]);
+
   const derived = useMemo(() => {
     if (!subscriptions) return null;
     const now = new Date();
@@ -210,7 +223,15 @@ export function AdminBillingPage(): JSX.Element {
     <AdminPage
       title="Billing and finance"
       description="Platform-wide revenue, invoices and payment recovery."
-      action={<Button variant="secondary">Export report</Button>}
+      action={
+        <Button
+          variant="secondary"
+          onClick={exportReport}
+          disabled={invoices.length === 0}
+        >
+          Export report
+        </Button>
+      }
     >
       {failed ? (
         <AdminError onRetry={retry} />

@@ -136,6 +136,10 @@ export function AvailabilityPage(): JSX.Element {
 
   const handleAdd = useCallback(async (): Promise<void> => {
     if (!orgId || !myProfile) return;
+    if (status !== 'unavailable' && endTime <= startTime) {
+      showError('End time must be after start time.');
+      return;
+    }
     setSubmitting(true);
     try {
       const created = await createAvailability({

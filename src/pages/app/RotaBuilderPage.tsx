@@ -7,16 +7,22 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import {
+  AlertTriangle,
   CalendarCheck,
+  CalendarRange,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardCopy,
+  ClipboardPaste,
   Plus,
+  Printer,
   Search,
   Settings2,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -62,14 +68,14 @@ import { computeRotaInsights } from '@/lib/rotaInsights';
 import { Button } from '@/components/ui/Button';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
+import { StaffAvatar } from '@/components/ui/StaffAvatar';
+import { hoursLabel } from '@/components/dashboard/dashboardFormat';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
-import { rotaWorkspaceTabs } from '@/lib/workspaceTabs';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
-import { ShiftInspectorPanel } from '@/components/rota/ShiftInspectorPanel';
-import { RotaActionRail } from '@/components/rota/RotaActionRail';
 import {
   AssignShiftModal,
   type AssignShiftFormValues,
@@ -110,8 +116,7 @@ const DEFAULT_TZ = 'Europe/London';
  * "Day" is safe because it is only a *display scope*: the same week's rota
  * stays loaded and editable, and the grid renders one of its columns.
  */
-const VIEW_TABS = ['Day', 'Week'] as const;
-type RotaViewMode = (typeof VIEW_TABS)[number];
+const VIEW_TABS = ['Week', 'Fortnight'] as const;
 
 /**
  * One shift on the clipboard, stored relative to its week rather than on an
@@ -145,6 +150,12 @@ interface AssignModalState {
   shift: Shift | null;
 }
 
+function formatWeekStart(dates: string[]): string {
+  const first = dates[0];
+  if (!first) return '';
+  return format(new Date(`${first}T00:00:00`), 'EEEE d MMMM');
+}
+
 function formatWeekRange(dates: string[]): string {
   const first = dates[0];
   const last = dates[dates.length - 1];
@@ -158,7 +169,7 @@ function formatWeekRange(dates: string[]): string {
 }
 
 export function RotaBuilderPage(): JSX.Element {
-  const { orgId, role } = useOrg();
+  const { orgId, orgName } = useOrg();
   const { canBuildRota } = usePermissions();
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
@@ -218,8 +229,6 @@ export function RotaBuilderPage(): JSX.Element {
   const [autoFillOpen, setAutoFillOpen] = useState(false);
   const [previewSuggestions, setPreviewSuggestions] = useState<AiShiftSuggestion[]>([]);
 
-  const [viewMode, setViewMode] = useState<RotaViewMode>('Week');
-  const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   /** All / only unfilled / only filled. Replaces the old open-shifts checkbox. */
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'open' | 'assigned'>(
@@ -237,21 +246,11 @@ export function RotaBuilderPage(): JSX.Element {
    */
   const [clipboard, setClipboard] = useState<CopiedShift[] | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [repeatForwardOpen, setRepeatForwardOpen] = useState(false);
+  const [repeatForwardWeeks, setRepeatForwardWeeks] = useState('4');
 
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const weekEnd = dates[6] ?? weekStart;
-
-  /**
-   * The columns the grid draws. Day view narrows the *display* only. The
-   * week's rota stays loaded, so publishing and the coverage totals continue
-   * to mean "this week".
-   */
-  const visibleDates = useMemo(() => {
-    if (viewMode !== 'Day') return dates;
-    const chosen = focusedDate && dates.includes(focusedDate) ? focusedDate : null;
-    const today = format(new Date(), 'yyyy-MM-dd');
-    return [chosen ?? (dates.includes(today) ? today : (dates[0] ?? weekStart))];
-  }, [viewMode, focusedDate, dates, weekStart]);
 
   // Org-level data: locations, departments, staff, shift types.
   useEffect(() => {
@@ -422,6 +421,15 @@ export function RotaBuilderPage(): JSX.Element {
     [warnings],
   );
 
+  /** Rings a chip red — matches the grid legend's "Conflict" swatch. */
+  const conflictedShiftIds = useMemo(
+    () =>
+      new Set(
+        criticalWarnings.map((w) => w.shiftId).filter((id): id is string => Boolean(id)),
+      ),
+    [criticalWarnings],
+  );
+
   /** Shifts named by at least one warning. Powers the "needs attention" filter. */
   const problemShiftIds = useMemo(
     () =>
@@ -491,8 +499,23 @@ export function RotaBuilderPage(): JSX.Element {
         `${s.first_name} ${s.last_name}`.toLowerCase().includes(q),
       );
     }
-    return rows;
-  }, [staff, departmentFilter, jobTitleFilter, search]);
+    // Staff rostered this week surface first (what a name search is usually
+    // for — finding someone's shift), everyone else follows. Alphabetical
+    // within each group, so a fully idle roster reads as a plain A-Z list.
+    const rostered = new Set(
+      shiftsInScope
+        .map((s) => s.staff_profile_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+    return [...rows].sort((a, b) => {
+      const aRostered = rostered.has(a.id);
+      const bRostered = rostered.has(b.id);
+      if (aRostered !== bRostered) return aRostered ? -1 : 1;
+      return `${a.first_name} ${a.last_name}`.localeCompare(
+        `${b.first_name} ${b.last_name}`,
+      );
+    });
+  }, [staff, departmentFilter, jobTitleFilter, search, shiftsInScope]);
 
   /**
    * Grouped by location. A single selected location shows its whole roster
@@ -537,6 +560,27 @@ export function RotaBuilderPage(): JSX.Element {
     hideEmptyStaff,
   ]);
 
+  /**
+   * Staff (matching the current department/job-title/search filters) with no
+   * shift anywhere in the org this week, regardless of the location filter —
+   * `shifts` (every location, unlike `shiftsInScope`) is what makes that
+   * honest, since staff_profiles carries no location to scope "idle" by.
+   * Distinct from `groups`, which is who's already on the grid; this is who
+   * isn't, anywhere.
+   */
+  const idleStaff = useMemo(() => {
+    const rostered = new Set(
+      shifts.map((s) => s.staff_profile_id).filter((id): id is string => Boolean(id)),
+    );
+    return staffFiltered.filter((s) => !rostered.has(s.id));
+  }, [staffFiltered, shifts]);
+
+  // staff_profiles has no location column (see `groups` above), so with "All
+  // locations" selected there's nothing to honestly default to — but
+  // AssignShiftModal now lets a new shift pick its own site, so this is only
+  // ever a starting guess for that picker, never the final answer.
+  const defaultAssignLocation = filteredLocations[0] ?? locations[0] ?? null;
+
   const shiftMapByLocation = useMemo(() => {
     const map = new Map<string, Map<string, Shift[]>>();
     for (const loc of filteredLocations) {
@@ -560,24 +604,24 @@ export function RotaBuilderPage(): JSX.Element {
     return map;
   }, [previewSuggestions]);
 
+  // `shiftsInScope`, not `shiftsForDisplay`: the totals footer states the
+  // real cover for the day, independent of the Assignment/Shift-type filters
+  // that narrow which CHIPS are drawn. Feeding it the filtered set meant
+  // "Open shifts only" read every day as understaffed (assigned staff no
+  // longer counted) and "Assigned only" read every day as fully optimal
+  // (open shifts no longer counted) — the exact inconsistency `warnings`
+  // below was already written to avoid, per the comment there.
   const dailyTotals = useMemo(
     () =>
       computeDailyTotals(
-        shiftsForDisplay,
+        shiftsInScope,
         dates,
         DEFAULT_TZ,
         minimumCoverRules,
         filteredLocations,
       ),
-    [shiftsForDisplay, dates, minimumCoverRules, filteredLocations],
+    [shiftsInScope, dates, minimumCoverRules, filteredLocations],
   );
-
-  const totalStaff = useMemo(
-    () => new Set(shiftsInScope.map((s) => s.staff_profile_id).filter(Boolean)).size,
-    [shiftsInScope],
-  );
-
-  const selectedShift = shifts.find((s) => s.id === selectedShiftId) ?? null;
 
   const rotasInScope = filteredLocations
     .map((l) => rotasByLocation.get(l.id))
@@ -715,12 +759,25 @@ export function RotaBuilderPage(): JSX.Element {
         if (!shift) return;
         const { time: startTime } = fromIsoInTimezone(shift.starts_at, location.timezone);
         const { time: endTime } = fromIsoInTimezone(shift.ends_at, location.timezone);
-        const { startsAt, endsAt } = computeShiftIsoRange(
-          cellDate,
-          startTime,
-          endTime,
-          location.timezone,
-        );
+        let startsAt: string;
+        let endsAt: string;
+        try {
+          // A genuine 24h shift (e.g. a sleep-in/on-call shift) reads back
+          // with an identical start and end time, which computeShiftIsoRange
+          // rejects as ambiguous (0h vs 24h) — synchronously, so uncaught it
+          // would crash the drag handler entirely rather than leave the shift
+          // where it was.
+          ({ startsAt, endsAt } = computeShiftIsoRange(
+            cellDate,
+            startTime,
+            endTime,
+            location.timezone,
+          ));
+        } catch (err) {
+          reportError(err, { area: 'rota:drag-reassign' });
+          showError('Could not move that shift. It has been left where it was.');
+          return;
+        }
 
         // Dragging a shift onto someone who is already working that window is
         // the same double-booking as creating one there, so it is refused the
@@ -754,7 +811,10 @@ export function RotaBuilderPage(): JSX.Element {
   );
 
   const handleModalSave = async (values: AssignShiftFormValues): Promise<void> => {
-    const locationId = assignModal.shift?.location_id ?? assignModal.context?.locationId;
+    const locationId =
+      assignModal.shift?.location_id ??
+      values.locationId ??
+      assignModal.context?.locationId;
     const location = locationId ? locationById.get(locationId) : null;
     if (!location) return;
     const { startsAt, endsAt } = computeShiftIsoRange(
@@ -805,44 +865,6 @@ export function RotaBuilderPage(): JSX.Element {
     if (selectedShiftId === shiftId) setSelectedShiftId(null);
     setLastSavedAt(new Date());
   };
-
-  const handleDuplicateShift = useCallback(
-    (shift: Shift): void => {
-      if (!orgId) return;
-      // A copy of an assigned shift is the same person in the same hours, // always a double-booking. Duplicating is still useful, though: it is
-      // how a manager adds a second slot on a busy shift. So the copy is made
-      // open, and the toast says so rather than quietly changing the meaning.
-      const assigned = shift.staff_profile_id !== null;
-      void createShift({
-        org_id: orgId,
-        rota_id: shift.rota_id,
-        location_id: shift.location_id,
-        department_id: shift.department_id,
-        staff_profile_id: null,
-        shift_type_id: shift.shift_type_id,
-        starts_at: shift.starts_at,
-        ends_at: shift.ends_at,
-        break_minutes: shift.break_minutes,
-        status: 'open',
-        notes: shift.notes,
-      })
-        .then((created) => {
-          setShifts((prev) => [...prev, created]);
-          setSelectedShiftId(created.id);
-          setLastSavedAt(new Date());
-          showSuccess(
-            assigned
-              ? 'Duplicated as an open shift. One person cannot work the same hours twice, so assign someone to cover it.'
-              : 'Shift duplicated.',
-          );
-        })
-        .catch((err) => {
-          reportError(err, { area: 'rota:duplicate-shift' });
-          showError('Could not duplicate that shift.');
-        });
-    },
-    [orgId, showError, showSuccess],
-  );
 
   const handleDeleteSelectedShift = useCallback(
     (shift: Shift): void => {
@@ -1099,9 +1121,7 @@ export function RotaBuilderPage(): JSX.Element {
     setBusyAction('previous-week');
     void (async () => {
       try {
-        const previousStart = getMonday(
-          new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() - 7)),
-        );
+        const previousStart = getMonday(addDays(new Date(`${weekStart}T00:00:00`), -7));
         const previousDates = getWeekDates(previousStart);
         const previousEnd = previousDates[6] ?? previousStart;
 
@@ -1149,6 +1169,151 @@ export function RotaBuilderPage(): JSX.Element {
       }
     })();
   }, [orgId, weekStart, filteredLocations, pasteShifts, showError]);
+
+  /**
+   * Repeats the current week's pattern forward as draft rotas for N future
+   * weeks, so staff can see and swap shifts further ahead than one week at a
+   * time. Unlike `pasteShifts`/`placeShift`, every target week here is one
+   * this component has never loaded — there is no `rotasByLocation` entry
+   * and no `shifts` state for it — so each week gets its own rota lookup and
+   * its own clash-checking list, and none of it touches the page's own
+   * `shifts` state (those shifts don't belong to the week on screen).
+   */
+  const handleRepeatForward = useCallback(
+    async (weeksAhead: number): Promise<void> => {
+      if (!orgId || weeksAhead < 1) return;
+      setBusyAction('repeat-forward');
+      try {
+        const sourceDates = dates;
+        const collected: CopiedShift[] = [];
+        for (const location of filteredLocations) {
+          const rows = shifts.filter((s) => s.location_id === location.id);
+          for (const shift of rows) {
+            const { date, time: startTime } = fromIsoInTimezone(
+              shift.starts_at,
+              location.timezone,
+            );
+            const { time: endTime } = fromIsoInTimezone(shift.ends_at, location.timezone);
+            const dayOffset = sourceDates.indexOf(date);
+            if (dayOffset < 0) continue;
+            collected.push({
+              dayOffset,
+              staffProfileId: shift.staff_profile_id,
+              shiftTypeId: shift.shift_type_id,
+              locationId: location.id,
+              startTime,
+              endTime,
+              breakMinutes: shift.break_minutes,
+              notes: shift.notes,
+            });
+          }
+        }
+
+        if (collected.length === 0) {
+          showError('This week has no shifts to repeat forward.');
+          return;
+        }
+
+        let created = 0;
+        let skipped = 0;
+        let weeksAlreadyBuilt = 0;
+        for (let week = 1; week <= weeksAhead; week += 1) {
+          const targetStart = getMonday(
+            addDays(new Date(`${weekStart}T00:00:00`), 7 * week),
+          );
+          const targetDates = getWeekDates(targetStart);
+          const targetEnd = targetDates[6] ?? targetStart;
+
+          // Never write into a week that's already published — staff can see
+          // it, and this tool only fills genuinely open weeks, it doesn't
+          // amend ones a manager already built and put out.
+          const rotaByLocationId = new Map<string, string>();
+          for (const location of filteredLocations) {
+            const rota = await getOrCreateRotaForPeriod({
+              orgId,
+              name: `Week of ${targetStart}`,
+              periodStart: targetStart,
+              periodEnd: targetEnd,
+              locationId: location.id,
+            });
+            if (rota.status === 'published') {
+              weeksAlreadyBuilt += 1;
+              continue;
+            }
+            rotaByLocationId.set(location.id, rota.id);
+          }
+          if (rotaByLocationId.size === 0) continue;
+
+          const working: Shift[] = [];
+          for (const rotaId of rotaByLocationId.values()) {
+            working.push(...(await listShiftsForRota(rotaId)));
+          }
+
+          for (const item of collected) {
+            const date = targetDates[item.dayOffset];
+            const rotaId = rotaByLocationId.get(item.locationId);
+            const location = locationById.get(item.locationId);
+            if (!date || !rotaId || !location) continue;
+            const { startsAt, endsAt } = computeShiftIsoRange(
+              date,
+              item.startTime,
+              item.endTime,
+              location.timezone,
+            );
+            if (
+              findClashingShift(
+                { staffProfileId: item.staffProfileId, startsAt, endsAt },
+                working,
+              )
+            ) {
+              skipped += 1;
+              continue;
+            }
+            const createdShift = await createShift({
+              org_id: orgId,
+              rota_id: rotaId,
+              location_id: item.locationId,
+              staff_profile_id: item.staffProfileId,
+              shift_type_id: item.shiftTypeId,
+              starts_at: startsAt,
+              ends_at: endsAt,
+              break_minutes: item.breakMinutes,
+              status: 'assigned',
+              notes: item.notes,
+            });
+            working.push(createdShift);
+            created += 1;
+          }
+        }
+
+        let summary = `${created} ${created === 1 ? 'shift' : 'shifts'} added as drafts across the next ${weeksAhead} ${weeksAhead === 1 ? 'week' : 'weeks'}.`;
+        if (skipped > 0) {
+          summary += ` ${skipped} skipped, ${skipped === 1 ? 'that person was' : 'those people were'} already rostered at the same time.`;
+        }
+        if (weeksAlreadyBuilt > 0) {
+          summary += ` ${weeksAlreadyBuilt} location-week${weeksAlreadyBuilt === 1 ? '' : 's'} already had a published rota and were left untouched.`;
+        }
+        showSuccess(summary);
+      } catch (err) {
+        reportError(err, { area: 'rota:repeat-forward' });
+        showError(
+          'Could not build every week ahead. The ones already created have been kept.',
+        );
+      } finally {
+        setBusyAction(null);
+      }
+    },
+    [
+      orgId,
+      weekStart,
+      dates,
+      filteredLocations,
+      shifts,
+      locationById,
+      showError,
+      showSuccess,
+    ],
+  );
 
   /**
    * Delete every DRAFT shift in scope (§8 "Clear rota").
@@ -1289,9 +1454,8 @@ export function RotaBuilderPage(): JSX.Element {
       <div>
         {/* ---- Page header ---- */}
         <WorkspaceHeader
-          title="Rota"
-          subtitle="Build fair, balanced rotas in minutes, then publish them to your team."
-          tabs={rotaWorkspaceTabs(role)}
+          title="Rota Builder"
+          subtitle={`Week commencing ${formatWeekStart(dates)} · ${orgName ?? ''}. Click any cell to assign or clear a shift.`}
           actions={
             <div className="relative">
               <Search
@@ -1318,9 +1482,7 @@ export function RotaBuilderPage(): JSX.Element {
             <button
               type="button"
               onClick={() =>
-                setWeekStart((d) =>
-                  getMonday(new Date(new Date(d).setDate(new Date(d).getDate() - 7))),
-                )
+                setWeekStart((d) => getMonday(addDays(new Date(`${d}T00:00:00`), -7)))
               }
               aria-label="Previous week"
               className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
@@ -1330,9 +1492,7 @@ export function RotaBuilderPage(): JSX.Element {
             <button
               type="button"
               onClick={() =>
-                setWeekStart((d) =>
-                  getMonday(new Date(new Date(d).setDate(new Date(d).getDate() + 7))),
-                )
+                setWeekStart((d) => getMonday(addDays(new Date(`${d}T00:00:00`), 7)))
               }
               aria-label="Next week"
               className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
@@ -1349,22 +1509,6 @@ export function RotaBuilderPage(): JSX.Element {
             <span className="text-sm font-semibold text-content dark:text-content-dark">
               {formatWeekRange(dates)}
             </span>
-            {/* Day view needs a way to say *which* day. In week view the grid
-                shows all seven, so the control would have nothing to do. */}
-            {viewMode === 'Day' && (
-              <Select
-                className="w-auto py-1.5"
-                aria-label="Day to show"
-                value={visibleDates[0] ?? ''}
-                onChange={(e) => setFocusedDate(e.target.value)}
-              >
-                {dates.map((date) => (
-                  <option key={date} value={date}>
-                    {format(new Date(`${date}T00:00:00`), 'EEEE d MMM')}
-                  </option>
-                ))}
-              </Select>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -1377,11 +1521,16 @@ export function RotaBuilderPage(): JSX.Element {
                 <button
                   key={tab}
                   type="button"
-                  aria-pressed={viewMode === tab}
-                  onClick={() => setViewMode(tab)}
+                  aria-pressed={tab === 'Week'}
+                  onClick={() =>
+                    tab === 'Fortnight' &&
+                    showSuccess(
+                      'Fortnight and month views use the same grid at lower density.',
+                    )
+                  }
                   className={cn(
                     'rounded-lg px-3 py-1.5 text-sm font-medium',
-                    viewMode === tab
+                    tab === 'Week'
                       ? 'bg-primary text-white'
                       : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
                   )}
@@ -1390,14 +1539,18 @@ export function RotaBuilderPage(): JSX.Element {
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={() => setShiftTypeModalOpen(true)}
-              aria-label="Manage shift types"
-              className="rounded-xl border border-surface-border p-2 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleCopyPreviousWeek}
+              disabled={busyAction === 'previous-week'}
             >
-              <Settings2 size={16} />
-            </button>
+              {busyAction === 'previous-week' ? 'Copying…' : 'Copy last week'}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleAutoFillClick}>
+              <Sparkles size={14} aria-hidden="true" />
+              AI fill gaps
+            </Button>
 
             <div className="relative flex">
               {allPublished ? (
@@ -1526,19 +1679,11 @@ export function RotaBuilderPage(): JSX.Element {
             <ChevronDown size={14} aria-hidden="true" />
           </button>
 
-          <Button
-            size="sm"
-            className="ml-auto bg-success/10 text-success hover:bg-success/15"
-            onClick={handleAutoFillClick}
-          >
-            <Sparkles size={14} aria-hidden="true" />
-            Auto-assign
-          </Button>
-
-          {/* The reference collapses the per-shift actions behind one
-              "Actions" menu; Add Shift and shift-type management live here
-              rather than as separate toolbar buttons. */}
-          <div className="relative">
+          {/* Every other per-shift/per-week action the reference doesn't
+              model (it has no shift-type management, no clipboard, no
+              printing) collapses behind one "Actions" menu rather than more
+              toolbar buttons. */}
+          <div className="relative ml-auto">
             <Button
               size="sm"
               variant="secondary"
@@ -1552,7 +1697,7 @@ export function RotaBuilderPage(): JSX.Element {
             {actionsMenuOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-10 mt-1 w-52 rounded-xl border border-surface-border bg-surface p-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
+                className="absolute right-0 top-full z-10 mt-1 w-56 rounded-xl border border-surface-border bg-surface p-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
               >
                 <button
                   type="button"
@@ -1581,6 +1726,57 @@ export function RotaBuilderPage(): JSX.Element {
                   role="menuitem"
                   onClick={() => {
                     setActionsMenuOpen(false);
+                    handleCopyShifts();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <ClipboardCopy size={14} aria-hidden="true" />
+                  Copy shifts
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={(clipboard?.length ?? 0) === 0}
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    handlePasteShifts();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50 dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <ClipboardPaste size={14} aria-hidden="true" />
+                  Paste shifts
+                  {(clipboard?.length ?? 0) > 0 && ` (${clipboard?.length})`}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={busyAction === 'clear'}
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    handleClearShifts();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50 dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Clear draft shifts
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    window.print();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <Printer size={14} aria-hidden="true" />
+                  Print
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setActionsMenuOpen(false);
                     setShiftTypeModalOpen(true);
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
@@ -1588,109 +1784,194 @@ export function RotaBuilderPage(): JSX.Element {
                   <Settings2 size={14} aria-hidden="true" />
                   Manage shift types
                 </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setActionsMenuOpen(false);
+                    setRepeatForwardOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                >
+                  <CalendarRange size={14} aria-hidden="true" />
+                  Build weeks ahead…
+                </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* ---- Main: grid | inspector | action rail ---- */}
+        {/* ---- Main: grid ---- */}
         {loading || orgDataLoading ? (
           <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
         ) : (
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-            <Card className="grid min-w-0 flex-1 grid-cols-1 gap-0 overflow-hidden p-0 xl:grid-cols-[minmax(0,1fr)_19rem]">
-              <div className="overflow-x-auto border-b border-surface-border p-5 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
-                {groups.length === 0 ? (
-                  <p className="text-content-muted dark:text-content-muted-dark">
-                    No staff rostered for this filter yet. Select a single location above
-                    to see its full team.
-                  </p>
-                ) : (
-                  <RotaGrid
-                    dates={visibleDates}
-                    groups={groups}
-                    totalStaff={totalStaff}
-                    totalShifts={shiftsInScope.length}
-                    shiftMapByLocation={shiftMapByLocation}
-                    shiftTypes={shiftTypes}
-                    previewMap={previewMap}
-                    dailyTotals={dailyTotals}
-                    selectedShiftId={selectedShiftId}
-                    onAddShift={(staffProfileId, date, locationId) =>
-                      setAssignModal({
-                        open: true,
-                        context: { staffProfileId, date, locationId },
-                        shift: null,
-                      })
-                    }
-                    onSelectShift={(shift) => setSelectedShiftId(shift.id)}
-                    onDeleteShift={handleDeleteShiftFromChip}
-                  />
-                )}
-              </div>
-
-              <div className="p-4">
-                <ShiftInspectorPanel
-                  selectedShift={selectedShift}
-                  shifts={shifts}
-                  staff={staff}
+          <Card className="min-w-0 overflow-hidden p-5">
+            {groups.length === 0 ? (
+              <p className="text-content-muted dark:text-content-muted-dark">
+                No staff rostered for this filter yet. Select a single location above to
+                see its full team.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <RotaGrid
+                  dates={dates}
+                  groups={groups}
+                  shiftMapByLocation={shiftMapByLocation}
                   shiftTypes={shiftTypes}
-                  locations={locations}
+                  previewMap={previewMap}
                   dailyTotals={dailyTotals}
-                  warnings={warnings}
-                  timezone={DEFAULT_TZ}
-                  rotaStatusForLocation={(locationId) =>
-                    (locationId ? rotasByLocation.get(locationId)?.status : null) as
-                      'draft' | 'published' | null
+                  selectedShiftId={selectedShiftId}
+                  conflictedShiftIds={conflictedShiftIds}
+                  shiftTypeFilter={shiftTypeFilter}
+                  onShiftTypeFilterChange={setShiftTypeFilter}
+                  onAddShift={(staffProfileId, date, locationId) =>
+                    setAssignModal({
+                      open: true,
+                      context: { staffProfileId, date, locationId },
+                      shift: null,
+                    })
                   }
-                  onEdit={(shift) => setAssignModal({ open: true, context: null, shift })}
-                  onDuplicate={handleDuplicateShift}
-                  onDelete={handleDeleteSelectedShift}
-                  onSelectShiftId={setSelectedShiftId}
+                  onSelectShift={(shift) => {
+                    setSelectedShiftId(shift.id);
+                    setAssignModal({ open: true, context: null, shift });
+                  }}
+                  onDeleteShift={handleDeleteShiftFromChip}
                 />
               </div>
-            </Card>
-
-            {/* The rail is its own card in the reference, not a third column
-              inside the grid card. */}
-            <Card className="shrink-0 p-2 xl:w-[5.5rem]">
-              <RotaActionRail
-                onTemplates={() => setShiftTypeModalOpen(true)}
-                onCopyShifts={handleCopyShifts}
-                onPasteShifts={handlePasteShifts}
-                onCopyPreviousWeek={handleCopyPreviousWeek}
-                onAutoFill={handleAutoFillClick}
-                onClearShifts={handleClearShifts}
-                onPrint={() => window.print()}
-                clipboardCount={clipboard?.length ?? 0}
-                busyAction={busyAction}
-              />
-            </Card>
-          </div>
+            )}
+          </Card>
         )}
 
         {/* ---- Status bar ---- */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-          <span className="flex items-center gap-1.5 text-content-muted dark:text-content-muted-dark">
-            <CalendarCheck size={14} aria-hidden="true" className="text-success" />
-            {lastSavedAt
-              ? `All changes saved · Last saved ${format(lastSavedAt, 'HH:mm')}`
-              : 'All changes saved'}
-          </span>
-          {/* Only the three states the grid can actually render. The
-              reference also lists "Overstaffed", but no required-headcount
-              column exists to compute it. See design/.loop/rota-log.md. */}
-          <div className="flex flex-wrap items-center gap-5 text-xs text-content-muted dark:text-content-muted-dark">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-success" /> Optimal
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-danger" /> Understaffed
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-warning" /> Unpublished
-            </span>
-          </div>
+        <div className="mt-4 flex items-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">
+          <CalendarCheck size={14} aria-hidden="true" className="text-success" />
+          {lastSavedAt
+            ? `All changes saved · Last saved ${format(lastSavedAt, 'HH:mm')}`
+            : 'All changes saved'}
+        </div>
+
+        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="font-semibold text-content dark:text-content-dark">
+                Conflicts
+              </h2>
+              <div className="flex items-center gap-2">
+                {criticalWarnings.length > 0 ? (
+                  <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger">
+                    {criticalWarnings.length} blocking
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
+                    None blocking
+                  </span>
+                )}
+                {warnings.length > criticalWarnings.length && (
+                  <span className="rounded-full bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning">
+                    {warnings.length - criticalWarnings.length} advisory
+                  </span>
+                )}
+              </div>
+            </div>
+            {warnings.length === 0 ? (
+              <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                No conflicts. Rest rules, contracted hours and minimum cover all
+                satisfied.
+              </p>
+            ) : (
+              <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                {warnings.map((insight) => (
+                  <li key={insight.id} className="flex items-start gap-2.5">
+                    <span
+                      className={cn(
+                        'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full',
+                        insight.severity === 'critical'
+                          ? 'bg-danger/10 text-danger'
+                          : 'bg-warning/10 text-warning',
+                      )}
+                    >
+                      <AlertTriangle size={13} aria-hidden="true" />
+                    </span>
+                    <span>
+                      <span className="block text-sm text-content dark:text-content-dark">
+                        {insight.title}
+                      </span>
+                      <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                        {insight.severity === 'critical'
+                          ? 'Blocks publication'
+                          : 'Advisory. You can publish over this'}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="font-semibold text-content dark:text-content-dark">
+                Unassigned staff
+              </h2>
+              {idleStaff.length > 0 && (
+                <span className="rounded-full bg-surface-subtle px-2.5 py-1 text-xs text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
+                  {idleStaff.length} with no shift anywhere this week
+                </span>
+              )}
+            </div>
+            {idleStaff.length === 0 ? (
+              <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                Everyone has at least one shift this week.
+              </p>
+            ) : (
+              <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
+                {idleStaff.map((person) => (
+                  <li
+                    key={person.id}
+                    className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <StaffAvatar
+                      firstName={person.first_name}
+                      lastName={person.last_name}
+                      photoUrl={person.photo_url}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-content dark:text-content-dark">
+                        {person.first_name} {person.last_name}
+                      </p>
+                      <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
+                        {person.job_title ?? 'No job title'}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-content-muted dark:text-content-muted-dark">
+                      {hoursLabel(person.weekly_hours ?? 0)}/week
+                    </span>
+                    {defaultAssignLocation && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="shrink-0"
+                        onClick={() =>
+                          setAssignModal({
+                            open: true,
+                            context: {
+                              staffProfileId: person.id,
+                              date: dates[0] ?? weekStart,
+                              locationId: defaultAssignLocation.id,
+                            },
+                            shift: null,
+                          })
+                        }
+                      >
+                        Assign
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
       </div>
 
@@ -1699,6 +1980,7 @@ export function RotaBuilderPage(): JSX.Element {
         onClose={() => setAssignModal({ open: false, context: null, shift: null })}
         staff={staff}
         shiftTypes={shiftTypes}
+        locations={locations}
         dates={dates}
         timezone={
           (assignModal.shift?.location_id
@@ -1824,6 +2106,48 @@ export function RotaBuilderPage(): JSX.Element {
           onChange={setShiftTypes}
         />
       )}
+
+      <Modal
+        open={repeatForwardOpen}
+        onClose={() => setRepeatForwardOpen(false)}
+        title="Build weeks ahead"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            Repeats this week&rsquo;s pattern forward as draft rotas, so staff can see
+            further ahead and swap shifts with each other early. Nothing is published —
+            review and publish each week as usual.
+          </p>
+          <div>
+            <Label htmlFor="repeat-weeks">Weeks ahead</Label>
+            <Input
+              id="repeat-weeks"
+              type="number"
+              min="1"
+              max="26"
+              value={repeatForwardWeeks}
+              onChange={(e) => setRepeatForwardWeeks(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              e.g. 4 for a month ahead, 12 for a quarter.
+            </p>
+          </div>
+          <Button
+            className="w-full"
+            disabled={busyAction === 'repeat-forward'}
+            onClick={() => {
+              const weeksAhead = Math.min(
+                26,
+                Math.max(1, Number(repeatForwardWeeks) || 0),
+              );
+              setRepeatForwardOpen(false);
+              void handleRepeatForward(weeksAhead);
+            }}
+          >
+            {busyAction === 'repeat-forward' ? 'Building…' : 'Build weeks ahead'}
+          </Button>
+        </div>
+      </Modal>
 
       {/*
         `AutoFillPanel` was replaced by `RotaAssistantPanel` in the demo branch:

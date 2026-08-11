@@ -162,9 +162,22 @@ export function computeDailyTotals(
   minimumCoverRules: MinimumCoverRule[] = [],
   locations: Location[] = [],
 ): DailyTotal[] {
+  // Each shift buckets by ITS OWN site's timezone, not one blanket default —
+  // a multi-site org can span timezones (`locations.timezone` exists exactly
+  // for this), and a shift near midnight bucketing to the wrong local day
+  // desyncs this total from the chip sitting in a different day's column.
+  // `timezone` remains the fallback for a shift whose location isn't in
+  // `locations` (callers that don't pass locations at all get prior behaviour).
+  const locationById = new Map(locations.map((l) => [l.id, l]));
   const byDate = new Map<string, Shift[]>();
   for (const shift of shifts) {
-    const date = format(toZonedTime(new Date(shift.starts_at), timezone), 'yyyy-MM-dd');
+    const shiftTimezone =
+      (shift.location_id ? locationById.get(shift.location_id)?.timezone : undefined) ??
+      timezone;
+    const date = format(
+      toZonedTime(new Date(shift.starts_at), shiftTimezone),
+      'yyyy-MM-dd',
+    );
     byDate.set(date, [...(byDate.get(date) ?? []), shift]);
   }
 

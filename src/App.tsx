@@ -313,6 +313,10 @@ const AdminSupportPage = lazyPage(
   'AdminSupportPage',
   () => import('@/pages/admin/AdminSupportPage'),
 );
+const AdminSupportCaseDetailPage = lazyPage(
+  'AdminSupportCaseDetailPage',
+  () => import('@/pages/admin/AdminSupportCaseDetailPage'),
+);
 const AdminAuditPage = lazyPage(
   'AdminAuditPage',
   () => import('@/pages/admin/AdminAuditPage'),
@@ -484,6 +488,10 @@ export function App(): JSX.Element {
                           />
                           <Route path="billing" element={<AdminBillingPage />} />
                           <Route path="support" element={<AdminSupportPage />} />
+                          <Route
+                            path="support/:caseId"
+                            element={<AdminSupportCaseDetailPage />}
+                          />
                           <Route
                             path="support-access"
                             element={<AdminSupportAccessPage />}
@@ -777,6 +785,10 @@ export function App(): JSX.Element {
                         }
                       />
                       <Route path="support" element={<AdminSupportPage />} />
+                      <Route
+                        path="support/:caseId"
+                        element={<AdminSupportCaseDetailPage />}
+                      />
                       <Route path="support-access" element={<AdminSupportAccessPage />} />
                       <Route path="audit" element={<AdminAuditPage />} />
                       <Route

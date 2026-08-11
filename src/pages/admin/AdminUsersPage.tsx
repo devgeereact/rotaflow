@@ -35,7 +35,8 @@ import {
 import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
 import type { PlatformRole, Profile } from '@/types';
 
-type UserSortKey = 'account' | 'organisations' | 'role' | 'access' | 'status' | 'login';
+type UserSortKey =
+  'account' | 'organisations' | 'role' | 'access' | 'status' | 'login' | 'actions';
 
 /**
  * `/admin/users`. NEW_STRUCTURE §34's platform users.
@@ -166,11 +167,16 @@ export function AdminUsersPage(): JSX.Element {
               memberships.get(b.id)?.roles[0] ?? '',
             ) * direction
           );
-        case 'status':
-          return (
-            (a.full_name ?? a.email ?? '').localeCompare(b.full_name ?? b.email ?? '') *
-            direction
-          );
+        case 'status': {
+          // Mirror the cell's own definition of "suspended" (a membership
+          // with zero roles), not name — this used to sort alphabetically
+          // under a "Status" header.
+          const suspendedOf = (p: Profile): boolean => {
+            const m = memberships.get(p.id);
+            return m !== undefined && m.organisations > 0 && m.roles.length === 0;
+          };
+          return (Number(suspendedOf(a)) - Number(suspendedOf(b))) * direction;
+        }
         case 'login':
           return (
             (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) *
@@ -377,7 +383,7 @@ export function AdminUsersPage(): JSX.Element {
         },
       },
       {
-        key: 'account',
+        key: 'actions',
         label: 'Actions',
         width: 'w-[11%]',
         align: 'right',
