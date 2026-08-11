@@ -987,28 +987,6 @@ export const DEMO_FEATURE_FLAGS: readonly DemoFeatureFlag[] = [
  * GDPR & Data
  * ------------------------------------------------------------------ */
 
-/**
- * The retention schedule the console reference prints beside the request
- * register.
- *
- * These are **intended** periods, not observed ones. No table records a
- * retention rule and no job enforces one, so nothing in the product deletes a
- * rota when it turns seven. The screen says so beside the table rather than
- * letting a reader take it for a control that exists.
- *
- * The audit row is the exception and is genuinely true: `audit_logs` carries
- * no update or delete policy at all, so it cannot be erased from the product
- * even by a Platform Owner.
- */
-export const RETENTION_POLICY: readonly { data: string; retained: string }[] = [
-  { data: 'Rota and shift history', retained: '7 years' },
-  { data: 'Attendance and clock-in', retained: '3 years' },
-  { data: 'Leave records', retained: '6 years' },
-  { data: 'Support cases', retained: '3 years' },
-  { data: 'Platform audit log', retained: 'Indefinite. Immutable' },
-  { data: 'Deleted tenant data', retained: '30-day grace, then erased' },
-];
-
 /** Personal-data breaches reported. No table records one; see the screen note. */
 export const DEMO_BREACHES_REPORTED = 0;
 

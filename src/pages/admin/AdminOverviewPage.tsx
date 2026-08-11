@@ -354,7 +354,11 @@ export function AdminOverviewPage(): JSX.Element {
             <Panel
               className="lg:col-span-2"
               title="Platform growth"
-              actions={<Badge tone="neutral">Last 12 months</Badge>}
+              actions={
+                <Badge tone="neutral">
+                  {periodMonths === 1 ? 'Last month' : `Last ${periodMonths} months`}
+                </Badge>
+              }
             >
               <TrendChart
                 title="Organisations created and total, by month"

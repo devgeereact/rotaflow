@@ -54,16 +54,20 @@ type ColumnKey = 'org' | 'admin' | 'reason' | 'scope' | 'granted' | 'expires' | 
  *
  * ## What a row here means, precisely
  *
- * It means a named platform administrator stated a reason, quoted a case
- * reference, and accepted a deadline. It does **not** mean access was switched
- * on: platform staff already hold cross-tenant read through `has_platform_role`
- * (0015), and 0019 deliberately does not make that read conditional on an open
- * session, because doing it halfway would produce a table that looks like an
- * access control and is not one.
+ * Since 0028, it means a named platform administrator can currently read (and,
+ * with a `read_write` scope, write) that organisation's rotas, staff records,
+ * clock events, leave, timesheets, documents and emergency contacts.
+ * `is_org_member()` and `has_org_role()`, the two functions every tenant RLS
+ * policy is built on, now route through `has_support_access()`: an unrevoked,
+ * unexpired session for that org and that administrator. Before 0028 a session
+ * was only an accountability record and access was identical with or without
+ * one; that gap is what 0028 closed.
  *
- * That distinction is on the screen rather than buried in a migration comment,
- * because "we have support access sessions" is exactly the sentence someone
- * repeats to a customer, and it needs to survive being repeated accurately.
+ * What a session does **not** gate: the organisation, subscription and
+ * membership registers, and aggregate counts. Those carry their own
+ * `is_platform_admin()` / `has_platform_role()` policies (0028's own "what
+ * deliberately does not change"), because running the business does not
+ * require reading anybody's shifts.
  *
  * The customer's opt-out *is* enforced: `request_support_access` refuses
  * outright when `support_access_allowed` is false, in the database, so no
@@ -301,19 +305,27 @@ export function AdminSupportAccessPage(): JSX.Element {
         <Panel title="What a session here does, and does not, do">
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
             A row records that a named administrator stated a reason, quoted a case
-            reference and accepted a deadline. It is an accountability trail.{' '}
+            reference and accepted a deadline, and{' '}
             <strong className="text-content dark:text-content-dark">
-              It is not the thing that grants access
-            </strong>{' '}
-            . Platform staff already hold cross-tenant read, and making that read
-            conditional on an open session touches every policy in the platform-roles
-            migration. Saying otherwise to a customer would be wrong.
+              it is the thing that grants access
+            </strong>
+            . Without an open, unexpired session, a platform administrator&rsquo;s own
+            read of that organisation&rsquo;s rotas, staff records, clock events, leave,
+            timesheets, documents and emergency contacts is refused by the database, not
+            merely unaudited. A <code>read_write</code> scope is required to write any of
+            it.
           </p>
           <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
-            What <em>is</em> enforced in the database: a customer who turns support access
-            off cannot have a session opened against them, the reason and case reference
-            are required, and no session can outlast 24 hours. The organisation&rsquo;s
-            own owner can end any session, and sees the same records you do.
+            What a session does <em>not</em> gate: the organisation, subscription and
+            membership registers, and the counts shown on this console. Running the
+            business does not need a session, only reading a named person&rsquo;s shifts
+            does.
+          </p>
+          <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
+            Also enforced in the database: a customer who turns support access off cannot
+            have a session opened against them, the reason and case reference are
+            required, and no session can outlast 24 hours. The organisation&rsquo;s own
+            owner can end any session, and sees the same records you do.
           </p>
         </Panel>
       </div>

@@ -10,6 +10,7 @@ import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import { useToast } from '@/hooks/useToast';
+import { useConfirm } from '@/hooks/useConfirm';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
   countFlagTargets,
@@ -64,6 +65,7 @@ interface Capability {
 export function AdminFeatureFlagsPage(): JSX.Element {
   const { canManagePlatformConfig } = usePermissions();
   const { showError, showSuccess } = useToast();
+  const { confirm } = useConfirm();
 
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -136,6 +138,29 @@ export function AdminFeatureFlagsPage(): JSX.Element {
     [retry, showError, showSuccess],
   );
 
+  /**
+   * Gate on `flag.critical` before it ever reaches `toggleFlag`. The page
+   * copy promises re-authentication for one; a plain confirm is not that, but
+   * it is the difference between one click changing every tenant's behaviour
+   * and a click that has to be meant.
+   */
+  const handleToggle = useCallback(
+    async (flag: FeatureFlag, enabled: boolean): Promise<void> => {
+      if (flag.critical) {
+        const ok = await confirm({
+          title: `${enabled ? 'Enable' : 'Disable'} ${flag.name} for every tenant?`,
+          message:
+            'This flag is marked critical: it changes live behaviour for every organisation on the platform immediately, with no per-tenant rollout and no undo beyond flipping it back.',
+          confirmLabel: enabled ? 'Enable for everyone' : 'Disable for everyone',
+          tone: 'danger',
+        });
+        if (!ok) return;
+      }
+      await toggleFlag(flag, enabled);
+    },
+    [confirm, toggleFlag],
+  );
+
   const changeRollout = useCallback(
     async (flag: FeatureFlag, rollout: number) => {
       setBusyKey(flag.key);
@@ -199,7 +224,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
   return (
     <AdminPage
       title="Feature flags"
-      description="Ship behind a flag, roll out by percentage, and turn it off without a deploy. Flags marked critical change live tenant behaviour and require re-authentication."
+      description="Ship behind a flag, roll out by percentage, and turn it off without a deploy. Flags marked critical change live tenant behaviour for every organisation at once, and ask for confirmation before they do."
       action={
         <Button
           disabled
@@ -235,7 +260,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
                       checked={flag.enabled}
                       disabled={!canManagePlatformConfig || busyKey === flag.key}
                       label={`${flag.name} enabled`}
-                      onChange={(checked) => void toggleFlag(flag, checked)}
+                      onChange={(checked) => void handleToggle(flag, checked)}
                     />
                   </div>
 
