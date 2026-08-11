@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Clock } from 'lucide-react';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { AttendanceStatusCard } from '@/components/clockin/AttendanceStatusCard';
 import { ClockActionPane } from '@/components/clockin/ClockActionPane';
 import { ClockPolicyBanner } from '@/components/clockin/ClockPolicyBanner';
@@ -97,19 +97,10 @@ export function ClockInView({
 }: ClockInViewProps): JSX.Element {
   return (
     <>
-      <header className="flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary dark:bg-primary/15">
-          <Clock size={20} aria-hidden="true" />
-        </span>
-        <div>
-          <h1 className="text-page-title font-semibold leading-tight text-content dark:text-content-dark">
-            Clock In
-          </h1>
-          <p className="text-base text-content-muted dark:text-content-muted-dark">
-            Track your attendance and stay on schedule.
-          </p>
-        </div>
-      </header>
+      <WorkspaceHeader
+        title="Clock in"
+        subtitle="Attendance is captured with your location and works offline. An entry made without signal queues on the device and syncs when you're back."
+      />
 
       {notices}
 
