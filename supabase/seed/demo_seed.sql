@@ -40,7 +40,17 @@ $$;
 -- Reset. Both the v1 keys (`org:N`) and the v2 keys (`v2:org:N`) are
 -- dropped, so upgrading from the old single-week seed leaves nothing
 -- orphaned. Every domain table FKs org_id ON DELETE CASCADE.
--- ---------------------------------------------------------------------
+--
+-- `memberships_audit` (AFTER DELETE) calls `audit_write()`, which inserts an
+-- `audit_logs` row referencing `org_id` -- but by the time that trigger fires
+-- mid-cascade, the parent `organisations` row is already gone, so
+-- `audit_logs`'s own FK on `org_id` rejects it. This is not a seed-script
+-- problem: ANY hard delete of an organisation with memberships hits it
+-- (discovered 2026-08-11 re-running this script; the trigger postdates the
+-- last successful run). Disabled only for this one statement.
+-- =====================================================================
+alter table public.memberships disable trigger memberships_audit;
+
 delete from public.organisations
 where id in (
   pg_temp.demo_uuid('org:1'), pg_temp.demo_uuid('org:2'), pg_temp.demo_uuid('org:3'),
@@ -48,6 +58,8 @@ where id in (
   pg_temp.demo_uuid('v2:org:1'), pg_temp.demo_uuid('v2:org:2'), pg_temp.demo_uuid('v2:org:3'),
   pg_temp.demo_uuid('v2:org:4'), pg_temp.demo_uuid('v2:org:5')
 );
+
+alter table public.memberships enable trigger memberships_audit;
 
 -- =====================================================================
 -- 0. Accounts. The platform admin plus eight role accounts.
@@ -60,12 +72,14 @@ declare
   c_password  constant text := 'CHANGE-ME-BEFORE-SEEDING';
   c_admin_email constant text := 'gakinz101@gmail.com';
 
-  -- Plus-addressed on the owner's real mailbox: deliverable (so password
-  -- resets and magic links actually arrive) and incapable of bouncing,
-  -- which a fake domain would do. Supabase already flagged bounce rate.
+  -- The owner logs in as dev@rota.gakinz.com, a real mailbox on the app's own
+  -- domain (2026-08-11). The rest stay plus-addressed on the owner's Gmail:
+  -- deliverable (so password resets and magic links actually arrive) and
+  -- incapable of bouncing, which a fake domain would do. Supabase already
+  -- flagged bounce rate once.
   u_keys   text[] := array['owner','manager1','manager2','staff1','staff2','staff3','staff4','worker'];
   u_emails text[] := array[
-    'gakinz101+demo.owner@gmail.com','gakinz101+demo.manager1@gmail.com',
+    'dev@rota.gakinz.com','gakinz101+demo.manager1@gmail.com',
     'gakinz101+demo.manager2@gmail.com','gakinz101+demo.staff1@gmail.com',
     'gakinz101+demo.staff2@gmail.com','gakinz101+demo.staff3@gmail.com',
     'gakinz101+demo.staff4@gmail.com','gakinz101+demo.worker@gmail.com'];
@@ -166,7 +180,7 @@ select j,
 from generate_series(1, 8) j
 join auth.users u
   on lower(u.email) = (array[
-       'gakinz101+demo.owner@gmail.com','gakinz101+demo.manager1@gmail.com',
+       'dev@rota.gakinz.com','gakinz101+demo.manager1@gmail.com',
        'gakinz101+demo.manager2@gmail.com','gakinz101+demo.staff1@gmail.com',
        'gakinz101+demo.staff2@gmail.com','gakinz101+demo.staff3@gmail.com',
        'gakinz101+demo.staff4@gmail.com','gakinz101+demo.worker@gmail.com'])[j];
@@ -813,7 +827,13 @@ select pg_temp.demo_uuid(format('v2:aud:%s:%s', o.i, j)), o.id, (select id from 
        null,
        jsonb_build_object('source', 'demo_seed', 'org', o.slug),
        now() - ((20 - (j * 2)) || ' days')::interval
-from d_org o cross join generate_series(1, 8) j;
+from d_org o cross join generate_series(1, 8) j
+-- audit_logs.org_id is ON DELETE SET NULL, not CASCADE (a real audit trail
+-- should survive the org it describes), so a prior run's rows outlive the
+-- reset above with the same deterministic ids (discovered 2026-08-11).
+-- Reseeding is not the place to fight over old audit history; keep
+-- whatever is already there.
+on conflict (id) do nothing;
 
 -- =====================================================================
 -- 7. Shift swaps. Needs shifts, so it runs after them.
