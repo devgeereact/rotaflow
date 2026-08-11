@@ -63,6 +63,20 @@ export function SidebarFooter({
             <span className="sr-only">{label}</span>
           </Link>
         ))}
+        {isPlatformAdmin && (
+          <Link
+            to="/admin"
+            onClick={onNavigate}
+            title="Platform console"
+            className={cn(
+              ROW,
+              'mb-0.5 justify-center px-0 text-danger hover:bg-danger/5 hover:text-danger dark:hover:text-danger',
+            )}
+          >
+            <ShieldCheck size={18} aria-hidden="true" />
+            <span className="sr-only">Platform console</span>
+          </Link>
+        )}
         {onToggleCollapsed && (
           <button
             type="button"
