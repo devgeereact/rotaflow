@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -12,373 +12,225 @@ import {
   listMyAvailability,
   listOrgAvailability,
 } from '@/services/availabilityService';
+import {
+  buildExceptions,
+  buildWeeklyPattern,
+  resolveTeamAvailabilityForDate,
+  type WeeklyPatternDay,
+} from '@/lib/availabilityRows';
+import { todayIso } from '@/lib/schedulePeriod';
 import { reportError } from '@/lib/sentry';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
-import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
-import { Input } from '@/components/ui/Input';
-import { Label } from '@/components/ui/Label';
-import { Select } from '@/components/ui/Select';
+import { AvailabilityView } from '@/components/availability/AvailabilityView';
+import type { AddExceptionInput } from '@/components/availability/AddExceptionModal';
 import type { Availability, StaffProfile } from '@/types';
 
-const WEEKDAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
-
 /**
- * `availability.status` is `text` + a check constraint, not a Postgres enum,
- * so the generated `Availability['status']` is plain `string`, a cast to it
- * is a same-type no-op ESLint correctly flags. This is the app's own
- * narrower view of that same constraint (see ClockInPage.tsx for the same
- * pattern on `clock_events.type`).
- */
-type AvailabilityStatus = 'available' | 'preferred' | 'unavailable';
-
-const STATUS_STYLE: Record<AvailabilityStatus, string> = {
-  available: 'bg-success/10 text-success',
-  preferred: 'bg-primary/10 text-primary',
-  unavailable: 'bg-danger/10 text-danger',
-};
-
-function toAvailabilityStatus(value: string): AvailabilityStatus {
-  return value === 'preferred' || value === 'unavailable' ? value : 'available';
-}
-
-/**
- * `/app/availability`. Recurring weekly pattern only (a specific one-off
- * date is also representable in the schema via `date`, but a manager building
- * next week's rota mainly needs the standing pattern; one-off exceptions are
- * closer to a leave request, which has its own screen).
+ * `/app/availability`. Real data wiring; see AvailabilityView for the markup
+ * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.availability`).
+ *
+ * One screen for everyone rather than a role split: a manager gets the same
+ * "your pattern" + "exceptions" cards as anyone else, plus a "Team
+ * availability" card. No workspace tab bar to Team/StaffPage.tsx any more —
+ * dropped deliberately, matching the reference's own nav (its own sidebar
+ * row, no shared tab strip), unlike `teamWorkspaceTabs`'s other half, which
+ * still links from Team's own page.
  */
 export function AvailabilityPage(): JSX.Element {
-  const { orgId, role: membershipRole } = useOrg();
+  const { orgId } = useOrg();
   const { canApprove } = usePermissions();
   const { user } = useSupabaseAuth();
   const { showError, showSuccess } = useToast();
+  const isManager = canApprove;
 
-  const [teamMode, setTeamMode] = useState(false);
-  const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
-  const [staff, setStaff] = useState<StaffProfile[]>([]);
-  const [entries, setEntries] = useState<Availability[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
+  const [myEntries, setMyEntries] = useState<Availability[]>([]);
+  const [staff, setStaff] = useState<StaffProfile[]>([]);
+  const [orgEntries, setOrgEntries] = useState<Availability[]>([]);
+  const [togglingWeekday, setTogglingWeekday] = useState<number | null>(null);
+  const [removingExceptionId, setRemovingExceptionId] = useState<string | null>(null);
 
-  // Live updates: refetch when someone else changes this data.
+  const load = useCallback(async (): Promise<void> => {
+    if (!orgId || !user) return;
+    setLoading(true);
+    setLoadFailed(false);
+    try {
+      const me = await getMyStaffProfile(orgId, user.id);
+      setMyProfile(me);
+      const [mine, staffRows, org] = await Promise.all([
+        me ? listMyAvailability(me.id) : Promise.resolve<Availability[]>([]),
+        isManager ? listActiveStaff(orgId) : Promise.resolve<StaffProfile[]>([]),
+        isManager ? listOrgAvailability(orgId) : Promise.resolve<Availability[]>([]),
+      ]);
+      setMyEntries(mine);
+      setStaff(staffRows);
+      setOrgEntries(org);
+    } catch (err) {
+      reportError(err, { area: 'availability:load' });
+      setLoadFailed(true);
+      showError('Could not load availability.');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, user, isManager, showError]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   useRealtimeRefresh({
     tables: ['availability', 'staff_profiles'],
     scope: { column: 'org_id', value: orgId },
-    onChange: () => setReloadKey((k) => k + 1),
+    onChange: () => void load(),
   });
 
-  const [weekday, setWeekday] = useState('1');
-  const [status, setStatus] = useState<AvailabilityStatus>('available');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
-  const [submitting, setSubmitting] = useState(false);
+  const weekPattern = useMemo(() => buildWeeklyPattern(myEntries), [myEntries]);
+  const exceptions = useMemo(() => buildExceptions(myEntries), [myEntries]);
 
-  useEffect(() => {
-    if (!orgId || !user) return;
-    let active = true;
-    setLoading(true);
-    setLoadFailed(false);
-    void (async () => {
-      try {
-        const [mine, staffRows] = await Promise.all([
-          getMyStaffProfile(orgId, user.id),
-          teamMode ? listActiveStaff(orgId) : Promise.resolve<StaffProfile[]>([]),
-        ]);
-        if (!active) return;
-        setMyProfile(mine);
-        setStaff(staffRows);
-
-        const rows = teamMode
-          ? await listOrgAvailability(orgId)
-          : mine
-            ? await listMyAvailability(mine.id)
-            : [];
-        if (!active) return;
-        setEntries(rows);
-      } catch (err) {
-        if (!active) return;
-        reportError(err, { area: 'availability:load' });
-        setLoadFailed(true);
-        showError('Could not load availability.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
+  const team = useMemo(() => {
+    if (!isManager) return null;
+    const today = todayIso();
+    const weekday = new Date(`${today}T00:00:00`).getDay();
+    const staffById = new Map(staff.map((s) => [s.id, s]));
+    const rows = resolveTeamAvailabilityForDate(
+      staff.map((s) => s.id),
+      orgEntries,
+      today,
+      weekday,
+    );
+    return {
+      todayLabel: format(new Date(`${today}T00:00:00`), 'EEEE'),
+      rows: rows.map((row) => {
+        const person = staffById.get(row.staffId);
+        return {
+          staffId: row.staffId,
+          firstName: person?.first_name ?? 'Unknown',
+          lastName: person?.last_name ?? '',
+          photoUrl: person?.photo_url ?? null,
+          available: row.available,
+        };
+      }),
     };
-  }, [orgId, user, teamMode, reloadKey, showError]);
+  }, [isManager, staff, orgEntries]);
 
-  const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
-
-  const entriesByStaff = useMemo(() => {
-    const grouped = new Map<string, Availability[]>();
-    for (const entry of entries) {
-      grouped.set(entry.staff_profile_id, [
-        ...(grouped.get(entry.staff_profile_id) ?? []),
-        entry,
-      ]);
-    }
-    return grouped;
-  }, [entries]);
-
-  const handleAdd = useCallback(async (): Promise<void> => {
-    if (!orgId || !myProfile) return;
-    if (status !== 'unavailable' && endTime <= startTime) {
-      showError('End time must be after start time.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const created = await createAvailability({
-        org_id: orgId,
-        staff_profile_id: myProfile.id,
-        weekday: Number(weekday),
-        status,
-        recurring: true,
-        start_time: status === 'unavailable' ? null : startTime,
-        end_time: status === 'unavailable' ? null : endTime,
-      });
-      setEntries((prev) => [...prev, created]);
-      showSuccess('Availability added.');
-    } catch (err) {
-      reportError(err, { area: 'availability:create' });
-      showError('Could not add that entry. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [orgId, myProfile, weekday, status, startTime, endTime, showError, showSuccess]);
-
-  const handleDelete = useCallback(
-    async (id: string): Promise<void> => {
+  const handleToggleDay = useCallback(
+    async (day: WeeklyPatternDay): Promise<void> => {
+      if (!orgId || !myProfile) return;
+      setTogglingWeekday(day.weekday);
       try {
-        await deleteAvailability(id);
-        setEntries((prev) => prev.filter((e) => e.id !== id));
+        if (day.available) {
+          // Going to unavailable: clear any partial-availability entry
+          // first, then write the explicit unavailable one.
+          if (day.entryId) await deleteAvailability(day.entryId);
+          await createAvailability({
+            org_id: orgId,
+            staff_profile_id: myProfile.id,
+            weekday: day.weekday,
+            status: 'unavailable',
+            recurring: true,
+            start_time: null,
+            end_time: null,
+          });
+        } else if (day.entryId) {
+          // Reverts to the "available all day" default: no entry at all.
+          await deleteAvailability(day.entryId);
+        }
+        showSuccess(
+          `${day.label} set to ${day.available ? 'unavailable' : 'available'}.`,
+        );
+        await load();
       } catch (err) {
-        reportError(err, { area: 'availability:delete' });
-        showError('Could not remove that entry.');
+        reportError(err, { area: 'availability:toggle-day' });
+        showError('Could not change that day. Please try again.');
+      } finally {
+        setTogglingWeekday(null);
       }
     },
-    [showError],
+    [orgId, myProfile, showSuccess, showError, load],
   );
 
-  const renderEntry = (entry: Availability, showDelete: boolean): JSX.Element => (
-    <li
-      key={entry.id}
-      className="flex items-center justify-between gap-3 rounded-xl border border-surface-border p-3 dark:border-surface-border-dark"
-    >
-      <div>
-        <p className="text-sm font-medium text-content dark:text-content-dark">
-          {entry.weekday !== null ? WEEKDAYS[entry.weekday] : entry.date}
-        </p>
-        {entry.start_time && entry.end_time && (
-          <p className="text-xs text-content-muted dark:text-content-muted-dark">
-            {entry.start_time.slice(0, 5)}, {entry.end_time.slice(0, 5)}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            'rounded-full px-2.5 py-0.5 text-xs font-medium capitalize',
-            STATUS_STYLE[toAvailabilityStatus(entry.status)],
-          )}
-        >
-          {entry.status}
-        </span>
-        {showDelete && (
-          <button
-            type="button"
-            onClick={() => void handleDelete(entry.id)}
-            aria-label="Remove this availability entry"
-            className="rounded p-1 text-content-muted hover:text-danger dark:text-content-muted-dark"
-          >
-            <Trash2 size={14} aria-hidden="true" />
-          </button>
-        )}
-      </div>
-    </li>
+  const handleAddException = useCallback(
+    async (input: AddExceptionInput): Promise<void> => {
+      if (!orgId || !myProfile) return;
+      try {
+        await createAvailability({
+          org_id: orgId,
+          staff_profile_id: myProfile.id,
+          weekday: null,
+          date: input.date,
+          recurring: false,
+          status: input.availability === 'unavailable' ? 'unavailable' : 'available',
+          start_time: input.availability === 'available_from_midday' ? '12:00' : null,
+          end_time: null,
+        });
+        showSuccess(
+          `Exception saved for ${format(new Date(`${input.date}T00:00:00`), 'd MMM yyyy')}.`,
+        );
+        await load();
+      } catch (err) {
+        reportError(err, { area: 'availability:add-exception' });
+        showError('Could not save that exception. Please try again.');
+      }
+    },
+    [orgId, myProfile, showSuccess, showError, load],
   );
 
-  if (loadFailed && !loading) {
+  const handleRemoveException = useCallback(
+    (id: string): void => {
+      setRemovingExceptionId(id);
+      void deleteAvailability(id)
+        .then(() => {
+          showSuccess('Exception removed.');
+          return load();
+        })
+        .catch((err) => {
+          reportError(err, { area: 'availability:remove-exception' });
+          showError('Could not remove that exception.');
+        })
+        .finally(() => setRemovingExceptionId(null));
+    },
+    [showSuccess, showError, load],
+  );
+
+  if (loading) {
+    return <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>;
+  }
+
+  if (loadFailed) {
     return (
-      <Card>
-        <p className="mb-4 text-content-muted dark:text-content-muted-dark">
+      <Card className="max-w-sm">
+        <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
           Could not load availability.
         </p>
-        <Button size="sm" onClick={() => setReloadKey((k) => k + 1)}>
-          Retry
-        </Button>
+        <Button onClick={() => void load()}>Retry</Button>
+      </Card>
+    );
+  }
+
+  if (!myProfile) {
+    return (
+      <Card>
+        <p className="text-content-muted dark:text-content-muted-dark">
+          You don&rsquo;t have a staff profile in this organisation, so there is no
+          pattern to set. Ask your manager to add you to the staff directory.
+        </p>
       </Card>
     );
   }
 
   return (
-    <div>
-      <WorkspaceHeader
-        title="Team"
-        subtitle={
-          teamMode
-            ? 'Who can work when, across the team. Managers schedule around this; it does not block a rota being built.'
-            : 'Your standing weekly pattern. Managers schedule around it, it doesn’t block a rota being built.'
-        }
-        tabs={teamWorkspaceTabs(membershipRole)}
-        actions={
-          canApprove ? (
-            <div className="flex gap-1" role="group" aria-label="Scope">
-              <button
-                type="button"
-                onClick={() => setTeamMode(false)}
-                aria-pressed={!teamMode}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-sm font-medium',
-                  !teamMode
-                    ? 'bg-surface text-primary dark:bg-surface-dark'
-                    : 'text-content-muted dark:text-content-muted-dark',
-                )}
-              >
-                My availability
-              </button>
-              <button
-                type="button"
-                onClick={() => setTeamMode(true)}
-                aria-pressed={teamMode}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-sm font-medium',
-                  teamMode
-                    ? 'bg-surface text-primary dark:bg-surface-dark'
-                    : 'text-content-muted dark:text-content-muted-dark',
-                )}
-              >
-                Team
-              </button>
-            </div>
-          ) : undefined
-        }
-      />
-
-      {!teamMode && (
-        <Card className="mb-6">
-          <h2 className="mb-4 font-medium text-content dark:text-content-dark">
-            Add a weekly entry
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-4">
-            <div>
-              <Label htmlFor="avail-weekday">Day</Label>
-              <Select
-                id="avail-weekday"
-                value={weekday}
-                onChange={(e) => setWeekday(e.target.value)}
-              >
-                {WEEKDAYS.map((day, i) => (
-                  <option key={day} value={i}>
-                    {day}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="avail-status">Status</Label>
-              <Select
-                id="avail-status"
-                value={status}
-                onChange={(e) => setStatus(toAvailabilityStatus(e.target.value))}
-              >
-                <option value="available">Available</option>
-                <option value="preferred">Preferred</option>
-                <option value="unavailable">Unavailable</option>
-              </Select>
-            </div>
-            {status !== 'unavailable' && (
-              <>
-                <div>
-                  <Label htmlFor="avail-start">From</Label>
-                  <Input
-                    id="avail-start"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="avail-end">Until</Label>
-                  <Input
-                    id="avail-end"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          <Button
-            size="sm"
-            className="mt-4"
-            onClick={() => void handleAdd()}
-            disabled={submitting}
-          >
-            <Plus size={14} aria-hidden="true" className="mr-1.5" />
-            {submitting ? 'Adding…' : 'Add entry'}
-          </Button>
-        </Card>
-      )}
-
-      {loading ? (
-        <Card>
-          <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
-        </Card>
-      ) : teamMode ? (
-        entriesByStaff.size === 0 ? (
-          <Card>
-            <p className="text-content-muted dark:text-content-muted-dark">
-              No availability submitted yet.
-            </p>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {[...entriesByStaff.entries()].map(([staffId, staffEntries]) => {
-              const person = staffById.get(staffId);
-              return (
-                <Card key={staffId}>
-                  <h3 className="mb-3 font-medium text-content dark:text-content-dark">
-                    {person
-                      ? `${person.first_name} ${person.last_name}`
-                      : 'Unknown staff'}
-                  </h3>
-                  <ul className="space-y-2">
-                    {staffEntries.map((entry) => renderEntry(entry, false))}
-                  </ul>
-                </Card>
-              );
-            })}
-          </div>
-        )
-      ) : (
-        <Card>
-          {entries.length === 0 ? (
-            <p className="text-content-muted dark:text-content-muted-dark">
-              You haven&rsquo;t added any availability yet.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {entries.map((entry) => renderEntry(entry, true))}
-            </ul>
-          )}
-        </Card>
-      )}
-    </div>
+    <AvailabilityView
+      weekPattern={weekPattern}
+      onToggleDay={(day) => void handleToggleDay(day)}
+      togglingWeekday={togglingWeekday}
+      exceptions={exceptions}
+      onAddException={handleAddException}
+      removingExceptionId={removingExceptionId}
+      onRemoveException={handleRemoveException}
+      team={team}
+    />
   );
 }
