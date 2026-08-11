@@ -136,10 +136,6 @@ const ReportsPreviewPage = devPage(
   'ReportsPreviewPage',
   () => import('@/pages/ReportsPreviewPage'),
 );
-const LeavePreviewPage = devPage(
-  'LeavePreviewPage',
-  () => import('@/pages/LeavePreviewPage'),
-);
 const AppShellPreviewPage = devPage(
   'AppShellPreviewPage',
   () => import('@/pages/AppShellPreviewPage'),
@@ -543,8 +539,6 @@ export function App(): JSX.Element {
                         <Route path="/swaps-preview" element={<SwapsPreviewPage />} />
                         {/* design/Reports-Dashboard.png's catalogue and figures. */}
                         <Route path="/reports-preview" element={<ReportsPreviewPage />} />
-                        {/* design/Leave.png's numbers. */}
-                        <Route path="/leave-preview" element={<LeavePreviewPage />} />
                         {/* The whole organisation workspace shell (rail, org
                         switcher, topbar, mobile tab bar) against a stubbed
                         OrgContext, with the real *PreviewPage components

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  countLeaveDaysByType,
   formatLeaveDays,
   formatLeaveDuration,
   formatLeaveRange,
@@ -8,8 +7,6 @@ import {
   leaveDayCount,
   leaveTypeKey,
 } from '@/lib/leaveRows';
-import type { LeaveTypeKey } from '@/lib/leaveRows';
-import type { LeaveRequest } from '@/types';
 
 /**
  * The Leave screen's date and duration arithmetic.
@@ -20,38 +17,6 @@ import type { LeaveRequest } from '@/types';
  * which is the bug class `.github/workflows/ci.yml` pins `TZ: UTC` over. CI
  * runs under UTC; these assertions must hold under any offset.
  */
-
-const LABELS: Record<LeaveTypeKey, string> = {
-  annual: 'Annual Leave',
-  sick: 'Sick Leave',
-  personal: 'Personal Leave',
-  carer: "Carer's Leave",
-  other: 'Other',
-};
-
-let seq = 0;
-function request(
-  start: string,
-  end: string,
-  type: string,
-  status: LeaveRequest['status'] = 'approved',
-): LeaveRequest {
-  seq += 1;
-  return {
-    id: `leave-${seq}`,
-    org_id: 'org-1',
-    staff_profile_id: 'staff-1',
-    type,
-    start_date: start,
-    end_date: end,
-    status,
-    reason: null,
-    reviewed_by: null,
-    reviewed_at: null,
-    created_at: '2025-05-01T09:00:00Z',
-    updated_at: '2025-05-01T09:00:00Z',
-  };
-}
 
 describe('leaveTypeKey', () => {
   it("maps the column's default to Annual Leave", () => {
@@ -169,42 +134,5 @@ describe('formatRequestedAt', () => {
     expect(formatRequestedAt(new Date(2025, 4, 26, 0, 1).toISOString(), now)).toBe(
       'Today, 00:01',
     );
-  });
-});
-
-describe('countLeaveDaysByType', () => {
-  it('sums approved days per type, largest first', () => {
-    const rows = countLeaveDaysByType(
-      [
-        request('2025-06-09', '2025-06-13', 'holiday'), // 5 annual
-        request('2025-05-28', '2025-05-28', 'sick'), // 1 sick
-        request('2025-05-19', '2025-05-20', 'sick'), // 2 sick
-      ],
-      LABELS,
-    );
-    expect(rows).toEqual([
-      { type: 'annual', label: 'Annual Leave', days: 5 },
-      { type: 'sick', label: 'Sick Leave', days: 3 },
-    ]);
-  });
-
-  it('ignores anything not approved', () => {
-    // Pending and declined requests are not days taken. Counting them would
-    // overstate the donut and make an org look like it had used leave it had
-    // not granted.
-    const rows = countLeaveDaysByType(
-      [
-        request('2025-06-09', '2025-06-13', 'holiday', 'pending'),
-        request('2025-06-16', '2025-06-20', 'holiday', 'rejected'),
-        request('2025-06-23', '2025-06-27', 'holiday', 'cancelled'),
-        request('2025-07-01', '2025-07-02', 'holiday', 'approved'),
-      ],
-      LABELS,
-    );
-    expect(rows).toEqual([{ type: 'annual', label: 'Annual Leave', days: 2 }]);
-  });
-
-  it('returns nothing when there is nothing approved', () => {
-    expect(countLeaveDaysByType([], LABELS)).toEqual([]);
   });
 });

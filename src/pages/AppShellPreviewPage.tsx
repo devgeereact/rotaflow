@@ -8,7 +8,7 @@ import { SchedulePreviewPage } from '@/pages/app/SchedulePreviewPage';
 import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
 import { TimesheetsPreviewPage } from '@/pages/app/TimesheetsPreviewPage';
 import { AvailabilityPreviewPage } from '@/pages/app/AvailabilityPreviewPage';
-import { LeavePreviewPage } from '@/pages/LeavePreviewPage';
+import { LeavePreviewPage } from '@/pages/app/LeavePreviewPage';
 import { SwapsPreviewPage } from '@/pages/SwapsPreviewPage';
 import { StaffPreviewPage } from '@/pages/StaffPreviewPage';
 import { LocationsPreviewPage } from '@/pages/LocationsPreviewPage';

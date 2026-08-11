@@ -99,9 +99,10 @@ export async function listMyAuditLogs(
  * Record an event the database cannot observe for itself.
  *
  * Exports qualify because an export is a read, so no trigger can see it;
- * `timesheet.amended` (0039) qualifies because `clock_events` has no history
- * column of its own, so this RPC call is the only record a correction
- * happened at all, beyond the row's bumped `updated_at`. The action strings
+ * `timesheet.amended` (0039) and `leave.reviewed` (0040) qualify because
+ * neither `clock_events` nor `leave_requests` has a history column of its
+ * own, so this RPC call is the only record a correction or a decline reason
+ * exists at all, beyond the row's bumped `updated_at`. The action strings
  * are whitelisted in the RPC, a client-callable audit writer records intent,
  * not proof, and without the whitelist it would be a tool for seeding a
  * plausible false trail.
@@ -118,7 +119,8 @@ export async function logAuditEvent(
     | 'report.exported'
     | 'timesheet.exported'
     | 'staff.exported'
-    | 'timesheet.amended',
+    | 'timesheet.amended'
+    | 'leave.reviewed',
   entityType?: string,
   entityId?: string,
   metadata?: Record<string, Json>,
