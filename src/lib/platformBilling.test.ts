@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BILLING_GAPS,
   daysUntil,
   needsAttention,
   renewalBreakdown,
@@ -149,15 +148,5 @@ describe('needsAttention', () => {
       NOW,
     );
     expect(rows).toHaveLength(1);
-  });
-});
-
-describe('BILLING_GAPS', () => {
-  it('explains every gap rather than only naming it', () => {
-    expect(BILLING_GAPS.length).toBeGreaterThan(0);
-    for (const gap of BILLING_GAPS) {
-      expect(gap.title.length).toBeGreaterThan(0);
-      expect(gap.detail.length).toBeGreaterThan(40);
-    }
   });
 });

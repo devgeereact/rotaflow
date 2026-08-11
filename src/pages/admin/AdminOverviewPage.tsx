@@ -33,6 +33,7 @@ import {
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
 import { formatMoney } from '@/lib/money';
+import { downloadCsv } from '@/lib/csv';
 import { collectedByMonth, monthlyRecurringPence, revenueByPlan } from '@/lib/revenue';
 import { openCases, urgentOpenCases } from '@/lib/supportMetrics';
 import { healthBreakdown, tenantsActiveWithin } from '@/lib/tenantHealth';
@@ -151,6 +152,7 @@ export function AdminOverviewPage(): JSX.Element {
   const [data, setData] = useState<Snapshot | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [periodMonths, setPeriodMonths] = useState(12);
 
   useEffect(() => {
     let active = true;
@@ -173,7 +175,7 @@ export function AdminOverviewPage(): JSX.Element {
           listAllOrganisations(),
           listAllProfiles(),
           listAllSubscriptions(),
-          listPlatformAuditLogs(8),
+          listPlatformAuditLogs(4),
           countMembershipsByOrg(),
           listSupportAccessSessions(20),
           countPublishedRotas(),
@@ -211,7 +213,7 @@ export function AdminOverviewPage(): JSX.Element {
   const derived = useMemo(() => {
     if (!data) return null;
     const now = new Date();
-    const growth = monthlyGrowth(data.organisations, now);
+    const growth = monthlyGrowth(data.organisations, now, periodMonths);
     const active = data.organisations.filter((o) => o.status === 'active').length;
     return {
       growth,
@@ -229,7 +231,7 @@ export function AdminOverviewPage(): JSX.Element {
         data.subscriptions,
         new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
       ),
-      revenueTrend: collectedByMonth(data.invoices, 12, now).map((t) =>
+      revenueTrend: collectedByMonth(data.invoices, periodMonths, now).map((t) =>
         Math.round(t.pence / 100),
       ),
       planMix: revenueByPlan(
@@ -249,7 +251,20 @@ export function AdminOverviewPage(): JSX.Element {
       openSessions: data.sessions.filter((s) => sessionStatus(s, now) === 'active')
         .length,
     };
-  }, [data]);
+  }, [data, periodMonths]);
+
+  const exportReport = useCallback(() => {
+    if (!derived) return;
+    downloadCsv(
+      `platform-overview_${new Date().toISOString().slice(0, 10)}`,
+      derived.growth,
+      [
+        { label: 'Month', value: (g) => g.label },
+        { label: 'Total organisations', value: (g) => String(g.total) },
+        { label: 'New organisations', value: (g) => String(g.created) },
+      ],
+    );
+  }, [derived]);
 
   return (
     <AdminPage
@@ -257,12 +272,19 @@ export function AdminOverviewPage(): JSX.Element {
       description="Organisations, users, subscriptions and platform performance across every RotaFlow tenant."
       action={
         <>
-          <Select aria-label="Reporting period" className="w-auto" defaultValue="12">
+          <Select
+            aria-label="Reporting period"
+            className="w-auto"
+            value={String(periodMonths)}
+            onChange={(e) => setPeriodMonths(Number(e.target.value))}
+          >
             <option value="12">Last 12 months</option>
-            <option value="3">Last 90 days</option>
-            <option value="1">Last 30 days</option>
+            <option value="3">Last 3 months</option>
+            <option value="1">Last month</option>
           </Select>
-          <Button variant="secondary">Export report</Button>
+          <Button variant="secondary" onClick={exportReport} disabled={!derived}>
+            Export report
+          </Button>
         </>
       }
     >
@@ -332,7 +354,11 @@ export function AdminOverviewPage(): JSX.Element {
             <Panel
               className="lg:col-span-2"
               title="Platform growth"
-              actions={<Badge tone="neutral">Last 12 months</Badge>}
+              actions={
+                <Badge tone="neutral">
+                  {periodMonths === 1 ? 'Last month' : `Last ${periodMonths} months`}
+                </Badge>
+              }
             >
               <TrendChart
                 title="Organisations created and total, by month"
@@ -411,8 +437,19 @@ export function AdminOverviewPage(): JSX.Element {
           </div>
 
           {/* Three equal columns that stretch to the tallest, as the reference
-              lays them out, `h-full` on each panel rather than a fixed height,
-              so the row grows with whichever card has most in it. */}
+              lays them out, `h-full` on each panel rather than a fixed height.
+
+              Which makes the tallest card everyone else's problem. The audit
+              feed asked for eight entries and its rows run to two lines each,
+              so it stood 529px tall and set a 584px row. System health drew
+              six services in 265px and left 202 empty below them; Support drew
+              its tiles and cases in 313 and left 154. The short cards looked
+              broken, and the cause was in neither of them.
+
+              Four entries sits the feed between the other two: measured bodies
+              are now 265, 296 and 313 in a 368px row, where they were 265, 529
+              and 313 in a 584px one. The rest of the log was never the point of
+              an overview panel carrying an "Audit log" link in its corner. */}
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
             <Panel
               className="h-full"

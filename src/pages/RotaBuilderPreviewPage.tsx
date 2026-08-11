@@ -27,11 +27,10 @@ function formatWeekRange(dates: string[]): string {
   return `${format(new Date(`${first}T00:00:00`), 'd MMM')}, ${format(new Date(`${last}T00:00:00`), 'd MMM yyyy')}`;
 }
 import { Button } from '@/components/ui/Button';
+import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
-import { ShiftInspectorPanel } from '@/components/rota/ShiftInspectorPanel';
-import { RotaActionRail } from '@/components/rota/RotaActionRail';
 import type { Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
 
 const ORG_ID = 'preview-org';
@@ -371,8 +370,17 @@ export function RotaBuilderPreviewPage(): JSX.Element {
       }),
     [],
   );
-  const selectedShift = SHIFTS.find((s) => s.id === selectedShiftId) ?? null;
-  const totalStaff = new Set(SHIFTS.map((s) => s.staff_profile_id).filter(Boolean)).size;
+  const [shiftTypeFilter, setShiftTypeFilter] = useState('all');
+  const conflictedShiftIds = useMemo(
+    () =>
+      new Set(
+        warnings
+          .filter((w) => w.severity === 'critical')
+          .map((w) => w.shiftId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [warnings],
+  );
 
   return (
     <div className="min-h-screen bg-background px-6 py-8 dark:bg-background-dark md:px-10">
@@ -476,6 +484,11 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </div>
           </div>
 
+          <Callout tone="danger" title="Draft, not visible to staff" className="mb-4">
+            {warnings.filter((w) => w.severity === 'critical').length} critical issues
+            block publication. See the Warnings tab.
+          </Callout>
+
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Select className="w-auto py-2" defaultValue="all">
               <option value="all">All Locations</option>
@@ -507,62 +520,27 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </Button>
           </div>
 
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-            <Card className="grid min-w-0 flex-1 grid-cols-1 gap-0 overflow-hidden p-0 xl:grid-cols-[minmax(0,1fr)_19rem]">
-              <div className="overflow-x-auto border-b border-surface-border p-5 xl:border-b-0 xl:border-r dark:border-surface-border-dark">
-                <RotaGrid
-                  dates={dates}
-                  groups={groups}
-                  totalStaff={totalStaff}
-                  totalShifts={SHIFTS.length}
-                  shiftMapByLocation={shiftMapByLocation}
-                  shiftTypes={SHIFT_TYPES}
-                  previewMap={new Map()}
-                  dailyTotals={dailyTotals}
-                  selectedShiftId={selectedShiftId}
-                  onAddShift={() => {}}
-                  onSelectShift={(shift) => setSelectedShiftId(shift.id)}
-                  // Passed so the design loop sees the chip's × exactly as the
-                  // live grid renders it. No-op: there is no rota behind this.
-                  onDeleteShift={() => {}}
-                />
-              </div>
-
-              <div className="p-4">
-                <ShiftInspectorPanel
-                  selectedShift={selectedShift}
-                  shifts={SHIFTS}
-                  staff={STAFF}
-                  shiftTypes={SHIFT_TYPES}
-                  locations={LOCATIONS}
-                  dailyTotals={dailyTotals}
-                  warnings={warnings}
-                  timezone={DEFAULT_TZ}
-                  rotaStatusForLocation={() => 'published'}
-                  onEdit={() => {}}
-                  onDuplicate={() => {}}
-                  onDelete={() => {}}
-                  onSelectShiftId={() => {}}
-                />
-              </div>
-            </Card>
-
-            <Card className="shrink-0 p-2 xl:w-[5.5rem]">
-              {/* Design-preview only: the rail is rendered for layout match,
-                  with no rota behind it to act on. */}
-              <RotaActionRail
-                onTemplates={() => {}}
-                onCopyShifts={() => {}}
-                onPasteShifts={() => {}}
-                onCopyPreviousWeek={() => {}}
-                onAutoFill={() => {}}
-                onClearShifts={() => {}}
-                onPrint={() => {}}
-                clipboardCount={0}
-                busyAction={null}
+          <Card className="min-w-0 overflow-hidden p-5">
+            <div className="overflow-x-auto">
+              <RotaGrid
+                dates={dates}
+                groups={groups}
+                shiftMapByLocation={shiftMapByLocation}
+                shiftTypes={SHIFT_TYPES}
+                previewMap={new Map()}
+                dailyTotals={dailyTotals}
+                selectedShiftId={selectedShiftId}
+                conflictedShiftIds={conflictedShiftIds}
+                shiftTypeFilter={shiftTypeFilter}
+                onShiftTypeFilterChange={setShiftTypeFilter}
+                onAddShift={() => {}}
+                onSelectShift={(shift) => setSelectedShiftId(shift.id)}
+                // Passed so the design loop sees the chip's × exactly as the
+                // live grid renders it. No-op: there is no rota behind this.
+                onDeleteShift={() => {}}
               />
-            </Card>
-          </div>
+            </div>
+          </Card>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
             <span className="flex items-center gap-1.5 text-content-muted dark:text-content-muted-dark">

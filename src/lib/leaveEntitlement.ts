@@ -26,13 +26,20 @@ export function sumApprovedLeaveDays(
   fromDate: string,
   toDate: string,
 ): number {
+  // [fromDate, toDate) — clip each request to this window before counting.
+  // A request overlapping the boundary (28 Dec – 3 Jan across a year split)
+  // used to count its FULL span against both years, so 9 days taken read as
+  // 9+9=18 days of allowance consumed. The overlap filter below already
+  // selects the request; only the day count needs clipping.
+  const windowStart = new Date(fromDate).getTime();
+  const windowLastDay = new Date(toDate).getTime() - 86_400_000;
   return requests
     .filter(
       (r) => r.status === 'approved' && r.start_date < toDate && r.end_date >= fromDate,
     )
     .reduce((total, r) => {
-      const start = new Date(r.start_date).getTime();
-      const end = new Date(r.end_date).getTime();
+      const start = Math.max(new Date(r.start_date).getTime(), windowStart);
+      const end = Math.min(new Date(r.end_date).getTime(), windowLastDay);
       const days = Math.round((end - start) / 86_400_000) + 1;
       return total + Math.max(0, days);
     }, 0);

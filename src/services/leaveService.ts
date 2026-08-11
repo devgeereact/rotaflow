@@ -42,6 +42,22 @@ export async function listOrgLeaveRequests(orgId: string): Promise<LeaveRequest[
   return data ?? [];
 }
 
+/**
+ * Count only, for the sidebar's Leave badge. `head: true` skips the row
+ * payload entirely, this runs on every `/app/*` page load. RLS already scopes
+ * a staff caller to their own rows, so the same query reads as "your pending
+ * requests" for staff and "the approval queue" for a manager.
+ */
+export async function countPendingLeaveRequests(orgId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('leave_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .eq('status', 'pending');
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** Manager approve/reject. RLS (has_org_role) is the real enforcement. */
 export async function reviewLeaveRequest(
   id: string,

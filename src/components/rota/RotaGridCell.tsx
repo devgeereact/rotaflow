@@ -16,6 +16,7 @@ interface RotaGridCellProps {
   previewSuggestions: AiShiftSuggestion[];
   now: number;
   selectedShiftId: string | null;
+  conflictedShiftIds: Set<string>;
   onAddShift: () => void;
   onSelectShift: (shift: Shift) => void;
   /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
@@ -32,12 +33,19 @@ export function RotaGridCell({
   previewSuggestions,
   now,
   selectedShiftId,
+  conflictedShiftIds,
   onAddShift,
   onSelectShift,
   onDeleteShift,
 }: RotaGridCellProps): JSX.Element {
+  // Location-qualified: staff_profiles has no location column, so someone
+  // rostered at two sites this week appears in two location groups with the
+  // same staffProfileId. Without locationId in the id, both sites' cells for
+  // that person on the same date register the identical droppable id —
+  // dnd-kit's registry is global, not scoped per grid, so the second
+  // registration shadows the first and a drop can resolve to the wrong site.
   const { setNodeRef, isOver } = useDroppable({
-    id: `cell:${shiftCellKey(staffProfileId, date)}`,
+    id: `cell:${locationId}::${shiftCellKey(staffProfileId, date)}`,
     data: { locationId, date, staffProfileId },
   });
   const isEmpty = shifts.length === 0 && previewSuggestions.length === 0;
@@ -83,6 +91,7 @@ export function RotaGridCell({
               endTime={endTime}
               timeState={shiftTimeState(shift.starts_at, shift.ends_at, now)}
               selected={shift.id === selectedShiftId}
+              hasConflict={conflictedShiftIds.has(shift.id)}
               onClick={() => onSelectShift(shift)}
               onDelete={onDeleteShift ? () => onDeleteShift(shift) : undefined}
             />

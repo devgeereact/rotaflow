@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import checker from 'vite-plugin-checker';
+import { visualizer } from 'rollup-plugin-visualizer';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'node:path';
 import pkg from './package.json';
 
@@ -121,6 +124,49 @@ export default defineConfig({
         enabled: false, // set true to debug the SW in `npm run dev`
       },
     }),
+
+    // Live TS + ESLint errors in the dev overlay, instead of only finding out
+    // at `npm run build` / CI. `enableBuild: false` because `npm run build`
+    // already runs a separate `tsc --noEmit` — checking twice would just
+    // slow the build down for the same answer.
+    checker({
+      typescript: true,
+      eslint: { lintCommand: 'eslint "./src/**/*.{ts,tsx}"' },
+      enableBuild: false,
+    }),
+
+    // Bundle breakdown, opt-in only: `ANALYZE=true npm run build`. Writes
+    // stats.html at the repo root (gitignored, never shipped) rather than
+    // running on every build.
+    ...(process.env.ANALYZE
+      ? [
+          visualizer({
+            filename: 'stats.html',
+            open: true,
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
+
+    // Sourcemap upload for de-minified Sentry stack traces. `build.sourcemap`
+    // above is 'hidden' — maps are emitted but never referenced or shipped;
+    // this uploads them to Sentry then deletes them from `dist/`, so the only
+    // way to read them is a Sentry account with access to this project, not
+    // an unauthenticated GET like the old `sourcemap: true` was doing.
+    //
+    // No-ops without SENTRY_AUTH_TOKEN, so a build with no token configured
+    // (every local build until this is set up) behaves exactly as before.
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [
+          sentryVitePlugin({
+            org: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT,
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.js.map'] },
+          }),
+        ]
+      : []),
   ],
 
   build: {

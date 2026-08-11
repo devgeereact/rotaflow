@@ -17,11 +17,14 @@ import {
 import { Callout } from '@/components/ui/Callout';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
-import { RETENTION_POLICY } from '@/lib/adminOverviewDemo';
 import { downloadCsv } from '@/lib/csv';
 import { useToast } from '@/hooks/useToast';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { listAllOrganisations } from '@/services/platformService';
+import {
+  listRetentionPolicies,
+  type RetentionPolicy,
+} from '@/services/platformFactsService';
 import {
   extendGdprRequest,
   listGdprRequests,
@@ -89,6 +92,7 @@ export function AdminGdprPage(): JSX.Element {
   const { showError, showSuccess } = useToast();
   const [requests, setRequests] = useState<GdprRequest[] | null>(null);
   const [orgs, setOrgs] = useState<Organisation[]>([]);
+  const [retentionPolicies, setRetentionPolicies] = useState<RetentionPolicy[]>([]);
   const [failed, setFailed] = useState(false);
   const [logging, setLogging] = useState(false);
   const [closing, setClosing] = useState<GdprRequest | null>(null);
@@ -99,12 +103,14 @@ export function AdminGdprPage(): JSX.Element {
   const load = useCallback(async (): Promise<void> => {
     setFailed(false);
     try {
-      const [rows, allOrgs] = await Promise.all([
+      const [rows, allOrgs, policies] = await Promise.all([
         listGdprRequests(),
         listAllOrganisations(),
+        listRetentionPolicies(),
       ]);
       setRequests(rows);
       setOrgs(allOrgs);
+      setRetentionPolicies(policies);
     } catch {
       setFailed(true);
     }
@@ -130,6 +136,24 @@ export function AdminGdprPage(): JSX.Element {
       erasures: pendingErasures(all),
     };
   }, [requests, today]);
+
+  /**
+   * The board's own order, not the query's `due_on` order: that column is the
+   * unextended deadline, so an extended request sorted by its old date rather
+   * than the one that actually applies. And with no status split, a closed
+   * request with a long-past `due_on` sat above open, urgent ones — a
+   * "closed" state is not a deadline you can miss again.
+   */
+  const sortedRequests = useMemo(() => {
+    const open: GdprRequest[] = [];
+    const closed: GdprRequest[] = [];
+    for (const r of requests ?? []) {
+      (isClosed(r.status) ? closed : open).push(r);
+    }
+    open.sort((a, b) => effectiveDueDate(a).localeCompare(effectiveDueDate(b)));
+    closed.sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? ''));
+    return [...open, ...closed];
+  }, [requests]);
 
   const exportRegister = useCallback(() => {
     downloadCsv(`gdpr-register_${today}`, requests ?? [], [
@@ -322,9 +346,9 @@ export function AdminGdprPage(): JSX.Element {
               <AdminEmpty message="No data subject request has been logged." />
             ) : (
               <DataTable
-                caption="Data subject requests, earliest deadline first"
+                caption="Data subject requests, open and earliest deadline first, closed last"
                 columns={columns}
-                rows={requests}
+                rows={sortedRequests}
                 rowKey={(r) => r.id}
               />
             )}
@@ -333,7 +357,7 @@ export function AdminGdprPage(): JSX.Element {
           <Panel title="Retention policy" flush>
             <table className="w-full text-sm">
               <caption className="sr-only">
-                Intended retention periods by data type
+                Retention periods by data type, and whether they are enforced
               </caption>
               <thead>
                 <tr className="border-b border-divider text-left text-2xs uppercase tracking-wide text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
@@ -343,29 +367,52 @@ export function AdminGdprPage(): JSX.Element {
                   <th scope="col" className="px-4 py-2 font-medium">
                     Retained
                   </th>
+                  <th scope="col" className="px-4 py-2 font-medium">
+                    Enforced
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {RETENTION_POLICY.map((row) => (
+                {retentionPolicies.map((row) => (
                   <tr
-                    key={row.data}
+                    key={row.data_type}
                     className="border-b border-divider last:border-0 dark:border-divider-dark"
                   >
                     <td className="px-4 py-2.5 text-content dark:text-content-dark">
-                      {row.data}
+                      {row.label}
                     </td>
                     <td className="px-4 py-2.5 font-medium text-content dark:text-content-dark">
-                      {row.retained}
+                      {row.retain_months === null
+                        ? 'Indefinite'
+                        : `${row.retain_months} months`}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge
+                        tone={
+                          row.retain_months !== null && row.enforced
+                            ? 'success'
+                            : 'neutral'
+                        }
+                        dot
+                      >
+                        {row.retain_months === null
+                          ? 'Kept forever'
+                          : row.enforced
+                            ? 'Enforced nightly'
+                            : 'Manual only'}
+                      </Badge>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="border-t border-divider px-4 py-3 text-xs leading-relaxed text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
-              These are intended periods, not enforced ones. No table records a retention
-              rule and no job deletes a rota when it turns seven, so treat this as the
-              policy to build to. The audit row is the exception and is true today,{' '}
-              <code> audit_logs</code> has no update or delete policy at all.
+              `retention_policies` (0027) is the real schedule, and `enforce_retention()`
+              runs on it every night at 02:15 UTC via pg_cron (0029). Rows marked
+              &ldquo;Enforced nightly&rdquo; are actually deleted once they age past their
+              period. The audit log is kept forever on purpose, <code>audit_logs</code>{' '}
+              has no update or delete policy at all. Deleted tenant data stays manual by
+              design: nobody has decided who may trigger it.
             </p>
           </Panel>
         </div>

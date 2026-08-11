@@ -229,7 +229,12 @@ export function SwapsPage(): JSX.Element {
             swap.target_staff_profile_id === myProfile?.id;
           if (!mine) return false;
         }
-        if (awaitingMe && swap.status !== 'pending') return false;
+        // toDisplayStatus, not the raw column: an 'accepted' swap still
+        // displays (and counts in the sidebar badge, countSwapsNeedingAttention)
+        // as pending — the colleague said yes, a manager still hasn't. The raw
+        // status check excluded exactly those, so this checkbox and the badge
+        // disagreed about which swaps still needed a decision.
+        if (awaitingMe && toDisplayStatus(swap.status) !== 'pending') return false;
         if (fromDate || toDate) {
           /*
            * Date the swap by the SHIFT it concerns, not by when it was
@@ -461,9 +466,17 @@ export function SwapsPage(): JSX.Element {
 
         setReloadKey((k) => k + 1);
         setOpenSwapId(null);
+        // The reassignment above only ran when the swap already named a
+        // target colleague. An "anyone" swap (target_staff_profile_id null)
+        // approves without moving the shift — this used to say "reassigned"
+        // regardless, which told the manager a step was done that the guard
+        // above had deliberately skipped, and the requester kept the shift
+        // while believing they'd been released from it.
         showSuccess(
           status === 'approved'
-            ? 'Swap approved and the shift reassigned.'
+            ? swap?.target_staff_profile_id
+              ? 'Swap approved and the shift reassigned.'
+              : 'Swap approved. Assign the shift to someone in the Rota Builder.'
             : 'Swap declined.',
         );
 

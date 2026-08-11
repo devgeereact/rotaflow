@@ -37,6 +37,14 @@ export function LeaveRequestModal({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+  // `min` on the End input only constrains typing/picking, and doesn't
+  // re-validate if Start changes afterward to land after an already-chosen
+  // End — there's no <form> here so the browser's own constraint validation
+  // never runs either. Reversed ranges used to submit silently: entitlement
+  // clamped the day count to 0, the leave table clamped it back up to 1, and
+  // rotaInsights' leaveCovers never matched, so the person was never flagged
+  // as on leave — approved leave that blocked nothing and cost no allowance.
+  const reversedRange = Boolean(startDate && endDate && endDate < startDate);
 
   return (
     <Modal open={open} onClose={onClose} title="Request leave">
@@ -78,6 +86,13 @@ export function LeaveRequestModal({
           </div>
         </div>
 
+        {reversedRange && (
+          <p className="text-xs text-danger">
+            The end date is before the start date. Pick an end date on or after the start
+            date.
+          </p>
+        )}
+
         <div>
           <Label htmlFor="leave-reason">Reason (optional)</Label>
           <Input
@@ -101,7 +116,7 @@ export function LeaveRequestModal({
           </Button>
           <Button
             size="sm"
-            disabled={submitting || !startDate || !endDate}
+            disabled={submitting || !startDate || !endDate || reversedRange}
             onClick={() => onSubmit({ type, startDate, endDate, reason })}
           >
             {submitting ? 'Submitting…' : 'Submit request'}

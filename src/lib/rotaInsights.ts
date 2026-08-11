@@ -5,6 +5,7 @@ import type {
   StaffDocument,
   LeaveRequest,
   Location,
+  MinimumCoverRule,
   Shift,
   ShiftType,
   StaffProfile,
@@ -48,7 +49,8 @@ export type InsightKind =
   | 'double_booked'
   | 'rest_breach'
   | 'over_contract'
-  | 'document_expiry';
+  | 'document_expiry'
+  | 'under_minimum_cover';
 
 export interface RotaInsight {
   id: string;
@@ -71,6 +73,21 @@ export interface RotaInsightInput {
   leave: LeaveRequest[];
   availability: Availability[];
   documents: StaffDocument[];
+  /**
+   * Each site's staffing minimum, one row per weekday. See
+   * 0036_minimum_cover_rules.sql. Optional and defaults to none, so callers
+   * that predate this check (the assistant panel, the shift inspector, the
+   * preview page) keep compiling and keep their old behaviour untouched.
+   */
+  minimumCoverRules?: MinimumCoverRule[];
+  /**
+   * The calendar dates ('YYYY-MM-DD', local) the minimum-cover check should
+   * walk, independent of which dates actually have a shift. Without this a
+   * site with a minimum set and zero shifts assigned on a given day would
+   * never be flagged, the exact case the check exists for. Optional; the
+   * check is skipped entirely when omitted.
+   */
+  coverDates?: string[];
   timezone: string;
   /** Injected so every rule agrees on "now" and tests can pin it. */
   now: number;
@@ -122,6 +139,12 @@ function leaveCovers(leave: LeaveRequest, dateIso: string): boolean {
   return leave.start_date <= dateIso && leave.end_date >= dateIso;
 }
 
+// KNOWN GAP: this only ever looks at `status`, never `start_time`/`end_time`.
+// A staff member who declares "Available Monday 09:00-13:00" (mornings only)
+// reads as free all Monday — this only catches a whole day marked
+// `unavailable`. `suggestCoverForShift` has the same gap. Closing it means
+// comparing the shift's own time-of-day against the declared window, which
+// needs its own pass rather than folding into this bug-fix sweep.
 function unavailableOn(entry: Availability, dateIso: string): boolean {
   if (entry.status !== 'unavailable') return false;
   if (entry.date) return entry.date === dateIso;
@@ -155,12 +178,22 @@ function weekKey(iso: string, timezone: string): string {
  */
 export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
   const { shifts, staff, shiftTypes, locations, leave, availability, documents } = input;
-  const { timezone, now } = input;
+  const { minimumCoverRules = [], coverDates = [], timezone, now } = input;
 
   const staffById = new Map(staff.map((s) => [s.id, s]));
   const typeById = new Map(shiftTypes.map((t) => [t.id, t]));
   const locationById = new Map(locations.map((l) => [l.id, l]));
   const insights: RotaInsight[] = [];
+
+  // Each shift's OWN site's timezone, not the single `timezone` this
+  // function was called with — a multi-site org can span timezones, and the
+  // grid's chips/totals already read `location.timezone` per shift. Using
+  // one blanket timezone here meant a shift near midnight could bucket to
+  // the wrong local day, so `leaveCovers`/`unavailableOn` (which compare by
+  // that date) missed a real clash on the day the chip actually sits in.
+  const timezoneFor = (shift: Shift): string =>
+    (shift.location_id ? locationById.get(shift.location_id)?.timezone : undefined) ??
+    timezone;
 
   const live = shifts.filter((s) => s.status !== 'cancelled');
   const upcoming = live.filter((s) => new Date(s.ends_at).getTime() > now);
@@ -170,7 +203,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
   for (const shift of upcoming) {
     if (shift.staff_profile_id) continue;
     const key = [
-      localDate(shift.starts_at, timezone),
+      localDate(shift.starts_at, timezoneFor(shift)),
       shift.location_id,
       shift.shift_type_id,
       shift.starts_at,
@@ -180,7 +213,8 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
   for (const group of openGroups.values()) {
     const first = group[0];
     if (!first) continue;
-    const date = localDate(first.starts_at, timezone);
+    const firstTz = timezoneFor(first);
+    const date = localDate(first.starts_at, firstTz);
     const daysAway = (new Date(first.starts_at).getTime() - now) / 86_400_000;
     const type = first.shift_type_id ? typeById.get(first.shift_type_id) : undefined;
     const location = first.location_id ? locationById.get(first.location_id) : undefined;
@@ -191,11 +225,75 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
       // covered from the people already on the roster, so it escalates.
       severity: daysAway <= 7 ? 'critical' : 'warning',
       title: `${group.length} unfilled ${type?.name ?? 'shift'}${group.length > 1 ? 's' : ''} · ${dayLabel(date)}`,
-      detail: `${localTime(first.starts_at, timezone)}, ${localTime(first.ends_at, timezone)} at ${location?.name ?? 'an unnamed site'}. Nobody is assigned${daysAway <= 7 ? ' and it starts within the week' : ''}.`,
+      detail: `${localTime(first.starts_at, firstTz)}, ${localTime(first.ends_at, firstTz)} at ${location?.name ?? 'an unnamed site'}. Nobody is assigned${daysAway <= 7 ? ' and it starts within the week' : ''}.`,
       date,
       staffProfileId: null,
       shiftId: first.id,
     });
+  }
+
+  // ---- 1b. Below a site's staffing minimum for the day ----
+  // The minimum is set per site per weekday (0036_minimum_cover_rules.sql).
+  // A day with no rule at all is not flagged: silence means the manager has
+  // not set a minimum for that site, not that zero people are required.
+  //
+  // Walked from `locations` x `coverDates`, not from the shifts that happen
+  // to exist, so a site with a minimum set and nobody at all assigned that
+  // day is still flagged. Grouping by the shifts present would silently miss
+  // exactly that case.
+  if (minimumCoverRules.length > 0 && coverDates.length > 0) {
+    // Only rules for a location actually in scope — `minimumCoverRules` is
+    // callers' org-wide list (RotaBuilderPage passes it unfiltered), while
+    // `locations` is the location filter on screen. Without this, picking a
+    // single site in the filter still evaluates every other site's minimum
+    // against a headcount of zero and blocks Publish over a site the manager
+    // isn't even looking at.
+    const rulesByLocation = new Map<string, Map<number, number>>();
+    for (const rule of minimumCoverRules) {
+      if (!locationById.has(rule.location_id)) continue;
+      const byWeekday =
+        rulesByLocation.get(rule.location_id) ?? new Map<number, number>();
+      byWeekday.set(rule.weekday, rule.min_staff);
+      rulesByLocation.set(rule.location_id, byWeekday);
+    }
+
+    // Distinct staff actually on shift, per site per local date. Two shifts
+    // for the same person the same day still count once. `live`, not
+    // `upcoming`: today's shifts that have already ended by `now` are still
+    // real cover that happened today, not a shortfall. `upcoming`'s
+    // ends_at > now filter drops them, which read every fully-staffed site
+    // as critically understaffed every evening once its day shift finished.
+    const onShiftByLocationDate = new Map<string, Set<string>>();
+    for (const shift of live) {
+      if (!shift.staff_profile_id || !shift.location_id) continue;
+      const key = `${shift.location_id}|${localDate(shift.starts_at, timezoneFor(shift))}`;
+      const staffOnShift = onShiftByLocationDate.get(key) ?? new Set<string>();
+      staffOnShift.add(shift.staff_profile_id);
+      onShiftByLocationDate.set(key, staffOnShift);
+    }
+
+    const today = localDate(new Date(now).toISOString(), timezone);
+    for (const [locationId, byWeekday] of rulesByLocation) {
+      const location = locationById.get(locationId);
+      for (const date of coverDates) {
+        if (date < today) continue; // past days can no longer be changed
+        const minStaff = byWeekday.get(weekdayOf(date));
+        if (minStaff === undefined || minStaff === 0) continue;
+        const onShift = onShiftByLocationDate.get(`${locationId}|${date}`)?.size ?? 0;
+        if (onShift >= minStaff) continue;
+        const short = minStaff - onShift;
+        insights.push({
+          id: `cover:${locationId}:${date}`,
+          kind: 'under_minimum_cover',
+          severity: 'critical',
+          title: `${dayLabel(date)} is ${short} short of the ${minStaff}-person minimum`,
+          detail: `${location?.name ?? 'This site'} has ${onShift} on shift against a minimum of ${minStaff}.`,
+          date,
+          staffProfileId: null,
+          shiftId: null,
+        });
+      }
+    }
   }
 
   // ---- Per-person rules ------------------------------------------------
@@ -221,7 +319,8 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
       (l) => l.staff_profile_id === staffProfileId && l.status === 'approved',
     );
     for (const shift of ahead) {
-      const date = localDate(shift.starts_at, timezone);
+      const shiftTz = timezoneFor(shift);
+      const date = localDate(shift.starts_at, shiftTz);
       const clash = personLeave.find((l) => leaveCovers(l, date));
       if (!clash) continue;
       insights.push({
@@ -229,7 +328,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
         kind: 'leave_clash',
         severity: 'critical',
         title: `${name} is on approved leave but rostered`,
-        detail: `${dayLabel(date)} · ${localTime(shift.starts_at, timezone)}, ${localTime(shift.ends_at, timezone)}. Approved ${clash.type} runs ${dayLabel(clash.start_date)} to ${dayLabel(clash.end_date)}.`,
+        detail: `${dayLabel(date)} · ${localTime(shift.starts_at, shiftTz)}, ${localTime(shift.ends_at, shiftTz)}. Approved ${clash.type} runs ${dayLabel(clash.start_date)} to ${dayLabel(clash.end_date)}.`,
         date,
         staffProfileId,
         shiftId: shift.id,
@@ -241,14 +340,15 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
       (a) => a.staff_profile_id === staffProfileId,
     );
     for (const shift of ahead) {
-      const date = localDate(shift.starts_at, timezone);
+      const shiftTz = timezoneFor(shift);
+      const date = localDate(shift.starts_at, shiftTz);
       if (!personAvailability.some((a) => unavailableOn(a, date))) continue;
       insights.push({
         id: `unavailable:${shift.id}`,
         kind: 'unavailable',
         severity: 'warning',
         title: `${name} is marked unavailable`,
-        detail: `Rostered ${dayLabel(date)} · ${localTime(shift.starts_at, timezone)}, ${localTime(shift.ends_at, timezone)}, against their declared availability.`,
+        detail: `Rostered ${dayLabel(date)} · ${localTime(shift.starts_at, shiftTz)}, ${localTime(shift.ends_at, shiftTz)}, against their declared availability.`,
         date,
         staffProfileId,
         shiftId: shift.id,
@@ -261,13 +361,14 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
         const a = ahead[i];
         const b = ahead[j];
         if (!a || !b || !overlaps(a, b)) continue;
-        const date = localDate(a.starts_at, timezone);
+        const aTz = timezoneFor(a);
+        const date = localDate(a.starts_at, aTz);
         insights.push({
           id: `clash:${a.id}:${b.id}`,
           kind: 'double_booked',
           severity: 'critical',
           title: `${name} is double-booked`,
-          detail: `${dayLabel(date)} · ${localTime(a.starts_at, timezone)}, ${localTime(a.ends_at, timezone)} overlaps ${localTime(b.starts_at, timezone)}, ${localTime(b.ends_at, timezone)}. One of the two needs reassigning.`,
+          detail: `${dayLabel(date)} · ${localTime(a.starts_at, aTz)}, ${localTime(a.ends_at, aTz)} overlaps ${localTime(b.starts_at, timezoneFor(b))}, ${localTime(b.ends_at, timezoneFor(b))}. One of the two needs reassigning.`,
           date,
           staffProfileId,
           shiftId: b.id,
@@ -276,21 +377,34 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
     }
 
     // ---- 5. Rest between consecutive shifts ----
-    for (let i = 1; i < ahead.length; i += 1) {
-      const previous = ahead[i - 1];
-      const next = ahead[i];
-      if (!previous || !next) continue;
+    // Sorted from ALL of this person's shifts, not just `ahead` — a shift
+    // that ended an hour ago is still the thing an upcoming shift's rest is
+    // measured against. Using `ahead` alone made the very first upcoming
+    // shift of any period rest-check-blind, since its real predecessor had
+    // already dropped out of the list. Only push an insight when `next`
+    // itself is still actionable (in `ahead`) — a breach entirely in the
+    // past isn't something a manager can still fix.
+    const allSorted = [...personShifts].sort((a, b) =>
+      a.starts_at.localeCompare(b.starts_at),
+    );
+    const aheadIds = new Set(ahead.map((s) => s.id));
+    for (let i = 1; i < allSorted.length; i += 1) {
+      const previous = allSorted[i - 1];
+      const next = allSorted[i];
+      if (!previous || !next || !aheadIds.has(next.id)) continue;
       const restHours =
         (new Date(next.starts_at).getTime() - new Date(previous.ends_at).getTime()) /
         3_600_000;
       if (restHours < 0 || restHours >= MIN_REST_HOURS) continue;
-      const date = localDate(next.starts_at, timezone);
+      const nextTz = timezoneFor(next);
+      const previousTz = timezoneFor(previous);
+      const date = localDate(next.starts_at, nextTz);
       insights.push({
         id: `rest:${next.id}`,
         kind: 'rest_breach',
         severity: 'warning',
         title: `${name} has only ${restHours.toFixed(1)}h rest`,
-        detail: `Off at ${localTime(previous.ends_at, timezone)} on ${dayLabel(localDate(previous.starts_at, timezone))}, back at ${localTime(next.starts_at, timezone)} on ${dayLabel(date)}. The Working Time Regulations expect ${MIN_REST_HOURS}h.`,
+        detail: `Off at ${localTime(previous.ends_at, previousTz)} on ${dayLabel(localDate(previous.starts_at, previousTz))}, back at ${localTime(next.starts_at, nextTz)} on ${dayLabel(date)}. The Working Time Regulations expect ${MIN_REST_HOURS}h.`,
         date,
         staffProfileId,
         shiftId: next.id,
@@ -300,12 +414,19 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
     // ---- 6. Scheduled well over contracted hours ----
     const contracted = Number(person.weekly_hours ?? 0);
     if (contracted > 0) {
+      // Summed from every shift in the week, not just `ahead` — the title
+      // below states the week's total, and hours already worked count
+      // towards a real overrun exactly as much as hours still to come.
+      // `ahead` still decides which weeks are worth surfacing: a week
+      // that's entirely in the past has nothing left for a manager to move.
       const byWeek = new Map<string, number>();
-      for (const shift of ahead) {
+      for (const shift of personShifts) {
         const key = weekKey(shift.starts_at, timezone);
         byWeek.set(key, (byWeek.get(key) ?? 0) + shiftNetMinutes(shift) / 60);
       }
+      const actionableWeeks = new Set(ahead.map((s) => weekKey(s.starts_at, timezone)));
       for (const [week, hours] of byWeek) {
+        if (!actionableWeeks.has(week)) continue;
         if (hours <= contracted * OVER_CONTRACT_TOLERANCE) continue;
         insights.push({
           id: `hours:${staffProfileId}:${week}`,

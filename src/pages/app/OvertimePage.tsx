@@ -28,6 +28,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
+import { StatTile } from '@/components/ui/StatTile';
 import type { OvertimeRequest, StaffProfile } from '@/types';
 
 const STATUS_STYLE: Record<OvertimeStatus, string> = {
@@ -281,19 +282,19 @@ export function OvertimePage(): JSX.Element {
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <MetricCard
+        <StatTile
           label="Awaiting approval"
-          value={String(summary.pending)}
+          value={summary.pending}
           hint={`${summary.pendingHoursLabel} pending`}
         />
-        <MetricCard
+        <StatTile
           label="Approved hours"
           value={summary.approvedHoursLabel}
           hint={teamMode ? 'Across the organisation' : 'Your approved overtime'}
         />
-        <MetricCard
+        <StatTile
           label="Requests shown"
-          value={String(rows.length)}
+          value={rows.length}
           hint={teamMode ? 'Whole organisation' : 'Yours only'}
         />
       </div>
@@ -472,27 +473,5 @@ export function OvertimePage(): JSX.Element {
         )}
       </Card>
     </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}): JSX.Element {
-  return (
-    <Card className="p-5">
-      <p className="text-sm text-content-muted dark:text-content-muted-dark">{label}</p>
-      <p className="mt-1 font-display text-2xl font-bold text-content dark:text-content-dark">
-        {value}
-      </p>
-      <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-        {hint}
-      </p>
-    </Card>
   );
 }

@@ -1,5 +1,7 @@
-import { Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { shiftCellKey } from '@/lib/rotaGrid';
+import { shiftNetMinutes } from '@/lib/rotaInsights';
+import { hoursLabel } from '@/components/dashboard/dashboardFormat';
 import { RotaGridCell } from '@/components/rota/RotaGridCell';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
@@ -7,12 +9,15 @@ import type { Shift, ShiftType, StaffProfile } from '@/types';
 
 /**
  * The single column template every band of the grid shares. Staff column,
- * seven day columns, then the trailing per-row "+" column. The header totals
- * and the daily-totals footer reuse it so all three stay aligned; changing the
- * shape in one place without the others is what knocks the grid out of true.
+ * seven day columns, then a trailing "Week" hours-total column (matches
+ * docs/ORGANISATION_WORKSPACE.html's rota table). The header and the
+ * daily-totals footer reuse it so all three stay aligned; changing the shape
+ * in one place without the others is what knocks the grid out of true.
  */
 export const ROTA_GRID_COLS =
-  'grid grid-cols-[minmax(0,11rem)_repeat(7,minmax(0,1fr))_2.25rem] gap-1.5';
+  'grid grid-cols-[minmax(0,11rem)_repeat(7,minmax(0,1fr))_3.5rem] gap-1.5';
+
+const STATUTORY_WEEKLY_MINUTES = 48 * 60;
 
 const ROTA_ROW_GRID = `${ROTA_GRID_COLS} border-b border-surface-border py-1.5 last:border-0 dark:border-surface-border-dark`;
 
@@ -27,6 +32,7 @@ interface RotaGridRowProps {
   /** Shared "now" from the grid, so every chip agrees which shifts are past. */
   now: number;
   selectedShiftId: string | null;
+  conflictedShiftIds: Set<string>;
   onAddShift: (staffProfileId: string | null, date: string) => void;
   onSelectShift: (shift: Shift) => void;
   /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
@@ -43,11 +49,19 @@ export function RotaGridRow({
   previewMap,
   now,
   selectedShiftId,
+  conflictedShiftIds,
   onAddShift,
   onSelectShift,
   onDeleteShift,
 }: RotaGridRowProps): JSX.Element {
   const staffProfileId = staff?.id ?? null;
+  const contractMinutes = (staff?.weekly_hours ?? 0) * 60;
+  const weekMinutes = staffProfileId
+    ? dates.reduce((total, date) => {
+        const shiftsToday = shiftMap.get(shiftCellKey(staffProfileId, date)) ?? [];
+        return total + shiftsToday.reduce((sum, s) => sum + shiftNetMinutes(s), 0);
+      }, 0)
+    : 0;
 
   return (
     <div className={ROTA_ROW_GRID}>
@@ -91,23 +105,35 @@ export function RotaGridRow({
             previewSuggestions={previewMap.get(key) ?? []}
             now={now}
             selectedShiftId={selectedShiftId}
+            conflictedShiftIds={conflictedShiftIds}
             onAddShift={() => onAddShift(staffProfileId, date)}
             onSelectShift={onSelectShift}
             onDeleteShift={onDeleteShift}
           />
         );
       })}
-      <div className="flex items-center justify-center">
-        <button
-          type="button"
-          onClick={() => onAddShift(staffProfileId, dates[0] ?? '')}
-          aria-label={
-            staff ? `Add shift for ${staff.first_name} ${staff.last_name}` : 'Add shift'
-          }
-          className="grid h-8 w-8 place-items-center rounded-lg border border-surface-border text-content-muted transition-colors hover:border-primary hover:text-primary dark:border-surface-border-dark dark:text-content-muted-dark"
-        >
-          <Plus size={16} aria-hidden="true" />
-        </button>
+      <div className="flex flex-col items-end justify-center px-1 text-right">
+        {staff && (
+          <>
+            <span
+              className={cn(
+                'font-mono text-sm font-semibold',
+                weekMinutes > STATUTORY_WEEKLY_MINUTES
+                  ? 'text-danger'
+                  : weekMinutes > contractMinutes + 12 * 60
+                    ? 'text-warning'
+                    : 'text-content dark:text-content-dark',
+              )}
+            >
+              {hoursLabel(weekMinutes / 60)}
+            </span>
+            {staff.weekly_hours != null && (
+              <span className="text-[0.65rem] text-content-muted dark:text-content-muted-dark">
+                /{staff.weekly_hours}h
+              </span>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

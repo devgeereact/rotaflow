@@ -3,7 +3,6 @@ import {
   countBy,
   humaniseKey,
   monthlyGrowth,
-  UNAVAILABLE_METRICS,
   type OverviewOrg,
 } from '@/lib/platformOverview';
 
@@ -120,15 +119,5 @@ describe('humaniseKey', () => {
 
   it('falls back to Unknown for an empty value', () => {
     expect(humaniseKey('   ')).toBe('Unknown');
-  });
-});
-
-describe('UNAVAILABLE_METRICS', () => {
-  it('gives every stated gap a reason, so the screen never just says "not available"', () => {
-    expect(UNAVAILABLE_METRICS.length).toBeGreaterThan(0);
-    for (const metric of UNAVAILABLE_METRICS) {
-      expect(metric.title.length).toBeGreaterThan(0);
-      expect(metric.reason.length).toBeGreaterThan(40);
-    }
   });
 });

@@ -46,6 +46,23 @@ export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShi
 }
 
 /**
+ * Count only, for the sidebar's Shift Swaps badge. `head: true` skips the
+ * shift join and row payload, this runs on every `/app/*` page load.
+ * `accepted` counts too: the target has agreed, but a manager still has to
+ * approve it before it changes the rota (see `respondToShiftSwap` below), so
+ * it is still a swap someone needs to act on.
+ */
+export async function countSwapsNeedingAttention(orgId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('shift_swaps')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .in('status', ['pending', 'accepted']);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
  * The target colleague accepting or declining. Permitted by
  * shift_swaps_target_respond, which only allows a still-pending row to move
  * to 'accepted' or 'rejected'. A manager still has to approve an accepted

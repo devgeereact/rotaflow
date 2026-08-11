@@ -113,6 +113,7 @@ export function DepartmentManager({
                     className="py-1.5"
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- explicit user action (clicked Edit) opened this field, not page load.
                     autoFocus
                   />
                   <button

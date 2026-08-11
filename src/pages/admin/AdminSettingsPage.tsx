@@ -279,12 +279,23 @@ export function AdminSettingsPage(): JSX.Element {
         key: 'role',
         label: 'Platform role',
         width: 'w-[28%]',
-        cell: (row) =>
-          canManagePlatformAdmins ? (
+        cell: (row) => {
+          // Same guard as the Remove button below, and now also enforced
+          // server-side (grant_platform_role raises 23514): picking a
+          // non-owner role for the platform's only owner here used to
+          // succeed and leave nobody able to grant or revoke a platform
+          // role ever again, including this dropdown's own next use.
+          const lastOwner = row.grant.role === 'platform_owner' && ownerCount <= 1;
+          return canManagePlatformAdmins ? (
             <Select
               value={row.grant.role}
               aria-label={`Platform role for ${row.profile?.email ?? row.grant.user_id}`}
-              disabled={busyUser === row.grant.user_id}
+              disabled={busyUser === row.grant.user_id || lastOwner}
+              title={
+                lastOwner
+                  ? 'The platform must always have at least one owner.'
+                  : undefined
+              }
               onChange={(e) => void changeRole(row, e.target.value as PlatformRole)}
             >
               {ROLES.map((role) => (
@@ -297,7 +308,8 @@ export function AdminSettingsPage(): JSX.Element {
             <Badge tone="danger">
               {PLATFORM_ROLE_LABELS[row.grant.role as PlatformRole] ?? row.grant.role}
             </Badge>
-          ),
+          );
+        },
       },
       {
         key: 'granted',

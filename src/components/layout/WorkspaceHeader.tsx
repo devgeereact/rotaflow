@@ -9,7 +9,7 @@ interface WorkspaceHeaderProps {
    * a single-tab switcher is a control that cannot do anything, and staff see
    * exactly that on workspaces where the other half is managerial.
    */
-  tabs: TabItem[];
+  tabs?: TabItem[];
   /** Page-level actions, right-aligned against the title. */
   actions?: ReactNode;
 }
@@ -44,7 +44,7 @@ interface WorkspaceHeaderProps {
 export function WorkspaceHeader({
   title,
   subtitle,
-  tabs,
+  tabs = [],
   actions,
 }: WorkspaceHeaderProps): JSX.Element {
   return (

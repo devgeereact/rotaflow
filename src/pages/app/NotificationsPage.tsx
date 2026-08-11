@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, BellOff, Check } from 'lucide-react';
+import {
+  AlarmClock,
+  Bell,
+  BellOff,
+  Calendar,
+  Check,
+  Megaphone,
+  Repeat2,
+  Umbrella,
+  type LucideIcon,
+} from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useWebPush } from '@/hooks/useWebPush';
 import { useToast } from '@/hooks/useToast';
@@ -15,6 +25,28 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import type { Notification } from '@/types';
+
+/**
+ * `notifications.type` is free text (no check constraint, docs/SCHEMA.md §3),
+ * written by whichever Inngest function dispatched the row, so this can never
+ * be exhaustive. It covers the values `send-notification`'s callers use today
+ * (demo_seed.sql's five), keyed to the same icons the sidebar already uses
+ * for the equivalent screen (Umbrella=Leave, Repeat2=Swaps, etc.), and falls
+ * back to a plain bell for anything else rather than guessing.
+ */
+const TYPE_META: Record<string, { icon: LucideIcon; tone: string }> = {
+  rota_published: { icon: Calendar, tone: 'bg-primary/10 text-primary' },
+  leave_approved: { icon: Umbrella, tone: 'bg-success/10 text-success' },
+  leave_declined: { icon: Umbrella, tone: 'bg-danger/10 text-danger' },
+  swap_request: { icon: Repeat2, tone: 'bg-info/10 text-info' },
+  swap_approved: { icon: Repeat2, tone: 'bg-success/10 text-success' },
+  announcement: { icon: Megaphone, tone: 'bg-warning/10 text-warning' },
+  shift_reminder: { icon: AlarmClock, tone: 'bg-info/10 text-info' },
+};
+const DEFAULT_TYPE_META = {
+  icon: Bell,
+  tone: 'bg-surface-subtle text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark',
+};
 
 /**
  * `/app/notifications`. Read + mark-read against the real `notifications`
@@ -162,40 +194,52 @@ export function NotificationsPage(): JSX.Element {
       ) : (
         <Card className="p-0">
           <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
-            {notifications.map((notification) => (
-              <li
-                key={notification.id}
-                className={cn(
-                  'flex items-start justify-between gap-3 p-4',
-                  !notification.read_at && 'bg-primary/5',
-                )}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-content dark:text-content-dark">
-                    {notification.title}
-                  </p>
-                  {notification.body && (
-                    <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                      {notification.body}
-                    </p>
+            {notifications.map((notification) => {
+              const { icon: TypeIcon, tone } =
+                TYPE_META[notification.type] ?? DEFAULT_TYPE_META;
+              return (
+                <li
+                  key={notification.id}
+                  className={cn(
+                    'flex items-start justify-between gap-3 p-4',
+                    !notification.read_at && 'bg-primary/5',
                   )}
-                  <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-                    {formatDistanceToNow(new Date(notification.created_at), {
-                      addSuffix: true,
-                    })}
-                  </p>
-                </div>
-                {!notification.read_at && (
-                  <button
-                    type="button"
-                    onClick={() => void handleMarkRead(notification.id)}
-                    className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                >
+                  <span
+                    className={cn(
+                      'grid h-9 w-9 shrink-0 place-items-center rounded-full',
+                      tone,
+                    )}
                   >
-                    Mark read
-                  </button>
-                )}
-              </li>
-            ))}
+                    <TypeIcon size={16} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-content dark:text-content-dark">
+                      {notification.title}
+                    </p>
+                    {notification.body && (
+                      <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                        {notification.body}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+                      {formatDistanceToNow(new Date(notification.created_at), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
+                  {!notification.read_at && (
+                    <button
+                      type="button"
+                      onClick={() => void handleMarkRead(notification.id)}
+                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                    >
+                      Mark read
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </Card>
       )}

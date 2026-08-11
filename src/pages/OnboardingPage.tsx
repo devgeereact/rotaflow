@@ -334,6 +334,17 @@ export function OnboardingPage(): JSX.Element {
 
   const handleCreateOrg = useCallback(async (): Promise<void> => {
     if (!user) return;
+    // Step 2's Back returns here without clearing orgId, and this step's own
+    // Continue always re-ran a full create — the org from the first pass
+    // already exists, so the second call hit the slug's unique constraint
+    // and told the owner their own brand-new organisation's name was taken.
+    // Changing the slug to get past that created a SECOND organisation,
+    // silently owned by the same person, with steps 2-4 now writing against
+    // it instead of the first. Once created, Continue is just "next step".
+    if (orgId) {
+      setStep(2);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -361,7 +372,7 @@ export function OnboardingPage(): JSX.Element {
     } finally {
       setSubmitting(false);
     }
-  }, [user, createValues, refresh, switchOrg]);
+  }, [user, orgId, createValues, refresh, switchOrg]);
 
   const handleAbout = useCallback(
     async (after: 'continue' | 'exit' = 'continue'): Promise<void> => {

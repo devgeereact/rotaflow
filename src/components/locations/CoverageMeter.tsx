@@ -12,7 +12,7 @@ const FILLS = {
  * column on both locations references. The number carries the meaning; the bar
  * only reinforces it (docs/DESIGN.md §5: never colour alone).
  *
- * The width is an inline style, as on `DashboardView`'s required-staff bar and
+ * The width is an inline style, as on `ManagerDashboard`'s cover-vs-minimum bars and
  * the splash/app-boot progress bars. `WeeklySummaryCard`'s twelfths trick is
  * the usual way around docs/RULES.md §4, but 8.3% steps on a 76px track would
  * collapse this screen's 95 / 93 / 91 rows into one identical bar, and telling

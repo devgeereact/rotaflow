@@ -47,3 +47,17 @@ export const PLATFORM_BILLING_ROLES: readonly PlatformRole[] = [
 
 /** Only an owner may grant or revoke a platform role. Enforced in the RPC. */
 export const PLATFORM_ROLE_ADMIN_ROLES: readonly PlatformRole[] = ['platform_owner'];
+
+/**
+ * Roles permitted to move a support case along or assign it. Mirrors
+ * `set_support_case_status` and `assign_support_case` (0024_support_cases.sql),
+ * which excludes finance, the same billing-only carve-out as elsewhere.
+ * Replying is not on this list: `reply_to_support_case` only requires being
+ * *any* platform administrator, so every role can answer a case even where it
+ * cannot re-route one.
+ */
+export const PLATFORM_SUPPORT_ROLES: readonly PlatformRole[] = [
+  'platform_owner',
+  'platform_admin',
+  'platform_support',
+];

@@ -4,13 +4,17 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
+import { cn } from '@/lib/utils';
 import { fromIsoInTimezone, formatDayLabel } from '@/lib/rotaGrid';
 import { isShiftClashError } from '@/lib/shiftConflicts';
-import type { Shift, ShiftType, StaffProfile } from '@/types';
+import { paletteTokenForColour } from '@/lib/shiftPalette';
+import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
 
 export interface AssignShiftFormValues {
   staffProfileId: string | null;
   date: string;
+  /** Only meaningful for a brand-new shift — an edit keeps its original site. */
+  locationId: string | null;
   shiftTypeId: string | null;
   startTime: string;
   endTime: string;
@@ -23,10 +27,12 @@ interface AssignShiftModalProps {
   onClose: () => void;
   staff: StaffProfile[];
   shiftTypes: ShiftType[];
+  /** Every org location — lets a brand-new shift pick its site instead of inheriting a fixed one. */
+  locations: Location[];
   dates: string[];
   timezone: string;
   /** Set for a brand-new shift (opened from an empty cell or "Add Shift"). */
-  context?: { staffProfileId: string | null; date: string } | null;
+  context?: { staffProfileId: string | null; date: string; locationId: string } | null;
   /** Set when editing an existing shift (opened from a chip). */
   shift?: Shift | null;
   onSave: (values: AssignShiftFormValues) => Promise<void>;
@@ -34,12 +40,16 @@ interface AssignShiftModalProps {
 }
 
 function blankValues(
-  context: { staffProfileId: string | null; date: string } | null | undefined,
+  context:
+    | { staffProfileId: string | null; date: string; locationId: string }
+    | null
+    | undefined,
   dates: string[],
 ): AssignShiftFormValues {
   return {
     staffProfileId: context?.staffProfileId ?? null,
     date: context?.date ?? dates[0] ?? '',
+    locationId: context?.locationId ?? null,
     shiftTypeId: null,
     startTime: '09:00',
     endTime: '17:00',
@@ -54,6 +64,7 @@ function valuesFromShift(shift: Shift, timezone: string): AssignShiftFormValues 
   return {
     staffProfileId: shift.staff_profile_id,
     date,
+    locationId: shift.location_id,
     shiftTypeId: shift.shift_type_id,
     startTime,
     endTime,
@@ -67,6 +78,7 @@ export function AssignShiftModal({
   onClose,
   staff,
   shiftTypes,
+  locations,
   dates,
   timezone,
   context,
@@ -169,20 +181,86 @@ export function AssignShiftModal({
           </Select>
         </div>
 
+        {/* Only a brand-new shift can pick its site — an edit keeps the one
+            it was created at, so the timezone used to save it never drifts
+            from the timezone used to load it. */}
+        {!shift && locations.length > 1 && (
+          <div>
+            <Label htmlFor="as-location">Location</Label>
+            <Select
+              id="as-location"
+              value={values.locationId ?? ''}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, locationId: e.target.value || null }))
+              }
+            >
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+
         <div>
-          <Label htmlFor="as-type">Shift type</Label>
-          <Select
-            id="as-type"
-            value={values.shiftTypeId ?? ''}
-            onChange={(e) => handleShiftTypeChange(e.target.value)}
-          >
-            <option value="">Custom</option>
-            {shiftTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </Select>
+          <Label htmlFor="as-type-picker">Shift type</Label>
+          <div id="as-type-picker" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {shiftTypes.map((t) => {
+              const selected = values.shiftTypeId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handleShiftTypeChange(t.id)}
+                  aria-pressed={selected}
+                  className={cn(
+                    'flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-colors',
+                    selected
+                      ? 'border-primary bg-primary/5'
+                      : 'border-surface-border hover:border-primary/40 dark:border-surface-border-dark',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'h-4 w-4 shrink-0 rounded-full',
+                      paletteTokenForColour(t.colour),
+                    )}
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-content dark:text-content-dark">
+                      {t.name}
+                    </span>
+                    {t.default_start && t.default_end && (
+                      <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                        {t.default_start.slice(0, 5)}, {t.default_end.slice(0, 5)}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => handleShiftTypeChange('')}
+              aria-pressed={!values.shiftTypeId}
+              className={cn(
+                'flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-colors',
+                !values.shiftTypeId
+                  ? 'border-primary bg-primary/5'
+                  : 'border-surface-border hover:border-primary/40 dark:border-surface-border-dark',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 rounded-full border-2 border-dashed border-content-muted dark:border-content-muted-dark"
+              />
+              <span className="text-sm font-medium text-content dark:text-content-dark">
+                Custom
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

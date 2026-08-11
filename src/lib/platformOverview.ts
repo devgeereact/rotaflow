@@ -9,9 +9,9 @@ import { format, isBefore, startOfMonth, subMonths } from 'date-fns';
  * to sit this side of the line.
  *
  * Every figure here is derived from rows the console already reads. Where the
- * console reference shows a metric this deployment cannot produce. Revenue,
- * active-users-today, cross-tenant rota counts. Nothing is invented; see
- * `UNAVAILABLE_METRICS`.
+ * console reference shows a metric this deployment genuinely cannot produce,
+ * that is stated on the screen itself (`DEMO_SECTIONS` in
+ * `adminOverviewDemo.ts`) rather than invented here.
  */
 
 /** Organisation columns these derivations need. Narrower than the row type so
@@ -97,30 +97,3 @@ export function humaniseKey(value: string): string {
   if (!spaced) return 'Unknown';
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
-
-/**
- * Metrics the console reference shows that this deployment genuinely cannot
- * produce, and why.
- *
- * Rendered on the overview rather than dropped silently. A missing tile reads
- * as an oversight; a stated one is a decision, and it tells whoever picks the
- * work up exactly what would have to change. Following the same pattern the
- * tenant Settings screens already use for SMS and custom roles.
- */
-export const UNAVAILABLE_METRICS: readonly { title: string; reason: string }[] = [
-  {
-    title: 'Revenue and MRR',
-    reason:
-      '`subscriptions` records a plan and a status but no price, and no payment provider is connected, so there is no amount on this deployment to total.',
-  },
-  {
-    title: 'Active users today',
-    reason:
-      '`profiles` holds no last-seen column, and Supabase does not expose `auth.users.last_sign_in_at` to the client. Counting it needs either a column written on sign-in or an Edge Function over the admin API.',
-  },
-  {
-    title: 'Per-organisation activity feed',
-    reason:
-      'Rota, attendance and leave writes are not audited yet, `audit_logs` has essentially one writer, so a tenant activity timeline would show a handful of events and imply nothing else happened.',
-  },
-] as const;

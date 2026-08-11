@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
 import { getOrganisation, mergeOrgSettings } from '@/services/orgService';
+import { Callout } from '@/components/ui/Callout';
 import {
   DEFAULT_POLICIES,
   policiesToSettings,
@@ -219,6 +221,17 @@ export function SettingsPoliciesPage(): JSX.Element {
           />
         </div>
       </SettingsSection>
+
+      <Callout tone="info" title="Staffing minimums live in Locations">
+        How many people a site needs on shift is set per site, per day of the week, from
+        that site's own Settings tab in{' '}
+        <Link to="/app/locations" className="font-medium text-primary hover:underline">
+          Locations
+        </Link>
+        . A single org-wide number could not say Willow Court needs more cover on a
+        Saturday than a Tuesday, which is exactly the kind of difference a staffing
+        minimum exists to capture.
+      </Callout>
 
       <Card className="bg-warning/5">
         <div className="flex gap-3">

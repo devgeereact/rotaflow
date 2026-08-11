@@ -85,7 +85,14 @@ const TABS = [
 ] as const satisfies readonly { value: Tab; label: string }[];
 
 /** The tabs that read tenant rows rather than the customer register. */
-const TENANT_TABS = new Set(['users', 'locations', 'usage', 'data']);
+// Only `locations` (and its `departments` sub-view) actually routes through
+// `is_org_member()`/`has_org_role()`, the two functions 0028 gated on a
+// session. `users` reads `memberships`, reopened to any platform admin by
+// 0031; `usage` reads `platform_tenant_counts()`, a SECURITY DEFINER function
+// that counts past RLS; `data` reads `gdpr_requests`, gated on platform role
+// alone (0020). Listing them here would train an operator to open a session
+// for a tab that was never going to ask for one.
+const TENANT_TABS = new Set(['locations']);
 
 const STATUS_TONE = {
   active: 'success',
@@ -594,8 +601,8 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               Since migration 0028 a platform administrator reads a tenant&rsquo;s staff
               records, rotas, shifts, attendance and leave only through a support access
               session for that organisation: one with a reason, a case reference and an
-              expiry. Without one these tabs are empty because the database refuses the
-              rows, not because the organisation has none.
+              expiry. Without one this tab is empty because the database refuses the rows,
+              not because the organisation has none.
             </p>
             <p>
               The counts above still work. They come from a function that returns numbers

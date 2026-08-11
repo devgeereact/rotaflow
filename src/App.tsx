@@ -144,6 +144,14 @@ const LeavePreviewPage = devPage(
   'LeavePreviewPage',
   () => import('@/pages/LeavePreviewPage'),
 );
+const AppShellPreviewPage = devPage(
+  'AppShellPreviewPage',
+  () => import('@/pages/AppShellPreviewPage'),
+);
+const DashboardLivePreviewPage = devPage(
+  'DashboardLivePreviewPage',
+  () => import('@/pages/app/DashboardLivePreviewPage'),
+);
 const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
@@ -304,6 +312,10 @@ const AdminBillingPage = lazyPage(
 const AdminSupportPage = lazyPage(
   'AdminSupportPage',
   () => import('@/pages/admin/AdminSupportPage'),
+);
+const AdminSupportCaseDetailPage = lazyPage(
+  'AdminSupportCaseDetailPage',
+  () => import('@/pages/admin/AdminSupportCaseDetailPage'),
 );
 const AdminAuditPage = lazyPage(
   'AdminAuditPage',
@@ -477,6 +489,10 @@ export function App(): JSX.Element {
                           <Route path="billing" element={<AdminBillingPage />} />
                           <Route path="support" element={<AdminSupportPage />} />
                           <Route
+                            path="support/:caseId"
+                            element={<AdminSupportCaseDetailPage />}
+                          />
+                          <Route
                             path="support-access"
                             element={<AdminSupportAccessPage />}
                           />
@@ -529,6 +545,21 @@ export function App(): JSX.Element {
                         <Route path="/reports-preview" element={<ReportsPreviewPage />} />
                         {/* design/Leave.png's numbers. */}
                         <Route path="/leave-preview" element={<LeavePreviewPage />} />
+                        {/* The whole organisation workspace shell (rail, org
+                        switcher, topbar, mobile tab bar) against a stubbed
+                        OrgContext, with the real *PreviewPage components
+                        routed inside it. See AppShellPreviewPage.
+                        ?role=owner|manager|staff switches the stubbed role. */}
+                        <Route path="/app-preview/*" element={<AppShellPreviewPage />} />
+                        {/* The real DashboardPage, hooks and service calls
+                        included, against a fetch-intercepted Supabase client
+                        with realistic edge-case fixtures (null settings, a
+                        null holiday_allowance, an orphaned leave request, a
+                        null department_id). See DashboardLivePreviewPage. */}
+                        <Route
+                          path="/dashboard-live-preview"
+                          element={<DashboardLivePreviewPage />}
+                        />
                       </>
                     )}
                     {/* Public on purpose: an invitee has no account yet, and
@@ -754,6 +785,10 @@ export function App(): JSX.Element {
                         }
                       />
                       <Route path="support" element={<AdminSupportPage />} />
+                      <Route
+                        path="support/:caseId"
+                        element={<AdminSupportCaseDetailPage />}
+                      />
                       <Route path="support-access" element={<AdminSupportAccessPage />} />
                       <Route path="audit" element={<AdminAuditPage />} />
                       <Route

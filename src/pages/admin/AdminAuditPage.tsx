@@ -238,19 +238,19 @@ export function AdminAuditPage(): JSX.Element {
         ),
       },
       {
-        key: 'entity',
+        key: 'before',
         label: 'Before',
         width: 'w-[8%]',
         cell: (entry) => <ChangeCell value={changeValue(entry, 'before')} muted />,
       },
       {
-        key: 'entity',
+        key: 'after',
         label: 'After',
         width: 'w-[9%]',
         cell: (entry) => <ChangeCell value={changeValue(entry, 'after')} />,
       },
       {
-        key: 'entity',
+        key: 'ip',
         label: 'IP',
         width: 'w-[9%]',
         cell: (entry) => (
