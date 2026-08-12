@@ -79,6 +79,9 @@ export type ShiftSwapInsert = Database['public']['Tables']['shift_swaps']['Inser
 export type Announcement = Database['public']['Tables']['announcements']['Row'];
 export type AnnouncementInsert = Database['public']['Tables']['announcements']['Insert'];
 export type AnnouncementUpdate = Database['public']['Tables']['announcements']['Update'];
+export type AnnouncementRead = Database['public']['Tables']['announcement_reads']['Row'];
+export type AnnouncementReadInsert =
+  Database['public']['Tables']['announcement_reads']['Insert'];
 
 export type Notification = Database['public']['Tables']['notifications']['Row'];
 

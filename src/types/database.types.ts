@@ -25,6 +25,52 @@ export type Database = {
   };
   public: {
     Tables: {
+      announcement_reads: {
+        Row: {
+          announcement_id: string;
+          id: string;
+          org_id: string;
+          read_at: string;
+          staff_profile_id: string;
+        };
+        Insert: {
+          announcement_id: string;
+          id?: string;
+          org_id: string;
+          read_at?: string;
+          staff_profile_id: string;
+        };
+        Update: {
+          announcement_id?: string;
+          id?: string;
+          org_id?: string;
+          read_at?: string;
+          staff_profile_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'announcement_reads_announcement_id_fkey';
+            columns: ['announcement_id'];
+            isOneToOne: false;
+            referencedRelation: 'announcements';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'announcement_reads_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'announcement_reads_staff_profile_id_fkey';
+            columns: ['staff_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       announcements: {
         Row: {
           author_user_id: string | null;
