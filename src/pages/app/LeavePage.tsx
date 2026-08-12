@@ -73,13 +73,11 @@ function statusNoteFor(request: LeaveRequest, viewerId: string | null): string |
  * Staff see their own request history; managers and owners see the whole
  * organisation, its cover risk, and can approve or decline.
  *
- * Three things the reference draws are deliberately absent rather than
+ * Two things the reference draws are deliberately absent rather than
  * faked, because the schema cannot support them yet:
  *
  * - **Per-type allowances.** `staff_profiles.holiday_allowance` is a single
  *   annual figure, so entitlement is Annual Leave only.
- * - **The overtime queue.** `overtime_requests` has no reader or writer
- *   anywhere in the app, so counting it would mean inventing a number.
  * - **Half days.** `leave_requests` stores whole dates, so "0.5 day" is not
  *   representable.
  */

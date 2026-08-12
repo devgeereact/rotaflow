@@ -34,8 +34,17 @@ export function RecentActivityCard({
     <Card className="p-5">
       <StaffSectionHeader
         title="Recent Activity"
-        action={<StaffLinkButton onClick={onViewAll}>View all</StaffLinkButton>}
+        action={
+          entries.length > 0 && (
+            <StaffLinkButton onClick={onViewAll}>View all</StaffLinkButton>
+          )
+        }
       />
+      {entries.length === 0 && (
+        <p className="mt-4 text-sm text-content-muted dark:text-content-muted-dark">
+          Nothing recorded for this person yet.
+        </p>
+      )}
       <ul className="mt-4 space-y-4">
         {entries.map((entry) => {
           const Icon = ICONS[entry.kind];

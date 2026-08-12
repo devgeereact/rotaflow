@@ -114,11 +114,11 @@ const ClockInPreviewPage = devPage(
 );
 const StaffPreviewPage = devPage(
   'StaffPreviewPage',
-  () => import('@/pages/StaffPreviewPage'),
+  () => import('@/pages/app/StaffPreviewPage'),
 );
 const StaffProfilePreviewPage = devPage(
   'StaffProfilePreviewPage',
-  () => import('@/pages/StaffProfilePreviewPage'),
+  () => import('@/pages/app/StaffProfilePreviewPage'),
 );
 const LocationsPreviewPage = devPage(
   'LocationsPreviewPage',
@@ -127,10 +127,6 @@ const LocationsPreviewPage = devPage(
 const AnnouncementsPreviewPage = devPage(
   'AnnouncementsPreviewPage',
   () => import('@/pages/AnnouncementsPreviewPage'),
-);
-const SwapsPreviewPage = devPage(
-  'SwapsPreviewPage',
-  () => import('@/pages/SwapsPreviewPage'),
 );
 const ReportsPreviewPage = devPage(
   'ReportsPreviewPage',
@@ -535,8 +531,6 @@ export function App(): JSX.Element {
                           path="/announcements-preview"
                           element={<AnnouncementsPreviewPage />}
                         />
-                        {/* design/Swap-Request.png's rows, counts and rail. */}
-                        <Route path="/swaps-preview" element={<SwapsPreviewPage />} />
                         {/* design/Reports-Dashboard.png's catalogue and figures. */}
                         <Route path="/reports-preview" element={<ReportsPreviewPage />} />
                         {/* The whole organisation workspace shell (rail, org

@@ -5,8 +5,9 @@ import type { StaffProfileTab } from '@/lib/staffProfile';
 
 /**
  * Design-loop preview only. The real profile route needs a Supabase session
- * and a seeded staff record. Reproduces design/Staff-Profile.png against the
- * fixtures in `src/lib/staffDemo.ts`; see design/.loop/staff-log.md.
+ * and a seeded staff record. Reproduces
+ * `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.staffDetail` against the
+ * fixtures in `src/lib/staffDemo.ts`.
  */
 export function StaffProfilePreviewPage(): JSX.Element {
   const [tab, setTab] = useState<StaffProfileTab>('overview');
@@ -19,6 +20,8 @@ export function StaffProfilePreviewPage(): JSX.Element {
         onTabChange={setTab}
         backTo="/staff-preview"
         onAction={() => undefined}
+        onUploadDocument={() => undefined}
+        onAddEmergencyContact={() => undefined}
       />
     </div>
   );

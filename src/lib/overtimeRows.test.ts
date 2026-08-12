@@ -4,6 +4,7 @@ import {
   formatOvertimeHours,
   overtimeStatus,
   summariseOvertime,
+  sumHoursInMonth,
 } from '@/lib/overtimeRows';
 import type { OvertimeRequest, StaffProfile } from '@/types';
 
@@ -176,5 +177,36 @@ describe('summariseOvertime', () => {
     const summary = summariseOvertime(rows);
     expect(summary.approvedHours).toBe(2);
     expect(summary.pendingHours).toBe(0);
+  });
+});
+
+describe('sumHoursInMonth', () => {
+  it('sums only rows in the anchor month with a matching status', () => {
+    const rows = buildOvertimeRows({
+      requests: [
+        request({ id: 'a', status: 'approved', date: '2026-08-04', hours: 3 }),
+        request({ id: 'b', status: 'approved', date: '2026-08-20', hours: 1.5 }),
+        request({ id: 'c', status: 'approved', date: '2026-07-31', hours: 40 }),
+        request({ id: 'd', status: 'pending', date: '2026-08-05', hours: 2 }),
+      ],
+      staffById,
+      currentUserId: null,
+    });
+    expect(sumHoursInMonth(rows, '2026-08-12', ['approved'])).toBe(4.5);
+  });
+
+  it('combines multiple statuses when asked', () => {
+    const rows = buildOvertimeRows({
+      requests: [
+        request({ id: 'a', status: 'approved', date: '2026-08-04', hours: 2 }),
+        request({ id: 'b', status: 'pending', date: '2026-08-05', hours: 1 }),
+        request({ id: 'c', status: 'cancelled', date: '2026-08-06', hours: 5 }),
+      ],
+      staffById,
+      currentUserId: null,
+    });
+    expect(sumHoursInMonth(rows, '2026-08-12', ['approved', 'pending', 'rejected'])).toBe(
+      3,
+    );
   });
 });

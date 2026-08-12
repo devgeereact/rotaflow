@@ -9,8 +9,9 @@ import { ClockInPreviewPage } from '@/pages/ClockInPreviewPage';
 import { TimesheetsPreviewPage } from '@/pages/app/TimesheetsPreviewPage';
 import { AvailabilityPreviewPage } from '@/pages/app/AvailabilityPreviewPage';
 import { LeavePreviewPage } from '@/pages/app/LeavePreviewPage';
-import { SwapsPreviewPage } from '@/pages/SwapsPreviewPage';
-import { StaffPreviewPage } from '@/pages/StaffPreviewPage';
+import { SwapsPreviewPage } from '@/pages/app/SwapsPreviewPage';
+import { OvertimePreviewPage } from '@/pages/app/OvertimePreviewPage';
+import { StaffPreviewPage } from '@/pages/app/StaffPreviewPage';
 import { LocationsPreviewPage } from '@/pages/LocationsPreviewPage';
 import { AnnouncementsPreviewPage } from '@/pages/AnnouncementsPreviewPage';
 import { ReportsPreviewPage } from '@/pages/ReportsPreviewPage';
@@ -76,6 +77,7 @@ export function AppShellPreviewPage(): JSX.Element {
           <Route path="availability" element={<AvailabilityPreviewPage />} />
           <Route path="leave" element={<LeavePreviewPage />} />
           <Route path="swaps" element={<SwapsPreviewPage />} />
+          <Route path="overtime" element={<OvertimePreviewPage />} />
           <Route path="team" element={<StaffPreviewPage />} />
           <Route path="locations" element={<LocationsPreviewPage />} />
           <Route path="announcements" element={<AnnouncementsPreviewPage />} />

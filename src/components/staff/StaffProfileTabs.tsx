@@ -8,14 +8,10 @@ interface StaffProfileTabsProps {
 
 const TABS: PanelTabItem<StaffProfileTab>[] = [
   { value: 'overview', label: 'Overview' },
-  { value: 'availability', label: 'Availability' },
   { value: 'shifts', label: 'Shifts' },
+  { value: 'documents', label: 'Documents' },
+  { value: 'emergency_contacts', label: 'Emergency contacts' },
   { value: 'leave', label: 'Leave' },
-  { value: 'swaps', label: 'Swaps' },
-  { value: 'skills', label: 'Skills & Qualifications' },
-  { value: 'timesheets', label: 'Timesheets' },
-  { value: 'notes', label: 'Notes' },
-  { value: 'files', label: 'Files' },
   { value: 'activity', label: 'Activity' },
 ];
 
