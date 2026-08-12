@@ -179,7 +179,7 @@ export function SwapsPage(): JSX.Element {
         id: 'cover',
         icon: Users,
         label: 'Minimum cover',
-        value: 'Set per location, see Locations',
+        value: 'Set per location',
       },
       {
         id: 'qualification',

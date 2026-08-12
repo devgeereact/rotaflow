@@ -82,7 +82,7 @@ export function SwapsView({
 
       <TileGrid className="mb-5">
         <StatTile label="Open on the board" value={tiles.open} />
-        <StatTile label="Waiting on you" value={canApprove ? tiles.waitingOnYou : 0} />
+        <StatTile label="Waiting on you" value={tiles.waitingOnYou} />
         <StatTile label="Approved" value={tiles.approved} />
         <StatTile label="Declined" value={tiles.declined} />
       </TileGrid>

@@ -3,6 +3,8 @@ import { BarChart3, CalendarDays, Download, Settings } from 'lucide-react';
 import { ReportsView } from '@/components/reports/ReportsView';
 import { DEMO_OVERVIEW, DEMO_RECENT_REPORTS, DEMO_REPORTS } from '@/lib/reportsDemo';
 import { Card } from '@/components/ui/Card';
+import { StatTile } from '@/components/ui/StatTile';
+import { TileGrid } from '@/components/ui/TileGrid';
 import { BarChart } from '@/components/ui/BarChart';
 import type { ReportRow } from '@/lib/reportRows';
 import type { ReportsTab } from '@/components/reports/ReportsTabs';
@@ -16,6 +18,57 @@ import type { ReportQuickAction } from '@/components/reports/ReportsQuickActions
  */
 
 const noop = (): void => {};
+
+const DEPARTMENT_HOURS = [
+  { id: 'nursing', label: 'Nursing', hours: 412 },
+  { id: 'wellbeing', label: 'Wellbeing', hours: 168 },
+  { id: 'activities', label: 'Activities', hours: 96 },
+];
+
+const ABSENCE_REASONS = [
+  { id: 'annual', label: 'Annual leave', days: 26 },
+  { id: 'sick', label: 'Sickness', days: 9 },
+  { id: 'unpaid', label: 'Unpaid', days: 2 },
+];
+
+function DemoBarRows({
+  rows,
+  valueOf,
+  suffix,
+}: {
+  rows: { id: string; label: string }[];
+  valueOf: (id: string) => number;
+  suffix: string;
+}): JSX.Element {
+  const max = Math.max(1, ...rows.map((r) => valueOf(r.id)));
+  return (
+    <div className="space-y-2.5">
+      {rows.map((row) => {
+        const value = valueOf(row.id);
+        return (
+          <div
+            key={row.id}
+            className="grid grid-cols-[7rem_1fr_4rem] items-center gap-2.5"
+          >
+            <span className="truncate text-xs text-content-muted dark:text-content-muted-dark">
+              {row.label}
+            </span>
+            <span className="h-2 overflow-hidden rounded-full border border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
+              <span
+                className="block h-full rounded-full bg-primary"
+                style={{ width: `${(value / max) * 100}%` }}
+              />
+            </span>
+            <span className="text-right font-mono text-xs text-content dark:text-content-dark">
+              {value}
+              {suffix}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const QUICK_ACTIONS: ReportQuickAction[] = [
   {
@@ -87,6 +140,17 @@ export function ReportsPreviewPage(): JSX.Element {
             <h2 className="mb-4 text-card-heading font-semibold text-content dark:text-content-dark">
               Workforce trends
             </h2>
+            <TileGrid className="mb-5">
+              <StatTile label="Hours worked" value={1286} suffix="h" />
+              <StatTile
+                label="Overtime"
+                value={38}
+                suffix="h"
+                hint="3% of hours worked"
+              />
+              <StatTile label="Absence" value={37} suffix=" days" />
+              <StatTile label="Cover shortfalls" value={4} />
+            </TileGrid>
             <div className="grid gap-6 lg:grid-cols-2">
               <BarChart
                 title="Hours worked per day"
@@ -118,6 +182,28 @@ export function ReportsPreviewPage(): JSX.Element {
                   { label: '7 Aug', values: [18, 7] },
                 ]}
               />
+            </div>
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="min-w-0">
+                <h3 className="mb-3 text-sm font-semibold text-content dark:text-content-dark">
+                  Hours by department
+                </h3>
+                <DemoBarRows
+                  rows={DEPARTMENT_HOURS}
+                  valueOf={(id) => DEPARTMENT_HOURS.find((r) => r.id === id)?.hours ?? 0}
+                  suffix="h"
+                />
+              </div>
+              <div className="min-w-0">
+                <h3 className="mb-3 text-sm font-semibold text-content dark:text-content-dark">
+                  Absence reasons
+                </h3>
+                <DemoBarRows
+                  rows={ABSENCE_REASONS}
+                  valueOf={(id) => ABSENCE_REASONS.find((r) => r.id === id)?.days ?? 0}
+                  suffix="d"
+                />
+              </div>
             </div>
           </Card>
         }
