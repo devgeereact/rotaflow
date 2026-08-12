@@ -122,6 +122,6 @@ export function footerNavItemsForRole(role: MembershipRole | null): NavItem[] {
     isManager
       ? { label: 'Settings', icon: Settings, to: '/app/settings' }
       : { label: 'My Profile', icon: UserCircle, to: '/app/account' },
-    { label: 'Help & Support', icon: LifeBuoy, to: '/contact' },
+    { label: 'Help & Support', icon: LifeBuoy, to: '/app/help' },
   ];
 }

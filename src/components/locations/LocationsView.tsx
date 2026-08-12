@@ -1,155 +1,171 @@
-import type { ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { TablePagination } from '@/components/ui/TablePagination';
-import { LocationDetailsPanel } from '@/components/locations/LocationDetailsPanel';
-import { LocationsTable } from '@/components/locations/LocationsTable';
-import { LocationsTipBanner } from '@/components/locations/LocationsTipBanner';
-import {
-  SiteFilterBar,
-  type SiteFilterSelect,
-} from '@/components/locations/SiteFilterBar';
-import { SiteStatCard } from '@/components/locations/SiteStatCard';
-import type { SiteSort } from '@/components/locations/SiteTableHeader';
-import type { LocationDetails, LocationRow, SiteStat } from '@/lib/locationsDirectory';
+import { StatTile } from '@/components/ui/StatTile';
+import { TileGrid } from '@/components/ui/TileGrid';
+import { SiteStatusBadge } from '@/components/locations/SiteStatusBadge';
+import { buildLocationTiles } from '@/lib/locationsDirectoryMapping';
+import type { LocationRow } from '@/lib/locationsDirectory';
 
-interface LocationsViewProps {
-  stats: SiteStat[];
+export interface LocationsViewProps {
   rows: LocationRow[];
-  total: number;
-  search: string;
-  onSearchChange: (value: string) => void;
-  selects: SiteFilterSelect[];
-  sort: SiteSort | null;
-  onSortChange: (sort: SiteSort) => void;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onCloseDetails: () => void;
-  onEdit: (id: string) => void;
-  onOpenActions: (id: string) => void;
-  page: number;
-  pageSize: number;
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
-  details: LocationDetails | null;
-  onMoreFilters: () => void;
-  onAddLocation?: () => void;
-  onEditInfo: () => void;
-  onFollowMetric: (id: string) => void;
-  onViewActivity: () => void;
-  onOpenGuide: () => void;
-  /** Settings tab content for the selected site. Omitted in design previews, which have no live org to save against. */
-  renderSettings?: (location: LocationDetails) => ReactNode;
+  loading: boolean;
+  canManage: boolean;
+  onAddLocation: () => void;
+  onEditLocation: (id: string) => void;
+  onOpenDepartments: (id: string) => void;
+  onOpenMinimumCover: (id: string) => void;
 }
 
 /**
- * The Locations tab of the workspace (design/Locations-Management.png):
- * summary tiles, filters, the sites table, the selected site's panel and the
- * advisory strip. Presentational. The caller owns filtering, sorting and
- * paging so this renders identically from Supabase data and from the
- * design-loop fixtures.
+ * `/app/locations` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`):
+ * a pagehead, four count tiles, and a card grid — one card per site. No
+ * table, no filter bar, no side detail panel; the reference's own
+ * "Departments" and "Minimum cover" buttons are placeholders (`toast(...)`),
+ * this app has real screens behind both, opened as dialogs from the card.
  */
 export function LocationsView({
-  stats,
   rows,
-  total,
-  search,
-  onSearchChange,
-  selects,
-  sort,
-  onSortChange,
-  selectedId,
-  onSelect,
-  onCloseDetails,
-  onEdit,
-  onOpenActions,
-  page,
-  pageSize,
-  onPageChange,
-  onPageSizeChange,
-  details,
-  onMoreFilters,
+  loading,
+  canManage,
   onAddLocation,
-  onEditInfo,
-  onFollowMetric,
-  onViewActivity,
-  onOpenGuide,
-  renderSettings,
+  onEditLocation,
+  onOpenDepartments,
+  onOpenMinimumCover,
 }: LocationsViewProps): JSX.Element {
+  const navigate = useNavigate();
+  const tiles = buildLocationTiles(rows);
+
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="min-w-0">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {stats.map((stat) => (
-            <SiteStatCard key={stat.id} stat={stat} />
+    <div>
+      <WorkspaceHeader
+        title="Locations"
+        subtitle="Sites and the departments inside them. A department is what the rota groups by and what a staffing minimum is set against."
+        actions={
+          canManage && (
+            <Button onClick={onAddLocation}>
+              <Plus size={16} aria-hidden="true" className="mr-1.5" />
+              Add location
+            </Button>
+          )
+        }
+      />
+
+      <TileGrid className="mb-5">
+        <StatTile label="Locations" value={tiles.locations} />
+        <StatTile label="Departments" value={tiles.departments} />
+        <StatTile label="Staff assigned" value={tiles.staffAssigned} />
+        <StatTile
+          label="In setup"
+          value={tiles.inSetup}
+          hint={tiles.inSetup > 0 ? 'Not yet rosterable' : undefined}
+        />
+      </TileGrid>
+
+      {loading ? (
+        <Card>
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            Loading…
+          </p>
+        </Card>
+      ) : rows.length === 0 ? (
+        <Card>
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            No locations yet.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(20rem,1fr))]">
+          {rows.map((row) => (
+            <Card key={row.id} className="flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Building2 size={18} aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate font-semibold text-content dark:text-content-dark">
+                    {row.name}
+                  </h3>
+                  <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
+                    {[row.type, row.address].filter(Boolean).join(' · ') ||
+                      'No details set'}
+                  </p>
+                </div>
+                <SiteStatusBadge status={row.status} className="shrink-0" />
+              </div>
+
+              <dl className="space-y-1.5 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-content-muted dark:text-content-muted-dark">
+                    Staff
+                  </dt>
+                  <dd className="text-content dark:text-content-dark">{row.staff}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-content-muted dark:text-content-muted-dark">
+                    Departments
+                  </dt>
+                  <dd className="flex flex-wrap justify-end gap-1">
+                    {row.departmentNames.length === 0 ? (
+                      <span className="text-content dark:text-content-dark">None</span>
+                    ) : (
+                      row.departmentNames.map((name) => (
+                        <Badge key={name} tone="neutral">
+                          {name}
+                        </Badge>
+                      ))
+                    )}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-content-muted dark:text-content-muted-dark">
+                    Minimum cover
+                  </dt>
+                  <dd className="text-content dark:text-content-dark">
+                    {row.minimumCoverSummary ?? 'Not set'}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="mt-auto flex flex-wrap gap-2 pt-1">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onOpenDepartments(row.id)}
+                >
+                  Departments
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onOpenMinimumCover(row.id)}
+                >
+                  Minimum cover
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void navigate('/app/rota')}
+                >
+                  Rota
+                </Button>
+                {canManage && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onEditLocation(row.id)}
+                  >
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </Card>
           ))}
         </div>
-
-        <div className="mt-6">
-          <SiteFilterBar
-            search={search}
-            searchPlaceholder="Search locations..."
-            onSearchChange={onSearchChange}
-            selects={selects}
-            onMoreFilters={onMoreFilters}
-          />
-        </div>
-
-        <Card className="mt-5 overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <LocationsTable
-              rows={rows}
-              sort={sort}
-              onSortChange={onSortChange}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              onEdit={onEdit}
-              onOpenActions={onOpenActions}
-            />
-          </div>
-          <div className="border-t border-surface-border dark:border-surface-border-dark">
-            <TablePagination
-              page={page}
-              pageCount={Math.max(1, Math.ceil(total / pageSize))}
-              pageSize={pageSize}
-              total={total}
-              shown={rows.length}
-              noun="locations"
-              onPageChange={onPageChange}
-              onPageSizeChange={onPageSizeChange}
-            />
-          </div>
-        </Card>
-
-        <div className="mt-4">
-          <LocationsTipBanner onOpenGuide={onOpenGuide} />
-        </div>
-      </div>
-
-      <aside className="space-y-4">
-        {onAddLocation && (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onAddLocation}
-              className="flex h-9 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <Plus size={16} aria-hidden="true" />
-              Add Location
-            </button>
-          </div>
-        )}
-        {details && (
-          <LocationDetailsPanel
-            location={details}
-            onClose={onCloseDetails}
-            onEditInfo={onEditInfo}
-            onFollowMetric={onFollowMetric}
-            onViewActivity={onViewActivity}
-            renderSettings={renderSettings}
-          />
-        )}
-      </aside>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
 import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
-import { navItemsForRole } from '@/lib/sidebarNav';
+import { footerNavItemsForRole, navItemsForRole } from '@/lib/sidebarNav';
 import {
   ADMIN_NAV,
   ADMIN_SECONDARY_NAV,
@@ -264,6 +264,29 @@ describe('navigation targets', () => {
 
   it.each(sidebarLinks)('sidebar item %s (%s) has a route', (_label, to) => {
     expect(isRoutable(to)).toBe(true);
+  });
+
+  /*
+   * The rail's second, quieter nav group (Settings/My Profile, Help &
+   * Support) was never covered here — only the primary sidebar was. It
+   * changed shape when Help & Support moved from the public `/contact`
+   * page to `/app/help`, exactly the kind of rename this file exists to
+   * catch when it misses its route.
+   */
+  const railFooterLinks = (['owner', 'manager', 'staff'] as const).flatMap((role) =>
+    footerNavItemsForRole(role).map(
+      (item) => [`${role} › ${item.label}`, item.to] as const,
+    ),
+  );
+
+  it.each(railFooterLinks)('rail footer nav item %s (%s) has a route', (_label, to) => {
+    expect(isRoutable(to)).toBe(true);
+  });
+
+  it('sends every role to the in-app Help & Support screen', () => {
+    for (const role of ['owner', 'manager', 'staff'] as const) {
+      expect(footerNavItemsForRole(role).map((i) => i.to)).toContain('/app/help');
+    }
   });
 
   it('puts the team directory at the spec spelling, with the old one aliased', () => {

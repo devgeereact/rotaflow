@@ -40,6 +40,8 @@ const LOCATIONS: Location[] = [
   address: null,
   timezone: 'Europe/London',
   geofence_radius_m: 100,
+  location_type: null,
+  status: 'active',
   latitude: null,
   longitude: null,
   created_at: NOW.toISOString(),

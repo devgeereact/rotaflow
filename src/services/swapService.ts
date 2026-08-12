@@ -109,6 +109,27 @@ export async function reviewShiftSwap(
   return data;
 }
 
+/**
+ * A colleague claiming an open ("anyone") swap — `SCREENS.swaps`'s "Take
+ * this shift". Sets the claimer as target and jumps straight to
+ * 'accepted': the claim itself is their consent, so there is no separate
+ * respond step left to take. Permitted by `shift_swaps_claim_open` (0044),
+ * which only allows exactly this transition on a still-open row.
+ */
+export async function claimShiftSwap(
+  id: string,
+  staffProfileId: string,
+): Promise<ShiftSwap> {
+  const { data, error } = await supabase
+    .from('shift_swaps')
+    .update({ target_staff_profile_id: staffProfileId, status: 'accepted' })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 /** The requester withdrawing their own request. */
 export async function cancelShiftSwap(id: string): Promise<void> {
   const { error } = await supabase

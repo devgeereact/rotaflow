@@ -15,6 +15,7 @@ import { StaffPreviewPage } from '@/pages/app/StaffPreviewPage';
 import { LocationsPreviewPage } from '@/pages/LocationsPreviewPage';
 import { AnnouncementsPreviewPage } from '@/pages/AnnouncementsPreviewPage';
 import { ReportsPreviewPage } from '@/pages/ReportsPreviewPage';
+import { HelpPage } from '@/pages/app/HelpPage';
 
 /**
  * Design-loop harness for the whole `/app/*` shell, **development only**.
@@ -82,6 +83,7 @@ export function AppShellPreviewPage(): JSX.Element {
           <Route path="locations" element={<LocationsPreviewPage />} />
           <Route path="announcements" element={<AnnouncementsPreviewPage />} />
           <Route path="reports" element={<ReportsPreviewPage />} />
+          <Route path="help" element={<HelpPage />} />
         </Route>
       </Routes>
     </OrgContext.Provider>

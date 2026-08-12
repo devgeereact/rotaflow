@@ -1,6 +1,5 @@
 import { format, isToday, isYesterday } from 'date-fns';
 import { toDisplayStatus } from '@/lib/swapRows';
-import type { SwapActivityEntry } from '@/components/swaps/SwapActivityCard';
 import type { ShiftSwapWithShift } from '@/services/swapService';
 import type { SwapParty, SwapRow } from '@/lib/swapRows';
 import type { Location, StaffProfile } from '@/types';
@@ -14,13 +13,22 @@ export interface SwapMappingContext {
   viewerStaffId: string | null;
   /** Manager/owner. Drives `needsReview` for open and accepted swaps. */
   canApprove: boolean;
+  /**
+   * Settings → Policies' "Swap approval" toggle. When true (the default),
+   * a named colleague accepting is not enough — the row still needs a
+   * manager, so `shift_swaps_requester_finalize` (0043) is left unused even
+   * though the RLS grant is still there. See `SwapsPage.tsx`'s
+   * `handleFinalize`.
+   */
+  swapApprovalRequired: boolean;
 }
 
 /**
  * Whether the signed-in viewer owes this row a decision right now:
  *   - a manager, on anything still open or accepted (unchanged capability)
  *   - the named target, once named but not yet answered
- *   - the requester, once the target has said yes (0043 — no manager needed)
+ *   - the requester, once the target has said yes — but only when
+ *     Settings → Policies' swap approval toggle is off (0043)
  */
 function needsReview(
   status: SwapRow['status'],
@@ -34,12 +42,14 @@ function needsReview(
   ) {
     return true;
   }
-  if (status === 'accepted' && swap.requested_by === context.viewerStaffId) return true;
+  if (
+    status === 'accepted' &&
+    !context.swapApprovalRequired &&
+    swap.requested_by === context.viewerStaffId
+  ) {
+    return true;
+  }
   return false;
-}
-
-function fullName(person: StaffProfile | undefined): string {
-  return person ? `${person.first_name} ${person.last_name}` : 'Unknown';
 }
 
 function toParty(person: StaffProfile | undefined): SwapParty {
@@ -79,6 +89,7 @@ function statusNote(
   }
   if (status === 'cancelled') return 'Cancelled by requester';
   if (status === 'accepted') {
+    if (context.swapApprovalRequired) return 'Waiting on a manager';
     // The colleague said yes; either the requester or a manager can close
     // it out now (0043), so the note names whichever applies to whoever is
     // actually looking at it.
@@ -125,56 +136,4 @@ export function toSwapRow(
     statusNote: statusNote(swap, status, context),
     needsReview: needsReview(status, swap, context),
   };
-}
-
-/**
- * The "Recent Activity" rail, newest first. Derived from the swaps already
- * loaded rather than a separate feed — there is no activity table, and
- * inventing one would show entries the database cannot back.
- */
-export function toSwapActivity(
-  swaps: ShiftSwapWithShift[],
-  context: SwapMappingContext,
-  limit = 3,
-): SwapActivityEntry[] {
-  return [...swaps]
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at ?? b.created_at).getTime() -
-        new Date(a.updated_at ?? a.created_at).getTime(),
-    )
-    .slice(0, limit)
-    .map((swap) => {
-      const requester = fullName(context.staffById.get(swap.requested_by));
-      const target = swap.target_staff_profile_id
-        ? fullName(context.staffById.get(swap.target_staff_profile_id))
-        : 'anyone';
-      const at = requestedLabel(swap.updated_at ?? swap.created_at);
-
-      if (swap.status === 'approved') {
-        return {
-          id: swap.id,
-          kind: 'approved' as const,
-          title: `${requester}'s swap was approved`,
-          detail: `With ${target}`,
-          timeLabel: at,
-        };
-      }
-      if (swap.status === 'rejected') {
-        return {
-          id: swap.id,
-          kind: 'declined' as const,
-          title: `${requester}'s swap was declined`,
-          detail: `With ${target}`,
-          timeLabel: at,
-        };
-      }
-      return {
-        id: swap.id,
-        kind: 'requested' as const,
-        title: 'New swap request received',
-        detail: `${requester} → ${target}`,
-        timeLabel: at,
-      };
-    });
 }

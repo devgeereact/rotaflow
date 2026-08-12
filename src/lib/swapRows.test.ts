@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countByStatus, toDisplayStatus, toSwapTab } from '@/lib/swapRows';
+import { countSwapTiles, toDisplayStatus } from '@/lib/swapRows';
 import type { SwapRow } from '@/lib/swapRows';
 
 describe('toDisplayStatus', () => {
@@ -25,23 +25,9 @@ describe('toDisplayStatus', () => {
   });
 });
 
-describe('toSwapTab', () => {
-  it('folds every unsettled state into "pending"', () => {
-    expect(toSwapTab('open')).toBe('pending');
-    expect(toSwapTab('awaiting_colleague')).toBe('pending');
-    expect(toSwapTab('accepted')).toBe('pending');
-  });
-
-  it('maps settled states straight through', () => {
-    expect(toSwapTab('approved')).toBe('approved');
-    expect(toSwapTab('declined')).toBe('declined');
-    expect(toSwapTab('cancelled')).toBe('cancelled');
-  });
-});
-
-function mkRow(status: SwapRow['status']): SwapRow {
+function mkRow(status: SwapRow['status'], needsReview = false): SwapRow {
   return {
-    id: `r-${status}`,
+    id: `r-${status}-${Math.random()}`,
     from: { firstName: 'A', lastName: 'B', jobTitle: null, photoUrl: null },
     fromStaffId: 's1',
     to: null,
@@ -51,17 +37,34 @@ function mkRow(status: SwapRow['status']): SwapRow {
     note: null,
     status,
     statusNote: null,
-    needsReview: false,
+    needsReview,
   };
 }
 
-describe('countByStatus', () => {
-  it('counts each of the six states independently', () => {
-    const rows = [mkRow('open'), mkRow('open'), mkRow('approved'), mkRow('cancelled')];
-    const counts = countByStatus(rows);
-    expect(counts.find((c) => c.status === 'open')?.count).toBe(2);
-    expect(counts.find((c) => c.status === 'approved')?.count).toBe(1);
-    expect(counts.find((c) => c.status === 'cancelled')?.count).toBe(1);
-    expect(counts.find((c) => c.status === 'declined')?.count).toBe(0);
+describe('countSwapTiles', () => {
+  it('counts open, needs-review, approved and declined independently', () => {
+    const rows = [
+      mkRow('open'),
+      mkRow('open', true),
+      mkRow('accepted', true),
+      mkRow('approved'),
+      mkRow('approved'),
+      mkRow('declined'),
+      mkRow('cancelled'),
+    ];
+    const counts = countSwapTiles(rows);
+    expect(counts.open).toBe(2);
+    expect(counts.waitingOnYou).toBe(2);
+    expect(counts.approved).toBe(2);
+    expect(counts.declined).toBe(1);
+  });
+
+  it('is all zero for an empty list', () => {
+    expect(countSwapTiles([])).toEqual({
+      open: 0,
+      waitingOnYou: 0,
+      approved: 0,
+      declined: 0,
+    });
   });
 });

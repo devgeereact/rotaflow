@@ -31,6 +31,8 @@ const LOCATIONS: Location[] = ['Sunnyvale Care Home', 'Riverside House'].map(
     longitude: null,
     timezone: TZ,
     geofence_radius_m: 100,
+    location_type: null,
+    status: 'active',
     created_at: NOW.toISOString(),
     updated_at: NOW.toISOString(),
   }),

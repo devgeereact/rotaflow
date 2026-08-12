@@ -54,6 +54,8 @@ function mkLocation(id: string, name: string): Location {
     longitude: null,
     timezone: 'Europe/London',
     geofence_radius_m: 100,
+    location_type: null,
+    status: 'active',
     created_at: ISO(now),
     updated_at: ISO(now),
   };

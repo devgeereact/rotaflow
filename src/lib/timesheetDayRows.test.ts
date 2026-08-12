@@ -61,6 +61,8 @@ const LOCATIONS = new Map<string, Location>([
       longitude: null,
       timezone: TZ,
       geofence_radius_m: 100,
+      location_type: null,
+      status: 'active',
       created_at: '2026-08-01T00:00:00.000Z',
       updated_at: '2026-08-01T00:00:00.000Z',
     },

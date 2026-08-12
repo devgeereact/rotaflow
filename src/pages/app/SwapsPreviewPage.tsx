@@ -1,9 +1,7 @@
-import { useState } from 'react';
-import { BarChart3, CalendarDays } from 'lucide-react';
+import { BadgeCheck, CalendarClock, Clock3, ShieldCheck, Users } from 'lucide-react';
 import { SwapsView } from '@/components/swaps/SwapsView';
-import { countByStatus, toSwapTab } from '@/lib/swapRows';
-import type { SwapRow, SwapTab } from '@/lib/swapRows';
-import type { SwapTabDef } from '@/components/swaps/SwapTabs';
+import type { SwapRow } from '@/lib/swapRows';
+import type { SwapRule } from '@/components/swaps/SwapRulesCard';
 
 const ROWS: SwapRow[] = [
   {
@@ -26,7 +24,7 @@ const ROWS: SwapRow[] = [
     note: 'Family commitment that morning.',
     status: 'open',
     statusNote: null,
-    needsReview: true,
+    needsReview: false,
   },
   {
     id: 's2',
@@ -133,9 +131,37 @@ const ROWS: SwapRow[] = [
   },
 ];
 
-const QUICK_ACTIONS = [
-  { id: 'calendar', icon: CalendarDays, label: 'Team Calendar', to: '/app/schedule' },
-  { id: 'report', icon: BarChart3, label: 'Swap Report', to: '/app/reports' },
+const RULES: SwapRule[] = [
+  {
+    id: 'rest',
+    icon: Clock3,
+    label: 'Rest rule',
+    value: 'Under 11 hours between shifts',
+  },
+  {
+    id: 'weekly',
+    icon: CalendarClock,
+    label: 'Weekly limit',
+    value: 'Taking it would pass 48h',
+  },
+  {
+    id: 'cover',
+    icon: Users,
+    label: 'Minimum cover',
+    value: 'Set per location, see Locations',
+  },
+  {
+    id: 'qualification',
+    icon: BadgeCheck,
+    label: 'Qualification',
+    value: 'Reviewed manually',
+  },
+  {
+    id: 'availability',
+    icon: ShieldCheck,
+    label: 'Availability',
+    value: 'Reviewed manually',
+  },
 ];
 
 /**
@@ -143,120 +169,31 @@ const QUICK_ACTIONS = [
  * (`/admin-preview`-style harness). The real `/app/swaps` needs a live
  * Supabase session and a seeded organisation, neither of which a screenshot
  * tool has. Renders the real `SwapsView` against fixed mock data shaped to
- * match `design/Swap-Request.png`. `?role=staff` switches branch — the
- * view itself is one component; only `canApprove` and `viewerStaffId` change.
+ * match `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.swaps`. `?role=staff`
+ * switches branch.
  */
 export function SwapsPreviewPage(): JSX.Element {
   const role = new URLSearchParams(window.location.search).get('role');
   const canApprove = role !== 'staff';
   const viewerStaffId = canApprove ? 'staff-mgr' : 'staff-4';
 
-  const [activeTab, setActiveTab] = useState<SwapTab>('pending');
-  const [openRowId, setOpenRowId] = useState<string | null>(null);
-
-  const rows =
-    activeTab === 'all' ? ROWS : ROWS.filter((r) => toSwapTab(r.status) === activeTab);
-  const counts = countByStatus(ROWS);
-  const openRow = ROWS.find((r) => r.id === openRowId) ?? null;
-
-  const tabs: SwapTabDef[] = [
-    {
-      value: 'all',
-      label: 'All Requests',
-      count: ROWS.length,
-      tone: 'primary',
-      emphasis: 'soft',
-    },
-    {
-      value: 'pending',
-      label: 'Pending Approval',
-      count: ROWS.filter((r) => toSwapTab(r.status) === 'pending').length,
-      tone: 'warning',
-      emphasis: 'solid',
-    },
-    {
-      value: 'approved',
-      label: 'Approved',
-      count: ROWS.filter((r) => toSwapTab(r.status) === 'approved').length,
-      tone: 'success',
-      emphasis: 'soft',
-    },
-    {
-      value: 'declined',
-      label: 'Declined',
-      count: ROWS.filter((r) => toSwapTab(r.status) === 'declined').length,
-      tone: 'danger',
-      emphasis: 'soft',
-    },
-    {
-      value: 'cancelled',
-      label: 'Cancelled',
-      count: ROWS.filter((r) => toSwapTab(r.status) === 'cancelled').length,
-      tone: 'neutral',
-      emphasis: 'soft',
-    },
-  ];
-
   return (
     <div className="p-8">
       <SwapsView
-        title="Swaps"
-        subtitle="Manage shift swap requests between team members."
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onExport={() => {}}
-        canRequest
-        periodLabel="This Week"
-        onPeriodClick={() => {}}
-        selects={[]}
-        onMoreFilters={() => {}}
-        rows={rows}
-        onOpenRow={(row) => setOpenRowId(row.id)}
-        onRowMenu={(row) => setOpenRowId(row.id)}
-        onSortByRequested={() => {}}
-        emptyMessage="No swap requests match these filters yet."
-        page={1}
-        pageCount={1}
-        rangeFrom={rows.length === 0 ? 0 : 1}
-        rangeTo={rows.length}
-        total={rows.length}
-        pageSize={10}
-        onPageChange={() => {}}
-        onPageSizeChange={() => {}}
-        counts={counts}
-        overviewRangeLabel="This Week"
-        onOverviewRangeClick={() => {}}
-        activity={[
-          {
-            id: 'a1',
-            kind: 'approved',
-            title: "Sean Callaghan's swap was approved",
-            detail: 'With Amara Osei',
-            timeLabel: '28 Jul, 10:15',
-          },
-          {
-            id: 'a2',
-            kind: 'declined',
-            title: "Idris Okafor's swap was declined",
-            detail: 'With Ffion Davies',
-            timeLabel: '20 Jul, 15:20',
-          },
-        ]}
-        onViewAllActivity={() => setActiveTab('all')}
-        quickActions={QUICK_ACTIONS}
-        onViewPolicy={() => {}}
+        rows={ROWS}
+        loading={false}
+        emptyMessage="No swap requests."
+        canApprove={canApprove}
+        viewerStaffId={viewerStaffId}
+        rules={RULES}
         myShifts={[]}
         colleagues={[]}
         onOfferShift={async () => {}}
         offline={false}
-        canApprove={canApprove}
-        viewerStaffId={viewerStaffId}
-        openRow={openRow}
-        onCloseDetail={() => setOpenRowId(null)}
         onManagerDecision={async () => {}}
         onColleagueDecision={async () => {}}
         onRequesterFinalize={async () => {}}
+        onClaim={async () => {}}
         onWithdraw={async () => {}}
       />
     </div>

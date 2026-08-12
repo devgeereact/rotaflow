@@ -119,21 +119,35 @@ export interface SchedulingPolicies {
   minRestHours: number;
   /** Maximum consecutive days a person may be rostered. */
   maxConsecutiveDays: number;
+  /** Weekly hours a rota may not roster a person past. */
+  maxWeeklyHours: number;
   /** Whether break time is deducted from paid hours. */
   breaksArePaid: boolean;
   /** Clock times are rounded to this many minutes on a timesheet. */
   roundingMinutes: number;
   /** How many days ahead a rota should be published. */
   publishLeadDays: number;
+  /**
+   * Whether a manager must approve every agreed swap. When false, a named
+   * colleague's acceptance plus the requester's own final say
+   * (`shift_swaps_requester_finalize`, 0043) is enough — see
+   * `SwapsPage.tsx`'s `handleColleagueDecision`/`handleFinalize`.
+   */
+  swapApprovalRequired: boolean;
+  /** Whether leave that would drop a day under minimum cover auto-declines rather than just warning. */
+  autoDeclineClashingLeave: boolean;
 }
 
 export const DEFAULT_POLICIES: SchedulingPolicies = {
   overtimeThresholdHours: 37.5,
   minRestHours: 11,
   maxConsecutiveDays: 6,
+  maxWeeklyHours: 48,
   breaksArePaid: false,
   roundingMinutes: 15,
   publishLeadDays: 14,
+  swapApprovalRequired: true,
+  autoDeclineClashingLeave: false,
 };
 
 export function schedulingPolicies(settings: Json): SchedulingPolicies {
@@ -149,9 +163,20 @@ export function schedulingPolicies(settings: Json): SchedulingPolicies {
       'max_consecutive_days',
       DEFAULT_POLICIES.maxConsecutiveDays,
     ),
+    maxWeeklyHours: num(settings, 'max_weekly_hours', DEFAULT_POLICIES.maxWeeklyHours),
     breaksArePaid: bool(settings, 'breaks_are_paid', DEFAULT_POLICIES.breaksArePaid),
     roundingMinutes: num(settings, 'rounding_minutes', DEFAULT_POLICIES.roundingMinutes),
     publishLeadDays: num(settings, 'publish_lead_days', DEFAULT_POLICIES.publishLeadDays),
+    swapApprovalRequired: bool(
+      settings,
+      'swap_approval_required',
+      DEFAULT_POLICIES.swapApprovalRequired,
+    ),
+    autoDeclineClashingLeave: bool(
+      settings,
+      'auto_decline_clashing_leave',
+      DEFAULT_POLICIES.autoDeclineClashingLeave,
+    ),
   };
 }
 
@@ -160,9 +185,12 @@ export function policiesToSettings(p: SchedulingPolicies): Record<string, unknow
     overtime_threshold_hours: p.overtimeThresholdHours,
     min_rest_hours: p.minRestHours,
     max_consecutive_days: p.maxConsecutiveDays,
+    max_weekly_hours: p.maxWeeklyHours,
     breaks_are_paid: p.breaksArePaid,
     rounding_minutes: p.roundingMinutes,
     publish_lead_days: p.publishLeadDays,
+    swap_approval_required: p.swapApprovalRequired,
+    auto_decline_clashing_leave: p.autoDeclineClashingLeave,
   };
 }
 
@@ -253,7 +281,17 @@ export interface OrgProfileFields {
   registrationNo: string;
   contactEmail: string;
   primaryContact: string;
+  dateFormat: string;
+  currency: string;
 }
+
+export const DATE_FORMATS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'] as const;
+
+export const CURRENCIES = [
+  { value: 'GBP', label: 'GBP (£)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'USD', label: 'USD ($)' },
+] as const;
 
 export function orgProfileFields(settings: Json): OrgProfileFields {
   return {
@@ -268,5 +306,7 @@ export function orgProfileFields(settings: Json): OrgProfileFields {
     registrationNo: str(settings, 'registration_no'),
     contactEmail: str(settings, 'contact_email'),
     primaryContact: str(settings, 'primary_contact'),
+    dateFormat: str(settings, 'date_format', DATE_FORMATS[0]),
+    currency: str(settings, 'currency', CURRENCIES[0].value),
   };
 }

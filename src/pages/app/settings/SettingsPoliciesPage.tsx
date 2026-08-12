@@ -58,6 +58,15 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
     step: 1,
   },
   {
+    key: 'maxWeeklyHours',
+    label: 'Maximum weekly hours',
+    hint: 'Weekly hours a rota should not roster a person past.',
+    unit: 'hours / week',
+    min: 1,
+    max: 84,
+    step: 1,
+  },
+  {
     key: 'roundingMinutes',
     label: 'Clock rounding',
     hint: 'Clock-in and clock-out times are rounded to this interval on timesheets.',
@@ -222,6 +231,53 @@ export function SettingsPoliciesPage(): JSX.Element {
         </div>
       </SettingsSection>
 
+      <SettingsSection
+        title="Approvals"
+        description="Who has to sign off before a request takes effect."
+      >
+        <div className="space-y-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-content dark:text-content-dark">
+                Swap approval
+              </p>
+              <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+                {policies.swapApprovalRequired
+                  ? 'A manager must approve every swap, even once the colleague has accepted it.'
+                  : 'Once a named colleague accepts a swap, the person who offered it can finalise it themselves — no manager needed. A manager can still step in on any swap at any stage.'}
+              </p>
+            </div>
+            <Toggle
+              label="Swap approval required"
+              checked={policies.swapApprovalRequired}
+              disabled={!canEdit}
+              onChange={(next) =>
+                setPolicies((prev) => ({ ...prev, swapApprovalRequired: next }))
+              }
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4 border-t border-surface-border pt-5 dark:border-surface-border-dark">
+            <div>
+              <p className="text-sm font-medium text-content dark:text-content-dark">
+                Auto-decline clashing leave
+              </p>
+              <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+                Refuse a leave request that would drop a day under minimum cover, instead
+                of just flagging it for a manager to weigh up.
+              </p>
+            </div>
+            <Toggle
+              label="Auto-decline clashing leave"
+              checked={policies.autoDeclineClashingLeave}
+              disabled={!canEdit}
+              onChange={(next) =>
+                setPolicies((prev) => ({ ...prev, autoDeclineClashingLeave: next }))
+              }
+            />
+          </div>
+        </div>
+      </SettingsSection>
+
       <Callout tone="info" title="Staffing minimums live in Locations">
         How many people a site needs on shift is set per site, per day of the week, from
         that site's own Settings tab in{' '}
@@ -242,14 +298,17 @@ export function SettingsPoliciesPage(): JSX.Element {
           />
           <div className="text-sm text-content-muted dark:text-content-muted-dark">
             <p className="font-medium text-content dark:text-content-dark">
-              These are defaults, not enforcement
+              Most of these are defaults, not enforcement
             </p>
             <p className="mt-1">
-              RotaFlow uses these values when calculating timesheets and when suggesting
-              shifts, and reports flag rotas that fall outside them. They do not currently
-              block a rota from being saved, a manager can still roster a seventh
-              consecutive day. Automatic validation while building a rota is planned
-              separately.
+              RotaFlow uses the working-time values above when calculating timesheets and
+              when suggesting shifts, and reports flag rotas that fall outside them. They
+              do not currently block a rota from being saved, a manager can still roster a
+              seventh consecutive day. Automatic validation while building a rota is
+              planned separately. Auto-decline clashing leave is stored the same way for
+              now: it flags a request, it does not yet refuse one automatically. Swap
+              approval is the exception — turning it off genuinely removes the manager
+              step, it is read by the Shift Swaps screen itself.
             </p>
           </div>
         </div>

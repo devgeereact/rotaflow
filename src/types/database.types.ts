@@ -1174,9 +1174,11 @@ export type Database = {
           geofence_radius_m: number;
           id: string;
           latitude: number | null;
+          location_type: string | null;
           longitude: number | null;
           name: string;
           org_id: string;
+          status: string;
           timezone: string;
           updated_at: string;
         };
@@ -1186,9 +1188,11 @@ export type Database = {
           geofence_radius_m?: number;
           id?: string;
           latitude?: number | null;
+          location_type?: string | null;
           longitude?: number | null;
           name: string;
           org_id: string;
+          status?: string;
           timezone?: string;
           updated_at?: string;
         };
@@ -1198,9 +1202,11 @@ export type Database = {
           geofence_radius_m?: number;
           id?: string;
           latitude?: number | null;
+          location_type?: string | null;
           longitude?: number | null;
           name?: string;
           org_id?: string;
+          status?: string;
           timezone?: string;
           updated_at?: string;
         };

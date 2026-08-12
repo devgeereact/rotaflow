@@ -175,6 +175,7 @@ const NotificationsPage = lazyPage(
   () => import('@/pages/app/NotificationsPage'),
 );
 const ReportsPage = lazyPage('ReportsPage', () => import('@/pages/app/ReportsPage'));
+const HelpPage = lazyPage('HelpPage', () => import('@/pages/app/HelpPage'));
 const DashboardPage = lazyPage(
   'DashboardPage',
   () => import('@/pages/app/DashboardPage'),
@@ -613,27 +614,17 @@ export function App(): JSX.Element {
                           </RequireRole>
                         }
                       />
-                      {/* Second half of the same workspace, on its own URL so it
-                      can be linked and refreshed into. */}
+                      {/* SCREENS.locations folded department and staffing-
+                      minimum management into per-card dialogs on the one
+                      screen (LocationsPage), rather than a second tab or a
+                      per-site detail route. Both old URLs still resolve. */}
                       <Route
                         path="locations/departments"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="locations">
-                            <LocationsPage />
-                          </RequireRole>
-                        }
+                        element={<Navigate to="/app/locations" replace />}
                       />
-                      {/* §34's location detail. Same workspace with one site
-                      opened rather than a parallel screen. See LocationsPage.
-                      Declared after `locations/departments` so that literal
-                      path is never captured as a :locationId. */}
                       <Route
                         path="locations/:locationId"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="locations">
-                            <LocationsPage />
-                          </RequireRole>
-                        }
+                        element={<Navigate to="/app/locations" replace />}
                       />
                       <Route
                         path="rota"
@@ -660,6 +651,7 @@ export function App(): JSX.Element {
                       <Route path="overtime" element={<OvertimePage />} />
                       <Route path="announcements" element={<AnnouncementsPage />} />
                       <Route path="notifications" element={<NotificationsPage />} />
+                      <Route path="help" element={<HelpPage />} />
                       <Route
                         path="reports"
                         element={
