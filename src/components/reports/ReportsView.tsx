@@ -90,7 +90,8 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
           Reports
         </h1>
         <p className="mt-1 text-[0.95rem] font-medium text-content-muted dark:text-content-muted-dark">
-          View, run and export scheduling and workforce reports.
+          Hours, overtime and absence for the range you choose. Every report below exports
+          to CSV in the shape payroll expects.
         </p>
       </div>
 
