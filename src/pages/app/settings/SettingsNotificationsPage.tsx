@@ -36,6 +36,12 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
  *   (`notification_templates`, plus per-send delivery tracking). The
  *   notification path itself was only proven end to end at the infrastructure
  *   level; the application leg is still unverified (audit §P0-3).
+ * - **Missed clock-in** as an event here. The dashboard's "Needs you" feed
+ *   does detect one now (`findMissedClockIns`), but that is a value computed
+ *   on page load, not a dispatch a toggle here could switch on or off — there
+ *   is no scheduled job watching for one and no de-duplication to stop the
+ *   same late shift paging someone every time they refresh. Wiring it as a
+ *   real send is a background-job change, not a settings-screen one.
  *
  * The three channels here are the three the product can actually deliver on:
  * an in-app `notifications` row, email via the org's SMTP settings, and web

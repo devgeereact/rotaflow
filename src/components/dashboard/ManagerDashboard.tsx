@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CalendarDays, Repeat2, Umbrella } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Repeat2, Umbrella } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
@@ -262,13 +262,17 @@ export function ManagerDashboard({
                         'grid h-8 w-8 shrink-0 place-items-center rounded-full',
                         request.kind === 'leave'
                           ? 'bg-warning-wash text-warning dark:bg-warning-wash-dark'
-                          : 'bg-info-wash text-info dark:bg-info-wash-dark',
+                          : request.kind === 'swap'
+                            ? 'bg-info-wash text-info dark:bg-info-wash-dark'
+                            : 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
                       )}
                     >
                       {request.kind === 'leave' ? (
                         <Umbrella size={15} aria-hidden="true" />
-                      ) : (
+                      ) : request.kind === 'swap' ? (
                         <Repeat2 size={15} aria-hidden="true" />
+                      ) : (
+                        <AlertTriangle size={15} aria-hidden="true" />
                       )}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -278,10 +282,16 @@ export function ManagerDashboard({
                       <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
                         {request.dateLabel} ·{' '}
                         <Link
-                          to={request.kind === 'leave' ? '/app/leave' : '/app/swaps'}
+                          to={
+                            request.kind === 'leave'
+                              ? '/app/leave'
+                              : request.kind === 'swap'
+                                ? '/app/swaps'
+                                : '/app/timesheets'
+                          }
                           className="font-medium text-primary hover:underline"
                         >
-                          Decide
+                          {request.kind === 'missed_clock_in' ? 'Timesheets' : 'Decide'}
                         </Link>
                       </p>
                     </div>

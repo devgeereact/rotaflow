@@ -66,8 +66,12 @@ export function DashboardPage(): JSX.Element {
 
       if (isManager) {
         const staffById = new Map(data.staff.map((s) => [s.id, s]));
+        const today = resolvePeriod('day', todayIso(), DEFAULT_TZ);
         const [pendingRows, weeklySummary, trend] = await Promise.all([
-          getPendingRequests(orgId, staffById),
+          getPendingRequests(orgId, staffById, {
+            fromIso: today.fromIso,
+            toIso: today.toIso,
+          }),
           loadWeeklyRosterSummary(
             orgId,
             week.dates,

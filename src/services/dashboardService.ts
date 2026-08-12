@@ -13,7 +13,9 @@ import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgShiftSwaps } from '@/services/swapService';
 import { listAnnouncements } from '@/services/announcementService';
 import { listRotas } from '@/services/rotaService';
+import { listClockEventsForOrg } from '@/services/clockService';
 import { shiftNetMinutes } from '@/lib/rotaInsights';
+import { findMissedClockIns } from '@/lib/clockInAlerts';
 import { resolvePeriod, stepPeriod } from '@/lib/schedulePeriod';
 import type {
   Announcement,
@@ -80,7 +82,7 @@ export function groupShifts(
 
 export interface PendingRequest {
   id: string;
-  kind: 'leave' | 'swap';
+  kind: 'leave' | 'swap' | 'missed_clock_in';
   staffName: string;
   detail: string;
   dateLabel: string;
@@ -88,18 +90,23 @@ export interface PendingRequest {
 }
 
 /**
- * Pending leave requests + shift swaps, merged newest-first. Overtime is
- * deliberately not included. Overtime_requests exists in the schema but has
- * no service built on it yet, and querying the table directly here would
- * bypass RULES.md's "all Supabase access via src/services/*".
+ * Pending leave requests + shift swaps + today's missed clock-ins, merged
+ * newest-first (missed clock-ins sort by how late, not a created time —
+ * they have none, so `createdAt` carries the shift's own start instant).
+ * Overtime is deliberately not included: `overtime_requests` exists in the
+ * schema but has no service built on it yet, and querying the table
+ * directly here would bypass RULES.md's "all Supabase access via
+ * src/services/*".
  */
 export async function getPendingRequests(
   orgId: string,
   staffById: Map<string, StaffProfile>,
+  today?: { fromIso: string; toIso: string },
 ): Promise<PendingRequest[]> {
-  const [leave, swaps] = await Promise.all([
+  const [leave, swaps, missed] = await Promise.all([
     listOrgLeaveRequests(orgId),
     listOrgShiftSwaps(orgId),
+    today ? getMissedClockInAlerts(orgId, today) : Promise.resolve([]),
   ]);
 
   const staffName = (id: string): string => {
@@ -129,9 +136,30 @@ export async function getPendingRequests(
       createdAt: r.created_at,
     }));
 
-  return [...leaveRows, ...swapRows].sort((a, b) =>
+  const missedRows: PendingRequest[] = missed.map((m) => ({
+    id: `missed-${m.shiftId}`,
+    kind: 'missed_clock_in',
+    staffName: staffName(m.staffProfileId),
+    detail: 'Has not clocked in',
+    dateLabel: `Shift started ${m.minutesLate} minutes ago`,
+    createdAt: m.startsAt,
+  }));
+
+  return [...leaveRows, ...swapRows, ...missedRows].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );
+}
+
+/** Shifts assigned to someone, started at least 30 minutes ago, with no clock-in today. */
+async function getMissedClockInAlerts(
+  orgId: string,
+  today: { fromIso: string; toIso: string },
+): Promise<ReturnType<typeof findMissedClockIns>> {
+  const [shifts, events] = await Promise.all([
+    listShiftsForPeriod({ orgId, fromIso: today.fromIso, toIso: today.toIso }),
+    listClockEventsForOrg({ orgId, fromIso: today.fromIso, toIso: today.toIso }),
+  ]);
+  return findMissedClockIns(shifts, events, new Date());
 }
 
 /**
