@@ -4,6 +4,9 @@ import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
 import { getSubscription } from '@/services/subscriptionService';
 import { listStaff } from '@/services/staffService';
+import { getOrganisation } from '@/services/orgService';
+import { listLocations } from '@/services/locationService';
+import { orgProfileFields } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -49,6 +52,8 @@ export function SettingsBillingPage(): JSX.Element {
 
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [staffCount, setStaffCount] = useState<number | null>(null);
+  const [siteCount, setSiteCount] = useState<number | null>(null);
+  const [billingContact, setBillingContact] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,13 +62,17 @@ export function SettingsBillingPage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        const [sub, staff] = await Promise.all([
+        const [sub, staff, sites, org] = await Promise.all([
           getSubscription(orgId),
           listStaff(orgId).catch(() => null),
+          listLocations(orgId).catch(() => null),
+          getOrganisation(orgId).catch(() => null),
         ]);
         if (!active) return;
         setSubscription(sub);
         setStaffCount(staff?.length ?? null);
+        setSiteCount(sites?.length ?? null);
+        setBillingContact(org ? orgProfileFields(org.settings).contactEmail : '');
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'settings-billing:load' });
@@ -118,12 +127,32 @@ export function SettingsBillingPage(): JSX.Element {
           <li className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-content dark:text-content-dark">
               <Check size={16} className="text-success" aria-hidden="true" />
+              Sites
+            </span>
+            <span className="tabular-nums text-content-muted dark:text-content-muted-dark">
+              {siteCount ?? '-'}
+            </span>
+          </li>
+          <li className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2 text-content dark:text-content-dark">
+              <Check size={16} className="text-success" aria-hidden="true" />
               Staff on the roster
             </span>
             <span className="tabular-nums text-content-muted dark:text-content-muted-dark">
               {staffCount ?? '-'}
             </span>
           </li>
+          {billingContact && (
+            <li className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-2 text-content dark:text-content-dark">
+                <Check size={16} className="text-success" aria-hidden="true" />
+                Billing contact
+              </span>
+              <span className="text-content-muted dark:text-content-muted-dark">
+                {billingContact}
+              </span>
+            </li>
+          )}
           <li className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-content dark:text-content-dark">
               <Check size={16} className="text-success" aria-hidden="true" />

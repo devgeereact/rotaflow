@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { Link } from 'react-router-dom';
 import {
   AlarmClock,
   Bell,
   BellOff,
   Calendar,
   Check,
+  Info,
   Megaphone,
   Repeat2,
   Umbrella,
@@ -152,7 +154,7 @@ export function NotificationsPage(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Notifications
         </h1>
@@ -180,6 +182,17 @@ export function NotificationsPage(): JSX.Element {
           )}
         </div>
       </div>
+      <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
+        Reached from the bell. There is no sidebar entry, by design. Manage what you get
+        notified about in{' '}
+        <Link
+          to="/app/account/preferences"
+          className="font-medium text-primary hover:underline"
+        >
+          Notification preferences
+        </Link>
+        .
+      </p>
 
       {loading ? (
         <Card>
@@ -242,6 +255,17 @@ export function NotificationsPage(): JSX.Element {
             })}
           </ul>
         </Card>
+      )}
+
+      {webPush.status !== 'granted' && (
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-info/30 bg-info/5 p-3.5 text-sm text-content-muted dark:text-content-muted-dark">
+          <Info size={16} className="mt-0.5 shrink-0 text-info" aria-hidden="true" />
+          <p>
+            Push notifications need permission from the browser. Without it, notifications
+            still arrive in this list and by email — nothing is lost, it just is not
+            instant.
+          </p>
+        </div>
       )}
     </div>
   );
