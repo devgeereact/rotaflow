@@ -72,7 +72,7 @@ export function WeeklySummaryCard({
         </button>
       </div>
 
-      <dl className="mt-6 flex justify-between gap-4">
+      <dl className="mt-6 grid grid-cols-2 gap-4">
         {stats.map((stat) => (
           <div key={stat.label}>
             <dd

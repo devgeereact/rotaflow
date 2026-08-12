@@ -28,7 +28,7 @@ import {
   buildAttendance,
   buildCurrentShift,
   buildRecentActivity,
-  buildTodaySchedule,
+  buildThisWeekRows,
   buildWeeklySummary,
   clockStage,
   clockWindow,
@@ -227,10 +227,8 @@ export function ClockInPage(): JSX.Element {
     );
 
     const segments = pairClockEvents(data.events, now);
-    const thisWeek = buildWeeklySummary(
-      thisWeekShifts,
-      segmentsInRange(segments, weekStart, nextWeekStart),
-    );
+    const thisWeekSegments = segmentsInRange(segments, weekStart, nextWeekStart);
+    const thisWeek = buildWeeklySummary(thisWeekShifts, thisWeekSegments);
     const lastWeek = buildWeeklySummary(
       lastWeekShifts,
       segmentsInRange(segments, lastWeekStart, weekStart),
@@ -241,7 +239,7 @@ export function ClockInPage(): JSX.Element {
     return {
       shift,
       currentShift: shift ? buildCurrentShift(shift, lookups, now) : null,
-      schedule: buildTodaySchedule(todayShifts, lookups, now),
+      thisWeekRows: buildThisWeekRows(thisWeekShifts, thisWeekSegments),
       activity: buildRecentActivity(data.events, now),
       weekly: {
         periodLabel: `${format(weekStart, 'd MMM')}, ${format(addDays(weekStart, 6), 'd MMM yyyy')}`,
@@ -509,8 +507,8 @@ export function ClockInPage(): JSX.Element {
         onSecondaryAction={onSecondary}
         busy={submitting}
         actionExtra={picker}
-        schedule={view.schedule}
-        onViewFullSchedule={() => void navigate('/app/schedule')}
+        online={online}
+        thisWeekRows={view.thisWeekRows}
         activity={view.activity}
         onViewAllActivity={() => void navigate('/app/timesheets')}
         weekly={view.weekly}
