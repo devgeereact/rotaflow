@@ -8,15 +8,15 @@ import type { LeaveStatus, LeaveTypeKey } from '@/lib/leaveRows';
 import type { RoleCodeTone, StaffDocument } from '@/lib/staffDirectory';
 
 /**
- * Tab strip under the profile header
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.staffDetail`). Every tab
- * renders real content now — `availability`/`swaps`/`skills`/`timesheets`/
- * `notes` were dropped: the reference has no equivalent for them here (a
- * person's availability and swaps already have their own screens), so
- * keeping cosmetic-only tabs for them would be worse than not having them.
+ * Tab strip under the profile header (`design/Staff-Profile.png`). Every tab
+ * renders real content — `availability`/`swaps`/`skills`/`timesheets`/`notes`
+ * were dropped: a person's availability and swaps already have their own
+ * screens, so keeping cosmetic-only tabs for them would be worse than not
+ * having them. Emergency contacts lives on Overview, not its own tab —
+ * something a manager reaches for in an actual emergency shouldn't be a
+ * click away behind a tab nobody thinks to open.
  */
-export type StaffProfileTab =
-  'overview' | 'shifts' | 'documents' | 'emergency_contacts' | 'leave' | 'activity';
+export type StaffProfileTab = 'overview' | 'shifts' | 'documents' | 'leave' | 'activity';
 
 export interface StaffPersonalInfo {
   email: string;

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { LeaveStatusPill } from '@/components/leave/LeaveStatusPill';
 import { LeaveTypeChip } from '@/components/leave/LeaveTypeChip';
 import { DocumentList } from '@/components/staff/DocumentList';
+import { EmergencyContactsCard } from '@/components/staff/EmergencyContactsCard';
 import { PersonalInformationCard } from '@/components/staff/PersonalInformationCard';
 import { RecentActivityCard } from '@/components/staff/RecentActivityCard';
 import { ShiftSummaryCard } from '@/components/staff/ShiftSummaryCard';
@@ -37,12 +38,12 @@ const METRIC_STYLES: { icon: LucideIcon; tone: IconTileTone }[] = [
 ];
 
 /**
- * One person's profile (`docs/ORGANISATION_WORKSPACE.html`'s
- * `SCREENS.staffDetail`): identity header, six tabs, each showing real
- * content for once — the tab strip used to be cosmetic, every tab past
- * Overview rendered the same dashboard regardless of which was clicked.
- * `Activity` stays honestly empty: no per-person activity feed exists in the
- * schema to back one.
+ * One person's profile (`design/Staff-Profile.png`): identity header, five
+ * tabs, each showing real content — the tab strip used to be cosmetic,
+ * every tab past Overview rendered the same dashboard regardless of which
+ * was clicked. `Activity` stays honestly empty: no per-person activity feed
+ * exists in the schema to back one. Emergency contacts lives on Overview,
+ * not a tab of its own — see `EmergencyContactsCard`.
  */
 export function StaffProfileView({
   profile,
@@ -86,6 +87,10 @@ export function StaffProfileView({
                 rows={profile.work}
                 onEdit={() => onAction('edit-work')}
               />
+              <EmergencyContactsCard
+                contacts={profile.emergencyContacts}
+                onAdd={onAddEmergencyContact}
+              />
             </div>
             <div className="min-w-0 space-y-3">
               {profile.metrics.length > 0 && (
@@ -119,7 +124,10 @@ export function StaffProfileView({
         )}
 
         {tab === 'shifts' && (
-          <div className="grid gap-3 lg:grid-cols-2">
+          // Full width, stacked — the row's date/time/type/location/area/
+          // status/actions need more room than a two-column split leaves,
+          // which is what made this tab look broken next to the reference.
+          <div className="space-y-3">
             <UpcomingShiftsCard
               shifts={profile.upcoming}
               onViewSchedule={() => onAction('view-schedule')}
@@ -155,46 +163,6 @@ export function StaffProfileView({
                 <DocumentList documents={profile.documents} />
               )}
             </div>
-          </Card>
-        )}
-
-        {tab === 'emergency_contacts' && (
-          <Card className="p-0">
-            <div className="flex items-center justify-between border-b border-surface-border p-4 dark:border-surface-border-dark">
-              <h2 className="font-semibold text-content dark:text-content-dark">
-                Emergency contacts
-              </h2>
-              <Button size="sm" onClick={onAddEmergencyContact}>
-                Add
-              </Button>
-            </div>
-            {profile.emergencyContacts.length === 0 ? (
-              <p className="p-6 text-center text-sm text-content-muted dark:text-content-muted-dark">
-                No emergency contacts on file.
-              </p>
-            ) : (
-              <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
-                {profile.emergencyContacts.map((contact) => (
-                  <li
-                    key={contact.id}
-                    className="flex flex-wrap items-center gap-2 px-4 py-3"
-                  >
-                    <span className="font-medium text-content dark:text-content-dark">
-                      {contact.name}
-                    </span>
-                    <span className="text-sm text-content-muted dark:text-content-muted-dark">
-                      {contact.relationship}
-                    </span>
-                    <span className="ml-auto font-mono text-sm text-content dark:text-content-dark">
-                      {contact.phone}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="border-t border-surface-border p-4 text-xs text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-              Visible to managers only, and never included in an export.
-            </p>
           </Card>
         )}
 

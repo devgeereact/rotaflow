@@ -83,7 +83,7 @@ const ROWS: LeaveDisplayRow[] = [
 export function LeavePreviewPage(): JSX.Element {
   const role = new URLSearchParams(window.location.search).get('role');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<LeaveStatus | ''>('');
+  const [statusFilter, setStatusFilter] = useState<LeaveStatus | ''>('pending');
 
   const filtered = ROWS.filter((r) => {
     if (statusFilter && r.status !== statusFilter) return false;

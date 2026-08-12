@@ -48,9 +48,10 @@ export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShi
 /**
  * Count only, for the sidebar's Shift Swaps badge. `head: true` skips the
  * shift join and row payload, this runs on every `/app/*` page load.
- * `accepted` counts too: the target has agreed, but a manager still has to
- * approve it before it changes the rota (see `respondToShiftSwap` below), so
- * it is still a swap someone needs to act on.
+ * `accepted` counts too: the target has agreed, but a named-colleague swap
+ * still needs the requester's own final say (`reviewShiftSwap`, 0043) and
+ * an open one still needs a manager, so it is still a swap someone needs
+ * to act on.
  */
 export async function countSwapsNeedingAttention(orgId: string): Promise<number> {
   const { count, error } = await supabase
@@ -64,9 +65,10 @@ export async function countSwapsNeedingAttention(orgId: string): Promise<number>
 
 /**
  * The target colleague accepting or declining. Permitted by
- * shift_swaps_target_respond, which only allows a still-pending row to move
- * to 'accepted' or 'rejected'. A manager still has to approve an accepted
- * swap before it's final; this alone does not change the rota.
+ * `shift_swaps_target_respond` (0008), which only allows a still-pending
+ * row to move to 'accepted' or 'rejected'. Accepting still isn't final —
+ * the requester (or a manager) has to finalize it next; this alone does
+ * not change the rota.
  */
 export async function respondToShiftSwap(
   id: string,
@@ -82,7 +84,16 @@ export async function respondToShiftSwap(
   return data;
 }
 
-/** Manager final approve/reject. RLS (has_org_role) is the real enforcement. */
+/**
+ * Final approve/reject. Two different RLS policies permit this same call
+ * depending on who's asking and what stage the row is at:
+ *   - a manager/owner, on any swap at any stage (`shift_swaps_write`, 0002)
+ *   - the requester, once their named colleague has already accepted
+ *     (`shift_swaps_requester_finalize`, 0043) — a swap both people already
+ *     agreed to doesn't need a manager on top
+ * An open ("anyone") swap has no named colleague to have accepted, so only
+ * the manager path applies to it.
+ */
 export async function reviewShiftSwap(
   id: string,
   status: 'approved' | 'rejected',

@@ -76,8 +76,13 @@ export function StaffFormModal({
     try {
       await onSubmit(values);
       onClose();
-    } catch {
-      setError('Could not save this staff profile. Please try again.');
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code;
+      setError(
+        code === '23505'
+          ? 'That payroll ID is already in use by someone else in this organisation.'
+          : 'Could not save this staff profile. Please try again.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -190,8 +195,14 @@ export function StaffFormModal({
             <Input
               id="staff-payroll"
               value={values.payrollId}
+              disabled={Boolean(initial?.payroll_id)}
               onChange={(e) => setValues((v) => ({ ...v, payrollId: e.target.value }))}
             />
+            {initial?.payroll_id && (
+              <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+                Set once and locked — a payroll ID never changes once issued.
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="staff-phone">Phone</Label>

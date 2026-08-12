@@ -10,7 +10,6 @@ const TABS: PanelTabItem<StaffProfileTab>[] = [
   { value: 'overview', label: 'Overview' },
   { value: 'shifts', label: 'Shifts' },
   { value: 'documents', label: 'Documents' },
-  { value: 'emergency_contacts', label: 'Emergency contacts' },
   { value: 'leave', label: 'Leave' },
   { value: 'activity', label: 'Activity' },
 ];

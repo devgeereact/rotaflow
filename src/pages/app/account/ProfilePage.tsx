@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
-import { Mail, Phone, User } from 'lucide-react';
+import { Image, Mail, Phone, User } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
@@ -41,9 +41,20 @@ const ROLE_SCOPE: Record<SystemRole, string> = {
  *
  * Email is read-only on purpose: changing it needs Supabase's confirmation
  * round-trip on both the old and the new address, and half-building that
- * produces an account whose login no longer matches its profile row. Avatar
- * upload is likewise absent. ImageKit is in the stack but nothing is wired to
- * it, and `photo_url` is a pasted link today.
+ * produces an account whose login no longer matches its profile row.
+ *
+ * `photo_url` is a pasted link, not a file upload — ImageKit is in the
+ * stack for *delivery* (`src/lib/imagekit.ts` builds transformed URLs from
+ * a path already in storage), but nothing here signs an upload, which needs
+ * a server-side call so the private key never reaches the client. A real
+ * "choose a file" control is a separate, larger piece of work; a URL field
+ * is real and honest in the meantime, not a placeholder.
+ *
+ * Job title, department, contract and hours are read-only here since
+ * `0042_staff_self_edit_personal_info.sql`: a staff member may only change
+ * their own `phone` and `photo_url` on `staff_profiles`, everything else on
+ * that row is manager/owner-only, enforced by a trigger regardless of which
+ * screen tries to write it.
  */
 export function ProfilePage(): JSX.Element {
   const { user } = useSupabaseAuth();
@@ -52,13 +63,14 @@ export function ProfilePage(): JSX.Element {
 
   const [loading, setLoading] = useState(true);
   const [savingAccount, setSavingAccount] = useState(false);
-  const [savingEmployment, setSavingEmployment] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [staff, setStaff] = useState<StaffProfile | null>(null);
-  const [jobTitle, setJobTitle] = useState('');
   const [phone, setPhone] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
   const [labels, setLabels] = useState<Record<SystemRole, string> | null>(null);
 
   useEffect(() => {
@@ -76,8 +88,8 @@ export function ProfilePage(): JSX.Element {
         setFullName(profile?.full_name ?? '');
         setEmail(profile?.email ?? user.email ?? '');
         setStaff(staffProfile);
-        setJobTitle(staffProfile?.job_title ?? '');
         setPhone(staffProfile?.phone ?? '');
+        setPhotoUrl(staffProfile?.photo_url ?? '');
         setLabels(org ? roleLabels(org.settings) : null);
       } catch (err) {
         if (!active) return;
@@ -106,23 +118,39 @@ export function ProfilePage(): JSX.Element {
     }
   }, [user, fullName, showError, showSuccess]);
 
-  const handleSaveEmployment = useCallback(async (): Promise<void> => {
+  const handleSaveContact = useCallback(async (): Promise<void> => {
     if (!staff) return;
-    setSavingEmployment(true);
+    setSavingContact(true);
     try {
       const updated = await updateStaffProfile(staff.id, {
-        job_title: jobTitle.trim() || null,
         phone: phone.trim() || null,
       });
       setStaff(updated);
-      showSuccess('Work details updated.');
+      showSuccess('Contact details updated.');
     } catch (err) {
-      reportError(err, { area: 'account-profile:save-employment' });
-      showError('Could not update your work details. Please try again.');
+      reportError(err, { area: 'account-profile:save-contact' });
+      showError('Could not update your contact details. Please try again.');
     } finally {
-      setSavingEmployment(false);
+      setSavingContact(false);
     }
-  }, [staff, jobTitle, phone, showError, showSuccess]);
+  }, [staff, phone, showError, showSuccess]);
+
+  const handleSavePhoto = useCallback(async (): Promise<void> => {
+    if (!staff) return;
+    setSavingPhoto(true);
+    try {
+      const updated = await updateStaffProfile(staff.id, {
+        photo_url: photoUrl.trim() || null,
+      });
+      setStaff(updated);
+      showSuccess('Photo updated.');
+    } catch (err) {
+      reportError(err, { area: 'account-profile:save-photo' });
+      showError('Could not update your photo. Please try again.');
+    } finally {
+      setSavingPhoto(false);
+    }
+  }, [staff, photoUrl, showError, showSuccess]);
 
   if (loading) {
     return (
@@ -173,20 +201,47 @@ export function ProfilePage(): JSX.Element {
 
         {staff && (
           <SettingsSection
-            title="Work details"
-            description="Your role within this organisation."
+            title="Photo"
+            description="How colleagues recognise you around the app."
           >
-            <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <Label htmlFor="profile-job-title">Job title</Label>
+            <div className="flex items-center gap-4">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt=""
+                  className="h-16 w-16 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-surface-subtle text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
+                  <Image size={22} aria-hidden="true" />
+                </div>
+              )}
+              <div className="flex-1">
+                <Label htmlFor="profile-photo-url">Photo URL</Label>
                 <Input
-                  id="profile-job-title"
-                  value={jobTitle}
+                  id="profile-photo-url"
+                  value={photoUrl}
+                  placeholder="https://…"
                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setJobTitle(e.target.value)
+                    setPhotoUrl(e.target.value)
                   }
                 />
               </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button onClick={() => void handleSavePhoto()} disabled={savingPhoto}>
+                {savingPhoto ? 'Saving…' : 'Save photo'}
+              </Button>
+            </div>
+          </SettingsSection>
+        )}
+
+        {staff && (
+          <SettingsSection
+            title="Contact details"
+            description="How your manager reaches you."
+          >
+            <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <Label htmlFor="profile-phone">Phone number</Label>
                 <Input
@@ -201,13 +256,36 @@ export function ProfilePage(): JSX.Element {
               </div>
             </div>
             <div className="mt-6 flex justify-end">
-              <Button
-                onClick={() => void handleSaveEmployment()}
-                disabled={savingEmployment}
-              >
-                {savingEmployment ? 'Saving…' : 'Save work details'}
+              <Button onClick={() => void handleSaveContact()} disabled={savingContact}>
+                {savingContact ? 'Saving…' : 'Save contact details'}
               </Button>
             </div>
+          </SettingsSection>
+        )}
+
+        {staff && (
+          <SettingsSection
+            title="Employment"
+            description="Set by your manager. Contact them to change any of this."
+          >
+            <dl className="grid gap-4 text-sm md:grid-cols-2">
+              <div>
+                <dt className="text-content-muted dark:text-content-muted-dark">
+                  Job title
+                </dt>
+                <dd className="font-medium text-content dark:text-content-dark">
+                  {staff.job_title ?? '-'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-content-muted dark:text-content-muted-dark">
+                  Payroll ID
+                </dt>
+                <dd className="font-medium text-content dark:text-content-dark">
+                  {staff.payroll_id ?? '-'}
+                </dd>
+              </div>
+            </dl>
           </SettingsSection>
         )}
       </div>

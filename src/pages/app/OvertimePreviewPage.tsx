@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { OvertimeView } from '@/components/overtime/OvertimeView';
-import type { OvertimeRow } from '@/lib/overtimeRows';
+import type { OvertimeRow, OvertimeStatus } from '@/lib/overtimeRows';
 
 const ROWS: OvertimeRow[] = [
   {
@@ -71,6 +72,12 @@ const ROWS: OvertimeRow[] = [
 export function OvertimePreviewPage(): JSX.Element {
   const role = new URLSearchParams(window.location.search).get('role');
   const canApprove = role !== 'staff';
+  const [statusFilter, setStatusFilter] = useState<OvertimeStatus | ''>('pending');
+
+  const baseRows = canApprove ? ROWS : [ROWS[0]!];
+  const filtered = statusFilter
+    ? baseRows.filter((r) => r.status === statusFilter)
+    : baseRows;
 
   return (
     <div className="p-8">
@@ -94,8 +101,11 @@ export function OvertimePreviewPage(): JSX.Element {
                 requestsShown: 1,
               }
         }
-        rows={canApprove ? ROWS : [ROWS[0]!]}
-        emptyMessage="No overtime claims."
+        rows={filtered}
+        totalRowCount={baseRows.length}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        emptyMessage="No overtime claims match this filter."
         onRaiseClaim={async () => {}}
         onApprove={async () => {}}
         onDecline={async () => {}}

@@ -17,6 +17,7 @@ import {
   formatOvertimeHours,
   sumHoursInMonth,
   type OvertimeRow,
+  type OvertimeStatus,
 } from '@/lib/overtimeRows';
 import { todayIso } from '@/lib/schedulePeriod';
 import { reportError } from '@/lib/sentry';
@@ -49,6 +50,9 @@ export function OvertimePage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Lands on Pending by default so a reviewer sees what needs a decision
+  // first, not buried in a list of already-settled claims.
+  const [statusFilter, setStatusFilter] = useState<OvertimeStatus | ''>('pending');
 
   useRealtimeRefresh({
     tables: ['overtime_requests'],
@@ -101,6 +105,11 @@ export function OvertimePage(): JSX.Element {
   const rows = useMemo<OvertimeRow[]>(
     () => buildOvertimeRows({ requests, staffById, currentUserId: user?.id ?? null }),
     [requests, staffById, user],
+  );
+
+  const filteredRows = useMemo(
+    () => (statusFilter ? rows.filter((r) => r.status === statusFilter) : rows),
+    [rows, statusFilter],
   );
 
   const tiles = useMemo<OvertimeTiles>(() => {
@@ -204,10 +213,15 @@ export function OvertimePage(): JSX.Element {
     <OvertimeView
       canApprove={canApprove}
       tiles={tiles}
-      rows={rows}
+      rows={filteredRows}
+      totalRowCount={rows.length}
+      statusFilter={statusFilter}
+      onStatusFilterChange={setStatusFilter}
       viewerStaffId={myProfile?.id ?? null}
       emptyMessage={
-        canApprove ? 'No overtime claims.' : 'You have not raised any overtime.'
+        canApprove
+          ? 'No overtime claims match this filter.'
+          : 'You have not raised any overtime.'
       }
       onRaiseClaim={handleRaiseClaim}
       onApprove={(row) => handleReview(row, 'approved')}

@@ -99,7 +99,9 @@ export function LeavePage(): JSX.Element {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<LeaveStatus | ''>('');
+  // Lands on Pending by default so a reviewer sees what needs a decision
+  // first, not buried in a list of settled requests with nothing to do.
+  const [statusFilter, setStatusFilter] = useState<LeaveStatus | ''>('pending');
 
   useRealtimeRefresh({
     tables: ['leave_requests'],

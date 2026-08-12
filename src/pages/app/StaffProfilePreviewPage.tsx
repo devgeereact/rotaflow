@@ -13,7 +13,6 @@ const VALID_TABS: StaffProfileTab[] = [
   'overview',
   'shifts',
   'documents',
-  'emergency_contacts',
   'leave',
   'activity',
 ];

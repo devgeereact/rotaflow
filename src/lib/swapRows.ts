@@ -2,20 +2,20 @@ import type { BadgeTone } from '@/components/ui/Badge';
 import type { ShiftSwap } from '@/types';
 
 /**
- * The states `/app/swaps` shows (`docs/ORGANISATION_WORKSPACE.html`'s
- * `SCREENS.swaps`). Richer than the mockup's three (`open`/`pending`/
- * `approved`): the real schema lets a request name a colleague directly
- * (`target_staff_profile_id`), which the mockup's model has no equivalent
- * for, so a named-but-unanswered request gets its own state rather than
- * being folded into "open".
+ * The states `/app/swaps` shows (`design/Swap-Request.png`). Richer than
+ * the raw five-value `shift_swaps.status`: whether a colleague was named
+ * splits `pending` into `open` (nobody has it yet) and `awaiting_colleague`
+ * (someone specific hasn't answered).
+ *
+ * `accepted` no longer means "awaiting a manager" — since
+ * `0043_swap_requester_finalize.sql`, the REQUESTER can also close out a
+ * named-colleague swap once the colleague has said yes, so this state is
+ * genuinely "awaiting whichever of them acts first", not manager-specific.
+ * The exact wording shown depends on who's looking; see `statusNote` in
+ * `swapMapping.ts`.
  */
 export type SwapDisplayStatus =
-  | 'open'
-  | 'awaiting_colleague'
-  | 'awaiting_manager'
-  | 'approved'
-  | 'declined'
-  | 'cancelled';
+  'open' | 'awaiting_colleague' | 'accepted' | 'approved' | 'declined' | 'cancelled';
 
 export interface SwapParty {
   firstName: string;
@@ -54,6 +54,8 @@ export interface SwapRow {
   status: SwapDisplayStatus;
   /** Second line under the pill, e.g. "Approved by you". Omitted when unknown. */
   statusNote: string | null;
+  /** Drives the row button: "Review" when the viewer owes this row a decision, else "View". */
+  needsReview: boolean;
 }
 
 /**
@@ -72,7 +74,7 @@ export function toDisplayStatus(
     case 'cancelled':
       return 'cancelled';
     case 'accepted':
-      return 'awaiting_manager';
+      return 'accepted';
     default:
       // 'pending': a named colleague hasn't answered yet, or nobody has.
       return hasTarget ? 'awaiting_colleague' : 'open';
@@ -87,7 +89,7 @@ export function toDisplayStatus(
 export const SWAP_STATUS_LABEL: Record<SwapDisplayStatus, string> = {
   open: 'Open',
   awaiting_colleague: 'Awaiting colleague',
-  awaiting_manager: 'Awaiting manager',
+  accepted: 'Accepted',
   approved: 'Approved',
   declined: 'Declined',
   cancelled: 'Cancelled',
@@ -96,8 +98,74 @@ export const SWAP_STATUS_LABEL: Record<SwapDisplayStatus, string> = {
 export const SWAP_STATUS_TONE: Record<SwapDisplayStatus, BadgeTone> = {
   open: 'info',
   awaiting_colleague: 'warning',
-  awaiting_manager: 'warning',
+  accepted: 'warning',
   approved: 'success',
   declined: 'danger',
   cancelled: 'neutral',
 };
+
+/** Legend dot on the Swap Overview donut. */
+export const SWAP_STATUS_DOT: Record<SwapDisplayStatus, string> = {
+  open: 'bg-info',
+  awaiting_colleague: 'bg-warning',
+  accepted: 'bg-warning',
+  approved: 'bg-success',
+  declined: 'bg-danger',
+  cancelled: 'bg-secondary dark:bg-secondary-dark',
+};
+
+/** Swap Overview donut arc. */
+export const SWAP_STATUS_STROKE: Record<SwapDisplayStatus, string> = {
+  open: 'stroke-info',
+  awaiting_colleague: 'stroke-warning',
+  accepted: 'stroke-warning',
+  approved: 'stroke-success',
+  declined: 'stroke-danger',
+  cancelled: 'stroke-secondary dark:stroke-secondary-dark',
+};
+
+export interface SwapStatusCount {
+  status: SwapDisplayStatus;
+  label: string;
+  count: number;
+}
+
+/** Counts per status, in the order the legend lists them. */
+export function countByStatus(rows: SwapRow[]): SwapStatusCount[] {
+  const order: SwapDisplayStatus[] = [
+    'open',
+    'awaiting_colleague',
+    'accepted',
+    'approved',
+    'declined',
+    'cancelled',
+  ];
+  return order.map((status) => ({
+    status,
+    label: SWAP_STATUS_LABEL[status],
+    count: rows.filter((row) => row.status === status).length,
+  }));
+}
+
+/**
+ * Tabs above the table (`design/Swap-Request.png`): coarser than the six
+ * row-level statuses. "Pending Approval" is every state that still needs
+ * someone — open, awaiting a named colleague, or accepted and awaiting
+ * final approval — folded into one tab so a reviewer has a single place to
+ * see everything not yet settled, while the row itself still shows which
+ * of the three it actually is.
+ */
+export type SwapTab = 'all' | 'pending' | 'approved' | 'declined' | 'cancelled';
+
+export function toSwapTab(status: SwapDisplayStatus): Exclude<SwapTab, 'all'> {
+  switch (status) {
+    case 'approved':
+      return 'approved';
+    case 'declined':
+      return 'declined';
+    case 'cancelled':
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}

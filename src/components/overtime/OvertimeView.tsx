@@ -4,6 +4,7 @@ import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Select } from '@/components/ui/Select';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import {
@@ -41,6 +42,9 @@ export interface OvertimeViewProps {
   canApprove: boolean;
   tiles: OvertimeTiles;
   rows: OvertimeRow[];
+  totalRowCount: number;
+  statusFilter: OvertimeStatus | '';
+  onStatusFilterChange: (value: OvertimeStatus | '') => void;
   viewerStaffId: string | null;
   emptyMessage: string;
   onRaiseClaim: (draft: RaiseClaimDraft) => Promise<void>;
@@ -60,6 +64,9 @@ export function OvertimeView({
   canApprove,
   tiles,
   rows,
+  totalRowCount,
+  statusFilter,
+  onStatusFilterChange,
   viewerStaffId,
   emptyMessage,
   onRaiseClaim,
@@ -99,8 +106,23 @@ export function OvertimeView({
       </div>
 
       <Card className="p-0">
-        <div className="border-b border-surface-border p-4 dark:border-surface-border-dark">
+        <div className="flex flex-wrap items-center gap-3 border-b border-surface-border p-4 dark:border-surface-border-dark">
           <h2 className="font-semibold text-content dark:text-content-dark">Claims</h2>
+          <Select
+            value={statusFilter}
+            onChange={(e) => onStatusFilterChange(e.target.value as OvertimeStatus | '')}
+            aria-label="Status"
+            className="ml-auto w-auto py-2"
+          >
+            <option value="">Any status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Declined</option>
+            <option value="cancelled">Withdrawn</option>
+          </Select>
+          <span className="font-mono text-xs text-content-muted dark:text-content-muted-dark">
+            {rows.length} of {totalRowCount}
+          </span>
         </div>
         {rows.length === 0 ? (
           <p className="p-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
