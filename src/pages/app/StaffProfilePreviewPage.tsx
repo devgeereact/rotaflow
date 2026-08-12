@@ -9,8 +9,21 @@ import type { StaffProfileTab } from '@/lib/staffProfile';
  * `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.staffDetail` against the
  * fixtures in `src/lib/staffDemo.ts`.
  */
+const VALID_TABS: StaffProfileTab[] = [
+  'overview',
+  'shifts',
+  'documents',
+  'emergency_contacts',
+  'leave',
+  'activity',
+];
+
 export function StaffProfilePreviewPage(): JSX.Element {
-  const [tab, setTab] = useState<StaffProfileTab>('overview');
+  const requested = new URLSearchParams(window.location.search).get(
+    'tab',
+  ) as StaffProfileTab | null;
+  const initial = requested && VALID_TABS.includes(requested) ? requested : 'overview';
+  const [tab, setTab] = useState<StaffProfileTab>(initial);
 
   return (
     <div className="min-h-screen bg-background px-8 py-6 dark:bg-background-dark">
