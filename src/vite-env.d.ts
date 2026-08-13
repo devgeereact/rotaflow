@@ -3,6 +3,8 @@
 
 /** Injected by Vite's `define` from package.json. See vite.config.ts. */
 declare const __APP_VERSION__: string;
+/** Injected by Vite's `define`, the short commit SHA this was built from. See vite.config.ts. */
+declare const __SENTRY_RELEASE__: string;
 
 interface ImportMetaEnv {
   readonly VITE_APP_NAME: string;

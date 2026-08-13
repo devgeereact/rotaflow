@@ -5,7 +5,25 @@ import checker from 'vite-plugin-checker';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import pkg from './package.json';
+
+// The Sentry *release* identifier, distinct from `__APP_VERSION__` below:
+// `pkg.version` has been "1.0.0" since the project's first commit and isn't
+// bumped per deploy, so it can't answer "which build introduced this error".
+// The commit this was built from can. Falls back to `pkg.version` only if
+// git genuinely isn't available (a source tarball with no `.git`, say) —
+// not for a dirty tree or a detached HEAD, both of which still resolve fine.
+function resolveSentryRelease(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return pkg.version;
+  }
+}
+const sentryRelease = resolveSentryRelease();
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -21,6 +39,9 @@ export default defineConfig({
   // Single source of truth for the version the splash/about surfaces show.
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    // Read by src/lib/sentry.ts, so every error carries the commit it shipped
+    // from — see `resolveSentryRelease` above for why this isn't __APP_VERSION__.
+    __SENTRY_RELEASE__: JSON.stringify(sentryRelease),
   },
 
   resolve: {
@@ -163,6 +184,7 @@ export default defineConfig({
             org: process.env.SENTRY_ORG,
             project: process.env.SENTRY_PROJECT,
             authToken: process.env.SENTRY_AUTH_TOKEN,
+            release: { name: sentryRelease },
             sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.js.map'] },
           }),
         ]
