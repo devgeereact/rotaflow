@@ -94,6 +94,13 @@ const PricingPage = lazyPage('PricingPage', () => import('@/pages/PricingPage'))
 const ResourcesPage = lazyPage('ResourcesPage', () => import('@/pages/ResourcesPage'));
 const AboutPage = lazyPage('AboutPage', () => import('@/pages/AboutPage'));
 const ContactPage = lazyPage('ContactPage', () => import('@/pages/ContactPage'));
+const PrivacyPage = lazyPage('PrivacyPage', () => import('@/pages/legal/PrivacyPage'));
+const TermsPage = lazyPage('TermsPage', () => import('@/pages/legal/TermsPage'));
+const CookiesPage = lazyPage('CookiesPage', () => import('@/pages/legal/CookiesPage'));
+const AccessibilityPage = lazyPage(
+  'AccessibilityPage',
+  () => import('@/pages/legal/AccessibilityPage'),
+);
 
 const OnboardingPage = lazyPage('OnboardingPage', () => import('@/pages/OnboardingPage'));
 const OnboardingPreviewPage = devPage(
@@ -390,6 +397,10 @@ export function App(): JSX.Element {
                     <Route path="/resources" element={<ResourcesPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/legal/privacy" element={<PrivacyPage />} />
+                    <Route path="/legal/terms" element={<TermsPage />} />
+                    <Route path="/legal/cookies" element={<CookiesPage />} />
+                    <Route path="/legal/accessibility" element={<AccessibilityPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
