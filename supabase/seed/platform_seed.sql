@@ -231,6 +231,22 @@ select
   i.resolution
 from pf_incident i;
 
+-- Same collision this file already guards against for support_cases below:
+-- these references are hardcoded (`INC-0138`..`INC-0145`), not drawn from
+-- `incident_reference_seq` (0021), which also starts at 138. Discovered and
+-- fixed live 2026-08-13 — the first real `declare_incident` call after any
+-- seed run collided outright. `greatest()` for the same reason: never
+-- regress a sequence real usage has since advanced past this seed's range.
+select setval(
+  'public.incident_reference_seq',
+  greatest(
+    (select max(replace(reference, 'INC-', '')::int)
+       from public.incidents where reference like 'INC-%'),
+    (select last_value from public.incident_reference_seq)
+  ),
+  true
+);
+
 -- The timeline. Every incident opens with its impact statement, and a
 -- resolved one closes with its resolution. The two entries a review needs.
 insert into public.incident_updates (id, incident_id, author_id, status, body, created_at)
