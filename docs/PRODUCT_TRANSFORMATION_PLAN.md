@@ -25,22 +25,22 @@ rollout, not a costly rename.
 
 ## 2. Product scorecard
 
-| Area | Score | Assessment |
-| --- | ---: | --- |
-| UX | 7/10 | The core manager/staff journeys and role-specific navigation are strong. The app has too many top-level operational destinations for daily use and lacks validated customer research. |
-| UI | 7/10 | A coherent light-first token system, reusable primitives and an excellent rota-grid direction exist. Consistency debt remains in older arbitrary typography/radius/alpha usages. |
-| Architecture | 8/10 | Static PWA + Supabase + managed services fits the deployment reality well. The service boundary and organisation context are clear. |
-| Performance | 7/10 | Route splitting and PWA caching exist; production build is healthy. Baseline field Web Vitals and real-device offline performance have not been measured. |
-| Accessibility | 7/10 | Semantic components, focus management, keyboard paths and colour-plus-text status states are deliberate. No automated axe suite, keyboard E2E suite or user testing evidence exists. |
-| Security | 8/10 | RLS, CSP, source-map protection, audited sensitive actions and caller-JWT AI access are very good foundations. Independent RLS/security testing and operational secret rotation remain gaps. |
-| Scalability | 7/10 | Multi-tenancy and data isolation are sound. Query performance, load envelopes, retention and operational monitoring need real production validation. |
-| Developer experience | 7/10 | Strict TypeScript, linting, tests and unusually strong written architecture are in place. CI/CD enforcement, component documentation and E2E tests should mature next. |
-| AI readiness | 6/10 | AI is correctly constrained to assisted drafting with deterministic checks and human approval. It needs evaluations, prompt/version observability and explicit user disclosure before being a commercial differentiator. |
-| Brand | 7/10 | The new platform in `docs/BRAND.md` is specific, defensible and well matched to the product. It now needs visual, copy and lifecycle consistency across every customer touchpoint. |
-| Business model | 4/10 | Pricing concepts exist, but live billing, entitlement strategy, support operations and pricing validation do not. Treat the beta as a learning instrument, not a final revenue system. |
-| Documentation | 8/10 | Architecture, schema, hooks, design, deployment, PRD and brand guidance are unusually complete. Customer documentation, policy pages and a single launch runbook are missing. |
-| Legal/compliance | 5/10 | GDPR-oriented data controls and audit records exist, but public Privacy, Terms, Cookie, AI transparency, accessibility and processor documentation are absent. |
-| **Overall maturity** | **7/10** | Suitable for a controlled design-partner beta after the P0 and P1 actions below; not yet ready for broad enterprise claims or paid self-service. |
+| Area                 |    Score | Assessment                                                                                                                                                                                                               |
+| -------------------- | -------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| UX                   |     7/10 | The core manager/staff journeys and role-specific navigation are strong. The app has too many top-level operational destinations for daily use and lacks validated customer research.                                    |
+| UI                   |     7/10 | A coherent light-first token system, reusable primitives and an excellent rota-grid direction exist. Consistency debt remains in older arbitrary typography/radius/alpha usages.                                         |
+| Architecture         |     8/10 | Static PWA + Supabase + managed services fits the deployment reality well. The service boundary and organisation context are clear.                                                                                      |
+| Performance          |     7/10 | Route splitting and PWA caching exist; production build is healthy. Baseline field Web Vitals and real-device offline performance have not been measured.                                                                |
+| Accessibility        |     7/10 | Semantic components, focus management, keyboard paths and colour-plus-text status states are deliberate. No automated axe suite, keyboard E2E suite or user testing evidence exists.                                     |
+| Security             |     8/10 | RLS, CSP, source-map protection, audited sensitive actions and caller-JWT AI access are very good foundations. Independent RLS/security testing and operational secret rotation remain gaps.                             |
+| Scalability          |     7/10 | Multi-tenancy and data isolation are sound. Query performance, load envelopes, retention and operational monitoring need real production validation.                                                                     |
+| Developer experience |     7/10 | Strict TypeScript, linting, tests and unusually strong written architecture are in place. CI/CD enforcement, component documentation and E2E tests should mature next.                                                   |
+| AI readiness         |     6/10 | AI is correctly constrained to assisted drafting with deterministic checks and human approval. It needs evaluations, prompt/version observability and explicit user disclosure before being a commercial differentiator. |
+| Brand                |     7/10 | The new platform in `docs/BRAND.md` is specific, defensible and well matched to the product. It now needs visual, copy and lifecycle consistency across every customer touchpoint.                                       |
+| Business model       |     4/10 | Pricing concepts exist, but live billing, entitlement strategy, support operations and pricing validation do not. Treat the beta as a learning instrument, not a final revenue system.                                   |
+| Documentation        |     8/10 | Architecture, schema, hooks, design, deployment, PRD and brand guidance are unusually complete. Customer documentation, policy pages and a single launch runbook are missing.                                            |
+| Legal/compliance     |     5/10 | GDPR-oriented data controls and audit records exist, but public Privacy, Terms, Cookie, AI transparency, accessibility and processor documentation are absent.                                                           |
+| **Overall maturity** | **7/10** | Suitable for a controlled design-partner beta after the P0 and P1 actions below; not yet ready for broad enterprise claims or paid self-service.                                                                         |
 
 ## 3. What to preserve
 
@@ -117,11 +117,11 @@ retain a dependable record of attendance—even when signal drops.
 
 ### Message hierarchy
 
-| Audience | Problem | Message | CTA |
-| --- | --- | --- | --- |
-| Operations owner | Constant rework, cover gaps and fragmented communication | Plan, publish and supervise work from one dependable operational record. | Join the beta |
-| Rota manager | Last-minute gaps and manual checking | See conflicts, leave, availability and rest gaps before publishing. | Build your first rota |
-| Frontline staff | Unclear, changing shifts and poor connectivity | See your work, request changes and record attendance from your phone—even offline. | View your schedule |
+| Audience         | Problem                                                  | Message                                                                            | CTA                   |
+| ---------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------- |
+| Operations owner | Constant rework, cover gaps and fragmented communication | Plan, publish and supervise work from one dependable operational record.           | Join the beta         |
+| Rota manager     | Last-minute gaps and manual checking                     | See conflicts, leave, availability and rest gaps before publishing.                | Build your first rota |
+| Frontline staff  | Unclear, changing shifts and poor connectivity           | See your work, request changes and record attendance from your phone—even offline. | View your schedule    |
 
 AI message: **“AI helps you draft; managers stay in control.”** It must never be
 described as autonomous scheduling, legal/compliance judgement, or a guarantee
@@ -176,30 +176,30 @@ do not replicate the desktop rail verbatim.
 
 ### Screen and workflow improvements
 
-| Area | Keep | Improve next |
-| --- | --- | --- |
-| Onboarding | Multi-step organisation setup | Show a progress checklist ending at a first published rota; defer optional configuration; add import-assisted team setup only after research. |
-| Dashboard | Coverage and operational queues | Make a single “next best action” dominant by role; eliminate decorative metrics that cannot be acted on. |
-| Rota builder | Grid, conflict detection, manager-controlled publish | Progressive disclosure: filter/context first, inspect conflict, resolve in place, publish review. Add keyboard E2E tests and a clear unsaved/published state. |
-| Schedule | Staff-friendly, calendar export | Promote “what has changed since last seen” and change acknowledgement only if validated by research. |
-| Clock in | Offline queue and GPS support | Make permission rationale, queued state, failed replay and manual fallback unmissable; keep GPS optional where policy requires. |
-| Leave/swaps/overtime | Self-service request and approval workflows | Standardise request cards, status language, chronology, manager decision reasons and notifications. Merge their shared primitives, not their information architecture. |
-| Team/locations | Directory and location/departments | Surface qualifications/document expiry only when it affects a shift; make minimum cover setup a guided manager task. |
-| Timesheets/reports | Export and approval surfaces | Separate operational “today” reporting from payroll-period reconciliation. Do not add charts without a decision each chart supports. |
-| Settings | Role-controlled tabs | Group into Organisation, People & policy, Notifications, Billing and Security. Move low-frequency links to account/help. |
-| Platform console | Audit and support foundations | Keep internal only until each metric is real, has definition, owner, data freshness and drill-down. |
+| Area                 | Keep                                                 | Improve next                                                                                                                                                           |
+| -------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding           | Multi-step organisation setup                        | Show a progress checklist ending at a first published rota; defer optional configuration; add import-assisted team setup only after research.                          |
+| Dashboard            | Coverage and operational queues                      | Make a single “next best action” dominant by role; eliminate decorative metrics that cannot be acted on.                                                               |
+| Rota builder         | Grid, conflict detection, manager-controlled publish | Progressive disclosure: filter/context first, inspect conflict, resolve in place, publish review. Add keyboard E2E tests and a clear unsaved/published state.          |
+| Schedule             | Staff-friendly, calendar export                      | Promote “what has changed since last seen” and change acknowledgement only if validated by research.                                                                   |
+| Clock in             | Offline queue and GPS support                        | Make permission rationale, queued state, failed replay and manual fallback unmissable; keep GPS optional where policy requires.                                        |
+| Leave/swaps/overtime | Self-service request and approval workflows          | Standardise request cards, status language, chronology, manager decision reasons and notifications. Merge their shared primitives, not their information architecture. |
+| Team/locations       | Directory and location/departments                   | Surface qualifications/document expiry only when it affects a shift; make minimum cover setup a guided manager task.                                                   |
+| Timesheets/reports   | Export and approval surfaces                         | Separate operational “today” reporting from payroll-period reconciliation. Do not add charts without a decision each chart supports.                                   |
+| Settings             | Role-controlled tabs                                 | Group into Organisation, People & policy, Notifications, Billing and Security. Move low-frequency links to account/help.                                               |
+| Platform console     | Audit and support foundations                        | Keep internal only until each metric is real, has definition, owner, data freshness and drill-down.                                                                    |
 
 ## 7. Feature disposition
 
-| Disposition | Features | Rationale |
-| --- | --- | --- |
-| Keep | Rota builder, published schedule, availability, leave, swaps, attendance, timesheets, multi-site, offline queue, CSV/ICS, audit logs | These form the differentiated daily workflow. |
-| Improve | Conflict/coverage resolution, mobile clocking, onboarding, notifications, reports, document/qualification signals | Reduce time-to-value and clarify operational risk. |
-| Merge | Shared request/approval UI and notification/event patterns | Consistency and lower maintenance without removing domain nuance. |
-| Automate carefully | Reconnect sync, reminder notifications, rota validation, timesheet roll-up | Deterministic rules provide measurable operational value. |
-| Assist with AI | First-pass rota suggestions and announcement drafting | Existing architecture correctly scopes data and requires human review. |
-| Defer | Autonomous auto-fill, demand forecast, burnout detection, SSO, payroll integrations, live subscriptions, SMS | Valuable but insufficiently validated; each introduces high operational/compliance scope. |
-| Remove/restrict | Customer-facing placeholder analytics and fabricated demo context | A trustworthy operational product cannot present illustrative data as fact. |
+| Disposition        | Features                                                                                                                             | Rationale                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Keep               | Rota builder, published schedule, availability, leave, swaps, attendance, timesheets, multi-site, offline queue, CSV/ICS, audit logs | These form the differentiated daily workflow.                                             |
+| Improve            | Conflict/coverage resolution, mobile clocking, onboarding, notifications, reports, document/qualification signals                    | Reduce time-to-value and clarify operational risk.                                        |
+| Merge              | Shared request/approval UI and notification/event patterns                                                                           | Consistency and lower maintenance without removing domain nuance.                         |
+| Automate carefully | Reconnect sync, reminder notifications, rota validation, timesheet roll-up                                                           | Deterministic rules provide measurable operational value.                                 |
+| Assist with AI     | First-pass rota suggestions and announcement drafting                                                                                | Existing architecture correctly scopes data and requires human review.                    |
+| Defer              | Autonomous auto-fill, demand forecast, burnout detection, SSO, payroll integrations, live subscriptions, SMS                         | Valuable but insufficiently validated; each introduces high operational/compliance scope. |
+| Remove/restrict    | Customer-facing placeholder analytics and fabricated demo context                                                                    | A trustworthy operational product cannot present illustrative data as fact.               |
 
 ## 8. Technical modernisation plan
 
@@ -240,15 +240,15 @@ are closed and evidenced.
 
 ## 10. Implementation roadmap
 
-| Phase | Outcome | Key deliverables | Exit evidence |
-| --- | --- | --- | --- |
-| 0. Brand foundation (1–2 weeks) | One truthful identity everywhere | Approve `docs/BRAND.md`; replace legacy tagline/CTA/copy; logo/favicon audit; legal-link IA; copy inventory | Brand acceptance checklist; no old messaging; stakeholder sign-off |
-| 1. Beta trust (2–3 weeks) | Safe, supportable external beta | P0 legal pages; mailbox/support process; monitoring/alerts; deployed RLS review; mobile/offline UAT | Security/privacy checklist; test-account evidence; support drill |
-| 2. Core-loop polish (3–5 weeks) | Faster first published rota | Role-specific dashboard; onboarding checklist; request/approval pattern; conflict-resolution UX; accessibility fixes | 5 usability sessions; task-success and time baseline |
-| 3. Measurement and hardening (2–4 weeks) | Decisions backed by product evidence | Analytics taxonomy, CI, Playwright/axe, field performance, release process, real admin metrics | Dashboard populated by real events; quality gates enforced |
-| 4. Design-partner beta (6–8 weeks) | Validate wedge and willingness to pay | 5–8 active organisations; weekly research; support and release rhythm; pricing interviews | Activation, retention, reliability and interview thresholds met |
-| 5. Commercial V1 | Repeatable paid value | Entitlements/billing only after pricing validation; onboarding improvements; knowledge base; customer reporting | Paid-pilot conversion and operational readiness review |
-| 6. Expansion | Higher-value integrations and scale | Payroll/SSO/API/localisation and carefully evaluated AI automation | Separate business case and security review per capability |
+| Phase                                    | Outcome                               | Key deliverables                                                                                                     | Exit evidence                                                      |
+| ---------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 0. Brand foundation (1–2 weeks)          | One truthful identity everywhere      | Approve `docs/BRAND.md`; replace legacy tagline/CTA/copy; logo/favicon audit; legal-link IA; copy inventory          | Brand acceptance checklist; no old messaging; stakeholder sign-off |
+| 1. Beta trust (2–3 weeks)                | Safe, supportable external beta       | P0 legal pages; mailbox/support process; monitoring/alerts; deployed RLS review; mobile/offline UAT                  | Security/privacy checklist; test-account evidence; support drill   |
+| 2. Core-loop polish (3–5 weeks)          | Faster first published rota           | Role-specific dashboard; onboarding checklist; request/approval pattern; conflict-resolution UX; accessibility fixes | 5 usability sessions; task-success and time baseline               |
+| 3. Measurement and hardening (2–4 weeks) | Decisions backed by product evidence  | Analytics taxonomy, CI, Playwright/axe, field performance, release process, real admin metrics                       | Dashboard populated by real events; quality gates enforced         |
+| 4. Design-partner beta (6–8 weeks)       | Validate wedge and willingness to pay | 5–8 active organisations; weekly research; support and release rhythm; pricing interviews                            | Activation, retention, reliability and interview thresholds met    |
+| 5. Commercial V1                         | Repeatable paid value                 | Entitlements/billing only after pricing validation; onboarding improvements; knowledge base; customer reporting      | Paid-pilot conversion and operational readiness review             |
+| 6. Expansion                             | Higher-value integrations and scale   | Payroll/SSO/API/localisation and carefully evaluated AI automation                                                   | Separate business case and security review per capability          |
 
 ### Sequencing rules
 
@@ -282,19 +282,19 @@ are closed and evidenced.
 Establish baselines during Phase 3; do not invent targets before observing the
 first design partners.
 
-| Metric | Definition | Decision use |
-| --- | --- | --- |
-| Activation | Organisation creates its first location, invites staff and publishes first rota within 7 days | Tests onboarding and product value |
-| Time to first rota | Median time from organisation creation to first publish | Primary manager-efficiency measure |
-| Rota completion | % of rota sessions resulting in a published rota without unresolved blocking conflicts | Tests builder clarity |
-| Staff adoption | % of invited staff who view a schedule within 7 days; weekly active staff | Tests distribution and staff utility |
-| Attendance reliability | Offline writes queued, sync success, permanent failure and time-to-sync | Protects the core differentiator |
-| Workflow completion | Leave, swap and overtime request completion/approval time | Finds process friction |
-| AI quality | Suggestion acceptance, edit rate, rejected/invalid rate and manager-rated usefulness | Proves AI value rather than novelty |
-| Accessibility | Automated violation count plus manual keyboard/screen-reader critical-path pass rate | Release gate, not vanity metric |
-| Performance | p75 LCP/INP/CLS, route load and error-free session rate | Field experience and regression detection |
-| Satisfaction/retention | CSAT after support, manager NPS/interviews, 30/60/90-day active-org retention | Product-market fit signal |
-| Commercial | Design-partner-to-paid-pilot conversion, willingness-to-pay range, support cost per org | Packaging and business-model validation |
+| Metric                 | Definition                                                                                    | Decision use                              |
+| ---------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Activation             | Organisation creates its first location, invites staff and publishes first rota within 7 days | Tests onboarding and product value        |
+| Time to first rota     | Median time from organisation creation to first publish                                       | Primary manager-efficiency measure        |
+| Rota completion        | % of rota sessions resulting in a published rota without unresolved blocking conflicts        | Tests builder clarity                     |
+| Staff adoption         | % of invited staff who view a schedule within 7 days; weekly active staff                     | Tests distribution and staff utility      |
+| Attendance reliability | Offline writes queued, sync success, permanent failure and time-to-sync                       | Protects the core differentiator          |
+| Workflow completion    | Leave, swap and overtime request completion/approval time                                     | Finds process friction                    |
+| AI quality             | Suggestion acceptance, edit rate, rejected/invalid rate and manager-rated usefulness          | Proves AI value rather than novelty       |
+| Accessibility          | Automated violation count plus manual keyboard/screen-reader critical-path pass rate          | Release gate, not vanity metric           |
+| Performance            | p75 LCP/INP/CLS, route load and error-free session rate                                       | Field experience and regression detection |
+| Satisfaction/retention | CSAT after support, manager NPS/interviews, 30/60/90-day active-org retention                 | Product-market fit signal                 |
+| Commercial             | Design-partner-to-paid-pilot conversion, willingness-to-pay range, support cost per org       | Packaging and business-model validation   |
 
 ## 13. Immediate next action
 

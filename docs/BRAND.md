@@ -15,12 +15,12 @@ connectivity is poor.
 
 ## Message hierarchy
 
-| Level | Approved message |
-| --- | --- |
-| Tagline | **Scheduling certainty for every shift.** |
-| Value proposition | Build rotas with fewer surprises, keep staff informed, and retain a dependable record of attendance—even when the signal drops. |
-| Proof themes | Offline attendance queue; conflict, availability and rest-gap checks; multi-site scheduling; leave, swaps, timesheets and reporting in one product. |
-| AI position | AI helps a manager review and draft a rota; the manager stays in control. |
+| Level             | Approved message                                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tagline           | **Scheduling certainty for every shift.**                                                                                                           |
+| Value proposition | Build rotas with fewer surprises, keep staff informed, and retain a dependable record of attendance—even when the signal drops.                     |
+| Proof themes      | Offline attendance queue; conflict, availability and rest-gap checks; multi-site scheduling; leave, swaps, timesheets and reporting in one product. |
+| AI position       | AI helps a manager review and draft a rota; the manager stays in control.                                                                           |
 
 ## Voice
 
