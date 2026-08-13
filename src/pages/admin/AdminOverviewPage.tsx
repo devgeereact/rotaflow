@@ -23,10 +23,8 @@ import { sessionStatus, type SupportAccessSession } from '@/lib/supportAccess';
 import { monthlyGrowth } from '@/lib/platformOverview';
 import {
   demoChurnTrend,
-  DEMO_PUBLISHED_ROTAS_TREND,
   DEMO_SECTIONS,
   DEMO_SERVICES,
-  DEMO_USERS_TREND,
   type DemoActivityTone,
   type DemoServiceState,
 } from '@/lib/adminOverviewDemo';
@@ -134,19 +132,19 @@ const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
  *
  * ## Which figures are real
  *
- * Organisation counts, the twelve-month growth series, memberships,
- * subscriptions, published rotas, open support-access sessions and the audit
- * feed all come from the database.
+ * Organisation counts, the twelve-month growth series, total users, memberships,
+ * subscriptions, revenue and the plan mix, published rotas, the support queue,
+ * open support-access sessions and the audit feed all come from the database.
  *
  * ## Which are not
  *
- * Active users today, revenue, the named plan tiers, organisation health,
- * per-service uptime history and support cases are **placeholder values** from
- * `src/lib/adminOverviewDemo.ts`, at the owner's request, so the screen can be
- * finished to its intended shape before the schema can supply them. Every one
- * of them is a metric this deployment genuinely cannot compute. The reasons
- * are recorded in that file, alongside how to remove it. The notice at the foot
- * of this screen names them, so nobody reads a placeholder as a measurement.
+ * Churn on the growth chart and the per-service status list are
+ * **placeholder values** from `src/lib/adminOverviewDemo.ts`: nothing records
+ * the month a tenant left, and a browser cannot observe another user's service
+ * latency. The reasons are recorded in that file, alongside how to remove them.
+ * The notice at the foot of this screen names them, so nobody reads a
+ * placeholder as a measurement — every stat tile on this page shows only real
+ * figures, with no invented trend line or comparison hidden behind one.
  */
 export function AdminOverviewPage(): JSX.Element {
   const [data, setData] = useState<Snapshot | null>(null);
@@ -300,7 +298,7 @@ export function AdminOverviewPage(): JSX.Element {
               value={data.organisations.length.toLocaleString('en-GB')}
               hint={
                 <>
-                  <span className="font-semibold text-success">
+                  <span className="font-semibold text-success-ink">
                     +{derived.newThisMonth}
                   </span>{' '}
                   this month
@@ -323,7 +321,6 @@ export function AdminOverviewPage(): JSX.Element {
               value={data.profiles.length.toLocaleString('en-GB')}
               hint={`${data.profiles.filter((p) => p.is_platform_admin).length} platform administrators`}
               to="/admin/users"
-              chart={<Sparkline values={DEMO_USERS_TREND} />}
             />
             <StatTile
               label="Tenants active today"
@@ -339,7 +336,6 @@ export function AdminOverviewPage(): JSX.Element {
               label="Published rotas"
               value={data.publishedRotas.toLocaleString('en-GB')}
               hint="Across every tenant"
-              chart={<Sparkline values={DEMO_PUBLISHED_ROTAS_TREND} colour="#1EA06B" />}
             />
             <StatTile
               label="Monthly recurring revenue"

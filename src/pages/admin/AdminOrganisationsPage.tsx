@@ -29,7 +29,7 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
 import { healthBreakdown } from '@/lib/tenantHealth';
 import { downloadCsv } from '@/lib/csv';
-import { demoOrgFacts, DEMO_ORGS_NEW_CHANGE } from '@/lib/adminOverviewDemo';
+import { demoOrgFacts } from '@/lib/adminOverviewDemo';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, OrganisationStatus, Subscription } from '@/types';
 
@@ -120,13 +120,25 @@ export function AdminOrganisationsPage(): JSX.Element {
     if (!organisations) return null;
     const byStatus = (s: OrganisationStatus): number =>
       organisations.filter((o) => o.status === s).length;
-    const growth = monthlyGrowth(organisations, new Date(), 1);
+    const growth = monthlyGrowth(organisations, new Date(), 2);
+    const thisMonth = growth[growth.length - 1]?.created ?? 0;
+    const lastMonth = growth[growth.length - 2]?.created ?? 0;
     return {
       total: organisations.length,
       active: byStatus('active'),
       suspended: byStatus('suspended'),
       archived: byStatus('archived'),
-      newThisMonth: growth[0]?.created ?? 0,
+      newThisMonth: thisMonth,
+      // Real, not `DEMO_ORGS_NEW_CHANGE`: both months come from the same
+      // `created_at` column the growth chart on `/admin` reads, so this and
+      // that screen cannot disagree. Nothing to compare against when last
+      // month had zero organisations, so the hint says so rather than /0.
+      newThisMonthChange:
+        lastMonth === 0
+          ? thisMonth > 0
+            ? 'No organisations last month'
+            : null
+          : `${thisMonth >= lastMonth ? '+' : ''}${(((thisMonth - lastMonth) / lastMonth) * 100).toFixed(0)}% vs last month`,
       plans: [...new Set(organisations.map((o) => planOf(o)))].sort(),
       // From `subscriptions.status` and `organisations.last_activity_at`, the
       // same two columns the Overview's health bands read, so the two screens
@@ -426,7 +438,13 @@ export function AdminOrganisationsPage(): JSX.Element {
               label="New this month"
               value={summary.newThisMonth}
               hint={
-                <span className="font-semibold text-success">{DEMO_ORGS_NEW_CHANGE}</span>
+                summary.newThisMonthChange ? (
+                  <span className="font-semibold text-success">
+                    {summary.newThisMonthChange}
+                  </span>
+                ) : (
+                  'No prior month to compare'
+                )
               }
             />
           </TileGrid>

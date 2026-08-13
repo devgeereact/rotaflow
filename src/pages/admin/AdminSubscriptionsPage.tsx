@@ -460,9 +460,12 @@ export function AdminSubscriptionsPage(): JSX.Element {
             </p>
             <p>
               Churn is not shown: nothing records the month an organisation left, so a
-              rate would be a guess. The Usage column is still a placeholder, no plan
-              carries a seat or location cap anywhere in the schema, so there is no
-              ceiling to measure against.
+              rate would be a guess. In the table, <strong>Cycle</strong>,{' '}
+              <strong>Value</strong> and <strong>Payment</strong> are also placeholders —
+              no `subscriptions` row carries an amount, a billing interval or a payment
+              state, because no payment provider is connected. <strong>Usage</strong> is
+              one too: no plan carries a seat or location cap anywhere in the schema, so
+              there is no ceiling to measure against.
             </p>
           </Callout>
 
