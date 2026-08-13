@@ -59,15 +59,21 @@ or an Inngest cron) is unstarted work, not a hidden one-line fix.
 `objection` — as a case-managed workflow in `/admin/gdpr`, not an automated
 self-service flow. What each type actually does today:
 
-- **Erasure**, real and callable: `anonymize_staff_member` (migration `0011`)
-  scrubs identity columns on `staff_profiles` and hard-deletes
-  `emergency_contacts`/`documents`. It deliberately leaves
-  `shifts`/`clock_events`/`leave_requests`/`shift_swaps`/`timesheets` intact
-  (now pointing at an anonymised "Deleted Member"), so payroll history stays
-  consistent for UK retention requirements. It does not touch `auth.users`
-  (needs the Auth Admin API, not yet wired to this flow) and does not delete
-  the file behind `documents.file_url` on ImageKit, only the database row —
-  both limits are in the migration's own header.
+- **Erasure**, real, callable, and live-verified 2026-08-13 (previously only
+  read from source): `anonymize_staff_member` (migration `0011`), called
+  end-to-end as a real org owner against a real demo staff record. Before:
+  a named person, a phone number, a payroll ID, 85 shifts, 1 emergency
+  contact, 5 documents. After: `first_name`/`last_name` → "Deleted"/"Member",
+  `phone`/`photo_url`/`payroll_id` → null, `active` → false, all 85 shifts
+  untouched, `emergency_contacts` and `documents` both at 0, and a real
+  `audit_logs` row (`gdpr_anonymize`) recording who did it and when. It
+  deliberately leaves `shifts`/`clock_events`/`leave_requests`/`shift_swaps`/
+  `timesheets` intact (now pointing at the anonymised "Deleted Member"), so
+  payroll history stays consistent for UK retention requirements. It does
+  not touch `auth.users` (needs the Auth Admin API, not yet wired to this
+  flow) and does not delete the file behind `documents.file_url` on
+  ImageKit, only the database row — both limits are in the migration's own
+  header, and neither was contradicted by the live test.
 - **Access / portability**: no one-click export exists. Fulfilling one today
   means a platform admin manually querying and exporting the relevant tables
   (the console's existing per-table CSV export, `src/lib/csv.ts`, covers the
