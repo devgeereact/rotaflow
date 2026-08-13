@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
-import { CONTACT_EMAIL, SECTORS } from '@/lib/marketing';
+import { CONTACT_EMAIL, PRIMARY_CTA, SECTORS } from '@/lib/marketing';
 import { cn } from '@/lib/utils';
 
 /**
@@ -167,7 +167,7 @@ export function ContactPage(): JSX.Element {
                   send there and it reaches us. If nothing opened, email us directly at{' '}
                   <a
                     href={`mailto:${CONTACT_EMAIL}`}
-                    className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     {CONTACT_EMAIL}
                   </a>
@@ -184,7 +184,7 @@ export function ContactPage(): JSX.Element {
                     Write another message
                   </Button>
                   <Link to="/signup">
-                    <Button className="w-full sm:w-auto">Start free trial</Button>
+                    <Button className="w-full sm:w-auto">{PRIMARY_CTA}</Button>
                   </Link>
                 </div>
               </div>
@@ -332,7 +332,7 @@ export function ContactPage(): JSX.Element {
                 Prefer your own email client? Write to{' '}
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
-                  className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {CONTACT_EMAIL}
                 </a>
@@ -353,7 +353,7 @@ export function ContactPage(): JSX.Element {
               </p>
               <Link to="/signup" className="mt-4 block">
                 <Button variant="secondary" className="w-full">
-                  Start free trial
+                  {PRIMARY_CTA}
                 </Button>
               </Link>
             </Card>

@@ -222,7 +222,7 @@ export function ManagerSchedule({
           value={clockedIn}
           hint={
             notYetClockedIn > 0 ? (
-              <span className="text-danger">{notYetClockedIn} not yet</span>
+              <span className="text-danger-ink">{notYetClockedIn} not yet</span>
             ) : undefined
           }
           to="/app/timesheets"
@@ -236,7 +236,7 @@ export function ManagerSchedule({
             weekly?.rotaStatus === 'published' ? (
               <span className="text-success">staff notified</span>
             ) : (
-              <span className="text-danger">not visible to staff</span>
+              <span className="text-danger-ink">not visible to staff</span>
             )
           }
         />

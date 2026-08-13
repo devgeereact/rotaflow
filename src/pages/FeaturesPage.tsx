@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
 import { BenefitGrid } from '@/components/marketing/BenefitGrid';
 import { FinalCta } from '@/components/marketing/FinalCta';
+import { PRIMARY_CTA } from '@/lib/marketing';
 
 /**
  * `/features`. The product tour.
@@ -121,7 +122,7 @@ export function FeaturesPage(): JSX.Element {
       >
         <Link to="/signup">
           <Button size="lg">
-            Start free trial
+            {PRIMARY_CTA}
             <ArrowRight size={18} aria-hidden="true" />
           </Button>
         </Link>

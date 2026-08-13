@@ -131,8 +131,8 @@ const BUILD_STATUS: readonly StatusGroup[] = [
 ];
 
 const STATE_STYLE: Record<StatusGroup['state'], { dot: string; label: string }> = {
-  built: { dot: 'bg-success', label: 'text-success' },
-  partial: { dot: 'bg-warning', label: 'text-warning' },
+  built: { dot: 'bg-success', label: 'text-success-ink' },
+  partial: { dot: 'bg-warning', label: 'text-warning-ink' },
   planned: { dot: 'bg-content-muted', label: 'text-content-muted' },
 };
 
@@ -259,7 +259,7 @@ export function ResourcesPage(): JSX.Element {
               is no ticket queue and no chatbot, just{' '}
               <Link
                 to="/contact"
-                className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 get in touch
               </Link>{' '}

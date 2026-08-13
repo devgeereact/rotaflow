@@ -13,9 +13,13 @@ import { BrandMark } from '@/components/ui/BrandMark';
  * `navigationTargets.test.ts` asserts every link in `FOOTER_COLUMNS` resolves
  * so this cannot quietly rot back into pointing at 404s.
  *
- * Legal links are deliberately absent rather than stubbed: a "Privacy" link to
- * a page that does not exist is worse for a product handling staff PII under
- * UK GDPR than no link at all. They go in with the documents.
+ * Legal links now point at real routes under `/legal/*`, not stubs: each one
+ * renders a page that states plainly it is a placeholder pending UK-counsel
+ * review, with a direct way to ask a question in the meantime (see
+ * `LegalNotice`). That was the bar the previous version of this comment set —
+ * no link to a page that does not exist — and it is met without waiting on
+ * final legal text, which is tracked separately in
+ * docs/PRODUCT_TRANSFORMATION_PLAN.md P0 #1.
  */
 export function PublicFooter(): JSX.Element {
   return (
@@ -26,7 +30,7 @@ export function PublicFooter(): JSX.Element {
             <Link to="/" className="flex items-center gap-2">
               <BrandMark label={null} className="h-8 w-8" />
               <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-                Rota<span className="text-primary">Flow</span>
+                Rota<span className="text-primary-ink">Flow</span>
               </span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-content-muted dark:text-content-muted-dark">

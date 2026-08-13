@@ -51,11 +51,14 @@ export function ShiftPatternLegend({
         className={cn(
           'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
           activeId === 'all'
-            ? 'border-primary bg-primary/10 text-primary'
+            ? 'border-primary bg-primary/10 text-primary-ink'
             : 'border-surface-border text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:text-content-dark',
         )}
       >
-        All <span className="tabular-nums opacity-70">({total})</span>
+        {/* Inherits the button's own colour rather than a flat muted one:
+            when active that's `text-primary-ink` against `bg-primary/10`,
+            and `text-content-muted` fails there at 4.26:1. */}
+        All <span className="tabular-nums">({total})</span>
       </button>
 
       {shiftTypes.map((type) => {
@@ -71,7 +74,7 @@ export function ShiftPatternLegend({
             className={cn(
               'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
               active
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'border-primary bg-primary/10 text-primary-ink'
                 : count === 0
                   ? 'border-surface-border text-content-muted/60 dark:border-surface-border-dark dark:text-content-muted-dark/60'
                   : 'border-surface-border text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark',
@@ -85,10 +88,15 @@ export function ShiftPatternLegend({
               )}
             />
             {type.name}
-            <span className="font-mono text-[0.65rem] opacity-70">
+            {/* Inherits the button's own colour, same reasoning as the "All"
+                count above — a flat muted colour fails when the button is
+                active (`text-primary-ink` on `bg-primary/10`), and opacity
+                on top of an inherited colour is the exact bug this whole
+                pass has been fixing elsewhere. */}
+            <span className="font-mono text-[0.65rem]">
               {hhmm(type.default_start)}, {hhmm(type.default_end)}
             </span>
-            <span className="tabular-nums opacity-60">({count})</span>
+            <span className="tabular-nums">({count})</span>
           </button>
         );
       })}

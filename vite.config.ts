@@ -62,7 +62,7 @@ export default defineConfig({
         name: 'RotaFlow',
         short_name: 'RotaFlow',
         description:
-          'Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.',
+          'UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops.',
         theme_color: '#3B6FE0',
         background_color: '#FFFFFF',
         display: 'standalone',

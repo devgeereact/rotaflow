@@ -112,7 +112,7 @@ export function ManagerTimesheets({
           value={tiles.varianceLabel}
           hint={
             tiles.varianceIsShort ? (
-              <span className="text-danger">below plan</span>
+              <span className="text-danger-ink">below plan</span>
             ) : (
               <span className="text-success">on or above plan</span>
             )

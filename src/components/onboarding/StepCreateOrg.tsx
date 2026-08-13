@@ -238,7 +238,17 @@ export function StepCreateOrg({
                   <span className="block text-sm font-medium text-ink dark:text-content-dark">
                     {option.label}
                   </span>
-                  <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                  {/* Not a flat `text-content-muted`: selected cards sit on
+                      `bg-brand-wash`, where the muted token reads at 4.0:1,
+                      under the 4.5:1 minimum. Full ink there instead. */}
+                  <span
+                    className={cn(
+                      'block text-xs',
+                      selected
+                        ? 'text-content dark:text-content-dark'
+                        : 'text-content-muted dark:text-content-muted-dark',
+                    )}
+                  >
                     {option.hint}
                   </span>
                 </label>
@@ -249,7 +259,9 @@ export function StepCreateOrg({
 
         <div className="flex gap-3 rounded-xl border border-brand/20 bg-brand-wash p-4 dark:bg-brand-deep/10">
           <Info size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          {/* Not `text-content-muted`: on this box's `bg-brand-wash` it reads
+              at 4.0:1, under the 4.5:1 minimum. */}
+          <p className="text-sm text-content dark:text-content-dark">
             You can change these details and add more information later from organisation
             settings.
           </p>

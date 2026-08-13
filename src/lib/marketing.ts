@@ -15,6 +15,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
+import { BRAND } from '@/lib/brand';
 
 /**
  * Every word of copy on the public marketing site, in one place.
@@ -57,33 +58,38 @@ export const MARKETING_NAV: readonly NavLinkSpec[] = [
   { label: 'Contact', to: '/contact' },
 ] as const;
 
-export const TAGLINE = 'Smarter Rota. Stronger Teams.';
+export const TAGLINE = BRAND.tagline;
+export const PRIMARY_CTA = 'Join the beta';
 
 /**
  * Where `/contact` sends enquiries.
  *
- * ⚠️ **This mailbox must exist and be monitored before launch.** The contact
- * form composes a message to it; if nothing delivers here, every enquiry the
- * site generates is lost silently, which is worse than having no form.
+ * ⚠️ Was `info@rota.gakinz.com` until 2026-08-13, verified live to be
+ * undeliverable: `dig MX rota.gakinz.com` returns nothing, and the
+ * subdomain's A record points at Cloudflare's proxy, not a mail server —
+ * every enquiry the form ever generated was silently unreachable. `gakinz.com`
+ * (no subdomain) has real MX (`mx1-3-hosting.jellyfish.systems`) and is
+ * already the address used for commit signing (CLAUDE.md §3), so it is a
+ * real, monitored mailbox rather than a guess.
  *
- * A personal address is deliberately not used. Publishing one on a live
- * marketing site is a privacy decision for the owner, not a default. Set up
- * `info@` as an alias in cPanel (or change this constant) as part of launch.
+ * If a `rota.gakinz.com`-branded address is wanted later, that needs an MX
+ * record added in Cloudflare DNS pointing at the same mail host `gakinz.com`
+ * uses — a DNS change outside what this codebase can fix, and worth
+ * confirming actually delivers (not just resolves) before switching back.
  */
-export const CONTACT_EMAIL = 'info@rota.gakinz.com';
+export const CONTACT_EMAIL = 'info@gakinz.com';
 
 export const HERO = {
-  headline: ['Smart Schedules.', 'Stronger Teams.', 'Better Business.'],
-  body:
-    'RotaFlow brings scheduling, staff management, attendance, leave, shift swaps, ' +
-    'reporting and workforce operations together in one easy-to-use platform.',
+  eyebrow: 'UK-first workforce scheduling',
+  headline: ['Every shift covered.', 'Every team aligned.', 'Even offline.'],
+  body: 'Build dependable rotas, give staff a clear view of their work, and keep attendance moving when the connection drops.',
   /**
    * The three trust points under the hero CTAs. These are product facts, not
    * marketing claims: there is genuinely no card capture anywhere in the signup
    * flow (`/signup` collects name, email, org and password. Nothing else) and
    * no billing provider is integrated, so nothing can charge anyone.
    */
-  trust: ['14-day free trial', 'No credit card required', 'Cancel anytime'],
+  trust: ['Early access beta', 'No credit card required', 'No payment setup'],
 } as const;
 
 export interface Benefit {
@@ -137,6 +143,38 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
     icon: Download,
     title: 'Exports and calendar sync',
     body: 'Export any table to CSV, and let staff subscribe to their own schedule from Apple Calendar, Google Calendar or Outlook.',
+  },
+] as const;
+
+/**
+ * The four-item feature list beside the Login and Signup forms
+ * (`AuthSplitLayout`). Was hardcoded identically in both pages until it was
+ * found here, still claiming "Compliant & Secure — Stay compliant with
+ * confidence": an unsubstantiated compliance claim on a public,
+ * unauthenticated page, exactly what `docs/BRAND.md`'s evidence boundary and
+ * the transformation plan's legal guardrail both forbid. These four instead
+ * name what the product actually does, matching `PRODUCT_BENEFITS`' standard.
+ */
+export const AUTH_FEATURES: readonly Benefit[] = [
+  {
+    icon: CalendarDays,
+    title: 'Rota building',
+    body: 'Build a week on a staff-by-day grid, with conflicts and rest breaches flagged before you publish.',
+  },
+  {
+    icon: Users,
+    title: 'Staff management',
+    body: 'One directory for every person, role and department across every site.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Tenant-isolated data',
+    body: "Every organisation's data is separated at the database level by row-level security, not an application-code filter.",
+  },
+  {
+    icon: BarChart3,
+    title: 'Reporting',
+    body: 'Coverage, hours, attendance and overtime, filtered by site and exportable for payroll.',
   },
 ] as const;
 
@@ -336,7 +374,7 @@ export const PLANS: readonly Plan[] = [
       'GPS clock-in with offline queue',
       'CSV export',
     ],
-    cta: 'Start free',
+    cta: PRIMARY_CTA,
   },
   {
     name: 'Team',
@@ -352,7 +390,7 @@ export const PLANS: readonly Plan[] = [
       'Announcements',
       'Email support',
     ],
-    cta: 'Start free trial',
+    cta: PRIMARY_CTA,
     featured: true,
   },
   {
@@ -389,7 +427,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'Features', to: '/features' },
       { label: 'Pricing', to: '/pricing' },
-      { label: 'Start free trial', to: '/signup' },
+      { label: PRIMARY_CTA, to: '/signup' },
       { label: 'Sign in', to: '/login' },
     ],
   },
@@ -415,6 +453,15 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'About', to: '/about' },
       { label: 'Contact', to: '/contact' },
+    ],
+  },
+  {
+    heading: 'Legal',
+    links: [
+      { label: 'Privacy', to: '/legal/privacy' },
+      { label: 'Terms', to: '/legal/terms' },
+      { label: 'Cookies', to: '/legal/cookies' },
+      { label: 'Accessibility', to: '/legal/accessibility' },
     ],
   },
 ] as const;

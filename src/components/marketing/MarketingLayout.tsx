@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { PublicNav } from '@/components/marketing/PublicNav';
 import { PublicFooter } from '@/components/marketing/PublicFooter';
+import { BRAND } from '@/lib/brand';
 
 interface MarketingLayoutProps {
   /** Sets `document.title`. Every marketing route is separately linkable and shareable. */
@@ -19,7 +20,7 @@ interface MarketingLayoutProps {
 export function MarketingLayout({ title, children }: MarketingLayoutProps): JSX.Element {
   useEffect(() => {
     const previous = document.title;
-    document.title = `${title} · RotaFlow`;
+    document.title = `${title} · ${BRAND.name}`;
     return () => {
       document.title = previous;
     };

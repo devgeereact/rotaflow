@@ -53,7 +53,7 @@ export function PricingPage(): JSX.Element {
       <PageHero
         eyebrow="Pricing"
         heading="Simple pricing, per person, per month"
-        body="Start free while RotaFlow is in beta. No card, no sales call, and nothing to cancel."
+        body="Join the beta with no card, no sales call and no payment setup."
       />
 
       <section className="mx-auto max-w-6xl px-6 py-16">
@@ -88,7 +88,7 @@ export function PricingPage(): JSX.Element {
               */}
               <span
                 aria-hidden={!featured}
-                className="mb-4 h-6 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase leading-4 tracking-wide text-primary empty:bg-transparent"
+                className="mb-4 h-6 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase leading-4 tracking-wide text-primary-ink empty:bg-transparent"
               >
                 {featured ? 'Most popular' : ''}
               </span>
@@ -161,7 +161,7 @@ export function PricingPage(): JSX.Element {
             Still deciding?{' '}
             <Link
               to="/contact"
-              className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Ask us anything
             </Link>

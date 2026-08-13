@@ -1,50 +1,19 @@
 import { useState, type ChangeEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-  BarChart3,
-  Calendar,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  ShieldCheck,
-  Users,
-} from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { authErrorMessage } from '@/lib/authErrors';
 import { isValidEmail } from '@/lib/email';
 import { env, type OAuthProvider } from '@/lib/env';
 import { appUrlFor } from '@/lib/appOrigin';
+import { AUTH_FEATURES } from '@/lib/marketing';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { AuthSplitLayout, type AuthFeature } from '@/components/auth/AuthSplitLayout';
+import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
 import { EmailSuggestion } from '@/components/auth/EmailSuggestion';
-
-const FEATURES: AuthFeature[] = [
-  {
-    icon: Calendar,
-    title: 'Smart Scheduling',
-    body: 'Create balanced rotas in minutes.',
-  },
-  {
-    icon: Users,
-    title: 'Happy Teams',
-    body: 'Empower your team and improve satisfaction.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Compliant & Secure',
-    body: 'Stay compliant with confidence.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Data Driven',
-    body: 'Make better decisions with real-time insights.',
-  },
-];
 
 /** `/login` (design/signin.png). */
 export function LoginPage(): JSX.Element {
@@ -142,12 +111,12 @@ export function LoginPage(): JSX.Element {
 
   return (
     <AuthSplitLayout
-      headline="Smarter scheduling."
-      headlineAccent="Happy teams."
-      description="Plan shifts, manage your workforce and keep your team connected. All in one place."
-      features={FEATURES}
+      headline="Scheduling certainty"
+      headlineAccent="for every shift."
+      description="Build rotas with fewer surprises, keep staff informed, and keep a dependable attendance record — even when the signal drops."
+      features={AUTH_FEATURES}
     >
-      <div className="w-full max-w-2xl animate-fade-up rounded-2xl border border-surface-border bg-surface p-9 shadow dark:border-surface-border-dark dark:bg-surface-dark md:p-11">
+      <div className="w-full max-w-2xl animate-fade-up motion-reduce:animate-none rounded-2xl border border-surface-border bg-surface p-9 shadow dark:border-surface-border-dark dark:bg-surface-dark md:p-11">
         <h1 className="mb-1 font-display text-3xl font-bold text-ink dark:text-content-dark">
           Welcome back
         </h1>
@@ -195,7 +164,7 @@ export function LoginPage(): JSX.Element {
         <p className="mb-6 text-right text-sm">
           <Link
             to="/forgot-password"
-            className="font-medium text-brand hover:underline dark:text-brand-light"
+            className="font-medium text-primary hover:underline"
           >
             Forgot password?
           </Link>
@@ -230,7 +199,7 @@ export function LoginPage(): JSX.Element {
           type="button"
           disabled={busy}
           onClick={() => void signInWithMagicLink()}
-          className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-brand transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:text-brand-light dark:hover:bg-surface-subtle-dark"
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-primary transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
         >
           <Mail size={18} aria-hidden="true" />
           Sign in with magic link
@@ -252,10 +221,7 @@ export function LoginPage(): JSX.Element {
 
         <p className="mt-6 text-center text-sm text-ink-muted dark:text-content-muted-dark">
           Don&rsquo;t have an account?{' '}
-          <Link
-            to="/signup"
-            className="font-medium text-brand hover:underline dark:text-brand-light"
-          >
+          <Link to="/signup" className="font-medium text-primary hover:underline">
             Sign up
           </Link>
         </p>

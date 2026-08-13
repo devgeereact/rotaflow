@@ -1630,6 +1630,7 @@ export function RotaBuilderPage(): JSX.Element {
         {/* ---- Filters row ---- */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Select
+            aria-label="Filter by location"
             className="w-auto py-2"
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
@@ -1642,6 +1643,7 @@ export function RotaBuilderPage(): JSX.Element {
             ))}
           </Select>
           <Select
+            aria-label="Filter by department"
             className="w-auto py-2"
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
@@ -1654,6 +1656,7 @@ export function RotaBuilderPage(): JSX.Element {
             ))}
           </Select>
           <Select
+            aria-label="Filter by shift type"
             className="w-auto py-2"
             value={shiftTypeFilter}
             onChange={(e) => setShiftTypeFilter(e.target.value)}
@@ -1858,11 +1861,11 @@ export function RotaBuilderPage(): JSX.Element {
               </h2>
               <div className="flex items-center gap-2">
                 {criticalWarnings.length > 0 ? (
-                  <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger">
+                  <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger-ink">
                     {criticalWarnings.length} blocking
                   </span>
                 ) : (
-                  <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
+                  <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success-ink">
                     None blocking
                   </span>
                 )}

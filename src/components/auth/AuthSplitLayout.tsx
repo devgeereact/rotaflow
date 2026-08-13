@@ -17,7 +17,7 @@ interface AuthSplitLayoutProps {
   /** Second headline line, set in brand blue, e.g. "Build a stronger team." */
   headlineAccent: string;
   description: string;
-  features: AuthFeature[];
+  features: readonly AuthFeature[];
   children: ReactNode;
 }
 

@@ -94,7 +94,11 @@ export function ShiftChip({
         <span className="block truncate text-[0.68rem] font-semibold leading-4 tracking-tight tabular-nums">
           {startTime}, {endTime}
         </span>
-        <span className="block truncate text-[0.63rem] font-medium leading-4 opacity-80">
+        {/* Not `opacity-80`: the shift-palette `-fg` tokens are already
+            calibrated to read against their own tint at full opacity (see
+            `shiftPalette.ts`); fading it on top dropped several colours
+            under the 4.5:1 minimum. */}
+        <span className="block truncate text-[0.63rem] font-medium leading-4">
           {shiftType?.name ?? 'Shift'}
         </span>
         {timeState === 'live' && (

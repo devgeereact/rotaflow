@@ -10,7 +10,7 @@ import { StatsBand } from '@/components/marketing/StatsBand';
 import { WhyChooseBand } from '@/components/marketing/WhyChooseBand';
 import { TestimonialBand } from '@/components/marketing/TestimonialBand';
 import { FinalCta } from '@/components/marketing/FinalCta';
-import { HERO, TAGLINE } from '@/lib/marketing';
+import { HERO, PRIMARY_CTA, TAGLINE } from '@/lib/marketing';
 
 /**
  * `/`. The public marketing homepage.
@@ -41,7 +41,7 @@ export function HomePage(): JSX.Element {
         */}
         <div className="mx-auto max-w-3xl animate-fade-up px-6 text-center motion-reduce:animate-none">
           <p className="mb-5 inline-block rounded-full border border-surface-border bg-surface px-3.5 py-1.5 text-sm text-content-muted dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark">
-            {TAGLINE}
+            {HERO.eyebrow}
           </p>
           <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-content sm:text-5xl md:text-6xl dark:text-content-dark">
             {HERO.headline.map((line, i) => (
@@ -70,7 +70,7 @@ export function HomePage(): JSX.Element {
               <>
                 <Link to="/signup">
                   <Button size="lg">
-                    Start free trial
+                    {PRIMARY_CTA}
                     <ArrowRight size={18} aria-hidden="true" />
                   </Button>
                 </Link>

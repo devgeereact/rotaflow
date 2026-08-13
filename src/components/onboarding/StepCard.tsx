@@ -20,7 +20,7 @@ export function StepCard({
   footer,
 }: StepCardProps): JSX.Element {
   return (
-    <Card className="animate-fade-up p-6 shadow md:p-8">
+    <Card className="animate-fade-up motion-reduce:animate-none p-6 shadow md:p-8">
       <div className="mb-6 flex items-start gap-4">
         <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-brand-wash text-brand dark:bg-brand-deep/20 dark:text-brand-light">
           <Icon size={26} aria-hidden="true" />
