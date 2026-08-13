@@ -36,6 +36,8 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "@sentry/vite-plugin": "^5.4.0",
     "@types/node": "^26.1.2",
     "@types/react": "^18.3.18",

@@ -96,3 +96,51 @@ jobs:
           test -f dist/sw.js || { echo "::error::dist/sw.js missing. The PWA build produced no service worker"; ls -R dist | head -40; exit 1; }
           test -f dist/manifest.webmanifest || { echo "::error::dist/manifest.webmanifest missing"; exit 1; }
           echo "✅ sw.js + manifest.webmanifest present"
+
+      # High/critical only: low/moderate in a 700-package tree is mostly
+      # transitive dev-tooling noise that would make this gate cry wolf and
+      # get ignored. `audit-level=high` still fails the build the day
+      # something in the dependency tree is actually dangerous.
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+  # Separate job, not a step in `verify` above: needs Playwright's browser
+  # binary (a real download, not just npm packages) and a live dev server,
+  # neither of which the typecheck/lint/build gate should have to wait on.
+  # A failure here does not mean the build is broken, `verify` staying green
+  # says that; it means a critical path or a WCAG basic regressed.
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Chromium only (see playwright.config.ts) — no --with-deps browsers
+      # beyond the one project actually runs.
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+
+      # No .env here either, same reasoning as the build step above: these
+      # tests exercise the public marketing/auth pages and DEV-only preview
+      # routes, none of which need a real Supabase session.
+      - name: E2E smoke + accessibility
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
