@@ -328,6 +328,25 @@ from pf_case c
 join pf_org o on o.n = ((c.n - 1) % greatest((select count(*) from pf_org), 1)) + 1
 on conflict (id) do nothing;
 
+-- The references above are hardcoded (`CASE-4120`..`CASE-4129`), not drawn
+-- from `support_case_reference_seq` (0024), so a real call to
+-- `open_support_case` — the app's own "Contact support" — collides with
+-- them the moment the sequence reaches the same numbers. Discovered
+-- 2026-08-13: it starts at 4120, exactly this range, so the first ~10 real
+-- submissions after any seed run failed outright with a duplicate-key
+-- error. Advancing the sequence past whatever is actually in the table
+-- (not a fixed number, so this stays correct if the case count above ever
+-- changes) is cheap insurance against reintroducing the same outage.
+select setval(
+  'public.support_case_reference_seq',
+  greatest(
+    (select max(replace(reference, 'CASE-', '')::int)
+       from public.support_cases where reference like 'CASE-%'),
+    (select last_value from public.support_case_reference_seq)
+  ),
+  true
+);
+
 -- The opening message, always. A case with no correspondence is a row nobody
 -- can action.
 insert into public.support_case_messages
