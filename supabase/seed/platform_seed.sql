@@ -20,13 +20,25 @@
 -- `create temp table` on a name that exists is a hard error rather than a
 -- no-op.
 --
--- SAFE: it only ever writes rows whose ids it derives itself, and only ever
--- against organisations flagged `is_demo` (0035). A real customer cannot be
--- seeded by accident. It never touches a tenant's rotas, staff or shifts.
+-- SAFE: it only ever writes rows whose ids it derives itself, against the
+-- five organisations demo_seed.sql creates, named explicitly by slug below.
+-- It never touches a tenant's rotas, staff or shifts.
 --
 -- Run it AFTER demo_seed.sql, which creates the organisations this attaches
 -- to. With no organisations present it still succeeds. The org-scoped
 -- sections simply come out empty, which is the honest result.
+--
+-- ⚠️ NOT `is_demo` ALONE. `is_demo` was blanket-backfilled onto every
+-- organisation that existed when migration 0035 shipped (2026-07-29),
+-- including real ones: "City Hospital Care Group", "GAKINZ", and any real
+-- customer signup such as "Harni MCare" that happened to exist at the time.
+-- An earlier version of this file selected `pf_org` by `is_demo` alone and,
+-- discovered 2026-08-13, had already attached fabricated support cases,
+-- background jobs and integrations to all three of those real organisations.
+-- `platform_teardown.sql` removes exactly that (by derived id, so it is safe
+-- regardless of which organisation it landed on). `pf_org` below is now
+-- scoped to the five slugs demo_seed.sql actually creates, `is_demo` is
+-- kept only as a second, belt-and-braces condition.
 -- =====================================================================
 
 create extension if not exists pgcrypto with schema extensions;
@@ -75,14 +87,17 @@ select p.id, p.full_name, 1
  limit 1;
 
 drop table if exists pf_org;
--- Demo organisations only (0035). This is the line that stops a real customer
--- ever receiving fabricated invoices: the seed cannot reach an organisation
--- that has not declared itself a demonstration, whatever anybody remembers.
+-- The five companies demo_seed.sql creates, named explicitly. This is the
+-- line that stops a real customer ever receiving fabricated invoices: `is_demo`
+-- alone is not enough (see the header) because it is also true on real
+-- organisations that happened to exist when 0035's backfill ran.
 create temp table pf_org as
 select o.id, o.name, o.plan, row_number() over (order by o.created_at) as n
   from public.organisations o
  where o.status = 'active'
-   and o.is_demo;
+   and o.is_demo
+   and o.slug in ('northgate-care', 'harbour-view-hotels', 'brightside-retail',
+                  'clearway-logistics', 'meridian-security');
 
 -- =====================================================================
 -- 1. Tenant profile. Industry, country, timezone, contact
