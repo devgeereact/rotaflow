@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { AlertTriangle, CalendarDays, Repeat2, Umbrella } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CircleCheck, Repeat2, Umbrella } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
@@ -250,9 +250,19 @@ export function ManagerDashboard({
               Needs you
             </h2>
             {pending.length === 0 ? (
-              <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                Nothing needs your attention.
-              </p>
+              <div className="flex items-start gap-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-success-wash text-success dark:bg-success-wash-dark">
+                  <CircleCheck size={15} aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-content dark:text-content-dark">
+                    All caught up
+                  </p>
+                  <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                    Nothing needs your attention right now.
+                  </p>
+                </div>
+              </div>
             ) : (
               <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
                 {pending.slice(0, 4).map((request) => (

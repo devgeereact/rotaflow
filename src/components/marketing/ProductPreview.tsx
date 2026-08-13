@@ -42,6 +42,14 @@ const CHIP = {
   night: 'bg-shift-tint-indigo text-shift-tint-indigo-fg',
 } as const;
 
+/** Start time shown inside each hero rota chip. Matches `AGENDA` below. */
+const CHIP_TIME = {
+  early: '07:00',
+  day: '09:00',
+  late: '14:00',
+  night: '22:00',
+} as const;
+
 const AGENDA = [
   { day: 'Mon 11', time: '07:00-15:00', role: 'Early · Floor 2', chip: CHIP.early },
   { day: 'Tue 12', time: '07:00-15:00', role: 'Early · Floor 2', chip: CHIP.early },
@@ -134,8 +142,14 @@ export function ProductPreview(): JSX.Element {
                   {shifts.map((shift, i) => (
                     <span key={i} className="p-1">
                       <span
-                        className={`block h-5 rounded ${shift ? CHIP[shift] : 'bg-divider dark:bg-divider-dark'}`}
-                      />
+                        className={`flex h-7 items-center justify-center rounded ${shift ? CHIP[shift] : 'bg-divider dark:bg-divider-dark'}`}
+                      >
+                        {shift && (
+                          <span className="font-mono text-[8px] font-semibold leading-none">
+                            {CHIP_TIME[shift]}
+                          </span>
+                        )}
+                      </span>
                     </span>
                   ))}
                 </div>
