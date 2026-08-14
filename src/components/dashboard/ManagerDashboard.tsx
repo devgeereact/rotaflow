@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { AlertTriangle, CalendarDays, CircleCheck, Repeat2, Umbrella } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  CircleCheck,
+  Repeat2,
+  Umbrella,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
