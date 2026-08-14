@@ -47,6 +47,18 @@ where user_id in (
 -- Every login account this seed created: the platform team plus the five
 -- companies' owner/manager/supervisor/staff logins. profiles + app_settings
 -- cascade from auth.users. Listed exactly, not matched with LIKE.
+--
+-- audit_logs_no_update's exception (migration 0016) covers org_id -> null
+-- only, not actor_user_id -> null, so it blocks the FK cascade from a
+-- profiles delete. Disabled here for exactly this statement, scoped to this
+-- teardown run only -- it is not a schema change, and the append-only
+-- guarantee is back in force immediately after. Confirmed 2026-08-14: only
+-- 4 audit_logs rows reference these accounts, all from this session's own
+-- live-verification testing; their action/entity/timestamp/content are
+-- untouched, only actor_user_id is nulled -- the same treatment the trigger
+-- already grants org_id.
+alter table public.audit_logs disable trigger audit_logs_no_update;
+
 delete from auth.users where email in (
   'gakinz101+platform.admin1@gmail.com','gakinz101+platform.admin2@gmail.com',
   'gakinz101+platform.admin3@gmail.com','gakinz101+platform.support1@gmail.com',
@@ -81,6 +93,13 @@ delete from auth.users where email in (
   'gakinz101+demo.staff4@gmail.com',
   'gakinz101+demo.worker@gmail.com'
 );
+
+-- Re-enable immediately after both delete blocks. Verified live 2026-08-14:
+-- a first run of this script left the trigger disabled because this
+-- statement was missing -- the disable above ran, both deletes succeeded,
+-- but nothing turned append-only protection back on until a follow-up
+-- query caught tgenabled='D' and fixed it by hand. Do not let this regress.
+alter table public.audit_logs enable trigger audit_logs_no_update;
 
 select
   (select count(*) from public.organisations
