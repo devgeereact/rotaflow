@@ -1258,15 +1258,29 @@ curl -s -X POST "https://api.supabase.com/v1/projects/vwqqbdvlskngrqrejzxi/datab
 
 Expected: one row, `plan='professional'`, `status='active'`, `provider='stripe'`, `provider_ref` and `stripe_customer_id` both populated with real Stripe ids.
 
-- [ ] **Step 4: Trigger a test invoice and verify the `invoices` row**
+- [ ] **Step 4: Verify the `invoices` row from the real first invoice**
+
+Correction (final whole-branch review, 2026-08-15): `stripe trigger invoice.paid` creates a
+**standalone, non-subscription invoice fixture** — `invoice.subscription_details` is `null`
+on it, so `handleInvoicePaid` correctly logs "missing org_id metadata" and writes nothing.
+That is the handler working as designed, not a bug; don't debug it as one. A `mode:
+'subscription'` Checkout already generates a real `invoice.paid` event for the first billing
+period as part of completing Step 2 — no separate trigger is needed.
+
+Query `public.invoices` for the `org_id` used in Step 2 (same pattern as Step 3):
 
 ```bash
-stripe trigger invoice.paid
+TOKEN=$(security find-generic-password -s "Supabase CLI" -w)
+curl -s -X POST "https://api.supabase.com/v1/projects/vwqqbdvlskngrqrejzxi/database/query" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -H "User-Agent: rotaflow-billing-setup/1.0" \
+  --data-binary '{"query": "select org_id, status, provider, provider_ref, amount_pence from public.invoices where org_id = '"'"'<your test org id>'"'"';"}'
 ```
 
-Then re-run a query against `public.invoices` for that `org_id` (same pattern as Step 3).
-
-Expected: one row, `status='paid'`, `provider='stripe'`, `amount_pence` matching the plan's price.
+Expected: one row already present from Step 2's checkout, `status='paid'`, `provider='stripe'`,
+`amount_pence` matching the plan's price. If it's missing, check the `stripe listen`/webhook
+endpoint logs from Step 1 — the more likely cause is a delivery/signature issue during
+Step 2, not this step itself.
 
 - [ ] **Step 5: Verify the Platform Console reflects it**
 
@@ -1278,13 +1292,33 @@ Back on Settings > Billing as the same org owner (now with an active subscriptio
 
 - [ ] **Step 7: Verify payment-failure handling**
 
+Correction (final whole-branch review, 2026-08-15): same issue as Step 4 —
+`stripe trigger invoice.payment_failed` is a standalone fixture with no
+`subscription_details`, so it won't exercise the org-scoped write path. Use a
+real subscription renewal failure instead, via a Stripe test clock attached to
+a *new* test subscription (advancing the clock past the current period_end is
+what generates a real `invoice.payment_failed` tied to that subscription):
+
 ```bash
-stripe trigger invoice.payment_failed
+# Create a test clock a few minutes in the future, then a customer on it
+stripe test_helpers test_clocks create --frozen-time "$(date +%s)"
+# note the returned clock id (clock_...), then repeat Step 2's checkout for a
+# NEW test org, using card 4000 0000 0000 0341 (attaches successfully, then
+# fails on the next charge) instead of 4242...
+# advance the clock past the subscription's current_period_end:
+stripe test_helpers test_clocks advance --clock <clock_id> --frozen-time "$(date -v+35d +%s)"  # macOS date; use `date -d '+35 days' +%s` on Linux
 ```
 
-Query `public.invoices` and `public.subscriptions` for that org again.
+Query `public.invoices` and `public.subscriptions` for that second test org.
 
-Expected: the invoice's `status='past_due'` with a non-null `failure_reason`, and the subscription's `status='past_due'`.
+Expected: the invoice's `status='past_due'` with a non-null, real
+`failure_reason` (a card-decline message, not the literal string "Payment
+failed" — if it IS that literal string, `handleInvoicePaymentFailed`'s
+`payment_intent`-expansion fix from the final review's fix wave didn't take;
+check `supabase/functions/stripe-webhook/index.ts` retrieves
+`invoice.payment_intent.last_payment_error.message`, not only
+`invoice.last_finalization_error?.message`), and the subscription's
+`status='past_due'`.
 
 - [ ] **Step 8: Final commit — mark the plan complete**
 
