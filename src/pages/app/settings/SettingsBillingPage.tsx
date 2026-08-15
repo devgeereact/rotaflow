@@ -106,7 +106,11 @@ export function SettingsBillingPage(): JSX.Element {
       await startCheckout(orgId, planCode);
     } catch (err) {
       reportError(err, { area: 'settings-billing:checkout' });
-      showError('Could not start checkout. Please try again.');
+      showError(
+        err instanceof Error
+          ? err.message
+          : 'Could not start checkout. Please try again.',
+      );
       setActionPending(null);
     }
   }
@@ -118,7 +122,11 @@ export function SettingsBillingPage(): JSX.Element {
       await openBillingPortal(orgId);
     } catch (err) {
       reportError(err, { area: 'settings-billing:portal' });
-      showError('Could not open the billing portal. Please try again.');
+      showError(
+        err instanceof Error
+          ? err.message
+          : 'Could not open the billing portal. Please try again.',
+      );
       setActionPending(null);
     }
   }
