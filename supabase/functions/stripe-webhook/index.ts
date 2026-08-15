@@ -46,6 +46,34 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// subscriptions.status has a check constraint of only
+// ('trialing','active','past_due','canceled') — 0002_rotaflow.sql — but
+// Stripe's real Subscription.Status enum is wider (incomplete,
+// incomplete_expired, unpaid, paused). Map onto the 4 allowed values rather
+// than widen the constraint; a schema change is a separate, controller-gated
+// step, not something this webhook does on its own.
+function mapSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): string {
+  switch (stripeStatus) {
+    case 'active':
+      return 'active';
+    case 'trialing':
+      return 'trialing';
+    case 'past_due':
+    case 'unpaid':
+    case 'incomplete':
+    case 'incomplete_expired':
+      return 'past_due';
+    case 'canceled':
+    case 'paused':
+      return 'canceled';
+    default:
+      // Defensive: TypeScript's exhaustiveness checking on the switch above
+      // already covers every currently-known value, but Stripe's API can
+      // add more over time.
+      return 'past_due';
+  }
+}
+
 async function handleCheckoutCompleted(
   supabase: SupabaseClient,
   session: Stripe.Checkout.Session,
@@ -72,7 +100,7 @@ async function handleCheckoutCompleted(
       {
         org_id: orgId,
         plan,
-        status: subscription.status === 'active' ? 'active' : subscription.status,
+        status: mapSubscriptionStatus(subscription.status),
         provider: 'stripe',
         provider_ref: subscription.id,
         stripe_customer_id:
@@ -84,7 +112,7 @@ async function handleCheckoutCompleted(
       },
       { onConflict: 'org_id' },
     );
-  if (error) console.error('subscriptions upsert failed', error);
+  if (error) throw new Error(`subscriptions upsert failed: ${error.message}`);
 }
 
 async function handleSubscriptionUpdated(
@@ -100,7 +128,7 @@ async function handleSubscriptionUpdated(
   const { error } = await supabase
     .from('subscriptions')
     .update({
-      status: subscription.status,
+      status: mapSubscriptionStatus(subscription.status),
       current_period_end: new Date(
         subscription.current_period_end * 1000,
       ).toISOString(),
@@ -110,7 +138,7 @@ async function handleSubscriptionUpdated(
     })
     .eq('org_id', orgId)
     .eq('provider_ref', subscription.id);
-  if (error) console.error('subscriptions update failed', error);
+  if (error) throw new Error(`subscriptions update failed: ${error.message}`);
 }
 
 async function handleSubscriptionDeleted(
@@ -128,7 +156,7 @@ async function handleSubscriptionDeleted(
     })
     .eq('org_id', orgId)
     .eq('provider_ref', subscription.id);
-  if (error) console.error('subscriptions cancel failed', error);
+  if (error) throw new Error(`subscriptions cancel failed: ${error.message}`);
 }
 
 function invoiceNumberFrom(invoice: Stripe.Invoice): string {
@@ -176,7 +204,7 @@ async function handleInvoicePaid(
         failure_reason: null,
       })
       .eq('id', existing.id);
-    if (error) console.error('invoices update (paid) failed', error);
+    if (error) throw new Error(`invoices update (paid) failed: ${error.message}`);
   } else {
     const { error } = await supabase.from('invoices').insert({
       org_id: orgId,
@@ -194,7 +222,7 @@ async function handleInvoicePaid(
       provider: 'stripe',
       provider_ref: invoice.id,
     });
-    if (error) console.error('invoices insert (paid) failed', error);
+    if (error) throw new Error(`invoices insert (paid) failed: ${error.message}`);
   }
 }
 
@@ -223,7 +251,7 @@ async function handleInvoicePaymentFailed(
         attempts: (existing.attempts ?? 0) + 1,
       })
       .eq('id', existing.id);
-    if (error) console.error('invoices update (past_due) failed', error);
+    if (error) throw new Error(`invoices update (past_due) failed: ${error.message}`);
   } else {
     const line = invoice.lines.data[0];
     const periodStart = new Date(
@@ -247,14 +275,16 @@ async function handleInvoicePaymentFailed(
       provider: 'stripe',
       provider_ref: invoice.id,
     });
-    if (error) console.error('invoices insert (past_due) failed', error);
+    if (error) throw new Error(`invoices insert (past_due) failed: ${error.message}`);
   }
 
   const { error: subError } = await supabase
     .from('subscriptions')
     .update({ status: 'past_due' })
     .eq('org_id', orgId);
-  if (subError) console.error('subscriptions update (past_due) failed', subError);
+  if (subError) {
+    throw new Error(`subscriptions update (past_due) failed: ${subError.message}`);
+  }
 }
 
 Deno.serve(async (req: Request) => {
