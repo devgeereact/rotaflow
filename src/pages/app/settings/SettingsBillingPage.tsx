@@ -40,19 +40,20 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
  *
  * ## Why this screen shows less than the reference
  *
- * There is no payment provider. `subscriptions` exists as a real table. Org-
- * unique, `plan` and `status` both CHECKed, owner-only RLS, but `provider`
- * and `provider_ref` are an empty seam, and there is no invoices table, no
- * payment-methods table, no usage metering and no credits ledger. Choosing the
- * provider is a business decision, not an engineering one.
+ * A payment provider (Stripe) is now wired in: `subscriptions` is a real
+ * table, org-unique, `plan` and `status` both CHECKed, owner-only RLS, with
+ * `provider`/`provider_ref`/`stripe_customer_id` populated by
+ * `supabase/functions/stripe-webhook`. `invoices` has existed since
+ * `0023_commercials.sql` and is written by the same webhook on
+ * `invoice.paid`/`invoice.payment_failed`.
  *
- * The reference draws invoice history, saved cards and a usage meter. Rendering
- * those as empty tables would be the wrong call: a table with column headings
- * and no rows reads as *"your invoices failed to load"*, and a £0.00 balance
- * reads as *"you owe nothing"* rather than *"billing is not connected"*. So
- * the screen states the real position and shows what is genuinely known. The
- * plan on the row, its status, and the live staff count that any future plan
- * limit will be measured against.
+ * The reference draws invoice history, saved cards and a usage meter directly
+ * on this screen. This screen deliberately doesn't rebuild that UI — Stripe's
+ * hosted Customer Portal (via `openBillingPortal`) is the surface for invoice
+ * history, saved payment methods and cancellation, per this feature's design
+ * spec. There is still no usage metering or credits ledger, so this screen
+ * shows what is genuinely known locally: the plan on the row, its status, and
+ * the live staff count that any future plan limit will be measured against.
  */
 export function SettingsBillingPage(): JSX.Element {
   const { orgId, role } = useOrg();
@@ -211,7 +212,7 @@ export function SettingsBillingPage(): JSX.Element {
       </SettingsSection>
 
       <SettingsSection title="Payment">
-        {subscription ? (
+        {subscription && subscription.status !== 'canceled' ? (
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-content-muted dark:text-content-muted-dark">
               Manage your payment method, view invoices or cancel from Stripe's secure
@@ -227,6 +228,21 @@ export function SettingsBillingPage(): JSX.Element {
           </div>
         ) : (
           <div className="space-y-3">
+            {subscription?.status === 'canceled' && (
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-divider bg-surface-subtle p-4 dark:border-divider-dark dark:bg-surface-subtle-dark">
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  Your subscription was canceled. Choose a plan below to resubscribe, or
+                  review past invoices in Stripe's billing portal.
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleManageBilling()}
+                  disabled={actionPending === 'manage'}
+                >
+                  {actionPending === 'manage' ? 'Opening…' : 'Manage billing'}
+                </Button>
+              </div>
+            )}
             <p className="text-sm text-content-muted dark:text-content-muted-dark">
               Choose a plan to add a payment method and activate billing for this
               organisation.

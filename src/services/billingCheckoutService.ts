@@ -9,12 +9,39 @@ export type Plan = Tables<'plans'>;
  * costs before the caller is confirmed as this org's owner.
  */
 export async function listPlans(): Promise<Plan[]> {
-  const { data, error } = await supabase
-    .from('plans')
-    .select('*')
-    .order('sort_order');
+  const { data, error } = await supabase.from('plans').select('*').order('sort_order');
   if (error) throw error;
   return data ?? [];
+}
+
+/**
+ * `supabase-js` populates `result.error` as a generic `FunctionsHttpError`
+ * on any non-2xx response, leaving `result.data` null — so the specific
+ * message the Edge Function returned (e.g. "Professional is not available
+ * for checkout yet") never reaches the caller by default. The real body is
+ * still readable off `.context`, which is the raw `Response`.
+ */
+async function extractFunctionErrorMessage(
+  error: unknown,
+  fallback: string,
+): Promise<string> {
+  if (error && typeof error === 'object' && 'context' in error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const body: unknown = await context.clone().json();
+        if (body && typeof body === 'object' && 'error' in body) {
+          const message = body.error;
+          if (typeof message === 'string') {
+            return message;
+          }
+        }
+      } catch {
+        // body wasn't JSON or didn't parse — fall through to fallback
+      }
+    }
+  }
+  return fallback;
 }
 
 /**
@@ -26,7 +53,11 @@ export async function startCheckout(orgId: string, planCode: string): Promise<vo
     'create-checkout-session',
     { body: { orgId, planCode } },
   );
-  if (result.error) throw result.error;
+  if (result.error) {
+    throw new Error(
+      await extractFunctionErrorMessage(result.error, 'Could not start checkout'),
+    );
+  }
   if (!result.data?.url) {
     throw new Error(result.data?.error || 'Could not start checkout');
   }
@@ -42,7 +73,14 @@ export async function openBillingPortal(orgId: string): Promise<void> {
     'create-portal-session',
     { body: { orgId } },
   );
-  if (result.error) throw result.error;
+  if (result.error) {
+    throw new Error(
+      await extractFunctionErrorMessage(
+        result.error,
+        'Could not open the billing portal',
+      ),
+    );
+  }
   if (!result.data?.url) {
     throw new Error(result.data?.error || 'Could not open billing portal');
   }

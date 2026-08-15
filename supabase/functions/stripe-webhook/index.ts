@@ -115,6 +115,27 @@ async function handleCheckoutCompleted(
   if (error) throw new Error(`subscriptions upsert failed: ${error.message}`);
 }
 
+// Looks up the plan whose `stripe_price_id` matches the subscription's
+// current Stripe Price, so customer.subscription.updated can keep our copy
+// of `subscriptions.plan` in sync when a customer changes plans through
+// Stripe's Customer Portal. Returns null (rather than throwing) when the
+// price doesn't match any known plan — e.g. a price not yet backfilled into
+// `plans` — so the caller can skip the `plan` column instead of writing null
+// into a `not null` column with a CHECK constraint.
+async function resolvePlanCode(
+  supabase: SupabaseClient,
+  priceId: string | undefined,
+): Promise<string | null> {
+  if (!priceId) return null;
+  const { data, error } = await supabase
+    .from('plans')
+    .select('code')
+    .eq('stripe_price_id', priceId)
+    .maybeSingle();
+  if (error) throw new Error(`plan lookup failed: ${error.message}`);
+  return data?.code ?? null;
+}
+
 async function handleSubscriptionUpdated(
   supabase: SupabaseClient,
   subscription: Stripe.Subscription,
@@ -125,17 +146,32 @@ async function handleSubscriptionUpdated(
     return;
   }
 
+  const planCode = await resolvePlanCode(
+    supabase,
+    subscription.items.data[0]?.price.id,
+  );
+  if (!planCode) {
+    console.error(
+      'customer.subscription.updated: no matching plan for price',
+      subscription.items.data[0]?.price.id,
+      subscription.id,
+    );
+  }
+
+  const updatePayload: Record<string, unknown> = {
+    status: mapSubscriptionStatus(subscription.status),
+    current_period_end: new Date(
+      subscription.current_period_end * 1000,
+    ).toISOString(),
+    canceled_at: subscription.canceled_at
+      ? new Date(subscription.canceled_at * 1000).toISOString()
+      : null,
+  };
+  if (planCode) updatePayload.plan = planCode;
+
   const { error } = await supabase
     .from('subscriptions')
-    .update({
-      status: mapSubscriptionStatus(subscription.status),
-      current_period_end: new Date(
-        subscription.current_period_end * 1000,
-      ).toISOString(),
-      canceled_at: subscription.canceled_at
-        ? new Date(subscription.canceled_at * 1000).toISOString()
-        : null,
-    })
+    .update(updatePayload)
     .eq('org_id', orgId)
     .eq('provider_ref', subscription.id);
   if (error) throw new Error(`subscriptions update failed: ${error.message}`);
@@ -226,6 +262,30 @@ async function handleInvoicePaid(
   }
 }
 
+// `last_finalization_error` is set when Stripe fails to *finalize* an
+// invoice (e.g. bad tax settings), not when a card is declined — the
+// realistic failure mode. The actual decline reason lives on the invoice's
+// PaymentIntent. This function receives the invoice straight from the
+// webhook payload (not fetched fresh), so `payment_intent` is likely a
+// string id rather than an expanded object; retrieve it to read
+// `last_payment_error`.
+async function resolveFailureReason(invoice: Stripe.Invoice): Promise<string> {
+  const piId =
+    typeof invoice.payment_intent === 'string'
+      ? invoice.payment_intent
+      : invoice.payment_intent?.id;
+  if (piId) {
+    try {
+      const stripe = getStripeClient();
+      const pi = await stripe.paymentIntents.retrieve(piId);
+      if (pi.last_payment_error?.message) return pi.last_payment_error.message;
+    } catch (err) {
+      console.error('Failed to retrieve payment intent for failure reason:', err);
+    }
+  }
+  return invoice.last_finalization_error?.message || 'Payment failed';
+}
+
 async function handleInvoicePaymentFailed(
   supabase: SupabaseClient,
   invoice: Stripe.Invoice,
@@ -233,8 +293,7 @@ async function handleInvoicePaymentFailed(
   const orgId = invoice.subscription_details?.metadata?.org_id;
   if (!orgId) return;
 
-  const failureReason =
-    invoice.last_finalization_error?.message || 'Payment failed';
+  const failureReason = await resolveFailureReason(invoice);
 
   const { data: existing } = await supabase
     .from('invoices')

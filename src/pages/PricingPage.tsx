@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 const FAQS = [
   {
     q: 'How does billing work?',
-    a: 'Sign up with no card required. Once your organisation exists, its owner picks a plan from Settings and pays through Stripe\'s secure checkout. Nothing is charged before that.',
+    a: "Sign up with no card required. Once your organisation exists, its owner picks a plan from Settings and pays through Stripe's secure checkout. Nothing is charged before that.",
   },
   {
     q: 'What counts as a staff member?',
@@ -59,9 +59,9 @@ export function PricingPage(): JSX.Element {
         >
           <Info size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-info" />
           <p className="text-sm leading-relaxed text-content dark:text-content-dark">
-            <span className="font-semibold">No card required to sign up.</span> Signing
-            up collects no payment details. You choose and pay for a plan afterwards,
-            from your organisation's own Settings once it exists.
+            <span className="font-semibold">No card required to sign up.</span> Signing up
+            collects no payment details. You choose and pay for a plan afterwards, from
+            your organisation's own Settings once it exists.
           </p>
         </div>
 

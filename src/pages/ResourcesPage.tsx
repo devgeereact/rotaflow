@@ -122,7 +122,6 @@ const BUILD_STATUS: readonly StatusGroup[] = [
     state: 'planned',
     heading: 'Not built yet',
     items: [
-      'Billing and subscriptions, no payment provider is connected',
       'Payroll and HR integrations',
       'Document and photo upload to managed storage',
       'QR-code clock-in as an alternative to GPS',
