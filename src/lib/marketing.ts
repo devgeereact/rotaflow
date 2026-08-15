@@ -84,10 +84,10 @@ export const HERO = {
   headline: ['Every shift covered.', 'Every team aligned.', 'Even offline.'],
   body: 'Build dependable rotas, give staff a clear view of their work, and keep attendance moving when the connection drops.',
   /**
-   * The three trust points under the hero CTAs. These are product facts, not
-   * marketing claims: there is genuinely no card capture anywhere in the signup
-   * flow (`/signup` collects name, email, org and password. Nothing else) and
-   * no billing provider is integrated, so nothing can charge anyone.
+   * The three trust points under the hero CTAs. These are product facts
+   * reflecting what happens at signup: no card capture in the signup flow
+   * (`/signup` collects name, email, org and password. Nothing else), and
+   * payment setup happens later in Settings > Billing after an org exists.
    */
   trust: ['Early access beta', 'No credit card required', 'No payment setup'],
 } as const;
@@ -421,7 +421,7 @@ export const PLANS: readonly Plan[] = [
       'Payroll and HR integrations',
       'Onboarding and migration support',
     ],
-    cta: PRIMARY_CTA,
+    cta: 'Contact us',
   },
 ] as const;
 

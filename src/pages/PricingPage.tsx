@@ -48,7 +48,7 @@ export function PricingPage(): JSX.Element {
     <MarketingLayout title="Pricing">
       <PageHero
         eyebrow="Pricing"
-        heading="Simple pricing, per person, per month"
+        heading="Simple, transparent monthly pricing"
         body="Join the beta with no card, no sales call and no payment setup."
       />
 
@@ -65,7 +65,7 @@ export function PricingPage(): JSX.Element {
           </p>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-3">
+        <div className="grid items-start gap-6 lg:grid-cols-4">
           {PLANS.map(({ name, price, cadence, summary, features, cta, featured }) => (
             <Card
               key={name}
@@ -76,10 +76,10 @@ export function PricingPage(): JSX.Element {
             >
               {/*
                 The badge row is rendered on every card, not just the featured
-                one, an empty span on the other two keeps all three headings,
+                one, an empty span on the others keeps all headings,
                 prices and feature lists on the same baseline. Rendering it
-                only when `featured` pushed the Team card ~40px down and left
-                the three cards visibly misaligned.
+                only when `featured` pushed the Professional card ~40px down and left
+                the cards visibly misaligned.
               */}
               <span
                 aria-hidden={!featured}
