@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CreditCard, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
 import { getSubscription } from '@/services/subscriptionService';
@@ -8,7 +8,14 @@ import { getOrganisation } from '@/services/orgService';
 import { listLocations } from '@/services/locationService';
 import { orgProfileFields } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
+import {
+  listPlans,
+  startCheckout,
+  openBillingPortal,
+  type Plan,
+} from '@/services/billingCheckoutService';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
@@ -18,6 +25,7 @@ const PLAN_NAMES: Record<string, string> = {
   starter: 'Starter',
   professional: 'Professional',
   business: 'Business',
+  enterprise: 'Enterprise',
 };
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
@@ -54,7 +62,9 @@ export function SettingsBillingPage(): JSX.Element {
   const [staffCount, setStaffCount] = useState<number | null>(null);
   const [siteCount, setSiteCount] = useState<number | null>(null);
   const [billingContact, setBillingContact] = useState('');
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionPending, setActionPending] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orgId || role !== 'owner') return;
@@ -62,17 +72,19 @@ export function SettingsBillingPage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        const [sub, staff, sites, org] = await Promise.all([
+        const [sub, staff, sites, org, planList] = await Promise.all([
           getSubscription(orgId),
           listStaff(orgId).catch(() => null),
           listLocations(orgId).catch(() => null),
           getOrganisation(orgId).catch(() => null),
+          listPlans().catch(() => []),
         ]);
         if (!active) return;
         setSubscription(sub);
         setStaffCount(staff?.length ?? null);
         setSiteCount(sites?.length ?? null);
         setBillingContact(org ? orgProfileFields(org.settings).contactEmail : '');
+        setPlans(planList);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'settings-billing:load' });
@@ -85,6 +97,30 @@ export function SettingsBillingPage(): JSX.Element {
       active = false;
     };
   }, [orgId, role, showError]);
+
+  async function handleUpgrade(planCode: string): Promise<void> {
+    if (!orgId) return;
+    setActionPending(planCode);
+    try {
+      await startCheckout(orgId, planCode);
+    } catch (err) {
+      reportError(err, { area: 'settings-billing:checkout' });
+      showError('Could not start checkout. Please try again.');
+      setActionPending(null);
+    }
+  }
+
+  async function handleManageBilling(): Promise<void> {
+    if (!orgId) return;
+    setActionPending('manage');
+    try {
+      await openBillingPortal(orgId);
+    } catch (err) {
+      reportError(err, { area: 'settings-billing:portal' });
+      showError('Could not open the billing portal. Please try again.');
+      setActionPending(null);
+    }
+  }
 
   if (role !== 'owner') return <OwnerOnlyNotice section="billing" />;
 
@@ -175,24 +211,51 @@ export function SettingsBillingPage(): JSX.Element {
       </SettingsSection>
 
       <SettingsSection title="Payment">
-        <div className="flex gap-3 rounded-xl bg-info/5 p-4">
-          <CreditCard
-            size={18}
-            className="mt-0.5 shrink-0 text-info"
-            aria-hidden="true"
-          />
-          <div className="text-sm text-content-muted dark:text-content-muted-dark">
-            <p className="font-medium text-content dark:text-content-dark">
-              Billing is not connected yet
+        {subscription ? (
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              Manage your payment method, view invoices or cancel from Stripe's secure
+              billing portal.
             </p>
-            <p className="mt-1">
-              RotaFlow is not charging for this organisation. No payment method is stored,
-              no invoices have been issued, and nothing will be taken. When a payment
-              provider is connected, your plan, invoices and payment methods will appear
-              here.
-            </p>
+            <Button
+              variant="secondary"
+              onClick={() => void handleManageBilling()}
+              disabled={actionPending === 'manage'}
+            >
+              {actionPending === 'manage' ? 'Opening…' : 'Manage billing'}
+            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              Choose a plan to add a payment method and activate billing for this
+              organisation.
+            </p>
+            {plans.map((p) => (
+              <div
+                key={p.code}
+                className="flex items-center justify-between gap-4 rounded-xl border border-divider p-4 dark:border-divider-dark"
+              >
+                <div>
+                  <p className="font-medium text-content dark:text-content-dark">
+                    {p.name}
+                  </p>
+                  <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                    £{(p.monthly_price_pence / 100).toFixed(2)} / month
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void handleUpgrade(p.code)}
+                  disabled={actionPending === p.code}
+                >
+                  {actionPending === p.code ? 'Redirecting…' : 'Upgrade'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </SettingsSection>
     </div>
   );
