@@ -84,10 +84,10 @@ export const HERO = {
   headline: ['Every shift covered.', 'Every team aligned.', 'Even offline.'],
   body: 'Build dependable rotas, give staff a clear view of their work, and keep attendance moving when the connection drops.',
   /**
-   * The three trust points under the hero CTAs. These are product facts, not
-   * marketing claims: there is genuinely no card capture anywhere in the signup
-   * flow (`/signup` collects name, email, org and password. Nothing else) and
-   * no billing provider is integrated, so nothing can charge anyone.
+   * The three trust points under the hero CTAs. These are product facts
+   * reflecting what happens at signup: no card capture in the signup flow
+   * (`/signup` collects name, email, org and password. Nothing else), and
+   * payment setup happens later in Settings > Billing after an org exists.
    */
   trust: ['Early access beta', 'No credit card required', 'No payment setup'],
 } as const;
@@ -355,20 +355,21 @@ export interface Plan {
 /**
  * Pricing.
  *
- * No payment provider is integrated, `subscriptions` is an empty seam and
- * `docs/SCREENS.md` §3 records that nothing reads or writes it. So every plan
- * routes to `/signup`, and the page says plainly that billing is not live
- * rather than implying a card will be charged at the end of a trial.
+ * Mirrors supabase/migrations/0023_commercials.sql's seeded `plans` rows
+ * exactly — that table, not this array, is what checkout actually charges.
+ * If these ever disagree, the migration is right and this needs updating,
+ * not the other way round. Not fetched at runtime: this page is
+ * unauthenticated and `plans`' RLS requires a signed-in user (0023).
  */
 export const PLANS: readonly Plan[] = [
   {
     name: 'Starter',
-    price: 'Free',
-    cadence: 'during the beta',
-    summary: 'For a single site getting off spreadsheets.',
+    price: '£29',
+    cadence: 'per month',
+    summary: 'One site, up to 15 staff.',
     features: [
       'One location',
-      'Up to 25 staff',
+      'Up to 15 staff',
       'Rota builder and published schedules',
       'Leave requests and shift swaps',
       'GPS clock-in with offline queue',
@@ -377,31 +378,45 @@ export const PLANS: readonly Plan[] = [
     cta: PRIMARY_CTA,
   },
   {
-    name: 'Team',
-    price: '£2.50',
-    cadence: 'per staff member / month',
-    summary: 'For growing organisations running more than one site.',
+    name: 'Professional',
+    price: '£129',
+    cadence: 'per month',
+    summary: 'Up to five sites and 60 staff.',
     features: [
       'Everything in Starter',
-      'Unlimited locations and departments',
+      'Up to five locations',
+      'Up to 60 staff',
       'Availability collection',
       'Timesheets and payroll export',
       'Reports across every site',
       'Announcements',
-      'Email support',
     ],
     cta: PRIMARY_CTA,
     featured: true,
   },
   {
-    name: 'Enterprise',
-    price: 'Let us talk',
-    cadence: 'annual agreement',
-    summary: 'For multi-site groups with compliance and integration needs.',
+    name: 'Business',
+    price: '£299',
+    cadence: 'per month',
+    summary: 'Up to twenty sites and 200 staff.',
     features: [
-      'Everything in Team',
+      'Everything in Professional',
+      'Up to twenty locations',
+      'Up to 200 staff',
       'Custom role labels and permissions',
       'Audit trail and retention policy',
+      'Email support',
+    ],
+    cta: PRIMARY_CTA,
+  },
+  {
+    name: 'Enterprise',
+    price: '£790',
+    cadence: 'per month',
+    summary: 'Unlimited sites and staff, with SSO.',
+    features: [
+      'Everything in Business',
+      'Unlimited locations and staff',
       'SSO with Microsoft 365 or Google',
       'Payroll and HR integrations',
       'Onboarding and migration support',

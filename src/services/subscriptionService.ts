@@ -4,15 +4,18 @@ import type { Subscription } from '@/types';
 /**
  * Reader for `subscriptions`.
  *
- * The table is real (org-unique, plan/status CHECKed, RLS owner-only) but
- * nothing writes it: `provider` and `provider_ref` are a deliberate seam for a
- * payment provider that has not been chosen yet, and no invoice, payment
- * method or usage-metering table exists at all.
+ * The table is real (org-unique, plan/status CHECKed, RLS owner-only) and is
+ * now written by `supabase/functions/stripe-webhook` on
+ * `checkout.session.completed`, `customer.subscription.updated`,
+ * `customer.subscription.deleted` and the invoice events — `provider`,
+ * `provider_ref` and `stripe_customer_id` are populated from Stripe rather
+ * than being an empty seam.
  *
- * So this returns `null` for every organisation today. The Billing screen
- * renders that as "no billing set up", names the plan the org is actually on,
- * and does **not** draw an invoice table with nothing in it, an empty table
- * with column headings reads as "your invoices failed to load".
+ * An organisation with no subscription row yet (never completed checkout)
+ * still returns `null` here. The Billing screen renders that as "no billing
+ * set up" and offers the plan picker; it does **not** draw an invoice table
+ * with nothing in it, an empty table with column headings reads as "your
+ * invoices failed to load".
  */
 export async function getSubscription(orgId: string): Promise<Subscription | null> {
   const { data, error } = await supabase
