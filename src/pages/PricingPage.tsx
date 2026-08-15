@@ -9,29 +9,25 @@ import { cn } from '@/lib/utils';
 /**
  * `/pricing`.
  *
- * **No payment provider is integrated.** `subscriptions` is an empty seam,
- * `docs/SCREENS.md` §3 records that nothing reads or writes it, and the billing
- * Edge Functions it references were never built. So nothing on this page can
- * charge anyone, and the page says so in the banner rather than implying a card
- * will be taken at the end of a trial.
- *
- * Every plan CTA routes to `/signup` or `/contact`. Real destinations. A
- * "Subscribe" button that opens a checkout which does not exist would be the
- * single worst dead button on the site.
+ * This is a pre-signup, unauthenticated marketing page showing plans
+ * hardcoded from `supabase/migrations/0023_commercials.sql` (the source
+ * of truth; see `src/lib/marketing.ts` comment). Plan CTAs route to
+ * `/signup` because no `orgId` exists yet — real checkout (via Edge
+ * Function) happens in Settings > Billing, after an org is created.
  */
 
 const FAQS = [
   {
-    q: 'How does billing work during the beta?',
-    a: 'It does not. RotaFlow has no payment provider connected, so no card is collected at signup and nothing can be charged. Prices below are what the plans will cost when billing goes live; you will be told before that happens.',
+    q: 'How does billing work?',
+    a: 'Sign up with no card required. Once your organisation exists, its owner picks a plan from Settings and pays through Stripe\'s secure checkout. Nothing is charged before that.',
   },
   {
     q: 'What counts as a staff member?',
     a: 'Anyone with an active membership in your organisation who can be scheduled. Deactivated people and pending invitations do not count.',
   },
   {
-    q: 'What happens at the end of the trial?',
-    a: 'Nothing is deleted and nothing is charged. Your organisation stays as it is; when billing goes live you choose a plan or continue on Starter.',
+    q: 'Is there a free trial?',
+    a: 'Not yet — every plan is paid from the start. Create your organisation and explore it fully before choosing a plan; nothing is charged until you do.',
   },
   {
     q: 'Can we move between plans?',
@@ -63,10 +59,9 @@ export function PricingPage(): JSX.Element {
         >
           <Info size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-info" />
           <p className="text-sm leading-relaxed text-content dark:text-content-dark">
-            <span className="font-semibold">Billing is not live yet.</span> RotaFlow is in
-            beta and has no payment provider connected, so signing up collects no card
-            details and nothing can be charged. The prices below are what the plans will
-            cost when billing launches.
+            <span className="font-semibold">No card required to sign up.</span> Signing
+            up collects no payment details. You choose and pay for a plan afterwards,
+            from your organisation's own Settings once it exists.
           </p>
         </div>
 
