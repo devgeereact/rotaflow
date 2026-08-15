@@ -95,11 +95,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: existingSub } = await supabase
+    const { data: existingSub, error: subError } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
       .eq('org_id', orgId)
       .maybeSingle();
+    if (subError) throw subError;
 
     const stripe = getStripeClient();
     const origin = req.headers.get('Origin') || 'https://rota.gakinz.com';
