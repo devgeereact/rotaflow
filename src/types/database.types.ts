@@ -13,7 +13,6 @@
  * the check that the repository still describes production. 0033 was written
  * because that diff found a whole incident feature nobody had declared.
  */
-
 export type Json =
   string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1678,6 +1677,7 @@ export type Database = {
           name: string;
           seat_limit: number | null;
           sort_order: number;
+          stripe_price_id: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1691,6 +1691,7 @@ export type Database = {
           name: string;
           seat_limit?: number | null;
           sort_order?: number;
+          stripe_price_id?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1704,6 +1705,7 @@ export type Database = {
           name?: string;
           seat_limit?: number | null;
           sort_order?: number;
+          stripe_price_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -2644,6 +2646,7 @@ export type Database = {
           provider_ref: string | null;
           started_at: string;
           status: string;
+          stripe_customer_id: string | null;
           trial_ends_at: string | null;
           updated_at: string;
         };
@@ -2660,6 +2663,7 @@ export type Database = {
           provider_ref?: string | null;
           started_at?: string;
           status?: string;
+          stripe_customer_id?: string | null;
           trial_ends_at?: string | null;
           updated_at?: string;
         };
@@ -2676,6 +2680,7 @@ export type Database = {
           provider_ref?: string | null;
           started_at?: string;
           status?: string;
+          stripe_customer_id?: string | null;
           trial_ends_at?: string | null;
           updated_at?: string;
         };
