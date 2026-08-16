@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LogOut, PanelLeftClose, PanelLeftOpen, ShieldCheck } from 'lucide-react';
+import { LogOut, MoreVertical, ShieldCheck } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOrg } from '@/hooks/useOrg';
 import { footerNavItemsForRole } from '@/lib/sidebarNav';
@@ -14,32 +15,139 @@ function initialsFor(label: string): string {
     .join('');
 }
 
-const ROW =
-  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark';
+const MENU_ITEM =
+  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark';
+
+/**
+ * The small "..." trigger next to the profile card holding Settings/My
+ * Profile, Help & Support, Sign out and (platform admins only) Platform
+ * console. Everything that used to be its own always-visible row now lives
+ * behind one click, so the rail reads as nav links plus one identity card,
+ * not a stack of secondary rows competing with the primary nav above it.
+ *
+ * Opens upward (`bottom-full`): the trigger sits at the very bottom of the
+ * viewport, so a panel opening downward like `ui/Popover` would run off
+ * screen.
+ */
+function AccountMenu({
+  role,
+  isPlatformAdmin,
+  collapsed,
+  onNavigate,
+  onSignOut,
+}: {
+  role: Parameters<typeof footerNavItemsForRole>[0];
+  isPlatformAdmin: boolean;
+  collapsed: boolean;
+  onNavigate?: () => void;
+  onSignOut: () => void;
+}): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: PointerEvent): void => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const closeAndNavigate = (): void => {
+    setOpen(false);
+    onNavigate?.();
+  };
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account options"
+        title="Account options"
+        className="rounded-lg p-1.5 text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+      >
+        <MoreVertical size={16} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label="Account options"
+          className={cn(
+            'absolute bottom-full z-30 mb-2 w-52 space-y-0.5 rounded-xl border border-surface-border bg-surface p-1.5 shadow-lg',
+            'dark:border-surface-border-dark dark:bg-surface-dark',
+            collapsed ? 'left-0' : 'right-0',
+          )}
+        >
+          {footerNavItemsForRole(role).map(({ label, icon: Icon, to }) => (
+            <Link
+              key={label}
+              to={to}
+              role="menuitem"
+              onClick={closeAndNavigate}
+              className={MENU_ITEM}
+            >
+              <Icon size={18} aria-hidden="true" />
+              {label}
+            </Link>
+          ))}
+
+          {isPlatformAdmin && (
+            <Link
+              to="/admin"
+              role="menuitem"
+              onClick={closeAndNavigate}
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-danger hover:bg-danger/5 dark:hover:text-danger"
+            >
+              <ShieldCheck size={18} aria-hidden="true" />
+              Platform console
+            </Link>
+          )}
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onSignOut();
+            }}
+            className={cn(MENU_ITEM, 'w-full')}
+          >
+            <LogOut size={18} aria-hidden="true" />
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface SidebarFooterProps {
   collapsed: boolean;
-  /** Omitted on the mobile drawer, which has no collapsed state to toggle. */
-  onToggleCollapsed?: () => void;
   onNavigate?: () => void;
 }
 
 /**
- * The rail's quiet second nav group (Settings/My Profile, Help & Support,
- * Platform console, Sign out) plus the profile identity card, pinned to the
- * bottom. Mirrors `docs/ORGANISATION_WORKSPACE.html`'s `.railfoot`: a short
- * list of plain rows, then `.whoami`.
- *
- * The reference's chrome has no sign-out control at all, its shell is a
- * role-switcher demo, not a signed-in session. A real one still needs to end
- * a session from the device it is on, so that stays here as one more row in
- * the same style rather than reviving a separate header dropdown menu, which
- * would be the one piece of chrome in this rail that is not a flat list of
- * rows. Full "sign out everywhere" lives on `/app/account/security`.
+ * The profile identity card, pinned to the bottom, plus the account menu
+ * that hides behind it — see `AccountMenu` above for what moved off the
+ * always-visible rail and why. The collapse toggle isn't here either; it
+ * moved to the top of the rail next to the logo, see `Sidebar.tsx`.
  */
 export function SidebarFooter({
   collapsed,
-  onToggleCollapsed,
   onNavigate,
 }: SidebarFooterProps): JSX.Element {
   const { user, signOut } = useSupabaseAuth();
@@ -50,44 +158,14 @@ export function SidebarFooter({
 
   if (collapsed) {
     return (
-      <div className="mt-auto border-t border-surface-border px-3 py-3 dark:border-surface-border-dark">
-        {footerNavItemsForRole(role).map(({ label, icon: Icon, to }) => (
-          <Link
-            key={label}
-            to={to}
-            onClick={onNavigate}
-            title={label}
-            className={cn(ROW, 'mb-0.5 justify-center px-0')}
-          >
-            <Icon size={18} aria-hidden="true" />
-            <span className="sr-only">{label}</span>
-          </Link>
-        ))}
-        {isPlatformAdmin && (
-          <Link
-            to="/admin"
-            onClick={onNavigate}
-            title="Platform console"
-            className={cn(
-              ROW,
-              'mb-0.5 justify-center px-0 text-danger hover:bg-danger/5 hover:text-danger dark:hover:text-danger',
-            )}
-          >
-            <ShieldCheck size={18} aria-hidden="true" />
-            <span className="sr-only">Platform console</span>
-          </Link>
-        )}
-        {onToggleCollapsed && (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-label="Expand sidebar"
-            title="Expand sidebar"
-            className={cn(ROW, 'mb-0.5 w-full justify-center px-0')}
-          >
-            <PanelLeftOpen size={18} aria-hidden="true" />
-          </button>
-        )}
+      <div className="mt-auto flex flex-col items-center gap-1 border-t border-surface-border px-3 py-3 dark:border-surface-border-dark">
+        <AccountMenu
+          role={role}
+          isPlatformAdmin={isPlatformAdmin}
+          collapsed
+          onNavigate={onNavigate}
+          onSignOut={() => void signOut()}
+        />
         <Link
           to="/app/account"
           onClick={onNavigate}
@@ -105,60 +183,32 @@ export function SidebarFooter({
 
   return (
     <div className="mt-auto border-t border-surface-border px-3 py-3 dark:border-surface-border-dark">
-      {footerNavItemsForRole(role).map(({ label, icon: Icon, to }) => (
-        <Link key={label} to={to} onClick={onNavigate} className={cn(ROW, 'mb-0.5')}>
-          <Icon size={18} aria-hidden="true" />
-          {label}
-        </Link>
-      ))}
-
-      {isPlatformAdmin && (
+      <div className="flex items-center gap-1">
         <Link
-          to="/admin"
+          to="/app/account"
           onClick={onNavigate}
-          className={cn(
-            ROW,
-            'mb-0.5 text-danger hover:bg-danger/5 hover:text-danger dark:hover:text-danger',
-          )}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-primary-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <ShieldCheck size={18} aria-hidden="true" />
-          Platform console
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
+            {initialsFor(displayName)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-content dark:text-content-dark">
+              {displayName}
+            </span>
+            <span className="block truncate text-xs capitalize text-content-muted dark:text-content-muted-dark">
+              {role ?? 'No role'}
+            </span>
+          </span>
         </Link>
-      )}
-
-      <button
-        type="button"
-        onClick={() => void signOut()}
-        className={cn(ROW, 'mb-0.5 w-full')}
-      >
-        <LogOut size={18} aria-hidden="true" />
-        Sign out
-      </button>
-
-      {onToggleCollapsed && (
-        <button type="button" onClick={onToggleCollapsed} className={cn(ROW, 'w-full')}>
-          <PanelLeftClose size={18} aria-hidden="true" />
-          Collapse
-        </button>
-      )}
-
-      <Link
-        to="/app/account"
-        onClick={onNavigate}
-        className="mt-2 flex items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-primary-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
-          {initialsFor(displayName)}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-content dark:text-content-dark">
-            {displayName}
-          </span>
-          <span className="block truncate text-xs capitalize text-content-muted dark:text-content-muted-dark">
-            {role ?? 'No role'}
-          </span>
-        </span>
-      </Link>
+        <AccountMenu
+          role={role}
+          isPlatformAdmin={isPlatformAdmin}
+          collapsed={false}
+          onNavigate={onNavigate}
+          onSignOut={() => void signOut()}
+        />
+      </div>
     </div>
   );
 }

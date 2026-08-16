@@ -65,3 +65,4 @@ blob-report/
 .claude-flow/sessions/
 .swarm/
 ruvector.db
+.gstack/
