@@ -98,7 +98,7 @@ jobs:
 
       - name: Upload edited plan doc
         if: steps.diff.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: plan-doc
           path: docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md
@@ -116,13 +116,13 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Download edited plan doc
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: plan-doc
           path: docs/FRESH/
 
       - name: Open pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: 'chore: weekly plan-drift audit'
           title: 'Weekly plan-drift audit — ${{ github.run_id }}'
