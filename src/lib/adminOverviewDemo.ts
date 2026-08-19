@@ -42,13 +42,6 @@ export const DEMO_ACTIVE_USERS_TREND = [
   10_820, 11_240, 10_990, 11_680, 12_010, 11_870, 12_489,
 ];
 
-export const DEMO_MONTHLY_REVENUE = '£184,260';
-export const DEMO_REVENUE_CHANGE = '+12.4%';
-export const DEMO_REVENUE_TREND = [
-  128_400, 133_100, 138_900, 141_200, 148_600, 153_900, 159_400, 163_800, 169_700,
-  174_900, 180_200, 184_260,
-];
-
 export const DEMO_PUBLISHED_ROTAS_TREND = [
   7_100, 7_480, 7_690, 8_020, 8_310, 8_640, 8_942,
 ];
@@ -302,131 +295,6 @@ export const DEMO_USERS_INACTIVE_90 = 1_884;
 export const DEMO_USERS_UNVERIFIED = 412;
 export const DEMO_USERS_UNVERIFIED_HINT = 'invite not accepted';
 export const DEMO_USERS_SUSPENDED = 326;
-
-/* ---------------------------------------------------------------------------
- * `/admin/subscriptions` and `/admin/billing`
- *
- * Everything below is money, and the schema holds none of it: `subscriptions`
- * records a plan name, a status and a period end, with no amount, no currency
- * and no billing interval, and there are no invoice, payment, credit or refund
- * tables at all. No payment provider is connected, so nothing has ever been
- * charged or collected.
- * ------------------------------------------------------------------------- */
-
-export const DEMO_MRR = '£184,260';
-export const DEMO_MRR_CHANGE = '+12.4%';
-export const DEMO_ARR_SHORT = '£2.21m';
-export const DEMO_ARR_FULL = '£2,211,120';
-export const DEMO_ACTIVE_SUBSCRIPTIONS = 1_098;
-export const DEMO_TRIALS = 86;
-export const DEMO_TRIALS_HINT = '22 convert this week';
-export const DEMO_PAST_DUE = 31;
-export const DEMO_PAST_DUE_HINT = '£8,940 at risk';
-export const DEMO_CHURN_RATE = '1.4%';
-export const DEMO_CHURN_CHANGE = '−0.3pt';
-
-export const DEMO_COLLECTED = '£176,420';
-export const DEMO_COLLECTED_HINT = '95.7% of billed';
-export const DEMO_OUTSTANDING = '£8,940';
-export const DEMO_OUTSTANDING_HINT = '31 invoices';
-export const DEMO_REFUNDS = '£1,180';
-export const DEMO_REFUNDS_HINT = '4 this month';
-export const DEMO_ARPO = '£154';
-
-export const DEMO_REVENUE_BY_PLAN = [
-  { label: 'Enterprise', value: 82_400, display: '£82.4k' },
-  { label: 'Business', value: 56_200, display: '£56.2k' },
-  { label: 'Professional', value: 34_100, display: '£34.1k' },
-  { label: 'Starter', value: 11_560, display: '£11.6k' },
-] as const;
-
-export type DemoPaymentState = 'paid' | 'pending' | 'failed' | 'refunded';
-
-export interface DemoSubscriptionFacts {
-  /** Monthly value in pounds, or null while a tenant is on trial. */
-  value: number | null;
-  cycle: string;
-  payment: DemoPaymentState;
-  usage: number;
-}
-
-const DEMO_VALUES = [1_240, 480, 290, 640, 1_980, null, null, 290, 90, 104];
-const DEMO_USAGE = [92, 74, 41, 88, 96, 28, 0, 63, 34, 52];
-
-export function demoSubscriptionFacts(
-  id: string,
-  index: number,
-  status: string,
-): DemoSubscriptionFacts {
-  const seed = index + id.charCodeAt(0);
-  const trialing = status === 'trialing';
-  return {
-    value: trialing ? null : (DEMO_VALUES[seed % DEMO_VALUES.length] ?? 290),
-    cycle: 'Monthly',
-    payment: status === 'past_due' ? 'failed' : trialing ? 'pending' : 'paid',
-    usage: DEMO_USAGE[seed % DEMO_USAGE.length] ?? 50,
-  };
-}
-
-export interface DemoInvoice {
-  id: string;
-  organisation: string;
-  amount: string;
-  status: DemoPaymentState | 'past_due';
-}
-
-export const DEMO_INVOICES: readonly DemoInvoice[] = [
-  {
-    id: 'INV-2026-4412',
-    organisation: 'Tayside Community Trust',
-    amount: '£1,980',
-    status: 'paid',
-  },
-  {
-    id: 'INV-2026-4411',
-    organisation: 'Sunnyvale Care Group',
-    amount: '£1,240',
-    status: 'paid',
-  },
-  {
-    id: 'INV-2026-4409',
-    organisation: 'Cardiff Retail Partners',
-    amount: '£640',
-    status: 'past_due',
-  },
-  {
-    id: 'INV-2026-4404',
-    organisation: 'Northgate Hospitality',
-    amount: '£480',
-    status: 'paid',
-  },
-  {
-    id: 'INV-2026-4398',
-    organisation: 'Mersey Domiciliary Care',
-    amount: '£290',
-    status: 'failed',
-  },
-  {
-    id: 'INV-2026-4390',
-    organisation: 'Harbour Logistics UK',
-    amount: '£290',
-    status: 'refunded',
-  },
-];
-
-export interface DemoFailedPayment {
-  organisation: string;
-  amount: string;
-  attempts: number;
-}
-
-export const DEMO_FAILED_PAYMENTS: readonly DemoFailedPayment[] = [
-  { organisation: 'Cardiff Retail Partners', amount: '£640', attempts: 3 },
-  { organisation: 'Mersey Domiciliary Care', amount: '£290', attempts: 3 },
-];
-
-export const DEMO_DUNNING_NOTE =
-  'Dunning retries on days 1, 3 and 7, then the organisation is suspended on day 14 unless a platform administrator intervenes.';
 
 /* ---------------------------------------------------------------------------
  * `/admin/support`. The case queue
@@ -1156,9 +1024,6 @@ export const DEMO_ORG_PROFILE: readonly { label: string; value: string }[] = [
 
 /** Storage consumed by one tenant. No file storage is wired up, so nothing measures this. */
 export const DEMO_ORG_STORAGE = '14.2 GB';
-
-/** Monthly recurring revenue for one tenant. No price is recorded against any plan. */
-export const DEMO_ORG_MRR = '£1,240';
 
 /**
  * The account attributes the reference shows on a user that this schema does
