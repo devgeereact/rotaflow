@@ -165,7 +165,7 @@ begin
     'organisation', v_org_id,
     jsonb_build_object('plan', p_plan, 'price_pence', p_price_pence, 'owner_email', p_owner_email),
     'notice',
-    'platform');
+    'platform_only');
 
   select * into v_invite from public.create_invite(v_org_id, p_owner_email, 'owner');
 

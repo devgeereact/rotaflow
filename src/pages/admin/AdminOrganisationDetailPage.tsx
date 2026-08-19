@@ -324,7 +324,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
     try {
       const invite = await createInvite(organisationId, trimmed, 'owner');
       setReinviteResult(invite.acceptUrl);
-      showSuccess(`Owner invite sent to ${trimmed}. Copy the link and share it.`);
+      showSuccess(`Owner invite created for ${trimmed}. Copy the link and share it.`);
     } catch (err) {
       reportError(err, { area: 'admin:organisation-detail:reinvite-owner' });
       setReinviteError(
@@ -632,6 +632,29 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                       )}
                     </div>
                   </>
+                ) : detail.members.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                      No member of this organisation holds the owner role, but it does
+                      have other staff. Promote one of them to owner from the Users tab
+                      instead of sending a new invite — this organisation already has
+                      members, so it no longer qualifies for a first-owner invite.
+                    </p>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setTab('users')}
+                      title="Open the Users tab, filtered to this organisation"
+                    >
+                      View in users
+                    </Button>
+                  </div>
+                ) : !canManagePlatformConfig ? (
+                  <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                    No member of this organisation holds the owner role, so there is
+                    nobody to name as the primary contact. This usually means the original
+                    owner invite expired, or was never accepted. Ask a platform owner or
+                    administrator to send a new one.
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-content-muted dark:text-content-muted-dark">
