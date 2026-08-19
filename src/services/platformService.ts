@@ -222,7 +222,7 @@ export async function createOrganisationWithInvite(
     p_slug: input.slug,
     p_plan: input.plan,
     p_owner_email: input.ownerEmail,
-    p_price_pence: input.pricePence ?? null,
+    p_price_pence: input.pricePence ?? undefined,
   });
   if (error) throw error;
 
