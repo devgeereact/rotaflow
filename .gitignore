@@ -59,10 +59,13 @@ test-results/
 playwright-report/
 blob-report/
 
-# Ruflo local secrets and runtime data
-.claude-flow/data/
-.claude-flow/logs/
-.claude-flow/sessions/
+# Ruflo/claude-flow local runtime state — daemon/swarm/metrics files churn
+# every session and carry no reviewable value; regenerates automatically.
+.claude-flow/
 .swarm/
 ruvector.db
 .gstack/
+.agents/
+
+# Graphify knowledge-graph output — regenerated on every /graphify run.
+graphify-out/
