@@ -139,10 +139,15 @@ export function revenueByPlan(
  * MRR reconstructed as of a past date, using `started_at`/`canceled_at` —
  * both real, immutable-once-set timestamps, so this needs no snapshot
  * table. A subscription counts if it had started and not yet canceled as
- * of `asOf`. Uses each subscription's current `price_pence`/plan price as
- * a stand-in for its historical price — this schema does not track price
- * changes over time, so that is the same simplification every other
- * figure in this file already makes.
+ * of `asOf` — canceled exactly at `asOf` does not count, matching the
+ * strict-`>` boundary `revenueChurnForMonth` relies on below. Also
+ * requires `status` to be `active`/`past_due`, same condition as
+ * `monthlyRecurringPence` above, so a `trialing` subscription that never
+ * converted to paying is never counted as revenue. Uses each
+ * subscription's current `price_pence`/plan price and current `status` as
+ * stand-ins for their historical values — this schema does not track
+ * price or status changes over time, so that is the same simplification
+ * every other figure in this file already makes.
  */
 export function mrrAtDatePence(
   subscriptions: readonly SubscriptionLike[],
@@ -150,6 +155,7 @@ export function mrrAtDatePence(
   asOf: Date,
 ): number {
   return subscriptions
+    .filter((s) => s.status === 'active' || s.status === 'past_due')
     .filter((s) => new Date(s.started_at) <= asOf)
     .filter((s) => s.canceled_at === null || new Date(s.canceled_at) > asOf)
     .reduce((total, s) => total + (s.price_pence ?? planPrices.get(s.plan) ?? 0), 0);
@@ -160,6 +166,12 @@ export function mrrAtDatePence(
  * it, over MRR at the month's start. Null when starting MRR was zero — a
  * churn rate out of no revenue is a division by zero dressed as 0%, same
  * reasoning as the existing `churnRate` above.
+ *
+ * The "lost" filter's date bounds and status condition mirror
+ * `mrrAtDatePence`'s exactly — a cancellation exactly at `monthStart` was
+ * never part of `startingMrr`, so it must not be counted as lost from it
+ * either, and a `trialing` subscription that never contributed to
+ * `startingMrr` must not be counted as lost revenue either.
  */
 export function revenueChurnForMonth(
   subscriptions: readonly SubscriptionLike[],
@@ -170,10 +182,11 @@ export function revenueChurnForMonth(
   const startingMrr = mrrAtDatePence(subscriptions, planPrices, monthStart);
   if (startingMrr <= 0) return null;
   const lost = subscriptions
+    .filter((s) => s.status === 'active' || s.status === 'past_due')
     .filter((s) => s.canceled_at !== null)
     .filter((s) => {
       const c = new Date(s.canceled_at!);
-      return c >= monthStart && c < nextMonthStart;
+      return c > monthStart && c < nextMonthStart;
     })
     .reduce((total, s) => total + (s.price_pence ?? planPrices.get(s.plan) ?? 0), 0);
   return Math.round((lost / startingMrr) * 1000) / 10;

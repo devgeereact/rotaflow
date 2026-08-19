@@ -195,7 +195,9 @@ describe('mrrAtDatePence', () => {
     ];
     expect(mrrAtDatePence(subs, PRICES, new Date('2026-04-01T00:00:00Z'))).toBe(12900);
     // Before the cancellation, both counted:
-    expect(mrrAtDatePence(subs, PRICES, new Date('2026-02-01T00:00:00Z'))).toBe(12900 + 29900);
+    expect(mrrAtDatePence(subs, PRICES, new Date('2026-02-01T00:00:00Z'))).toBe(
+      12900 + 29900,
+    );
   });
 
   it('excludes a subscription that had not started yet as of the date', () => {
@@ -203,6 +205,24 @@ describe('mrrAtDatePence', () => {
       sub({ started_at: '2026-06-01T00:00:00Z', canceled_at: null, price_pence: 2900 }),
     ];
     expect(mrrAtDatePence(subs, PRICES, new Date('2026-01-01T00:00:00Z'))).toBe(0);
+  });
+
+  it('excludes a subscription canceled exactly at the as-of date', () => {
+    const subs: SubscriptionLike[] = [
+      sub({
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-01T00:00:00Z',
+        price_pence: 12900,
+      }),
+    ];
+    expect(mrrAtDatePence(subs, PRICES, new Date('2026-03-01T00:00:00Z'))).toBe(0);
+  });
+
+  it('excludes a trialing subscription, never converted to paying', () => {
+    const subs: SubscriptionLike[] = [
+      sub({ status: 'trialing', started_at: '2026-01-01T00:00:00Z', price_pence: 12900 }),
+    ];
+    expect(mrrAtDatePence(subs, PRICES, new Date('2026-02-01T00:00:00Z'))).toBe(0);
   });
 });
 
@@ -235,5 +255,50 @@ describe('revenueChurnForMonth', () => {
       new Date('2026-04-01T00:00:00Z'),
     );
     expect(result).toBe(Math.round((29900 / 42800) * 1000) / 10);
+  });
+
+  it('excludes a subscription canceled exactly at the month boundary from both starting MRR and lost', () => {
+    const subs: SubscriptionLike[] = [
+      // Still active through and past March — keeps starting MRR non-zero.
+      sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
+      // Canceled exactly at March 1st: never part of starting MRR, so must
+      // not be counted as lost from it either (not double-counted, not
+      // dropped-then-inflated).
+      sub({
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-01T00:00:00Z',
+        price_pence: 29900,
+      }),
+    ];
+    const result = revenueChurnForMonth(
+      subs,
+      PRICES,
+      new Date('2026-03-01T00:00:00Z'),
+      new Date('2026-04-01T00:00:00Z'),
+    );
+    // Starting MRR for March = only the still-active one = 12900.
+    // Lost in March = nothing — the boundary cancellation was never "starting".
+    expect(result).toBe(0);
+  });
+
+  it('excludes a trialing subscription that is later canceled from both MRR and churn', () => {
+    const subs: SubscriptionLike[] = [
+      sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
+      sub({
+        status: 'trialing',
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-15T00:00:00Z',
+        price_pence: 29900,
+      }),
+    ];
+    const result = revenueChurnForMonth(
+      subs,
+      PRICES,
+      new Date('2026-03-01T00:00:00Z'),
+      new Date('2026-04-01T00:00:00Z'),
+    );
+    // Starting MRR for March = only the active one = 12900 (trialing excluded).
+    // Lost in March = 0 — the trialing subscription never contributed revenue.
+    expect(result).toBe(0);
   });
 });
