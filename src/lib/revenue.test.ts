@@ -301,4 +301,30 @@ describe('revenueChurnForMonth', () => {
     // Lost in March = 0 — the trialing subscription never contributed revenue.
     expect(result).toBe(0);
   });
+
+  it('counts a real cancellation whose current status reads canceled, not active', () => {
+    // Realistic shape: the stripe-webhook sets status to 'canceled' (never
+    // leaves it 'active'/'past_due') once a subscription is actually
+    // canceled — this is the case mrrAtDatePence's `!== 'trialing'` filter
+    // exists to still count, unlike a literal active/past_due check would.
+    const subs: SubscriptionLike[] = [
+      sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
+      sub({
+        status: 'canceled',
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-15T00:00:00Z',
+        price_pence: 29900,
+      }),
+    ];
+    const result = revenueChurnForMonth(
+      subs,
+      PRICES,
+      new Date('2026-03-01T00:00:00Z'),
+      new Date('2026-04-01T00:00:00Z'),
+    );
+    // Starting MRR for March = both were live as of Mar 1 = 12900 + 29900 = 42800.
+    // Lost in March = the one canceled Mar 15 = 29900, despite its current
+    // status now reading 'canceled' rather than 'active'.
+    expect(result).toBe(Math.round((29900 / 42800) * 1000) / 10);
+  });
 });
