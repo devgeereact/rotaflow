@@ -10,11 +10,7 @@ import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
-import {
-  DEMO_ORG_MRR,
-  DEMO_ORG_PROFILE,
-  DEMO_ORG_STORAGE,
-} from '@/lib/adminOverviewDemo';
+import { DEMO_ORG_PROFILE, DEMO_ORG_STORAGE } from '@/lib/adminOverviewDemo';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { SuspendOrgModal } from '@/components/admin/SuspendOrgModal';
 import {
@@ -45,6 +41,8 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
+import { supabase } from '@/lib/supabase';
+import { formatMoney } from '@/lib/money';
 import type {
   AuditLog,
   Department,
@@ -153,6 +151,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   const { showError, showSuccess } = useToast();
 
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [orgMrrPence, setOrgMrrPence] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -182,6 +181,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
     setFailed(false);
     setNotFound(false);
     setDetail(null);
+    setOrgMrrPence(null);
     void (async () => {
       try {
         const organisation = await getOrganisation(organisationId);
@@ -200,6 +200,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           sessions,
           smtp,
           gdpr,
+          mrrPence,
         ] = await Promise.all([
           listOrgMembers(organisationId),
           listOrgLocations(organisationId),
@@ -217,6 +218,13 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           listGdprRequests(200).then((all) =>
             all.filter((r) => r.orgId === organisationId),
           ),
+          (async () => {
+            const { data, error } = await supabase.rpc('subscription_mrr_pence', {
+              p_org: organisationId,
+            });
+            if (error) throw error;
+            return data;
+          })(),
         ]);
         if (!active) return;
         setDetail({
@@ -231,6 +239,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           smtp,
           gdpr,
         });
+        setOrgMrrPence(mrrPence);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'admin:organisation-detail' });
@@ -505,8 +514,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               />
               <StatTile
                 label="MRR"
-                value={DEMO_ORG_MRR}
-                hint={<span className="text-warning">Placeholder</span>}
+                value={orgMrrPence === null ? '—' : formatMoney(orgMrrPence)}
               />
             </TileGrid>
 
