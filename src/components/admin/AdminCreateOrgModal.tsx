@@ -114,6 +114,12 @@ export function AdminCreateOrgModal({
         setFormError('The negotiated price must be a positive number, in pounds.');
         return;
       }
+      if (pounds > 1_000_000) {
+        setFormError(
+          "The negotiated price seems too high — check it's in pounds, not pence.",
+        );
+        return;
+      }
       pricePence = Math.round(pounds * 100);
     }
 
@@ -130,10 +136,14 @@ export function AdminCreateOrgModal({
       onCreated(result, trimmedName, trimmedEmail);
     } catch (err) {
       reportError(err, { area: 'admin:create-org:submit' });
-      // The database raises specific messages (duplicate slug, unknown
-      // plan, insufficient role) that are more useful than a generic one.
-      const message =
-        err instanceof Error && err.message
+      // The database raises specific messages (unknown plan, insufficient
+      // role) that are more useful than a generic one — except a duplicate
+      // slug, which surfaces as a raw Postgres unique-violation
+      // (code 23505) rather than a readable message.
+      const conflict = (err as { code?: string } | null)?.code === '23505';
+      const message = conflict
+        ? 'That slug is already taken. Try a different one.'
+        : err instanceof Error && err.message
           ? err.message
           : 'Could not create that organisation.';
       setFormError(message);

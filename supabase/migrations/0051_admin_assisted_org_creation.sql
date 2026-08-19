@@ -131,7 +131,10 @@ begin
       using errcode = '42501';
   end if;
 
-  if p_plan not in ('starter','professional','business','enterprise') then
+  -- Validated against the live plans table rather than a hardcoded list, so
+  -- a plan added later doesn't get selectable in the UI (listPlans() reads
+  -- the same table) and then rejected here.
+  if not exists (select 1 from public.plans where code = p_plan) then
     raise exception 'Unknown plan: %', p_plan using errcode = '22023';
   end if;
 
@@ -143,12 +146,26 @@ begin
   -- collide with memberships_keep_one_owner_trigger (0047): deleting an
   -- org's only owner row is exactly the transition that trigger exists to
   -- block, so an insert-then-delete approach can never succeed.
-  insert into public.organisations (name, slug, plan)
-  values (p_name, p_slug, p_plan)
+  --
+  -- contact_email is populated from the owner's email so the org has a real
+  -- contact on file from creation, before the invite is even accepted.
+  insert into public.organisations (name, slug, plan, contact_email)
+  values (p_name, p_slug, p_plan, p_owner_email)
   returning id into v_org_id;
 
   insert into public.subscriptions (org_id, plan, status, price_pence, started_at)
   values (v_org_id, p_plan, 'active', p_price_pence, timezone('utc', now()));
+
+  -- Audit trail: organisations_audit (0016) is UPDATE-only and subscriptions
+  -- has no audit trigger at all, so nothing else records which platform
+  -- admin created this org through this path, or what price they set.
+  perform public.audit_write(
+    v_org_id,
+    'organisation.created_by_admin',
+    'organisation', v_org_id,
+    jsonb_build_object('plan', p_plan, 'price_pence', p_price_pence, 'owner_email', p_owner_email),
+    'notice',
+    'platform');
 
   select * into v_invite from public.create_invite(v_org_id, p_owner_email, 'owner');
 

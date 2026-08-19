@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Ban, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Ban, Copy, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, Panel } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 import { PanelTabs } from '@/components/ui/PanelTabs';
 import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
@@ -32,6 +34,8 @@ import {
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import { getOrgSmtpSettings } from '@/services/smtpSettingsService';
 import { listGdprRequests } from '@/services/gdprRequestService';
+import { createInvite } from '@/services/inviteService';
+import { isValidEmail } from '@/lib/email';
 import {
   formatRemaining,
   millisecondsRemaining,
@@ -176,6 +180,20 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   );
   const [busy, setBusy] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
+  // Re-invite affordance for an org stranded with zero members (the invite
+  // that would have made it an owner expired, or was never accepted). Kept
+  // as local state on this page rather than a new component — a single
+  // email input and button doesn't earn its own file.
+  const [reinviteEmail, setReinviteEmail] = useState('');
+  const [reinviting, setReinviting] = useState(false);
+  const [reinviteError, setReinviteError] = useState<string | null>(null);
+  const [reinviteResult, setReinviteResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    setReinviteEmail('');
+    setReinviteError(null);
+    setReinviteResult(null);
+  }, [organisationId]);
 
   useEffect(() => {
     let active = true;
@@ -294,6 +312,41 @@ export function AdminOrganisationDetailPage(): JSX.Element {
     if (!ok) return;
     await applyStatus('active');
   }, [detail, confirm, applyStatus]);
+
+  const handleReinvite = useCallback(async (): Promise<void> => {
+    const trimmed = reinviteEmail.trim();
+    if (!isValidEmail(trimmed)) {
+      setReinviteError('That does not look like a valid email address.');
+      return;
+    }
+    setReinviting(true);
+    setReinviteError(null);
+    try {
+      const invite = await createInvite(organisationId, trimmed, 'owner');
+      setReinviteResult(invite.acceptUrl);
+      showSuccess(`Owner invite sent to ${trimmed}. Copy the link and share it.`);
+    } catch (err) {
+      reportError(err, { area: 'admin:organisation-detail:reinvite-owner' });
+      setReinviteError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Could not create that invitation. Please try again.',
+      );
+    } finally {
+      setReinviting(false);
+    }
+  }, [organisationId, reinviteEmail, showSuccess]);
+
+  const copyReinviteLink = useCallback(async (): Promise<void> => {
+    if (!reinviteResult) return;
+    try {
+      await navigator.clipboard.writeText(reinviteResult);
+      showSuccess('Invitation link copied.');
+    } catch (err) {
+      reportError(err, { area: 'admin:organisation-detail:copy-reinvite-link' });
+      showError('Could not copy. Select the link and copy it manually.');
+    }
+  }, [reinviteResult, showError, showSuccess]);
 
   const memberColumns = useMemo<DataTableColumn<OrgMemberRow>[]>(
     () => [
@@ -580,10 +633,70 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                    No member of this organisation holds the owner role, so there is
-                    nobody to name as the primary contact.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                      No member of this organisation holds the owner role, so there is
+                      nobody to name as the primary contact. This usually means the
+                      original owner invite expired, or was never accepted. Send a new one
+                      below.
+                    </p>
+                    {reinviteResult ? (
+                      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+                        <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
+                          Invitation link created. Send it to the new owner &mdash; it is
+                          shown once and cannot be retrieved again.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+                            {reinviteResult}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => void copyReinviteLink()}
+                          >
+                            <Copy size={14} aria-hidden="true" className="mr-1.5" />
+                            Copy
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setReinviteResult(null);
+                              setReinviteEmail('');
+                            }}
+                          >
+                            Done
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <Label htmlFor="reinvite-owner-email">Owner&rsquo;s email</Label>
+                        <div className="mt-1 flex flex-wrap items-start gap-2">
+                          <Input
+                            id="reinvite-owner-email"
+                            type="email"
+                            value={reinviteEmail}
+                            onChange={(e) => setReinviteEmail(e.target.value)}
+                            placeholder="owner@theircompany.com"
+                            className="min-w-0 flex-1"
+                          />
+                          <Button
+                            onClick={() => void handleReinvite()}
+                            disabled={reinviting}
+                          >
+                            {reinviting ? 'Sending…' : 'Send owner invite'}
+                          </Button>
+                        </div>
+                        {reinviteError && (
+                          <p className="mt-2 text-sm text-danger" role="alert">
+                            {reinviteError}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </Panel>
             </div>
