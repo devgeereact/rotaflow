@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Button } from '@/components/ui/Button';
-import { HERO } from '@/lib/marketing';
+import { HERO, PRIMARY_CTA } from '@/lib/marketing';
 
 interface FinalCtaProps {
   heading?: string;
@@ -44,7 +44,7 @@ export function FinalCta({
             <>
               <Link to="/signup">
                 <Button size="lg">
-                  Start free trial
+                  {PRIMARY_CTA}
                   <ArrowRight size={18} aria-hidden="true" />
                 </Button>
               </Link>

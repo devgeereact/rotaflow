@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { buildAcceptUrl } from '@/services/inviteService';
 import { grantPlatformRole, revokePlatformRole } from '@/services/platformRoleService';
 import type { AuditLog, Organisation, Profile, Subscription } from '@/types';
 
@@ -183,4 +184,55 @@ export async function setPlatformAdmin(
     return;
   }
   await revokePlatformRole(userId);
+}
+
+export interface CreateOrganisationWithInviteInput {
+  name: string;
+  slug: string;
+  plan: 'starter' | 'professional' | 'business' | 'enterprise';
+  ownerEmail: string;
+  /** Pence. Omit or null to use the plan's list price. */
+  pricePence?: number | null;
+}
+
+export interface CreatedOrganisationInvite {
+  orgId: string;
+  inviteToken: string;
+  inviteExpiresAt: string;
+  /** Ready-to-send URL for the contact, same shape as inviteService's own. */
+  acceptUrl: string;
+}
+
+/**
+ * Platform-admin-only. Creates an organisation for a prospect who contacted
+ * sales directly, at a plan and (optionally) negotiated price the admin
+ * sets, and mints an owner invite for the real contact — the admin never
+ * holds membership in the org, not even briefly (enforced inside
+ * `admin_create_organisation_with_invite`, 0051_admin_assisted_org_creation.sql).
+ *
+ * Raises rather than returning empty, same posture as `setPlatformAdmin`
+ * above and `platformRoleService`'s grant/revoke functions — a refused
+ * write must never look like a successful one.
+ */
+export async function createOrganisationWithInvite(
+  input: CreateOrganisationWithInviteInput,
+): Promise<CreatedOrganisationInvite> {
+  const { data, error } = await supabase.rpc('admin_create_organisation_with_invite', {
+    p_name: input.name,
+    p_slug: input.slug,
+    p_plan: input.plan,
+    p_owner_email: input.ownerEmail,
+    p_price_pence: input.pricePence ?? undefined,
+  });
+  if (error) throw error;
+
+  const row = data?.[0];
+  if (!row) throw new Error('The organisation could not be created.');
+
+  return {
+    orgId: row.org_id,
+    inviteToken: row.invite_token,
+    inviteExpiresAt: row.invite_expires_at,
+    acceptUrl: buildAcceptUrl(row.invite_token),
+  };
 }

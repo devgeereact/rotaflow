@@ -141,7 +141,7 @@ export function RotaGrid({
                 <span
                   className={cn(
                     isToday
-                      ? 'text-white/90'
+                      ? 'text-white'
                       : 'text-content-muted dark:text-content-muted-dark',
                   )}
                 >
@@ -205,7 +205,7 @@ export function RotaGrid({
               <p
                 className={cn(
                   'font-mono text-sm font-bold',
-                  short ? 'text-danger' : 'text-success',
+                  short ? 'text-danger-ink' : 'text-success-ink',
                 )}
               >
                 {total.staffCount} / {total.required}

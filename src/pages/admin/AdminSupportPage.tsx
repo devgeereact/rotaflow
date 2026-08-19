@@ -81,24 +81,15 @@ const WIDTHS = [
  * `/admin/support`. The support desk, built to the shape of
  * `docs/PLATFORM_CONSOLE.html`.
  *
- * ## The case queue is placeholder; the access log beside it is not
- *
- * There is no `support_cases` table and no inbound channel writing to one, so
- * every case, priority, assignment, response target and satisfaction score on
- * this screen comes from `src/lib/adminOverviewDemo.ts`. What *is* real sits at
- * the top and on `/admin/support-access`: who is inside a customer's data right
- * now, under what reason, for how much longer.
- *
- * That distinction is on the screen rather than in this comment, because "we
- * have support cases" is a sentence someone repeats to a customer.
- *
  * ## What this screen used to claim, and why it was wrong
  *
- * It said time-boxed support access "is not built" and that
- * `support_access_sessions` "exists in no migration". Both were true when it was
- * written and both stopped being true at 0019, which created the table, added
- * `request_support_access` and made the customer's opt-out a database-enforced
- * precondition.
+ * Two claims here have gone stale as the schema caught up, so both are
+ * recorded rather than silently deleted: it said time-boxed support access "is
+ * not built" and `support_access_sessions` "exists in no migration", both true
+ * when written and both stopped being true at 0019. It then said the case
+ * queue was placeholder from `src/lib/adminOverviewDemo.ts`, true until the
+ * `support_cases` table (0024) and `listSupportCases` replaced it — see the
+ * "Where these cases come from" callout on the screen for what is real today.
  */
 export function AdminSupportPage(): JSX.Element {
   const [organisations, setOrganisations] = useState<Organisation[] | null>(null);

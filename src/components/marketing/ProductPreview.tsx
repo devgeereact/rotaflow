@@ -17,7 +17,12 @@
 const METRICS = [
   { label: 'On shift today', value: '41', tone: 'text-content dark:text-content-dark' },
   { label: 'Coverage', value: '92%', tone: 'text-success' },
-  { label: 'Open shifts', value: '23', tone: 'text-warning' },
+  // Not `text-warning` (#E0A030): at this weight/size against white it reads
+  // at 2.27:1, well under the 3:1 large-text minimum. `warning` has no
+  // darker text-safe ink token yet (only DEFAULT/wash), so this is a
+  // one-off local value rather than inventing one — a real design-system
+  // gap tracked in docs/PRODUCT_TRANSFORMATION_PLAN.md §8.5, not solved here.
+  { label: 'Open shifts', value: '23', tone: 'text-[#96650F] dark:text-warning' },
 ];
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -35,6 +40,14 @@ const CHIP = {
   day: 'bg-shift-tint-sky text-shift-tint-sky-fg',
   late: 'bg-shift-tint-violet text-shift-tint-violet-fg',
   night: 'bg-shift-tint-indigo text-shift-tint-indigo-fg',
+} as const;
+
+/** Start time shown inside each hero rota chip. Matches `AGENDA` below. */
+const CHIP_TIME = {
+  early: '07:00',
+  day: '09:00',
+  late: '14:00',
+  night: '22:00',
 } as const;
 
 const AGENDA = [
@@ -73,7 +86,12 @@ export function ProductPreview(): JSX.Element {
                   key={item}
                   className={`mb-1 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
                     i === 1
-                      ? 'bg-primary/10 text-primary'
+                      ? // Not the `bg-primary/10 text-primary` tint every other
+                        // icon-only badge on this page uses: with real text
+                        // ("Rota") inside it reads at 4.08:1, under 4.5:1. A
+                        // solid active-item fill reads as a legitimate nav
+                        // convention on its own and passes easily.
+                        'bg-primary text-primary-fg'
                       : 'text-content-muted dark:text-content-muted-dark'
                   }`}
                 >
@@ -124,8 +142,14 @@ export function ProductPreview(): JSX.Element {
                   {shifts.map((shift, i) => (
                     <span key={i} className="p-1">
                       <span
-                        className={`block h-5 rounded ${shift ? CHIP[shift] : 'bg-divider dark:bg-divider-dark'}`}
-                      />
+                        className={`flex h-7 items-center justify-center rounded ${shift ? CHIP[shift] : 'bg-divider dark:bg-divider-dark'}`}
+                      >
+                        {shift && (
+                          <span className="font-mono text-[8px] font-semibold leading-none">
+                            {CHIP_TIME[shift]}
+                          </span>
+                        )}
+                      </span>
                     </span>
                   ))}
                 </div>
@@ -138,7 +162,12 @@ export function ProductPreview(): JSX.Element {
       {/* Staff phone. The same week, published */}
       <div className="absolute -bottom-8 -right-2 hidden w-52 rounded-[1.75rem] border-4 border-content/85 bg-surface shadow-lg lg:block dark:border-content-dark/20 dark:bg-surface-dark">
         <div className="rounded-t-[1.4rem] bg-primary px-4 pb-4 pt-5 text-primary-fg">
-          <p className="text-[10px] uppercase tracking-wide opacity-80">My schedule</p>
+          {/* Not `opacity-80`: white at 80% over solid `bg-primary` reads at
+              3.56:1, under the 4.5:1 small-text minimum. Full `text-primary-fg`
+              (the token this fill is designed to pair with) passes easily. */}
+          <p className="text-[10px] uppercase tracking-wide text-primary-fg">
+            My schedule
+          </p>
           <p className="font-display text-sm font-bold">11-17 May</p>
         </div>
         <div className="space-y-2 p-3">

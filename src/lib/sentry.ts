@@ -8,6 +8,7 @@ export function initSentry(): void {
   Sentry.init({
     dsn: env.sentryDsn,
     environment: env.mode,
+    release: __SENTRY_RELEASE__,
     enabled: env.isProd, // don't spam Sentry from local dev
     integrations: [
       Sentry.browserTracingIntegration(),

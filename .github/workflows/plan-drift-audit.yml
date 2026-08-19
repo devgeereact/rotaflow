@@ -1,0 +1,166 @@
+name: Plan drift audit
+
+# Weekly re-audit of docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md against the live
+# repo — git log, migrations, and shipped code — so the plan can't go stale
+# and silent the way its predecessor did (a two-week gap caught only by
+# chance during an unrelated session). Requires the same rigor as a human
+# doing the check by hand: read commits, read files, verify claims, don't
+# just grep for keywords.
+#
+# On success: appends a dated entry to the plan doc and opens a PR — never
+# pushes straight to main, matching this project's git safety conventions.
+# On failure: appends a FAILED marker instead of staying silent, because a
+# missed run must be as visible as a completed one.
+# Staleness: the `check-staleness` job runs independently of whether the
+# audit job succeeds, so a stopped scheduler is caught even if this whole
+# workflow stops firing (see job comment below).
+#
+# Two-job split is deliberate, not incidental: `audit` (the AI step) holds
+# only `contents: read` — it is structurally incapable of pushing or opening
+# a PR, even if a future prompt edit told it to. Only `open-pr` (deterministic,
+# no AI) holds `contents: write` / `pull-requests: write`. Least privilege for
+# the AI-driven half, same principle as RLS being the enforcement boundary
+# instead of client-side checks elsewhere in this project.
+
+on:
+  schedule:
+    # Weekly, same day-of-week pattern as codeql.yml but offset so both
+    # don't compete for runner minutes.
+    - cron: '30 5 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plan-drift-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Run drift audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Run Claude Code audit
+        id: audit
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Re-audit docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md against the current
+            state of this repository. This is the exact method used to write
+            the doc originally: read `git log --oneline -50`, read the specific
+            migration/source files the doc cites as evidence, and check whether
+            each claim in the doc's status tables (section 1 "New P0 status"
+            table, section 2 score-delta table, and the "New Phase 0" task list)
+            still holds.
+
+            Do NOT rewrite the whole document. Only:
+            1. If a claim is now stale (something the doc says is "Not done" has
+               shipped, or something it says is "Done" has regressed), correct
+               that specific line in place, same as a human editor would.
+            2. Append one new entry under a `## Drift Audit Log` section at the
+               very end of the file (create the section if it doesn't exist).
+               Each entry MUST start with this exact format on its own line
+               (required for the automated staleness check to parse it):
+               `**YYYY-MM-DD**: <one-paragraph summary>` — the date is today
+               in UTC. The summary states what was checked and what (if
+               anything) had drifted and was corrected, or "No drift found —
+               N claims re-verified, all still accurate."
+
+            If you cannot complete the audit for any reason, do not guess —
+            still append an entry in the same `**YYYY-MM-DD**: FAILED: <one-line
+            reason>` format so a skipped audit is as visible as a completed one.
+
+            Edit only docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md. Do not touch any
+            other file, and do not attempt to commit or push — this job's
+            checkout has read-only git access by design; a separate workflow
+            job opens the PR from whatever you leave in the working tree.
+          claude_args: '--max-turns 30'
+
+      - name: Check whether the file actually changed
+        id: diff
+        run: |
+          if git diff --quiet -- docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload edited plan doc
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan-doc
+          path: docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md
+          retention-days: 7
+
+  open-pr:
+    name: Open pull request
+    needs: audit
+    if: needs.audit.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download edited plan doc
+        uses: actions/download-artifact@v4
+        with:
+          name: plan-doc
+          path: docs/FRESH/
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: 'chore: weekly plan-drift audit'
+          title: 'Weekly plan-drift audit — ${{ github.run_id }}'
+          body: |
+            Automated re-audit of `docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md`
+            against the current repo state. Review the diff before merging —
+            this workflow never pushes straight to `main`.
+
+            See the plan doc's own `## Drift Audit Log` section for what
+            changed, or `FAILED: ...` if the audit couldn't complete.
+          branch: plan-drift-audit/weekly
+          delete-branch: true
+          labels: automated,plan-audit
+
+  check-staleness:
+    name: Check for a stopped scheduler
+    runs-on: ubuntu-latest
+    # Runs on every scheduled trigger regardless of whether `audit`/`open-pr`
+    # ran or succeeded, so it independently verifies the log itself is fresh
+    # — the one thing that would NOT self-report if the scheduler stopped
+    # firing entirely (deleted workflow, expired secret, disabled Actions).
+    if: always() && github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify last audit entry is under 10 days old
+        run: |
+          LAST_ENTRY_DATE=$(grep -A200 '^## Drift Audit Log' docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md 2>/dev/null \
+            | grep -oE '^\*\*[0-9]{4}-[0-9]{2}-[0-9]{2}' | tail -1 | tr -d '*' || true)
+          if [ -z "$LAST_ENTRY_DATE" ]; then
+            echo "::warning::No drift-audit log entry found at all — the audit job may never have run successfully."
+            exit 1
+          fi
+          LAST_EPOCH=$(date -d "$LAST_ENTRY_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%d" "$LAST_ENTRY_DATE" +%s)
+          NOW_EPOCH=$(date +%s)
+          AGE_DAYS=$(( (NOW_EPOCH - LAST_EPOCH) / 86400 ))
+          echo "Last drift-audit entry: $LAST_ENTRY_DATE ($AGE_DAYS days ago)"
+          if [ "$AGE_DAYS" -gt 10 ]; then
+            echo "::error::Plan-drift audit log is $AGE_DAYS days stale (>10). The scheduler may have stopped firing silently — check this workflow's run history."
+            exit 1
+          fi

@@ -70,6 +70,47 @@ export function monthlyGrowth(
   return buckets;
 }
 
+/**
+ * Cancellations per month, oldest first — the "Churned" series on the
+ * growth chart. A count, not a percentage, so it plots on the same axis
+ * as `monthlyGrowth`'s "Active"/"New" series without needing a second
+ * scale. The revenue-churn rate (lost MRR ÷ starting MRR) is real too,
+ * computed the same way, but shown as text alongside the chart rather
+ * than plotted — see `revenueChurnForMonth` in `lib/revenue.ts`.
+ *
+ * Gated on CURRENT `status === 'canceled'`, not on `canceled_at` alone:
+ * Stripe's Customer Portal defaults to cancel-at-period-end, so
+ * `canceled_at` is set the moment cancellation is *requested*, weeks
+ * before it actually takes effect. Without this gate, a scheduled
+ * cancellation would count as churned the instant it's requested — before
+ * the subscription has actually stopped paying — contradicting every MRR
+ * figure elsewhere on this page, which only checks `status`. Matches the
+ * same status-gated exclusion `mrrAtDatePence`/`revenueChurnForMonth` in
+ * `lib/revenue.ts` use. Known consequence, not a bug: a bucket for a past
+ * month can still gain a count later, once that subscription's status
+ * actually flips to `canceled` and this function is next called — the
+ * count reflects when revenue really stopped, not when the chart happened
+ * to be drawn.
+ */
+export function monthlyChurnCounts(
+  subscriptions: readonly { canceled_at: string | null; status: string }[],
+  now: Date,
+  months = 12,
+): number[] {
+  const counts: number[] = [];
+  for (let i = months - 1; i >= 0; i -= 1) {
+    const start = startOfMonth(subMonths(now, i));
+    const nextStart = startOfMonth(subMonths(now, i - 1));
+    const count = subscriptions.filter((s) => {
+      if (s.status !== 'canceled' || s.canceled_at === null) return false;
+      const c = new Date(s.canceled_at);
+      return !isBefore(c, start) && isBefore(c, nextStart);
+    }).length;
+    counts.push(count);
+  }
+  return counts;
+}
+
 export interface Breakdown {
   label: string;
   value: number;

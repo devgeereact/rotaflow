@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrg } from '@/hooks/useOrg';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
@@ -10,6 +10,7 @@ import { SidebarFooter } from '@/components/layout/SidebarFooter';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { BRAND } from '@/lib/brand';
 
 const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
@@ -149,20 +150,40 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
         <div
           className={cn(
             'flex items-center gap-2 px-5 py-6',
-            collapsed && 'justify-center px-0',
+            collapsed ? 'flex-col justify-center px-0' : 'justify-between',
           )}
         >
-          <BrandMark label={null} className="h-8 w-8 shrink-0" />
-          {!collapsed && (
-            <span className="min-w-0">
-              <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
-                Rota<span className="text-primary">Flow</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <BrandMark label={null} className="h-8 w-8 shrink-0" />
+            {!collapsed && (
+              <span className="min-w-0">
+                <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
+                  Rota<span className="text-primary">Flow</span>
+                </span>
+                <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
+                  {BRAND.tagline}
+                </span>
               </span>
-              <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
-                Smarter rota. Stronger teams.
-              </span>
-            </span>
-          )}
+            )}
+          </div>
+          {/*
+            Lives here, not at the bottom of the footer stack, so it's reachable
+            without scrolling past every row below it — the one control on this
+            rail someone reaches for on nearly every session.
+          */}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="shrink-0 rounded-lg p-1.5 text-content-muted transition-colors hover:bg-primary-wash hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark"
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={18} aria-hidden="true" />
+            ) : (
+              <PanelLeftClose size={18} aria-hidden="true" />
+            )}
+          </button>
         </div>
 
         <SidebarOrgSwitcher collapsed={collapsed} />
@@ -172,7 +193,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
           </div>
         )}
         <NavList items={items} badges={badges} collapsed={collapsed} />
-        <SidebarFooter collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+        <SidebarFooter collapsed={collapsed} />
       </aside>
 
       {mobileOpen && (
@@ -199,7 +220,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
                     Rota<span className="text-primary">Flow</span>
                   </span>
                   <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
-                    Smarter rota. Stronger teams.
+                    {BRAND.tagline}
                   </span>
                 </span>
               </div>

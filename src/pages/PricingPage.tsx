@@ -9,29 +9,25 @@ import { cn } from '@/lib/utils';
 /**
  * `/pricing`.
  *
- * **No payment provider is integrated.** `subscriptions` is an empty seam,
- * `docs/SCREENS.md` §3 records that nothing reads or writes it, and the billing
- * Edge Functions it references were never built. So nothing on this page can
- * charge anyone, and the page says so in the banner rather than implying a card
- * will be taken at the end of a trial.
- *
- * Every plan CTA routes to `/signup` or `/contact`. Real destinations. A
- * "Subscribe" button that opens a checkout which does not exist would be the
- * single worst dead button on the site.
+ * This is a pre-signup, unauthenticated marketing page showing plans
+ * hardcoded from `supabase/migrations/0023_commercials.sql` (the source
+ * of truth; see `src/lib/marketing.ts` comment). Plan CTAs route to
+ * `/signup` because no `orgId` exists yet — real checkout (via Edge
+ * Function) happens in Settings > Billing, after an org is created.
  */
 
 const FAQS = [
   {
-    q: 'How does billing work during the beta?',
-    a: 'It does not. RotaFlow has no payment provider connected, so no card is collected at signup and nothing can be charged. Prices below are what the plans will cost when billing goes live; you will be told before that happens.',
+    q: 'How does billing work?',
+    a: "Sign up with no card required. Once your organisation exists, its owner picks a plan from Settings and pays through Stripe's secure checkout. Nothing is charged before that.",
   },
   {
     q: 'What counts as a staff member?',
     a: 'Anyone with an active membership in your organisation who can be scheduled. Deactivated people and pending invitations do not count.',
   },
   {
-    q: 'What happens at the end of the trial?',
-    a: 'Nothing is deleted and nothing is charged. Your organisation stays as it is; when billing goes live you choose a plan or continue on Starter.',
+    q: 'Is there a free trial?',
+    a: 'Not yet — every plan is paid from the start. Create your organisation and explore it fully before choosing a plan; nothing is charged until you do.',
   },
   {
     q: 'Can we move between plans?',
@@ -52,8 +48,8 @@ export function PricingPage(): JSX.Element {
     <MarketingLayout title="Pricing">
       <PageHero
         eyebrow="Pricing"
-        heading="Simple pricing, per person, per month"
-        body="Start free while RotaFlow is in beta. No card, no sales call, and nothing to cancel."
+        heading="Simple, transparent monthly pricing"
+        body="Join the beta with no card, no sales call and no payment setup."
       />
 
       <section className="mx-auto max-w-6xl px-6 py-16">
@@ -63,14 +59,13 @@ export function PricingPage(): JSX.Element {
         >
           <Info size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-info" />
           <p className="text-sm leading-relaxed text-content dark:text-content-dark">
-            <span className="font-semibold">Billing is not live yet.</span> RotaFlow is in
-            beta and has no payment provider connected, so signing up collects no card
-            details and nothing can be charged. The prices below are what the plans will
-            cost when billing launches.
+            <span className="font-semibold">No card required to sign up.</span> Signing up
+            collects no payment details. You choose and pay for a plan afterwards, from
+            your organisation's own Settings once it exists.
           </p>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-3">
+        <div className="grid items-start gap-6 lg:grid-cols-4">
           {PLANS.map(({ name, price, cadence, summary, features, cta, featured }) => (
             <Card
               key={name}
@@ -81,14 +76,14 @@ export function PricingPage(): JSX.Element {
             >
               {/*
                 The badge row is rendered on every card, not just the featured
-                one, an empty span on the other two keeps all three headings,
+                one, an empty span on the others keeps all headings,
                 prices and feature lists on the same baseline. Rendering it
-                only when `featured` pushed the Team card ~40px down and left
-                the three cards visibly misaligned.
+                only when `featured` pushed the Professional card ~40px down and left
+                the cards visibly misaligned.
               */}
               <span
                 aria-hidden={!featured}
-                className="mb-4 h-6 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase leading-4 tracking-wide text-primary empty:bg-transparent"
+                className="mb-4 h-6 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase leading-4 tracking-wide text-primary-ink empty:bg-transparent"
               >
                 {featured ? 'Most popular' : ''}
               </span>
@@ -161,7 +156,7 @@ export function PricingPage(): JSX.Element {
             Still deciding?{' '}
             <Link
               to="/contact"
-              className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Ask us anything
             </Link>

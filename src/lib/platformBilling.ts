@@ -7,9 +7,11 @@ import { differenceInCalendarDays, isValid, parseISO } from 'date-fns';
  * Pure and in `lib` for the usual reason. The service layer pulls in the
  * Supabase client, which reaches for a WebSocket Node does not have.
  *
- * Everything here is about *when a period ends*, because that is the only
- * billing-shaped fact this schema holds. There is no amount on a subscription
- * and no payment provider connected, so nothing in this file computes money.
+ * Everything here is about *when a period ends* — money is computed
+ * elsewhere, in `src/lib/revenue.ts` (`mrrAtDatePence`, `revenueChurnForMonth`,
+ * `revenueByPlan`), which is real and backed by Stripe billing (migration
+ * 0050). This file stays scoped to period-end derivations on purpose, not
+ * because there's nothing to total.
  */
 
 /** The subscription columns these functions need. */

@@ -241,7 +241,7 @@ function ShiftDetails({
           className="h-8 w-px bg-surface-border dark:bg-surface-border-dark"
         />
         <div className="flex-1 pl-4">
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-success-ink">
             <TrendingUp size={14} aria-hidden="true" />
             {coveragePct}%
           </p>
@@ -260,7 +260,7 @@ function ShiftDetails({
             {skills.map((skill) => (
               <span
                 key={skill}
-                className="rounded-md bg-primary/10 px-2 py-1 text-[0.7rem] font-medium text-primary"
+                className="rounded-md bg-primary/10 px-2 py-1 text-[0.7rem] font-medium text-primary-ink"
               >
                 {skill}
               </span>
@@ -339,7 +339,7 @@ function ShiftDetails({
           Duplicate Shift
         </Button>
         <Button
-          className="w-full bg-danger/10 text-danger hover:bg-danger/15"
+          className="w-full bg-danger/10 text-danger-ink hover:bg-danger/15"
           onClick={() => onDelete(shift)}
         >
           <Trash2 size={15} aria-hidden="true" />
@@ -375,7 +375,7 @@ function CoverageList({ dailyTotals }: { dailyTotals: DailyTotal[] }): JSX.Eleme
                 <span
                   className={cn(
                     'text-xs font-medium',
-                    t.status === 'understaffed' ? 'text-danger' : 'text-success',
+                    t.status === 'understaffed' ? 'text-danger-ink' : 'text-success-ink',
                   )}
                 >
                   {t.status === 'understaffed'

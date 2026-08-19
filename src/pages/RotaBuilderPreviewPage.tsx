@@ -492,13 +492,25 @@ export function RotaBuilderPreviewPage(): JSX.Element {
           </Callout>
 
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <Select className="w-auto py-2" defaultValue="all">
+            <Select
+              aria-label="Filter by location"
+              className="w-auto py-2"
+              defaultValue="all"
+            >
               <option value="all">All Locations</option>
             </Select>
-            <Select className="w-auto py-2" defaultValue="all">
+            <Select
+              aria-label="Filter by department"
+              className="w-auto py-2"
+              defaultValue="all"
+            >
               <option value="all">All Departments</option>
             </Select>
-            <Select className="w-auto py-2" defaultValue="all">
+            <Select
+              aria-label="Filter by shift type"
+              className="w-auto py-2"
+              defaultValue="all"
+            >
               <option value="all">All Shift Types</option>
             </Select>
             <button
@@ -511,7 +523,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
 
             <Button
               size="sm"
-              className="ml-auto bg-success/10 text-success hover:bg-success/15"
+              className="ml-auto bg-success/10 text-success-ink hover:bg-success/15"
             >
               <Sparkles size={14} aria-hidden="true" />
               Auto-assign

@@ -352,7 +352,7 @@ export function AdminShell(): JSX.Element {
             >
               <Menu size={18} aria-hidden="true" />
             </button>
-            <p className="text-xs font-medium text-danger">
+            <p className="text-xs font-medium text-danger-ink">
               Platform administration. You are viewing data belonging to every
               organisation on RotaFlow.
             </p>

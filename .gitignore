@@ -7,6 +7,10 @@ node_modules/
 .env.local
 .env.*.local
 
+# Demo/seed account credentials — real, working logins on the live Supabase
+# project (see supabase/seed/README.md). Never publish this file.
+docs/ACCOUNTS.md
+
 # Build & PWA outputs
 dist/
 dev-dist/
@@ -49,9 +53,16 @@ supabase/.temp/
 # Vitest coverage output
 coverage/
 
+# Playwright local run artefacts — screenshots/traces/reports, regenerated
+# every run; CI uploads its own copy as a workflow artifact instead.
+test-results/
+playwright-report/
+blob-report/
+
 # Ruflo local secrets and runtime data
 .claude-flow/data/
 .claude-flow/logs/
 .claude-flow/sessions/
 .swarm/
 ruvector.db
+.gstack/
