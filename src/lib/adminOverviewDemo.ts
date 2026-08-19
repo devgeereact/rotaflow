@@ -2,19 +2,21 @@
  * PLACEHOLDER DATA FOR `/admin`, NOT REAL, AND NOT DERIVED FROM ANYTHING.
  *
  * ============================================================================
- * Every value in this file is invented. It exists so the platform overview can
- * be built to the full shape of `docs/PLATFORM_CONSOLE.html` before the schema
- * can supply the figures, and it is expected to be deleted.
+ * Every value in this file is invented, for the domains that still have
+ * nothing real behind them. It is not a blanket statement about the whole
+ * `/admin` surface any more: Stripe billing (migration 0050) is connected,
+ * `plans` is a real catalogue, and MRR/churn/revenue are computed for real in
+ * `src/lib/revenue.ts` (`revenueByPlan`, `mrrAtDatePence`,
+ * `revenueChurnForMonth`) and `src/lib/platformOverview.ts`
+ * (`monthlyChurnCounts`) — `AdminOverviewPage` no longer imports the old
+ * revenue/plan-mix constants from here. What remains below is for domains
+ * genuinely still unbuilt.
  * ============================================================================
  *
  * ## What is fabricated, and why it could not be computed
  *
- * - **Revenue / MRR**, `subscriptions` records a plan and a status but no
- *   amount, and no payment provider is connected. There is nothing to total.
  * - **Active users today**, `profiles` has no last-seen column and Supabase
  *   does not expose `auth.users.last_sign_in_at` to a client.
- * - **Named plan tiers** (Free … Enterprise). Plans are free text per
- *   organisation; this deployment has no plan catalogue.
  * - **Organisation health** (Healthy / Attention / At risk), `organisations`
  *   has `status`, which is an account state, not a health signal. Nothing
  *   computes risk.
@@ -23,61 +25,28 @@
  *   this device, live, and says so.
  * - **Support cases**. There is no `support_cases` table and no inbound
  *   channel writing to one.
+ * - Plus the `/admin/users`, `/admin/notifications`, `/admin/feature-flags`,
+ *   `/admin/integrations`, incidents, and platform-settings placeholders
+ *   further down this file — none of those tables/columns exist yet either.
  *
- * ## Removing it
+ * ## Removing a section
  *
- * Delete this file and the imports of `DEMO_*` in `AdminOverviewPage`. Anything
- * that then fails to compile is a section that was never backed by data, which
- * is exactly the list of work still to do. The real figures already on that
- * screen. Organisation counts, growth from `created_at`, plan and status
- * breakdowns, the audit feed, support-access sessions. Do not come from here.
+ * Delete the constants for that domain and their imports. Anything that then
+ * fails to compile is a screen still drawing from here, which is exactly the
+ * list of work still to do for that domain. Revenue, MRR, churn, plan mix,
+ * organisation counts, growth from `created_at`, plan and status breakdowns,
+ * the audit feed, and support-access sessions are already real and do not
+ * come from here.
  */
 
 /** Marks a card whose figures are placeholder, for the on-screen notice. */
-export const DEMO_SECTIONS = [
-  'Churn on the growth chart',
-  'System health history',
-] as const;
+export const DEMO_SECTIONS = ['System health history'] as const;
 
 export const DEMO_ACTIVE_USERS_TODAY = 12_489;
 export const DEMO_ACTIVE_USERS_SHARE = '25.6% of all users';
 export const DEMO_ACTIVE_USERS_TREND = [
   10_820, 11_240, 10_990, 11_680, 12_010, 11_870, 12_489,
 ];
-
-export const DEMO_MONTHLY_REVENUE = '£184,260';
-export const DEMO_REVENUE_CHANGE = '+12.4%';
-export const DEMO_REVENUE_TREND = [
-  128_400, 133_100, 138_900, 141_200, 148_600, 153_900, 159_400, 163_800, 169_700,
-  174_900, 180_200, 184_260,
-];
-
-/**
- * Churn, for the third series on the growth chart.
- *
- * Nothing records a churn event: an organisation is `archived` or `suspended`
- * with no date of leaving, so there is no month to attribute a departure to.
- * The series is drawn alongside two real ones, which is why it is named in the
- * chart's own caption as well as in the placeholder notice, an illustrative
- * line sitting inside a real chart is the easiest of these to misread.
- */
-const CHURN_SHAPE = [1.4, 1.1, 1.7, 2.2, 1.2, 1.5, 0.9, 1.8, 1.4, 1.1, 1.2, 0.6];
-
-/**
- * Churn as a share of the tenants that existed that month, rather than a fixed
- * series.
- *
- * A constant series was wrong at both ends. Against a production estate it sat
- * flat on the floor; against a six-tenant development database it towered over
- * the two real series and rescaled the whole chart around a number nothing
- * measured. Deriving it from the real totals keeps the line where a plausible
- * churn line belongs, just under 2% a month, whatever the estate is.
- */
-export function demoChurnTrend(totals: readonly number[]): number[] {
-  return totals.map((total, i) =>
-    Math.round((total * (CHURN_SHAPE[i % CHURN_SHAPE.length] ?? 1)) / 100),
-  );
-}
 
 export const DEMO_PUBLISHED_ROTAS_TREND = [
   7_100, 7_480, 7_690, 8_020, 8_310, 8_640, 8_942,
@@ -332,131 +301,6 @@ export const DEMO_USERS_INACTIVE_90 = 1_884;
 export const DEMO_USERS_UNVERIFIED = 412;
 export const DEMO_USERS_UNVERIFIED_HINT = 'invite not accepted';
 export const DEMO_USERS_SUSPENDED = 326;
-
-/* ---------------------------------------------------------------------------
- * `/admin/subscriptions` and `/admin/billing`
- *
- * Everything below is money, and the schema holds none of it: `subscriptions`
- * records a plan name, a status and a period end, with no amount, no currency
- * and no billing interval, and there are no invoice, payment, credit or refund
- * tables at all. No payment provider is connected, so nothing has ever been
- * charged or collected.
- * ------------------------------------------------------------------------- */
-
-export const DEMO_MRR = '£184,260';
-export const DEMO_MRR_CHANGE = '+12.4%';
-export const DEMO_ARR_SHORT = '£2.21m';
-export const DEMO_ARR_FULL = '£2,211,120';
-export const DEMO_ACTIVE_SUBSCRIPTIONS = 1_098;
-export const DEMO_TRIALS = 86;
-export const DEMO_TRIALS_HINT = '22 convert this week';
-export const DEMO_PAST_DUE = 31;
-export const DEMO_PAST_DUE_HINT = '£8,940 at risk';
-export const DEMO_CHURN_RATE = '1.4%';
-export const DEMO_CHURN_CHANGE = '−0.3pt';
-
-export const DEMO_COLLECTED = '£176,420';
-export const DEMO_COLLECTED_HINT = '95.7% of billed';
-export const DEMO_OUTSTANDING = '£8,940';
-export const DEMO_OUTSTANDING_HINT = '31 invoices';
-export const DEMO_REFUNDS = '£1,180';
-export const DEMO_REFUNDS_HINT = '4 this month';
-export const DEMO_ARPO = '£154';
-
-export const DEMO_REVENUE_BY_PLAN = [
-  { label: 'Enterprise', value: 82_400, display: '£82.4k' },
-  { label: 'Business', value: 56_200, display: '£56.2k' },
-  { label: 'Professional', value: 34_100, display: '£34.1k' },
-  { label: 'Starter', value: 11_560, display: '£11.6k' },
-] as const;
-
-export type DemoPaymentState = 'paid' | 'pending' | 'failed' | 'refunded';
-
-export interface DemoSubscriptionFacts {
-  /** Monthly value in pounds, or null while a tenant is on trial. */
-  value: number | null;
-  cycle: string;
-  payment: DemoPaymentState;
-  usage: number;
-}
-
-const DEMO_VALUES = [1_240, 480, 290, 640, 1_980, null, null, 290, 90, 104];
-const DEMO_USAGE = [92, 74, 41, 88, 96, 28, 0, 63, 34, 52];
-
-export function demoSubscriptionFacts(
-  id: string,
-  index: number,
-  status: string,
-): DemoSubscriptionFacts {
-  const seed = index + id.charCodeAt(0);
-  const trialing = status === 'trialing';
-  return {
-    value: trialing ? null : (DEMO_VALUES[seed % DEMO_VALUES.length] ?? 290),
-    cycle: 'Monthly',
-    payment: status === 'past_due' ? 'failed' : trialing ? 'pending' : 'paid',
-    usage: DEMO_USAGE[seed % DEMO_USAGE.length] ?? 50,
-  };
-}
-
-export interface DemoInvoice {
-  id: string;
-  organisation: string;
-  amount: string;
-  status: DemoPaymentState | 'past_due';
-}
-
-export const DEMO_INVOICES: readonly DemoInvoice[] = [
-  {
-    id: 'INV-2026-4412',
-    organisation: 'Tayside Community Trust',
-    amount: '£1,980',
-    status: 'paid',
-  },
-  {
-    id: 'INV-2026-4411',
-    organisation: 'Sunnyvale Care Group',
-    amount: '£1,240',
-    status: 'paid',
-  },
-  {
-    id: 'INV-2026-4409',
-    organisation: 'Cardiff Retail Partners',
-    amount: '£640',
-    status: 'past_due',
-  },
-  {
-    id: 'INV-2026-4404',
-    organisation: 'Northgate Hospitality',
-    amount: '£480',
-    status: 'paid',
-  },
-  {
-    id: 'INV-2026-4398',
-    organisation: 'Mersey Domiciliary Care',
-    amount: '£290',
-    status: 'failed',
-  },
-  {
-    id: 'INV-2026-4390',
-    organisation: 'Harbour Logistics UK',
-    amount: '£290',
-    status: 'refunded',
-  },
-];
-
-export interface DemoFailedPayment {
-  organisation: string;
-  amount: string;
-  attempts: number;
-}
-
-export const DEMO_FAILED_PAYMENTS: readonly DemoFailedPayment[] = [
-  { organisation: 'Cardiff Retail Partners', amount: '£640', attempts: 3 },
-  { organisation: 'Mersey Domiciliary Care', amount: '£290', attempts: 3 },
-];
-
-export const DEMO_DUNNING_NOTE =
-  'Dunning retries on days 1, 3 and 7, then the organisation is suspended on day 14 unless a platform administrator intervenes.';
 
 /* ---------------------------------------------------------------------------
  * `/admin/support`. The case queue
@@ -1186,9 +1030,6 @@ export const DEMO_ORG_PROFILE: readonly { label: string; value: string }[] = [
 
 /** Storage consumed by one tenant. No file storage is wired up, so nothing measures this. */
 export const DEMO_ORG_STORAGE = '14.2 GB';
-
-/** Monthly recurring revenue for one tenant. No price is recorded against any plan. */
-export const DEMO_ORG_MRR = '£1,240';
 
 /**
  * The account attributes the reference shows on a user that this schema does

@@ -184,15 +184,44 @@ async function handleSubscriptionDeleted(
   const orgId = subscription.metadata?.org_id;
   if (!orgId) return;
 
+  // Prefer Stripe's own canceled_at (the same mapping handleSubscriptionUpdated
+  // already applies) so the recorded cancellation date stays the moment
+  // cancellation was requested, not the moment it actually took effect here.
+  // Those two can be weeks apart under the Customer Portal's default
+  // cancel-at-period-end flow, and revenue.ts / platformOverview.ts read
+  // canceled_at as when the cancellation happened, not when it landed —
+  // rewriting it here would make a churn chart whose past silently moves.
+  // Fall back to "now" only in the unlikely case Stripe never set it.
   const { error } = await supabase
     .from('subscriptions')
     .update({
       status: 'canceled',
-      canceled_at: new Date().toISOString(),
+      canceled_at: subscription.canceled_at
+        ? new Date(subscription.canceled_at * 1000).toISOString()
+        : new Date().toISOString(),
     })
     .eq('org_id', orgId)
     .eq('provider_ref', subscription.id);
   if (error) throw new Error(`subscriptions cancel failed: ${error.message}`);
+
+  // Stripe's own dunning (Smart Retries) exhausts before this event fires;
+  // `cancellation_details.reason === 'payment_failed'` is how Stripe tells
+  // us the cancellation was involuntary (retries ran out) rather than the
+  // customer cancelling on purpose ('cancellation_requested') or a disputed
+  // charge ('payment_disputed'). Only the involuntary case should suspend
+  // the org — set_org_status (Task 7) is the one write path allowed to move
+  // an org into 'suspended', and it's called here with the service_role
+  // caller this function already runs as.
+  if (subscription.cancellation_details?.reason === 'payment_failed') {
+    const { error: statusError } = await supabase.rpc('set_org_status', {
+      p_org: orgId,
+      p_status: 'suspended',
+      p_reason: `Stripe subscription ${subscription.id} canceled after exhausted dunning`,
+    });
+    if (statusError) {
+      throw new Error(`org suspension failed: ${statusError.message}`);
+    }
+  }
 }
 
 function invoiceNumberFrom(invoice: Stripe.Invoice): string {

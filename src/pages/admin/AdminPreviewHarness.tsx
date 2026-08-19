@@ -767,6 +767,13 @@ const TABLES: Record<string, unknown> = {
     { feature: 'advanced_reporting', source: 'plan' },
     { feature: 'ai_rota_assistant', source: 'flag' },
   ],
+  // A scalar function, so the fixture is the bare number rather than a row
+  // array — `fixtureFor` returns non-array values as-is, matching how
+  // PostgREST actually serialises an RPC that returns `integer`. Not
+  // org-filtered, same as `platform_tenant_counts` above: the RPC call is a
+  // POST with the org id in the body, not the URL, so every organisation's
+  // detail page sees this same figure in the preview.
+  'rpc/subscription_mrr_pence': 79000,
 };
 
 /** Everything the console reads, keyed by the PostgREST path segment. */
