@@ -264,7 +264,6 @@ export function AdminOrganisationsPage(): JSX.Element {
         sortable: true,
         cell: (org) => (
           <span className="flex flex-wrap items-center gap-1.5">
-            {org.is_demo && <Badge tone="neutral">Demo</Badge>}
             <Badge tone={STATUS_TONE[org.status as OrganisationStatus] ?? 'neutral'} dot>
               {humaniseKey(org.status)}
             </Badge>
