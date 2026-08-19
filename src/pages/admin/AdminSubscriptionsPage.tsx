@@ -15,13 +15,16 @@ import {
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
-import { listAllOrganisations, listAllSubscriptions } from '@/services/platformService';
+import {
+  countMembershipsByOrg,
+  listAllOrganisations,
+  listAllSubscriptions,
+} from '@/services/platformService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { daysUntil, needsAttention } from '@/lib/platformBilling';
 import { humaniseKey } from '@/lib/platformOverview';
 import { downloadCsv } from '@/lib/csv';
-import { demoSubscriptionFacts, type DemoPaymentState } from '@/lib/adminOverviewDemo';
-import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
+import { listInvoices, listPlans, type Invoice, type Plan } from '@/services/billingService';
 import { formatMoney } from '@/lib/money';
 import {
   annualRunRatePence,
@@ -32,14 +35,12 @@ import { Sparkline } from '@/components/ui/TrendChart';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, Subscription } from '@/types';
 
-const PAYMENT_TONE: Record<
-  DemoPaymentState,
-  'success' | 'warning' | 'danger' | 'neutral'
-> = {
+type PaymentState = 'paid' | 'pending' | 'failed';
+
+const PAYMENT_TONE: Record<PaymentState, 'success' | 'warning' | 'danger' | 'neutral'> = {
   paid: 'success',
   pending: 'warning',
   failed: 'danger',
-  refunded: 'neutral',
 };
 
 const STATUS_TONE = {
@@ -70,20 +71,20 @@ interface Row {
 }
 
 /**
- * `/admin/subscriptions`. Plan state across every tenant.
+ * `/admin/subscriptions`. Plan state and billing facts across every tenant.
  *
  * ## What this can and cannot say
  *
- * `subscriptions` records plan, status, provider and period end. It records no
- * amount, and **no payment provider is integrated**, so there is nothing here
- * that could be turned into revenue: no invoices, no payments, no MRR, no
- * churn rate. `docs/PRD.md` §7 already puts live charging out of scope for V1.
+ * A payment provider is integrated (`0023`, this session's Stripe work), so
+ * MRR, ARR and subscription state (active / trialing / past due / cancelled)
+ * are real, computed by the same functions Billing uses. Per-row Value comes
+ * from the subscription's negotiated price, falling back to its plan's list
+ * price; Payment from the subscription's status; Usage from real membership
+ * headcount over the plan's seat limit.
  *
- * What this screen therefore reports is *contracted plan state*, which
- * organisations are on which plan, which are trialing, which are past due. That
- * is real and it is useful, and the alternative (a revenue figure derived from
- * a price list nobody is billing against) would be a number nothing computed
- * presented as a number someone owes.
+ * What this screen does not duplicate: Collected, Outstanding, Refunds, ARPO
+ * and invoice-level detail live on `/admin/billing` instead of being repeated
+ * here.
  *
  * The table is keyed on organisations rather than subscriptions on purpose: the
  * interesting row is a tenant with **no** subscription record, and a list of
@@ -93,8 +94,10 @@ interface Row {
 export function AdminSubscriptionsPage(): JSX.Element {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [planPrices, setPlanPrices] = useState<Map<string, number>>(new Map());
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [memberCounts, setMemberCounts] = useState<Map<string, number>>(new Map());
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
@@ -108,16 +111,19 @@ export function AdminSubscriptionsPage(): JSX.Element {
     setRows(null);
     void (async () => {
       try {
-        const [orgs, subs, planRows, invoiceRows] = await Promise.all([
+        const [orgs, subs, planRows, invoiceRows, counts] = await Promise.all([
           listAllOrganisations(),
           listAllSubscriptions(),
           listPlans(),
           listInvoices(),
+          countMembershipsByOrg(),
         ]);
         if (!active) return;
         setSubscriptions(subs);
+        setPlans(planRows);
         setPlanPrices(new Map(planRows.map((p) => [p.code, p.monthly_price_pence])));
         setInvoices(invoiceRows);
+        setMemberCounts(counts);
         const byOrg = new Map(subs.map((s) => [s.org_id, s]));
         setRows(
           orgs.map((organisation) => ({
@@ -161,16 +167,26 @@ export function AdminSubscriptionsPage(): JSX.Element {
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
-  // Placeholder value / cycle / payment / usage, no amount exists anywhere in
-  // the schema. See `adminOverviewDemo`.
+  // Value from the subscription's negotiated price, falling back to the plan
+  // price; payment state from subscription status; usage from real
+  // membership headcount over the plan's seat limit.
   const facts = useCallback(
-    (row: Row) =>
-      demoSubscriptionFacts(
-        row.organisation.id,
-        (rows ?? []).findIndex((r) => r.organisation.id === row.organisation.id),
-        row.subscription?.status ?? 'none',
-      ),
-    [rows],
+    (row: Row): { value: number | null; cycle: string; payment: PaymentState; usage: number } => {
+      const sub = row.subscription;
+      const plan = plans.find((p) => p.code === (sub?.plan ?? row.organisation.plan));
+      const seatLimit = plan?.seat_limit ?? null;
+      const memberCount = memberCounts.get(row.organisation.id) ?? 0;
+      const usage = seatLimit ? Math.round((memberCount / seatLimit) * 100) : 0;
+
+      if (!sub) return { value: null, cycle: 'Monthly', payment: 'pending', usage };
+
+      const value =
+        sub.status === 'trialing' ? null : (sub.price_pence ?? plan?.monthly_price_pence ?? null);
+      const payment: PaymentState =
+        sub.status === 'past_due' ? 'failed' : sub.status === 'trialing' ? 'pending' : 'paid';
+      return { value, cycle: 'Monthly', payment, usage };
+    },
+    [plans, memberCounts],
   );
 
   const planOf = useCallback(
@@ -298,7 +314,10 @@ export function AdminSubscriptionsPage(): JSX.Element {
         sortable: true,
         cell: (row) => {
           const { value } = facts(row);
-          return value === null ? '-' : `£${value.toLocaleString('en-GB')}`;
+          // `value` is pence, same as everywhere else on this page — the old
+          // placeholder values were pounds, so this used to format correctly
+          // by accident.
+          return value === null ? '-' : formatMoney(value);
         },
       },
       {
@@ -460,12 +479,13 @@ export function AdminSubscriptionsPage(): JSX.Element {
             </p>
             <p>
               Churn is not shown: nothing records the month an organisation left, so a
-              rate would be a guess. In the table, <strong>Cycle</strong>,{' '}
-              <strong>Value</strong> and <strong>Payment</strong> are also placeholders —
-              no `subscriptions` row carries an amount, a billing interval or a payment
-              state, because no payment provider is connected. <strong>Usage</strong> is
-              one too: no plan carries a seat or location cap anywhere in the schema, so
-              there is no ceiling to measure against.
+              rate would be a guess. In the table, <strong>Value</strong> is the
+              subscription&rsquo;s negotiated price or its plan&rsquo;s list price;{' '}
+              <strong>Payment</strong> reflects the subscription&rsquo;s status; and{' '}
+              <strong>Usage</strong> is real membership headcount over the plan&rsquo;s
+              seat limit. <strong>Cycle</strong> reads &ldquo;Monthly&rdquo; for every
+              row because no other billing interval exists anywhere in{' '}
+              <code>plans</code>.
             </p>
           </Callout>
 
