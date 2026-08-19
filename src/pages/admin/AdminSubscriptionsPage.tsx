@@ -24,12 +24,18 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { daysUntil, needsAttention } from '@/lib/platformBilling';
 import { humaniseKey } from '@/lib/platformOverview';
 import { downloadCsv } from '@/lib/csv';
-import { listInvoices, listPlans, type Invoice, type Plan } from '@/services/billingService';
+import {
+  listInvoices,
+  listPlans,
+  type Invoice,
+  type Plan,
+} from '@/services/billingService';
 import { formatMoney } from '@/lib/money';
 import {
   annualRunRatePence,
   collectedByMonth,
   monthlyRecurringPence,
+  monthsOfPaidHistory,
 } from '@/lib/revenue';
 import { Sparkline } from '@/components/ui/TrendChart';
 import { reportError } from '@/lib/sentry';
@@ -171,7 +177,9 @@ export function AdminSubscriptionsPage(): JSX.Element {
   // price; payment state from subscription status; usage from real
   // membership headcount over the plan's seat limit.
   const facts = useCallback(
-    (row: Row): { value: number | null; cycle: string; payment: PaymentState; usage: number } => {
+    (
+      row: Row,
+    ): { value: number | null; cycle: string; payment: PaymentState; usage: number } => {
       const sub = row.subscription;
       const plan = plans.find((p) => p.code === (sub?.plan ?? row.organisation.plan));
       const seatLimit = plan?.seat_limit ?? null;
@@ -181,9 +189,15 @@ export function AdminSubscriptionsPage(): JSX.Element {
       if (!sub) return { value: null, cycle: 'Monthly', payment: 'pending', usage };
 
       const value =
-        sub.status === 'trialing' ? null : (sub.price_pence ?? plan?.monthly_price_pence ?? null);
+        sub.status === 'trialing'
+          ? null
+          : (sub.price_pence ?? plan?.monthly_price_pence ?? null);
       const payment: PaymentState =
-        sub.status === 'past_due' ? 'failed' : sub.status === 'trialing' ? 'pending' : 'paid';
+        sub.status === 'past_due'
+          ? 'failed'
+          : sub.status === 'trialing'
+            ? 'pending'
+            : 'paid';
       return { value, cycle: 'Monthly', payment, usage };
     },
     [plans, memberCounts],
@@ -430,9 +444,17 @@ export function AdminSubscriptionsPage(): JSX.Element {
             <StatTile
               label="MRR"
               value={formatMoney(money.mrr)}
-              hint="Active and past due"
               to="/admin/billing"
-              chart={<Sparkline values={money.trend} colour="#1EA06B" />}
+              chart={
+                monthsOfPaidHistory(invoices) >= 3 ? (
+                  <Sparkline values={money.trend} colour="#1EA06B" />
+                ) : undefined
+              }
+              hint={
+                monthsOfPaidHistory(invoices) >= 3
+                  ? 'Active and past due'
+                  : 'Not enough billing history yet for a trend'
+              }
             />
             <StatTile
               label="ARR"
@@ -483,9 +505,8 @@ export function AdminSubscriptionsPage(): JSX.Element {
               subscription&rsquo;s negotiated price or its plan&rsquo;s list price;{' '}
               <strong>Payment</strong> reflects the subscription&rsquo;s status; and{' '}
               <strong>Usage</strong> is real membership headcount over the plan&rsquo;s
-              seat limit. <strong>Cycle</strong> reads &ldquo;Monthly&rdquo; for every
-              row because no other billing interval exists anywhere in{' '}
-              <code>plans</code>.
+              seat limit. <strong>Cycle</strong> reads &ldquo;Monthly&rdquo; for every row
+              because no other billing interval exists anywhere in <code>plans</code>.
             </p>
           </Callout>
 

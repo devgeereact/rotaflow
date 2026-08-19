@@ -118,6 +118,20 @@ export function collectedByMonth(
   return keys.map((month) => ({ month, pence: collectedInMonth(invoices, month) }));
 }
 
+/**
+ * How many distinct calendar months have at least one paid invoice.
+ *
+ * The gate for whether a trend chart has enough real history to draw, per
+ * the design decision to never zero-pad pre-launch months into a fake
+ * longer history — see `docs/superpowers/specs/2026-08-19-admin-billing-real-data-design.md`.
+ */
+export function monthsOfPaidHistory(invoices: readonly InvoiceLike[]): number {
+  const months = new Set(
+    invoices.filter((i) => i.paid_at !== null).map((i) => monthKey(i.paid_at!)),
+  );
+  return months.size;
+}
+
 /** MRR split by plan, largest first. The mix the Subscriptions screen charts. */
 export function revenueByPlan(
   subscriptions: readonly SubscriptionLike[],

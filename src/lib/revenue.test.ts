@@ -7,6 +7,7 @@ import {
   collectedInMonth,
   monthKey,
   monthlyRecurringPence,
+  monthsOfPaidHistory,
   mrrAtDatePence,
   outstandingPence,
   pastDuePence,
@@ -223,6 +224,22 @@ describe('mrrAtDatePence', () => {
       sub({ status: 'trialing', started_at: '2026-01-01T00:00:00Z', price_pence: 12900 }),
     ];
     expect(mrrAtDatePence(subs, PRICES, new Date('2026-02-01T00:00:00Z'))).toBe(0);
+  });
+});
+
+describe('monthsOfPaidHistory', () => {
+  it('counts distinct months with at least one paid invoice', () => {
+    const invoices: InvoiceLike[] = [
+      invoice({ status: 'paid', paid_at: '2026-06-05T00:00:00Z' }),
+      invoice({ status: 'paid', paid_at: '2026-07-10T00:00:00Z' }),
+      invoice({ status: 'paid', paid_at: '2026-07-20T00:00:00Z' }), // same month as above
+      invoice({ status: 'open', paid_at: null }), // not paid, excluded
+    ];
+    expect(monthsOfPaidHistory(invoices)).toBe(2);
+  });
+
+  it('is 0 for no paid invoices', () => {
+    expect(monthsOfPaidHistory([])).toBe(0);
   });
 });
 
