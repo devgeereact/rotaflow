@@ -2,19 +2,21 @@
  * PLACEHOLDER DATA FOR `/admin`, NOT REAL, AND NOT DERIVED FROM ANYTHING.
  *
  * ============================================================================
- * Every value in this file is invented. It exists so the platform overview can
- * be built to the full shape of `docs/PLATFORM_CONSOLE.html` before the schema
- * can supply the figures, and it is expected to be deleted.
+ * Every value in this file is invented, for the domains that still have
+ * nothing real behind them. It is not a blanket statement about the whole
+ * `/admin` surface any more: Stripe billing (migration 0023) is connected,
+ * `plans` is a real catalogue, and MRR/churn/revenue are computed for real in
+ * `src/lib/revenue.ts` (`revenueByPlan`, `mrrAtDatePence`,
+ * `revenueChurnForMonth`) and `src/lib/platformOverview.ts`
+ * (`monthlyChurnCounts`) — `AdminOverviewPage` no longer imports the old
+ * revenue/plan-mix constants from here. What remains below is for domains
+ * genuinely still unbuilt.
  * ============================================================================
  *
  * ## What is fabricated, and why it could not be computed
  *
- * - **Revenue / MRR**, `subscriptions` records a plan and a status but no
- *   amount, and no payment provider is connected. There is nothing to total.
  * - **Active users today**, `profiles` has no last-seen column and Supabase
  *   does not expose `auth.users.last_sign_in_at` to a client.
- * - **Named plan tiers** (Free … Enterprise). Plans are free text per
- *   organisation; this deployment has no plan catalogue.
  * - **Organisation health** (Healthy / Attention / At risk), `organisations`
  *   has `status`, which is an account state, not a health signal. Nothing
  *   computes risk.
@@ -23,14 +25,18 @@
  *   this device, live, and says so.
  * - **Support cases**. There is no `support_cases` table and no inbound
  *   channel writing to one.
+ * - Plus the `/admin/users`, `/admin/notifications`, `/admin/feature-flags`,
+ *   `/admin/integrations`, incidents, and platform-settings placeholders
+ *   further down this file — none of those tables/columns exist yet either.
  *
- * ## Removing it
+ * ## Removing a section
  *
- * Delete this file and the imports of `DEMO_*` in `AdminOverviewPage`. Anything
- * that then fails to compile is a section that was never backed by data, which
- * is exactly the list of work still to do. The real figures already on that
- * screen. Organisation counts, growth from `created_at`, plan and status
- * breakdowns, the audit feed, support-access sessions. Do not come from here.
+ * Delete the constants for that domain and their imports. Anything that then
+ * fails to compile is a screen still drawing from here, which is exactly the
+ * list of work still to do for that domain. Revenue, MRR, churn, plan mix,
+ * organisation counts, growth from `created_at`, plan and status breakdowns,
+ * the audit feed, and support-access sessions are already real and do not
+ * come from here.
  */
 
 /** Marks a card whose figures are placeholder, for the on-screen notice. */

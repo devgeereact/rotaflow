@@ -133,12 +133,18 @@ not a raw `UPDATE organisations`, per the decision above.
 ### Stripe dashboard config (manual, by the user, not code)
 
 Configure Smart Retries in Stripe Dashboard → Settings → Billing → Manage
-failed payments: retry schedule days 1, 3, 7, then mark the invoice
-uncollectible / cancel the subscription on day 14 (whichever Stripe's UI
-calls the terminal action — implementer/user confirms exact wording at
-config time). This is what makes the webhook's `payment_failed` branch
-above actually fire, and what makes the Failed Payments section's copy
-factually true instead of aspirational.
+failed payments: retry schedule days 1, 3, 7, then on day 14 the terminal
+action **must be set to "Cancel the subscription"** — not "mark the
+invoice uncollectible" and not "leave the subscription unpaid". These are
+two different, independently selectable Stripe settings, not two names for
+the same thing: only "Cancel the subscription" fires
+`customer.subscription.deleted` with `cancellation_details.reason ===
+'payment_failed'`, which is the exact event/reason pair
+`handleSubscriptionDeleted` in `supabase/functions/stripe-webhook/index.ts`
+listens for to call `set_org_status(..., 'suspended', ...)`. Choosing
+"mark invoice uncollectible" instead leaves the subscription in Stripe's
+`unpaid` status with no deletion event at all — the dunning-suspension
+code never fires, with no error anywhere to reveal it.
 
 ## Data flow
 

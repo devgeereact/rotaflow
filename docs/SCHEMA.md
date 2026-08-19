@@ -85,7 +85,7 @@ Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, excep
 | `documents`          | `org_id`, `staff_profile_id`, `type`, `name`, `file_url`, `issued_at?`, `expires_at?`                                                                                                                             | Contracts, DBS, RTW, visas; expiry surfaced in Phase 2.                                        |
 | `announcements`      | `org_id`, `author_user_id`, `scope` (`org`\|`location`\|`department`), `location_id?`, `department_id?`, `title`, `body`, `urgent`, `published_at`                                                                | Communication centre.                                                                          |
 | `notifications`      | `org_id`, `user_id`, `type`, `title`, `body`, `channel` (`push`\|`email`\|`sms`), `read_at?`                                                                                                                      | In-app + delivery record. **`sms` is a reserved channel value, not delivered in V1.**         |
-| `subscriptions`      | `org_id`, `plan` (`starter`\|`professional`\|`business`\|`enterprise`), `status`, `provider`, `provider_ref?`, `stripe_customer_id?`, `current_period_end?`                                                       | Billing seam, now wired to Stripe (`0050_stripe_billing.sql`, `supabase/functions/stripe-webhook`). `plans.stripe_price_id` maps each tier to its Stripe Price. |
+| `subscriptions`      | `org_id`, `plan` (`starter`\|`professional`\|`business`\|`enterprise`), `status`, `provider`, `provider_ref?`, `stripe_customer_id?`, `price_pence?`, `started_at`, `current_period_end?`, `canceled_at?`         | Billing seam, now wired to Stripe (`0050_stripe_billing.sql`, `supabase/functions/stripe-webhook`). `plans.stripe_price_id` maps each tier to its Stripe Price. `price_pence` overrides the plan's list price only where a deal was struck; MRR/churn reconstruction (`src/lib/revenue.ts`) sums `coalesce(price_pence, plan price)` over rows the arithmetic selects. `canceled_at` is set the moment cancellation is *requested* (Stripe's Customer Portal defaults to cancel-at-period-end), not when it takes effect — it is **not** immutable, and can be cleared back to `null` if the customer un-cancels before period end. Only `status = 'canceled'` means a subscription has actually, fully ended; MRR/churn code gates on `status`, never on `canceled_at` alone. |
 | `audit_logs`         | `org_id`, `actor_user_id?`, `action`, `entity_type`, `entity_id?`, `metadata jsonb`, `created_at`                                                                                                                 | GDPR + compliance trail (append-only).                                                         |
 
 ## 4. Row Level Security
@@ -133,6 +133,14 @@ and only `is_org_member()` governs access, same as every other tenant table.
 - **Conflict/summary logic** (rota conflict detection, timesheet rollups): computed in
   the client for V1; heavier/scheduled jobs move to **Supabase Edge Functions +
   `pg_cron`** and are dispatched via **Inngest** (never on cPanel).
+- **`set_org_status(org, status, reason?)`** (`0017`, `security definer`): the only
+  write path that can move an `organisations.status` into `suspended`/`archived`.
+  Gated to a platform owner/admin's own JWT — **except** `auth.uid() is null`
+  (`0051_org_status_service_role.sql`), which lets `supabase/functions/stripe-webhook`
+  call it too: that function runs as `service_role` with no end-user session, since
+  Stripe calls it directly, so it uses this to suspend an organisation once Stripe's
+  dunning (Smart Retries) is exhausted. Every real admin caller has a real
+  `auth.uid()`, so the exception never widens what an authenticated user can do.
 
 ## 6. Generating TypeScript types
 
