@@ -15,11 +15,11 @@
 --    second ("only an owner may hand out ownership").
 --
 -- 2. A new RPC, admin_create_organisation_with_invite, that atomically:
---    inserts the org, immediately removes the on_org_created trigger's
---    auto-granted admin membership within the same transaction (so no
---    client/session ever observes the admin as owner, not even briefly),
---    creates the subscription at the negotiated price, creates the owner
---    invite for the real contact. All-or-nothing, platform-admin-only.
+--    inserts the org (with created_by = null so on_org_created never fires
+--    and no membership row is created), creates the subscription at the
+--    negotiated price, and creates the owner invite for the real contact.
+--    All-or-nothing, platform-admin-only. The platform admin never holds
+--    membership, not even transiently within the transaction.
 -- =====================================================================
 
 -- ---------- create_invite(): bootstrap exception on both gates --------
@@ -135,16 +135,17 @@ begin
     raise exception 'Unknown plan: %', p_plan using errcode = '22023';
   end if;
 
-  insert into public.organisations (name, slug, plan, created_by)
-  values (p_name, p_slug, p_plan, auth.uid())
+  -- created_by is deliberately left null: on_org_created (0002) only fires
+  -- `when (new.created_by is not null)`, so leaving it null means the
+  -- trigger never runs and no membership row is ever inserted for this
+  -- platform admin — not even transiently within this same transaction.
+  -- That is a stronger guarantee than insert-then-delete, which would also
+  -- collide with memberships_keep_one_owner_trigger (0047): deleting an
+  -- org's only owner row is exactly the transition that trigger exists to
+  -- block, so an insert-then-delete approach can never succeed.
+  insert into public.organisations (name, slug, plan)
+  values (p_name, p_slug, p_plan)
   returning id into v_org_id;
-
-  -- on_org_created (0002) just made auth.uid() (this platform admin) the
-  -- owner. Undo that in the same transaction, before anything else can
-  -- observe it — the whole point of this function existing rather than
-  -- three separate client calls.
-  delete from public.memberships
-   where org_id = v_org_id and user_id = auth.uid();
 
   insert into public.subscriptions (org_id, plan, status, price_pence, started_at)
   values (v_org_id, p_plan, 'active', p_price_pence, timezone('utc', now()));
