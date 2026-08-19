@@ -41,7 +41,7 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
-import { supabase } from '@/lib/supabase';
+import { getOrgMrrPence } from '@/services/billingService';
 import { formatMoney } from '@/lib/money';
 import type {
   AuditLog,
@@ -218,13 +218,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           listGdprRequests(200).then((all) =>
             all.filter((r) => r.orgId === organisationId),
           ),
-          (async () => {
-            const { data, error } = await supabase.rpc('subscription_mrr_pence', {
-              p_org: organisationId,
-            });
-            if (error) throw error;
-            return data;
-          })(),
+          getOrgMrrPence(organisationId),
         ]);
         if (!active) return;
         setDetail({
@@ -515,6 +509,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               <StatTile
                 label="MRR"
                 value={orgMrrPence === null ? '—' : formatMoney(orgMrrPence)}
+                hint="Active and past due"
               />
             </TileGrid>
 
