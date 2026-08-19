@@ -31,8 +31,8 @@ import type { Notification } from '@/types';
 /**
  * `notifications.type` is free text (no check constraint, docs/SCHEMA.md §3),
  * written by whichever Inngest function dispatched the row, so this can never
- * be exhaustive. It covers the values `send-notification`'s callers use today
- * (demo_seed.sql's five), keyed to the same icons the sidebar already uses
+ * be exhaustive. It covers the values `send-notification`'s callers use today,
+ * keyed to the same icons the sidebar already uses
  * for the equivalent screen (Umbrella=Leave, Repeat2=Swaps, etc.), and falls
  * back to a plain bell for anything else rather than guessing.
  */

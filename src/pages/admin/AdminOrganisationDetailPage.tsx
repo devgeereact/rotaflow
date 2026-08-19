@@ -412,11 +412,6 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           <Badge tone={STATUS_TONE[status]} dot>
             {status}
           </Badge>
-          {org.is_demo && (
-            <span title="Seeded by platform_seed.sql, not a real customer">
-              <Badge tone="neutral">Demo</Badge>
-            </span>
-          )}
           <span aria-hidden="true">·</span>
           <span>Created {new Date(org.created_at).toLocaleDateString('en-GB')}</span>
         </>
