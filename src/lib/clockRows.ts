@@ -1,5 +1,6 @@
 /**
- * View model for the clock-in screen (design/clockin.png).
+ * View model for the clock-in screen (`docs/ORGANISATION_WORKSPACE.html`'s
+ * `SCREENS.clock`).
  *
  * The `src/components/clockin/*` cards are presentational. They render
  * pre-formatted strings and never touch a Date, a timezone or a Supabase row.
@@ -49,18 +50,6 @@ export interface CurrentShiftInfo {
   paidHours: string;
   /** The reference's amber footer note. `null` hides it. */
   reminder: { title: string; body: string } | null;
-}
-
-export type ScheduleEntryTone = 'upcoming' | 'active' | 'break' | 'done';
-
-export interface TodayScheduleEntry {
-  id: string;
-  timeRange: string;
-  title: string;
-  /** Only the shift rows carry a location in the reference; breaks do not. */
-  locationName?: string;
-  badgeLabel: string;
-  tone: ScheduleEntryTone;
 }
 
 export interface ClockActivityEntry {
@@ -271,56 +260,6 @@ export function buildCurrentShift(
   };
 }
 
-function shiftTone(shift: Shift, now: Date): ScheduleEntryTone {
-  if (now >= new Date(shift.ends_at)) return 'done';
-  if (now >= new Date(shift.starts_at)) return 'active';
-  return 'upcoming';
-}
-
-const SHIFT_TONE_LABEL: Record<ScheduleEntryTone, string> = {
-  upcoming: 'Upcoming',
-  active: 'In progress',
-  break: 'Break',
-  done: 'Completed',
-};
-
-/** The day's shifts, each followed by its unpaid break as its own row. */
-export function buildTodaySchedule(
-  shifts: Shift[],
-  lookups: ClockLookups,
-  now: Date,
-): TodayScheduleEntry[] {
-  return [...shifts]
-    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
-    .flatMap((shift): TodayScheduleEntry[] => {
-      const tone = shiftTone(shift, now);
-      const rows: TodayScheduleEntry[] = [
-        {
-          id: shift.id,
-          timeRange: timeRange(new Date(shift.starts_at), new Date(shift.ends_at)),
-          title:
-            lookups.jobTitle ??
-            (shift.shift_type_id ? lookups.shiftTypeNames[shift.shift_type_id] : null) ??
-            'Scheduled shift',
-          locationName: locationName(shift, lookups) ?? undefined,
-          badgeLabel: SHIFT_TONE_LABEL[tone],
-          tone,
-        },
-      ];
-      const brk = breakWindow(shift);
-      if (brk) {
-        rows.push({
-          id: `${shift.id}-break`,
-          timeRange: timeRange(brk.start, brk.end),
-          title: 'Unpaid Break',
-          badgeLabel: SHIFT_TONE_LABEL.break,
-          tone: 'break',
-        });
-      }
-      return rows;
-    });
-}
-
 const ACTIVITY_LABEL: Record<string, string> = {
   in: 'Clock In',
   out: 'Clock Out',
@@ -471,4 +410,50 @@ export function buildAttendance(
     thisWeekValue: percentLabel(thisWeek),
     lastWeekValue: percentLabel(lastWeek),
   };
+}
+
+export interface ThisWeekRow {
+  id: string;
+  /** "Mon 4 Aug". */
+  dateLabel: string;
+  /** "07:00, 19:30". */
+  plannedLabel: string;
+  /** "06:56, 19:41", or "-" for a shift with no clock events yet. */
+  actualLabel: string;
+  /** Pre-formatted hours, or "-" for a shift with no matching segment. */
+  paidLabel: string;
+}
+
+/**
+ * One row per shift this week (`SCREENS.clock`'s "This week" table): planned
+ * time from the roster, actual time and paid hours from whichever worked
+ * segment clocked in on the same calendar day. A shift with no matching
+ * segment yet shows "-" rather than 0 — an unworked shift is not a
+ * zero-hour shift.
+ */
+export function buildThisWeekRows(
+  shifts: Shift[],
+  segments: WorkedSegment[],
+): ThisWeekRow[] {
+  return [...shifts]
+    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+    .map((shift) => {
+      const start = new Date(shift.starts_at);
+      const segment = segments.find((s) =>
+        isSameDay(new Date(s.clockIn.event_at), start),
+      );
+      return {
+        id: shift.id,
+        dateLabel: format(start, 'EEE d MMM'),
+        plannedLabel: `${format(start, 'HH:mm')}, ${format(new Date(shift.ends_at), 'HH:mm')}`,
+        actualLabel: segment
+          ? `${format(new Date(segment.clockIn.event_at), 'HH:mm')}, ${
+              segment.clockOut
+                ? format(new Date(segment.clockOut.event_at), 'HH:mm')
+                : '-'
+            }`
+          : '-',
+        paidLabel: segment ? formatHm(segment.minutes) : '-',
+      };
+    });
 }

@@ -4,18 +4,17 @@ import type {
   AttendanceSummary,
   ClockActivityEntry,
   CurrentShiftInfo,
-  TodayScheduleEntry,
+  ThisWeekRow,
   WeeklySummaryStat,
 } from '@/lib/clockRows';
 
 /**
- * Fixtures for `/clockin-preview`. The exact shift, times and figures printed
- * on design/clockin.png (including its frozen 08:48:37 clock), so the design
- * loop can screenshot the screen without a Supabase session, a staff profile or
- * a rostered shift. Nothing here reaches the live `/app/clock`, which computes
- * every one of these from real rows via `@/lib/clockRows`.
- *
- * See design/.loop/clockin-log.md.
+ * Fixtures for `/clockin-preview`. Frozen values matching
+ * `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.clock` (including its frozen
+ * 08:48:37 clock), so the design loop can screenshot the screen without a
+ * Supabase session, a staff profile or a rostered shift. Nothing here reaches
+ * the live `/app/clock`, which computes every one of these from real rows via
+ * `@/lib/clockRows`.
  */
 
 const HOME = 'Sunnyvale Care Home';
@@ -47,21 +46,41 @@ export const DEMO_SHIFT: CurrentShiftInfo = {
   },
 };
 
-export const DEMO_SCHEDULE: TodayScheduleEntry[] = [
+export const DEMO_THIS_WEEK_ROWS: ThisWeekRow[] = [
   {
-    id: 'shift',
-    timeRange: '09:00-17:00',
-    title: 'Senior Care Assistant',
-    locationName: HOME,
-    badgeLabel: 'Upcoming',
-    tone: 'upcoming',
+    id: 'mon',
+    dateLabel: 'Mon 11 May',
+    plannedLabel: '09:00, 17:00',
+    actualLabel: '08:58, 17:03',
+    paidLabel: '7h 35m',
   },
   {
-    id: 'break',
-    timeRange: '12:30-13:00',
-    title: 'Unpaid Break',
-    badgeLabel: 'Break',
-    tone: 'break',
+    id: 'tue',
+    dateLabel: 'Tue 12 May',
+    plannedLabel: '09:00, 17:00',
+    actualLabel: '09:00, 17:01',
+    paidLabel: '7h 31m',
+  },
+  {
+    id: 'wed',
+    dateLabel: 'Wed 13 May',
+    plannedLabel: '09:00, 17:00',
+    actualLabel: '08:59, 17:00',
+    paidLabel: '7h 31m',
+  },
+  {
+    id: 'thu',
+    dateLabel: 'Thu 14 May',
+    plannedLabel: '09:00, 17:00',
+    actualLabel: '-',
+    paidLabel: '-',
+  },
+  {
+    id: 'fri',
+    dateLabel: 'Fri 15 May',
+    plannedLabel: '09:00, 17:00',
+    actualLabel: '-',
+    paidLabel: '-',
   },
 ];
 
@@ -114,5 +133,5 @@ export const DEMO_HELP: HelpLink[] = [
 
 export const DEMO_FOOTER = {
   supportLine: 'Having issues clocking in?',
-  contactLine: 'Contact support or call 0800 123 4567',
+  contactLine: 'Your manager can correct any clock event from Timesheets.',
 } as const;
