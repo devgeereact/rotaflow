@@ -769,8 +769,8 @@ const TABLES: Record<string, unknown> = {
   ],
   // Lets `/admin-preview/organisations` drive the admin-assisted org
   // creation flow end to end, same reasoning as the RPCs above: the real
-  // migration (0051) isn't applied everywhere yet, so without this fixture
-  // the preview can only show the form, never the success state it leads to.
+  // migration isn't applied everywhere yet, so without this fixture the
+  // preview can only show the form, never the success state it leads to.
   'rpc/admin_create_organisation_with_invite': [
     {
       org_id: '77777777-7777-4777-8777-777777777777',
@@ -778,6 +778,13 @@ const TABLES: Record<string, unknown> = {
       invite_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
     },
   ],
+  // A scalar function, so the fixture is the bare number rather than a row
+  // array — `fixtureFor` returns non-array values as-is, matching how
+  // PostgREST actually serialises an RPC that returns `integer`. Not
+  // org-filtered, same as `platform_tenant_counts` above: the RPC call is a
+  // POST with the org id in the body, not the URL, so every organisation's
+  // detail page sees this same figure in the preview.
+  'rpc/subscription_mrr_pence': 79000,
 };
 
 /** Everything the console reads, keyed by the PostgREST path segment. */

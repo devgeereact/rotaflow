@@ -20,9 +20,8 @@ import {
 } from '@/services/platformService';
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import { sessionStatus, type SupportAccessSession } from '@/lib/supportAccess';
-import { monthlyGrowth } from '@/lib/platformOverview';
+import { monthlyChurnCounts, monthlyGrowth } from '@/lib/platformOverview';
 import {
-  demoChurnTrend,
   DEMO_SECTIONS,
   DEMO_SERVICES,
   type DemoActivityTone,
@@ -32,7 +31,12 @@ import { listInvoices, listPlans, type Invoice } from '@/services/billingService
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
 import { formatMoney } from '@/lib/money';
 import { downloadCsv } from '@/lib/csv';
-import { collectedByMonth, monthlyRecurringPence, revenueByPlan } from '@/lib/revenue';
+import {
+  collectedByMonth,
+  monthlyRecurringPence,
+  revenueByPlan,
+  revenueChurnForMonth,
+} from '@/lib/revenue';
 import { openCases, urgentOpenCases } from '@/lib/supportMetrics';
 import { healthBreakdown, tenantsActiveWithin } from '@/lib/tenantHealth';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
@@ -134,15 +138,17 @@ const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
  *
  * Organisation counts, the twelve-month growth series, total users, memberships,
  * subscriptions, revenue and the plan mix, published rotas, the support queue,
- * open support-access sessions and the audit feed all come from the database.
+ * open support-access sessions, the audit feed and churn (both the "Churned"
+ * count series on the growth chart and the revenue-churn percentage in its
+ * caption) all come from the database.
  *
  * ## Which are not
  *
- * Churn on the growth chart and the per-service status list are
- * **placeholder values** from `src/lib/adminOverviewDemo.ts`: nothing records
- * the month a tenant left, and a browser cannot observe another user's service
- * latency. The reasons are recorded in that file, alongside how to remove them.
- * The notice at the foot of this screen names them, so nobody reads a
+ * The per-service status list is a **placeholder value** from
+ * `src/lib/adminOverviewDemo.ts`: a browser cannot observe another user's
+ * service latency. The reason is recorded in that file, alongside how to
+ * remove it.
+ * The notice at the foot of this screen names it, so nobody reads a
  * placeholder as a measurement — every stat tile on this page shows only real
  * figures, with no invented trend line or comparison hidden behind one.
  */
@@ -216,6 +222,7 @@ export function AdminOverviewPage(): JSX.Element {
     return {
       growth,
       active,
+      churnCounts: monthlyChurnCounts(data.subscriptions, now, periodMonths),
       activeShare: data.organisations.length
         ? `${((active / data.organisations.length) * 100).toFixed(1)}% of all tenants`
         : 'No tenants yet',
@@ -228,6 +235,12 @@ export function AdminOverviewPage(): JSX.Element {
       mrr: monthlyRecurringPence(
         data.subscriptions,
         new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
+      ),
+      churnThisMonth: revenueChurnForMonth(
+        data.subscriptions,
+        new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
+        new Date(now.getFullYear(), now.getMonth(), 1),
+        new Date(now.getFullYear(), now.getMonth() + 1, 1),
       ),
       revenueTrend: collectedByMonth(data.invoices, periodMonths, now).map((t) =>
         Math.round(t.pence / 100),
@@ -373,7 +386,7 @@ export function AdminOverviewPage(): JSX.Element {
                   },
                   {
                     name: 'Churned',
-                    values: demoChurnTrend(derived.growth.map((g) => g.total)),
+                    values: derived.churnCounts,
                     colour: '#D94A3A',
                     lineOnly: true,
                   },
@@ -382,8 +395,10 @@ export function AdminOverviewPage(): JSX.Element {
               />
               <p className="mt-1 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                 New organisations are counted in the month they signed up, and the current
-                month is partial. Active and new are real; churn is a placeholder. Nothing
-                records the month an organisation left.
+                month is partial. Churned counts cancellations by month
+                {derived.churnThisMonth !== null &&
+                  ` — ${derived.churnThisMonth}% of MRR lost so far this month`}
+                .
               </p>
             </Panel>
 

@@ -12,11 +12,7 @@ import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
-import {
-  DEMO_ORG_MRR,
-  DEMO_ORG_PROFILE,
-  DEMO_ORG_STORAGE,
-} from '@/lib/adminOverviewDemo';
+import { DEMO_ORG_PROFILE, DEMO_ORG_STORAGE } from '@/lib/adminOverviewDemo';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { SuspendOrgModal } from '@/components/admin/SuspendOrgModal';
 import {
@@ -49,6 +45,8 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
+import { getOrgMrrPence } from '@/services/billingService';
+import { formatMoney } from '@/lib/money';
 import type {
   AuditLog,
   Department,
@@ -157,6 +155,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   const { showError, showSuccess } = useToast();
 
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [orgMrrPence, setOrgMrrPence] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -200,6 +199,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
     setFailed(false);
     setNotFound(false);
     setDetail(null);
+    setOrgMrrPence(null);
     void (async () => {
       try {
         const organisation = await getOrganisation(organisationId);
@@ -218,6 +218,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           sessions,
           smtp,
           gdpr,
+          mrrPence,
         ] = await Promise.all([
           listOrgMembers(organisationId),
           listOrgLocations(organisationId),
@@ -235,6 +236,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           listGdprRequests(200).then((all) =>
             all.filter((r) => r.orgId === organisationId),
           ),
+          getOrgMrrPence(organisationId),
         ]);
         if (!active) return;
         setDetail({
@@ -249,6 +251,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           smtp,
           gdpr,
         });
+        setOrgMrrPence(mrrPence);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'admin:organisation-detail' });
@@ -558,8 +561,8 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               />
               <StatTile
                 label="MRR"
-                value={DEMO_ORG_MRR}
-                hint={<span className="text-warning">Placeholder</span>}
+                value={orgMrrPence === null ? '—' : formatMoney(orgMrrPence)}
+                hint="Active and past due"
               />
             </TileGrid>
 
@@ -817,8 +820,9 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               </p>
             )}
             <p className="mt-4 border-t border-surface-border pt-4 text-sm text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-              No payment provider is integrated, so there are no invoices, payments or
-              amounts to show here, <code>subscriptions</code> records plan state only.
+              MRR above is real, from Stripe billing. This organisation's individual
+              invoices and payment history aren't broken out here — the platform-wide
+              invoice list on <code>/admin/billing</code> covers every org.
             </p>
           </Card>
         )}
