@@ -684,8 +684,9 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               </p>
             )}
             <p className="mt-4 border-t border-surface-border pt-4 text-sm text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-              No payment provider is integrated, so there are no invoices, payments or
-              amounts to show here, <code>subscriptions</code> records plan state only.
+              MRR above is real, from Stripe billing. This organisation's individual
+              invoices and payment history aren't broken out here — the platform-wide
+              invoice list on <code>/admin/billing</code> covers every org.
             </p>
           </Card>
         )}

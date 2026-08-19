@@ -4,7 +4,7 @@
  * ============================================================================
  * Every value in this file is invented, for the domains that still have
  * nothing real behind them. It is not a blanket statement about the whole
- * `/admin` surface any more: Stripe billing (migration 0023) is connected,
+ * `/admin` surface any more: Stripe billing (migration 0050) is connected,
  * `plans` is a real catalogue, and MRR/churn/revenue are computed for real in
  * `src/lib/revenue.ts` (`revenueByPlan`, `mrrAtDatePence`,
  * `revenueChurnForMonth`) and `src/lib/platformOverview.ts`

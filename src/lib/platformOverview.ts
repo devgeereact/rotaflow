@@ -81,11 +81,16 @@ export function monthlyGrowth(
  * Gated on CURRENT `status === 'canceled'`, not on `canceled_at` alone:
  * Stripe's Customer Portal defaults to cancel-at-period-end, so
  * `canceled_at` is set the moment cancellation is *requested*, weeks
- * before it actually takes effect. A subscription only counts as churned
- * in the month it actually, fully terminated — matching the same
- * status-gated exclusion `mrrAtDatePence`/`revenueChurnForMonth` in
- * `lib/revenue.ts` use — otherwise this chart's past would silently
- * rewrite itself once the subscription's status later flips to `canceled`.
+ * before it actually takes effect. Without this gate, a scheduled
+ * cancellation would count as churned the instant it's requested — before
+ * the subscription has actually stopped paying — contradicting every MRR
+ * figure elsewhere on this page, which only checks `status`. Matches the
+ * same status-gated exclusion `mrrAtDatePence`/`revenueChurnForMonth` in
+ * `lib/revenue.ts` use. Known consequence, not a bug: a bucket for a past
+ * month can still gain a count later, once that subscription's status
+ * actually flips to `canceled` and this function is next called — the
+ * count reflects when revenue really stopped, not when the chart happened
+ * to be drawn.
  */
 export function monthlyChurnCounts(
   subscriptions: readonly { canceled_at: string | null; status: string }[],
