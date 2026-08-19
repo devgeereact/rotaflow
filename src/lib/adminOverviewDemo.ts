@@ -34,10 +34,7 @@
  */
 
 /** Marks a card whose figures are placeholder, for the on-screen notice. */
-export const DEMO_SECTIONS = [
-  'Churn on the growth chart',
-  'System health history',
-] as const;
+export const DEMO_SECTIONS = ['System health history'] as const;
 
 export const DEMO_ACTIVE_USERS_TODAY = 12_489;
 export const DEMO_ACTIVE_USERS_SHARE = '25.6% of all users';
