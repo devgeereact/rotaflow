@@ -49,33 +49,6 @@ export const DEMO_REVENUE_TREND = [
   174_900, 180_200, 184_260,
 ];
 
-/**
- * Churn, for the third series on the growth chart.
- *
- * Nothing records a churn event: an organisation is `archived` or `suspended`
- * with no date of leaving, so there is no month to attribute a departure to.
- * The series is drawn alongside two real ones, which is why it is named in the
- * chart's own caption as well as in the placeholder notice, an illustrative
- * line sitting inside a real chart is the easiest of these to misread.
- */
-const CHURN_SHAPE = [1.4, 1.1, 1.7, 2.2, 1.2, 1.5, 0.9, 1.8, 1.4, 1.1, 1.2, 0.6];
-
-/**
- * Churn as a share of the tenants that existed that month, rather than a fixed
- * series.
- *
- * A constant series was wrong at both ends. Against a production estate it sat
- * flat on the floor; against a six-tenant development database it towered over
- * the two real series and rescaled the whole chart around a number nothing
- * measured. Deriving it from the real totals keeps the line where a plausible
- * churn line belongs, just under 2% a month, whatever the estate is.
- */
-export function demoChurnTrend(totals: readonly number[]): number[] {
-  return totals.map((total, i) =>
-    Math.round((total * (CHURN_SHAPE[i % CHURN_SHAPE.length] ?? 1)) / 100),
-  );
-}
-
 export const DEMO_PUBLISHED_ROTAS_TREND = [
   7_100, 7_480, 7_690, 8_020, 8_310, 8_640, 8_942,
 ];
