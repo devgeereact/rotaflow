@@ -3,9 +3,9 @@
 The canonical, runnable source is `supabase/migrations/`. `0001_init.sql` ships the
 built-in `profiles` + `app_settings` and conventions; **`0002_rotaflow.sql`** adds the
 RotaFlow domain; **`0003_fix_organisations_select_rls.sql`** fixes an org-creation
-RLS bootstrap bug (see §4); **`0004_rotas_draft_unique.sql`** adds partial unique
+RLS bootstrap bug (see §5); **`0004_rotas_draft_unique.sql`** adds partial unique
 indexes so concurrent callers can't create duplicate draft rotas; **`0005_narrow_organisations_select_rls.sql`**
-closes the permanent creator-read bypass `0003` left open (see §4). Apply via the
+closes the permanent creator-read bypass `0003` left open (see §5). Apply via the
 Supabase SQL editor or `supabase db push`.
 
 RotaFlow is **multi-tenant on a single database**: every domain table carries an
@@ -52,6 +52,7 @@ auth.users ──1:1──> public.profiles
 | `updated_at` | `timestamptz` | default `now()`, bumped by trigger      |
 
 `0002` adds **`is_platform_admin boolean not null default false`** (Super Admin flag).
+`0015` turns it into a derived mirror — see §4 below; nothing may write it directly.
 
 ### `app_settings`
 
@@ -88,7 +89,24 @@ Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, excep
 | `subscriptions`      | `org_id`, `plan` (`starter`\|`professional`\|`business`\|`enterprise`), `status`, `provider`, `provider_ref?`, `stripe_customer_id?`, `price_pence?`, `started_at`, `current_period_end?`, `canceled_at?`         | Billing seam, now wired to Stripe (`0050_stripe_billing.sql`, `supabase/functions/stripe-webhook`). `plans.stripe_price_id` maps each tier to its Stripe Price. `price_pence` overrides the plan's list price only where a deal was struck; MRR/churn reconstruction (`src/lib/revenue.ts`) sums `coalesce(price_pence, plan price)` over rows the arithmetic selects. `canceled_at` is set the moment cancellation is *requested* (Stripe's Customer Portal defaults to cancel-at-period-end), not when it takes effect — it is **not** immutable, and can be cleared back to `null` if the customer un-cancels before period end. Only `status = 'canceled'` means a subscription has actually, fully ended; MRR/churn code gates on `status`, never on `canceled_at` alone. |
 | `audit_logs`         | `org_id`, `actor_user_id?`, `action`, `entity_type`, `entity_id?`, `metadata jsonb`, `created_at`                                                                                                                 | GDPR + compliance trail (append-only).                                                         |
 
-## 4. Row Level Security
+## 4. Platform-level tables (from `0015`, `0018`–`0020`)
+
+Unlike §3, these aren't tenant data — they're the platform console's own
+tables, scoped to platform staff rather than an `org_id`. All four follow the
+same write pattern: **no insert/update/delete policy at all**. Every mutation
+goes through a `security definer` RPC (`grant_platform_role`,
+`request_support_access`, `log_gdpr_request`, …) so validation — bounds
+checks, required justifications, the last-owner guard — can't be bypassed by
+writing to the table directly.
+
+| Table                     | Key columns                                                                                                                              | Purpose                                                                                                                                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platform_admins`         | `user_id` PK, `role` (`platform_owner`\|`platform_admin`\|`platform_support`\|`platform_finance`), `granted_by/at`, `revoked_by/at`, `note` | Source of truth for *which kind* of platform administrator someone is. `profiles.is_platform_admin` is a trigger-maintained mirror of "any non-revoked row exists" — `UPDATE` on that column is revoked from `authenticated` entirely, so nothing can desync it. |
+| `platform_settings`       | singleton (`id boolean primary key default true`), `platform_name`, `support_email`, `platform_url`, `default_timezone`, `registration_enabled`, `maintenance_mode`, `maintenance_message`                                     | Deployment-wide config, one row, seeded on migration. `maintenance_mode` is a banner, not a kill switch — nothing in a static PWA can refuse to serve itself, so it doesn't gate anything server-side.       |
+| `support_access_sessions` | `org_id`, `admin_user_id`, `reason` (≥15 chars), `case_ref`, `scope` (`read`\|`read_write`), `granted_at`, `expires_at`, `revoked_at/by`   | Time-boxed, justified **accountability record** of platform staff accessing a tenant — not an access grant. Platform staff already hold cross-tenant read via `has_platform_role()`; this just makes it auditable, 15 minutes to 24 hours per session, one open session per admin per org. |
+| `gdpr_requests`           | `org_id?`, `subject_email`, `kind` (`access`\|`portability`\|`rectification`\|`erasure`\|`restriction`\|`objection`), `status`, `received_on`, `due_on`, `extended_to?`, `closed_at?`, `outcome_note?`                          | UK GDPR Article 15–22 request register. `due_on` is computed server-side as `received_on + 1 month` (Article 12(3)) — never client-supplied. Closing a request (`completed`/`refused`) requires `outcome_note`, enforced by both a CHECK and the RPC. |
+
+## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions
 (defined in `0002`) so membership checks don't recurse:
@@ -126,7 +144,7 @@ creator read the org forever, even after their membership was removed or suspend
 inserts the owner's membership row (same transaction), the `not exists` check flips
 and only `is_org_member()` governs access, same as every other tenant table.
 
-## 5. Automation
+## 6. Automation
 
 - **`handle_new_user()`** (from `0001`): creates `profiles` + `app_settings` on sign-up.
 - **`set_updated_at()`**: keeps `updated_at` accurate on every table.
@@ -142,7 +160,7 @@ and only `is_org_member()` governs access, same as every other tenant table.
   dunning (Smart Retries) is exhausted. Every real admin caller has a real
   `auth.uid()`, so the exception never widens what an authenticated user can do.
 
-## 6. Generating TypeScript types
+## 7. Generating TypeScript types
 
 Keep `src/types/database.types.ts` in sync once the DB exists:
 
@@ -154,7 +172,7 @@ supabase gen types typescript --project-id <ref> --schema public \
 The Supabase client is `createClient<Database>(…)`, so every query is fully typed.
 `src/types/index.ts` exposes row aliases (`Organisation`, `Shift`, `LeaveRequest`, …). Add them there as tables are generated.
 
-## 7. Migration policy
+## 8. Migration policy
 
 - One numbered file per change (`0002_rotaflow.sql`, `0003_…`). Additive & idempotent
   (`if not exists`). **Never edit an applied migration**. Add a new one.
