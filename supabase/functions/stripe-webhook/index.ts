@@ -184,11 +184,21 @@ async function handleSubscriptionDeleted(
   const orgId = subscription.metadata?.org_id;
   if (!orgId) return;
 
+  // Prefer Stripe's own canceled_at (the same mapping handleSubscriptionUpdated
+  // already applies) so the recorded cancellation date stays the moment
+  // cancellation was requested, not the moment it actually took effect here.
+  // Those two can be weeks apart under the Customer Portal's default
+  // cancel-at-period-end flow, and revenue.ts / platformOverview.ts read
+  // canceled_at as when the cancellation happened, not when it landed —
+  // rewriting it here would make a churn chart whose past silently moves.
+  // Fall back to "now" only in the unlikely case Stripe never set it.
   const { error } = await supabase
     .from('subscriptions')
     .update({
       status: 'canceled',
-      canceled_at: new Date().toISOString(),
+      canceled_at: subscription.canceled_at
+        ? new Date(subscription.canceled_at * 1000).toISOString()
+        : new Date().toISOString(),
     })
     .eq('org_id', orgId)
     .eq('provider_ref', subscription.id);

@@ -185,17 +185,18 @@ describe('churnRate', () => {
 });
 
 describe('mrrAtDatePence', () => {
-  it('counts a subscription active at the as-of date, excludes one canceled before it', () => {
+  it('counts a subscription active at the as-of date, excludes one that fully terminated before it', () => {
     const subs: SubscriptionLike[] = [
       sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
       sub({
+        status: 'canceled',
         started_at: '2026-01-01T00:00:00Z',
         canceled_at: '2026-03-01T00:00:00Z',
         price_pence: 29900,
       }),
     ];
     expect(mrrAtDatePence(subs, PRICES, new Date('2026-04-01T00:00:00Z'))).toBe(12900);
-    // Before the cancellation, both counted:
+    // Before the termination, both counted:
     expect(mrrAtDatePence(subs, PRICES, new Date('2026-02-01T00:00:00Z'))).toBe(
       12900 + 29900,
     );
@@ -208,9 +209,10 @@ describe('mrrAtDatePence', () => {
     expect(mrrAtDatePence(subs, PRICES, new Date('2026-01-01T00:00:00Z'))).toBe(0);
   });
 
-  it('excludes a subscription canceled exactly at the as-of date', () => {
+  it('excludes a subscription that fully terminated exactly at the as-of date', () => {
     const subs: SubscriptionLike[] = [
       sub({
+        status: 'canceled',
         started_at: '2026-01-01T00:00:00Z',
         canceled_at: '2026-03-01T00:00:00Z',
         price_pence: 12900,
@@ -224,6 +226,32 @@ describe('mrrAtDatePence', () => {
       sub({ status: 'trialing', started_at: '2026-01-01T00:00:00Z', price_pence: 12900 }),
     ];
     expect(mrrAtDatePence(subs, PRICES, new Date('2026-02-01T00:00:00Z'))).toBe(0);
+  });
+
+  it('still counts a scheduled-but-not-yet-effective cancellation as live MRR', () => {
+    // Customer Portal default: cancel-at-period-end. canceled_at is set the
+    // moment cancellation is requested, but status stays active/past_due
+    // until Stripe's customer.subscription.deleted actually fires — this
+    // subscription is still genuinely paying and must still count, no
+    // matter how far past canceled_at `asOf` is.
+    const subs: SubscriptionLike[] = [
+      sub({
+        status: 'active',
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-01T00:00:00Z', // requested in March
+        price_pence: 12900,
+      }),
+      sub({
+        status: 'past_due',
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-02-15T00:00:00Z', // requested even earlier
+        price_pence: 29900,
+      }),
+    ];
+    // Well after both requested cancellation dates, both still count:
+    expect(mrrAtDatePence(subs, PRICES, new Date('2026-06-01T00:00:00Z'))).toBe(
+      12900 + 29900,
+    );
   });
 });
 
@@ -258,13 +286,14 @@ describe('revenueChurnForMonth', () => {
     const subs: SubscriptionLike[] = [
       sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
       sub({
+        status: 'canceled',
         started_at: '2026-01-01T00:00:00Z',
         canceled_at: '2026-03-15T00:00:00Z',
         price_pence: 29900,
       }),
     ];
-    // Starting MRR for March = both active as of Mar 1 = 12900 + 29900 = 42800.
-    // Lost in March = the one that canceled on Mar 15, before April 1 = 29900.
+    // Starting MRR for March = both live as of Mar 1 = 12900 + 29900 = 42800.
+    // Lost in March = the one that fully terminated on Mar 15, before April 1 = 29900.
     const result = revenueChurnForMonth(
       subs,
       PRICES,
@@ -274,14 +303,15 @@ describe('revenueChurnForMonth', () => {
     expect(result).toBe(Math.round((29900 / 42800) * 1000) / 10);
   });
 
-  it('excludes a subscription canceled exactly at the month boundary from both starting MRR and lost', () => {
+  it('excludes a subscription that fully terminated exactly at the month boundary from both starting MRR and lost', () => {
     const subs: SubscriptionLike[] = [
       // Still active through and past March — keeps starting MRR non-zero.
       sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
-      // Canceled exactly at March 1st: never part of starting MRR, so must
-      // not be counted as lost from it either (not double-counted, not
-      // dropped-then-inflated).
+      // Fully terminated exactly at March 1st: never part of starting MRR,
+      // so must not be counted as lost from it either (not double-counted,
+      // not dropped-then-inflated).
       sub({
+        status: 'canceled',
         started_at: '2026-01-01T00:00:00Z',
         canceled_at: '2026-03-01T00:00:00Z',
         price_pence: 29900,
@@ -294,7 +324,30 @@ describe('revenueChurnForMonth', () => {
       new Date('2026-04-01T00:00:00Z'),
     );
     // Starting MRR for March = only the still-active one = 12900.
-    // Lost in March = nothing — the boundary cancellation was never "starting".
+    // Lost in March = nothing — the boundary termination was never "starting".
+    expect(result).toBe(0);
+  });
+
+  it('does not count a scheduled-but-not-yet-effective cancellation as lost churn', () => {
+    const subs: SubscriptionLike[] = [
+      sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
+      // Cancellation requested inside March, but still active/past_due —
+      // hasn't actually ended yet, so it must not show up as March churn.
+      sub({
+        status: 'active',
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-15T00:00:00Z',
+        price_pence: 29900,
+      }),
+    ];
+    const result = revenueChurnForMonth(
+      subs,
+      PRICES,
+      new Date('2026-03-01T00:00:00Z'),
+      new Date('2026-04-01T00:00:00Z'),
+    );
+    // Starting MRR for March = both still live (status-gated) = 42800.
+    // Lost in March = 0 — the second subscription's status never reads canceled.
     expect(result).toBe(0);
   });
 

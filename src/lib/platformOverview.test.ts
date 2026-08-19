@@ -13,8 +13,15 @@ const org = (created_at: string, status = 'active', plan = 'starter'): OverviewO
   plan,
 });
 
-const sub = (canceled_at: string | null): { canceled_at: string | null } => ({
+// Defaults status to 'canceled' whenever canceled_at is set, matching the
+// realistic shape (a fully terminated subscription); pass status explicitly
+// to model a merely-scheduled, not-yet-effective cancellation instead.
+const sub = (
+  canceled_at: string | null,
+  status: string = canceled_at !== null ? 'canceled' : 'active',
+): { canceled_at: string | null; status: string } => ({
   canceled_at,
+  status,
 });
 
 describe('monthlyGrowth', () => {
@@ -119,6 +126,21 @@ describe('monthlyChurnCounts', () => {
 
   it('honours a shorter window', () => {
     expect(monthlyChurnCounts([], now, 3)).toHaveLength(3);
+  });
+
+  it('does not count a scheduled-but-not-yet-effective cancellation, only a fully terminated one', () => {
+    // Stripe's Customer Portal defaults to cancel-at-period-end: canceled_at
+    // is set when cancellation is requested, but status stays
+    // active/past_due until the subscription actually ends. Only the
+    // status === 'canceled' row should show up as churn.
+    const counts = monthlyChurnCounts(
+      [
+        sub('2026-08-02T10:00:00Z', 'active'), // requested, not yet effective
+        sub('2026-08-10T10:00:00Z', 'canceled'), // actually terminated
+      ],
+      now,
+    );
+    expect(counts[11]).toBe(1);
   });
 });
 

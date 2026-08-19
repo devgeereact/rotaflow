@@ -77,9 +77,18 @@ export function monthlyGrowth(
  * scale. The revenue-churn rate (lost MRR ÷ starting MRR) is real too,
  * computed the same way, but shown as text alongside the chart rather
  * than plotted — see `revenueChurnForMonth` in `lib/revenue.ts`.
+ *
+ * Gated on CURRENT `status === 'canceled'`, not on `canceled_at` alone:
+ * Stripe's Customer Portal defaults to cancel-at-period-end, so
+ * `canceled_at` is set the moment cancellation is *requested*, weeks
+ * before it actually takes effect. A subscription only counts as churned
+ * in the month it actually, fully terminated — matching the same
+ * status-gated exclusion `mrrAtDatePence`/`revenueChurnForMonth` in
+ * `lib/revenue.ts` use — otherwise this chart's past would silently
+ * rewrite itself once the subscription's status later flips to `canceled`.
  */
 export function monthlyChurnCounts(
-  subscriptions: readonly { canceled_at: string | null }[],
+  subscriptions: readonly { canceled_at: string | null; status: string }[],
   now: Date,
   months = 12,
 ): number[] {
@@ -88,7 +97,7 @@ export function monthlyChurnCounts(
     const start = startOfMonth(subMonths(now, i));
     const nextStart = startOfMonth(subMonths(now, i - 1));
     const count = subscriptions.filter((s) => {
-      if (s.canceled_at === null) return false;
+      if (s.status !== 'canceled' || s.canceled_at === null) return false;
       const c = new Date(s.canceled_at);
       return !isBefore(c, start) && isBefore(c, nextStart);
     }).length;

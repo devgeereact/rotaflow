@@ -150,26 +150,39 @@ export function revenueByPlan(
 }
 
 /**
- * MRR reconstructed as of a past date, using `started_at`/`canceled_at` —
- * both real, immutable-once-set timestamps, so this needs no snapshot
- * table. A subscription counts if it had started and not yet canceled as
- * of `asOf` — canceled exactly at `asOf` does not count, matching the
- * strict-`>` boundary `revenueChurnForMonth` relies on below. Also excludes
- * a subscription whose CURRENT status is `trialing` — a trial still in
- * progress today has never converted to paying, so it is never counted as
- * revenue. Deliberately not `status === 'active' || status === 'past_due'`
- * like `monthlyRecurringPence` above: once a subscription is canceled its
- * status reads `canceled` regardless of whether it was ever paying, so
- * requiring `active`/`past_due` here would silently exclude every real,
- * once-paying subscription that has since churned — the exact case this
- * function exists to reconstruct. Uses each subscription's current
- * `price_pence`/plan price and current `status` as stand-ins for their
- * historical values — this schema does not track price or status changes
- * over time, so that is the same simplification every other figure in this
- * file already makes. Known limitation of that simplification: a trial
- * that is canceled without ever converting to paying reads the same
- * `canceled` status as a real churned subscription, so it cannot be told
- * apart from genuine revenue churn by status alone.
+ * MRR reconstructed as of a past date, using `started_at`/`canceled_at`.
+ * Neither is immutable once set: `canceled_at` in particular can be
+ * cleared back to `null` if a customer un-cancels through the Customer
+ * Portal before their period end, and it can be set weeks before a
+ * subscription actually stops — Stripe's Customer Portal defaults to
+ * cancel-at-period-end, so `canceled_at` records when cancellation was
+ * *requested*, not when revenue actually stopped. `status`, by contrast,
+ * only flips to `canceled` when Stripe's `customer.subscription.deleted`
+ * fires, i.e. when the subscription has actually, fully ended. So this
+ * function's exclusion is gated on `status`, not on `canceled_at` alone: a
+ * subscription counts as live MRR as of `asOf` unless its CURRENT status is
+ * `canceled` AND its `canceled_at` falls at-or-before `asOf` — a
+ * still-`active`/`past_due` subscription with a pending scheduled
+ * cancellation keeps counting as live revenue no matter how far in the
+ * future `asOf` is, matching `subscription_mrr_pence()` (the RPC backing
+ * the Org Detail and real-time Subscriptions MRR tiles), which only checks
+ * `status`, never `canceled_at`. Canceled exactly at `asOf` does not count,
+ * matching the strict-`>` boundary `revenueChurnForMonth` relies on below.
+ * Also excludes a subscription whose CURRENT status is `trialing` — a
+ * trial still in progress today has never converted to paying, so it is
+ * never counted as revenue. Deliberately not `status === 'active' ||
+ * status === 'past_due'` like `monthlyRecurringPence` above: once a
+ * subscription is canceled its status reads `canceled` regardless of
+ * whether it was ever paying, so requiring `active`/`past_due` here would
+ * silently exclude every real, once-paying subscription that has since
+ * churned — the exact case this function exists to reconstruct. Uses each
+ * subscription's current `price_pence`/plan price as a stand-in for its
+ * historical value — this schema does not track price changes over time,
+ * so that is the same simplification every other figure in this file
+ * already makes. Known limitation of that simplification: a trial that is
+ * canceled without ever converting to paying reads the same `canceled`
+ * status as a real churned subscription, so it cannot be told apart from
+ * genuine revenue churn by status alone.
  */
 export function mrrAtDatePence(
   subscriptions: readonly SubscriptionLike[],
@@ -179,22 +192,33 @@ export function mrrAtDatePence(
   return subscriptions
     .filter((s) => s.status !== 'trialing')
     .filter((s) => new Date(s.started_at) <= asOf)
-    .filter((s) => s.canceled_at === null || new Date(s.canceled_at) > asOf)
+    .filter(
+      (s) =>
+        !(
+          s.status === 'canceled' &&
+          s.canceled_at !== null &&
+          new Date(s.canceled_at) <= asOf
+        ),
+    )
     .reduce((total, s) => total + (s.price_pence ?? planPrices.get(s.plan) ?? 0), 0);
 }
 
 /**
- * Revenue churn for one month: MRR lost to cancellations that fell inside
- * it, over MRR at the month's start. Null when starting MRR was zero — a
- * churn rate out of no revenue is a division by zero dressed as 0%, same
- * reasoning as the existing `churnRate` above.
+ * Revenue churn for one month: MRR lost to subscriptions that fully
+ * terminated inside it, over MRR at the month's start. Null when starting
+ * MRR was zero — a churn rate out of no revenue is a division by zero
+ * dressed as 0%, same reasoning as the existing `churnRate` above.
  *
- * The "lost" filter's date bounds and status condition mirror
+ * "Lost" means CURRENT `status === 'canceled'` (the subscription has
+ * actually, fully ended — Stripe's `customer.subscription.deleted` fired)
+ * AND its `canceled_at` falls inside the month. A subscription that is
+ * merely scheduled to cancel — still `active`/`past_due` with a
+ * future-effective `canceled_at` — has not yet stopped paying and must not
+ * be counted as churn until it actually terminates, matching
+ * `mrrAtDatePence`'s status-gated exclusion above. The date bounds mirror
  * `mrrAtDatePence`'s exactly — a cancellation exactly at `monthStart` was
  * never part of `startingMrr`, so it must not be counted as lost from it
- * either, and a subscription whose CURRENT status is still `trialing` (an
- * in-progress trial, not yet a cancellation) never contributed to
- * `startingMrr` and must not be counted as lost revenue either.
+ * either.
  */
 export function revenueChurnForMonth(
   subscriptions: readonly SubscriptionLike[],
@@ -205,7 +229,7 @@ export function revenueChurnForMonth(
   const startingMrr = mrrAtDatePence(subscriptions, planPrices, monthStart);
   if (startingMrr <= 0) return null;
   const lost = subscriptions
-    .filter((s) => s.status !== 'trialing')
+    .filter((s) => s.status === 'canceled')
     .filter((s) => s.canceled_at !== null)
     .filter((s) => {
       const c = new Date(s.canceled_at!);
