@@ -767,6 +767,17 @@ const TABLES: Record<string, unknown> = {
     { feature: 'advanced_reporting', source: 'plan' },
     { feature: 'ai_rota_assistant', source: 'flag' },
   ],
+  // Lets `/admin-preview/organisations` drive the admin-assisted org
+  // creation flow end to end, same reasoning as the RPCs above: the real
+  // migration (0051) isn't applied everywhere yet, so without this fixture
+  // the preview can only show the form, never the success state it leads to.
+  'rpc/admin_create_organisation_with_invite': [
+    {
+      org_id: '77777777-7777-4777-8777-777777777777',
+      invite_token: 'preview-invite-token',
+      invite_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    },
+  ],
 };
 
 /** Everything the console reads, keyed by the PostgREST path segment. */

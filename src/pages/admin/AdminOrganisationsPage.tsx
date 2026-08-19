@@ -422,6 +422,35 @@ export function AdminOrganisationsPage(): JSX.Element {
         </>
       }
     >
+      {createdInvite && (
+        <div className="mb-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <h2 className="mb-1 font-medium text-content dark:text-content-dark">
+            Invitation link for {createdInvite.email}
+          </h2>
+          <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
+            {createdInvite.orgName} is created. Send this link to {createdInvite.email} so
+            they can accept and become its owner. It is shown once — RotaFlow stores only
+            a hash of the token, so it cannot be retrieved again.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+              {createdInvite.url}
+            </code>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void copyInviteLink(createdInvite.url)}
+            >
+              <Copy size={14} aria-hidden="true" className="mr-1.5" />
+              Copy
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setCreatedInvite(null)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
+
       {failed ? (
         <AdminError onRetry={retry} />
       ) : !organisations || !summary ? (
@@ -430,36 +459,6 @@ export function AdminOrganisationsPage(): JSX.Element {
         <AdminEmpty message="No organisations have been created on this deployment yet." />
       ) : (
         <div className="space-y-4">
-          {createdInvite && (
-            <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
-              <h2 className="mb-1 font-medium text-content dark:text-content-dark">
-                Invitation link for {createdInvite.email}
-              </h2>
-              <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
-                {createdInvite.orgName} is created. Send this link to{' '}
-                {createdInvite.email} so they can accept and become its owner. It is shown
-                once — RotaFlow stores only a hash of the token, so it cannot be retrieved
-                again.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
-                  {createdInvite.url}
-                </code>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void copyInviteLink(createdInvite.url)}
-                >
-                  <Copy size={14} aria-hidden="true" className="mr-1.5" />
-                  Copy
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setCreatedInvite(null)}>
-                  Done
-                </Button>
-              </div>
-            </div>
-          )}
-
           <TileGrid>
             <StatTile label="Total" value={summary.total.toLocaleString('en-GB')} />
             <StatTile
