@@ -43,7 +43,7 @@ begin
   if not (
     public.has_org_role(p_org, array['owner','manager'])
     or (
-      public.is_platform_admin()
+      public.has_platform_role(array['platform_owner','platform_admin'])
       and p_role = 'owner'
       and not exists (select 1 from public.memberships m where m.org_id = p_org)
     )
@@ -60,7 +60,7 @@ begin
   if p_role = 'owner'
      and not public.has_org_role(p_org, array['owner'])
      and not (
-       public.is_platform_admin()
+       public.has_platform_role(array['platform_owner','platform_admin'])
        and not exists (select 1 from public.memberships m where m.org_id = p_org)
      ) then
     raise exception 'Only an owner can invite another owner'
