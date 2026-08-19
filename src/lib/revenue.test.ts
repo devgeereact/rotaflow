@@ -7,10 +7,12 @@ import {
   collectedInMonth,
   monthKey,
   monthlyRecurringPence,
+  mrrAtDatePence,
   outstandingPence,
   pastDuePence,
   refundedInMonth,
   revenueByPlan,
+  revenueChurnForMonth,
   type InvoiceLike,
   type SubscriptionLike,
 } from '@/lib/revenue';
@@ -23,7 +25,15 @@ const PRICES = new Map([
 ]);
 
 function sub(over: Partial<SubscriptionLike> = {}): SubscriptionLike {
-  return { org_id: 'o1', plan: 'business', status: 'active', price_pence: null, ...over };
+  return {
+    org_id: 'o1',
+    plan: 'business',
+    status: 'active',
+    price_pence: null,
+    started_at: '2026-01-01T00:00:00Z',
+    canceled_at: null,
+    ...over,
+  };
 }
 
 function invoice(over: Partial<InvoiceLike> = {}): InvoiceLike {
@@ -170,5 +180,60 @@ describe('churnRate', () => {
 
   it('is null out of nothing rather than zero', () => {
     expect(churnRate(0, 0)).toBeNull();
+  });
+});
+
+describe('mrrAtDatePence', () => {
+  it('counts a subscription active at the as-of date, excludes one canceled before it', () => {
+    const subs: SubscriptionLike[] = [
+      sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
+      sub({
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-01T00:00:00Z',
+        price_pence: 29900,
+      }),
+    ];
+    expect(mrrAtDatePence(subs, PRICES, new Date('2026-04-01T00:00:00Z'))).toBe(12900);
+    // Before the cancellation, both counted:
+    expect(mrrAtDatePence(subs, PRICES, new Date('2026-02-01T00:00:00Z'))).toBe(12900 + 29900);
+  });
+
+  it('excludes a subscription that had not started yet as of the date', () => {
+    const subs: SubscriptionLike[] = [
+      sub({ started_at: '2026-06-01T00:00:00Z', canceled_at: null, price_pence: 2900 }),
+    ];
+    expect(mrrAtDatePence(subs, PRICES, new Date('2026-01-01T00:00:00Z'))).toBe(0);
+  });
+});
+
+describe('revenueChurnForMonth', () => {
+  it('is null when starting MRR for the month was zero', () => {
+    const result = revenueChurnForMonth(
+      [],
+      PRICES,
+      new Date('2026-01-01T00:00:00Z'),
+      new Date('2026-02-01T00:00:00Z'),
+    );
+    expect(result).toBeNull();
+  });
+
+  it('computes lost MRR over starting MRR for the month', () => {
+    const subs: SubscriptionLike[] = [
+      sub({ started_at: '2026-01-01T00:00:00Z', canceled_at: null, price_pence: 12900 }),
+      sub({
+        started_at: '2026-01-01T00:00:00Z',
+        canceled_at: '2026-03-15T00:00:00Z',
+        price_pence: 29900,
+      }),
+    ];
+    // Starting MRR for March = both active as of Mar 1 = 12900 + 29900 = 42800.
+    // Lost in March = the one that canceled on Mar 15, before April 1 = 29900.
+    const result = revenueChurnForMonth(
+      subs,
+      PRICES,
+      new Date('2026-03-01T00:00:00Z'),
+      new Date('2026-04-01T00:00:00Z'),
+    );
+    expect(result).toBe(Math.round((29900 / 42800) * 1000) / 10);
   });
 });

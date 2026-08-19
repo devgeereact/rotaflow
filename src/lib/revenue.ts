@@ -23,6 +23,8 @@ export interface SubscriptionLike {
   plan: string;
   status: string;
   price_pence: number | null;
+  started_at: string;
+  canceled_at: string | null;
 }
 
 /** `YYYY-MM` for a date-or-timestamp string, compared as text everywhere below. */
@@ -131,6 +133,50 @@ export function revenueByPlan(
   return [...totals.entries()]
     .map(([plan, v]) => ({ plan, ...v }))
     .sort((a, b) => b.pence - a.pence);
+}
+
+/**
+ * MRR reconstructed as of a past date, using `started_at`/`canceled_at` —
+ * both real, immutable-once-set timestamps, so this needs no snapshot
+ * table. A subscription counts if it had started and not yet canceled as
+ * of `asOf`. Uses each subscription's current `price_pence`/plan price as
+ * a stand-in for its historical price — this schema does not track price
+ * changes over time, so that is the same simplification every other
+ * figure in this file already makes.
+ */
+export function mrrAtDatePence(
+  subscriptions: readonly SubscriptionLike[],
+  planPrices: ReadonlyMap<string, number>,
+  asOf: Date,
+): number {
+  return subscriptions
+    .filter((s) => new Date(s.started_at) <= asOf)
+    .filter((s) => s.canceled_at === null || new Date(s.canceled_at) > asOf)
+    .reduce((total, s) => total + (s.price_pence ?? planPrices.get(s.plan) ?? 0), 0);
+}
+
+/**
+ * Revenue churn for one month: MRR lost to cancellations that fell inside
+ * it, over MRR at the month's start. Null when starting MRR was zero — a
+ * churn rate out of no revenue is a division by zero dressed as 0%, same
+ * reasoning as the existing `churnRate` above.
+ */
+export function revenueChurnForMonth(
+  subscriptions: readonly SubscriptionLike[],
+  planPrices: ReadonlyMap<string, number>,
+  monthStart: Date,
+  nextMonthStart: Date,
+): number | null {
+  const startingMrr = mrrAtDatePence(subscriptions, planPrices, monthStart);
+  if (startingMrr <= 0) return null;
+  const lost = subscriptions
+    .filter((s) => s.canceled_at !== null)
+    .filter((s) => {
+      const c = new Date(s.canceled_at!);
+      return c >= monthStart && c < nextMonthStart;
+    })
+    .reduce((total, s) => total + (s.price_pence ?? planPrices.get(s.plan) ?? 0), 0);
+  return Math.round((lost / startingMrr) * 1000) / 10;
 }
 
 /**
