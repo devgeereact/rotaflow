@@ -36,6 +36,7 @@ import {
   collectedByMonth,
   monthlyRecurringPence,
   monthsOfPaidHistory,
+  revenueChurnForMonth,
 } from '@/lib/revenue';
 import { Sparkline } from '@/components/ui/TrendChart';
 import { reportError } from '@/lib/sentry';
@@ -157,6 +158,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
    */
   const money = useMemo(() => {
     const mrr = monthlyRecurringPence(subscriptions, planPrices);
+    const now = new Date();
     return {
       mrr,
       arr: annualRunRatePence(mrr),
@@ -167,6 +169,14 @@ export function AdminSubscriptionsPage(): JSX.Element {
       trialing: subscriptions.filter((s) => s.status === 'trialing').length,
       pastDue: subscriptions.filter((s) => s.status === 'past_due').length,
       cancelled: subscriptions.filter((s) => s.status === 'canceled').length,
+      // Same function, same arithmetic, as the Overview page's churn figure —
+      // two screens quoting one number is only safe while they share it.
+      churnThisMonth: revenueChurnForMonth(
+        subscriptions,
+        planPrices,
+        new Date(now.getFullYear(), now.getMonth(), 1),
+        new Date(now.getFullYear(), now.getMonth() + 1, 1),
+      ),
     };
   }, [subscriptions, planPrices, invoices]);
 
@@ -487,6 +497,15 @@ export function AdminSubscriptionsPage(): JSX.Element {
               value={money.cancelled}
               hint="Recorded as canceled"
             />
+            <StatTile
+              label="Churn this month"
+              value={money.churnThisMonth === null ? '—' : `${money.churnThisMonth}%`}
+              hint={
+                money.churnThisMonth === null
+                  ? 'No starting MRR to churn from'
+                  : 'Of MRR lost so far this month'
+              }
+            />
           </TileGrid>
 
           <Callout tone="info" title="What is measured here, and what is not">
@@ -500,8 +519,15 @@ export function AdminSubscriptionsPage(): JSX.Element {
               uses, so the two screens cannot disagree.
             </p>
             <p>
-              Churn is not shown: nothing records the month an organisation left, so a
-              rate would be a guess. In the table, <strong>Value</strong> is the
+              Churn is real: <strong>Churn this month</strong> is MRR lost to
+              subscriptions that actually, fully ended this month, over MRR at the
+              month&rsquo;s start &mdash; the same figure the{' '}
+              <Link to="/admin" className="text-primary hover:underline">
+                Overview
+              </Link>{' '}
+              page shows. A subscription merely scheduled to cancel (still active or past
+              due, with a future-effective cancellation date) does not count until it
+              actually terminates. In the table, <strong>Value</strong> is the
               subscription&rsquo;s negotiated price or its plan&rsquo;s list price;{' '}
               <strong>Payment</strong> reflects the subscription&rsquo;s status; and{' '}
               <strong>Usage</strong> is real membership headcount over the plan&rsquo;s
