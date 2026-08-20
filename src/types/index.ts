@@ -64,6 +64,7 @@ export type AvailabilityInsert = Database['public']['Tables']['availability']['I
 
 export type ClockEvent = Database['public']['Tables']['clock_events']['Row'];
 export type ClockEventInsert = Database['public']['Tables']['clock_events']['Insert'];
+export type ClockEventUpdate = Database['public']['Tables']['clock_events']['Update'];
 
 export type LeaveRequest = Database['public']['Tables']['leave_requests']['Row'];
 export type LeaveRequestInsert = Database['public']['Tables']['leave_requests']['Insert'];
@@ -78,6 +79,9 @@ export type ShiftSwapInsert = Database['public']['Tables']['shift_swaps']['Inser
 export type Announcement = Database['public']['Tables']['announcements']['Row'];
 export type AnnouncementInsert = Database['public']['Tables']['announcements']['Insert'];
 export type AnnouncementUpdate = Database['public']['Tables']['announcements']['Update'];
+export type AnnouncementRead = Database['public']['Tables']['announcement_reads']['Row'];
+export type AnnouncementReadInsert =
+  Database['public']['Tables']['announcement_reads']['Insert'];
 
 export type Notification = Database['public']['Tables']['notifications']['Row'];
 
@@ -99,6 +103,10 @@ export type InviteUpdate = Database['public']['Tables']['invites']['Update'];
 export type Location = Database['public']['Tables']['locations']['Row'];
 export type LocationInsert = Database['public']['Tables']['locations']['Insert'];
 export type LocationUpdate = Database['public']['Tables']['locations']['Update'];
+
+export type MinimumCoverRule = Database['public']['Tables']['minimum_cover_rules']['Row'];
+export type MinimumCoverRuleUpsert =
+  Database['public']['Tables']['minimum_cover_rules']['Insert'];
 
 export type Department = Database['public']['Tables']['departments']['Row'];
 export type DepartmentInsert = Database['public']['Tables']['departments']['Insert'];

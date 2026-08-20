@@ -4,20 +4,19 @@
  * shapes only the profile route uses.
  */
 
+import type { LeaveStatus, LeaveTypeKey } from '@/lib/leaveRows';
 import type { RoleCodeTone, StaffDocument } from '@/lib/staffDirectory';
 
-/** Tab strip under the profile header. `overview` is the only built pane. */
-export type StaffProfileTab =
-  | 'overview'
-  | 'availability'
-  | 'shifts'
-  | 'leave'
-  | 'swaps'
-  | 'skills'
-  | 'timesheets'
-  | 'notes'
-  | 'files'
-  | 'activity';
+/**
+ * Tab strip under the profile header (`design/Staff-Profile.png`). Every tab
+ * renders real content — `availability`/`swaps`/`skills`/`timesheets`/`notes`
+ * were dropped: a person's availability and swaps already have their own
+ * screens, so keeping cosmetic-only tabs for them would be worse than not
+ * having them. Emergency contacts lives on Overview, not its own tab —
+ * something a manager reaches for in an actual emergency shouldn't be a
+ * click away behind a tab nobody thinks to open.
+ */
+export type StaffProfileTab = 'overview' | 'shifts' | 'documents' | 'leave' | 'activity';
 
 export interface StaffPersonalInfo {
   email: string;
@@ -74,17 +73,20 @@ export interface StaffSkill {
   level: SkillLevel | null;
 }
 
-export type QualificationStatus = 'Active' | 'Completed' | 'Expiring';
-
-export interface StaffQualification {
+export interface ProfileEmergencyContact {
   id: string;
   name: string;
-  issuer: string;
-  /** A pill on the right, or a plain "Valid until …" caption when `null`. */
-  status: QualificationStatus | null;
-  validLabel?: string;
-  /** Award-style qualifications use the badge icon; documents use the file icon. */
-  icon: 'award' | 'file';
+  relationship: string;
+  phone: string;
+}
+
+export interface ProfileLeaveRow {
+  id: string;
+  type: LeaveTypeKey;
+  /** Pre-formatted, e.g. "30 May-1 June 2025". */
+  dateLabel: string;
+  days: number;
+  status: LeaveStatus;
 }
 
 export interface StaffProfileMetric {
@@ -112,7 +114,7 @@ export interface StaffProfileData {
   summaryHint: string;
   activity: StaffActivityEntry[];
   skills: StaffSkill[];
-  qualifications: StaffQualification[];
-  moreQualifications: number;
   documents: StaffDocument[];
+  emergencyContacts: ProfileEmergencyContact[];
+  leave: ProfileLeaveRow[];
 }

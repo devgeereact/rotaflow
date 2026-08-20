@@ -29,18 +29,14 @@ import { reportError } from '@/lib/sentry';
 import { humaniseKey } from '@/lib/platformOverview';
 import { downloadCsv } from '@/lib/csv';
 import {
-  demoUserFacts,
-  DEMO_USERS_ACTIVE,
-  DEMO_USERS_ACTIVE_SHARE,
-  DEMO_USERS_INACTIVE_90,
-  DEMO_USERS_SUSPENDED,
-  DEMO_USERS_UNVERIFIED,
-  DEMO_USERS_UNVERIFIED_HINT,
-} from '@/lib/adminOverviewDemo';
+  getAuthFactsSummary,
+  type AuthFactsSummary,
+} from '@/services/platformFactsService';
 import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
 import type { PlatformRole, Profile } from '@/types';
 
-type UserSortKey = 'account' | 'organisations' | 'role' | 'access' | 'status' | 'login';
+type UserSortKey =
+  'account' | 'organisations' | 'role' | 'access' | 'status' | 'login' | 'actions';
 
 /**
  * `/admin/users`. NEW_STRUCTURE §34's platform users.
@@ -68,6 +64,7 @@ export function AdminUsersPage(): JSX.Element {
 
   const [profiles, setProfiles] = useState<Profile[] | null>(null);
   const [roleByUser, setRoleByUser] = useState<Map<string, PlatformRole>>(new Map());
+  const [authFacts, setAuthFacts] = useState<AuthFactsSummary | null>(null);
   const [memberships, setMemberships] = useState<Map<string, UserMembershipSummary>>(
     new Map(),
   );
@@ -85,7 +82,7 @@ export function AdminUsersPage(): JSX.Element {
     setProfiles(null);
     void (async () => {
       try {
-        const [rows, admins, summaries] = await Promise.all([
+        const [rows, admins, summaries, authFacts] = await Promise.all([
           listAllProfiles(),
           // Cannot reject the screen: before 0015 is applied the table does
           // not exist, and the account list is still worth showing without
@@ -95,10 +92,18 @@ export function AdminUsersPage(): JSX.Element {
             return [];
           }),
           summariseMembershipsByUser(),
+          // Email confirmation, last sign-in and MFA live in `auth.users`,
+          // which no client may select from. 0027's definer function is the
+          // narrow window onto exactly those three columns.
+          getAuthFactsSummary().catch((err: unknown) => {
+            reportError(err, { area: 'admin:users:auth-facts' });
+            return null;
+          }),
         ]);
         if (!active) return;
         setProfiles(rows);
         setMemberships(summaries);
+        setAuthFacts(authFacts);
         setRoleByUser(
           new Map(
             admins
@@ -117,16 +122,15 @@ export function AdminUsersPage(): JSX.Element {
     };
   }, [reloadKey]);
 
-  // Placeholder status / MFA / last sign-in, keyed so a row keeps its values
-  // as the table is sorted and filtered. See `adminOverviewDemo`.
-  const facts = useCallback(
-    (profile: Profile) =>
-      demoUserFacts(
-        profile.id,
-        (profiles ?? []).findIndex((p) => p.id === profile.id),
-      ),
-    [profiles],
-  );
+  /**
+   * Per-account status, MFA and last sign-in.
+   *
+   * Deliberately not fetched per row. `platform_user_auth_facts` is one round
+   * trip per account, and a table of two hundred users would make two hundred
+   * of them to fill a column nobody sorts by. The totals come from the summary
+   * function instead, and a single account's facts are shown on its own detail
+   * screen where one call is proportionate.
+   */
 
   const visible = useMemo(() => {
     if (!profiles) return [];
@@ -163,8 +167,16 @@ export function AdminUsersPage(): JSX.Element {
               memberships.get(b.id)?.roles[0] ?? '',
             ) * direction
           );
-        case 'status':
-          return (Number(facts(a).disabled) - Number(facts(b).disabled)) * direction;
+        case 'status': {
+          // Mirror the cell's own definition of "suspended" (a membership
+          // with zero roles), not name — this used to sort alphabetically
+          // under a "Status" header.
+          const suspendedOf = (p: Profile): boolean => {
+            const m = memberships.get(p.id);
+            return m !== undefined && m.organisations > 0 && m.roles.length === 0;
+          };
+          return (Number(suspendedOf(a)) - Number(suspendedOf(b))) * direction;
+        }
         case 'login':
           return (
             (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) *
@@ -177,7 +189,7 @@ export function AdminUsersPage(): JSX.Element {
           );
       }
     });
-  }, [profiles, search, access, orgRole, sort, memberships, facts]);
+  }, [profiles, search, access, orgRole, sort, memberships]);
 
   const adminCount = useMemo(
     () => (profiles ?? []).filter((p) => p.is_platform_admin).length,
@@ -347,15 +359,23 @@ export function AdminUsersPage(): JSX.Element {
         width: 'w-[11%]',
         sortable: true,
         cell: (profile) => {
-          const { disabled, verified } = facts(profile);
+          // Per-account verification and MFA live in `auth.users` and cost one
+          // round trip each, so they are shown on the account's own screen
+          // rather than in a column. What is free here is the membership
+          // state this table already loaded.
+          const membership = memberships.get(profile.id);
+          const suspended =
+            membership !== undefined &&
+            membership.organisations > 0 &&
+            membership.roles.length === 0;
           return (
             <span className="flex flex-col items-start gap-1">
-              <Badge tone={disabled ? 'danger' : 'success'} dot>
-                {disabled ? 'Disabled' : 'Active'}
+              <Badge tone={suspended ? 'warning' : 'success'} dot>
+                {suspended ? 'No active membership' : 'Active'}
               </Badge>
-              {!verified && (
-                <Badge tone="warning" dot>
-                  Unverified
+              {profile.is_platform_admin && (
+                <Badge tone="info" dot>
+                  Platform staff
                 </Badge>
               )}
             </span>
@@ -363,31 +383,7 @@ export function AdminUsersPage(): JSX.Element {
         },
       },
       {
-        key: 'status',
-        label: 'MFA',
-        width: 'w-[7%]',
-        cell: (profile) =>
-          facts(profile).mfa ? (
-            <Badge tone="success" dot>
-              On
-            </Badge>
-          ) : (
-            <span className="text-content-muted dark:text-content-muted-dark">Off</span>
-          ),
-      },
-      {
-        key: 'login',
-        label: 'Last login',
-        width: 'w-[10%]',
-        sortable: true,
-        cell: (profile) => (
-          <span className="whitespace-nowrap text-content-muted dark:text-content-muted-dark">
-            {facts(profile).lastLogin}
-          </span>
-        ),
-      },
-      {
-        key: 'account',
+        key: 'actions',
         label: 'Actions',
         width: 'w-[11%]',
         align: 'right',
@@ -439,7 +435,6 @@ export function AdminUsersPage(): JSX.Element {
       busyId,
       canManagePlatformAdmins,
       handleToggle,
-      facts,
     ],
   );
 
@@ -466,11 +461,9 @@ export function AdminUsersPage(): JSX.Element {
           return role ? PLATFORM_ROLE_LABELS[role] : 'platform administrator';
         },
       },
-      { label: 'Status', value: (p) => (facts(p).disabled ? 'disabled' : 'active') },
-      { label: 'MFA', value: (p) => (facts(p).mfa ? 'on' : 'off') },
       { label: 'Joined', value: (p) => p.created_at },
     ]);
-  }, [visible, memberships, roleByUser, facts]);
+  }, [visible, memberships, roleByUser]);
 
   return (
     <AdminPage
@@ -491,27 +484,47 @@ export function AdminUsersPage(): JSX.Element {
         <div className="space-y-4">
           <TileGrid>
             <StatTile label="Total users" value={summary.total.toLocaleString('en-GB')} />
+            {/* From `platform_auth_facts_summary`, which reads auth.users
+                through a definer function. Null when the call was refused or
+                failed, and the tiles then say so rather than showing a zero
+                that reads as "nobody has signed in". */}
             <StatTile
-              label="Active"
-              value={DEMO_USERS_ACTIVE.toLocaleString('en-GB')}
-              hint={DEMO_USERS_ACTIVE_SHARE}
-            />
-            <StatTile
-              label="Inactive 90 days"
-              value={DEMO_USERS_INACTIVE_90.toLocaleString('en-GB')}
-            />
-            <StatTile
-              label="Unverified"
-              value={DEMO_USERS_UNVERIFIED.toLocaleString('en-GB')}
+              label="Active, 30 days"
+              value={authFacts ? authFacts.active30d.toLocaleString('en-GB') : '-'}
               hint={
-                <span className="font-semibold text-danger">
-                  {DEMO_USERS_UNVERIFIED_HINT}
-                </span>
+                authFacts && authFacts.totalAccounts > 0
+                  ? `${Math.round((authFacts.active30d / authFacts.totalAccounts) * 100)}% of all accounts`
+                  : 'Signed in at least once in the last 30 days'
               }
             />
             <StatTile
-              label="Suspended"
-              value={DEMO_USERS_SUSPENDED.toLocaleString('en-GB')}
+              label="Inactive 90 days"
+              value={authFacts ? authFacts.inactive90d.toLocaleString('en-GB') : '-'}
+              hint="Includes accounts that have never signed in"
+            />
+            <StatTile
+              label="Unverified"
+              value={authFacts ? authFacts.unverified.toLocaleString('en-GB') : '-'}
+              hint={
+                authFacts && authFacts.unverified > 0 ? (
+                  <span className="font-semibold text-danger">Email never confirmed</span>
+                ) : (
+                  'Every address confirmed'
+                )
+              }
+            />
+            <StatTile
+              label="MFA enrolled"
+              value={authFacts ? authFacts.mfaEnrolled.toLocaleString('en-GB') : '-'}
+              hint={
+                authFacts && authFacts.mfaEnrolled === 0 ? (
+                  <span className="font-semibold text-warning">
+                    Nobody, including staff
+                  </span>
+                ) : (
+                  'Verified factor on the account'
+                )
+              }
             />
             <StatTile
               label="Platform admins"
@@ -568,19 +581,12 @@ export function AdminUsersPage(): JSX.Element {
             />
           </Card>
 
-          {/* These columns render, so the notice has to say they are invented
-              rather than that they are missing. The previous wording said
-              "none is shown", which stopped being true the moment placeholders
-              filled them in. */}
           <p className="text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
-            <span className="font-semibold text-content dark:text-content-dark">
-              Placeholder figures:
-            </span>{' '}
-            Active, Inactive 90 days, Unverified and Suspended, plus the Status, MFA and
-            Last login columns. All of those live in <code>auth.users</code>, which is
-            readable only from a service-role Edge Function and not from this client. See{' '}
-            <code>src/lib/adminOverviewDemo.ts</code>. Accounts, organisations,
-            organisation roles and platform roles are real.
+            Active, inactive, unverified and MFA come from <code>auth.users</code> through
+            a definer function that returns those three facts and nothing else. They are
+            totals rather than a column, because reading them per account is one round
+            trip each and a table of two hundred users would make two hundred of them. One
+            account&rsquo;s own facts are on its detail screen.
           </p>
         </div>
       )}

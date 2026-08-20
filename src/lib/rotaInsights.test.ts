@@ -32,6 +32,7 @@ const STAFF_DEFAULTS: StaffProfile = {
   id: 'p-default',
   org_id: ORG,
   user_id: null,
+  email: null,
   first_name: 'Test',
   last_name: 'Person',
   job_title: 'Care Assistant',

@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Button } from '@/components/ui/Button';
-import { MARKETING_NAV } from '@/lib/marketing';
+import { MARKETING_NAV, PRIMARY_CTA } from '@/lib/marketing';
 import { cn } from '@/lib/utils';
 import { BrandMark } from '@/components/ui/BrandMark';
 
@@ -76,7 +76,7 @@ export function PublicNav(): JSX.Element {
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <BrandMark label={null} className="h-8 w-8" />
           <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-            Rota<span className="text-primary">Flow</span>
+            Rota<span className="text-primary-ink">Flow</span>
           </span>
         </Link>
 
@@ -113,7 +113,7 @@ export function PublicNav(): JSX.Element {
                 Log in
               </Link>
               <Link to="/signup" className="hidden sm:block">
-                <Button size="sm">Start free trial</Button>
+                <Button size="sm">{PRIMARY_CTA}</Button>
               </Link>
             </>
           )}
@@ -149,7 +149,7 @@ export function PublicNav(): JSX.Element {
           >
             <div className="mb-6 flex items-center justify-between">
               <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-                Rota<span className="text-primary">Flow</span>
+                Rota<span className="text-primary-ink">Flow</span>
               </span>
               <button
                 type="button"
@@ -188,7 +188,7 @@ export function PublicNav(): JSX.Element {
               ) : (
                 <>
                   <Link to="/signup">
-                    <Button className="w-full">Start free trial</Button>
+                    <Button className="w-full">{PRIMARY_CTA}</Button>
                   </Link>
                   <Link to="/login">
                     <Button variant="secondary" className="w-full">

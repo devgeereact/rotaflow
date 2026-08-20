@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import type { ClockEvent, ClockEventInsert } from '@/types';
+import { touchOrgActivity } from '@/services/activityService';
+import type { ClockEvent, ClockEventInsert, ClockEventUpdate } from '@/types';
 
 /**
  * The insert path predates its screen (Phase 4). UseSyncQueue needed
@@ -13,6 +14,8 @@ export async function recordClockEvent(input: ClockEventInsert): Promise<ClockEv
     .select('*')
     .single();
   if (error) throw error;
+  // A clock-in is the clearest evidence a human is using this tenant today.
+  touchOrgActivity(data.org_id);
   return data;
 }
 
@@ -31,6 +34,31 @@ export async function getLatestClockEvent(
     .order('event_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Correct an existing event's recorded time. RLS (`clock_events_update`,
+ * 0037) restricts this to an owner or manager of the event's org — a staff
+ * member's own `clock_events_insert` grant does not extend to `update`, so
+ * this is never reachable from anyone editing their own clock-in.
+ *
+ * Writes over the row directly rather than inserting a correction record:
+ * there is no separate history/audit column on `clock_events` for that, so
+ * `updated_at` (bumped automatically by the table's own trigger) is the only
+ * trace that a correction happened.
+ */
+export async function updateClockEvent(
+  id: string,
+  patch: ClockEventUpdate,
+): Promise<ClockEvent> {
+  const { data, error } = await supabase
+    .from('clock_events')
+    .update(patch)
+    .eq('id', id)
+    .select('*')
+    .single();
   if (error) throw error;
   return data;
 }

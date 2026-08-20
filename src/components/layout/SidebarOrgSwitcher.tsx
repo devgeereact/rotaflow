@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { cn } from '@/lib/utils';
 
@@ -8,6 +8,16 @@ const ROLE_LABEL: Record<string, string> = {
   manager: 'Manager',
   staff: 'Staff',
 };
+
+/** "Sunnyvale Care Group" → "SC". Same shape as the rail's other avatar chips. */
+function orgInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('');
+}
 
 interface SidebarOrgSwitcherProps {
   collapsed: boolean;
@@ -63,16 +73,69 @@ export function SidebarOrgSwitcher({
 
   const summary = role ? (ROLE_LABEL[role] ?? role) : 'No role';
 
+  // Shared between the collapsed icon-only trigger and the expanded full
+  // trigger, so switching organisations works the same way in both states.
+  // Collapsed used to render a bare `<span>` here: no button, no `onClick`,
+  // so a multi-org user who collapsed the rail lost the ability to switch
+  // organisations entirely until they expanded it again.
+  const dropdown = open && canSwitch && (
+    <ul
+      role="listbox"
+      aria-label="Switch organisation"
+      className={cn(
+        'absolute z-40 mt-1 overflow-hidden rounded-xl border border-surface-border bg-surface py-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark',
+        collapsed ? 'left-full ml-1 top-0 w-56' : 'inset-x-3',
+      )}
+    >
+      {memberships.map((m) => (
+        <li key={m.orgId} role="option" aria-selected={m.orgId === orgId}>
+          <button
+            type="button"
+            onClick={() => {
+              switchOrg(m.orgId);
+              setOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{m.orgName}</span>
+              <span className="block truncate text-xs capitalize text-content-muted dark:text-content-muted-dark">
+                {ROLE_LABEL[m.role] ?? m.role}
+              </span>
+            </span>
+            {m.orgId === orgId && (
+              <Check size={16} aria-hidden="true" className="shrink-0 text-primary" />
+            )}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+
   if (collapsed) {
     return (
-      <div className="px-3 pb-3">
-        <span
+      <div ref={containerRef} className="relative px-3 pb-3">
+        <button
+          type="button"
+          onClick={() => canSwitch && setOpen((v) => !v)}
+          aria-haspopup={canSwitch ? 'listbox' : undefined}
+          aria-expanded={canSwitch ? open : undefined}
+          disabled={!canSwitch}
           title={`${orgName} · ${summary}`}
-          className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"
+          className={cn(
+            'grid h-10 w-10 place-items-center rounded-xl bg-brand text-sm font-bold text-primary-fg',
+            canSwitch &&
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+            !canSwitch && 'cursor-default',
+          )}
         >
-          <Building2 size={18} aria-hidden="true" />
-          <span className="sr-only">{orgName}</span>
-        </span>
+          {orgInitials(orgName)}
+          <span className="sr-only">
+            {orgName}
+            {canSwitch ? '. Switch organisation' : ''}
+          </span>
+        </button>
+        {dropdown}
       </div>
     );
   }
@@ -95,8 +158,8 @@ export function SidebarOrgSwitcher({
           !canSwitch && 'cursor-default',
         )}
       >
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Building2 size={16} aria-hidden="true" />
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand text-[13px] font-bold text-primary-fg">
+          {orgInitials(orgName)}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-content dark:text-content-dark">
@@ -115,36 +178,7 @@ export function SidebarOrgSwitcher({
         )}
       </button>
 
-      {open && canSwitch && (
-        <ul
-          role="listbox"
-          aria-label="Switch organisation"
-          className="absolute inset-x-3 z-40 mt-1 overflow-hidden rounded-xl border border-surface-border bg-surface py-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
-        >
-          {memberships.map((m) => (
-            <li key={m.orgId} role="option" aria-selected={m.orgId === orgId}>
-              <button
-                type="button"
-                onClick={() => {
-                  switchOrg(m.orgId);
-                  setOpen(false);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:text-content-dark dark:hover:bg-surface-subtle-dark"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{m.orgName}</span>
-                  <span className="block truncate text-xs capitalize text-content-muted dark:text-content-muted-dark">
-                    {ROLE_LABEL[m.role] ?? m.role}
-                  </span>
-                </span>
-                {m.orgId === orgId && (
-                  <Check size={16} aria-hidden="true" className="shrink-0 text-primary" />
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {dropdown}
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import { PanelTabs } from '@/components/ui/PanelTabs';
 import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
-import { DEMO_USER_ACCOUNT } from '@/lib/adminOverviewDemo';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import {
   getProfileById,
@@ -17,6 +16,7 @@ import {
   type UserMembershipRow,
 } from '@/services/platformUserService';
 import { listPlatformAdmins } from '@/services/platformRoleService';
+import { getAuthFacts, type AuthFacts } from '@/services/platformFactsService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { reportError } from '@/lib/sentry';
 import { PLATFORM_ROLE_LABELS, PLATFORM_ROLE_SCOPES } from '@/lib/platformRoles';
@@ -37,6 +37,7 @@ interface Detail {
   memberships: UserMembershipRow[];
   audit: AuditLog[];
   platformRole: PlatformRole | null;
+  authFacts: AuthFacts | null;
 }
 
 /**
@@ -44,12 +45,13 @@ interface Detail {
  *
  * ## Tabs the spec names that are not here
  *
- * **Sessions** and **Security** need `auth.sessions` and the Auth Admin API,
- * which are reachable only from a service-role Edge Function, a static client
- * cannot hold that key. So there is no session list, no "sign out everywhere"
- * and no MFA state, and the Overview tab says so rather than showing an empty
- * panel that implies the data is merely missing. audit01 §4 already records
- * all three as absent.
+ * **Sessions** needs `auth.sessions` and the Auth Admin API, reachable only
+ * from a service-role Edge Function, a static client cannot hold that key. So
+ * there is no active-session list and no "sign out everywhere". Email
+ * verification, last sign-in and MFA enrolment are different: `getAuthFacts`
+ * reads them through `platform_user_auth_facts` (0027), a SECURITY DEFINER
+ * function that exposes exactly those three columns of `auth.users`, and the
+ * Overview tab shows the real values rather than the placeholders it used to.
  *
  * **Roles** is folded into Overview and Organisations: an account's roles are
  * its memberships plus its platform grant, and a third tab restating both would
@@ -110,12 +112,16 @@ export function AdminUserDetailPage(): JSX.Element {
           setNotFound(true);
           return;
         }
-        const [memberships, audit, admins] = await Promise.all([
+        const [memberships, audit, admins, authFacts] = await Promise.all([
           listUserMemberships(userId),
           listUserAuditLogs(userId),
           listPlatformAdmins().catch((err: unknown) => {
             reportError(err, { area: 'admin:user-detail:roles' });
             return [];
+          }),
+          getAuthFacts(userId).catch((err: unknown) => {
+            reportError(err, { area: 'admin:user-detail:auth-facts' });
+            return null;
           }),
         ]);
         if (!active) return;
@@ -125,6 +131,7 @@ export function AdminUserDetailPage(): JSX.Element {
           memberships,
           audit,
           platformRole: (grant?.role as PlatformRole | undefined) ?? null,
+          authFacts,
         });
       } catch (err) {
         if (!active) return;
@@ -282,17 +289,36 @@ export function AdminUserDetailPage(): JSX.Element {
                 <Row label="User ID">
                   <span className="font-mono text-xs">{profile.id}</span>
                 </Row>
-                {/* Verified, last login and MFA all live in `auth.users`,
-                    which this client cannot read. Chipped so nobody takes a
-                    placeholder for a fact about a real person. */}
-                {DEMO_USER_ACCOUNT.map((row) => (
-                  <Row key={row.label} label={row.label}>
-                    <span className="flex flex-wrap items-center gap-2">
-                      {row.value}
-                      <Badge tone="warning">Placeholder</Badge>
+                {detail.authFacts ? (
+                  <>
+                    <Row label="Email verified">
+                      {detail.authFacts.emailConfirmedAt
+                        ? `Verified ${new Date(detail.authFacts.emailConfirmedAt).toLocaleDateString('en-GB')}`
+                        : 'Not verified'}
+                    </Row>
+                    <Row label="Last sign-in">
+                      {detail.authFacts.lastSignInAt
+                        ? new Date(detail.authFacts.lastSignInAt).toLocaleString('en-GB')
+                        : 'Never signed in'}
+                    </Row>
+                    <Row label="MFA">
+                      {detail.authFacts.mfaEnrolled ? 'Enrolled' : 'Not enrolled'}
+                    </Row>
+                    {detail.authFacts.bannedUntil && (
+                      <Row label="Banned until">
+                        <span className="font-medium text-danger">
+                          {new Date(detail.authFacts.bannedUntil).toLocaleString('en-GB')}
+                        </span>
+                      </Row>
+                    )}
+                  </>
+                ) : (
+                  <Row label="Verification, sign-in, MFA">
+                    <span className="text-content-muted dark:text-content-muted-dark">
+                      Could not be read
                     </span>
                   </Row>
-                ))}
+                )}
               </dl>
             </Panel>
 
@@ -380,17 +406,19 @@ export function AdminUserDetailPage(): JSX.Element {
         )}
 
         {tab === 'security' && (
-          <Callout tone="warning" title="Sessions and security are not readable here">
+          <Callout tone="warning" title="Active sessions are not readable here">
             <p>
-              Active sessions, sign-in history, &ldquo;sign out everywhere&rdquo; and
-              two-factor state all live in Supabase&rsquo;s <code>auth</code> schema,
-              reachable only through the Auth Admin API from a service-role Edge Function.
-              A static client cannot hold that key.
+              Email verification, last sign-in and MFA enrolment are real, on the Overview
+              tab, <code>platform_user_auth_facts</code> (0027) reads exactly those three
+              columns of Supabase&rsquo;s <code>auth</code> schema. What is still missing
+              is the active session list and &ldquo;sign out everywhere&rdquo;, which need
+              the Auth Admin API from a service-role Edge Function, a static client cannot
+              hold that key.
             </p>
             <p>
               So this tab is empty on purpose rather than showing zeroes, which would read
-              as &ldquo;this person has never signed in&rdquo;. Building it means an Edge
-              Function that exposes exactly these fields and nothing else.
+              as &ldquo;this person has no active session&rdquo;. Building it means an
+              Edge Function that exposes exactly that, and nothing else.
             </p>
           </Callout>
         )}

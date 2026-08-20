@@ -1,23 +1,31 @@
 import { Link } from 'react-router-dom';
-import { LifeBuoy } from 'lucide-react';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
-import { UserMenu } from '@/components/layout/UserMenu';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { BrandMark } from '@/components/ui/BrandMark';
 
 /**
  * Top bar for the `/app/*` shell. Page-specific chrome (the rota's week nav,
  * a table's filters) lives in the page itself.
  *
- * ## Two things that used to be here and are not
+ * Matches `docs/ORGANISATION_WORKSPACE.html`'s `.topbar`: breadcrumbs on the
+ * left, notifications on the right. Nothing else.
  *
- * The **organisation name** was rendered as a bare label on the left. It now
- * lives in the sidebar's `SidebarOrgSwitcher`, next to the switcher itself,
- * which is where someone looks to answer "which tenant am I in", and it stops
- * the name appearing twice on one screen saying the same thing.
+ * ## Things that used to be here and are not
  *
- * The **`OrgSwitcher` select** was here too, and is now the same sidebar
- * control. One switcher, one place.
+ * The **organisation name** was a bare label on the left, then moved into the
+ * sidebar's `SidebarOrgSwitcher`. Breadcrumbs bring it back here too, but
+ * paired with the current screen, "which tenant, which screen", not a repeat
+ * of the switcher.
+ *
+ * **Search** moved to the rail as the `⌘K` row under the org switcher (see
+ * `Sidebar`), so there is no second search control here competing for the
+ * same shortcut.
+ *
+ * **The account avatar and its dropdown** moved into `SidebarFooter`'s
+ * `.railfoot` group. Settings/My Profile, Help & Support, sign out are rows
+ * there now, next to the identity card they act on, rather than a second
+ * dropdown in the header repeating the first.
  *
  * On mobile the sidebar is a drawer, so the logo returns to the header as the
  * only always-visible brand anchor and as a link home.
@@ -26,7 +34,7 @@ export function Header(): JSX.Element {
   // `shrink-0` below: the header is a flex child of AppShell's fixed-height
   // column, so without it the browser compresses it as the content region grows.
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-surface-border bg-surface px-4 md:px-6 dark:border-surface-border-dark dark:bg-surface-dark">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-surface-border bg-surface/90 px-4 backdrop-blur md:px-6 dark:border-surface-border-dark dark:bg-surface-dark/90">
       <Link to="/app/dashboard" className="flex shrink-0 items-center gap-2 md:hidden">
         <BrandMark label={null} className="h-8 w-8" />
         <span className="font-display text-base font-bold text-content dark:text-content-dark">
@@ -35,23 +43,14 @@ export function Header(): JSX.Element {
       </Link>
 
       <div className="hidden min-w-0 flex-1 md:block">
+        <Breadcrumbs />
+      </div>
+      <div className="min-w-0 flex-1 md:hidden">
         <GlobalSearch />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 md:gap-3">
-        <div className="md:hidden">
-          <GlobalSearch />
-        </div>
-        <Link
-          to="/contact"
-          aria-label="Help and support"
-          title="Help and support"
-          className="hidden h-10 w-10 place-items-center rounded-xl text-content-muted hover:bg-surface-subtle hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:grid dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark"
-        >
-          <LifeBuoy size={18} aria-hidden="true" />
-        </Link>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <NotificationBell />
-        <UserMenu />
       </div>
     </header>
   );

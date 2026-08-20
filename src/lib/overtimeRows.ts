@@ -131,6 +131,26 @@ export function buildOvertimeRows({
     });
 }
 
+/**
+ * Sum of hours for rows dated within the calendar month containing
+ * `monthAnchorIso`, restricted to `statuses`. Used for the manager's
+ * "Approved this month" tile and the staff "Claimed this month" tile
+ * (`SCREENS.overtime`) — a coarse, honest figure the schema can actually
+ * back, unlike the reference's "Estimated cost" and "Top driver" tiles,
+ * which would need an hourly-rate column and a reason taxonomy that don't
+ * exist.
+ */
+export function sumHoursInMonth(
+  rows: OvertimeRow[],
+  monthAnchorIso: string,
+  statuses: OvertimeStatus[],
+): number {
+  const month = monthAnchorIso.slice(0, 7);
+  return rows
+    .filter((r) => statuses.includes(r.status) && r.date.slice(0, 7) === month)
+    .reduce((sum, r) => sum + r.hours, 0);
+}
+
 export interface OvertimeSummary {
   pending: number;
   approvedHours: number;

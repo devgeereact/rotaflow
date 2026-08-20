@@ -7,9 +7,11 @@ import { differenceInCalendarDays, isValid, parseISO } from 'date-fns';
  * Pure and in `lib` for the usual reason. The service layer pulls in the
  * Supabase client, which reaches for a WebSocket Node does not have.
  *
- * Everything here is about *when a period ends*, because that is the only
- * billing-shaped fact this schema holds. There is no amount on a subscription
- * and no payment provider connected, so nothing in this file computes money.
+ * Everything here is about *when a period ends* — money is computed
+ * elsewhere, in `src/lib/revenue.ts` (`mrrAtDatePence`, `revenueChurnForMonth`,
+ * `revenueByPlan`), which is real and backed by Stripe billing (migration
+ * 0050). This file stays scoped to period-end derivations on purpose, not
+ * because there's nothing to total.
  */
 
 /** The subscription columns these functions need. */
@@ -106,32 +108,3 @@ export function needsAttention(
   }
   return out;
 }
-
-/**
- * What is missing before this screen could report money, stated on the screen.
- *
- * Ordered as the work would have to happen: you cannot reconcile a payment you
- * never took, and you cannot take one without a price.
- */
-export const BILLING_GAPS: readonly { title: string; detail: string }[] = [
-  {
-    title: 'No price anywhere',
-    detail:
-      '`subscriptions` records a plan name and a status. No plan carries an amount, a currency or a billing interval, so there is no figure to total even for one tenant.',
-  },
-  {
-    title: 'No payment provider',
-    detail:
-      '`subscriptions.provider` is deliberately pluggable and is unset on every row. Nothing charges a card, so there are no payments to reconcile and no failures to retry.',
-  },
-  {
-    title: 'No invoice or payment tables',
-    detail:
-      'There is nowhere to record an invoice, a credit, a refund or a dunning attempt. Those screens are absent rather than empty.',
-  },
-  {
-    title: 'Nothing advances a period',
-    detail:
-      '`current_period_end` is written at sign-up and never moved on, so a lapsed period means an unmaintained record rather than an overdue customer.',
-  },
-] as const;

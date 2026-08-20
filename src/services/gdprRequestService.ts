@@ -86,10 +86,12 @@ export async function logGdprRequest(input: {
 }): Promise<string> {
   const { data, error } = await supabase.rpc('log_gdpr_request', {
     p_subject_email: input.subjectEmail,
-    p_subject_name: input.subjectName ?? null,
+    // Required in 0020, and the function normalises an empty string to
+    // null itself, so there is nothing to guess here.
+    p_subject_name: input.subjectName ?? '',
     p_kind: input.kind,
-    p_org: input.orgId ?? null,
-    p_received_on: input.receivedOn ?? null,
+    p_org: input.orgId ?? undefined,
+    p_received_on: input.receivedOn ?? undefined,
   });
   if (error) throw error;
   return data;
@@ -107,7 +109,7 @@ export async function setGdprRequestStatus(
   const { error } = await supabase.rpc('set_gdpr_request_status', {
     p_request: requestId,
     p_status: status,
-    p_note: note ?? null,
+    p_note: note ?? undefined,
   });
   if (error) throw error;
 }

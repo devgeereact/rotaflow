@@ -89,7 +89,7 @@ export function StepComplete({
   ];
 
   return (
-    <Card className="animate-fade-up p-6 shadow md:p-8">
+    <Card className="animate-fade-up motion-reduce:animate-none p-6 shadow md:p-8">
       <div className="relative mb-8 text-center">
         <div className="relative mx-auto mb-4 h-20 w-20">
           <span

@@ -9,9 +9,19 @@
 
 import { differenceInMinutes, format, isSameMonth } from 'date-fns';
 import { roleCodeFor } from '@/lib/staffDirectoryMapping';
-import type { Department, Location, Shift, StaffProfile } from '@/types';
+import { formatLeaveRange, leaveDayCount, leaveTypeKey } from '@/lib/leaveRows';
+import type {
+  Department,
+  EmergencyContact,
+  LeaveRequest,
+  Location,
+  Shift,
+  StaffProfile,
+} from '@/types';
 import type { StaffDocument } from '@/lib/staffDirectory';
 import type {
+  ProfileEmergencyContact,
+  ProfileLeaveRow,
   ShiftSummaryColumn,
   StaffProfileData,
   StaffProfileMetric,
@@ -35,7 +45,29 @@ export interface ProfileSources {
   /** Shifts already worked this month, used for the summary tiles. */
   thisMonth?: Shift[];
   documents: StaffDocument[];
+  emergencyContacts: EmergencyContact[];
+  /** This person's own leave requests, any status. */
+  leave: LeaveRequest[];
   today: Date;
+}
+
+function toEmergencyContact(row: EmergencyContact): ProfileEmergencyContact {
+  return {
+    id: row.id,
+    name: row.name,
+    relationship: row.relationship ?? '-',
+    phone: row.phone,
+  };
+}
+
+function toLeaveRow(request: LeaveRequest): ProfileLeaveRow {
+  return {
+    id: request.id,
+    type: leaveTypeKey(request.type),
+    dateLabel: formatLeaveRange(request.start_date, request.end_date),
+    days: leaveDayCount(request.start_date, request.end_date),
+    status: request.status as ProfileLeaveRow['status'],
+  };
 }
 
 function paidMinutes(shift: Shift): number {
@@ -73,6 +105,8 @@ export function buildProfile({
   upcoming,
   thisMonth = [],
   documents,
+  emergencyContacts,
+  leave,
   today,
 }: ProfileSources): StaffProfileData {
   const department = departments.find((d) => d.id === staff.department_id);
@@ -180,8 +214,8 @@ export function buildProfile({
     summaryHint: contractedPct,
     activity: [],
     skills: (staff.skills ?? []).map((name) => ({ name, level: null })),
-    qualifications: [],
-    moreQualifications: 0,
     documents,
+    emergencyContacts: emergencyContacts.map(toEmergencyContact),
+    leave: leave.map(toLeaveRow),
   };
 }

@@ -18,9 +18,26 @@ const TIMEZONE_OPTIONS = [
   'Australia/Sydney',
 ];
 
+/** `SCREENS.locations`'s "Add a location" modal's Type select. */
+export const LOCATION_TYPES = [
+  'Residential',
+  'Dementia care',
+  'Domiciliary',
+  'Head office',
+] as const;
+
+export const LOCATION_STATUSES = [
+  { value: 'setup', label: 'In setup' },
+  { value: 'active', label: 'Active' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'inactive', label: 'Inactive' },
+] as const;
+
 export interface LocationFormValues {
   name: string;
   address: string;
+  locationType: string;
+  status: string;
   latitude: string;
   longitude: string;
   timezone: string;
@@ -38,6 +55,8 @@ function toFormValues(location?: Location | null): LocationFormValues {
   return {
     name: location?.name ?? '',
     address: location?.address ?? '',
+    locationType: location?.location_type ?? '',
+    status: location?.status ?? 'setup',
     latitude: location?.latitude?.toString() ?? '',
     longitude: location?.longitude?.toString() ?? '',
     timezone: location?.timezone ?? 'Europe/London',
@@ -101,6 +120,38 @@ export function LocationFormModal({
             onChange={(e) => setValues((v) => ({ ...v, address: e.target.value }))}
             placeholder="123 High Street, London"
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="loc-type">Type</Label>
+            <Select
+              id="loc-type"
+              value={values.locationType}
+              onChange={(e) => setValues((v) => ({ ...v, locationType: e.target.value }))}
+            >
+              <option value="">Not set</option>
+              {LOCATION_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="loc-status">Status</Label>
+            <Select
+              id="loc-status"
+              value={values.status}
+              onChange={(e) => setValues((v) => ({ ...v, status: e.target.value }))}
+            >
+              {LOCATION_STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

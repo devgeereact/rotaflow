@@ -136,25 +136,17 @@ describe('sumApprovedLeaveDays', () => {
     ).toBeGreaterThanOrEqual(0);
   });
 
-  it('counts leave spanning the year boundary in full, in both years', () => {
-    // DOCUMENTS CURRENT BEHAVIOUR, and it is arguably wrong.
-    //
-    // A request running 28 Dec 2026 -> 3 Jan 2027 is seven days. It overlaps
-    // both entitlement years, and this function counts all seven against each,
-    // because it filters by overlap and then measures the whole request rather
-    // than the part inside the window.
-    //
-    // So a person taking one week off across new year loses seven days from
-    // BOTH years' allowance. Fourteen days for a seven-day holiday.
-    //
-    // Left as-is rather than silently changed: clamping is the obvious fix but
-    // it alters every existing entitlement figure the moment it ships, and that
-    // is a product decision (which year does a straddling day belong to?) not a
-    // refactor. Tracked as P2 in docs/audit01.md. This test exists so the
-    // behaviour cannot change by accident before that decision is made.
+  it('splits leave spanning the year boundary between the two years', () => {
+    // A request running 28 Dec 2026 -> 3 Jan 2027 is seven days, overlapping
+    // both entitlement years. It used to count all seven against EACH year
+    // (fourteen days of allowance consumed for a seven-day holiday) because
+    // the overlap filter selected the request but nothing clipped the count
+    // to the window being summed. Each year now gets only the days that
+    // actually fall inside it: four in 2026 (28-31 Dec), three in 2027
+    // (1-3 Jan) — seven in total, matching the days actually taken.
     const straddling = [request('2026-12-28', '2027-01-03')];
 
-    expect(sumApprovedLeaveDays(straddling, YEAR_START, YEAR_END)).toBe(7);
-    expect(sumApprovedLeaveDays(straddling, '2027-01-01', '2028-01-01')).toBe(7);
+    expect(sumApprovedLeaveDays(straddling, YEAR_START, YEAR_END)).toBe(4);
+    expect(sumApprovedLeaveDays(straddling, '2027-01-01', '2028-01-01')).toBe(3);
   });
 });

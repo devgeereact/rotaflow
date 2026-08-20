@@ -1,6 +1,5 @@
 import { format, isToday, isYesterday } from 'date-fns';
 import { toDisplayStatus } from '@/lib/swapRows';
-import type { SwapActivityEntry } from '@/components/swaps/SwapActivityCard';
 import type { ShiftSwapWithShift } from '@/services/swapService';
 import type { SwapParty, SwapRow } from '@/lib/swapRows';
 import type { Location, StaffProfile } from '@/types';
@@ -8,14 +7,49 @@ import type { Location, StaffProfile } from '@/types';
 export interface SwapMappingContext {
   staffById: Map<string, StaffProfile>;
   locationsById: Map<string, Location>;
-  /** Manager/owner. Drives "Needs your approval" and the Review button. */
-  canApprove: boolean;
   /** The signed-in user's `auth.users.id`, for "Approved by you". */
   userId: string | null;
+  /** The signed-in user's own `staff_profiles.id`, for the `accepted` note. */
+  viewerStaffId: string | null;
+  /** Manager/owner. Drives `needsReview` for open and accepted swaps. */
+  canApprove: boolean;
+  /**
+   * Settings → Policies' "Swap approval" toggle. When true (the default),
+   * a named colleague accepting is not enough — the row still needs a
+   * manager, so `shift_swaps_requester_finalize` (0043) is left unused even
+   * though the RLS grant is still there. See `SwapsPage.tsx`'s
+   * `handleFinalize`.
+   */
+  swapApprovalRequired: boolean;
 }
 
-function fullName(person: StaffProfile | undefined): string {
-  return person ? `${person.first_name} ${person.last_name}` : 'Unknown';
+/**
+ * Whether the signed-in viewer owes this row a decision right now:
+ *   - a manager, on anything still open or accepted (unchanged capability)
+ *   - the named target, once named but not yet answered
+ *   - the requester, once the target has said yes — but only when
+ *     Settings → Policies' swap approval toggle is off (0043)
+ */
+function needsReview(
+  status: SwapRow['status'],
+  swap: ShiftSwapWithShift,
+  context: SwapMappingContext,
+): boolean {
+  if (context.canApprove && (status === 'open' || status === 'accepted')) return true;
+  if (
+    status === 'awaiting_colleague' &&
+    swap.target_staff_profile_id === context.viewerStaffId
+  ) {
+    return true;
+  }
+  if (
+    status === 'accepted' &&
+    !context.swapApprovalRequired &&
+    swap.requested_by === context.viewerStaffId
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function toParty(person: StaffProfile | undefined): SwapParty {
@@ -40,30 +74,34 @@ export function requestedLabel(iso: string): string {
 
 /**
  * The line under the status pill. Only states we can actually evidence get a
- * note, a rejection reason is not stored, so declined rows carry none rather
+ * note; a decline reason is not stored, so declined rows carry none rather
  * than an invented one.
  */
 function statusNote(
   swap: ShiftSwapWithShift,
+  status: SwapRow['status'],
   context: SwapMappingContext,
 ): string | null {
-  switch (swap.status) {
-    case 'approved':
-      return swap.reviewed_by && swap.reviewed_by === context.userId
-        ? 'Approved by you'
-        : 'Approved';
-    case 'cancelled':
-      return 'Cancelled by requester';
-    case 'rejected':
-      return null;
-    case 'accepted':
-      return context.canApprove ? 'Needs your approval' : 'Awaiting manager';
-    default:
-      return context.canApprove ? 'Needs your approval' : 'Awaiting colleague';
+  if (status === 'approved') {
+    return swap.reviewed_by && swap.reviewed_by === context.userId
+      ? 'Approved by you'
+      : 'Approved';
   }
+  if (status === 'cancelled') return 'Cancelled by requester';
+  if (status === 'accepted') {
+    if (context.swapApprovalRequired) return 'Waiting on a manager';
+    // The colleague said yes; either the requester or a manager can close
+    // it out now (0043), so the note names whichever applies to whoever is
+    // actually looking at it.
+    if (swap.requested_by === context.viewerStaffId) return 'Ready for your approval';
+    if (swap.target_staff_profile_id === context.viewerStaffId)
+      return 'Waiting on requester';
+    return 'Awaiting requester';
+  }
+  return null;
 }
 
-/** One stored swap → one table row (design/Swap-Request.png). */
+/** One stored swap → one request-list row (`SCREENS.swaps`). */
 export function toSwapRow(
   swap: ShiftSwapWithShift,
   context: SwapMappingContext,
@@ -72,13 +110,16 @@ export function toSwapRow(
   const location = shift?.location_id
     ? context.locationsById.get(shift.location_id)
     : undefined;
+  const status = toDisplayStatus(swap.status, Boolean(swap.target_staff_profile_id));
 
   return {
     id: swap.id,
     from: toParty(context.staffById.get(swap.requested_by)),
+    fromStaffId: swap.requested_by,
     to: swap.target_staff_profile_id
       ? toParty(context.staffById.get(swap.target_staff_profile_id))
       : null,
+    toStaffId: swap.target_staff_profile_id,
     shift: shift
       ? {
           dateLabel: format(new Date(shift.starts_at), 'EEE d MMM yyyy'),
@@ -90,62 +131,9 @@ export function toSwapRow(
         }
       : null,
     requestedLabel: requestedLabel(swap.created_at),
-    requestedByName: fullName(context.staffById.get(swap.requested_by)),
-    status: toDisplayStatus(swap.status),
-    statusNote: statusNote(swap, context),
-    needsReview:
-      context.canApprove && (swap.status === 'pending' || swap.status === 'accepted'),
+    note: swap.note,
+    status,
+    statusNote: statusNote(swap, status, context),
+    needsReview: needsReview(status, swap, context),
   };
-}
-
-/**
- * The "Recent Activity" rail, newest first. Derived from the swaps already
- * loaded rather than a separate feed. There is no activity table, and
- * inventing one would show entries the database cannot back.
- */
-export function toSwapActivity(
-  swaps: ShiftSwapWithShift[],
-  context: SwapMappingContext,
-  limit = 3,
-): SwapActivityEntry[] {
-  return [...swaps]
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at ?? b.created_at).getTime() -
-        new Date(a.updated_at ?? a.created_at).getTime(),
-    )
-    .slice(0, limit)
-    .map((swap) => {
-      const requester = fullName(context.staffById.get(swap.requested_by));
-      const target = swap.target_staff_profile_id
-        ? fullName(context.staffById.get(swap.target_staff_profile_id))
-        : 'anyone';
-      const at = requestedLabel(swap.updated_at ?? swap.created_at);
-
-      if (swap.status === 'approved') {
-        return {
-          id: swap.id,
-          kind: 'approved' as const,
-          title: `${requester}'s swap was approved`,
-          detail: `With ${target}`,
-          timeLabel: at,
-        };
-      }
-      if (swap.status === 'rejected') {
-        return {
-          id: swap.id,
-          kind: 'declined' as const,
-          title: `${requester}'s swap was declined`,
-          detail: `With ${target}`,
-          timeLabel: at,
-        };
-      }
-      return {
-        id: swap.id,
-        kind: 'requested' as const,
-        title: 'New swap request received',
-        detail: `${requester} → ${target}`,
-        timeLabel: at,
-      };
-    });
 }

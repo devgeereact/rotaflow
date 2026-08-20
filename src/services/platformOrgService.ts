@@ -133,55 +133,26 @@ export interface OrgUsage {
  * plainly that nothing enforces a ceiling, rather than inventing one.
  */
 export async function getOrgUsage(orgId: string): Promise<OrgUsage> {
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
+  // One SECURITY DEFINER call rather than six head-count queries.
+  //
+  // Since 0028 a platform administrator reads tenant rows only through an
+  // active support access session, so counting by selecting from
+  // `staff_profiles` would return zero for every organisation nobody currently
+  // has a session on. `platform_tenant_counts` counts past RLS and returns
+  // numbers rather than rows: how large a tenant is, without who is in it.
+  const { data, error } = await supabase.rpc('platform_tenant_counts', {
+    p_org: orgId,
+  });
+  if (error) throw error;
 
-  // Written out rather than looped over a table name: a generic helper
-  // collapses the column union across all five tables, so `.eq('active', …)`
-  // stops typechecking. Six explicit queries keep every filter type-safe.
-  const HEAD = { count: 'exact' as const, head: true };
-
-  const [staff, activeStaff, locations, departments, publishedRotas, shiftsThisMonth] =
-    await Promise.all([
-      supabase.from('staff_profiles').select('*', HEAD).eq('org_id', orgId),
-      supabase
-        .from('staff_profiles')
-        .select('*', HEAD)
-        .eq('org_id', orgId)
-        .eq('active', true),
-      supabase.from('locations').select('*', HEAD).eq('org_id', orgId),
-      supabase.from('departments').select('*', HEAD).eq('org_id', orgId),
-      supabase
-        .from('rotas')
-        .select('*', HEAD)
-        .eq('org_id', orgId)
-        .eq('status', 'published'),
-      supabase
-        .from('shifts')
-        .select('*', HEAD)
-        .eq('org_id', orgId)
-        .gte('starts_at', monthStart.toISOString()),
-    ]);
-
-  for (const result of [
-    staff,
-    activeStaff,
-    locations,
-    departments,
-    publishedRotas,
-    shiftsThisMonth,
-  ]) {
-    if (result.error) throw result.error;
-  }
-
+  const row = (data ?? [])[0];
   return {
-    staff: staff.count ?? 0,
-    activeStaff: activeStaff.count ?? 0,
-    locations: locations.count ?? 0,
-    departments: departments.count ?? 0,
-    publishedRotas: publishedRotas.count ?? 0,
-    shiftsThisMonth: shiftsThisMonth.count ?? 0,
+    staff: Number(row?.staff_total ?? 0),
+    activeStaff: Number(row?.staff_active ?? 0),
+    locations: Number(row?.locations ?? 0),
+    departments: Number(row?.departments ?? 0),
+    publishedRotas: Number(row?.published_rotas ?? 0),
+    shiftsThisMonth: Number(row?.shifts_month ?? 0),
   };
 }
 
@@ -205,7 +176,7 @@ export async function setOrgStatus(
   const { error } = await supabase.rpc('set_org_status', {
     p_org: orgId,
     p_status: status,
-    p_reason: reason ?? null,
+    p_reason: reason ?? undefined,
   });
   if (error) throw error;
 }

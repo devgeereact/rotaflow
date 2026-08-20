@@ -66,39 +66,3 @@ export const LEAVE_TYPE_CHIP: Record<LeaveTypeKey, string> = {
   carer: 'bg-leave-carer-wash text-leave-carer dark:bg-leave-carer-deep',
   other: 'bg-leave-other-wash text-leave-other dark:bg-leave-other-deep',
 };
-
-/** Square icon tile beside each row of the Leave Balances card. */
-export const LEAVE_TYPE_TILE: Record<LeaveTypeKey, string> = {
-  annual: 'bg-leave-annual-wash text-leave-annual dark:bg-leave-annual-deep',
-  sick: 'bg-leave-sick-wash text-leave-sick dark:bg-leave-sick-deep',
-  personal: 'bg-leave-personal-wash text-leave-personal dark:bg-leave-personal-deep',
-  carer: 'bg-leave-carer-wash text-leave-carer dark:bg-leave-carer-deep',
-  other: 'bg-leave-other-wash text-leave-other dark:bg-leave-other-deep',
-};
-
-/** Balance meter fill. */
-export const LEAVE_TYPE_BAR: Record<LeaveTypeKey, string> = {
-  annual: 'bg-leave-annual',
-  sick: 'bg-leave-sick',
-  personal: 'bg-leave-personal',
-  carer: 'bg-leave-carer',
-  other: 'bg-leave-other',
-};
-
-/** Legend dot on the Leave Overview card. */
-export const LEAVE_TYPE_DOT: Record<LeaveTypeKey, string> = {
-  annual: 'bg-leave-annual',
-  sick: 'bg-leave-sick',
-  personal: 'bg-leave-personal',
-  carer: 'bg-leave-carer',
-  other: 'bg-leave-other',
-};
-
-/** Leave Overview donut arc. */
-export const LEAVE_TYPE_STROKE: Record<LeaveTypeKey, string> = {
-  annual: 'stroke-leave-annual',
-  sick: 'stroke-leave-sick',
-  personal: 'stroke-leave-personal',
-  carer: 'stroke-leave-carer',
-  other: 'stroke-leave-other',
-};

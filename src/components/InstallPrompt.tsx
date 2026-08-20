@@ -7,7 +7,7 @@ export function InstallPrompt(): JSX.Element | null {
   if (!isInstallable) return null;
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md animate-fade-up items-center justify-between gap-4 rounded-2xl border border-surface-border bg-surface p-4 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark">
+    <div className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md animate-fade-up motion-reduce:animate-none items-center justify-between gap-4 rounded-2xl border border-surface-border bg-surface p-4 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark">
       <div>
         <p className="font-semibold text-content dark:text-content-dark">
           Install this app

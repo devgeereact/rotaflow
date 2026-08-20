@@ -2,31 +2,23 @@ import type { TabItem } from '@/components/ui/Tabs';
 import type { MembershipRole } from '@/types';
 
 /**
- * Section tabs for the two merged workspaces.
+ * Section tabs for the merged workspace below.
  *
  * Kept beside `settingsTabs.ts` and out of the components for the same reason:
  * `navigationTargets.test.ts` parses these against App.tsx's real route table,
  * so a tab pointing at a route that does not exist is a test failure rather
  * than a 404 a user finds.
+ *
+ * Rota Builder and Schedule used to be the other merged workspace here. The
+ * organisation workspace reference (`docs/ORGANISATION_WORKSPACE.html`) treats
+ * them as two separate journeys with their own sidebar rows and no shared tab
+ * bar, so the cross-link was removed along with `RotaBuilderPage`'s use of it,
+ * rather than left exported with nothing rendering it. `sidebarNav.ts` §"Order
+ * and labels" has the fuller reasoning.
  */
 
 function isManager(role: MembershipRole | null): boolean {
   return role === 'owner' || role === 'manager';
-}
-
-/**
- * **Rota**. Building a week and reading the published result are two halves of
- * one job, and they were two sidebar entries with no way across.
- *
- * Staff get a single tab. They cannot open the builder (`RequireRole` refuses
- * `/app/rota`), so showing them a switch whose other side 403s would be a
- * control that only ever produces a permission screen. `WorkspaceHeader`
- * renders no tab bar at all for one item.
- */
-export function rotaWorkspaceTabs(role: MembershipRole | null): TabItem[] {
-  const published: TabItem = { to: '/app/schedule', label: 'Published schedule' };
-  if (!isManager(role)) return [published];
-  return [{ to: '/app/rota', label: 'Build rota' }, published];
 }
 
 /**

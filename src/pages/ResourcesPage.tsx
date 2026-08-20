@@ -6,6 +6,7 @@ import {
   Clock3,
   Hammer,
   LifeBuoy,
+  Megaphone,
   Smartphone,
   Users,
   type LucideIcon,
@@ -121,7 +122,6 @@ const BUILD_STATUS: readonly StatusGroup[] = [
     state: 'planned',
     heading: 'Not built yet',
     items: [
-      'Billing and subscriptions, no payment provider is connected',
       'Payroll and HR integrations',
       'Document and photo upload to managed storage',
       'QR-code clock-in as an alternative to GPS',
@@ -131,10 +131,66 @@ const BUILD_STATUS: readonly StatusGroup[] = [
 ];
 
 const STATE_STYLE: Record<StatusGroup['state'], { dot: string; label: string }> = {
-  built: { dot: 'bg-success', label: 'text-success' },
-  partial: { dot: 'bg-warning', label: 'text-warning' },
+  built: { dot: 'bg-success', label: 'text-success-ink' },
+  partial: { dot: 'bg-warning', label: 'text-warning-ink' },
   planned: { dot: 'bg-content-muted', label: 'text-content-muted' },
 };
+
+interface Update {
+  date: string; // 'YYYY-MM-DD'
+  summary: string;
+}
+
+/**
+ * What changed, for someone deciding whether to look again after a "no" a
+ * few weeks ago. Each entry is a real, shipped change, in the order it
+ * happened — not a marketing recap. Add to the top as things ship; do not
+ * backfill dates, and do not list anything not yet live on rota.gakinz.com.
+ */
+const UPDATES: readonly Update[] = [
+  {
+    date: '2026-08-13',
+    summary:
+      'Refreshed the public site copy and brand, and published Privacy, Terms, Cookies and Accessibility pages (still placeholders pending legal review, not final policies).',
+  },
+  {
+    date: '2026-08-12',
+    summary:
+      'Rebuilt Leave, Shift Swaps, Overtime, Team, Announcements, Locations and Reports to the finished workspace design, with real read receipts on Announcements.',
+  },
+  {
+    date: '2026-08-12',
+    summary:
+      'Managers can remove a team member or change their role from Permissions — a real action now, not a disabled button.',
+  },
+  {
+    date: '2026-08-12',
+    summary:
+      'The Dashboard "Needs you" feed now flags a genuinely missed clock-in, computed from real shift and clock data.',
+  },
+  {
+    date: '2026-08-11',
+    summary: 'Rebuilt Timesheets to the finished design, with a manual Amend action.',
+  },
+  {
+    date: '2026-08-08',
+    summary:
+      'Rota Builder shows a real staffing minimum in the Coverage panel and a publish-status banner.',
+  },
+  {
+    date: '2026-08-06',
+    summary:
+      'Rebuilt the Dashboard split by role, so a manager and a member of staff each see the view built for them.',
+  },
+] as const;
+
+function formatUpdateDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
 
 export function ResourcesPage(): JSX.Element {
   return (
@@ -230,6 +286,40 @@ export function ResourcesPage(): JSX.Element {
         </div>
       </section>
 
+      <section className="mx-auto max-w-3xl px-6 py-20">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Megaphone size={20} aria-hidden="true" />
+          </span>
+          <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
+            Recent updates
+          </h2>
+          <p className="mt-3 text-content-muted dark:text-content-muted-dark">
+            What has actually shipped, most recent first.
+          </p>
+        </div>
+
+        <ol className="space-y-6 border-l border-surface-border pl-6 dark:border-surface-border-dark">
+          {UPDATES.map(({ date, summary }) => (
+            <li key={`${date}-${summary}`} className="relative">
+              <span
+                aria-hidden="true"
+                className="absolute -left-[1.6rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary"
+              />
+              <time
+                dateTime={date}
+                className="block text-xs font-semibold uppercase tracking-wide text-content-muted dark:text-content-muted-dark"
+              >
+                {formatUpdateDate(date)}
+              </time>
+              <p className="mt-1 text-sm leading-relaxed text-content dark:text-content-dark">
+                {summary}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       <section className="mx-auto max-w-4xl px-6 py-20">
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
@@ -259,7 +349,7 @@ export function ResourcesPage(): JSX.Element {
               is no ticket queue and no chatbot, just{' '}
               <Link
                 to="/contact"
-                className="rounded font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 get in touch
               </Link>{' '}

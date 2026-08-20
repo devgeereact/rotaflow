@@ -9,9 +9,9 @@ import { format, isBefore, startOfMonth, subMonths } from 'date-fns';
  * to sit this side of the line.
  *
  * Every figure here is derived from rows the console already reads. Where the
- * console reference shows a metric this deployment cannot produce. Revenue,
- * active-users-today, cross-tenant rota counts. Nothing is invented; see
- * `UNAVAILABLE_METRICS`.
+ * console reference shows a metric this deployment genuinely cannot produce,
+ * that is stated on the screen itself (`DEMO_SECTIONS` in
+ * `adminOverviewDemo.ts`) rather than invented here.
  */
 
 /** Organisation columns these derivations need. Narrower than the row type so
@@ -70,6 +70,47 @@ export function monthlyGrowth(
   return buckets;
 }
 
+/**
+ * Cancellations per month, oldest first — the "Churned" series on the
+ * growth chart. A count, not a percentage, so it plots on the same axis
+ * as `monthlyGrowth`'s "Active"/"New" series without needing a second
+ * scale. The revenue-churn rate (lost MRR ÷ starting MRR) is real too,
+ * computed the same way, but shown as text alongside the chart rather
+ * than plotted — see `revenueChurnForMonth` in `lib/revenue.ts`.
+ *
+ * Gated on CURRENT `status === 'canceled'`, not on `canceled_at` alone:
+ * Stripe's Customer Portal defaults to cancel-at-period-end, so
+ * `canceled_at` is set the moment cancellation is *requested*, weeks
+ * before it actually takes effect. Without this gate, a scheduled
+ * cancellation would count as churned the instant it's requested — before
+ * the subscription has actually stopped paying — contradicting every MRR
+ * figure elsewhere on this page, which only checks `status`. Matches the
+ * same status-gated exclusion `mrrAtDatePence`/`revenueChurnForMonth` in
+ * `lib/revenue.ts` use. Known consequence, not a bug: a bucket for a past
+ * month can still gain a count later, once that subscription's status
+ * actually flips to `canceled` and this function is next called — the
+ * count reflects when revenue really stopped, not when the chart happened
+ * to be drawn.
+ */
+export function monthlyChurnCounts(
+  subscriptions: readonly { canceled_at: string | null; status: string }[],
+  now: Date,
+  months = 12,
+): number[] {
+  const counts: number[] = [];
+  for (let i = months - 1; i >= 0; i -= 1) {
+    const start = startOfMonth(subMonths(now, i));
+    const nextStart = startOfMonth(subMonths(now, i - 1));
+    const count = subscriptions.filter((s) => {
+      if (s.status !== 'canceled' || s.canceled_at === null) return false;
+      const c = new Date(s.canceled_at);
+      return !isBefore(c, start) && isBefore(c, nextStart);
+    }).length;
+    counts.push(count);
+  }
+  return counts;
+}
+
 export interface Breakdown {
   label: string;
   value: number;
@@ -97,30 +138,3 @@ export function humaniseKey(value: string): string {
   if (!spaced) return 'Unknown';
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
-
-/**
- * Metrics the console reference shows that this deployment genuinely cannot
- * produce, and why.
- *
- * Rendered on the overview rather than dropped silently. A missing tile reads
- * as an oversight; a stated one is a decision, and it tells whoever picks the
- * work up exactly what would have to change. Following the same pattern the
- * tenant Settings screens already use for SMS and custom roles.
- */
-export const UNAVAILABLE_METRICS: readonly { title: string; reason: string }[] = [
-  {
-    title: 'Revenue and MRR',
-    reason:
-      '`subscriptions` records a plan and a status but no price, and no payment provider is connected, so there is no amount on this deployment to total.',
-  },
-  {
-    title: 'Active users today',
-    reason:
-      '`profiles` holds no last-seen column, and Supabase does not expose `auth.users.last_sign_in_at` to the client. Counting it needs either a column written on sign-in or an Edge Function over the admin API.',
-  },
-  {
-    title: 'Per-organisation activity feed',
-    reason:
-      'Rota, attendance and leave writes are not audited yet, `audit_logs` has essentially one writer, so a tenant activity timeline would show a handful of events and imply nothing else happened.',
-  },
-] as const;

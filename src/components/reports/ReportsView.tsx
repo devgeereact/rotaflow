@@ -73,9 +73,13 @@ export interface ReportsViewProps {
 const PANEL_ID = 'reports-panel';
 
 /**
- * `/app/reports`. The reporting workspace: the report catalogue with its
- * filters and per-row run/download actions, plus a rail of overview, recent
- * runs and shortcuts (design/Reports-Dashboard.png).
+ * `/app/reports`. Leads with the workforce-trends dashboard
+ * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.reports`: tiles, charts,
+ * hours-by-department and absence-reasons), the same view every manager
+ * lands on. The report catalogue — favourites, scheduling, search, per-row
+ * run/download, and the overview/recent/shortcuts rail — is real, additive
+ * capability the reference has no equivalent for; it stays, one section
+ * down, rather than competing with the dashboard for the top of the screen.
  *
  * Presentational only: every figure arrives already computed, so the live page
  * and the design preview render the identical tree.
@@ -90,7 +94,19 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
           Reports
         </h1>
         <p className="mt-1 text-[0.95rem] font-medium text-content-muted dark:text-content-muted-dark">
-          View, run and export scheduling and workforce reports.
+          Hours, overtime and absence for the range you choose. Every report below exports
+          to CSV in the shape payroll expects.
+        </p>
+      </div>
+
+      <div className="mb-8">{props.analytics}</div>
+
+      <div className="mb-4 border-t border-surface-border pt-6 dark:border-surface-border-dark">
+        <h2 className="text-card-heading font-semibold text-content dark:text-content-dark">
+          Report catalogue
+        </h2>
+        <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+          Search, favourite, schedule and export any report individually.
         </p>
       </div>
 
@@ -108,10 +124,6 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
             role="tabpanel"
             aria-labelledby={reportsTabId(props.activeTab)}
           >
-            {/* Charts sit above the catalogue: §17 asks for summary cards,
-                charts, tables and downloads, and the trend is the thing a
-                manager reads before deciding which export to run. */}
-            <div className="mt-6">{props.analytics}</div>
             <div className="mb-5 mt-6">
               <ReportsFilterBar
                 search={props.search}

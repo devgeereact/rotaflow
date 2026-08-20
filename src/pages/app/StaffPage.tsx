@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import {
   Download,
   FileText,
@@ -10,7 +11,6 @@ import {
   UserRoundCheck,
   UserRoundX,
 } from 'lucide-react';
-import { addDays, format, startOfDay, startOfWeek } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -23,16 +23,13 @@ import {
   updateStaffProfile,
 } from '@/services/staffService';
 import { listDepartments, listLocations } from '@/services/locationService';
-import { listOrgAvailability } from '@/services/availabilityService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listShiftsForPeriod } from '@/services/shiftService';
-import { listDocuments } from '@/services/documentService';
+import { listExpiringDocuments } from '@/services/documentService';
+import { listPendingInvites } from '@/services/inviteService';
 import { anonymizeStaffMember, exportStaffData } from '@/services/gdprService';
-import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
-import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
-import { StaffDirectoryView } from '@/components/staff/StaffDirectoryView';
-import type { StaffFilterSelect } from '@/components/staff/StaffFilterBar';
-import type { StaffSort } from '@/components/staff/StaffTable';
+import { downloadCsv, downloadJson } from '@/lib/csv';
+import { TeamDirectoryView } from '@/components/staff/TeamDirectoryView';
 import {
   StaffActionsModal,
   type StaffAction,
@@ -41,32 +38,21 @@ import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModa
 import { DocumentsModal } from '@/components/staff/DocumentsModal';
 import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
 import {
-  buildStats,
-  onLeaveToday,
-  toDirectoryRow,
-  toStaffDetails,
-} from '@/lib/staffDirectoryMapping';
-import { downloadJson } from '@/lib/csv';
+  buildTeamRows,
+  buildTeamTiles,
+  onTypeOfLeaveToday,
+  weekRangeIso,
+} from '@/lib/teamRows';
 import { reportError } from '@/lib/sentry';
-import type { StaffDirectoryRow, StaffDirectoryStats } from '@/lib/staffDirectory';
+import type { TeamRow } from '@/lib/teamRows';
 import type {
-  Availability,
   Department,
   LeaveRequest,
   Location,
   Shift,
-  StaffDocument as DocumentRow,
   StaffProfile,
   StaffProfileInsert,
 } from '@/types';
-
-const EMPTY_STATS: StaffDirectoryStats = {
-  totalStaff: 0,
-  onShiftToday: 0,
-  onLeaveToday: 0,
-  unavailableToday: 0,
-  vacancies: 0,
-};
 
 function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
   return {
@@ -85,68 +71,36 @@ function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
     payroll_id: values.payrollId.trim() || null,
     start_date: values.startDate || null,
     phone: values.phone.trim() || null,
+    email: values.email.trim() ? values.email.trim().toLowerCase() : null,
   };
-}
-
-function compareRows(
-  a: StaffDirectoryRow,
-  b: StaffDirectoryRow,
-  sort: StaffSort,
-): number {
-  const value = (row: StaffDirectoryRow): string | number => {
-    switch (sort.key) {
-      case 'staff':
-        return `${row.lastName} ${row.firstName}`.toLowerCase();
-      case 'role':
-        return row.role.toLowerCase();
-      case 'department':
-        return row.department.toLowerCase();
-      case 'location':
-        return row.location.toLowerCase();
-      case 'skills':
-        return row.skills.length;
-      case 'availability':
-        return row.availabilityPercent;
-      case 'status':
-        return row.status;
-    }
-  };
-  const left = value(a);
-  const right = value(b);
-  const order = left < right ? -1 : left > right ? 1 : 0;
-  return sort.direction === 'asc' ? order : -order;
 }
 
 /**
- * The Staff Directory (design/staff.png). Everything the screen shows is
- * derived from Supabase and scoped to the active org; RLS is the real gate,
- * `usePermissions` only decides which affordances appear.
+ * `/app/team` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`). The
+ * reference's row actions are just Profile/Message; Message has no real
+ * capability behind it (RotaFlow has no direct-messaging feature) so the
+ * kebab menu here keeps the directory's existing real management actions
+ * (edit, emergency contacts, documents, deactivate, GDPR) instead.
  */
 export function StaffPage(): JSX.Element {
   const { confirm } = useConfirm();
-  const { orgId, role: membershipRole } = useOrg();
+  const { orgId, orgName } = useOrg();
   const { canManageStaff, canManageOrg } = usePermissions();
   const navigate = useNavigate();
 
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [availability, setAvailability] = useState<Availability[]>([]);
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
-  const [shiftsToday, setShiftsToday] = useState<Shift[]>([]);
-  const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [shiftsThisWeek, setShiftsThisWeek] = useState<Shift[]>([]);
+  const [documentsExpiring, setDocumentsExpiring] = useState(0);
+  const [invitesOutstanding, setInvitesOutstanding] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [locationId, setLocationId] = useState('');
   const [departmentId, setDepartmentId] = useState('');
-  const [role, setRole] = useState('');
-  const [status, setStatus] = useState('');
-  const [sort, setSort] = useState<StaffSort | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffProfile | null>(null);
@@ -164,25 +118,32 @@ export function StaffPage(): JSX.Element {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [staffRows, deptRows, locationRows, availabilityRows, leaveRows, shiftRows] =
-        await Promise.all([
-          listStaff(orgId, { includeInactive: true }),
-          listDepartments(orgId),
-          listLocations(orgId),
-          listOrgAvailability(orgId),
-          listOrgLeaveRequests(orgId),
-          listShiftsForPeriod({
-            orgId,
-            fromIso: startOfDay(today).toISOString(),
-            toIso: addDays(startOfDay(today), 1).toISOString(),
-          }),
-        ]);
+      const { fromIso, toIso } = weekRangeIso(today);
+      const in30Days = format(addDays(startOfDay(today), 30), 'yyyy-MM-dd');
+      const [
+        staffRows,
+        deptRows,
+        locationRows,
+        leaveRows,
+        shiftRows,
+        expiringDocs,
+        invites,
+      ] = await Promise.all([
+        listStaff(orgId, { includeInactive: true }),
+        listDepartments(orgId),
+        listLocations(orgId),
+        listOrgLeaveRequests(orgId),
+        listShiftsForPeriod({ orgId, fromIso, toIso }),
+        listExpiringDocuments(orgId, in30Days),
+        listPendingInvites(orgId),
+      ]);
       setStaff(staffRows);
       setDepartments(deptRows);
       setLocations(locationRows);
-      setAvailability(availabilityRows);
       setLeave(leaveRows);
-      setShiftsToday(shiftRows);
+      setShiftsThisWeek(shiftRows);
+      setDocumentsExpiring(expiringDocs.length);
+      setInvitesOutstanding(invites.length);
     } catch (err) {
       reportError(err, { area: 'staff:load' });
       setError('Could not load the staff directory.');
@@ -201,125 +162,73 @@ export function StaffPage(): JSX.Element {
     onChange: () => void load(),
   });
 
-  const onLeave = useMemo(() => onLeaveToday(leave, todayIso), [leave, todayIso]);
-
-  const context = useMemo(
-    () => ({ departments, locations, availability, onLeaveIds: onLeave }),
-    [departments, locations, availability, onLeave],
+  const onShiftToday = useMemo(
+    () =>
+      new Set(
+        shiftsThisWeek
+          .filter((s) => isSameDay(new Date(s.starts_at), today) && s.staff_profile_id)
+          .map((s) => s.staff_profile_id as string),
+      ),
+    [shiftsThisWeek, today],
+  );
+  const absentToday = useMemo(
+    () => onTypeOfLeaveToday(leave, todayIso, (t) => t === 'sick'),
+    [leave, todayIso],
+  );
+  const onLeaveToday = useMemo(
+    () => onTypeOfLeaveToday(leave, todayIso, () => true),
+    [leave, todayIso],
   );
 
-  const allRows = useMemo(
-    () => staff.map((person) => toDirectoryRow(person, context)),
-    [staff, context],
+  const context = useMemo(
+    () => ({ departments, locations, shiftsThisWeek, onShiftToday, absentToday }),
+    [departments, locations, shiftsThisWeek, onShiftToday, absentToday],
+  );
+
+  const allRows = useMemo(() => buildTeamRows(staff, context), [staff, context]);
+
+  const tiles = useMemo(
+    () =>
+      buildTeamTiles(
+        staff,
+        onShiftToday,
+        absentToday,
+        onLeaveToday,
+        documentsExpiring,
+        invitesOutstanding,
+      ),
+    [
+      staff,
+      onShiftToday,
+      absentToday,
+      onLeaveToday,
+      documentsExpiring,
+      invitesOutstanding,
+    ],
   );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const rows = allRows.filter((row) => {
+    return allRows.filter((row) => {
+      if (!row.active) return false;
       if (term) {
         const haystack =
-          `${row.firstName} ${row.lastName} ${row.role} ${row.skills.join(' ')}`.toLowerCase();
+          `${row.firstName} ${row.lastName} ${row.jobTitle ?? ''} ${row.location}`.toLowerCase();
         if (!haystack.includes(term)) return false;
       }
-      if (locationId && row.location !== locationId) return false;
-      if (departmentId && row.department !== departmentId) return false;
-      if (role && row.role !== role) return false;
-      if (status && row.status !== status) return false;
+      if (
+        departmentId &&
+        staff.find((s) => s.id === row.id)?.department_id !== departmentId
+      )
+        return false;
+      if (locationId) {
+        const person = staff.find((s) => s.id === row.id);
+        const dept = departments.find((d) => d.id === person?.department_id);
+        if (dept?.location_id !== locationId) return false;
+      }
       return true;
     });
-    return sort ? [...rows].sort((a, b) => compareRows(a, b, sort)) : rows;
-  }, [allRows, search, locationId, departmentId, role, status, sort]);
-
-  const pageRows = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize],
-  );
-
-  // Keep a selection alive across filtering so the panel never blanks out.
-  const selected = useMemo(
-    () =>
-      staff.find((person) => person.id === selectedId) ??
-      staff.find((person) => person.id === pageRows[0]?.id) ??
-      null,
-    [staff, selectedId, pageRows],
-  );
-
-  useEffect(() => {
-    if (!orgId || !selected) {
-      setDocuments([]);
-      return;
-    }
-    let cancelled = false;
-    void listDocuments(orgId, selected.id)
-      .then((rows) => {
-        if (!cancelled) setDocuments(rows);
-      })
-      .catch((err: unknown) => {
-        reportError(err, { area: 'staff:documents' });
-        if (!cancelled) setDocuments([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [orgId, selected]);
-
-  const stats = useMemo(
-    () =>
-      staff.length === 0
-        ? EMPTY_STATS
-        : buildStats(staff, shiftsToday, onLeave, availability, today),
-    [staff, shiftsToday, onLeave, availability, today],
-  );
-
-  const details = useMemo(() => {
-    if (!selected) return null;
-    return toStaffDetails(
-      selected,
-      context,
-      documents,
-      selected.payroll_id ?? '-',
-      startOfWeek(today, { weekStartsOn: 1 }),
-      today,
-    );
-  }, [selected, context, documents, today]);
-
-  const selects: StaffFilterSelect[] = [
-    {
-      id: 'locations',
-      allLabel: 'All Locations',
-      value: locationId,
-      onChange: setLocationId,
-      options: locations.map((l) => ({ value: l.name, label: l.name })),
-    },
-    {
-      id: 'departments',
-      allLabel: 'All Departments',
-      value: departmentId,
-      onChange: setDepartmentId,
-      widthClass: 'w-44',
-      options: departments.map((d) => ({ value: d.name, label: d.name })),
-    },
-    {
-      id: 'roles',
-      allLabel: 'All Roles',
-      value: role,
-      onChange: setRole,
-      options: [...new Set(allRows.map((row) => row.role))]
-        .filter((title) => title !== '-')
-        .map((title) => ({ value: title, label: title })),
-    },
-    {
-      id: 'statuses',
-      allLabel: 'All Statuses',
-      value: status,
-      onChange: setStatus,
-      options: [
-        { value: 'active', label: 'Active' },
-        { value: 'on_leave', label: 'On Leave' },
-        { value: 'inactive', label: 'Inactive' },
-      ],
-    },
-  ];
+  }, [allRows, search, departmentId, locationId, staff, departments]);
 
   const handleSubmit = async (values: StaffFormValues): Promise<void> => {
     if (!orgId) return;
@@ -347,7 +256,6 @@ export function StaffPage(): JSX.Element {
     }
   };
 
-  /** GDPR subject-access request. Everything RotaFlow holds on this person, as a JSON file. */
   const handleExportData = async (person: StaffProfile): Promise<void> => {
     setError(null);
     setGdprBusyId(person.id);
@@ -362,18 +270,8 @@ export function StaffPage(): JSX.Element {
     }
   };
 
-  /**
-   * GDPR erasure request. Scrubs PII on the staff_profiles row and deletes
-   * emergency_contacts/documents outright; every shift/timesheet/leave row
-   * stays intact, now pointing at an anonymized "Deleted Member". See
-   * 0011_gdpr_anonymize.sql. Does not delete their RotaFlow login, which may
-   * span other organisations.
-   */
   const handleAnonymize = async (person: StaffProfile): Promise<void> => {
     if (!orgId) return;
-    // The one irreversible action in the product. It previously sat behind
-    // window.confirm, a dialog the browser is allowed to suppress in an
-    // installed PWA, which is not an acceptable guard for a GDPR erasure.
     const ok = await confirm({
       title: `Erase ${person.first_name} ${person.last_name}'s personal data?`,
       message:
@@ -460,34 +358,25 @@ export function StaffPage(): JSX.Element {
     return actions;
   };
 
-  const openActions = (id: string): void => {
+  const openActions = (row: TeamRow): void => {
     if (!canManageStaff) return;
-    setActionsFor(staff.find((person) => person.id === id) ?? null);
+    setActionsFor(staff.find((person) => person.id === row.id) ?? null);
   };
 
-  const clearFilters = (): void => {
-    setSearch('');
-    setLocationId('');
-    setDepartmentId('');
-    setRole('');
-    setStatus('');
-    setPage(1);
-  };
-
-  const editSelected = (): void => {
-    if (!selected) return;
-    setEditingStaff(selected);
-    setModalOpen(true);
+  const handleExport = (): void => {
+    downloadCsv(`rotaflow-team-${todayIso}`, filtered, [
+      { label: 'Name', value: (r) => `${r.firstName} ${r.lastName}` },
+      { label: 'Job title', value: (r) => r.jobTitle ?? '' },
+      { label: 'Department', value: (r) => r.department },
+      { label: 'Site', value: (r) => r.location },
+      { label: 'Contract', value: (r) => r.contractHoursLabel },
+      { label: 'Rostered this week', value: (r) => r.rosteredHoursLabel },
+      { label: 'Today', value: (r) => r.todayStatus },
+    ]);
   };
 
   return (
     <div>
-      <WorkspaceHeader
-        title="Team"
-        subtitle="Manage your team members, their roles, departments and availability."
-        tabs={teamWorkspaceTabs(membershipRole)}
-      />
-
       {error && (
         <p className="mb-4 text-sm text-danger" role="alert">
           {error}
@@ -499,30 +388,22 @@ export function StaffPage(): JSX.Element {
           Loading…
         </p>
       ) : (
-        <StaffDirectoryView
-          stats={stats}
-          rows={pageRows}
-          total={filtered.length}
+        <TeamDirectoryView
+          orgName={orgName ?? 'your organisation'}
+          tiles={tiles}
           search={search}
-          onSearchChange={(value) => {
-            setSearch(value);
-            setPage(1);
-          }}
-          selects={selects}
-          sort={sort}
-          onSortChange={setSort}
-          selectedId={selected?.id ?? null}
-          onSelect={setSelectedId}
+          onSearchChange={setSearch}
+          departmentId={departmentId}
+          onDepartmentChange={setDepartmentId}
+          locationId={locationId}
+          onLocationChange={setLocationId}
+          departments={departments}
+          locations={locations}
+          rows={filtered}
+          totalRowCount={allRows.filter((r) => r.active).length}
+          emptyMessage="Nobody matches these filters."
           onOpenActions={openActions}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-          details={details}
-          onMoreFilters={clearFilters}
+          onExport={handleExport}
           onAddStaff={
             canManageStaff
               ? () => {
@@ -531,10 +412,6 @@ export function StaffPage(): JSX.Element {
                 }
               : undefined
           }
-          onEditDetails={editSelected}
-          onViewSkills={editSelected}
-          onViewCalendar={() => void navigate('/app/availability')}
-          onViewDocuments={() => selected && setDocumentsFor(selected)}
         />
       )}
 

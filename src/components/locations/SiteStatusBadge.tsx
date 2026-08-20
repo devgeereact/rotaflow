@@ -3,12 +3,13 @@ import { SITE_STATUS_LABELS, type SiteStatus } from '@/lib/locationsDirectory';
 import { cn } from '@/lib/utils';
 
 const TONES: Record<SiteStatus, BadgeTone> = {
+  setup: 'neutral',
   active: 'success',
   maintenance: 'warning',
   inactive: 'neutral',
 };
 
-/** Operating-state pill in the Status column and both detail-panel headers. */
+/** Operating-state pill on a location card. */
 export function SiteStatusBadge({
   status,
   className,

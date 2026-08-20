@@ -71,12 +71,12 @@ const SEVERITY_STYLE: Record<
 > = {
   critical: {
     icon: CircleAlert,
-    className: 'border-danger/30 bg-danger/5 text-danger',
+    className: 'border-danger/30 bg-danger/5 text-danger-ink',
     label: 'Blocking',
   },
   warning: {
     icon: AlertTriangle,
-    className: 'border-warning/30 bg-warning/5 text-warning',
+    className: 'border-warning/30 bg-warning/5 text-warning-ink',
     label: 'Worth a look',
   },
   info: {
@@ -377,7 +377,7 @@ export function RotaAssistantPanel({
             {contextLoading ? 'Reading the rota…' : overview.headline}
           </p>
           {contextFailed && (
-            <p className="mt-1.5 pl-[1.4rem] text-xs text-warning">
+            <p className="mt-1.5 pl-[1.4rem] text-xs text-warning-ink">
               Leave and availability could not be loaded, so clashes against them are not
               included below.
             </p>
@@ -474,7 +474,7 @@ export function RotaAssistantPanel({
                     </p>
 
                     {candidates.length === 0 ? (
-                      <p className="text-xs text-warning">
+                      <p className="text-xs text-warning-ink">
                         Nobody on the roster is free for this one. Everyone is on leave,
                         already working, or has marked themselves unavailable.
                       </p>
@@ -495,12 +495,12 @@ export function RotaAssistantPanel({
                                 )}
                               </p>
                               {candidate.reasons.length > 0 && (
-                                <p className="text-xs text-success">
+                                <p className="text-xs text-success-ink">
                                   {candidate.reasons.join(' · ')}
                                 </p>
                               )}
                               {candidate.blockers.length > 0 && (
-                                <p className="text-xs text-warning">
+                                <p className="text-xs text-warning-ink">
                                   {candidate.blockers.join(' · ')}
                                 </p>
                               )}
@@ -560,7 +560,7 @@ export function RotaAssistantPanel({
             </Button>
 
             {error && (
-              <p className="text-sm text-warning" role="status">
+              <p className="text-sm text-warning-ink" role="status">
                 {error}
               </p>
             )}
@@ -593,7 +593,7 @@ export function RotaAssistantPanel({
                       : `Apply ${suggestions.length} shift${suggestions.length === 1 ? '' : 's'}`}
                   </Button>
                 ) : (
-                  <p className="text-sm text-warning">
+                  <p className="text-sm text-warning-ink">
                     Select a single location in the filters above to apply these, a shift
                     has to be written into one site&rsquo;s rota.
                   </p>

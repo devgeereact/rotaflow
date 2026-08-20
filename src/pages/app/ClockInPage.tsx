@@ -7,6 +7,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
+import { classifyFailure } from '@/services/syncQueue';
 import { FailedWritesNotice } from '@/components/FailedWritesNotice';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -27,7 +28,7 @@ import {
   buildAttendance,
   buildCurrentShift,
   buildRecentActivity,
-  buildTodaySchedule,
+  buildThisWeekRows,
   buildWeeklySummary,
   clockStage,
   clockWindow,
@@ -226,10 +227,8 @@ export function ClockInPage(): JSX.Element {
     );
 
     const segments = pairClockEvents(data.events, now);
-    const thisWeek = buildWeeklySummary(
-      thisWeekShifts,
-      segmentsInRange(segments, weekStart, nextWeekStart),
-    );
+    const thisWeekSegments = segmentsInRange(segments, weekStart, nextWeekStart);
+    const thisWeek = buildWeeklySummary(thisWeekShifts, thisWeekSegments);
     const lastWeek = buildWeeklySummary(
       lastWeekShifts,
       segmentsInRange(segments, lastWeekStart, weekStart),
@@ -240,7 +239,7 @@ export function ClockInPage(): JSX.Element {
     return {
       shift,
       currentShift: shift ? buildCurrentShift(shift, lookups, now) : null,
-      schedule: buildTodaySchedule(todayShifts, lookups, now),
+      thisWeekRows: buildThisWeekRows(thisWeekShifts, thisWeekSegments),
       activity: buildRecentActivity(data.events, now),
       weekly: {
         periodLabel: `${format(weekStart, 'd MMM')}, ${format(addDays(weekStart, 6), 'd MMM yyyy')}`,
@@ -292,11 +291,19 @@ export function ClockInPage(): JSX.Element {
           }
         }
 
+        // Captured now, at the moment of the action — not left for the insert
+        // to default server-side. On the offline path the insert doesn't
+        // happen until the outbox flushes, sometimes hours later, and a
+        // server-assigned timestamp would stamp the sync, not the clock-in.
+        // (The server still won't blindly trust this: it's only honoured
+        // within a ~72h window of the real time, see 0037's guard trigger.)
+        const eventAt = new Date().toISOString();
         const input: ClockEventInsert = {
           org_id: orgId,
           staff_profile_id: data.profile.id,
           type,
           method,
+          event_at: eventAt,
           shift_id: view.shift?.id ?? null,
           location_name: activeLocation?.name ?? null,
           latitude: position?.latitude ?? null,
@@ -304,18 +311,18 @@ export function ClockInPage(): JSX.Element {
           accuracy: position?.accuracy ?? null,
         };
 
-        if (!online) {
+        // Shared by the "known offline" path and the "looked online but
+        // wasn't" path below: reflects the action locally so the button and
+        // status update immediately. The row does not exist in Postgres
+        // until the outbox flushes, so this is a client-only optimistic
+        // event, never read back from the server.
+        const queueOffline = async (): Promise<void> => {
           await enqueue('clock', input);
-          // Reflects the action locally so the button and status update
-          // immediately. The row does not exist in Postgres until the outbox
-          // flushes, so this is a client-only optimistic event, never read back
-          // from the server.
           const stamp = new Date().toISOString();
           const optimistic = {
             id: `pending-${stamp}`,
             created_at: stamp,
             updated_at: stamp,
-            event_at: stamp,
             synced: false,
             ...input,
           } as ClockEvent;
@@ -327,20 +334,38 @@ export function ClockInPage(): JSX.Element {
           showSuccess(
             `${ACTION_LABEL[type]} saved offline. It will sync automatically when you're back online.`,
           );
+        };
+
+        if (!online) {
+          await queueOffline();
           return;
         }
 
-        const created = await recordClockEvent(input);
-        setData((current) => ({
-          ...current,
-          latest: created,
-          events: [...current.events, created],
-        }));
-        showSuccess(
-          geofenceNote
-            ? `${ACTION_LABEL[type]} recorded, ${geofenceNote}.`
-            : `${ACTION_LABEL[type]} recorded.`,
-        );
+        try {
+          const created = await recordClockEvent(input);
+          setData((current) => ({
+            ...current,
+            latest: created,
+            events: [...current.events, created],
+          }));
+          showSuccess(
+            geofenceNote
+              ? `${ACTION_LABEL[type]} recorded, ${geofenceNote}.`
+              : `${ACTION_LABEL[type]} recorded.`,
+          );
+        } catch (err) {
+          // `navigator.onLine` said we had a connection, but the request
+          // still failed the way a dropped one does (captive portal,
+          // associated-but-dead wifi — routine on a ward). Queue it rather
+          // than just showing an error: the header's own documented design
+          // is that a genuinely failed network write queues instead of being
+          // lost, and until now only the `!online` branch above did that.
+          if (classifyFailure(err) === 'transient') {
+            await queueOffline();
+            return;
+          }
+          throw err;
+        }
       } catch (err) {
         reportError(err, { area: 'clock:submit' });
         showError(`Could not ${ACTION_LABEL[type].toLowerCase()}. Please try again.`);
@@ -482,8 +507,8 @@ export function ClockInPage(): JSX.Element {
         onSecondaryAction={onSecondary}
         busy={submitting}
         actionExtra={picker}
-        schedule={view.schedule}
-        onViewFullSchedule={() => void navigate('/app/schedule')}
+        online={online}
+        thisWeekRows={view.thisWeekRows}
         activity={view.activity}
         onViewAllActivity={() => void navigate('/app/timesheets')}
         weekly={view.weekly}

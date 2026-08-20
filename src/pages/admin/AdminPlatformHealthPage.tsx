@@ -12,6 +12,12 @@ import { Sparkline, TrendChart } from '@/components/ui/TrendChart';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { runHealthChecks } from '@/services/platformHealthService';
 import {
+  getHealthSummary,
+  getQueueDepths,
+  recordHealthSample,
+  type HealthSummaryRow,
+} from '@/services/platformFactsService';
+import {
   formatLatency,
   overallStatus,
   statusLabel,
@@ -19,21 +25,14 @@ import {
   type HealthStatus,
 } from '@/lib/platformHealth';
 import {
-  DEMO_API_P95,
-  DEMO_API_P95_TREND,
   DEMO_AUTH_SUCCESS,
-  DEMO_BACKGROUND_JOBS,
   DEMO_ERROR_RATE,
   DEMO_ERROR_RATE_CHANGE,
   DEMO_LATENCY_LABELS,
   DEMO_LATENCY_P50,
   DEMO_LATENCY_P95,
   DEMO_LATENCY_P99,
-  DEMO_QUEUE_DEPTH,
-  DEMO_QUEUE_HINT,
   DEMO_SERVICE_ROWS,
-  DEMO_UPTIME,
-  DEMO_UPTIME_TARGET,
   type DemoServiceRow,
 } from '@/lib/adminOverviewDemo';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
@@ -99,6 +98,10 @@ export function AdminPlatformHealthPage(): JSX.Element {
   const [ranAt, setRanAt] = useState<Date | null>(null);
   const [watching, setWatching] = useState(false);
   const [history, setHistory] = useState<Map<string, number[]>>(new Map());
+  const [summary, setSummary] = useState<HealthSummaryRow[]>([]);
+  const [queues, setQueues] = useState<
+    { queue: string; queued: number; failed: number }[]
+  >([]);
 
   const runRef = useRef<() => Promise<void>>(async () => {});
 
@@ -107,6 +110,29 @@ export function AdminPlatformHealthPage(): JSX.Element {
     const results = await runHealthChecks();
     setChecks(results);
     setRanAt(new Date());
+
+    // Store what was measured. Until this existed, every sample in the table
+    // came from the seed and carried `source = 'manual'`, so the uptime figure
+    // was arithmetic over rows a human inserted. A console probe is a real
+    // measurement from one browser, and is stored saying so.
+    for (const check of results) {
+      if (check.configuredOnly) continue;
+      void recordHealthSample(
+        check.name,
+        check.status === 'operational' || check.status === 'degraded'
+          ? check.status
+          : 'down',
+        check.latencyMs ?? null,
+        'console',
+      ).catch(() => undefined);
+    }
+
+    void getHealthSummary()
+      .then(setSummary)
+      .catch(() => setSummary([]));
+    void getQueueDepths()
+      .then(setQueues)
+      .catch(() => setQueues([]));
     setHistory((prev) => {
       const next = new Map(prev);
       for (const check of results) {
@@ -141,6 +167,32 @@ export function AdminPlatformHealthPage(): JSX.Element {
   useRegisterConsoleRefresh(refresh);
 
   const live = useMemo(() => checks.filter((c) => !c.configuredOnly), [checks]);
+
+  /**
+   * The measured figures, over the samples this console and any scheduled
+   * probe have recorded. Null where nothing has been sampled: an uptime of
+   * 100% over zero observations is the most flattering possible reading of
+   * having measured nothing.
+   */
+  const measured = useMemo(() => {
+    const withLatency = summary.filter((s) => s.p95_ms !== null);
+    const slowest = withLatency.reduce<HealthSummaryRow | null>(
+      (worst, row) =>
+        worst === null || (row.p95_ms ?? 0) > (worst.p95_ms ?? 0) ? row : worst,
+      null,
+    );
+    const totalSamples = summary.reduce((t, s) => t + (s.samples_24h ?? 0), 0);
+    const totalOk = summary.reduce((t, s) => t + (s.ok_24h ?? 0), 0);
+    return {
+      p95: slowest?.p95_ms ?? null,
+      p95Service: slowest?.service ?? null,
+      samples: totalSamples,
+      uptime:
+        totalSamples === 0 ? null : Math.round((totalOk / totalSamples) * 10000) / 100,
+      queued: queues.reduce((t, q) => t + q.queued, 0),
+      failed: queues.reduce((t, q) => t + q.failed, 0),
+    };
+  }, [summary, queues]);
   const overall = overallStatus(live);
 
   return (
@@ -179,9 +231,11 @@ export function AdminPlatformHealthPage(): JSX.Element {
             }
           />
           <StatTile
-            label="API p95"
-            value={DEMO_API_P95}
-            chart={<Sparkline values={DEMO_API_P95_TREND} colour="#388FD4" />}
+            label="Slowest p95"
+            value={
+              measured.p95 === null ? 'Not sampled' : `${Math.round(measured.p95)} ms`
+            }
+            hint={measured.p95Service ?? 'No samples in the last 24 hours'}
           />
           <StatTile
             label="Error rate"
@@ -198,13 +252,25 @@ export function AdminPlatformHealthPage(): JSX.Element {
           <StatTile label="Auth success" value={DEMO_AUTH_SUCCESS} />
           <StatTile
             label="Queue depth"
-            value={DEMO_QUEUE_DEPTH.toLocaleString('en-GB')}
-            hint={<span className="font-semibold text-danger">{DEMO_QUEUE_HINT}</span>}
+            value={measured.queued.toLocaleString('en-GB')}
+            hint={
+              measured.failed > 0 ? (
+                <span className="font-semibold text-danger">
+                  {measured.failed} failed
+                </span>
+              ) : (
+                'Nothing failed'
+              )
+            }
           />
           <StatTile
-            label="Uptime, 30 days"
-            value={DEMO_UPTIME}
-            hint={<span className="font-semibold text-danger">{DEMO_UPTIME_TARGET}</span>}
+            label="Uptime, 24 hours"
+            value={measured.uptime === null ? 'Not sampled' : `${measured.uptime}%`}
+            hint={
+              measured.samples === 0
+                ? 'Open this screen to take a sample'
+                : `${measured.samples} samples`
+            }
           />
         </TileGrid>
 
@@ -293,10 +359,24 @@ export function AdminPlatformHealthPage(): JSX.Element {
             </Panel>
 
             <Panel title="Background jobs">
-              <MeterRows
-                caption="Background job queues"
-                rows={DEMO_BACKGROUND_JOBS.map((job) => ({ ...job }))}
-              />
+              {queues.length === 0 ? (
+                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                  Nothing is queued or running.
+                </p>
+              ) : (
+                <MeterRows
+                  caption="Background job queues"
+                  rows={queues.map((q) => ({
+                    label: q.queue,
+                    value: q.queued,
+                    display:
+                      q.failed > 0
+                        ? `${q.queued} queued, ${q.failed} failed`
+                        : `${q.queued} queued`,
+                    colour: q.failed > 0 ? '#E0A030' : undefined,
+                  }))}
+                />
+              )}
             </Panel>
           </div>
         </div>

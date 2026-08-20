@@ -75,7 +75,7 @@ export function ResetPasswordPage(): JSX.Element {
 
   return (
     <main className="grid min-h-screen place-items-center px-6">
-      <Card className="w-full max-w-sm animate-fade-up">
+      <Card className="w-full max-w-sm animate-fade-up motion-reduce:animate-none">
         <h1 className="mb-1 font-display text-2xl text-content dark:text-content-dark">
           Set a new password
         </h1>

@@ -94,6 +94,13 @@ const PricingPage = lazyPage('PricingPage', () => import('@/pages/PricingPage'))
 const ResourcesPage = lazyPage('ResourcesPage', () => import('@/pages/ResourcesPage'));
 const AboutPage = lazyPage('AboutPage', () => import('@/pages/AboutPage'));
 const ContactPage = lazyPage('ContactPage', () => import('@/pages/ContactPage'));
+const PrivacyPage = lazyPage('PrivacyPage', () => import('@/pages/legal/PrivacyPage'));
+const TermsPage = lazyPage('TermsPage', () => import('@/pages/legal/TermsPage'));
+const CookiesPage = lazyPage('CookiesPage', () => import('@/pages/legal/CookiesPage'));
+const AccessibilityPage = lazyPage(
+  'AccessibilityPage',
+  () => import('@/pages/legal/AccessibilityPage'),
+);
 
 const OnboardingPage = lazyPage('OnboardingPage', () => import('@/pages/OnboardingPage'));
 const OnboardingPreviewPage = devPage(
@@ -104,13 +111,9 @@ const RotaBuilderPreviewPage = devPage(
   'RotaBuilderPreviewPage',
   () => import('@/pages/RotaBuilderPreviewPage'),
 );
-const SchedulePreviewPage = devPage(
-  'SchedulePreviewPage',
-  () => import('@/pages/SchedulePreviewPage'),
-);
 const TimesheetsPreviewPage = devPage(
   'TimesheetsPreviewPage',
-  () => import('@/pages/TimesheetsPreviewPage'),
+  () => import('@/pages/app/TimesheetsPreviewPage'),
 );
 const ClockInPreviewPage = devPage(
   'ClockInPreviewPage',
@@ -118,11 +121,11 @@ const ClockInPreviewPage = devPage(
 );
 const StaffPreviewPage = devPage(
   'StaffPreviewPage',
-  () => import('@/pages/StaffPreviewPage'),
+  () => import('@/pages/app/StaffPreviewPage'),
 );
 const StaffProfilePreviewPage = devPage(
   'StaffProfilePreviewPage',
-  () => import('@/pages/StaffProfilePreviewPage'),
+  () => import('@/pages/app/StaffProfilePreviewPage'),
 );
 const LocationsPreviewPage = devPage(
   'LocationsPreviewPage',
@@ -132,17 +135,17 @@ const AnnouncementsPreviewPage = devPage(
   'AnnouncementsPreviewPage',
   () => import('@/pages/AnnouncementsPreviewPage'),
 );
-const SwapsPreviewPage = devPage(
-  'SwapsPreviewPage',
-  () => import('@/pages/SwapsPreviewPage'),
-);
 const ReportsPreviewPage = devPage(
   'ReportsPreviewPage',
   () => import('@/pages/ReportsPreviewPage'),
 );
-const LeavePreviewPage = devPage(
-  'LeavePreviewPage',
-  () => import('@/pages/LeavePreviewPage'),
+const AppShellPreviewPage = devPage(
+  'AppShellPreviewPage',
+  () => import('@/pages/AppShellPreviewPage'),
+);
+const DashboardLivePreviewPage = devPage(
+  'DashboardLivePreviewPage',
+  () => import('@/pages/app/DashboardLivePreviewPage'),
 );
 const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
@@ -179,6 +182,7 @@ const NotificationsPage = lazyPage(
   () => import('@/pages/app/NotificationsPage'),
 );
 const ReportsPage = lazyPage('ReportsPage', () => import('@/pages/app/ReportsPage'));
+const HelpPage = lazyPage('HelpPage', () => import('@/pages/app/HelpPage'));
 const DashboardPage = lazyPage(
   'DashboardPage',
   () => import('@/pages/app/DashboardPage'),
@@ -186,6 +190,10 @@ const DashboardPage = lazyPage(
 const DashboardPreviewPage = devPage(
   'DashboardPreviewPage',
   () => import('@/pages/app/DashboardPreviewPage'),
+);
+const SchedulePreviewPage = devPage(
+  'SchedulePreviewPage',
+  () => import('@/pages/app/SchedulePreviewPage'),
 );
 const StaffPage = lazyPage('StaffPage', () => import('@/pages/app/StaffPage'));
 const StaffProfilePage = lazyPage(
@@ -305,6 +313,10 @@ const AdminSupportPage = lazyPage(
   'AdminSupportPage',
   () => import('@/pages/admin/AdminSupportPage'),
 );
+const AdminSupportCaseDetailPage = lazyPage(
+  'AdminSupportCaseDetailPage',
+  () => import('@/pages/admin/AdminSupportCaseDetailPage'),
+);
 const AdminAuditPage = lazyPage(
   'AdminAuditPage',
   () => import('@/pages/admin/AdminAuditPage'),
@@ -385,6 +397,10 @@ export function App(): JSX.Element {
                     <Route path="/resources" element={<ResourcesPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/legal/privacy" element={<PrivacyPage />} />
+                    <Route path="/legal/terms" element={<TermsPage />} />
+                    <Route path="/legal/cookies" element={<CookiesPage />} />
+                    <Route path="/legal/accessibility" element={<AccessibilityPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -442,7 +458,7 @@ export function App(): JSX.Element {
                           path="/rota-builder-preview"
                           element={<RotaBuilderPreviewPage />}
                         />
-                        {/* design/published-schedule.png's numbers. */}
+                        {/* Renders the real ManagerSchedule/StaffSchedule; ?role=staff switches branch. */}
                         <Route
                           path="/schedule-preview"
                           element={<SchedulePreviewPage />}
@@ -476,6 +492,10 @@ export function App(): JSX.Element {
                           />
                           <Route path="billing" element={<AdminBillingPage />} />
                           <Route path="support" element={<AdminSupportPage />} />
+                          <Route
+                            path="support/:caseId"
+                            element={<AdminSupportCaseDetailPage />}
+                          />
                           <Route
                             path="support-access"
                             element={<AdminSupportAccessPage />}
@@ -523,12 +543,23 @@ export function App(): JSX.Element {
                           path="/announcements-preview"
                           element={<AnnouncementsPreviewPage />}
                         />
-                        {/* design/Swap-Request.png's rows, counts and rail. */}
-                        <Route path="/swaps-preview" element={<SwapsPreviewPage />} />
                         {/* design/Reports-Dashboard.png's catalogue and figures. */}
                         <Route path="/reports-preview" element={<ReportsPreviewPage />} />
-                        {/* design/Leave.png's numbers. */}
-                        <Route path="/leave-preview" element={<LeavePreviewPage />} />
+                        {/* The whole organisation workspace shell (rail, org
+                        switcher, topbar, mobile tab bar) against a stubbed
+                        OrgContext, with the real *PreviewPage components
+                        routed inside it. See AppShellPreviewPage.
+                        ?role=owner|manager|staff switches the stubbed role. */}
+                        <Route path="/app-preview/*" element={<AppShellPreviewPage />} />
+                        {/* The real DashboardPage, hooks and service calls
+                        included, against a fetch-intercepted Supabase client
+                        with realistic edge-case fixtures (null settings, a
+                        null holiday_allowance, an orphaned leave request, a
+                        null department_id). See DashboardLivePreviewPage. */}
+                        <Route
+                          path="/dashboard-live-preview"
+                          element={<DashboardLivePreviewPage />}
+                        />
                       </>
                     )}
                     {/* Public on purpose: an invitee has no account yet, and
@@ -594,27 +625,17 @@ export function App(): JSX.Element {
                           </RequireRole>
                         }
                       />
-                      {/* Second half of the same workspace, on its own URL so it
-                      can be linked and refreshed into. */}
+                      {/* SCREENS.locations folded department and staffing-
+                      minimum management into per-card dialogs on the one
+                      screen (LocationsPage), rather than a second tab or a
+                      per-site detail route. Both old URLs still resolve. */}
                       <Route
                         path="locations/departments"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="locations">
-                            <LocationsPage />
-                          </RequireRole>
-                        }
+                        element={<Navigate to="/app/locations" replace />}
                       />
-                      {/* §34's location detail. Same workspace with one site
-                      opened rather than a parallel screen. See LocationsPage.
-                      Declared after `locations/departments` so that literal
-                      path is never captured as a :locationId. */}
                       <Route
                         path="locations/:locationId"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="locations">
-                            <LocationsPage />
-                          </RequireRole>
-                        }
+                        element={<Navigate to="/app/locations" replace />}
                       />
                       <Route
                         path="rota"
@@ -641,6 +662,7 @@ export function App(): JSX.Element {
                       <Route path="overtime" element={<OvertimePage />} />
                       <Route path="announcements" element={<AnnouncementsPage />} />
                       <Route path="notifications" element={<NotificationsPage />} />
+                      <Route path="help" element={<HelpPage />} />
                       <Route
                         path="reports"
                         element={
@@ -754,6 +776,10 @@ export function App(): JSX.Element {
                         }
                       />
                       <Route path="support" element={<AdminSupportPage />} />
+                      <Route
+                        path="support/:caseId"
+                        element={<AdminSupportCaseDetailPage />}
+                      />
                       <Route path="support-access" element={<AdminSupportAccessPage />} />
                       <Route path="audit" element={<AdminAuditPage />} />
                       <Route

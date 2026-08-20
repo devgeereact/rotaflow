@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LifeBuoy, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LogOut, MoreVertical, ShieldCheck } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOrg } from '@/hooks/useOrg';
+import { footerNavItemsForRole } from '@/lib/sidebarNav';
 import { cn } from '@/lib/utils';
 
 function initialsFor(label: string): string {
@@ -13,53 +15,183 @@ function initialsFor(label: string): string {
     .join('');
 }
 
+const MENU_ITEM =
+  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark';
+
+/**
+ * The small "..." trigger next to the profile card holding Settings/My
+ * Profile, Help & Support, Sign out and (platform admins only) Platform
+ * console. Everything that used to be its own always-visible row now lives
+ * behind one click, so the rail reads as nav links plus one identity card,
+ * not a stack of secondary rows competing with the primary nav above it.
+ *
+ * Opens upward (`bottom-full`): the trigger sits at the very bottom of the
+ * viewport, so a panel opening downward like `ui/Popover` would run off
+ * screen.
+ */
+function AccountMenu({
+  role,
+  isPlatformAdmin,
+  collapsed,
+  onNavigate,
+  onSignOut,
+}: {
+  role: Parameters<typeof footerNavItemsForRole>[0];
+  isPlatformAdmin: boolean;
+  collapsed: boolean;
+  onNavigate?: () => void;
+  onSignOut: () => void;
+}): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: PointerEvent): void => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const closeAndNavigate = (): void => {
+    setOpen(false);
+    onNavigate?.();
+  };
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account options"
+        title="Account options"
+        className="rounded-lg p-1.5 text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+      >
+        <MoreVertical size={16} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label="Account options"
+          className={cn(
+            'absolute bottom-full z-30 mb-2 w-52 space-y-0.5 rounded-xl border border-surface-border bg-surface p-1.5 shadow-lg',
+            'dark:border-surface-border-dark dark:bg-surface-dark',
+            collapsed ? 'left-0' : 'right-0',
+          )}
+        >
+          {footerNavItemsForRole(role).map(({ label, icon: Icon, to }) => (
+            <Link
+              key={label}
+              to={to}
+              role="menuitem"
+              onClick={closeAndNavigate}
+              className={MENU_ITEM}
+            >
+              <Icon size={18} aria-hidden="true" />
+              {label}
+            </Link>
+          ))}
+
+          {isPlatformAdmin && (
+            <Link
+              to="/admin"
+              role="menuitem"
+              onClick={closeAndNavigate}
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-danger hover:bg-danger/5 dark:hover:text-danger"
+            >
+              <ShieldCheck size={18} aria-hidden="true" />
+              Platform console
+            </Link>
+          )}
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onSignOut();
+            }}
+            className={cn(MENU_ITEM, 'w-full')}
+          >
+            <LogOut size={18} aria-hidden="true" />
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface SidebarFooterProps {
   collapsed: boolean;
-  /** Omitted on the mobile drawer, which has no collapsed state to toggle. */
-  onToggleCollapsed?: () => void;
   onNavigate?: () => void;
 }
 
 /**
- * Profile, help and the collapse control, pinned to the bottom of the sidebar.
- *
- * The profile block is a link to `/app/account`, not a menu: the header's
- * `UserMenu` already owns sign-out and account actions, and two dropdowns
- * doing the same thing on one screen is how a nav ends up with the same
- * destination behind three different affordances.
- *
- * Help routes to `/contact` on the public site rather than opening a support
- * widget. There is no helpdesk product wired up, and the contact page reaches
- * the same people. See `ContactPage` for why that is a real destination and
- * not a placeholder.
+ * The profile identity card, pinned to the bottom, plus the account menu
+ * that hides behind it — see `AccountMenu` above for what moved off the
+ * always-visible rail and why. The collapse toggle isn't here either; it
+ * moved to the top of the rail next to the logo, see `Sidebar.tsx`.
  */
 export function SidebarFooter({
   collapsed,
-  onToggleCollapsed,
   onNavigate,
 }: SidebarFooterProps): JSX.Element {
-  const { user } = useSupabaseAuth();
-  const { role } = useOrg();
+  const { user, signOut } = useSupabaseAuth();
+  const { role, isPlatformAdmin } = useOrg();
 
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '';
 
+  if (collapsed) {
+    return (
+      <div className="mt-auto flex flex-col items-center gap-1 border-t border-surface-border px-3 py-3 dark:border-surface-border-dark">
+        <AccountMenu
+          role={role}
+          isPlatformAdmin={isPlatformAdmin}
+          collapsed
+          onNavigate={onNavigate}
+          onSignOut={() => void signOut()}
+        />
+        <Link
+          to="/app/account"
+          onClick={onNavigate}
+          title={`${displayName}. Your profile`}
+          className="flex items-center justify-center rounded-xl px-0 py-2 hover:bg-primary-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
+            {initialsFor(displayName)}
+          </span>
+          <span className="sr-only">{displayName}. Your profile</span>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-auto border-t border-surface-border px-3 py-3 dark:border-surface-border-dark">
-      <Link
-        to="/app/account"
-        onClick={onNavigate}
-        title={collapsed ? `${displayName}. Your profile` : undefined}
-        className={cn(
-          'flex items-center gap-2.5 rounded-xl px-2 py-2 text-left',
-          'hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-dark',
-          collapsed && 'justify-center px-0',
-        )}
-      >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
-          {initialsFor(displayName)}
-        </span>
-        {!collapsed && (
+      <div className="flex items-center gap-1">
+        <Link
+          to="/app/account"
+          onClick={onNavigate}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-primary-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
+            {initialsFor(displayName)}
+          </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-content dark:text-content-dark">
               {displayName}
@@ -68,46 +200,15 @@ export function SidebarFooter({
               {role ?? 'No role'}
             </span>
           </span>
-        )}
-        {collapsed && <span className="sr-only">{displayName}. Your profile</span>}
-      </Link>
-
-      <Link
-        to="/contact"
-        onClick={onNavigate}
-        title={collapsed ? 'Help and support' : undefined}
-        className={cn(
-          'mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
-          'text-content-muted hover:bg-surface hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-          'dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark',
-          collapsed && 'justify-center px-0',
-        )}
-      >
-        <LifeBuoy size={18} aria-hidden="true" />
-        {collapsed ? <span className="sr-only">Help and support</span> : 'Help & Support'}
-      </Link>
-
-      {onToggleCollapsed && (
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={cn(
-            'mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
-            'text-content-muted hover:bg-surface hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-            'dark:text-content-muted-dark dark:hover:bg-surface-dark dark:hover:text-content-dark',
-            collapsed && 'justify-center px-0',
-          )}
-        >
-          {collapsed ? (
-            <PanelLeftOpen size={18} aria-hidden="true" />
-          ) : (
-            <PanelLeftClose size={18} aria-hidden="true" />
-          )}
-          {!collapsed && 'Collapse'}
-        </button>
-      )}
+        </Link>
+        <AccountMenu
+          role={role}
+          isPlatformAdmin={isPlatformAdmin}
+          collapsed={false}
+          onNavigate={onNavigate}
+          onSignOut={() => void signOut()}
+        />
+      </div>
     </div>
   );
 }

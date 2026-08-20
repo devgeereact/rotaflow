@@ -20,20 +20,23 @@ import {
 } from '@/services/platformService';
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import { sessionStatus, type SupportAccessSession } from '@/lib/supportAccess';
-import { monthlyGrowth } from '@/lib/platformOverview';
+import { monthlyChurnCounts, monthlyGrowth } from '@/lib/platformOverview';
 import {
-  demoChurnTrend,
-  DEMO_PUBLISHED_ROTAS_TREND,
   DEMO_SECTIONS,
   DEMO_SERVICES,
-  DEMO_USERS_TREND,
   type DemoActivityTone,
   type DemoServiceState,
 } from '@/lib/adminOverviewDemo';
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
 import { formatMoney } from '@/lib/money';
-import { collectedByMonth, monthlyRecurringPence, revenueByPlan } from '@/lib/revenue';
+import { downloadCsv } from '@/lib/csv';
+import {
+  collectedByMonth,
+  monthlyRecurringPence,
+  revenueByPlan,
+  revenueChurnForMonth,
+} from '@/lib/revenue';
 import { openCases, urgentOpenCases } from '@/lib/supportMetrics';
 import { healthBreakdown, tenantsActiveWithin } from '@/lib/tenantHealth';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
@@ -133,24 +136,27 @@ const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
  *
  * ## Which figures are real
  *
- * Organisation counts, the twelve-month growth series, memberships,
- * subscriptions, published rotas, open support-access sessions and the audit
- * feed all come from the database.
+ * Organisation counts, the twelve-month growth series, total users, memberships,
+ * subscriptions, revenue and the plan mix, published rotas, the support queue,
+ * open support-access sessions, the audit feed and churn (both the "Churned"
+ * count series on the growth chart and the revenue-churn percentage in its
+ * caption) all come from the database.
  *
  * ## Which are not
  *
- * Active users today, revenue, the named plan tiers, organisation health,
- * per-service uptime history and support cases are **placeholder values** from
- * `src/lib/adminOverviewDemo.ts`, at the owner's request, so the screen can be
- * finished to its intended shape before the schema can supply them. Every one
- * of them is a metric this deployment genuinely cannot compute. The reasons
- * are recorded in that file, alongside how to remove it. The notice at the foot
- * of this screen names them, so nobody reads a placeholder as a measurement.
+ * The per-service status list is a **placeholder value** from
+ * `src/lib/adminOverviewDemo.ts`: a browser cannot observe another user's
+ * service latency. The reason is recorded in that file, alongside how to
+ * remove it.
+ * The notice at the foot of this screen names it, so nobody reads a
+ * placeholder as a measurement — every stat tile on this page shows only real
+ * figures, with no invented trend line or comparison hidden behind one.
  */
 export function AdminOverviewPage(): JSX.Element {
   const [data, setData] = useState<Snapshot | null>(null);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [periodMonths, setPeriodMonths] = useState(12);
 
   useEffect(() => {
     let active = true;
@@ -173,7 +179,7 @@ export function AdminOverviewPage(): JSX.Element {
           listAllOrganisations(),
           listAllProfiles(),
           listAllSubscriptions(),
-          listPlatformAuditLogs(8),
+          listPlatformAuditLogs(4),
           countMembershipsByOrg(),
           listSupportAccessSessions(20),
           countPublishedRotas(),
@@ -211,11 +217,12 @@ export function AdminOverviewPage(): JSX.Element {
   const derived = useMemo(() => {
     if (!data) return null;
     const now = new Date();
-    const growth = monthlyGrowth(data.organisations, now);
+    const growth = monthlyGrowth(data.organisations, now, periodMonths);
     const active = data.organisations.filter((o) => o.status === 'active').length;
     return {
       growth,
       active,
+      churnCounts: monthlyChurnCounts(data.subscriptions, now, periodMonths),
       activeShare: data.organisations.length
         ? `${((active / data.organisations.length) * 100).toFixed(1)}% of all tenants`
         : 'No tenants yet',
@@ -229,7 +236,13 @@ export function AdminOverviewPage(): JSX.Element {
         data.subscriptions,
         new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
       ),
-      revenueTrend: collectedByMonth(data.invoices, 12, now).map((t) =>
+      churnThisMonth: revenueChurnForMonth(
+        data.subscriptions,
+        new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
+        new Date(now.getFullYear(), now.getMonth(), 1),
+        new Date(now.getFullYear(), now.getMonth() + 1, 1),
+      ),
+      revenueTrend: collectedByMonth(data.invoices, periodMonths, now).map((t) =>
         Math.round(t.pence / 100),
       ),
       planMix: revenueByPlan(
@@ -249,7 +262,20 @@ export function AdminOverviewPage(): JSX.Element {
       openSessions: data.sessions.filter((s) => sessionStatus(s, now) === 'active')
         .length,
     };
-  }, [data]);
+  }, [data, periodMonths]);
+
+  const exportReport = useCallback(() => {
+    if (!derived) return;
+    downloadCsv(
+      `platform-overview_${new Date().toISOString().slice(0, 10)}`,
+      derived.growth,
+      [
+        { label: 'Month', value: (g) => g.label },
+        { label: 'Total organisations', value: (g) => String(g.total) },
+        { label: 'New organisations', value: (g) => String(g.created) },
+      ],
+    );
+  }, [derived]);
 
   return (
     <AdminPage
@@ -257,12 +283,19 @@ export function AdminOverviewPage(): JSX.Element {
       description="Organisations, users, subscriptions and platform performance across every RotaFlow tenant."
       action={
         <>
-          <Select aria-label="Reporting period" className="w-auto" defaultValue="12">
+          <Select
+            aria-label="Reporting period"
+            className="w-auto"
+            value={String(periodMonths)}
+            onChange={(e) => setPeriodMonths(Number(e.target.value))}
+          >
             <option value="12">Last 12 months</option>
-            <option value="3">Last 90 days</option>
-            <option value="1">Last 30 days</option>
+            <option value="3">Last 3 months</option>
+            <option value="1">Last month</option>
           </Select>
-          <Button variant="secondary">Export report</Button>
+          <Button variant="secondary" onClick={exportReport} disabled={!derived}>
+            Export report
+          </Button>
         </>
       }
     >
@@ -278,7 +311,7 @@ export function AdminOverviewPage(): JSX.Element {
               value={data.organisations.length.toLocaleString('en-GB')}
               hint={
                 <>
-                  <span className="font-semibold text-success">
+                  <span className="font-semibold text-success-ink">
                     +{derived.newThisMonth}
                   </span>{' '}
                   this month
@@ -301,7 +334,6 @@ export function AdminOverviewPage(): JSX.Element {
               value={data.profiles.length.toLocaleString('en-GB')}
               hint={`${data.profiles.filter((p) => p.is_platform_admin).length} platform administrators`}
               to="/admin/users"
-              chart={<Sparkline values={DEMO_USERS_TREND} />}
             />
             <StatTile
               label="Tenants active today"
@@ -317,7 +349,6 @@ export function AdminOverviewPage(): JSX.Element {
               label="Published rotas"
               value={data.publishedRotas.toLocaleString('en-GB')}
               hint="Across every tenant"
-              chart={<Sparkline values={DEMO_PUBLISHED_ROTAS_TREND} colour="#1EA06B" />}
             />
             <StatTile
               label="Monthly recurring revenue"
@@ -332,7 +363,11 @@ export function AdminOverviewPage(): JSX.Element {
             <Panel
               className="lg:col-span-2"
               title="Platform growth"
-              actions={<Badge tone="neutral">Last 12 months</Badge>}
+              actions={
+                <Badge tone="neutral">
+                  {periodMonths === 1 ? 'Last month' : `Last ${periodMonths} months`}
+                </Badge>
+              }
             >
               <TrendChart
                 title="Organisations created and total, by month"
@@ -351,7 +386,7 @@ export function AdminOverviewPage(): JSX.Element {
                   },
                   {
                     name: 'Churned',
-                    values: demoChurnTrend(derived.growth.map((g) => g.total)),
+                    values: derived.churnCounts,
                     colour: '#D94A3A',
                     lineOnly: true,
                   },
@@ -360,8 +395,10 @@ export function AdminOverviewPage(): JSX.Element {
               />
               <p className="mt-1 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                 New organisations are counted in the month they signed up, and the current
-                month is partial. Active and new are real; churn is a placeholder. Nothing
-                records the month an organisation left.
+                month is partial. Churned counts cancellations by month
+                {derived.churnThisMonth !== null &&
+                  ` — ${derived.churnThisMonth}% of MRR lost so far this month`}
+                .
               </p>
             </Panel>
 
@@ -411,8 +448,19 @@ export function AdminOverviewPage(): JSX.Element {
           </div>
 
           {/* Three equal columns that stretch to the tallest, as the reference
-              lays them out, `h-full` on each panel rather than a fixed height,
-              so the row grows with whichever card has most in it. */}
+              lays them out, `h-full` on each panel rather than a fixed height.
+
+              Which makes the tallest card everyone else's problem. The audit
+              feed asked for eight entries and its rows run to two lines each,
+              so it stood 529px tall and set a 584px row. System health drew
+              six services in 265px and left 202 empty below them; Support drew
+              its tiles and cases in 313 and left 154. The short cards looked
+              broken, and the cause was in neither of them.
+
+              Four entries sits the feed between the other two: measured bodies
+              are now 265, 296 and 313 in a 368px row, where they were 265, 529
+              and 313 in a 584px one. The rest of the log was never the point of
+              an overview panel carrying an "Audit log" link in its corner. */}
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
             <Panel
               className="h-full"

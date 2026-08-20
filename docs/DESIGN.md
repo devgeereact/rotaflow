@@ -32,20 +32,20 @@ one with a `dark:` variant using the dark column, e.g.
 
 ### Colour. Brand & neutrals
 
-| Token               | Tailwind class                                              | Light hex | Dark hex  | Use                                                                                     |
-| ------------------- | ----------------------------------------------------------- | --------- | --------- | --------------------------------------------------------------------------------------- |
-| Background (canvas) | `bg-background` / `dark:bg-background-dark`                 | `#F5F7FA` | `#0B1220` | App canvas, behind cards                                                                |
-| Surface (default)   | `bg-surface` / `dark:bg-surface-dark`                       | `#FFFFFF` | `#111A2E` | Cards, sheets, panels, rota cells                                                       |
-| Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#FAFBFC` | `#15203A` | Nested panels, hover fills, sidebar                                                     |
+| Token               | Tailwind class                                              | Light hex | Dark hex  | Use                                                                                    |
+| ------------------- | ----------------------------------------------------------- | --------- | --------- | -------------------------------------------------------------------------------------- |
+| Background (canvas) | `bg-background` / `dark:bg-background-dark`                 | `#F5F7FA` | `#0B1220` | App canvas, behind cards                                                               |
+| Surface (default)   | `bg-surface` / `dark:bg-surface-dark`                       | `#FFFFFF` | `#111A2E` | Cards, sheets, panels, rota cells                                                      |
+| Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#FAFBFC` | `#15203A` | Nested panels, hover fills, sidebar                                                    |
 | Surface rail        | `bg-surface-rail` / `dark:bg-surface-rail-dark`             | `#FAFBFC` | `#0E1729` | Navigation rail. Light matches `surface-subtle`; dark deliberately does not. See below |
-| Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#E3E6EA` | `#22304D` | Card/control outlines                                                                   |
-| Divider             | `border-divider` / `dark:border-divider-dark`               | `#F2F4F6` | `#1B2740` | Subtle in-list separators (lighter than border)                                         |
-| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0` | `#3B6FE0` | Brand, CTAs, active state, links                                                        |
-| Primary foreground  | `text-primary-fg`                                           | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid primary fill                                                      |
+| Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#E3E6EA` | `#22304D` | Card/control outlines                                                                  |
+| Divider             | `border-divider` / `dark:border-divider-dark`               | `#F2F4F6` | `#1B2740` | Subtle in-list separators (lighter than border)                                        |
+| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0` | `#3B6FE0` | Brand, CTAs, active state, links                                                       |
+| Primary foreground  | `text-primary-fg`                                           | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid primary fill                                                     |
 | Primary wash        | `bg-primary-wash` / `dark:bg-primary-wash-dark`             | `#EEF3FD` | `#182848` | Hovered/selected rows and nav items, **not** `primary/10`, see below                   |
-| Secondary           | `text-secondary`                                            | `#6B7280` | `#94A3B8` | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name)  |
-| Text primary        | `text-content` / `dark:text-content-dark`                   | `#16191F` | `#F8FAFC` | Headings, body                                                                          |
-| Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#6B7280` | `#94A3B8` | Captions, hints, secondary text                                                         |
+| Secondary           | `text-secondary`                                            | `#6B7280` | `#94A3B8` | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name) |
+| Text primary        | `text-content` / `dark:text-content-dark`                   | `#16191F` | `#F8FAFC` | Headings, body                                                                         |
+| Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#6B7280` | `#94A3B8` | Captions, hints, secondary text                                                        |
 
 ### Colour. Semantic (operational status)
 
@@ -188,14 +188,14 @@ fallback when Framer Motion isn't warranted.
   transparent, `text-primary`, no border. Text-only affordance.
 - Density matters: the rota builder is information-dense by design; keep chrome
   quiet so the schedule itself is the focus.
-- **Sidebar nav, active item:** soft-tint highlight, `bg-primary/10
-text-primary` (`dark:bg-primary/15`), same `bg-X/10 text-X` idiom already
-  used for status badges (`AvailabilityPage`, `LeavePage`, `SwapsPage`). Not a
-  white pill and not a left-border accent, both were tried earlier and
-  replaced (2026-07-31) for reading as one-off rather than "this app's
-  highlight colour." `src/components/layout/Sidebar.tsx`'s `LINK_ACTIVE` is
-  the single source of truth; don't reintroduce a different active-state
-  treatment there without updating this note.
+- **Sidebar nav, active item:** solid fill, `bg-primary text-primary-fg`, per
+  `docs/ORGANISATION_WORKSPACE.html`'s `.nav a[aria-current="page"]`
+  (2026-08-06), the organisation workspace shell reference. Superseded the
+  earlier soft-tint idiom (`bg-primary/10 text-primary`, same `bg-X/10 text-X`
+  treatment as status badges), which itself had replaced a white pill and a
+  left-border accent (2026-07-31). `src/components/layout/Sidebar.tsx`'s
+  `LINK_ACTIVE` is the single source of truth; don't reintroduce a different
+  active-state treatment there without updating this note.
 
 ## 7. Reference assets
 

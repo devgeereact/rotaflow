@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Plus, Upload } from 'lucide-react';
+import { Copy, Download, Plus, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -19,23 +19,20 @@ import {
   AdminLoading,
   AdminPage,
 } from '@/components/admin/AdminPage';
+import { AdminCreateOrgModal } from '@/components/admin/AdminCreateOrgModal';
 import {
   countLocationsByOrg,
   countMembershipsByOrg,
   listAllOrganisations,
   listAllSubscriptions,
 } from '@/services/platformService';
+import type { CreatedOrganisationInvite } from '@/services/platformService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
+import { useToast } from '@/hooks/useToast';
 import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
+import { healthBreakdown } from '@/lib/tenantHealth';
 import { downloadCsv } from '@/lib/csv';
-import {
-  demoOrgFacts,
-  DEMO_ORGS_AT_RISK,
-  DEMO_ORGS_AT_RISK_HINT,
-  DEMO_ORGS_NEW_CHANGE,
-  DEMO_ORGS_TRIAL,
-  DEMO_ORGS_TRIAL_HINT,
-} from '@/lib/adminOverviewDemo';
+import { demoOrgFacts } from '@/lib/adminOverviewDemo';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, OrganisationStatus, Subscription } from '@/types';
 
@@ -47,7 +44,8 @@ type OrgSortKey =
   | 'plan'
   | 'status'
   | 'usage'
-  | 'activity';
+  | 'activity'
+  | 'actions';
 
 const STATUS_TONE: Record<OrganisationStatus, 'success' | 'warning' | 'neutral'> = {
   active: 'success',
@@ -67,6 +65,13 @@ export function AdminOrganisationsPage(): JSX.Element {
   const [status, setStatus] = useState('');
   const [plan, setPlan] = useState('');
   const [sort, setSort] = useState<DataTableSort<OrgSortKey> | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createdInvite, setCreatedInvite] = useState<{
+    orgName: string;
+    email: string;
+    url: string;
+  } | null>(null);
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -99,6 +104,29 @@ export function AdminOrganisationsPage(): JSX.Element {
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
+  const handleOrgCreated = useCallback(
+    (result: CreatedOrganisationInvite, orgName: string, email: string) => {
+      setCreateModalOpen(false);
+      setCreatedInvite({ orgName, email, url: result.acceptUrl });
+      setReloadKey((k) => k + 1);
+      showSuccess(`${orgName} created. Copy the invite link and send it to ${email}.`);
+    },
+    [showSuccess],
+  );
+
+  const copyInviteLink = useCallback(
+    async (url: string): Promise<void> => {
+      try {
+        await navigator.clipboard.writeText(url);
+        showSuccess('Invitation link copied.');
+      } catch (err) {
+        reportError(err, { area: 'admin:create-org:copy-link' });
+        showError('Could not copy. Select the link and copy it manually.');
+      }
+    },
+    [showError, showSuccess],
+  );
+
   const subByOrg = useMemo(() => {
     const map = new Map<string, Subscription>();
     for (const sub of subscriptions) map.set(sub.org_id, sub);
@@ -125,16 +153,36 @@ export function AdminOrganisationsPage(): JSX.Element {
     if (!organisations) return null;
     const byStatus = (s: OrganisationStatus): number =>
       organisations.filter((o) => o.status === s).length;
-    const growth = monthlyGrowth(organisations, new Date(), 1);
+    const growth = monthlyGrowth(organisations, new Date(), 2);
+    const thisMonth = growth[growth.length - 1]?.created ?? 0;
+    const lastMonth = growth[growth.length - 2]?.created ?? 0;
     return {
       total: organisations.length,
       active: byStatus('active'),
       suspended: byStatus('suspended'),
       archived: byStatus('archived'),
-      newThisMonth: growth[0]?.created ?? 0,
+      newThisMonth: thisMonth,
+      // Real, not `DEMO_ORGS_NEW_CHANGE`: both months come from the same
+      // `created_at` column the growth chart on `/admin` reads, so this and
+      // that screen cannot disagree. Nothing to compare against when last
+      // month had zero organisations, so the hint says so rather than /0.
+      newThisMonthChange:
+        lastMonth === 0
+          ? thisMonth > 0
+            ? 'No organisations last month'
+            : null
+          : `${thisMonth >= lastMonth ? '+' : ''}${(((thisMonth - lastMonth) / lastMonth) * 100).toFixed(0)}% vs last month`,
       plans: [...new Set(organisations.map((o) => planOf(o)))].sort(),
+      // From `subscriptions.status` and `organisations.last_activity_at`, the
+      // same two columns the Overview's health bands read, so the two screens
+      // agree about which tenants are in trouble.
+      trialing: subscriptions.filter((sub) => sub.status === 'trialing').length,
+      atRisk:
+        healthBreakdown(organisations, subscriptions, new Date()).find(
+          (band) => band.band === 'at_risk',
+        )?.count ?? 0,
     };
-  }, [organisations, planOf]);
+  }, [organisations, planOf, subscriptions]);
 
   const visible = useMemo(() => {
     if (!organisations) return [];
@@ -166,8 +214,13 @@ export function AdminOrganisationsPage(): JSX.Element {
         case 'usage':
           return (facts(a).usage - facts(b).usage) * direction;
         case 'activity':
+          // The real column, not created_at: `activity` sorts the same field
+          // the "Last activity" cell now shows and the "At risk" tile above
+          // already reads (tenantHealth.ts) — three places that used to be
+          // free to disagree about which organisations look neglected.
           return (
-            (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) *
+            ((a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0) -
+              (b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0)) *
             direction
           );
         default:
@@ -243,9 +296,11 @@ export function AdminOrganisationsPage(): JSX.Element {
         width: 'w-[10%]',
         sortable: true,
         cell: (org) => (
-          <Badge tone={STATUS_TONE[org.status as OrganisationStatus] ?? 'neutral'} dot>
-            {humaniseKey(org.status)}
-          </Badge>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <Badge tone={STATUS_TONE[org.status as OrganisationStatus] ?? 'neutral'} dot>
+              {humaniseKey(org.status)}
+            </Badge>
+          </span>
         ),
       },
       {
@@ -273,14 +328,20 @@ export function AdminOrganisationsPage(): JSX.Element {
         label: 'Last activity',
         width: 'w-[11%]',
         sortable: true,
+        // The real organisations.last_activity_at, not the demo fixture's
+        // fabricated string — a tenant the "At risk" tile above counts as
+        // never-active (this same column, tenantHealth.ts) used to show
+        // "today" one column across, and the two could never agree.
         cell: (org) => (
           <span className="whitespace-nowrap text-content-muted dark:text-content-muted-dark">
-            {facts(org).lastActivity}
+            {org.last_activity_at
+              ? new Date(org.last_activity_at).toLocaleDateString('en-GB')
+              : 'Never'}
           </span>
         ),
       },
       {
-        key: 'organisation',
+        key: 'actions',
         label: 'Actions',
         width: 'w-[18%]',
         align: 'right',
@@ -321,6 +382,12 @@ export function AdminOrganisationsPage(): JSX.Element {
   // Exports what is on screen, not the whole table: the filters above are the
   // question being asked, and an export that quietly ignores them is the wrong
   // answer to it.
+  // Industry and Usage % are deliberately NOT here — both come from
+  // demoOrgFacts, a fixture keyed by row position, not real data (see
+  // `facts` above). AdminSubscriptionsPage's export already omits its own
+  // demo columns for the same reason; this file's own on-screen table
+  // discloses them as placeholders, but a CSV leaves the product and lands
+  // in someone's real reporting with no such disclosure attached.
   const exportCsv = useCallback(() => {
     downloadCsv(`organisations_${new Date().toISOString().slice(0, 10)}`, visible, [
       { label: 'Name', value: (org) => org.name },
@@ -329,11 +396,10 @@ export function AdminOrganisationsPage(): JSX.Element {
       { label: 'Status', value: (org) => org.status },
       { label: 'Members', value: (org) => members.get(org.id) ?? 0 },
       { label: 'Sites', value: (org) => sites.get(org.id) ?? 0 },
-      { label: 'Industry', value: (org) => facts(org).industry },
-      { label: 'Usage %', value: (org) => facts(org).usage },
+      { label: 'Last activity', value: (org) => org.last_activity_at ?? 'Never' },
       { label: 'Created', value: (org) => org.created_at },
     ]);
-  }, [visible, members, sites, planOf, facts]);
+  }, [visible, members, sites, planOf]);
 
   return (
     <AdminPage
@@ -349,17 +415,42 @@ export function AdminOrganisationsPage(): JSX.Element {
             <Download size={15} aria-hidden="true" />
             Export
           </Button>
-          {/* Creating a tenant from the console is not built: an organisation is
-              created by its owner during onboarding, which also provisions the
-              owner membership by trigger. A console form would have to
-              reimplement that and pick an owner who has not signed up. */}
-          <Button disabled title="Organisations are created by their owner at sign-up">
+          <Button onClick={() => setCreateModalOpen(true)}>
             <Plus size={15} aria-hidden="true" />
             Add organisation
           </Button>
         </>
       }
     >
+      {createdInvite && (
+        <div className="mb-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <h2 className="mb-1 font-medium text-content dark:text-content-dark">
+            Invitation link for {createdInvite.email}
+          </h2>
+          <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
+            {createdInvite.orgName} is created. Send this link to {createdInvite.email} so
+            they can accept and become its owner. It is shown once — RotaFlow stores only
+            a hash of the token, so it cannot be retrieved again.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+              {createdInvite.url}
+            </code>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void copyInviteLink(createdInvite.url)}
+            >
+              <Copy size={14} aria-hidden="true" className="mr-1.5" />
+              Copy
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setCreatedInvite(null)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
+
       {failed ? (
         <AdminError onRetry={retry} />
       ) : !organisations || !summary ? (
@@ -375,7 +466,15 @@ export function AdminOrganisationsPage(): JSX.Element {
               value={summary.active.toLocaleString('en-GB')}
               hint={`${((summary.active / summary.total) * 100).toFixed(1)}%`}
             />
-            <StatTile label="Trial" value={DEMO_ORGS_TRIAL} hint={DEMO_ORGS_TRIAL_HINT} />
+            <StatTile
+              label="Trialing"
+              value={summary.trialing}
+              hint={
+                summary.trialing === 0
+                  ? 'No trial running'
+                  : 'Subscription not yet active'
+              }
+            />
             <StatTile
               label="Suspended"
               value={summary.suspended}
@@ -389,14 +488,20 @@ export function AdminOrganisationsPage(): JSX.Element {
             />
             <StatTile
               label="At risk"
-              value={DEMO_ORGS_AT_RISK}
-              hint={DEMO_ORGS_AT_RISK_HINT}
+              value={summary.atRisk}
+              hint="No activity in 30 days, or never"
             />
             <StatTile
               label="New this month"
               value={summary.newThisMonth}
               hint={
-                <span className="font-semibold text-success">{DEMO_ORGS_NEW_CHANGE}</span>
+                summary.newThisMonthChange ? (
+                  <span className="font-semibold text-success">
+                    {summary.newThisMonthChange}
+                  </span>
+                ) : (
+                  'No prior month to compare'
+                )
               }
             />
           </TileGrid>
@@ -454,6 +559,12 @@ export function AdminOrganisationsPage(): JSX.Element {
           </Card>
         </div>
       )}
+
+      <AdminCreateOrgModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreated={handleOrgCreated}
+      />
     </AdminPage>
   );
 }

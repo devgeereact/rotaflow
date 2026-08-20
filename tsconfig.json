@@ -28,5 +28,12 @@
     /* Path alias: import from "@/..." — mappings resolve relative to this file */
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts", "tailwind.config.ts"]
+  "include": [
+    "src",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "tailwind.config.ts",
+    "e2e",
+    "playwright.config.ts"
+  ]
 }

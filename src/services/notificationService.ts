@@ -18,6 +18,22 @@ export async function listMyNotifications(userId: string): Promise<Notification[
   return data ?? [];
 }
 
+/**
+ * True unread count, not `listMyNotifications(...).filter(n => !n.read_at).length`
+ * — that list is capped at 50 rows, so a person with more unread than that
+ * had the header badge silently undercount. `head: true` asks Postgres for
+ * the count without returning (or capping) any rows.
+ */
+export async function countMyUnreadNotifications(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('read_at', null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function markNotificationRead(id: string): Promise<void> {
   const { error } = await supabase
     .from('notifications')

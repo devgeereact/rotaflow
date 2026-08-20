@@ -21,9 +21,7 @@ import {
 } from '@/lib/supportAccess';
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
 import {
-  averageCsat,
   awaitingFirstResponse,
-  csatResponses,
   formatMinutes,
   medianFirstResponseMinutes,
   medianResolutionMinutes,
@@ -83,24 +81,15 @@ const WIDTHS = [
  * `/admin/support`. The support desk, built to the shape of
  * `docs/PLATFORM_CONSOLE.html`.
  *
- * ## The case queue is placeholder; the access log beside it is not
- *
- * There is no `support_cases` table and no inbound channel writing to one, so
- * every case, priority, assignment, response target and satisfaction score on
- * this screen comes from `src/lib/adminOverviewDemo.ts`. What *is* real sits at
- * the top and on `/admin/support-access`: who is inside a customer's data right
- * now, under what reason, for how much longer.
- *
- * That distinction is on the screen rather than in this comment, because "we
- * have support cases" is a sentence someone repeats to a customer.
- *
  * ## What this screen used to claim, and why it was wrong
  *
- * It said time-boxed support access "is not built" and that
- * `support_access_sessions` "exists in no migration". Both were true when it was
- * written and both stopped being true at 0019, which created the table, added
- * `request_support_access` and made the customer's opt-out a database-enforced
- * precondition.
+ * Two claims here have gone stale as the schema caught up, so both are
+ * recorded rather than silently deleted: it said time-boxed support access "is
+ * not built" and `support_access_sessions` "exists in no migration", both true
+ * when written and both stopped being true at 0019. It then said the case
+ * queue was placeholder from `src/lib/adminOverviewDemo.ts`, true until the
+ * `support_cases` table (0024) and `listSupportCases` replaced it — see the
+ * "Where these cases come from" callout on the screen for what is real today.
  */
 export function AdminSupportPage(): JSX.Element {
   const [organisations, setOrganisations] = useState<Organisation[] | null>(null);
@@ -148,8 +137,10 @@ export function AdminSupportPage(): JSX.Element {
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
-  const orgByName = useMemo(
-    () => new Map((organisations ?? []).map((o) => [o.name, o])),
+  // Keyed by id, not name: two organisations can share a display name, and a
+  // name lookup would link a case to the wrong tenant's admin page.
+  const orgById = useMemo(
+    () => new Map((organisations ?? []).map((o) => [o.id, o])),
     [organisations],
   );
 
@@ -183,8 +174,11 @@ export function AdminSupportPage(): JSX.Element {
       awaiting: awaitingFirstResponse(allCases),
       firstResponse: medianFirstResponseMinutes(allCases),
       resolution: medianResolutionMinutes(allCases),
-      csat: averageCsat(allCases),
-      csatCount: csatResponses(allCases),
+      resolved30: allCases.filter(
+        (c) =>
+          c.resolved_at !== null &&
+          Date.parse(c.resolved_at) > Date.now() - 30 * 86_400_000,
+      ).length,
     }),
     [allCases],
   );
@@ -242,14 +236,15 @@ export function AdminSupportPage(): JSX.Element {
               value={formatMinutes(counts.resolution)}
               hint="Across resolved cases"
             />
+            {/* No CSAT tile. `rate_support_case` exists and no tenant-side
+                screen calls it, so the only ratings that can ever appear are
+                the ones the seed wrote. A satisfaction score nobody can submit
+                is a dashboard telling you something false about your own
+                support. It returns with the rating form. */}
             <StatTile
-              label="CSAT"
-              value={counts.csat === null ? '-' : `${counts.csat} / 5`}
-              hint={
-                counts.csatCount === 0
-                  ? 'Nobody has rated a case'
-                  : `${counts.csatCount} response${counts.csatCount === 1 ? '' : 's'}`
-              }
+              label="Resolved, 30 days"
+              value={counts.resolved30}
+              hint="Closed or resolved"
             />
           </TileGrid>
 
@@ -334,8 +329,12 @@ export function AdminSupportPage(): JSX.Element {
               <table className="w-full table-fixed border-collapse text-sm">
                 <caption className="sr-only">Support cases</caption>
                 <colgroup>
-                  {WIDTHS.map((w) => (
-                    <col key={w} className={w} />
+                  {WIDTHS.map((w, i) => (
+                    // Keyed by index, not `w`: WIDTHS repeats values
+                    // (two 11% columns, two 12%), so the value collides.
+                    // The column order is fixed and matches COLUMNS, so
+                    // position is a stable, correct key here.
+                    <col key={i} className={w} />
                   ))}
                 </colgroup>
                 <thead>
@@ -362,14 +361,19 @@ export function AdminSupportPage(): JSX.Element {
                     </tr>
                   ) : (
                     cases.map((item) => {
-                      const org = item.orgName ? orgByName.get(item.orgName) : undefined;
+                      const org = item.org_id ? orgById.get(item.org_id) : undefined;
                       return (
                         <tr
                           key={item.id}
                           className="border-b border-divider last:border-0 dark:border-divider-dark"
                         >
                           <td className="px-3 py-2.5 pl-4 font-mono text-xs tabular-nums text-content dark:text-content-dark">
-                            {item.reference}
+                            <Link
+                              to={`/admin/support/${item.id}`}
+                              className="hover:underline"
+                            >
+                              {item.reference}
+                            </Link>
                           </td>
                           <td className="px-3 py-2.5">
                             <Badge tone={PRIORITY_TONE[item.priority] ?? 'neutral'} dot>
@@ -378,9 +382,12 @@ export function AdminSupportPage(): JSX.Element {
                             </Badge>
                           </td>
                           <td className="px-3 py-2.5">
-                            <span className="block truncate font-medium text-content dark:text-content-dark">
+                            <Link
+                              to={`/admin/support/${item.id}`}
+                              className="block truncate font-medium text-content hover:text-primary hover:underline dark:text-content-dark"
+                            >
                               {item.subject}
-                            </span>
+                            </Link>
                             <span className="block truncate text-xs text-content-muted dark:text-content-muted-dark">
                               {item.category}
                             </span>

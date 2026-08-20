@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, BellOff, Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  AlarmClock,
+  Bell,
+  BellOff,
+  Calendar,
+  Check,
+  Info,
+  Megaphone,
+  Repeat2,
+  Umbrella,
+  type LucideIcon,
+} from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useWebPush } from '@/hooks/useWebPush';
 import { useToast } from '@/hooks/useToast';
@@ -15,6 +27,28 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import type { Notification } from '@/types';
+
+/**
+ * `notifications.type` is free text (no check constraint, docs/SCHEMA.md §3),
+ * written by whichever Inngest function dispatched the row, so this can never
+ * be exhaustive. It covers the values `send-notification`'s callers use today,
+ * keyed to the same icons the sidebar already uses
+ * for the equivalent screen (Umbrella=Leave, Repeat2=Swaps, etc.), and falls
+ * back to a plain bell for anything else rather than guessing.
+ */
+const TYPE_META: Record<string, { icon: LucideIcon; tone: string }> = {
+  rota_published: { icon: Calendar, tone: 'bg-primary/10 text-primary' },
+  leave_approved: { icon: Umbrella, tone: 'bg-success/10 text-success' },
+  leave_declined: { icon: Umbrella, tone: 'bg-danger/10 text-danger' },
+  swap_request: { icon: Repeat2, tone: 'bg-info/10 text-info' },
+  swap_approved: { icon: Repeat2, tone: 'bg-success/10 text-success' },
+  announcement: { icon: Megaphone, tone: 'bg-warning/10 text-warning' },
+  shift_reminder: { icon: AlarmClock, tone: 'bg-info/10 text-info' },
+};
+const DEFAULT_TYPE_META = {
+  icon: Bell,
+  tone: 'bg-surface-subtle text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark',
+};
 
 /**
  * `/app/notifications`. Read + mark-read against the real `notifications`
@@ -120,7 +154,7 @@ export function NotificationsPage(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
           Notifications
         </h1>
@@ -148,6 +182,17 @@ export function NotificationsPage(): JSX.Element {
           )}
         </div>
       </div>
+      <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
+        Reached from the bell. There is no sidebar entry, by design. Manage what you get
+        notified about in{' '}
+        <Link
+          to="/app/account/preferences"
+          className="font-medium text-primary hover:underline"
+        >
+          Notification preferences
+        </Link>
+        .
+      </p>
 
       {loading ? (
         <Card>
@@ -162,42 +207,65 @@ export function NotificationsPage(): JSX.Element {
       ) : (
         <Card className="p-0">
           <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
-            {notifications.map((notification) => (
-              <li
-                key={notification.id}
-                className={cn(
-                  'flex items-start justify-between gap-3 p-4',
-                  !notification.read_at && 'bg-primary/5',
-                )}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-content dark:text-content-dark">
-                    {notification.title}
-                  </p>
-                  {notification.body && (
-                    <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                      {notification.body}
-                    </p>
+            {notifications.map((notification) => {
+              const { icon: TypeIcon, tone } =
+                TYPE_META[notification.type] ?? DEFAULT_TYPE_META;
+              return (
+                <li
+                  key={notification.id}
+                  className={cn(
+                    'flex items-start justify-between gap-3 p-4',
+                    !notification.read_at && 'bg-primary/5',
                   )}
-                  <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-                    {formatDistanceToNow(new Date(notification.created_at), {
-                      addSuffix: true,
-                    })}
-                  </p>
-                </div>
-                {!notification.read_at && (
-                  <button
-                    type="button"
-                    onClick={() => void handleMarkRead(notification.id)}
-                    className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                >
+                  <span
+                    className={cn(
+                      'grid h-9 w-9 shrink-0 place-items-center rounded-full',
+                      tone,
+                    )}
                   >
-                    Mark read
-                  </button>
-                )}
-              </li>
-            ))}
+                    <TypeIcon size={16} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-content dark:text-content-dark">
+                      {notification.title}
+                    </p>
+                    {notification.body && (
+                      <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                        {notification.body}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+                      {formatDistanceToNow(new Date(notification.created_at), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
+                  {!notification.read_at && (
+                    <button
+                      type="button"
+                      onClick={() => void handleMarkRead(notification.id)}
+                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                    >
+                      Mark read
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </Card>
+      )}
+
+      {webPush.status !== 'granted' && (
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-info/30 bg-info/5 p-3.5 text-sm text-content-muted dark:text-content-muted-dark">
+          <Info size={16} className="mt-0.5 shrink-0 text-info" aria-hidden="true" />
+          <p>
+            Push notifications need permission from the browser. Without it, notifications
+            still arrive in this list and by email — nothing is lost, it just is not
+            instant.
+          </p>
+        </div>
       )}
     </div>
   );

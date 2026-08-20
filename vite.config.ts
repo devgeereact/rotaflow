@@ -1,8 +1,29 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import checker from 'vite-plugin-checker';
+import { visualizer } from 'rollup-plugin-visualizer';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import pkg from './package.json';
+
+// The Sentry *release* identifier, distinct from `__APP_VERSION__` below:
+// `pkg.version` has been "1.0.0" since the project's first commit and isn't
+// bumped per deploy, so it can't answer "which build introduced this error".
+// The commit this was built from can. Falls back to `pkg.version` only if
+// git genuinely isn't available (a source tarball with no `.git`, say) —
+// not for a dirty tree or a detached HEAD, both of which still resolve fine.
+function resolveSentryRelease(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return pkg.version;
+  }
+}
+const sentryRelease = resolveSentryRelease();
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,6 +39,9 @@ export default defineConfig({
   // Single source of truth for the version the splash/about surfaces show.
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    // Read by src/lib/sentry.ts, so every error carries the commit it shipped
+    // from — see `resolveSentryRelease` above for why this isn't __APP_VERSION__.
+    __SENTRY_RELEASE__: JSON.stringify(sentryRelease),
   },
 
   resolve: {
@@ -59,7 +83,7 @@ export default defineConfig({
         name: 'RotaFlow',
         short_name: 'RotaFlow',
         description:
-          'Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.',
+          'UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops.',
         theme_color: '#3B6FE0',
         background_color: '#FFFFFF',
         display: 'standalone',
@@ -121,6 +145,50 @@ export default defineConfig({
         enabled: false, // set true to debug the SW in `npm run dev`
       },
     }),
+
+    // Live TS + ESLint errors in the dev overlay, instead of only finding out
+    // at `npm run build` / CI. `enableBuild: false` because `npm run build`
+    // already runs a separate `tsc --noEmit` — checking twice would just
+    // slow the build down for the same answer.
+    checker({
+      typescript: true,
+      eslint: { lintCommand: 'eslint "./src/**/*.{ts,tsx}"' },
+      enableBuild: false,
+    }),
+
+    // Bundle breakdown, opt-in only: `ANALYZE=true npm run build`. Writes
+    // stats.html at the repo root (gitignored, never shipped) rather than
+    // running on every build.
+    ...(process.env.ANALYZE
+      ? [
+          visualizer({
+            filename: 'stats.html',
+            open: true,
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
+
+    // Sourcemap upload for de-minified Sentry stack traces. `build.sourcemap`
+    // above is 'hidden' — maps are emitted but never referenced or shipped;
+    // this uploads them to Sentry then deletes them from `dist/`, so the only
+    // way to read them is a Sentry account with access to this project, not
+    // an unauthenticated GET like the old `sourcemap: true` was doing.
+    //
+    // No-ops without SENTRY_AUTH_TOKEN, so a build with no token configured
+    // (every local build until this is set up) behaves exactly as before.
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [
+          sentryVitePlugin({
+            org: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT,
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            release: { name: sentryRelease },
+            sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.js.map'] },
+          }),
+        ]
+      : []),
   ],
 
   build: {

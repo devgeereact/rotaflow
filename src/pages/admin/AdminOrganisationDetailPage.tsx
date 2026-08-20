@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Ban, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Ban, Copy, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, Panel } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 import { PanelTabs } from '@/components/ui/PanelTabs';
+import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
-import {
-  DEMO_ORG_MRR,
-  DEMO_ORG_PROFILE,
-  DEMO_ORG_STORAGE,
-} from '@/lib/adminOverviewDemo';
+import { DEMO_ORG_PROFILE, DEMO_ORG_STORAGE } from '@/lib/adminOverviewDemo';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { SuspendOrgModal } from '@/components/admin/SuspendOrgModal';
 import {
@@ -31,6 +30,8 @@ import {
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import { getOrgSmtpSettings } from '@/services/smtpSettingsService';
 import { listGdprRequests } from '@/services/gdprRequestService';
+import { createInvite } from '@/services/inviteService';
+import { isValidEmail } from '@/lib/email';
 import {
   formatRemaining,
   millisecondsRemaining,
@@ -44,6 +45,8 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
+import { getOrgMrrPence } from '@/services/billingService';
+import { formatMoney } from '@/lib/money';
 import type {
   AuditLog,
   Department,
@@ -82,6 +85,16 @@ const TABS = [
   { value: 'audit', label: 'Audit' },
   { value: 'data', label: 'Data' },
 ] as const satisfies readonly { value: Tab; label: string }[];
+
+/** The tabs that read tenant rows rather than the customer register. */
+// Only `locations` (and its `departments` sub-view) actually routes through
+// `is_org_member()`/`has_org_role()`, the two functions 0028 gated on a
+// session. `users` reads `memberships`, reopened to any platform admin by
+// 0031; `usage` reads `platform_tenant_counts()`, a SECURITY DEFINER function
+// that counts past RLS; `data` reads `gdpr_requests`, gated on platform role
+// alone (0020). Listing them here would train an operator to open a session
+// for a tab that was never going to ask for one.
+const TENANT_TABS = new Set(['locations']);
 
 const STATUS_TONE = {
   active: 'success',
@@ -142,6 +155,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   const { showError, showSuccess } = useToast();
 
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [orgMrrPence, setOrgMrrPence] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -165,12 +179,27 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   );
   const [busy, setBusy] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
+  // Re-invite affordance for an org stranded with zero members (the invite
+  // that would have made it an owner expired, or was never accepted). Kept
+  // as local state on this page rather than a new component — a single
+  // email input and button doesn't earn its own file.
+  const [reinviteEmail, setReinviteEmail] = useState('');
+  const [reinviting, setReinviting] = useState(false);
+  const [reinviteError, setReinviteError] = useState<string | null>(null);
+  const [reinviteResult, setReinviteResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    setReinviteEmail('');
+    setReinviteError(null);
+    setReinviteResult(null);
+  }, [organisationId]);
 
   useEffect(() => {
     let active = true;
     setFailed(false);
     setNotFound(false);
     setDetail(null);
+    setOrgMrrPence(null);
     void (async () => {
       try {
         const organisation = await getOrganisation(organisationId);
@@ -189,6 +218,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           sessions,
           smtp,
           gdpr,
+          mrrPence,
         ] = await Promise.all([
           listOrgMembers(organisationId),
           listOrgLocations(organisationId),
@@ -206,6 +236,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           listGdprRequests(200).then((all) =>
             all.filter((r) => r.orgId === organisationId),
           ),
+          getOrgMrrPence(organisationId),
         ]);
         if (!active) return;
         setDetail({
@@ -220,6 +251,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           smtp,
           gdpr,
         });
+        setOrgMrrPence(mrrPence);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'admin:organisation-detail' });
@@ -283,6 +315,41 @@ export function AdminOrganisationDetailPage(): JSX.Element {
     if (!ok) return;
     await applyStatus('active');
   }, [detail, confirm, applyStatus]);
+
+  const handleReinvite = useCallback(async (): Promise<void> => {
+    const trimmed = reinviteEmail.trim();
+    if (!isValidEmail(trimmed)) {
+      setReinviteError('That does not look like a valid email address.');
+      return;
+    }
+    setReinviting(true);
+    setReinviteError(null);
+    try {
+      const invite = await createInvite(organisationId, trimmed, 'owner');
+      setReinviteResult(invite.acceptUrl);
+      showSuccess(`Owner invite created for ${trimmed}. Copy the link and share it.`);
+    } catch (err) {
+      reportError(err, { area: 'admin:organisation-detail:reinvite-owner' });
+      setReinviteError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Could not create that invitation. Please try again.',
+      );
+    } finally {
+      setReinviting(false);
+    }
+  }, [organisationId, reinviteEmail, showSuccess]);
+
+  const copyReinviteLink = useCallback(async (): Promise<void> => {
+    if (!reinviteResult) return;
+    try {
+      await navigator.clipboard.writeText(reinviteResult);
+      showSuccess('Invitation link copied.');
+    } catch (err) {
+      reportError(err, { area: 'admin:organisation-detail:copy-reinvite-link' });
+      showError('Could not copy. Select the link and copy it manually.');
+    }
+  }, [reinviteResult, showError, showSuccess]);
 
   const memberColumns = useMemo<DataTableColumn<OrgMemberRow>[]>(
     () => [
@@ -376,6 +443,12 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   // The tenant's own owner, not a platform administrator. This is who a
   // support conversation actually starts with.
   const owner = detail.members.find((m) => m.role === 'owner') ?? null;
+
+  // Counts come from a definer function and are always available; the tenant
+  // rows behind the tabs do not. When the count says there are staff and the
+  // rows came back empty, the gate is what is closed rather than the tenant
+  // being empty.
+  const gateClosed = detail.usage.locations > 0 && detail.locations.length === 0;
 
   return (
     <AdminPage
@@ -488,8 +561,8 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               />
               <StatTile
                 label="MRR"
-                value={DEMO_ORG_MRR}
-                hint={<span className="text-warning">Placeholder</span>}
+                value={orgMrrPence === null ? '—' : formatMoney(orgMrrPence)}
+                hint="Active and past due"
               />
             </TileGrid>
 
@@ -562,15 +635,119 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                       )}
                     </div>
                   </>
-                ) : (
+                ) : detail.members.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                      No member of this organisation holds the owner role, but it does
+                      have other staff. Promote one of them to owner from the Users tab
+                      instead of sending a new invite — this organisation already has
+                      members, so it no longer qualifies for a first-owner invite.
+                    </p>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setTab('users')}
+                      title="Open the Users tab, filtered to this organisation"
+                    >
+                      View in users
+                    </Button>
+                  </div>
+                ) : !canManagePlatformConfig ? (
                   <p className="text-sm text-content-muted dark:text-content-muted-dark">
                     No member of this organisation holds the owner role, so there is
-                    nobody to name as the primary contact.
+                    nobody to name as the primary contact. This usually means the original
+                    owner invite expired, or was never accepted. Ask a platform owner or
+                    administrator to send a new one.
                   </p>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                      No member of this organisation holds the owner role, so there is
+                      nobody to name as the primary contact. This usually means the
+                      original owner invite expired, or was never accepted. Send a new one
+                      below.
+                    </p>
+                    {reinviteResult ? (
+                      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+                        <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
+                          Invitation link created. Send it to the new owner &mdash; it is
+                          shown once and cannot be retrieved again.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+                            {reinviteResult}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => void copyReinviteLink()}
+                          >
+                            <Copy size={14} aria-hidden="true" className="mr-1.5" />
+                            Copy
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setReinviteResult(null);
+                              setReinviteEmail('');
+                            }}
+                          >
+                            Done
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <Label htmlFor="reinvite-owner-email">Owner&rsquo;s email</Label>
+                        <div className="mt-1 flex flex-wrap items-start gap-2">
+                          <Input
+                            id="reinvite-owner-email"
+                            type="email"
+                            value={reinviteEmail}
+                            onChange={(e) => setReinviteEmail(e.target.value)}
+                            placeholder="owner@theircompany.com"
+                            className="min-w-0 flex-1"
+                          />
+                          <Button
+                            onClick={() => void handleReinvite()}
+                            disabled={reinviting}
+                          >
+                            {reinviting ? 'Sending…' : 'Send owner invite'}
+                          </Button>
+                        </div>
+                        {reinviteError && (
+                          <p className="mt-2 text-sm text-danger" role="alert">
+                            {reinviteError}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </Panel>
             </div>
           </div>
+        )}
+
+        {gateClosed && TENANT_TABS.has(tab) && (
+          <Callout tone="info" title="This tab needs an active support session">
+            <p>
+              Since migration 0028 a platform administrator reads a tenant&rsquo;s staff
+              records, rotas, shifts, attendance and leave only through a support access
+              session for that organisation: one with a reason, a case reference and an
+              expiry. Without one this tab is empty because the database refuses the rows,
+              not because the organisation has none.
+            </p>
+            <p>
+              The counts above still work. They come from a function that returns numbers
+              rather than rows, so the size of a tenant is readable without reading who is
+              in it. Request access from{' '}
+              <Link to="/admin/support-access" className="text-primary hover:underline">
+                Support Access
+              </Link>
+              .
+            </p>
+          </Callout>
         )}
 
         {tab === 'users' && (
@@ -643,8 +820,9 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               </p>
             )}
             <p className="mt-4 border-t border-surface-border pt-4 text-sm text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-              No payment provider is integrated, so there are no invoices, payments or
-              amounts to show here, <code>subscriptions</code> records plan state only.
+              MRR above is real, from Stripe billing. This organisation's individual
+              invoices and payment history aren't broken out here — the platform-wide
+              invoice list on <code>/admin/billing</code> covers every org.
             </p>
           </Card>
         )}
@@ -758,14 +936,26 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             <Panel title="Outgoing email (SMTP)">
               {detail.smtp ? (
                 <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-                  <Field label="Host" value={detail.smtp.smtp_host} />
-                  <Field label="Port" value={String(detail.smtp.smtp_port)} />
-                  <Field label="Username" value={detail.smtp.smtp_user} />
-                  <Field label="From address" value={detail.smtp.from_email} />
+                  {/* Every column here is nullable: `org_smtp_settings_safe`
+                      is a view, and a view carries no NOT NULL for the
+                      generator to read. */}
+                  <Field label="Host" value={detail.smtp.smtp_host ?? '-'} />
+                  <Field
+                    label="Port"
+                    value={
+                      detail.smtp.smtp_port === null ? '-' : String(detail.smtp.smtp_port)
+                    }
+                  />
+                  <Field label="Username" value={detail.smtp.smtp_user ?? '-'} />
+                  <Field label="From address" value={detail.smtp.from_email ?? '-'} />
                   <Field label="From name" value={detail.smtp.from_name ?? '-'} />
                   <Field
                     label="Configured"
-                    value={new Date(detail.smtp.updated_at).toLocaleDateString('en-GB')}
+                    value={
+                      detail.smtp.updated_at
+                        ? new Date(detail.smtp.updated_at).toLocaleDateString('en-GB')
+                        : 'Never'
+                    }
                   />
                 </dl>
               ) : (

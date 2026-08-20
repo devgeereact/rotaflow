@@ -14,6 +14,8 @@ interface ShiftChipProps {
   /** Past shifts drop their colour; current and upcoming ones keep it. */
   timeState: ShiftTimeState;
   selected?: boolean;
+  /** A critical, shift-specific insight applies to this shift (double-booking, rest breach, understaffed day). */
+  hasConflict?: boolean;
   onClick?: () => void;
   /**
    * Remove this shift. Omitted for viewers who cannot edit the rota, which is
@@ -54,6 +56,7 @@ export function ShiftChip({
   endTime,
   timeState,
   selected,
+  hasConflict,
   onClick,
   onDelete,
 }: ShiftChipProps): JSX.Element {
@@ -80,13 +83,22 @@ export function ShiftChip({
             'ring-2 ring-success ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
           selected &&
             'ring-2 ring-primary ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+          // Matches the grid legend's "Conflict" swatch: a double-booking,
+          // rest breach or other critical, shift-specific insight.
+          hasConflict &&
+            !selected &&
+            'ring-2 ring-danger ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
           isDragging && 'opacity-40',
         )}
       >
         <span className="block truncate text-[0.68rem] font-semibold leading-4 tracking-tight tabular-nums">
           {startTime}, {endTime}
         </span>
-        <span className="block truncate text-[0.63rem] font-medium leading-4 opacity-80">
+        {/* Not `opacity-80`: the shift-palette `-fg` tokens are already
+            calibrated to read against their own tint at full opacity (see
+            `shiftPalette.ts`); fading it on top dropped several colours
+            under the 4.5:1 minimum. */}
+        <span className="block truncate text-[0.63rem] font-medium leading-4">
           {shiftType?.name ?? 'Shift'}
         </span>
         {timeState === 'live' && (

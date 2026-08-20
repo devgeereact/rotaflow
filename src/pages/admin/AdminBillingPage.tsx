@@ -16,6 +16,7 @@ import { needsAttention, renewalBreakdown } from '@/lib/platformBilling';
 import { monthlyGrowth } from '@/lib/platformOverview';
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
 import { formatMoney, formatMoneyExact, formatMoneyShort } from '@/lib/money';
+import { downloadCsv } from '@/lib/csv';
 import {
   annualRunRatePence,
   averageRevenuePerOrgPence,
@@ -88,12 +89,18 @@ const RENEWAL_COLOUR: Record<string, string> = {
  * invoice from March that is still open is money owed today, and dropping it
  * because the month has passed is how a debt vanishes from a dashboard.
  *
- * ## What is still not here
+ * ## What is here now, and what is still not
  *
- * A payment provider. `invoices.provider` and `provider_ref` exist and nothing
- * writes them, so Credit and Retry are disabled: the row can be marked
- * refunded in this database, but no money moves. Dunning is a described policy
- * rather than a scheduled job.
+ * A payment provider IS connected: Stripe billing (migration 0050) writes
+ * `invoices.provider`/`provider_ref` for real, and `stripe-webhook`
+ * (`supabase/functions/stripe-webhook`) suspends an organisation when Stripe's
+ * dunning (Smart Retries) actually exhausts — that is real code, on this
+ * branch. What is still not here is this *console* driving money through
+ * Stripe: there is no Stripe-side credit-note or invoice-lookup call wired
+ * into View/Credit below, so those stay disabled — a UI-integration gap, not
+ * a "nothing is connected" one. And the dunning-suspension path has not yet
+ * been end-to-end verified against a real Stripe Smart Retries exhaustion
+ * (the code exists; nobody has watched it fire for real).
  */
 export function AdminBillingPage(): JSX.Element {
   const [subscriptions, setSubscriptions] = useState<Subscription[] | null>(null);
@@ -140,6 +147,18 @@ export function AdminBillingPage(): JSX.Element {
     () => new Map(organisations.map((o) => [o.id, o])),
     [organisations],
   );
+
+  const exportReport = useCallback(() => {
+    downloadCsv(`billing-invoices_${new Date().toISOString().slice(0, 10)}`, invoices, [
+      { label: 'Invoice', value: (i) => i.number },
+      { label: 'Organisation', value: (i) => orgById.get(i.org_id)?.name ?? '' },
+      { label: 'Amount', value: (i) => formatMoneyExact(i.amount_pence, i.currency) },
+      { label: 'Status', value: (i) => INVOICE_LABEL[i.status] ?? i.status },
+      { label: 'Issued', value: (i) => i.issued_on },
+      { label: 'Due', value: (i) => i.due_on },
+      { label: 'Paid', value: (i) => i.paid_at ?? '' },
+    ]);
+  }, [invoices, orgById]);
 
   const derived = useMemo(() => {
     if (!subscriptions) return null;
@@ -210,7 +229,15 @@ export function AdminBillingPage(): JSX.Element {
     <AdminPage
       title="Billing and finance"
       description="Platform-wide revenue, invoices and payment recovery."
-      action={<Button variant="secondary">Export report</Button>}
+      action={
+        <Button
+          variant="secondary"
+          onClick={exportReport}
+          disabled={invoices.length === 0}
+        >
+          Export report
+        </Button>
+      }
     >
       {failed ? (
         <AdminError onRetry={retry} />
@@ -388,7 +415,7 @@ export function AdminBillingPage(): JSX.Element {
                                 {['View', 'Credit'].map((label) => (
                                   <span
                                     key={label}
-                                    title="No payment provider is wired up, so nothing can be opened or credited from here"
+                                    title="This console has no Stripe-side lookup or credit action wired in yet, so nothing can be opened or credited from here"
                                     className="cursor-not-allowed rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
                                   >
                                     {label}
@@ -463,8 +490,11 @@ export function AdminBillingPage(): JSX.Element {
               )}
               <p className="mt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                 Marking an invoice past due records the provider&rsquo;s reason and
-                increments its attempt count. Nothing retries a payment on a schedule.
-                Dunning is a policy this console can describe and not yet a job it runs.
+                increments its attempt count. Retries themselves run in Stripe, not here
+                &mdash; Smart Retries and, on exhaustion, an automatic suspension via{' '}
+                <code>stripe-webhook</code> are real code on this branch. Not yet
+                confirmed: watching that suspension actually fire end-to-end against a
+                real exhausted Stripe subscription.
               </p>
             </Panel>
           </div>
@@ -496,9 +526,13 @@ export function AdminBillingPage(): JSX.Element {
                 rows below it.
               </p>
               <p>
-                No payment provider is connected. An invoice can be marked paid, past due
-                or refunded in this database and no money moves, so View and Credit stay
-                disabled and dunning is a described policy rather than a job that runs.
+                A payment provider is connected: Stripe billing writes and updates these
+                rows for real, and dunning suspension (<code>stripe-webhook</code>) is
+                real, deployed code. View and Credit stay disabled because this console
+                has no Stripe-side lookup or credit-note call wired in yet &mdash; that is
+                a UI gap, not an absent provider. And while the dunning-suspension code
+                exists, nobody has yet watched it fire end-to-end against a real Stripe
+                Smart Retries exhaustion.
               </p>
             </Callout>
           </div>

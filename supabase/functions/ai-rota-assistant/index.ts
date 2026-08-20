@@ -18,17 +18,32 @@
 // judgement out of the model is what stops a demo, or a manager, acting on a
 // confidently invented name, date or shortage.
 //
+// AUDIT: every completed suggestion/announcement writes one `audit_logs` row
+// (`ai_assistant.rota_suggestions_generated` / `ai_assistant.announcement_drafted`)
+// via a service-role client used for nothing else — see `auditAiRequest`
+// below for why a service-role write is the correct exception here, not a
+// pattern to copy elsewhere. The row carries the requester, `PROMPT_VERSION`,
+// the model, and (for rota suggestions) the accept/drop counts — the raw
+// material for docs/PRODUCT_TRANSFORMATION_PLAN.md §8.6's invalid-suggestion
+// rate, not yet aggregated into a dashboard anywhere.
+//
+// MODEL FALLBACK: none. `OPENROUTER_MODEL` (default `openai/gpt-4o-mini`) is
+// a single model with no automatic second choice on failure — a failed call
+// returns 502 "temporarily unavailable" to the manager. Explicit, not
+// silently absent: still open work under §8.6.
+//
 // Deploy: `supabase functions deploy ai-rota-assistant`.
 // Secret: `supabase secrets set OPENROUTER_API_KEY=...`.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
+// Set per-request at the top of the `Deno.serve` handler below, once the
+// caller's `Origin` is known. `jsonResponse` reads whatever is here at call
+// time, which is always after that assignment.
+let requestCorsHeaders: Record<string, string> = {};
 
 type Task = 'rota' | 'announcement';
 
@@ -52,7 +67,7 @@ interface RawSuggestion {
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...requestCorsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
@@ -95,6 +110,13 @@ function extractJson(content: string): unknown {
   const raw = fenced ? fenced[1] : content;
   return JSON.parse(raw);
 }
+
+// Bump on any wording change to either prompt below. Carried into every
+// audit row this function writes (`auditAiRequest`), so a suggestion can
+// always be traced back to the exact prompt text that produced it — without
+// this, "we changed the prompt last Tuesday" is unverifiable against what a
+// specific manager actually saw generated.
+const PROMPT_VERSION = 1;
 
 const ROTA_SYSTEM_PROMPT = `You are RotaFlow's rota-drafting assistant for a workforce scheduling app. \
 You suggest shifts for a manager based on real staff data. Never invent staff or shift types, only use \
@@ -148,8 +170,9 @@ Respond with ONLY a single JSON object (no markdown, no commentary outside the J
 }`;
 
 Deno.serve(async (req: Request) => {
+  requestCorsHeaders = corsHeaders(req, ALLOW_HEADERS);
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS });
+    return new Response('ok', { headers: requestCorsHeaders });
   }
 
   try {
@@ -189,6 +212,41 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } },
     );
 
+    // `audit_write` is revoked from `authenticated` on purpose (0027): a
+    // client that could call it directly could forge an audit entry for an
+    // action that never happened. This is the one place in the function that
+    // therefore needs the service-role key rather than the caller's own JWT
+    // — used for nothing else here, and audit logging is best-effort: it
+    // must never turn a successful suggestion into a failed response for the
+    // manager, so every call site below is wrapped and its error only logged.
+    const auditClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    async function auditAiRequest(
+      action: string,
+      metadata: Record<string, unknown>,
+    ): Promise<void> {
+      // try/catch, not just checking the returned `error`: a network-level
+      // failure throws rather than resolving with `{ error }`, and letting
+      // that reach the outer handler would turn an already-successful
+      // suggestion into a 500 for the manager over a logging problem.
+      try {
+        const { error } = await auditClient.rpc('audit_write', {
+          p_org: orgId,
+          p_action: action,
+          p_entity_type: task === 'announcement' ? 'announcement' : 'rota',
+          p_entity_id: null,
+          p_metadata: metadata,
+          p_severity: 'info',
+          p_visibility: 'org',
+        });
+        if (error) console.error('audit_write failed', action, error);
+      } catch (err) {
+        console.error('audit_write threw', action, err);
+      }
+    }
+
     const { data: canManage, error: roleError } = await supabase.rpc('has_org_role', {
       p_org: orgId,
       p_roles: ['owner', 'manager'],
@@ -200,6 +258,14 @@ Deno.serve(async (req: Request) => {
         403,
       );
     }
+
+    // `auditAiRequest` writes via the service-role client, where `auth.uid()`
+    // is null, so `audit_write` cannot fill in the actor itself here the way
+    // it does for a normal user-scoped write. Read the real caller's identity
+    // now, from the JWT-scoped client, and carry it in the metadata instead.
+    const {
+      data: { user: requester },
+    } = await supabase.auth.getUser();
 
     const [
       { data: org },
@@ -383,6 +449,15 @@ Deno.serve(async (req: Request) => {
           502,
         );
       }
+      await auditAiRequest('ai_assistant.announcement_drafted', {
+        requestedBy: requester ? { id: requester.id, email: requester.email } : null,
+        model,
+        promptVersion: PROMPT_VERSION,
+        promptLength: prompt.length,
+        titleLength: title.length,
+        bodyLength: draftBody.length,
+        urgent: parsed.urgent === true,
+      });
       return jsonResponse({
         title: title.slice(0, 120),
         body: draftBody,
@@ -515,6 +590,23 @@ Deno.serve(async (req: Request) => {
     }
 
     const modelSummary = typeof parsed.summary === 'string' ? parsed.summary : '';
+    // This is also the invalid-suggestion-rate measurement
+    // docs/PRODUCT_TRANSFORMATION_PLAN.md §8.6 (AI operations) asks for:
+    // `accepted.length` against how many were dropped, and why, per request.
+    await auditAiRequest('ai_assistant.rota_suggestions_generated', {
+      requestedBy: requester ? { id: requester.id, email: requester.email } : null,
+      model,
+      promptVersion: PROMPT_VERSION,
+      promptLength: prompt.length,
+      periodStart,
+      periodEnd,
+      raw: raw.length,
+      accepted: accepted.length,
+      droppedUnknown,
+      droppedOutOfPeriod,
+      droppedOverlapping,
+      retimed,
+    });
     return jsonResponse({
       summary: notes.length > 0 ? `${modelSummary} ${notes.join(' ')}`.trim() : modelSummary,
       suggestions: accepted,

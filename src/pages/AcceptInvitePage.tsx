@@ -94,7 +94,7 @@ export function AcceptInvitePage(): JSX.Element {
 
   const shell = (children: React.ReactNode): JSX.Element => (
     <main className="grid min-h-screen place-items-center px-6">
-      <Card className="w-full max-w-sm animate-fade-up text-center">
+      <Card className="w-full max-w-sm animate-fade-up motion-reduce:animate-none text-center">
         <BrandMark className="mx-auto mb-6 h-14 w-14" />
         {children}
       </Card>

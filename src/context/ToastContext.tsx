@@ -116,7 +116,7 @@ function Toaster({
           role={toast.variant === 'error' ? 'alert' : 'status'}
           aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
           className={cn(
-            'pointer-events-auto flex w-full max-w-md animate-fade-up items-start gap-3',
+            'pointer-events-auto flex w-full max-w-md animate-fade-up motion-reduce:animate-none items-start gap-3',
             'rounded-xl border px-4 py-3 text-sm shadow-md',
             VARIANT_STYLES[toast.variant],
           )}

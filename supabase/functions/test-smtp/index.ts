@@ -20,12 +20,12 @@
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
+// Set per-request at the top of the `Deno.serve` handler below. See
+// ai-rota-assistant/index.ts for why this is a `let`, not a `const`.
+let requestCorsHeaders: Record<string, string> = {};
 
 interface RequestBody {
   orgId: string;
@@ -34,13 +34,14 @@ interface RequestBody {
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...requestCorsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
 Deno.serve(async (req: Request) => {
+  requestCorsHeaders = corsHeaders(req, ALLOW_HEADERS);
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS });
+    return new Response('ok', { headers: requestCorsHeaders });
   }
 
   try {

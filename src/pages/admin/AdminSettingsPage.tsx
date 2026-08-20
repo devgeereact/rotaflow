@@ -31,65 +31,34 @@ import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
 import { env } from '@/lib/env';
 import { PLATFORM_ROLE_LABELS, PLATFORM_ROLE_SCOPES } from '@/lib/platformRoles';
-import { MeterRows } from '@/components/ui/MeterRows';
 import {
-  DEMO_API,
-  DEMO_BRANDING,
-  DEMO_EMAIL,
-  DEMO_SECURITY,
-  DEMO_STORAGE_LIMITS,
-  DEMO_STORAGE_USAGE,
-  RETENTION_POLICY,
-  type DemoSettingRow,
-} from '@/lib/adminOverviewDemo';
+  listRetentionPolicies,
+  type RetentionPolicy,
+} from '@/services/platformFactsService';
 import type { PlatformAdmin, PlatformRole, PlatformSettings, Profile } from '@/types';
 
-type Tab =
-  | 'general'
-  | 'branding'
-  | 'authentication'
-  | 'security'
-  | 'email'
-  | 'storage'
-  | 'retention'
-  | 'administrators'
-  | 'api'
-  | 'maintenance';
+type Tab = 'general' | 'authentication' | 'retention' | 'administrators' | 'maintenance';
 
 /** The console reference's tabs, in its order. */
+/**
+ * The tabs that configure something.
+ *
+ * Branding, Security, Email, Storage and API were here and are gone. Each
+ * rendered controls for settings this deployment does not store and could not
+ * enforce: a colour compiled into the bundle by Tailwind, an MFA requirement
+ * owned by Supabase Auth, upload limits for a file store that is not wired up.
+ * A switch that persists a value nothing reads is worse than an absent tab,
+ * because somebody eventually believes it. The columns 0027 added for them
+ * stay in the database, so the tabs can come back the day something enforces
+ * them.
+ */
 const TABS = [
   { value: 'general', label: 'General' },
-  { value: 'branding', label: 'Branding' },
   { value: 'authentication', label: 'Authentication' },
-  { value: 'security', label: 'Security' },
-  { value: 'email', label: 'Email' },
-  { value: 'storage', label: 'Storage' },
   { value: 'retention', label: 'Data Retention' },
   { value: 'administrators', label: 'Administrators' },
-  { value: 'api', label: 'API' },
   { value: 'maintenance', label: 'Maintenance' },
 ] as const satisfies readonly { value: Tab; label: string }[];
-
-/**
- * Which tabs are drawn from `adminOverviewDemo` rather than from a column.
- *
- * Each one carries its own warning at the top of the tab naming what would be
- * needed to make it real, so a reader never has to guess which switch does
- * something. Delete the demo module and every one of these fails to compile.
- */
-const PLACEHOLDER_TABS: Partial<Record<Tab, string>> = {
-  branding:
-    'No table holds a logo, favicon or accent colour, and the palette is compiled into the bundle by Tailwind. Changing it is a deploy, not a setting.',
-  security:
-    'MFA enforcement, session timeout, IP allowlisting and concurrent-session limits are Supabase Auth and network concerns. None is readable or writable from a static client holding the anon key.',
-  email:
-    'The platform sender is configured in the Supabase dashboard, and no table records what was sent, delivered or bounced. Per-organisation SMTP is real and lives on Integrations.',
-  storage:
-    'Documents are recorded as rows but no file storage is wired up, so there are no bytes to total and no limits to enforce.',
-  retention:
-    'Nothing enforces a retention period. GDPR erasure is per data subject and lives on the GDPR screen; a number here would be one no job reads.',
-  api: 'There is no public API, so there are no keys, rate limits or webhook retries to configure. Issuing a long-lived token would be a security decision, not a settings row.',
-};
 
 const ROLES: readonly PlatformRole[] = [
   'platform_owner',
@@ -126,6 +95,7 @@ export function AdminSettingsPage(): JSX.Element {
 
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [admins, setAdmins] = useState<AdminRow[] | null>(null);
+  const [retention, setRetention] = useState<RetentionPolicy[]>([]);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // The open tab lives in the URL so a link can point at one, "the API tab
@@ -157,11 +127,13 @@ export function AdminSettingsPage(): JSX.Element {
     setAdmins(null);
     void (async () => {
       try {
-        const [row, grants, profiles] = await Promise.all([
+        const [row, grants, profiles, retentionRows] = await Promise.all([
           getPlatformSettings(),
           listPlatformAdmins(),
           listAllProfiles(),
+          listRetentionPolicies(),
         ]);
+        setRetention(retentionRows);
         if (!active) return;
         const byId = new Map(profiles.map((p) => [p.id, p]));
         setSettings(row);
@@ -307,12 +279,23 @@ export function AdminSettingsPage(): JSX.Element {
         key: 'role',
         label: 'Platform role',
         width: 'w-[28%]',
-        cell: (row) =>
-          canManagePlatformAdmins ? (
+        cell: (row) => {
+          // Same guard as the Remove button below, and now also enforced
+          // server-side (grant_platform_role raises 23514): picking a
+          // non-owner role for the platform's only owner here used to
+          // succeed and leave nobody able to grant or revoke a platform
+          // role ever again, including this dropdown's own next use.
+          const lastOwner = row.grant.role === 'platform_owner' && ownerCount <= 1;
+          return canManagePlatformAdmins ? (
             <Select
               value={row.grant.role}
               aria-label={`Platform role for ${row.profile?.email ?? row.grant.user_id}`}
-              disabled={busyUser === row.grant.user_id}
+              disabled={busyUser === row.grant.user_id || lastOwner}
+              title={
+                lastOwner
+                  ? 'The platform must always have at least one owner.'
+                  : undefined
+              }
               onChange={(e) => void changeRole(row, e.target.value as PlatformRole)}
             >
               {ROLES.map((role) => (
@@ -325,7 +308,8 @@ export function AdminSettingsPage(): JSX.Element {
             <Badge tone="danger">
               {PLATFORM_ROLE_LABELS[row.grant.role as PlatformRole] ?? row.grant.role}
             </Badge>
-          ),
+          );
+        },
       },
       {
         key: 'granted',
@@ -537,64 +521,36 @@ export function AdminSettingsPage(): JSX.Element {
           </div>
         )}
 
-        {PLACEHOLDER_TABS[tab] && (
-          <Callout tone="warning" title="This tab is placeholder">
-            <p>{PLACEHOLDER_TABS[tab]}</p>
-            <p>
-              The rows below come from <code>src/lib/adminOverviewDemo.ts</code>. Every
-              control on them is inert, a switch that flipped and forgot would be worse
-              than one that plainly cannot move.
-            </p>
-          </Callout>
-        )}
-
-        {tab === 'branding' && <DemoSettings title="Branding" rows={DEMO_BRANDING} />}
-
-        {tab === 'security' && (
-          <DemoSettings title="Console security" rows={DEMO_SECURITY} />
-        )}
-
-        {tab === 'email' && <DemoSettings title="Platform email" rows={DEMO_EMAIL} />}
-
-        {tab === 'storage' && (
-          <div className="space-y-4">
-            <Panel title="Storage by type" bodyClassName="p-4">
-              <MeterRows
-                caption="Placeholder storage totals by type"
-                rows={DEMO_STORAGE_USAGE.map((row) => ({
-                  label: row.label,
-                  value: row.value,
-                  display: row.display,
-                }))}
-              />
-            </Panel>
-            <DemoSettings title="Upload limits" rows={DEMO_STORAGE_LIMITS} />
-          </div>
-        )}
-
         {tab === 'retention' && (
           <Panel title="Retention schedule" bodyClassName="p-4">
-            {RETENTION_POLICY.map((row) => (
+            {retention.map((row) => (
               <SettingRow
-                key={row.data}
-                label={row.data}
+                key={row.data_type}
+                label={row.label}
+                hint={row.note}
                 control={
-                  <span className="font-mono text-xs text-content dark:text-content-dark">
-                    {row.retained}
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-content dark:text-content-dark">
+                      {row.retain_months === null
+                        ? 'Indefinite'
+                        : `${row.retain_months} months`}
+                    </span>
+                    <Badge tone={row.enforced ? 'success' : 'warning'} dot>
+                      {row.enforced ? 'Enforced' : 'Not enforced'}
+                    </Badge>
                   </span>
                 }
               />
             ))}
             <p className="pt-4 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
-              The audit row is the one that is true today: <code>audit_logs</code> carries
-              no update or delete policy, so it cannot be erased from the product. The
-              rest is the schedule to build to, and the same table is shown beside the
-              request register on GDPR &amp; Data.
+              Enforced by <code>enforce_retention()</code> on a nightly pg_cron schedule
+              since 0029, with every run recorded in <code>retention_runs</code>. The
+              audit log is unreachable from that function by construction: its retention
+              is null and the loop skips null. Deleted tenant data stays manual, because
+              it removes an organisation and everything cascading from it.
             </p>
           </Panel>
         )}
-
-        {tab === 'api' && <DemoSettings title="API" rows={DEMO_API} />}
 
         {tab === 'maintenance' && (
           <Panel title="Maintenance" bodyClassName="p-4">
@@ -633,51 +589,6 @@ export function AdminSettingsPage(): JSX.Element {
         )}
       </div>
     </AdminPage>
-  );
-}
-
-/**
- * A tab of settings this deployment cannot store.
- *
- * Controls render their state and refuse to change it, and each says why on
- * hover, a dead switch that explains itself is better than one that answers
- * the click with nothing.
- */
-function DemoSettings({
-  title,
-  rows,
-}: {
-  title: string;
-  rows: readonly DemoSettingRow[];
-}): JSX.Element {
-  return (
-    <Panel title={title} bodyClassName="p-4">
-      {rows.map((row) => (
-        <SettingRow
-          key={row.label}
-          label={row.label}
-          hint={row.hint}
-          control={
-            row.kind === 'switch' ? (
-              <Toggle
-                checked={Boolean(row.on)}
-                disabled
-                label={row.label}
-                onChange={() => {}}
-              />
-            ) : row.kind === 'action' ? (
-              <Button variant="secondary" disabled title="Nothing stores this setting">
-                {row.value}
-              </Button>
-            ) : (
-              <span className="font-mono text-xs text-content dark:text-content-dark">
-                {row.value}
-              </span>
-            )
-          }
-        />
-      ))}
-    </Panel>
   );
 }
 

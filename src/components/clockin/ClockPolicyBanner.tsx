@@ -18,7 +18,7 @@ export function ClockPolicyBanner({
   onViewPolicy,
 }: ClockPolicyBannerProps): JSX.Element {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 px-5 py-4 dark:bg-primary/10">
+    <div className="flex items-center justify-between gap-4 rounded-xl bg-primary-wash px-5 py-4 dark:bg-primary-wash-dark">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-primary-fg">
           <Info size={14} aria-hidden="true" />

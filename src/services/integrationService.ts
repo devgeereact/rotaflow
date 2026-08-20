@@ -52,7 +52,7 @@ export async function connectIntegration(
   const { data, error } = await supabase.rpc('connect_integration', {
     p_org: orgId,
     p_connector: connectorKey,
-    p_ref: credentialsRef ?? null,
+    p_ref: credentialsRef ?? undefined,
   });
   if (error) throw error;
   return data;

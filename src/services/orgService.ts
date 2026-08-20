@@ -78,6 +78,35 @@ export async function listOrgMemberRoles(orgId: string): Promise<Map<string, str
   return new Map((data ?? []).map((row) => [row.user_id, row.role]));
 }
 
+/**
+ * Owner-only (`memberships_write`, 0002). Demoting or promoting the last
+ * owner is refused by `memberships_keep_one_owner_trigger` (0047), not by
+ * this function — the database is the actual boundary, this just surfaces
+ * whatever it raises.
+ */
+export async function updateMemberRole(
+  orgId: string,
+  userId: string,
+  role: 'owner' | 'manager' | 'staff',
+): Promise<void> {
+  const { error } = await supabase
+    .from('memberships')
+    .update({ role })
+    .eq('org_id', orgId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+/** Owner-only. Removing the last owner is refused the same way as demoting one (0047). */
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('memberships')
+    .delete()
+    .eq('org_id', orgId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
 export interface CreateOrganisationInput {
   name: string;
   /** Defaults to a slugified name when omitted. */

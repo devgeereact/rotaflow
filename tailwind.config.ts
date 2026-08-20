@@ -47,6 +47,20 @@ const config: Config = {
           // what it sat on. From docs/PLATFORM_CONSOLE.html.
           wash: '#EEF3FD',
           'wash-dark': '#182848',
+          // `DEFAULT` set as body text on `surface`/`background`/`surface-subtle`
+          // reads at 4.08-4.46:1 — under the 4.5:1 AA minimum, confirmed by axe
+          // across every `text-primary` link on the public site 2026-08-13. Too
+          // close to see with the eye, real under a contrast meter. `DEFAULT`
+          // stays unchanged (it is correct as a *fill*, paired with `fg`, and is
+          // read elsewhere in the app this session did not touch — changing it
+          // would ripple into screens this session never rendered to check).
+          // This is additive: a slightly darker value for exactly the
+          // link/body-text case, same hue. Not yet applied outside the public
+          // marketing/legal/about pages fixed this session; the same
+          // `text-primary`-as-link pattern likely exists in authenticated `/app`
+          // screens too and needs the same swap as part of the sitewide
+          // design-system contrast pass (docs/PRODUCT_TRANSFORMATION_PLAN.md §8.5).
+          ink: '#2F5BC0',
         },
         // Vivid marketing blue + navy ink ramp, sampled from
         // design/splash-screen.png (and matching signin/dashboard renders).
@@ -92,6 +106,9 @@ const config: Config = {
           DEFAULT: '#1EA06B', // published / valid / confirmed / available
           wash: '#E7F5EE',
           'wash-dark': '#102A21',
+          // See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
+          // text on white reads 3.33:1, under the 4.5:1 AA minimum.
+          ink: '#12724E',
         },
         // Attendance green — the Clock In CTA, its "ready" ring, and the
         // on-shift status washes in design/clockin.png. Sampled off that PNG:
@@ -109,11 +126,18 @@ const config: Config = {
           DEFAULT: '#E0A030', // pending / needs attention / expiring
           wash: '#FBF2E1',
           'wash-dark': '#2C2416',
+          // See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
+          // text on white reads 2.27:1, the worst of the three status inks
+          // against the 4.5:1 AA minimum.
+          ink: '#7A5410',
         },
         danger: {
           DEFAULT: '#D94A3A', // conflict / rejected / absent / error
           wash: '#FAEAE7',
           'wash-dark': '#2E1A17',
+          // See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
+          // text on white reads 4.2:1, under the 4.5:1 AA minimum.
+          ink: '#B23A2C',
         },
         info: {
           DEFAULT: '#388FD4', // informational / neutral status

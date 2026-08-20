@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, Menu, RefreshCw, X } from 'lucide-react';
+import { ArrowLeft, ChevronUp, LogOut, Menu, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { env } from '@/lib/env';
 import { useOrg } from '@/hooks/useOrg';
@@ -10,7 +10,12 @@ import {
   ConsoleRefreshContext,
   type ConsoleRefreshValue,
 } from '@/hooks/useConsoleRefresh';
-import { ADMIN_SECONDARY_NAV, adminNavForRole, type AdminNavItem } from '@/lib/adminNav';
+import {
+  ADMIN_SECONDARY_NAV,
+  CONSOLE_MENU_TARGET,
+  adminNavForRole,
+  type AdminNavItem,
+} from '@/lib/adminNav';
 import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
@@ -145,35 +150,11 @@ function ConsoleRole(): JSX.Element {
   );
 }
 
-/**
- * The way out of the console, pinned to the bottom of the rail.
- *
- * Sticky rather than one more entry in the list: the rail scrolls once the nav
- * is fifteen items long, and this is the one link that has to be reachable from
- * anywhere, a platform administrator who cannot find the way back to their own
- * organisation is stuck in an area they only meant to visit. It carries the
- * rail background and a top border so nav items scroll *under* it rather than
- * showing through.
- */
-function ReturnToOrganisation({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
-  return (
-    <div className="sticky bottom-0 -mx-3 mt-2 border-t border-surface-border bg-surface-rail px-5 pb-1 pt-2 dark:border-surface-border-dark dark:bg-surface-rail-dark">
-      <Link
-        to="/app/dashboard"
-        onClick={onNavigate}
-        className={cn(LINK_BASE, LINK_INACTIVE)}
-      >
-        <ArrowLeft size={16} aria-hidden="true" className="shrink-0 opacity-75" />
-        Return to Organisation
-      </Link>
-    </div>
-  );
-}
-
 /** Reference material and who you are. */
 function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user, signOut } = useSupabaseAuth();
   const { platformRole } = useOrg();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '';
@@ -183,18 +164,75 @@ function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element
     <div className="mt-auto grid gap-0.5 border-t border-divider px-2 pt-3 dark:border-divider-dark">
       <NavList items={ADMIN_SECONDARY_NAV} onNavigate={onNavigate} />
 
-      <div className="mt-1 flex items-center gap-2.5 rounded-lg px-2 py-2">
-        <StaffAvatar firstName={first} lastName={last} size="sm" />
-        <div className="min-w-0">
-          <p className="truncate text-[0.8rem] font-semibold leading-tight text-content dark:text-content-dark">
-            {displayName}
-          </p>
-          <p className="truncate text-[0.69rem] leading-tight text-content-muted dark:text-content-muted-dark">
-            {platformRole
-              ? PLATFORM_ROLE_LABELS[platformRole]
-              : 'Platform role unavailable'}
-          </p>
-        </div>
+      {/* The way out of the console lives here rather than in the nav.
+          "Return to organisation" is not a sixteenth platform screen, and a
+          list is the wrong shape for it. Clicking your own name to leave is
+          the pattern every admin console uses. */}
+      <div className="relative mt-1">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark"
+        >
+          <StaffAvatar firstName={first} lastName={last} size="sm" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.8rem] font-semibold leading-tight text-content dark:text-content-dark">
+              {displayName}
+            </p>
+            <p className="truncate text-[0.69rem] leading-tight text-content-muted dark:text-content-muted-dark">
+              {platformRole
+                ? PLATFORM_ROLE_LABELS[platformRole]
+                : 'Platform role unavailable'}
+            </p>
+          </div>
+          <ChevronUp
+            size={14}
+            aria-hidden="true"
+            className={cn(
+              'shrink-0 text-content-muted transition-transform dark:text-content-muted-dark',
+              !menuOpen && 'rotate-180',
+            )}
+          />
+        </button>
+
+        {menuOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close menu"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div
+              role="menu"
+              className="absolute bottom-full left-0 z-50 mb-1 w-full overflow-hidden rounded-lg border border-surface-border bg-surface py-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
+            >
+              <Link
+                to={CONSOLE_MENU_TARGET}
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onNavigate?.();
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+              >
+                <ArrowLeft size={15} aria-hidden="true" />
+                Return to organisation
+              </Link>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => void signOut()}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-danger-wash dark:hover:bg-danger-wash-dark"
+              >
+                <LogOut size={15} aria-hidden="true" />
+                Sign out
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -219,7 +257,6 @@ function ConsoleRail({
         <NavList items={items} onNavigate={onNavigate} />
       </nav>
       <ConsoleFooter onNavigate={onNavigate} />
-      <ReturnToOrganisation onNavigate={onNavigate} />
     </>
   );
 }
@@ -315,7 +352,7 @@ export function AdminShell(): JSX.Element {
             >
               <Menu size={18} aria-hidden="true" />
             </button>
-            <p className="text-xs font-medium text-danger">
+            <p className="text-xs font-medium text-danger-ink">
               Platform administration. You are viewing data belonging to every
               organisation on RotaFlow.
             </p>

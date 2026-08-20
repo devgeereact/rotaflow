@@ -62,10 +62,10 @@ export function SettingsIntegrationsPage(): JSX.Element {
         if (!active) return;
         setExisting(row);
         if (row) {
-          setSmtpHost(row.smtp_host);
-          setSmtpPort(String(row.smtp_port));
-          setSmtpUser(row.smtp_user);
-          setFromEmail(row.from_email);
+          setSmtpHost(row.smtp_host ?? '');
+          setSmtpPort(row.smtp_port === null ? '' : String(row.smtp_port));
+          setSmtpUser(row.smtp_user ?? '');
+          setFromEmail(row.from_email ?? '');
           setFromName(row.from_name ?? '');
         }
       } catch (err) {

@@ -44,16 +44,30 @@
 // manual step, not something to trigger from a dev session. Until someone does
 // it, treat push/email delivery as unproven. The auth path is not the whole
 // journey.
+//
+// RECIPIENT SCOPING (added 2026-08-10, security audit)
+//
+// The shared secret proves the CALLER is this project's own Inngest function,
+// not that the caller was RIGHT to name these particular orgId/userIds — the
+// Inngest function forwards event.data verbatim (supabase/functions/inngest),
+// and VITE_INNGEST_EVENT_KEY is a public, Vite-inlined value by design. So
+// this function, not that one, is the only place left to check that every
+// userId is actually a member of orgId before anything is written or sent.
+// This closes cross-tenant impersonation (org A's event naming org B's users)
+// but NOT same-tenant abuse (a member of org A naming other members of org A
+// with a fabricated type/title) — that needs the caller's own identity and
+// role forwarded through the dispatch chain, a bigger change than this pass.
+// Known residual limitation, not a silent claim of full closure.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'x-notification-secret, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const ALLOW_HEADERS = 'x-notification-secret, content-type';
+// Set per-request at the top of the `Deno.serve` handler below. See
+// ai-rota-assistant/index.ts for why this is a `let`, not a `const`.
+let requestCorsHeaders: Record<string, string> = {};
 
 interface RequestBody {
   orgId: string;
@@ -68,7 +82,7 @@ interface RequestBody {
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...requestCorsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
@@ -155,8 +169,9 @@ async function sendPush(
 }
 
 Deno.serve(async (req: Request) => {
+  requestCorsHeaders = corsHeaders(req, ALLOW_HEADERS);
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS });
+    return new Response('ok', { headers: requestCorsHeaders });
   }
 
   try {
@@ -182,10 +197,26 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // See "RECIPIENT SCOPING" above: never trust that every userId actually
+    // belongs to orgId just because the caller said so.
+    const { data: members, error: membersError } = await supabase
+      .from('memberships')
+      .select('user_id')
+      .eq('org_id', orgId)
+      .eq('status', 'active')
+      .in('user_id', userIds);
+    if (membersError) throw membersError;
+
+    const scopedUserIds = members?.map((m) => m.user_id) ?? [];
+    const droppedCount = userIds.length - scopedUserIds.length;
+    if (scopedUserIds.length === 0) {
+      return jsonResponse({ ok: true, results: { push: null, email: null }, dropped: userIds.length });
+    }
+
     // Row per recipient. Read_at and delivery are per-person, so the row has
     // to be too; a single shared row could not track who has seen it.
     const { error: insertError } = await supabase.from('notifications').insert(
-      userIds.map((userId) => ({
+      scopedUserIds.map((userId) => ({
         org_id: orgId,
         user_id: userId,
         type,
@@ -209,7 +240,7 @@ Deno.serve(async (req: Request) => {
         const { data: subscriptions } = await supabase
           .from('push_subscriptions')
           .select('id, endpoint, p256dh, auth_key')
-          .in('user_id', userIds);
+          .in('user_id', scopedUserIds);
 
         const expiredIds: string[] = [];
         for (const sub of subscriptions ?? []) {
@@ -230,7 +261,7 @@ Deno.serve(async (req: Request) => {
         // Matches the SMS posture elsewhere in this project: the channel is
         // reserved in the schema, but not live until real credentials exist
         //. Either the org's own, or the global fallback.
-        results.email.skipped = userIds.length;
+        results.email.skipped = scopedUserIds.length;
       } else {
         const { default: nodemailer } = await import('npm:nodemailer@6');
         const transport = nodemailer.createTransport({
@@ -248,7 +279,7 @@ Deno.serve(async (req: Request) => {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, email')
-          .in('id', userIds);
+          .in('id', scopedUserIds);
 
         for (const profile of profiles ?? []) {
           try {
@@ -266,7 +297,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return jsonResponse({ ok: true, results });
+    return jsonResponse({ ok: true, results, dropped: droppedCount });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }

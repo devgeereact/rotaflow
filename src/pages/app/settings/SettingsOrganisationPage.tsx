@@ -9,7 +9,7 @@ import {
   updateOrganisation,
 } from '@/services/orgService';
 import { listLocations } from '@/services/locationService';
-import { orgProfileFields } from '@/lib/orgPreferences';
+import { CURRENCIES, DATE_FORMATS, orgProfileFields } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -118,6 +118,8 @@ export function SettingsOrganisationPage(): JSX.Element {
         registration_no: fields.registrationNo,
         contact_email: fields.contactEmail,
         primary_contact: fields.primaryContact,
+        date_format: fields.dateFormat,
+        currency: fields.currency,
       });
       await refresh();
       showSuccess('Organisation settings saved.');
@@ -305,7 +307,7 @@ export function SettingsOrganisationPage(): JSX.Element {
               ))}
             </Select>
           </div>
-          <div className="md:col-span-2">
+          <div>
             <Label htmlFor="org-week">Default working week</Label>
             <Select
               id="org-week"
@@ -316,6 +318,35 @@ export function SettingsOrganisationPage(): JSX.Element {
               {WORKING_WEEKS.map((w) => (
                 <option key={w.value} value={w.value}>
                   {w.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="org-date-format">Date format</Label>
+            <Select
+              id="org-date-format"
+              icon={Calendar}
+              value={fields.dateFormat}
+              onChange={(e) => set('dateFormat', e.target.value)}
+            >
+              {DATE_FORMATS.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="org-currency">Currency</Label>
+            <Select
+              id="org-currency"
+              value={fields.currency}
+              onChange={(e) => set('currency', e.target.value)}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </Select>

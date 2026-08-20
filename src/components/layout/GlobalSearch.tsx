@@ -20,7 +20,21 @@ import { cn } from '@/lib/utils';
  * filter while the selection moves. The pattern every command palette uses and
  * the one screen readers announce correctly.
  */
-export function GlobalSearch(): JSX.Element {
+interface GlobalSearchProps {
+  /**
+   * `rail` is the full-width, subdued row in the sidebar (see
+   * `docs/ORGANISATION_WORKSPACE.html`'s `.kbar`). Omitted/`compact` is the
+   * original pill, kept for any surface that still wants a narrow trigger.
+   */
+  variant?: 'compact' | 'rail';
+  /** Fired after a result is chosen. The mobile drawer uses this to close itself. */
+  onNavigate?: () => void;
+}
+
+export function GlobalSearch({
+  variant = 'compact',
+  onNavigate,
+}: GlobalSearchProps): JSX.Element {
   const navigate = useNavigate();
   const { role } = useOrg();
   const [open, setOpen] = useState(false);
@@ -60,8 +74,9 @@ export function GlobalSearch(): JSX.Element {
       if (!entry) return;
       void navigate(entry.to);
       close();
+      onNavigate?.();
     },
-    [navigate, close],
+    [navigate, close, onNavigate],
   );
 
   // ⌘K / Ctrl+K from anywhere in the app.
@@ -120,11 +135,31 @@ export function GlobalSearch(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-10 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+        className={
+          variant === 'rail'
+            ? 'flex h-9 w-full items-center gap-2 rounded-xl border border-surface-border bg-surface px-2.5 text-[13px] text-content-muted hover:border-primary hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:text-content-dark'
+            : 'flex h-10 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark'
+        }
       >
-        <Search size={16} aria-hidden="true" />
-        <span className="hidden sm:inline">Search</span>
-        <kbd className="ml-2 hidden rounded border border-surface-border px-1.5 py-0.5 font-mono text-[10px] lg:inline dark:border-surface-border-dark">
+        <Search
+          size={variant === 'rail' ? 14 : 16}
+          aria-hidden="true"
+          className="shrink-0"
+        />
+        <span
+          className={
+            variant === 'rail' ? 'flex-1 truncate text-left' : 'hidden sm:inline'
+          }
+        >
+          {variant === 'rail' ? 'Search screens and actions' : 'Search'}
+        </span>
+        <kbd
+          className={
+            variant === 'rail'
+              ? 'shrink-0 rounded border border-surface-border bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] font-semibold dark:border-surface-border-dark dark:bg-surface-subtle-dark'
+              : 'ml-2 hidden rounded border border-surface-border px-1.5 py-0.5 font-mono text-[10px] lg:inline dark:border-surface-border-dark'
+          }
+        >
           ⌘K
         </kbd>
         <span className="sr-only">Search RotaFlow (Command K)</span>

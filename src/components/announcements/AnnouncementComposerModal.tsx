@@ -4,21 +4,31 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Select';
 import { reportError } from '@/lib/sentry';
 import { draftAnnouncement } from '@/services/aiRotaService';
-import type { Announcement } from '@/types';
+import type { Department, Location } from '@/types';
+
+export interface AnnouncementDraft {
+  title: string;
+  body: string;
+  urgent: boolean;
+  audience: string;
+}
 
 interface AnnouncementComposerModalProps {
   open: boolean;
-  /** Prefills the form. Used by "Duplicate" and by the row edit button. */
-  seed: Announcement | null;
+  locations: Location[];
+  departments: Department[];
   /** Enables AI drafting. Omitted for anyone who cannot manage the org. */
   orgId?: string | null;
   onClose: () => void;
-  onSubmit: (input: { title: string; body: string; urgent: boolean }) => Promise<void>;
+  onSubmit: (input: AnnouncementDraft) => Promise<void>;
 }
 
-/** The fortnight the draft is grounded in. This week plus the next. */
+/** Encodes an audience choice as `org` | `location:<id>` | `department:<id>`. */
+const ALL_SITES = 'org';
+
 function draftPeriod(): { periodStart: string; periodEnd: string } {
   const today = new Date();
   const end = new Date(today);
@@ -30,14 +40,17 @@ function draftPeriod(): { periodStart: string; periodEnd: string } {
 }
 
 /**
- * The "New Announcement" composer behind the header CTA. Posting publishes
- * immediately, `createAnnouncement` sets `published_at`, so there is no
- * schedule field here; scheduling needs a column the schema does not have yet
- * (see `src/lib/announcementsMapping.ts`).
+ * `SCREENS.announcements`'s "New announcement" dialog (Title/Audience/
+ * Message). Posting publishes immediately, `createAnnouncement` sets
+ * `published_at`, so there is no schedule field here. AI drafting is a real,
+ * additive capability beyond the reference (see `draftAnnouncement`); "Pin
+ * this announcement" reuses the real `urgent` column rather than inventing a
+ * pin column the schema does not have.
  */
 export function AnnouncementComposerModal({
   open,
-  seed,
+  locations,
+  departments,
   orgId,
   onClose,
   onSubmit,
@@ -45,29 +58,24 @@ export function AnnouncementComposerModal({
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [urgent, setUrgent] = useState(false);
+  const [audience, setAudience] = useState(ALL_SITES);
   const [submitting, setSubmitting] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [drafting, setDrafting] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Re-seed whenever the dialog opens, so "Duplicate" on a second row does not
-  // show the first row's text.
   useEffect(() => {
     if (!open) return;
-    setTitle(seed ? `${seed.title} (copy)` : '');
-    setBody(seed?.body ?? '');
-    setUrgent(seed?.urgent ?? false);
+    setTitle('');
+    setBody('');
+    setUrgent(false);
+    setAudience(ALL_SITES);
     setAiPrompt('');
     setAiNote(null);
     setAiError(null);
-  }, [open, seed]);
+  }, [open]);
 
-  /**
-   * Fills the form; it never posts. The manager still reads, edits and presses
-   * Post, so a draft that gets a fact wrong costs an edit, not a push
-   * notification to everyone on the rota.
-   */
   const handleDraft = async (): Promise<void> => {
     if (!orgId || !aiPrompt.trim()) return;
     setDrafting(true);
@@ -99,7 +107,7 @@ export function AnnouncementComposerModal({
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await onSubmit({ title: title.trim(), body: body.trim(), urgent });
+      await onSubmit({ title: title.trim(), body: body.trim(), urgent, audience });
       onClose();
     } catch (err) {
       reportError(err, { area: 'announcements:create' });
@@ -160,6 +168,26 @@ export function AnnouncementComposerModal({
           />
         </div>
         <div>
+          <Label htmlFor="ann-audience">Audience</Label>
+          <Select
+            id="ann-audience"
+            value={audience}
+            onChange={(event) => setAudience(event.target.value)}
+          >
+            <option value={ALL_SITES}>All sites</option>
+            {locations.map((l) => (
+              <option key={l.id} value={`location:${l.id}`}>
+                {l.name}
+              </option>
+            ))}
+            {departments.map((d) => (
+              <option key={d.id} value={`department:${d.id}`}>
+                {d.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
           <Label htmlFor="ann-body">Message</Label>
           <textarea
             id="ann-body"
@@ -177,7 +205,7 @@ export function AnnouncementComposerModal({
             onChange={(event) => setUrgent(event.target.checked)}
             className="h-4 w-4 accent-primary"
           />
-          Mark as urgent
+          Pin this announcement
         </label>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" size="sm" onClick={onClose}>
