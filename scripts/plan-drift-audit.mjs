@@ -103,13 +103,33 @@ const present = pathVerdicts.filter((v) => v.exists);
 // what has shipped are usually anchored to a migration number.
 const migrations = sh("ls supabase/migrations 2>/dev/null | sed 's/\\.sql$//'");
 
+const commitCount = gitLog.split('\n').filter(Boolean).length;
+
 console.log(
   `Evidence: ${citedPaths.length} cited paths (${present.length} present, ${missing.length} missing), ` +
-    `${gitLog.split('\n').filter(Boolean).length} recent commits.`,
+    `${commitCount} recent commits.`,
 );
 if (missing.length) {
   console.log('Cited but MISSING:');
   for (const m of missing) console.log(`  - ${m.path}`);
+}
+
+// Refuse to audit on a starved evidence set rather than producing a
+// confident-looking answer from nothing.
+//
+// This is not hypothetical. The first real CI run gathered exactly ONE
+// commit, because actions/checkout defaults to a depth-1 shallow clone,
+// while the same script gathered 50 locally. The job still reported
+// success: a thin evidence set is indistinguishable from a thorough one
+// once the summary is written. The workflow now sets `fetch-depth: 0`, and
+// this guard makes a regression of that setting loud instead of silent.
+const MIN_COMMITS = 5;
+if (commitCount < MIN_COMMITS) {
+  bail(
+    `git history is too shallow to audit against (${commitCount} commit${commitCount === 1 ? '' : 's'} ` +
+      `visible, need at least ${MIN_COMMITS}). If this is CI, actions/checkout needs \`fetch-depth: 0\` — ` +
+      `a depth-1 shallow clone hides the history this audit judges against.`,
+  );
 }
 
 // ---------- the model's part ------------------------------------------
