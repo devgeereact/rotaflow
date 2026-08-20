@@ -65,6 +65,13 @@ Typical options:
 After deploy: load the site over **HTTPS** and confirm the app boots and the install
 prompt appears.
 
+> **An HTTP 200 is not evidence that a file deployed.** This is a SPA: the server
+> rewrites unknown paths to `index.html`, so a request for a file that is not on the
+> server returns `200` with the app's HTML, not `404`. Curling a URL and seeing `200`
+> therefore proves nothing — it has already produced one false conclusion in this
+> repo's history. Verify by **content** (`curl -s <url> | head`, or grep the response
+> for something only that file contains) or over **SSH** (`ssh cpanel ls -la <path>`).
+
 ---
 
 ## 3. Deploy safety rules (non-negotiable)
@@ -79,12 +86,28 @@ These are generic cPanel-static truths. Obey them regardless of tooling:
    holds loose `api.php` / `config.php` / `.htaccess`, target a **specific
    subdirectory** instead. Mirroring the shared root deletes the neighbours.
 3. **Exclude runtime & secret files from deletes:** at minimum `uploads/`, `.env`,
-   `config.php`, `*.bak*`, `*.zip`, `*.sql`, `error_log`, `node_modules`, `.git`.
-4. **Keep backups OUTSIDE every webroot.** Apache serves `.bak` / `.zip` / `.sql` as
+   `config.php`, `*.bak*`, `*.zip`, `*.sql`, `error_log`, `node_modules`, `.git`,
+   and **`.well-known/`** — see rule 4.
+4. **Protect `.well-known/` on every single deploy.** `dist/` never contains it:
+   `public/` holds only `favicon.svg`, `icons/`, `offline.html` and `robots.txt`, so
+   the build has nothing to put there. But the live docroot **does** — it holds the
+   TLS domain-validation file. To rsync, "not in my source" and "stale, delete it"
+   look identical, so a mirror-with-delete removes it and certificate renewal fails.
+
+   The deploy command for this app is therefore always:
+
+   ```bash
+   cpanel-deploy dist rota.gakinz.com --keep .well-known --go
+   ```
+
+   This is not optional and not situational. It applies to every deploy of this
+   app, including a one-file hotfix.
+
+5. **Keep backups OUTSIDE every webroot.** Apache serves `.bak` / `.zip` / `.sql` as
    **plain text**, so a backup left in a docroot leaks its contents (including any
    credentials) to the public internet. Put backups in a directory that is not served
    (e.g. `~/private_backups/`).
-5. **Never commit real secrets.** `.env` stays git-ignored; only `.env.example`
+6. **Never commit real secrets.** `.env` stays git-ignored; only `.env.example`
    (key names, no values) is tracked. Confirm with `git status --ignored` after setup.
 
 ---
