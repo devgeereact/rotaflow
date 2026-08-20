@@ -51,11 +51,19 @@ function bail(reason) {
 if (!API_KEY) {
   bail('OPENROUTER_API_KEY is not configured on this repository');
 }
-if (!existsSync(PLAN_DOC)) {
-  bail(`plan doc not found at ${PLAN_DOC}`);
-}
 
-const doc = readFileSync(PLAN_DOC, 'utf8');
+// Read without an existsSync() gate on purpose. Checking-then-acting on a
+// path is a time-of-check/time-of-use race (CodeQL js/file-system-race):
+// the check and the later write are separate operations on a name, not a
+// handle, so the answer can go stale in between. Attempting the read and
+// handling its failure has no window to go stale, and gives a better
+// message besides.
+let doc;
+try {
+  doc = readFileSync(PLAN_DOC, 'utf8');
+} catch (err) {
+  bail(`could not read the plan doc at ${PLAN_DOC}: ${err.code ?? err.message}`);
+}
 
 // ---------- deterministic evidence gathering --------------------------
 
@@ -216,12 +224,47 @@ for (const c of Array.isArray(parsed.corrections) ? parsed.corrections : []) {
     });
     continue;
   }
-  updated = updated.replace(c.old, c.new);
+  // Two things to be careful about in this one line.
+  //
+  // 1. A replacement string is NOT literal: `$&`, `$1`, `` $` `` and `$'`
+  //    are substitution patterns. A model emitting a `$` in prose (a price,
+  //    a shell snippet, `$$` dollar-quoting from a migration) would corrupt
+  //    the document in a way that still looked plausible. Passing a function
+  //    makes the replacement literal.
+  // 2. The replacement lands in a machine-parsed document, so it gets the
+  //    same date-marker de-fanging as the summary — a correction must not be
+  //    able to forge a Drift Audit Log entry.
+  const literal = c.new.replace(/\*\*(\d{4}-\d{2}-\d{2})\*\*/g, '$1');
+  updated = updated.replace(c.old, () => literal);
   applied.push({ old: c.old.slice(0, 80), why: c.why ?? '' });
 }
 
 const today = new Date().toISOString().slice(0, 10);
-const summary = parsed.summary.replace(/\s+/g, ' ').trim();
+
+// Sanitise the model's summary before it goes anywhere near the document.
+// This is not cosmetic. The log's `**YYYY-MM-DD**:` prefix is machine-read
+// by the staleness check in plan-drift-audit.yml, which takes the LAST
+// matching line to decide how fresh the log is. The model's input includes
+// repository content (git log, the doc itself), so a crafted commit message
+// could carry a `**2099-01-01**:` sequence into the summary, land a second
+// date marker on the line, and make a stale log look permanently fresh —
+// defeating the one guard that catches a stopped scheduler.
+//
+// So: collapse whitespace to keep the entry on one line, strip control
+// characters, neutralise any date-marker sequence, and cap the length.
+const MAX_SUMMARY = 1200;
+let summary = parsed.summary
+  // eslint-disable-next-line no-control-regex
+  .replace(/[\x00-\x1f\x7f]+/g, ' ') // control chars, incl. newlines
+  .replace(/\s+/g, ' ')
+  .replace(/\*\*(\d{4}-\d{2}-\d{2})\*\*/g, '$1') // de-fang date markers
+  .trim();
+if (summary.length > MAX_SUMMARY) {
+  summary = `${summary.slice(0, MAX_SUMMARY)}… (truncated)`;
+}
+if (!summary) {
+  bail('the model summary was empty after sanitisation');
+}
 
 if (!/^## Drift Audit Log/m.test(updated)) {
   updated += '\n## Drift Audit Log\n';
