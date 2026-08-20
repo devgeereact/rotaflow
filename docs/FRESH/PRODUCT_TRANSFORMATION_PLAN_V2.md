@@ -252,5 +252,8 @@ Written by `.github/workflows/plan-drift-audit.yml` (weekly). Each entry starts
 check to parse the log.
 
 **2026-08-13**: Seeded at creation. No automated audit has run yet — the
-workflow needs an `ANTHROPIC_API_KEY` repository secret before its first
-scheduled or manually-dispatched run can execute.
+workflow needs an `OPENROUTER_API_KEY` repository secret before its first
+scheduled or manually-dispatched run can execute. (This originally read
+`ANTHROPIC_API_KEY`; the audit was moved to OpenRouter on 2026-08-20 so that
+this project depends on a single AI provider — the same one the app's own
+`ai-rota-assistant` Edge Function uses.)

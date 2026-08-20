@@ -79,64 +79,43 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
       # Checked in shell rather than in an `if:` expression because the
       # `secrets` context is not reliably available to step conditionals.
       # Doing it here means "no key configured" produces a specific,
-      # actionable FAILED reason rather than the action's opaque error.
+      # actionable FAILED reason rather than an opaque error mid-run.
       - name: Check the API key is configured
         id: keycheck
         env:
-          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           if [ -z "$KEY" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::ANTHROPIC_API_KEY is not set on this repository — the audit cannot run. Add it under Settings → Secrets and variables → Actions."
+            echo "::warning::OPENROUTER_API_KEY is not set on this repository — the audit cannot run. Add it under Settings → Secrets and variables → Actions."
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run Claude Code audit
+      # OpenRouter, the same provider the app's own AI uses
+      # (supabase/functions/ai-rota-assistant). There is deliberately no
+      # Anthropic dependency in this project.
+      #
+      # The script splits the work so the model only does the judging:
+      # evidence gathering and edit application are both deterministic, and
+      # a correction that does not match the document exactly once is
+      # skipped rather than guessed at. See its header for the reasoning.
+      - name: Run drift audit (OpenRouter)
         id: audit
         if: steps.keycheck.outputs.present == 'true'
         continue-on-error: true
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            Re-audit docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md against the current
-            state of this repository. This is the exact method used to write
-            the doc originally: read `git log --oneline -50`, read the specific
-            migration/source files the doc cites as evidence, and check whether
-            each claim in the doc's status tables (section 1 "New P0 status"
-            table, section 2 score-delta table, and the "New Phase 0" task list)
-            still holds.
-
-            Do NOT rewrite the whole document. Only:
-            1. If a claim is now stale (something the doc says is "Not done" has
-               shipped, or something it says is "Done" has regressed), correct
-               that specific line in place, same as a human editor would.
-            2. Append one new entry under a `## Drift Audit Log` section at the
-               very end of the file (create the section if it doesn't exist).
-               Each entry MUST start with this exact format on its own line
-               (required for the automated staleness check to parse it):
-               `**YYYY-MM-DD**: <one-paragraph summary>` — the date is today
-               in UTC. The summary states what was checked and what (if
-               anything) had drifted and was corrected, or "No drift found —
-               N claims re-verified, all still accurate."
-
-            If you cannot complete the audit for any reason, do not guess —
-            still append an entry in the same `**YYYY-MM-DD**: FAILED: <one-line
-            reason>` format so a skipped audit is as visible as a completed one.
-            Note that the workflow also writes a FAILED entry by itself if this
-            step errors out, so never invent a successful-looking entry to avoid
-            reporting a problem — a duplicate FAILED line is harmless, a
-            fabricated success is not.
-
-            Edit only docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md. Do not touch any
-            other file, and do not attempt to commit or push — this job's
-            checkout has read-only git access by design; a separate workflow
-            job opens the PR from whatever you leave in the working tree.
-          claude_args: '--max-turns 30'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'openai/gpt-4o-mini' }}
+          APP_URL: https://rota.gakinz.com
+        run: node scripts/plan-drift-audit.mjs
 
       # Deterministic failure reporting. No model runs here — this is the step
       # that guarantees a failed audit is still recorded, and it must not
@@ -147,10 +126,10 @@ jobs:
         run: |
           if [ "${{ steps.keycheck.outputs.present }}" != 'true' ]; then
             OK=false
-            REASON="ANTHROPIC_API_KEY secret is not configured on this repository"
+            REASON="OPENROUTER_API_KEY secret is not configured on this repository"
           elif [ "${{ steps.audit.outcome }}" != 'success' ]; then
             OK=false
-            REASON="the Claude Code audit step did not succeed (outcome: ${{ steps.audit.outcome }}); see run ${{ github.run_id }}"
+            REASON="the OpenRouter drift-audit step did not succeed (outcome: ${{ steps.audit.outcome }}); see run ${{ github.run_id }}"
           else
             OK=true
             REASON=""
