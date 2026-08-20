@@ -9,7 +9,7 @@ import { settingsTabsForRole } from '@/lib/settingsTabs';
 
 /**
  * `/app/settings/*`. The eight-section organisation administration area from
- * `design/SettingsOrganisation.png`.
+ * `docs/design/SettingsOrganisation.png`.
  *
  * ## Why the tab bar lives in a layout route and not in each page
  *

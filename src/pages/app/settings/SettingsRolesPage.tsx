@@ -24,7 +24,7 @@ const ROLE_SCOPE: Record<SystemRole, string> = {
 
 /**
  * `/app/settings/roles`. The "Role Display Labels" card from
- * design/SettingsOrganisation.png, given its own section.
+ * docs/design/SettingsOrganisation.png, given its own section.
  *
  * ## The gap between the design and the schema, and how it is resolved
  *

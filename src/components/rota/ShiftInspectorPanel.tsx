@@ -170,7 +170,7 @@ function ShiftDetails({
 
   // `shifts` has no required-skills column, so this is the union of skills the
   // assigned staff actually hold. Hence "Skills on Shift", not the
-  // reference's "Required Skills". See design/.loop/rota-log.md.
+  // reference's "Required Skills". See docs/design/.loop/rota-log.md.
   const skills = [
     ...new Set(
       group.flatMap((s) =>

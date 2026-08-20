@@ -32,7 +32,7 @@ interface PageHeaderProps {
  *
  * Before this component there were 26 hand-rolled `<h1>` blocks across the app
  * and they used **three different sizes for the same role**, `text-2xl` (19
- * of them), `text-3xl` (10) and `text-xl` (4). `design/designsystem.png` names
+ * of them), `text-3xl` (10) and `text-xl` (4). `docs/design/designsystem.png` names
  * exactly one Page Title style, 32/40 Semibold, and `tailwind.config.ts` has
  * carried a `text-page-title` token for it the whole time. It was used three
  * times in the entire codebase.

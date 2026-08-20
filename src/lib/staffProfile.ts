@@ -1,5 +1,5 @@
 /**
- * View models for the Staff Profile detail screen (design/Staff-Profile.png).
+ * View models for the Staff Profile detail screen (docs/design/Staff-Profile.png).
  * Kept apart from `staffDirectory.ts` so the directory bundle doesn't carry
  * shapes only the profile route uses.
  */
@@ -8,7 +8,7 @@ import type { LeaveStatus, LeaveTypeKey } from '@/lib/leaveRows';
 import type { RoleCodeTone, StaffDocument } from '@/lib/staffDirectory';
 
 /**
- * Tab strip under the profile header (`design/Staff-Profile.png`). Every tab
+ * Tab strip under the profile header (`docs/design/Staff-Profile.png`). Every tab
  * renders real content — `availability`/`swaps`/`skills`/`timesheets`/`notes`
  * were dropped: a person's availability and swaps already have their own
  * screens, so keeping cosmetic-only tabs for them would be worse than not

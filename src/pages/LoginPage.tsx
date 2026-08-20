@@ -15,7 +15,7 @@ import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
 import { EmailSuggestion } from '@/components/auth/EmailSuggestion';
 
-/** `/login` (design/signin.png). */
+/** `/login` (docs/design/signin.png). */
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();

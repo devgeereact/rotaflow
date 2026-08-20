@@ -20,7 +20,7 @@ const ROW =
   'flex w-full items-center gap-4 rounded-xl px-1 py-2 text-left transition-colors hover:bg-surface-subtle ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark';
 
-/** Shortcuts at the foot of the reports rail (design/Reports-Dashboard.png). */
+/** Shortcuts at the foot of the reports rail (docs/design/Reports-Dashboard.png). */
 export function ReportsQuickActionsCard({
   actions,
 }: ReportsQuickActionsCardProps): JSX.Element {

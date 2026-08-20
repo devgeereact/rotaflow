@@ -9,7 +9,7 @@ type Variant =
   | 'warning'
   | 'danger'
   // Outlined destructive. The "Revoke Access" treatment in
-  // design/SettingsOrganisation.png. A solid red button next to a neutral one
+  // docs/design/SettingsOrganisation.png. A solid red button next to a neutral one
   // pulls the eye to the destructive choice; the outline keeps it legible as
   // dangerous without making it the visual default.
   | 'danger-outline';

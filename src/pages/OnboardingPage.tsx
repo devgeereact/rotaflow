@@ -63,9 +63,9 @@ interface StepCopy {
 }
 
 /**
- * Left-panel copy + feature list per step (design/Organisation-Onboarding.png,
- * design/Organisation-about.png, design/Team-onboarding.png,
- * design/Onboarding-Complete.png each show a different headline and feature
+ * Left-panel copy + feature list per step (docs/design/Organisation-Onboarding.png,
+ * docs/design/Organisation-about.png, docs/design/Team-onboarding.png,
+ * docs/design/Onboarding-Complete.png each show a different headline and feature
  * set; step 4 has no reference image, so it falls through to the step-1 copy
  * rather than inventing new copy for an unseen design).
  */
@@ -305,8 +305,8 @@ function clearOnboardingDraft(): void {
 }
 
 /**
- * Five-step organisation onboarding (design/Organisation-Onboarding.png →
- * design/Onboarding-Complete.png), replacing the single-field create-only stub.
+ * Five-step organisation onboarding (docs/design/Organisation-Onboarding.png →
+ * docs/design/Onboarding-Complete.png), replacing the single-field create-only stub.
  *
  * The organisation is created at the end of step 1, not at the end of the
  * wizard: steps 2-4 need an org id to write against, and a user who abandons

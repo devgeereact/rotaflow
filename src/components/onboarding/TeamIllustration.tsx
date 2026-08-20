@@ -1,6 +1,6 @@
 /**
  * The "team collaborating" illustration for the invite-team step
- * (design/Team-onboarding.png). Three simplified flat figures at a table,
+ * (docs/design/Team-onboarding.png). Three simplified flat figures at a table,
  * replacing that step's marketing panel `BuildingIllustration`.
  *
  * Deliberately flat/geometric (circles, rounded rectangles), not the

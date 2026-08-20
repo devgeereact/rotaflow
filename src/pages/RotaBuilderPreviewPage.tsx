@@ -162,7 +162,7 @@ const RIVERSIDE_STAFF = [
 const STAFF = [...SUNSHINE_STAFF, ...RIVERSIDE_STAFF];
 
 // Morning/Evening/Night map to moss/violet/indigo so the chips render the
-// green/purple/blue wash design/Rota-Builder.png shows.
+// green/purple/blue wash docs/design/Rota-Builder.png shows.
 const SHIFT_TYPES = [
   mkShiftType('type-morning', 'Morning', '#86AC6A'),
   mkShiftType('type-evening', 'Evening', '#C48FD6'),

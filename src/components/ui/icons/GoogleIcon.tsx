@@ -1,5 +1,5 @@
 /**
- * Google "G" mark for OAuth buttons (design/signup.png, design/signin.png).
+ * Google "G" mark for OAuth buttons (docs/design/signup.png, docs/design/signin.png).
  * Not a `lucide-react` icon: brand logos are fixed multi-colour marks, not
  * stylable iconography, so lucide (a single-colour outline set) has none.
  * Official four-colour path data. Colours are the brand's, not tokens.

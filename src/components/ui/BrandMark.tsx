@@ -17,7 +17,7 @@ interface BrandMarkProps {
  * The single source of the mark across the whole product. App sidebar and
  * header, marketing nav and footer, auth, onboarding, splash, app boot, the
  * invitation screen and the platform console. Geometry is traced from
- * design/splash-screen.png at its native 266×269.
+ * docs/design/splash-screen.png at its native 266×269.
  *
  * Vector, not raster. The old `assets/logo.png` was a glow-on-dark-blue export
  * that could not sit on a light canvas, so six surfaces shipped a mark that

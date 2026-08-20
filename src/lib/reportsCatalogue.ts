@@ -15,7 +15,7 @@ import type { ReportCategory, ReportFormat } from '@/lib/reportRows';
  * in `src/services/reportsService.ts`. The design reference lists more report
  * types (labour cost, compliance, overtime, new starters and so on); they are
  * deliberately absent rather than shown greyed out, because there is nothing
- * behind them yet. See design/.loop/reports-log.md.
+ * behind them yet. See docs/design/.loop/reports-log.md.
  */
 
 export interface ReportDefinition {

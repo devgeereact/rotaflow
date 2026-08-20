@@ -1,5 +1,5 @@
 /**
- * Decorative wave field behind the splash screen (design/splash-screen.png).
+ * Decorative wave field behind the splash screen (docs/design/splash-screen.png).
  *
  * Purely presentational: layered swooshes that sweep in from the upper left,
  * trough under the centre and climb out to the right, with a dotted texture

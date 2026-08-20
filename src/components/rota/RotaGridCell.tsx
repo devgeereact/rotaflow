@@ -57,7 +57,7 @@ export function RotaGridCell({
   );
 
   // An empty cell shows a muted en-dash rather than blank space, matching
-  // design/Rota-Builder.png. It reads as "no shift" instead of "not loaded".
+  // docs/design/Rota-Builder.png. It reads as "no shift" instead of "not loaded".
   if (isEmpty) {
     return (
       <button

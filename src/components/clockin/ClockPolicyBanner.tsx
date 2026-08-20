@@ -11,7 +11,7 @@ interface ClockPolicyBannerProps {
   onViewPolicy?: () => void;
 }
 
-/** Full-width policy notice above the clock-in grid (design/clockin.png). */
+/** Full-width policy notice above the clock-in grid (docs/design/clockin.png). */
 export function ClockPolicyBanner({
   title,
   body,

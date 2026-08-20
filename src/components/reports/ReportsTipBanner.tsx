@@ -9,7 +9,7 @@ interface ReportsTipBannerProps {
   onAction: () => void;
 }
 
-/** The tinted hint strip under the report table (design/Reports-Dashboard.png). */
+/** The tinted hint strip under the report table (docs/design/Reports-Dashboard.png). */
 export function ReportsTipBanner({
   title,
   body,

@@ -9,7 +9,7 @@ interface DocumentsCardProps {
   onViewAll: () => void;
 }
 
-/** Compliance documents in the profile rail (design/Staff-Profile.png). */
+/** Compliance documents in the profile rail (docs/design/Staff-Profile.png). */
 export function DocumentsCard({ documents, onViewAll }: DocumentsCardProps): JSX.Element {
   return (
     <Card className="p-5">

@@ -1,6 +1,6 @@
 /**
  * The single soft wave anchoring the onboarding marketing panel's bottom
- * third (design/Organisation-Onboarding.png, Organisation-about.png,
+ * third (docs/design/Organisation-Onboarding.png, Organisation-about.png,
  * Onboarding-Complete.png). Deliberately not `SplashWaves`: that illustration
  * is fitted to a wide ~16:9 canvas, and stretching it into this panel's
  * narrow, tall aspect ratio (`preserveAspectRatio="none"` over a very

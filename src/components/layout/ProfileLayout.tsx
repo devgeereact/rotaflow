@@ -7,7 +7,7 @@ import { profileTabs } from '@/lib/settingsTabs';
 
 /**
  * `/app/account/*`. The six-section personal area from
- * `design/ProfileSettings.png`.
+ * `docs/design/ProfileSettings.png`.
  *
  * Every signed-in user has one regardless of role, which is the whole reason
  * it is separate from Settings: Settings is organisation administration and a

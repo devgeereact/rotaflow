@@ -46,7 +46,7 @@ export const LEAVE_TYPE_LABEL: Record<LeaveTypeKey, string> = {
 /**
  * Glyph per leave type. The chip, the balance tile and nothing else.
  *
- * Read off design/Leave.png. `personal` is the one inference: the reference
+ * Read off docs/design/Leave.png. `personal` is the one inference: the reference
  * draws a badge-with-a-head that `ContactRound` matches most closely in the
  * Lucide set; the other four are unambiguous.
  */

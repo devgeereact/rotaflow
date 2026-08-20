@@ -1,7 +1,7 @@
 # Design System & Visual Guidelines. RotaFlow
 
-> Source of truth: `design/designsystem.png`, `design/rotaflowui.png`,
-> `design/authscreen.png`, `design/splashscreen.png`. This document and
+> Source of truth: `docs/design/designsystem.png`, `docs/design/rotaflowui.png`,
+> `docs/design/signin.png`, `docs/design/splash-screen.png`. This document and
 > `tailwind.config.ts` are the enforced, code-level expression of those
 > references. **Every future screen, component, or asset must match this
 > document, never invent a colour, size, or radius outside it.**
@@ -199,7 +199,7 @@ fallback when Framer Motion isn't warranted.
 
 ## 7. Reference assets
 
-`design/` holds the source references. Treat them as read-only design intent,
+`docs/design/` holds the source references. Treat them as read-only design intent,
 not files to edit:
 
 - `designsystem.png`. The canonical token sheet (colour, type, spacing, icons,
@@ -207,8 +207,8 @@ not files to edit:
   notifications).
 - `rotaflowui.png`. Full product screen showing the design system applied
   (dashboard, rota grid, sidebar nav, mobile views, light/dark mode switch).
-- `authscreen.png`. Sign-in screen (split layout, marketing panel + form).
-- `splashscreen.png`. App loading/splash screen.
+- `signin.png`. Sign-in screen (split layout, marketing panel + form).
+- `splash-screen.png`. App loading/splash screen.
 
 ### The mark
 

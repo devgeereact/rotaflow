@@ -15,7 +15,7 @@ const BADGE_TONES: Record<RoleCodeTone, string> = {
     'border border-surface-border bg-surface text-content-muted dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark',
 };
 
-/** Employment facts as a label/value list (design/Staff-Profile.png). */
+/** Employment facts as a label/value list (docs/design/Staff-Profile.png). */
 export function WorkInformationCard({
   rows,
   onEdit,

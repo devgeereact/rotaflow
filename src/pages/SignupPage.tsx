@@ -19,7 +19,7 @@ import { evaluatePassword } from '@/lib/password';
 import { isValidEmail } from '@/lib/email';
 
 /**
- * `/signup` (design/signup.png).
+ * `/signup` (docs/design/signup.png).
  *
  * Carries an invite through the whole round trip. An invitee arriving from
  * `/invite/:token` gets their address pre-filled and locked, and every

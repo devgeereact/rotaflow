@@ -3,7 +3,7 @@ import type { MembershipRole } from '@/types';
 
 /**
  * The Settings and My Profile tab sets, in the order the designs show them
- * (design/SettingsOrganisation.png, design/ProfileSettings.png).
+ * (docs/design/SettingsOrganisation.png, docs/design/ProfileSettings.png).
  *
  * Single source of truth on purpose: eleven screens are still to be built
  * against these, and a tab bar that differs by one item between two pages is

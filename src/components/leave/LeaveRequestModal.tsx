@@ -25,7 +25,7 @@ interface LeaveRequestModalProps {
 
 const TYPES: LeaveTypeKey[] = ['annual', 'sick', 'personal', 'carer', 'other'];
 
-/** The "Request Leave" dialog behind the header CTA (design/Leave.png). */
+/** The "Request Leave" dialog behind the header CTA (docs/design/Leave.png). */
 export function LeaveRequestModal({
   open,
   onClose,

@@ -40,7 +40,7 @@ describe('settingsTabsForRole', () => {
   });
 
   it('keeps the designed order', () => {
-    // design/SettingsOrganisation.png reads left to right in this order;
+    // docs/design/SettingsOrganisation.png reads left to right in this order;
     // re-ordering silently disagrees with every mockup.
     expect(settingsTabsForRole('owner').map((t) => t.label)).toEqual([
       'Organisation',

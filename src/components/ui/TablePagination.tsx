@@ -37,8 +37,8 @@ function pageItems(page: number, pageCount: number): (number | 'gap')[] {
 
 /**
  * Table footer: range summary, pager, rows-per-page. Drawn identically on
- * design/staff.png, design/Locations-Management.png and
- * design/Location-department.png, only the noun changes.
+ * docs/design/staff.png, docs/design/Locations-Management.png and
+ * docs/design/Location-department.png, only the noun changes.
  */
 export function TablePagination({
   page,

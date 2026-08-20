@@ -1,6 +1,6 @@
 /**
  * The office-building illustration anchoring the onboarding marketing panel
- * (design/Organisation-Onboarding.png, Organisation-about.png,
+ * (docs/design/Organisation-Onboarding.png, Organisation-about.png,
  * Onboarding-Complete.png). Identical across all three reference screens, so
  * built once and reused. Sits above `SplashWaves` in the left panel, behind
  * the feature list.
