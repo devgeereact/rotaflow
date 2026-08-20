@@ -13,7 +13,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 /**
  * The small coverage donut beside "N / M Staff" in the shift-details panel
- * (design/published-schedule.png). Decorative. The percentage is always
+ * (docs/design/published-schedule.png). Decorative. The percentage is always
  * spelled out next to it, so the ring is `aria-hidden`.
  */
 export function CoverageRing({ value, className }: CoverageRingProps): JSX.Element {

@@ -19,7 +19,7 @@ const BARS: Record<NonNullable<ShiftSummaryColumn['tone']>, string> = {
   night: 'bg-brand-deep',
 };
 
-/** Monthly shift mix with a small bar per column (design/Staff-Profile.png). */
+/** Monthly shift mix with a small bar per column (docs/design/Staff-Profile.png). */
 export function ShiftSummaryCard({
   month,
   columns,

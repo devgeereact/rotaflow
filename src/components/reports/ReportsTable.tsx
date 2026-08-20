@@ -29,7 +29,7 @@ const ACTION =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40 ' +
   'dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark';
 
-/** The report catalogue, one row per report (design/Reports-Dashboard.png). */
+/** The report catalogue, one row per report (docs/design/Reports-Dashboard.png). */
 export function ReportsTable({
   rows,
   onToggleFavourite,

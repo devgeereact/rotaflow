@@ -54,7 +54,7 @@ export interface CurrentShiftInfo {
 
 export interface ClockActivityEntry {
   id: string;
-  /** 'in' renders the green icon, 'out' the red one (design/clockin.png). */
+  /** 'in' renders the green icon, 'out' the red one (docs/design/clockin.png). */
   kind: 'in' | 'out' | 'break';
   label: string;
   timeLabel: string;
@@ -163,7 +163,7 @@ export function pickCurrentShift(shifts: Shift[], now: Date): Shift | null {
  * The schema stores `break_minutes`, a duration, and no break start time, so
  * there is nothing to read. Centred on the shift's midpoint, which is where a
  * mid-shift break lands in practice; it is a display convenience only, and
- * nothing pays or bills off it. Noted as inferred in design/.loop/clockin-log.md.
+ * nothing pays or bills off it. Noted as inferred in docs/design/.loop/clockin-log.md.
  */
 export function breakWindow(shift: Shift): { start: Date; end: Date } | null {
   const minutes = shift.break_minutes;

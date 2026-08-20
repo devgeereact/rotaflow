@@ -34,8 +34,8 @@ interface OnboardingLayoutProps {
 }
 
 /**
- * Three-column onboarding shell shared by design/Organisation-Onboarding.png,
- * design/Organisation-about.png and design/Onboarding-Complete.png: brand
+ * Three-column onboarding shell shared by docs/design/Organisation-Onboarding.png,
+ * docs/design/Organisation-about.png and docs/design/Onboarding-Complete.png: brand
  * panel, progress stepper, and the active step's form card.
  *
  * On the final step every prior step's subtitle switches from generic helper

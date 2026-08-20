@@ -15,9 +15,9 @@ import type { ReportsOverviewSegment } from '@/components/reports/ReportsOvervie
 
 /**
  * Fixtures for `/reports-preview`. The exact catalogue, run times, cadences
- * and overview split shown in design/Reports-Dashboard.png. Design-loop only:
+ * and overview split shown in docs/design/Reports-Dashboard.png. Design-loop only:
  * `/app/reports` builds its rows from the real catalogue and this browser's
- * run log. See design/.loop/reports-log.md.
+ * run log. See docs/design/.loop/reports-log.md.
  */
 
 const RUN_BY = 'James Davis';

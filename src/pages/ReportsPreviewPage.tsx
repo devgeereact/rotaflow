@@ -13,8 +13,8 @@ import type { ReportQuickAction } from '@/components/reports/ReportsQuickActions
 /**
  * Design-loop preview only, `/app/reports` needs a real Supabase session and a
  * seeded organisation. This renders the same components against the fixtures in
- * `src/lib/reportsDemo.ts`, reproducing design/Reports-Dashboard.png. Not wired
- * to any service call; see design/.loop/reports-log.md.
+ * `src/lib/reportsDemo.ts`, reproducing docs/design/Reports-Dashboard.png. Not wired
+ * to any service call; see docs/design/.loop/reports-log.md.
  */
 
 const noop = (): void => {};

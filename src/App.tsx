@@ -437,7 +437,7 @@ export function App(): JSX.Element {
                         {/* The real screen only ever renders inline from
                         ProtectedRoute/AppShell while auth or org membership is
                         resolving. Fixed props reproduce the "setting up
-                        organisation" mid-boot state in design/appboot.png. */}
+                        organisation" mid-boot state in docs/design/appboot.png. */}
                         <Route
                           path="/appboot"
                           element={<AppBootScreen authResolved orgResolved={false} />}
@@ -448,7 +448,7 @@ export function App(): JSX.Element {
                           path="/onboarding-preview"
                           element={<OnboardingPreviewPage />}
                         />
-                        {/* design/Workforce-Dashboard.png's numbers. */}
+                        {/* docs/design/Workforce-Dashboard.png's numbers. */}
                         <Route
                           path="/dashboard-preview"
                           element={<DashboardPreviewPage />}
@@ -463,12 +463,12 @@ export function App(): JSX.Element {
                           path="/schedule-preview"
                           element={<SchedulePreviewPage />}
                         />
-                        {/* design/Timesheets-Dashboard.png's numbers. */}
+                        {/* docs/design/Timesheets-Dashboard.png's numbers. */}
                         <Route
                           path="/timesheets-preview"
                           element={<TimesheetsPreviewPage />}
                         />
-                        {/* design/clockin.png. */}
+                        {/* docs/design/clockin.png. */}
                         <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
                         {/* The whole platform console against fixtures, with the
                         real shell and the real page components. The only way to
@@ -521,14 +521,14 @@ export function App(): JSX.Element {
                           <Route path="gdpr" element={<AdminGdprPage />} />
                           <Route path="settings" element={<AdminSettingsPage />} />
                         </Route>
-                        {/* design/staff.png and design/Staff-Profile.png. */}
+                        {/* docs/design/staff.png and docs/design/Staff-Profile.png. */}
                         <Route path="/staff-preview" element={<StaffPreviewPage />} />
                         <Route
                           path="/staff-preview/:staffId"
                           element={<StaffProfilePreviewPage />}
                         />
-                        {/* design/Locations-Management.png and
-                        design/Location-department.png, merged into one
+                        {/* docs/design/Locations-Management.png and
+                        docs/design/Location-department.png, merged into one
                         tabbed workspace. ?tab=departments opens the second. */}
                         <Route
                           path="/locations-preview"
@@ -538,12 +538,12 @@ export function App(): JSX.Element {
                           path="/locations-preview/departments"
                           element={<LocationsPreviewPage />}
                         />
-                        {/* design/Announcements-Dashboard.png's rows and metrics. */}
+                        {/* docs/design/Announcements-Dashboard.png's rows and metrics. */}
                         <Route
                           path="/announcements-preview"
                           element={<AnnouncementsPreviewPage />}
                         />
-                        {/* design/Reports-Dashboard.png's catalogue and figures. */}
+                        {/* docs/design/Reports-Dashboard.png's catalogue and figures. */}
                         <Route path="/reports-preview" element={<ReportsPreviewPage />} />
                         {/* The whole organisation workspace shell (rail, org
                         switcher, topbar, mobile tab bar) against a stubbed

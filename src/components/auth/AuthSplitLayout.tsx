@@ -22,8 +22,8 @@ interface AuthSplitLayoutProps {
 }
 
 /**
- * The split-screen shell shared by the auth screens (design/signup.png,
- * design/signin.png): a marketing panel. Logo, headline, feature list, wave
+ * The split-screen shell shared by the auth screens (docs/design/signup.png,
+ * docs/design/signin.png): a marketing panel. Logo, headline, feature list, wave
  * background. Beside a white form panel supplied via `children`.
  *
  * The reference's marketing panel also carries a customer testimonial (name,

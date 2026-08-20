@@ -329,7 +329,7 @@ its rows are maintained separately from these.
 > was one short. The cause: `clockin.png` was one of 18 mockups sitting **untracked**
 > when this file was written, so `git ls-files` disagreed with `ls`.
 > Count against the working tree, not the index — and right now those two
-> disagree again, for a different reason. `design/` was moved to `docs/design/`
+> disagree again, for a different reason. `docs/design/` was moved to `docs/design/`
 > without `git mv`, so **61 files are still tracked at the old path** (which no
 > longer exists on disk) and **none** at the new one. `git ls-files` and `ls`
 > will keep contradicting each other until that rename is completed in git.
@@ -339,7 +339,7 @@ built. What is left is listed in §7, and it is short.
 
 > Counts verified by parsing this file's own tables against `ls docs/design/`, not
 > by hand (the mockups moved out of the repo root into `docs/design/`; there is no
-> top-level `design/` any more). The invariant, if you add a mockup: every
+> top-level `docs/design/` any more). The invariant, if you add a mockup: every
 > **screen** `.png` in `docs/design/` appears in exactly one status row here.
 > Reference assets are excluded from that rule, `designsystem.png`,
 > `rotaflowui.png`, `logo.png`, `logo-1.png`, `logo-2.png` are tokens and brand

@@ -31,7 +31,7 @@ import type { ReportsOverviewSegment } from '@/components/reports/ReportsOvervie
 import type { ReportQuickAction } from '@/components/reports/ReportsQuickActionsCard';
 
 /**
- * `/app/reports`. The reporting workspace (design/Reports-Dashboard.png).
+ * `/app/reports`. The reporting workspace (docs/design/Reports-Dashboard.png).
  *
  * Every row is an export that genuinely exists: the catalogue in
  * `src/lib/reportsCatalogue.ts` maps one-to-one onto `reportsService` queries,

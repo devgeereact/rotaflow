@@ -31,7 +31,7 @@ function Person({ party }: { party: SwapParty }): JSX.Element {
   );
 }
 
-/** Requester → colleague, with the swap glyph between (design/Swap-Request.png). */
+/** Requester → colleague, with the swap glyph between (docs/design/Swap-Request.png). */
 export function SwapParties({ from, to }: SwapPartiesProps): JSX.Element {
   return (
     <div className="flex min-w-0 items-center gap-1.5">

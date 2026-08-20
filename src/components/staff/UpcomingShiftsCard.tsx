@@ -21,7 +21,7 @@ const TYPE_TONES: Record<UpcomingShift['typeTone'], string> = {
     'bg-shift-tint-indigo text-shift-tint-indigo-fg dark:bg-shift-deep-indigo dark:text-shift-indigo',
 };
 
-/** The next few shifts assigned to this person (design/Staff-Profile.png). */
+/** The next few shifts assigned to this person (docs/design/Staff-Profile.png). */
 export function UpcomingShiftsCard({
   shifts,
   onViewSchedule,

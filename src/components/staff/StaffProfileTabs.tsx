@@ -14,7 +14,7 @@ const TABS: PanelTabItem<StaffProfileTab>[] = [
   { value: 'activity', label: 'Activity' },
 ];
 
-/** Underlined tab strip under the profile header (design/Staff-Profile.png). */
+/** Underlined tab strip under the profile header (docs/design/Staff-Profile.png). */
 export function StaffProfileTabs({
   active,
   onChange,

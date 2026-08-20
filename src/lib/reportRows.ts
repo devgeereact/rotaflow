@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 
 /**
  * Shapes and tint maps for the Reports & Exports table
- * (design/Reports-Dashboard.png). Kept out of the components so the live page
+ * (docs/design/Reports-Dashboard.png). Kept out of the components so the live page
  * and the design preview build identical rows from different sources.
  */
 

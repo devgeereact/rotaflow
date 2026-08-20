@@ -1,6 +1,6 @@
 /**
  * Shapes and helpers for the team availability matrix
- * (design/Availability.png). Kept in `lib` so the live page and the design
+ * (docs/design/Availability.png). Kept in `lib` so the live page and the design
  * preview compute identical rows, `pages → services → lib`, per RULES.md §1.
  */
 

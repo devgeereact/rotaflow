@@ -2,7 +2,7 @@ import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PasswordRequirement } from '@/lib/password';
 
-/** The pill checklist under the password field (design/signup.png). */
+/** The pill checklist under the password field (docs/design/signup.png). */
 export function PasswordRequirements({
   requirements,
 }: {

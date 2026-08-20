@@ -10,7 +10,7 @@ interface ReportChipProps {
 
 /**
  * The tinted rectangle used for Category, Frequency and Format in the reports
- * table (design/Reports-Dashboard.png). Rectangular rather than a `rounded-full`
+ * table (docs/design/Reports-Dashboard.png). Rectangular rather than a `rounded-full`
  * Badge because the reference draws these as tags, not status pills.
  */
 export function ReportChip({ tone, children, className }: ReportChipProps): JSX.Element {

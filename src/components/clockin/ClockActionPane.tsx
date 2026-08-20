@@ -12,7 +12,7 @@ interface StageCopy {
 }
 
 /**
- * `ready` is the state design/clockin.png shows. The other three are the same
+ * `ready` is the state docs/design/clockin.png shows. The other three are the same
  * pane once the shift is under way. The reference never illustrates them, so
  * only the labels and the ring tint change; every dimension is shared.
  */
@@ -81,7 +81,7 @@ interface ClockActionPaneProps {
  * records `gps | qr | manual`, nothing generates the per-location code a scan
  * would read, and there is no PIN anywhere in the schema. The slot is given to
  * manual clock-in instead. The real second method, rather than shipping a
- * button that cannot work. See design/.loop/clockin-log.md.
+ * button that cannot work. See docs/design/.loop/clockin-log.md.
  */
 export function ClockActionPane({
   stage,

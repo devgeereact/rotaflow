@@ -99,7 +99,7 @@ export function paletteToken20ForColour(hex: string | null | undefined): string 
 
 /**
  * Pale-wash background + saturated ink + hairline ring for a swatch. The rota
- * grid chip in design/Rota-Builder.png. Written out in full (never
+ * grid chip in docs/design/Rota-Builder.png. Written out in full (never
  * concatenated) so Tailwind's content scan can see every class.
  */
 export function paletteTintForColour(hex: string | null | undefined): string {

@@ -61,7 +61,7 @@ const STAGE_COPY: Record<StepRingState, string> = {
 };
 
 /**
- * Boot progress for a cold start (design/appboot.png).
+ * Boot progress for a cold start (docs/design/appboot.png).
  *
  * Every stage reflects a real signal. Connectivity, the auth session resolving,
  * memberships resolving, and the bar is the proportion of those actually

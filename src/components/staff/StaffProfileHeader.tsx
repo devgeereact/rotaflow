@@ -19,7 +19,7 @@ const ACTION =
   'transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
   'dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark';
 
-/** Breadcrumb, name, status and the three profile actions (design/Staff-Profile.png). */
+/** Breadcrumb, name, status and the three profile actions (docs/design/Staff-Profile.png). */
 export function StaffProfileHeader({
   name,
   active,

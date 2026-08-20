@@ -1,6 +1,6 @@
 /**
  * View models for the Staff Directory and Staff Profile screens
- * (design/staff.png, design/Staff-Profile.png).
+ * (docs/design/staff.png, docs/design/Staff-Profile.png).
  *
  * These are presentation shapes, not database rows, a directory row folds in
  * a department name, a location name and a derived availability meter that no

@@ -37,8 +37,8 @@ const TONES: Record<BadgeTone, string> = {
   danger: 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
   info: 'bg-info-wash text-info dark:bg-info-wash-dark',
   primary: 'bg-primary-wash text-primary dark:bg-primary-wash-dark',
-  // Location / department type chips (design/Locations-Management.png,
-  // design/Location-department.png) run across the shift palette, which is the
+  // Location / department type chips (docs/design/Locations-Management.png,
+  // docs/design/Location-department.png) run across the shift palette, which is the
   // only token set with enough distinct hues for org-defined type lists. These
   // keep an alpha tint: the shift palette has no wash pair, and inventing eight
   // more tokens for chips that are already paired with a text label is not
