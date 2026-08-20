@@ -277,3 +277,32 @@ Model defaults to `openai/gpt-4o-mini`, overridable via the `OPENROUTER_MODEL`
 project secret. Deploy/redeploy with the Supabase MCP `deploy_edge_function` tool
 (or `supabase functions deploy ai-rota-assistant`); set the key with
 `supabase secrets set OPENROUTER_API_KEY=...` or via the dashboard.
+
+### 9c. Billing (Stripe)
+
+Three Edge Functions, added with migration `0050`, share `supabase/functions/_shared/stripe.ts`:
+
+- **`create-checkout-session`** — org owner picks a plan on Settings > Billing;
+  runs as the calling user (JWT forwarded, RLS-scoped, owner-role checked
+  against `memberships` directly) and returns a hosted Stripe Checkout URL for
+  a full-page redirect. No Stripe.js on the client.
+- **`create-portal-session`** — same auth pattern, returns a Stripe Billing
+  Portal URL so an owner can manage payment methods / cancel without a
+  custom UI.
+- **`stripe-webhook`** — the one function in this feature that runs as
+  `service_role` (deployed `--no-verify-jwt`), since Stripe calls it directly
+  with no end-user session; authenticated instead by Stripe's own request
+  signature (`STRIPE_WEBHOOK_SECRET`). Handles
+  `checkout.session.completed`, `customer.subscription.updated/deleted`,
+  `invoice.paid`, `invoice.payment_failed` — upserts `subscriptions`
+  (keyed on `org_id`/`(org_id, provider_ref)` since Stripe delivery is
+  at-least-once), writes `invoices` as a second, automated writer alongside
+  the manual platform-finance path, and calls `set_org_status()` (via its
+  `0051` service-role exception, see `SCHEMA.md` §6) to suspend an org once
+  Stripe's dunning is exhausted.
+
+Deploy: `supabase functions deploy <name>` (webhook needs `--no-verify-jwt`).
+Secrets: `STRIPE_SECRET_KEY` (shared by all three), `STRIPE_WEBHOOK_SECRET`
+(webhook only, from the Stripe dashboard's endpoint config). After deploying
+the webhook, register its URL in the Stripe dashboard against the five events
+above.

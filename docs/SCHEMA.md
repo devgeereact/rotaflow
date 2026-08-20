@@ -292,6 +292,19 @@ and only `is_org_member()` governs access, same as every other tenant table.
 - **`flag_enabled_for_org(key, org)`** (`0022`): the one function the application
   actually calls before rendering a dark-launch flag — hashes `key` + `org_id` so
   the same org always lands on the same side of a percentage rollout.
+- **`admin_create_organisation_with_invite(...)`** (`0052`, `security definer`,
+  platform-admin-only): atomically inserts an organisation with `created_by = null`
+  (so `on_org_created` never fires and no membership row is created), creates its
+  subscription at the negotiated price, and issues the owner invite for the real
+  contact — for the case where a prospect contacted sales directly instead of
+  self-serve signup (`organisations_insert`, `0002`, which requires
+  `auth.uid() = created_by`). The platform admin never holds membership, not even
+  transiently within the transaction.
+- **`create_invite(org, email, role)`** (`0006`; bootstrap exception in `0052`): both
+  of its permission gates now also accept a platform owner/admin inviting the very
+  first `owner` into a genuinely member-less org — the counterpart the admin-created
+  org above needs to actually reach its real owner. Every other caller is unaffected;
+  the exception only fires when no membership row exists yet for that org.
 
 ## 7. Generating TypeScript types
 

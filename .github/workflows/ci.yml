@@ -144,3 +144,39 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  # Third independent job: a real local Postgres via the Supabase CLI
+  # (Docker, provided by ubuntu-latest, no external project and no secrets),
+  # every migration applied to it, then pgTAP tests run against it. Neither
+  # `verify` nor `e2e` can catch an RLS regression: `verify`'s vitest suite is
+  # deliberately pure-logic over src/lib with no database at all
+  # (vitest.config.ts), and `e2e` deliberately runs with no Supabase session.
+  # This is what closes that gap — added after BUG-001
+  # (docs/QA-AUDIT-REPORT.md): a broken `organisations_select` policy made
+  # every new organisation fail to create, was fixed twice before
+  # (migrations 0003, 0005) and regressed silently a third time (0031) with
+  # nothing to catch it. supabase/tests/database/org_creation_bootstrap.test.sql
+  # guards exactly that failure mode.
+  db-tests:
+    name: db-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Applies every migration in supabase/migrations to a fresh local
+      # Postgres. No project ref, no login, nothing outside this runner.
+      - name: Start local Supabase stack
+        run: supabase start
+
+      - name: Run pgTAP database tests
+        run: supabase test db
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop
