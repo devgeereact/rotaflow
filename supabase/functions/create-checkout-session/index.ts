@@ -65,11 +65,18 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'Not authenticated' }, 401);
     }
 
+    // `status = 'active'` is not optional. `has_org_role` (0002) gates every
+    // in-app permission on it, and membership status is how an owner is
+    // suspended or how an invite that was never accepted is held back. Without
+    // it this check accepts a 'suspended' or 'invited' owner — and
+    // `memberships_select` lets them read their own row, so the query returns
+    // a matching membership and the request proceeds to Stripe.
     const { data: membership, error: membershipError } = await supabase
       .from('memberships')
       .select('role')
       .eq('org_id', orgId)
       .eq('user_id', user.id)
+      .eq('status', 'active')
       .maybeSingle();
     if (membershipError) throw membershipError;
     if (!membership || membership.role !== 'owner') {
