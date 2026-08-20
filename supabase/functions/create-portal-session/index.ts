@@ -60,11 +60,16 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'Not authenticated' }, 401);
     }
 
+    // `status = 'active'` is not optional — see the same check in
+    // create-checkout-session. The Customer Portal is the higher-value target
+    // of the two: it can cancel the subscription or change the payment method,
+    // so a suspended owner reaching it is worse than one reaching Checkout.
     const { data: membership, error: membershipError } = await supabase
       .from('memberships')
       .select('role')
       .eq('org_id', orgId)
       .eq('user_id', user.id)
+      .eq('status', 'active')
       .maybeSingle();
     if (membershipError) throw membershipError;
     if (!membership || membership.role !== 'owner') {
