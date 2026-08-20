@@ -73,7 +73,7 @@ Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, excep
 | `memberships`        | `org_id`, `user_id`→profiles, `role` (`owner`\|`manager`\|`staff`), `status`                                                                                                                                      | Who belongs to an org and as what.                                                             |
 | `locations`          | `org_id`, `name`, `address`, `latitude`, `longitude`, `timezone`, `geofence_radius_m`, `location_type?`, `status` (`setup`\|`active`\|`maintenance`\|`inactive`, default `setup`, `0045`)                        | Sites; clock-in geofencing.                                                                    |
 | `departments`        | `org_id`, `location_id?`, `name`                                                                                                                                                                                  | Kitchen, Nursing, Reception…                                                                   |
-| `staff_profiles`     | `org_id`, `user_id?`, `first_name`, `last_name`, `job_title`, `department_id?`, `contract_type`, `weekly_hours`, `holiday_allowance`, `skills text[]`, `payroll_id`, `start_date`, `phone`, `photo_url`, `active` | Employee record; `user_id` null until invited person signs up.                                 |
+| `staff_profiles`     | `org_id`, `user_id?`, `email?` (`0053`), `first_name`, `last_name`, `job_title`, `department_id?`, `contract_type`, `weekly_hours`, `holiday_allowance`, `skills text[]`, `payroll_id`, `start_date`, `phone`, `photo_url`, `active` | Employee record. `email` (`0053`) exists only to auto-link `user_id` to the real login once matched by a trigger or `accept_invite()`, in whichever order the HR record and the invite happen — before `0053` nothing ever set `user_id`, so a published rota was invisible to every real invited staff member. |
 | `shift_types`        | `org_id`, `name`, `colour`, `default_start`, `default_end`, `is_paid`, `category`                                                                                                                                 | Morning/Late/Night/On-Call…                                                                    |
 | `shift_templates`    | `org_id`, `name`, `shift_type_id?`, `location_id?`, `department_id?`, `start_time`, `end_time`, `break_minutes`, `required_skills text[]`                                                                         | Reusable shift presets.                                                                        |
 | `rotas`              | `org_id`, `location_id`, `name`, `period_start`, `period_end`, `status` (`draft`\|`published`), `published_at`                                                                                                    | A schedule for a period/location.                                                              |
@@ -305,6 +305,19 @@ and only `is_org_member()` governs access, same as every other tenant table.
   first `owner` into a genuinely member-less org — the counterpart the admin-created
   org above needs to actually reach its real owner. Every other caller is unaffected;
   the exception only fires when no membership row exists yet for that org.
+- **`staff_profiles_auto_link_account()`** (`0053`, trigger, `security definer`,
+  before insert/update of `email`/`org_id` on `staff_profiles`): if `email` is set
+  and `user_id` is still null, links it to a matching active membership in the same
+  org. Never overwrites an existing `user_id`.
+- **`accept_invite(token)`** (`0006`; account-linking added `0053`): now also links
+  any `staff_profiles` row in the invite's org still waiting on that email — the
+  other half of the auto-link trigger above, for whichever order the HR record and
+  the invite acceptance happen in.
+- **`platform_location_counts()`** (`0054`, `security definer`, platform-admin-only):
+  per-org location counts with no open support session required, the same shape as
+  `platform_tenant_counts` above — `locations_select` itself stayed gated behind
+  `is_org_member()` (`0028`)/`0031`'s carve-out never covered it, so a direct count
+  silently read zero for every org without an open session.
 
 ## 7. Generating TypeScript types
 

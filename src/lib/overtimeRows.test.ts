@@ -12,6 +12,7 @@ const STAFF_DEFAULTS: StaffProfile = {
   id: 'p-1',
   org_id: 'org-1',
   user_id: 'u-1',
+  email: null,
   first_name: 'Priya',
   last_name: 'Raman',
   job_title: 'Senior Nurse',

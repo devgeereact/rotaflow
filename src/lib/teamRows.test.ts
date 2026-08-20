@@ -13,6 +13,7 @@ function mkStaff(overrides: Partial<StaffProfile> = {}): StaffProfile {
     id: 's1',
     org_id: 'org-1',
     user_id: null,
+    email: null,
     first_name: 'Amara',
     last_name: 'Osei',
     job_title: 'Senior Carer',

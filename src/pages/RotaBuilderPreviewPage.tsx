@@ -72,6 +72,7 @@ function mkStaff(
     id,
     org_id: ORG_ID,
     user_id: null,
+    email: null,
     first_name: firstName,
     last_name: lastName,
     job_title: jobTitle,

@@ -85,7 +85,12 @@ export async function recordHealthSample(
   const { error } = await supabase.rpc('record_health_sample', {
     p_service: service,
     p_status: status,
-    p_latency_ms: latencyMs ?? undefined,
+    // `platform_health_samples.latency_ms` is `integer`; callers measure with
+    // `performance.now()`, which is never a whole number. PostgREST casts a
+    // JSON body value straight to the column type with no implicit rounding,
+    // so an un-rounded float 400s on every single call — round here, the one
+    // place every caller funnels through.
+    p_latency_ms: latencyMs === null ? undefined : Math.round(latencyMs),
     p_source: source,
   });
   if (error) throw error;

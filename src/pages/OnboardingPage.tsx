@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -355,19 +355,30 @@ export function OnboardingPage(): JSX.Element {
   // Restore step 1's draft once, as soon as we know who's typing — a refresh
   // mid-form (e.g. while troubleshooting a "could not create" error, BUG-002
   // in docs/QA-AUDIT-REPORT.md) must not throw away what was already typed.
+  //
+  // Guarded by a ref, not just the `[user, orgId]` deps: `AuthContext`'s
+  // `user` is a new object reference on every `onAuthStateChange` fire (token
+  // refresh, tab focus, etc), which re-triggers this effect long after the
+  // real one-time restore already ran. Without the ref, a later re-fire reads
+  // sessionStorage AFTER the save effect below has already persisted the
+  // user's real typing over the original draft — restoring the *now-current*
+  // (but momentarily stale, pre-merge) value back over itself, in the worst
+  // case a permanent blank if it lands between two keystrokes. The ref makes
+  // "restore" a true one-shot regardless of how many times `user` changes.
+  const restoredDraftRef = useRef(false);
   useEffect(() => {
-    if (!user || orgId) return;
+    if (!user || orgId || restoredDraftRef.current) return;
+    restoredDraftRef.current = true;
     const draft = loadOnboardingDraft(user.id);
     if (draft) setCreateValues((v) => ({ ...v, ...draft }));
-    // Runs once per user identity, not on every createValues change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, orgId]);
 
   // Keep the draft current while step 1 is being filled in; stop entirely
   // once the org is real so a later refresh doesn't resurrect stale step-1
-  // text over an organisation that already exists.
+  // text over an organisation that already exists. Gated on the same ref so
+  // this can never persist a pre-restore snapshot ahead of the effect above.
   useEffect(() => {
-    if (!user || orgId) return;
+    if (!user || orgId || !restoredDraftRef.current) return;
     saveOnboardingDraft(user.id, createValues);
   }, [user, orgId, createValues]);
 

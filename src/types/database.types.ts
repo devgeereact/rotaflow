@@ -2553,6 +2553,7 @@ export type Database = {
           contract_type: string | null;
           created_at: string;
           department_id: string | null;
+          email: string | null;
           first_name: string;
           holiday_allowance: number | null;
           id: string;
@@ -2573,6 +2574,7 @@ export type Database = {
           contract_type?: string | null;
           created_at?: string;
           department_id?: string | null;
+          email?: string | null;
           first_name: string;
           holiday_allowance?: number | null;
           id?: string;
@@ -2593,6 +2595,7 @@ export type Database = {
           contract_type?: string | null;
           created_at?: string;
           department_id?: string | null;
+          email?: string | null;
           first_name?: string;
           holiday_allowance?: number | null;
           id?: string;
@@ -3187,6 +3190,13 @@ export type Database = {
           mfa_enrolled: number;
           total_accounts: number;
           unverified: number;
+        }[];
+      };
+      platform_location_counts: {
+        Args: never;
+        Returns: {
+          locations: number;
+          org_id: string;
         }[];
       };
       platform_tenant_counts: {

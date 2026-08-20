@@ -50,6 +50,7 @@ const STAFF: StaffProfile[] = [
     id: `staff-${i}`,
     org_id: ORG_ID,
     user_id: null,
+    email: null,
     first_name,
     last_name,
     job_title: 'Care Assistant',
