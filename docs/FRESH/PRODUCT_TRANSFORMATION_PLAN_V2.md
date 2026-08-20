@@ -14,13 +14,13 @@ and the corrected priority order — production safety before further redesign.
 The original plan scored overall maturity 7/10 and listed five P0 items as required
 before an externally recruited beta. In the time since, most of P0 shipped:
 
-| Original P0 item | Status now | Evidence |
-| --- | --- | --- |
-| Publish legal trust pages | **Done** | `src/pages/legal/{PrivacyPage,TermsPage,CookiesPage,AccessibilityPage}.tsx` routed in `App.tsx`, sharing a `LegalNotice` template component (`5b4008c`) |
-| Remove/disclose illustrative admin-console metrics | **Done** | `6bf4ae6` |
-| Close launch-operational gaps (support mailbox, error alerts, incident response) | **Partial** | In-app feedback capture shipped and a live support-case outage found+fixed during verification (`014889f`); Sentry release convention added (`a5f6eb5`); no evidence of a rehearsed incident-response runbook |
-| Run an RLS/destructive-action review on deployed Supabase | **Not done** | No audit artifact found; memory records zero backups in production (`pitr_enabled: false`, `backups: []`), flagged but not actioned |
-| Test the critical loop on real mobile devices | **Not done** | No real-device UAT evidence; Playwright/axe E2E suite exists (`4695a3e`) but that is automated desktop-browser coverage, not real-device offline/keyboard/screen-reader testing |
+| Original P0 item                                                                 | Status now   | Evidence                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Publish legal trust pages                                                        | **Done**     | `src/pages/legal/{PrivacyPage,TermsPage,CookiesPage,AccessibilityPage}.tsx` routed in `App.tsx`, sharing a `LegalNotice` template component (`5b4008c`)                                                       |
+| Remove/disclose illustrative admin-console metrics                               | **Done**     | `6bf4ae6`                                                                                                                                                                                                     |
+| Close launch-operational gaps (support mailbox, error alerts, incident response) | **Partial**  | In-app feedback capture shipped and a live support-case outage found+fixed during verification (`014889f`); Sentry release convention added (`a5f6eb5`); no evidence of a rehearsed incident-response runbook |
+| Run an RLS/destructive-action review on deployed Supabase                        | **Not done** | No audit artifact found; memory records zero backups in production (`pitr_enabled: false`, `backups: []`), flagged but not actioned                                                                           |
+| Test the critical loop on real mobile devices                                    | **Not done** | No real-device UAT evidence; Playwright/axe E2E suite exists (`4695a3e`) but that is automated desktop-browser coverage, not real-device offline/keyboard/screen-reader testing                               |
 
 Also shipped beyond the original P0/P1 list: CI with typecheck/lint/tests/build/E2E/axe
 gates, event taxonomy published (`docs/OBSERVABILITY.md`, `f3edbe1`), AI assistant
@@ -40,14 +40,14 @@ the roadmap rather than just raising the score.
 
 ## 2. What changed since the original plan (score deltas)
 
-| Area | Original | Now | Why |
-| --- | --- | --- | --- |
-| Legal/compliance | 5/10 | 8/10 | All five trust pages shipped and routed; UK counsel review of content still outstanding |
-| Documentation | 8/10 | 9/10 | Event taxonomy, data lifecycle doc, and this plan itself added |
-| Developer experience | 7/10 | 8/10 | CI gate + Playwright/axe E2E suite closed the biggest gap the original plan named |
-| AI readiness | 6/10 | 7/10 | Audit logging and prompt versioning shipped; evaluation set and disclosure copy still open |
-| **Security** | 8/10 | **6/10** | Score corrected downward: zero production backups (`pitr_enabled:false`) is a maturity-blocking gap the original plan under-weighted relative to its own P0 list |
-| Business model | 4/10 | 4/10 | Unchanged — `billingService.ts` reads real `invoices`/`plans` tables for admin reporting, but no self-serve checkout or entitlement enforcement exists |
+| Area                 | Original | Now      | Why                                                                                                                                                              |
+| -------------------- | -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Legal/compliance     | 5/10     | 8/10     | All five trust pages shipped and routed; UK counsel review of content still outstanding                                                                          |
+| Documentation        | 8/10     | 9/10     | Event taxonomy, data lifecycle doc, and this plan itself added                                                                                                   |
+| Developer experience | 7/10     | 8/10     | CI gate + Playwright/axe E2E suite closed the biggest gap the original plan named                                                                                |
+| AI readiness         | 6/10     | 7/10     | Audit logging and prompt versioning shipped; evaluation set and disclosure copy still open                                                                       |
+| **Security**         | 8/10     | **6/10** | Score corrected downward: zero production backups (`pitr_enabled:false`) is a maturity-blocking gap the original plan under-weighted relative to its own P0 list |
+| Business model       | 4/10     | 4/10     | Unchanged — `billingService.ts` reads real `invoices`/`plans` tables for admin reporting, but no self-serve checkout or entitlement enforcement exists           |
 
 All other areas (UX, UI, Architecture, Performance, Accessibility, Scalability) are
 unchanged from the original scorecard — no evidence surfaced that would move them.
@@ -79,6 +79,7 @@ redesign or brand rollout work**:
    discrepancy was already investigated and closed on 2026-08-06 in commit
    `81eb6f7` (PR #101) via migrations `0028_support_access_gate.sql` and
    `0033_remove_parallel_incidents.sql` — a stale memory note, now corrected._
+
 3. **Real-device mobile/offline UAT — the actual schedule-risk item in this phase.**
    Unlike items 1-2 (one person, desk-based, days), this needs physical iOS/Android
    hardware, real staff walking the flow, and separate keyboard-only/screen-reader
@@ -257,3 +258,5 @@ scheduled or manually-dispatched run can execute. (This originally read
 `ANTHROPIC_API_KEY`; the audit was moved to OpenRouter on 2026-08-20 so that
 this project depends on a single AI provider — the same one the app's own
 `ai-rota-assistant` Edge Function uses.)
+
+**2026-08-20**: The audit revealed drift in the product plan document, specifically regarding the status of the 'Run an RLS/destructive-action review on deployed Supabase' task, which is marked as 'Not done' in the document but has evidence of being completed in the recent git history. Additionally, the task 'Test the critical loop on real mobile devices' is also marked as 'Not done' but lacks evidence of completion. The legal page for AI transparency is missing, which was noted as a gap in the document.
