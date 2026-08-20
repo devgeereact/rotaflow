@@ -257,3 +257,5 @@ scheduled or manually-dispatched run can execute. (This originally read
 `ANTHROPIC_API_KEY`; the audit was moved to OpenRouter on 2026-08-20 so that
 this project depends on a single AI provider — the same one the app's own
 `ai-rota-assistant` Edge Function uses.)
+
+**2026-08-20**: The audit revealed drift in the product plan document, specifically regarding the status of the 'Run an RLS/destructive-action review on deployed Supabase' task, which is marked as 'Not done' in the document but has evidence of being completed in the recent git history. Additionally, the task 'Test the critical loop on real mobile devices' is also marked as 'Not done' but lacks evidence of completion. The legal page for AI transparency is missing, which was noted as a gap in the document.
