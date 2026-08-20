@@ -20,7 +20,7 @@ interface PersonalInformationCardProps {
   onEdit: () => void;
 }
 
-/** Photo plus contact facts, top-left of the profile (design/Staff-Profile.png). */
+/** Photo plus contact facts, top-left of the profile (docs/design/Staff-Profile.png). */
 export function PersonalInformationCard({
   firstName,
   lastName,

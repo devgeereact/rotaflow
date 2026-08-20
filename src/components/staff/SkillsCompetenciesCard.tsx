@@ -9,7 +9,7 @@ interface SkillsCompetenciesCardProps {
   onViewAll: () => void;
 }
 
-/** Skill chips paired with a competency level (design/Staff-Profile.png). */
+/** Skill chips paired with a competency level (docs/design/Staff-Profile.png). */
 export function SkillsCompetenciesCard({
   skills,
   onViewAll,

@@ -12,7 +12,7 @@ interface SettingsSectionProps {
 
 /**
  * A titled card. Every Settings and Profile section is one of these
- * (design/SettingsOrganisation.png shows six on the Organisation tab alone),
+ * (docs/design/SettingsOrganisation.png shows six on the Organisation tab alone),
  * so the heading size, spacing and header row live here rather than being
  * retyped fourteen times with slightly different values.
  */

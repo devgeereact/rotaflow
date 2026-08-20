@@ -102,7 +102,7 @@ function nameById<T extends { id: string }>(
 }
 
 /**
- * `/app/clock`. The live clock-in screen, matching design/clockin.png.
+ * `/app/clock`. The live clock-in screen, matching docs/design/clockin.png.
  *
  * Everything on it is computed from real rows: the shift and its break from
  * `shifts`, the day's schedule from the same, recent activity and both weeks'

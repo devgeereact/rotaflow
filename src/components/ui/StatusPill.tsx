@@ -7,7 +7,7 @@ interface StatusPillProps {
 
 /**
  * The "● Online | v1.0.0" pill in the top-right corner of the splash and
- * app-boot screens (design/splash-screen.png, design/appboot.png).
+ * app-boot screens (docs/design/splash-screen.png, docs/design/appboot.png).
  */
 export function StatusPill({ className }: StatusPillProps): JSX.Element {
   const online = useOnlineStatus();

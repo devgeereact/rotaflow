@@ -13,7 +13,7 @@ interface StaffMetricCardProps {
 
 /**
  * One of the five metric tiles above the profile overview
- * (design/Staff-Profile.png): icon and label on the first line, the figure
+ * (docs/design/Staff-Profile.png): icon and label on the first line, the figure
  * beneath, then a caption.
  */
 export function StaffMetricCard({

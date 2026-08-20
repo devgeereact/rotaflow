@@ -25,7 +25,7 @@ interface SplashScreenProps {
 }
 
 /**
- * Cold-start splash (design/splash-screen.png).
+ * Cold-start splash (docs/design/splash-screen.png).
  *
  * Deliberately presentational. It owns no boot logic. The only live signal is
  * connectivity, so a staff member on bad ward wifi sees "Offline" instead of a

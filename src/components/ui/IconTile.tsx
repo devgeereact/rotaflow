@@ -21,7 +21,7 @@ interface IconTileProps {
 
 /**
  * A rounded, tinted square holding one outline icon. The summary-tile and
- * activity-row motif in design/staff.png and design/Staff-Profile.png.
+ * activity-row motif in docs/design/staff.png and docs/design/Staff-Profile.png.
  * Purely decorative: the label beside it carries the meaning.
  */
 const TONES: Record<IconTileTone, string> = {
@@ -30,13 +30,13 @@ const TONES: Record<IconTileTone, string> = {
   warning: 'bg-warning/15 text-warning',
   violet: 'bg-shift-violet/15 text-shift-violet',
   info: 'bg-info/10 text-info',
-  // Department-type tints on design/Location-department.png. Same `bg-X/15
+  // Department-type tints on docs/design/Location-department.png. Same `bg-X/15
   // text-X` idiom as `violet`, over the shift palette's rose and teal.
   rose: 'bg-shift-rose/15 text-shift-rose',
   teal: 'bg-shift-teal/15 text-shift-teal',
   danger: 'bg-danger/10 text-danger',
   // Blue-violet, not the pink `shift-violet`. The announcement megaphone and
-  // rota tiles in design/Announcements-Dashboard.png sit in the indigo family.
+  // rota tiles in docs/design/Announcements-Dashboard.png sit in the indigo family.
   indigo:
     'bg-shift-tint-violet text-shift-tint-violet-fg dark:bg-shift-deep-violet dark:text-shift-violet',
 };

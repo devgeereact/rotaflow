@@ -8,7 +8,7 @@ interface LeaveTypeChipProps {
 }
 
 /**
- * Leave type as a tinted chip with its glyph (design/Leave.png). Always
+ * Leave type as a tinted chip with its glyph (docs/design/Leave.png). Always
  * spelled out beside the icon. Type is never carried by colour alone
  * (docs/DESIGN.md §5).
  */

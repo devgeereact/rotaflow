@@ -11,7 +11,7 @@ interface ToggleProps {
 
 /**
  * The switch used by the notification matrices and preference rows
- * (design/ProfileSettings.png, design/SettingsNotifications.png).
+ * (docs/design/ProfileSettings.png, docs/design/SettingsNotifications.png).
  *
  * A real `<button role="switch">` with `aria-checked`, not a styled checkbox:
  * the notification grid is five rows × three channels, so fifteen of these sit

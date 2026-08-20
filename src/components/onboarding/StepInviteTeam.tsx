@@ -25,7 +25,7 @@ export interface StagedInvite {
    * Department/location are staged locally for the reviewer's own planning
    * only, `createInvite` (src/services/inviteService.ts) takes just
    * org/email/role, and the `invites` table has no columns for either yet.
-   * Shown in the review table below to match design/Team-onboarding.png, but
+   * Shown in the review table below to match docs/design/Team-onboarding.png, but
    * not persisted; a future migration would be needed to actually save them.
    */
   department?: string;

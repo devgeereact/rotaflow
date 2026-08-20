@@ -38,7 +38,7 @@ type SlugState = 'idle' | 'checking' | 'available' | 'taken' | 'unknown';
 
 /**
  * The subdomain suffix shown alongside the slug field, e.g.
- * "your-org-name**.rota.gakinz.com**" (design/Organisation-Onboarding.png
+ * "your-org-name**.rota.gakinz.com**" (docs/design/Organisation-Onboarding.png
  * shows ".rotaflow.app", not usable: docs/DEPLOYMENT.md already flags that
  * domain as somebody else's live, unrelated product, the exact mistake
  * `VITE_APP_URL` shipped with until 2026-07-29). `rota.gakinz.com` is the

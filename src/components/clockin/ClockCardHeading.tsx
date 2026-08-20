@@ -11,7 +11,7 @@ interface ClockCardHeadingProps {
 }
 
 /**
- * The tinted-icon + title row every card on design/clockin.png opens with.
+ * The tinted-icon + title row every card on docs/design/clockin.png opens with.
  * Extracted because seven cards repeat it exactly; the only variation is the
  * trailing link.
  */

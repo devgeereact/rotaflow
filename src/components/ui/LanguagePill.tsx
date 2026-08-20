@@ -6,8 +6,8 @@ interface LanguagePillProps {
 }
 
 /**
- * The "English (UK)" indicator (design/signin.png, design/signup.png,
- * design/Organisation-about.png). Static, not a `<button>`: there is no
+ * The "English (UK)" indicator (docs/design/signin.png, docs/design/signup.png,
+ * docs/design/Organisation-about.png). Static, not a `<button>`: there is no
  * locale switcher behind it yet (single-locale app), and a focusable control
  * that does nothing on click/Enter is worse than a plain indicator.
  */

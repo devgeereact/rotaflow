@@ -26,7 +26,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 /**
  * Proportional ring with a value in the hole. The Reports Overview breakdown
- * (design/Reports-Dashboard.png). Purely presentational: the legend beside it
+ * (docs/design/Reports-Dashboard.png). Purely presentational: the legend beside it
  * carries the numbers, so the ring is labelled for assistive tech and never
  * asks anyone to read a value off the colour.
  */

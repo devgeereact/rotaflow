@@ -28,7 +28,7 @@ interface StaffProfileViewProps {
   onAddEmergencyContact: () => void;
 }
 
-/** Icon + tint per metric tile, in the order design/Staff-Profile.png shows them. */
+/** Icon + tint per metric tile, in the order docs/design/Staff-Profile.png shows them. */
 const METRIC_STYLES: { icon: LucideIcon; tone: IconTileTone }[] = [
   { icon: CalendarDays, tone: 'primary' },
   { icon: Clock, tone: 'primary' },
@@ -38,7 +38,7 @@ const METRIC_STYLES: { icon: LucideIcon; tone: IconTileTone }[] = [
 ];
 
 /**
- * One person's profile (`design/Staff-Profile.png`): identity header, five
+ * One person's profile (`docs/design/Staff-Profile.png`): identity header, five
  * tabs, each showing real content — the tab strip used to be cosmetic,
  * every tab past Overview rendered the same dashboard regardless of which
  * was clicked. `Activity` stays honestly empty: no per-person activity feed

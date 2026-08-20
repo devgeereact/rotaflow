@@ -18,7 +18,7 @@ interface TabsProps {
 
 /**
  * The horizontal section switcher used by the Settings and My Profile areas
- * (design/SettingsOrganisation.png, design/ProfileSettings.png).
+ * (docs/design/SettingsOrganisation.png, docs/design/ProfileSettings.png).
  *
  * ## Why this is a `<nav>` of links and NOT `role="tablist"`
  *

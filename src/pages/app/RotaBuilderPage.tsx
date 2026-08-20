@@ -282,7 +282,7 @@ export function RotaBuilderPage(): JSX.Element {
   }, [orgId, reloadKey, showError]);
 
   // Rota + shifts for every location, for the selected week. The builder
-  // shows all locations at once (design/Rota-Builder.png), so every
+  // shows all locations at once (docs/design/Rota-Builder.png), so every
   // location needs its own rota/shift fetch, not just the filtered one.
   useEffect(() => {
     if (!orgId || locations.length === 0) {

@@ -27,7 +27,7 @@ interface RecentReportsCardProps {
   emptyMessage: string;
 }
 
-/** The last handful of generated reports (design/Reports-Dashboard.png). */
+/** The last handful of generated reports (docs/design/Reports-Dashboard.png). */
 export function RecentReportsCard({
   items,
   onViewAll,

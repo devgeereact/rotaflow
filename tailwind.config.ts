@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 // Design tokens mirror docs/DESIGN.md — the canonical reference is
-// design/designsystem.png. Keep class names NativeWind-compatible (no
+// docs/design/designsystem.png. Keep class names NativeWind-compatible (no
 // arbitrary web-only selectors) so the tree can be ported to Expo later.
 //
 // Light is the default theme (docs/DESIGN.md §1). Base token values are the
@@ -63,11 +63,11 @@ const config: Config = {
           ink: '#2F5BC0',
         },
         // Vivid marketing blue + navy ink ramp, sampled from
-        // design/splash-screen.png (and matching signin/dashboard renders).
+        // docs/design/splash-screen.png (and matching signin/dashboard renders).
         // The brand-expression surfaces — logo mark, wordmark, splash waves —
         // run hotter and cooler than the muted product `primary`/`content`
         // tokens. Kept as a separate namespace so restyling the splash never
-        // silently restyles the rota grid. See design/.loop/splash-log.md.
+        // silently restyles the rota grid. See docs/design/.loop/splash-log.md.
         brand: {
           DEFAULT: '#0C60F8', // logo tile, "Flow", progress fill, feature icons
           deep: '#0A55DE', // deepest wave stop
@@ -75,9 +75,9 @@ const config: Config = {
           pale: '#87B4FA', // bottom-centre wave
           mist: '#C9DCFB', // palest blue wave
           wash: '#E5EAF4', // progress track, hairline rules
-          // Pending-stage icon/ring tint on design/appboot.png — sampled
+          // Pending-stage icon/ring tint on docs/design/appboot.png — sampled
           // directly (not a `brand` opacity blend; alpha-over-white lands
-          // much lighter than this). See design/.loop/appboot-log.md.
+          // much lighter than this). See docs/design/.loop/appboot-log.md.
           faint: '#5275CA',
         },
         ink: {
@@ -111,11 +111,11 @@ const config: Config = {
           ink: '#12724E',
         },
         // Attendance green — the Clock In CTA, its "ready" ring, and the
-        // on-shift status washes in design/clockin.png. Sampled off that PNG:
+        // on-shift status washes in docs/design/clockin.png. Sampled off that PNG:
         // it runs markedly deeper than `success` (#1EA06B), which reads too
         // mint next to a solid fill at this size. Kept as its own namespace so
         // restyling attendance never shifts every "published" chip in the rota.
-        // See design/.loop/clockin-log.md.
+        // See docs/design/.loop/clockin-log.md.
         clock: {
           DEFAULT: '#068D41', // CTA fill + ready ring stroke
           tint: '#D6F4E1', // status badge wash (Starts in / Day Shift / Upcoming)
@@ -150,7 +150,7 @@ const config: Config = {
           muted: '#6B7280', // captions, hints (light)
           'muted-dark': '#94A3B8', // captions, hints (dark)
         },
-        // Availability matrix cell washes (design/Availability.png). Four
+        // Availability matrix cell washes (docs/design/Availability.png). Four
         // states, each a pale fill + its own readable ink, following the same
         // `-fg` pairing `shift-tint` already uses. The fills are sampled off
         // the PNG rather than derived: they sit at different effective
@@ -163,7 +163,7 @@ const config: Config = {
         // screen. Each `-fg` is the sampled hue darkened just far enough to
         // clear 4.5 (now 4.67 / 4.67 / 4.61); at 12px the shift is not visible
         // side by side. `-fg-dark` are brightened for the dark washes, where
-        // the light inks measured 2.6–3.9 : 1. See design/.loop/availability-log.md.
+        // the light inks measured 2.6–3.9 : 1. See docs/design/.loop/availability-log.md.
         avail: {
           free: '#F3FBF5',
           'free-fg': '#1C8056',
@@ -195,13 +195,13 @@ const config: Config = {
           rose: '#E888AB',
         },
         // Tinted counterpart to `shift` — the rota-grid chip in
-        // design/Rota-Builder.png is a pale wash with saturated ink, NOT the
+        // docs/design/Rota-Builder.png is a pale wash with saturated ink, NOT the
         // solid `shift` fill (that stays the Schedule screen's chip style).
         // A plain `/10` of the solid swatch lands too grey-olive to match, so
         // the three swatches the reference actually shows — moss (Morning),
         // violet (Evening), indigo (Night) — are sampled straight off the PNG.
         // The other five are interpolated to the same lightness/chroma so the
-        // set stays coherent. See design/.loop/rota-log.md.
+        // set stays coherent. See docs/design/.loop/rota-log.md.
         'shift-tint': {
           clay: '#FDF3F1',
           'clay-fg': '#B0432F',
@@ -221,7 +221,7 @@ const config: Config = {
           'rose-fg': '#AE3A62',
         },
         // Leave-type palette — the chips, balance meters, icon tiles and donut
-        // arcs on design/Leave.png. Sampled off that PNG.
+        // arcs on docs/design/Leave.png. Sampled off that PNG.
         //
         // Deliberately NOT `shift-tint`: that palette is the rota grid's, and
         // `shift_types.colour` is per-org configurable, so a tenant recolouring
@@ -278,7 +278,7 @@ const config: Config = {
         'section-heading': ['1.5rem', { lineHeight: '2rem' }], // 24/32
         'card-heading': ['1rem', { lineHeight: '1.5rem' }], // 16/24
         // Splash/marketing lockup only — 120/120, tight tracking, measured off
-        // design/splash-screen.png. Not part of the product type scale.
+        // docs/design/splash-screen.png. Not part of the product type scale.
         wordmark: ['7.375rem', { lineHeight: '1', letterSpacing: '-0.026em' }],
       },
       spacing: {
@@ -287,12 +287,12 @@ const config: Config = {
         66: '16.625rem',
         // 272px — the announcements search field measures exactly between
         // Tailwind's w-64 (256) and w-72 (288) in
-        // design/Announcements-Dashboard.png. See design/.loop/announcements-log.md.
+        // docs/design/Announcements-Dashboard.png. See docs/design/.loop/announcements-log.md.
         68: '17rem',
       },
       letterSpacing: {
         // Splash subtitle caps — measured at 0.0625em on
-        // design/splash-screen.png, between Tailwind's `wider` and `widest`.
+        // docs/design/splash-screen.png, between Tailwind's `wider` and `widest`.
         lockup: '0.0625em',
       },
       borderRadius: {

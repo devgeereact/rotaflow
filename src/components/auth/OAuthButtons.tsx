@@ -23,7 +23,7 @@ interface OAuthButtonsProps {
 }
 
 /**
- * The Google/GitHub row on the auth screens (design/signup.png shows
+ * The Google/GitHub row on the auth screens (docs/design/signup.png shows
  * Google + Microsoft; this project's second provider is GitHub. See
  * `OAuthProvider` in src/lib/env.ts, so GitHub replaces it here).
  *

@@ -66,7 +66,7 @@ Three caveats on those scripts, all of which have cost time:
    dev port is **5042** (`strictPort` in `vite.config.ts`) and `/leave-preview` no
    longer exists. Always pass the URL explicitly, e.g.
    `shot.sh out.png 1450 1160 http://localhost:5042/app/leave`.
-3. `compare.py` and `diff.py` open `design/Leave.png` by a hardcoded relative path
+3. `compare.py` and `diff.py` open `docs/design/Leave.png` by a hardcoded relative path
    that the move under `docs/` broke, and `docs/design/.loop/` is **git-ignored**
    (`.gitignore:47`), so every log and capture cited here is a local artefact that a
    fresh clone will not have.

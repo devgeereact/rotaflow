@@ -25,7 +25,7 @@ const TINTS: Record<ActivityKind, string> = {
   document: 'bg-shift-violet text-primary-fg',
 };
 
-/** Audit trail for this person, newest first (design/Staff-Profile.png). */
+/** Audit trail for this person, newest first (docs/design/Staff-Profile.png). */
 export function RecentActivityCard({
   entries,
   onViewAll,

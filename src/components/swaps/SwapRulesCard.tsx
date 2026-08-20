@@ -15,7 +15,7 @@ interface SwapRulesCardProps {
 }
 
 /**
- * The policy a swap request is checked against (design/Swap-Request.png).
+ * The policy a swap request is checked against (docs/design/Swap-Request.png).
  *
  * Every row is passed in. This card never assumes a default threshold,
  * because a wrong one tells staff a swap is allowed when it is not.

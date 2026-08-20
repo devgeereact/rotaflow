@@ -148,12 +148,12 @@ not just admin-privileged SQL checks.**
 - CONFIRMED: SMS = design the space (schema fields, notification-channel enum, service seam) but NO active integration for now. Twilio deferred; do not wire it in V1.
 - CONFIRMED: Payments = Apple Pay, Google Pay, PayPal (and similar wallets). Architect the billing/subscription layer around a pluggable payment-provider abstraction from the start, but IMPLEMENT it LAST (final phase). Not Stripe-specific. Webhooks/verification via Supabase Edge Function.
 
-## Design & Naming (CONFIRMED — superseded 2026-07-29 by design/*.png + docs/DESIGN.md)
+## Design & Naming (CONFIRMED — superseded 2026-07-29 by docs/design/*.png + docs/DESIGN.md)
 - Aesthetic: Clean & professional (Linear/Notion-like; trusted-tool feel). Still true.
 - Theme: **light by default** (not auto/prefers-color-scheme as originally planned —
-  revised once `design/rotaflowui.png` showed an explicit "Light Mode (Default)"
+  revised once `docs/design/rotaflowui.png` showed an explicit "Light Mode (Default)"
   toggle). Dark remains fully supported as a deliberate user choice.
-- Accent: Blue, revised to `#3B6FE0` (was `#2563EB`) per `design/designsystem.png`.
+- Accent: Blue, revised to `#3B6FE0` (was `#2563EB`) per `docs/design/designsystem.png`.
   Same value in both themes — no separate dark-mode accent.
 - appName: RotaFlow · shortName: RotaFlow (8 chars) · slug: rotaflow.
 - Full token set (colours, type scale, shift-type palette, shadows, icons) now

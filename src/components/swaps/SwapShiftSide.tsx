@@ -19,7 +19,7 @@ const CHIP_LABEL: Record<SwapShiftSideProps['side'], string> = {
 
 /**
  * One half of a swap. The chip, then date, time and location stacked under it
- * (design/Swap-Request.png).
+ * (docs/design/Swap-Request.png).
  *
  * The chip is never colour alone: it always carries the words "Giving Away" or
  * "Taking" (docs/DESIGN.md §5).

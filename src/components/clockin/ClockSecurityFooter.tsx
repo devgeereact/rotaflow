@@ -6,7 +6,7 @@ interface ClockSecurityFooterProps {
   onReportIssue?: () => void;
 }
 
-/** Reassurance strip closing the clock-in screen (design/clockin.png). */
+/** Reassurance strip closing the clock-in screen (docs/design/clockin.png). */
 export function ClockSecurityFooter({
   supportLine,
   contactLine,

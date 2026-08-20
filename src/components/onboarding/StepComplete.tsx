@@ -21,7 +21,7 @@ interface StepCompleteProps {
 }
 
 /**
- * Destinations that actually exist. design/Onboarding-Complete.png shows
+ * Destinations that actually exist. docs/design/Onboarding-Complete.png shows
  * "Set up shift types" / "Customise notifications" linking to a shift-types
  * page and a settings page. Neither exists in this app (shift types are
  * configured from a modal inside the rota builder, and there is no settings
