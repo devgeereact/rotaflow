@@ -91,6 +91,14 @@ supabase secrets set OPENROUTER_API_KEY=... --project-ref <your-project-ref>
 Without this, the feature degrades to a clean "not configured yet" message — nothing
 else in the app depends on it.
 
+**OpenRouter is the only AI provider this project uses.** The weekly plan-drift audit
+(`.github/workflows/plan-drift-audit.yml`) goes through it too, so it needs
+`OPENROUTER_API_KEY` as a **GitHub Actions** secret as well — same variable name, a
+different store from the Supabase secret above. Optionally set an `OPENROUTER_MODEL`
+Actions *variable* to override the `openai/gpt-4o-mini` default. Without the Actions
+secret the audit does not fail silently; it records a dated `FAILED:` entry in the plan
+doc and turns the run red.
+
 ### 5. Develop
 ```bash
 npm run dev        # http://localhost:5042  (strictPort — fails loudly if taken)

@@ -29,6 +29,14 @@ Treat the constraints below as ground truth for every response.
   server compute, see `supabase/functions/`), ImageKit (media), Sentry
   (monitoring), Inngest (background workflows), OpenRouter (AI, called only
   from an Edge Function — key never reaches the client).
+- **OpenRouter is the only AI provider.** Nothing in this project calls
+  Anthropic, OpenAI or any other vendor directly. Two callers, both
+  server-side: `supabase/functions/ai-rota-assistant` (product AI, keyed by
+  the `OPENROUTER_API_KEY` Supabase secret) and
+  `scripts/plan-drift-audit.mjs`, run by CI (keyed by the
+  `OPENROUTER_API_KEY` **GitHub Actions** secret — same name, different
+  store). Model defaults to `openai/gpt-4o-mini`, overridable via
+  `OPENROUTER_MODEL`. If you add AI anywhere, it goes through OpenRouter.
 - **Path alias:** import app code with `@/…` (maps to `src/`).
 
 ## Working style
