@@ -78,6 +78,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # Full history. actions/checkout defaults to a depth-1 shallow
+          # clone, which starved this audit's single most important input:
+          # `git log --oneline -50` returned exactly ONE commit in CI while
+          # returning 50 locally, so the model was asked to judge what had
+          # shipped with no history to judge from. Caught on the first real
+          # run — the job still reported success, because a thin evidence
+          # set looks identical to a thorough one from the outside.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
