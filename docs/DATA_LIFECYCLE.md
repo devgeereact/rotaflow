@@ -1,9 +1,18 @@
 # Data lifecycle
 
 **Status:** First pass, verified against the live deployment 13 August 2026 —
-not yet reviewed by counsel. This is the technical record `docs/PRODUCT_TRANSFORMATION_PLAN.md`
-P0 #1 needs as input for the published Privacy Notice; it is not that notice.
-Where something is a gap rather than a fact, it is written as a gap.
+not yet reviewed by counsel. This is the technical record
+`docs/PRODUCT_TRANSFORMATION_PLAN.md` P0 #1 needs as input for the published
+Privacy Notice; it is not that notice. Where something is a gap rather than a
+fact, it is written as a gap.
+
+**Revised 20 August 2026.** §1 was re-examined: the backup gap is unchanged
+and now deliberately deferred, with the condition that ends the deferral
+written down in §1a. **§3 (Retention) is known to be out of date** — it
+describes the world before migration `0029_retention_enforcement.sql`, which
+built the very purge job §3 calls unstarted work. Deliberately not corrected
+here, so that this revision stays about one thing; treat §3's "Enforced? No"
+column as unreliable until it is rewritten.
 
 ## 1. Backup and restore
 
@@ -23,6 +32,56 @@ account owner rather than actioned here.
 **Until this is closed:** treat every destructive admin action (organisation
 deletion, GDPR erasure, bulk membership changes) as unrecoverable in
 practice, and say so to whoever performs one.
+
+### 1a. Deliberately deferred, and the condition that ends the deferral
+
+Re-examined 20 August 2026. The gap above is real and the wording stands, but
+it is being **consciously deferred rather than forgotten**, for one reason:
+production holds almost no data.
+
+| table                                          | rows |
+| ---------------------------------------------- | ---- |
+| `audit_logs`                                   | 348  |
+| `memberships`                                  | 2    |
+| `organisations`                                | 1    |
+| `staff_profiles`                               | 1    |
+| `shifts`                                       | 1    |
+| `clock_events`, `timesheets`, `leave_requests` | 0    |
+
+One organisation, two users, one shift, no attendance history. If the database
+were lost today, recovery is: re-run the migrations and recreate two accounts.
+That path genuinely works as of migration `0056` — before it, the migration
+set could not rebuild a working database at all, because no migration granted
+table privileges (they were inherited from Supabase's ambient defaults, which
+belong to the hosted project and not to this repo). Paying for backups today
+would protect data that does not exist yet.
+
+**The trigger is an event, not a date: the first real organisation onboarded
+with live staff data.** Sign-ups by the owner for testing do not count; a
+customer whose staff clock in does.
+
+Why that specific line: migrations reconstruct the _schema_, never the _rows_.
+While the only rows are reproducible by hand, migrations are a sufficient
+recovery path. The moment a real rota, real clock-ins and real timesheets
+exist, they are not — losing a day of attendance data means payroll disputes
+that cannot be reasoned back from a schema.
+
+What to buy at that point, in order:
+
+1. **A paid plan is the prerequisite** — the organisation is on `free`, which
+   has no backups of any kind. A paid plan includes scheduled daily backups
+   with a retention window, and that alone closes the gap this section opens.
+2. **Point-in-time recovery is a further per-project add-on** on top of that,
+   and is not the same purchase. It narrows the recovery point from up to a
+   day down to minutes. Worth it once a day of lost clock-ins is a payroll
+   problem rather than an inconvenience; not before.
+
+Read current prices from the Supabase dashboard rather than any figure quoted
+in a document — they change, and a stale number here would be worse than none.
+
+This subsection exists so the deferral is a decision with a written trigger
+instead of a silence. If you are reading it and a real organisation is live,
+the deferral has expired.
 
 ## 2. Data residency
 
