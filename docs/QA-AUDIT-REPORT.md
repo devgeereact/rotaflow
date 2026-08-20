@@ -12,6 +12,21 @@
 
 ---
 
+> ⚠️ **Status as of 2026-08-20: P0 (BUG-001, org creation broken) is FIXED.**
+> Migrations `0048_restore_org_creation_bootstrap.sql` and
+> `0049_fix_org_bootstrap_correlation.sql` restore and correctly qualify the
+> `organisations_select` bootstrap clause this report diagnosed in §4 — the
+> shipped fix is nearly verbatim this report's own recommended SQL (§16). A
+> new organisation can be created again. This report's other findings
+> (BUG-002 onboarding-draft-lost-on-refresh, BUG-004 Platform Console
+> fabricated data) were **not** part of the P0 and remain open at last check —
+> see `docs/PRD.md`/`docs/LOOP.md` for current per-feature status. **No
+> regression test exists yet** for the org-creation-by-a-zero-membership-user
+> path this report's own recommended fix (§16) called for — this bug can
+> recur silently. The rest of this report is a point-in-time snapshot from
+> 2026-08-14 and should not be read as reflecting the current NOT READY /
+> 22-100 verdict.
+
 ## 1. Executive Summary
 
 **Overall status: NOT READY.**

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   countBy,
   humaniseKey,
+  monthlyChurnCounts,
   monthlyGrowth,
   type OverviewOrg,
 } from '@/lib/platformOverview';
@@ -10,6 +11,17 @@ const org = (created_at: string, status = 'active', plan = 'starter'): OverviewO
   created_at,
   status,
   plan,
+});
+
+// Defaults status to 'canceled' whenever canceled_at is set, matching the
+// realistic shape (a fully terminated subscription); pass status explicitly
+// to model a merely-scheduled, not-yet-effective cancellation instead.
+const sub = (
+  canceled_at: string | null,
+  status: string = canceled_at !== null ? 'canceled' : 'active',
+): { canceled_at: string | null; status: string } => ({
+  canceled_at,
+  status,
 });
 
 describe('monthlyGrowth', () => {
@@ -72,6 +84,63 @@ describe('monthlyGrowth', () => {
 
   it('honours a shorter window', () => {
     expect(monthlyGrowth([], now, 3)).toHaveLength(3);
+  });
+});
+
+describe('monthlyChurnCounts', () => {
+  const now = new Date('2026-08-05T09:00:00Z');
+
+  it('returns one count per month, oldest first', () => {
+    expect(monthlyChurnCounts([], now)).toHaveLength(12);
+  });
+
+  it('counts a cancellation into the month it happened', () => {
+    const counts = monthlyChurnCounts([sub('2026-08-02T10:00:00Z')], now);
+    expect(counts[11]).toBe(1);
+    expect(counts[10]).toBe(0);
+  });
+
+  it('does not count a subscription that has not been canceled', () => {
+    const counts = monthlyChurnCounts([sub(null)], now);
+    expect(counts.every((c) => c === 0)).toBe(true);
+  });
+
+  /**
+   * Same inclusive-start/exclusive-end convention `monthlyGrowth` pins above:
+   * a cancellation exactly on a bucket's start boundary belongs to that
+   * bucket, but one exactly on the boundary it shares with the next bucket
+   * (that bucket's `nextStart`) belongs to the next bucket instead, not both
+   * or neither.
+   */
+  it('counts a cancellation exactly at a bucket start, and rolls one exactly at nextStart into the next bucket', () => {
+    const counts = monthlyChurnCounts(
+      [sub('2025-11-01T00:00:00Z'), sub('2025-12-01T00:00:00Z')],
+      new Date('2025-12-15T12:00:00Z'),
+      3,
+    );
+    // Window is [Oct, Nov, Dec]. The Nov-01 cancellation lands in Nov (its
+    // own bucket's start); the Dec-01 cancellation is Nov's `nextStart` and
+    // must NOT land in Nov, only in Dec (its own bucket's start).
+    expect(counts).toEqual([0, 1, 1]);
+  });
+
+  it('honours a shorter window', () => {
+    expect(monthlyChurnCounts([], now, 3)).toHaveLength(3);
+  });
+
+  it('does not count a scheduled-but-not-yet-effective cancellation, only a fully terminated one', () => {
+    // Stripe's Customer Portal defaults to cancel-at-period-end: canceled_at
+    // is set when cancellation is requested, but status stays
+    // active/past_due until the subscription actually ends. Only the
+    // status === 'canceled' row should show up as churn.
+    const counts = monthlyChurnCounts(
+      [
+        sub('2026-08-02T10:00:00Z', 'active'), // requested, not yet effective
+        sub('2026-08-10T10:00:00Z', 'canceled'), // actually terminated
+      ],
+      now,
+    );
+    expect(counts[11]).toBe(1);
   });
 });
 

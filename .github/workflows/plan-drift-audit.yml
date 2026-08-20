@@ -21,6 +21,31 @@ name: Plan drift audit
 # no AI) holds `contents: write` / `pull-requests: write`. Least privilege for
 # the AI-driven half, same principle as RLS being the enforcement boundary
 # instead of client-side checks elsewhere in this project.
+#
+# ---------------------------------------------------------------------------
+# FAILURE REPORTING — fixed 2026-08-20, after this workflow failed silently.
+#
+# The FAILED marker was previously written only by the AI step's own prompt.
+# That could never work: if the AI step exited non-zero, every later step in
+# the job was skipped (none carried `if: always()`), so `diff` never set the
+# `changed` output, so `open-pr` — gated on `changed == 'true'` — was skipped
+# too. The one run this workflow has ever had (2026-08-17) failed exactly
+# that way: `audit` failed, `open-pr` skipped, nothing appended, no PR. A
+# mechanism designed to make missed runs visible was structurally incapable
+# of reporting its own failure.
+#
+# It is now deterministic and does not depend on the AI step succeeding, or
+# even running:
+#   * the API key is checked first, by shell, so a missing secret produces a
+#     precise reason instead of an opaque action error
+#   * the AI step is `continue-on-error`, so the job keeps going
+#   * a plain shell step writes the FAILED marker whenever the AI step did
+#     not succeed — no model involved in reporting that a model failed
+#   * `diff` and `upload` run with `if: always()`
+#   * `open-pr` runs with `if: always()`, so a FAILED entry reaches a PR
+#   * the job is then marked red, so the run is visible in the Actions tab
+#     as well as in the log
+# ---------------------------------------------------------------------------
 
 on:
   schedule:
@@ -36,6 +61,9 @@ concurrency:
   group: plan-drift-audit
   cancel-in-progress: false
 
+env:
+  PLAN_DOC: docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md
+
 jobs:
   audit:
     name: Run drift audit
@@ -45,13 +73,32 @@ jobs:
       id-token: write
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
+      audit_ok: ${{ steps.outcome.outputs.ok }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
+      # Checked in shell rather than in an `if:` expression because the
+      # `secrets` context is not reliably available to step conditionals.
+      # Doing it here means "no key configured" produces a specific,
+      # actionable FAILED reason rather than the action's opaque error.
+      - name: Check the API key is configured
+        id: keycheck
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ANTHROPIC_API_KEY is not set on this repository — the audit cannot run. Add it under Settings → Secrets and variables → Actions."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run Claude Code audit
         id: audit
+        if: steps.keycheck.outputs.present == 'true'
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -80,6 +127,10 @@ jobs:
             If you cannot complete the audit for any reason, do not guess —
             still append an entry in the same `**YYYY-MM-DD**: FAILED: <one-line
             reason>` format so a skipped audit is as visible as a completed one.
+            Note that the workflow also writes a FAILED entry by itself if this
+            step errors out, so never invent a successful-looking entry to avoid
+            reporting a problem — a duplicate FAILED line is harmless, a
+            fabricated success is not.
 
             Edit only docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md. Do not touch any
             other file, and do not attempt to commit or push — this job's
@@ -87,27 +138,81 @@ jobs:
             job opens the PR from whatever you leave in the working tree.
           claude_args: '--max-turns 30'
 
+      # Deterministic failure reporting. No model runs here — this is the step
+      # that guarantees a failed audit is still recorded, and it must not
+      # depend on the thing it is reporting on.
+      - name: Record the outcome
+        id: outcome
+        if: always()
+        run: |
+          if [ "${{ steps.keycheck.outputs.present }}" != 'true' ]; then
+            OK=false
+            REASON="ANTHROPIC_API_KEY secret is not configured on this repository"
+          elif [ "${{ steps.audit.outcome }}" != 'success' ]; then
+            OK=false
+            REASON="the Claude Code audit step did not succeed (outcome: ${{ steps.audit.outcome }}); see run ${{ github.run_id }}"
+          else
+            OK=true
+            REASON=""
+          fi
+          echo "ok=$OK" >> "$GITHUB_OUTPUT"
+          # Written as a plain `if`, not `[ ... ] && exit 0`: these steps run
+          # under `bash -eo pipefail`, where a failing test at the head of an
+          # AND-list can take the whole step down instead of falling through.
+          if [ "$OK" = true ]; then
+            echo "Audit completed normally."
+            exit 0
+          fi
+
+          TODAY=$(date -u +%Y-%m-%d)
+          echo "::warning::Drift audit did not complete: $REASON"
+
+          # Create the log section if the audit never got far enough to.
+          if ! grep -q '^## Drift Audit Log' "$PLAN_DOC"; then
+            printf '\n## Drift Audit Log\n' >> "$PLAN_DOC"
+          fi
+
+          # Don't double-append if the AI step already recorded today's failure.
+          if grep -q "^\*\*${TODAY}\*\*: FAILED:" "$PLAN_DOC"; then
+            echo "A FAILED entry for $TODAY is already present; not adding a second."
+            exit 0
+          fi
+
+          printf '\n**%s**: FAILED: %s\n' "$TODAY" "$REASON" >> "$PLAN_DOC"
+          echo "Appended FAILED entry for $TODAY."
+
       - name: Check whether the file actually changed
         id: diff
+        if: always()
         run: |
-          if git diff --quiet -- docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md; then
+          if git diff --quiet -- "$PLAN_DOC"; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload edited plan doc
-        if: steps.diff.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
+        if: always() && steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: plan-doc
           path: docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md
           retention-days: 7
 
+      # Last, so the artifact is uploaded and `open-pr` still runs. This makes
+      # the failure visible in the Actions tab, not only inside the doc.
+      - name: Fail the job if the audit did not complete
+        if: always() && steps.outcome.outputs.ok != 'true'
+        run: |
+          echo "::error::Plan-drift audit did not complete. A FAILED entry has been written to $PLAN_DOC and will appear in the audit PR."
+          exit 1
+
   open-pr:
     name: Open pull request
     needs: audit
-    if: needs.audit.outputs.changed == 'true'
+    # `always()` is load-bearing: without it a failed `audit` job skips this
+    # one, which is exactly how the FAILED marker used to get thrown away.
+    if: always() && needs.audit.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -116,23 +221,29 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Download edited plan doc
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: plan-doc
           path: docs/FRESH/
 
       - name: Open pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: 'chore: weekly plan-drift audit'
-          title: 'Weekly plan-drift audit — ${{ github.run_id }}'
+          title: "Weekly plan-drift audit${{ needs.audit.outputs.audit_ok != 'true' && ' — FAILED' || '' }}"
           body: |
             Automated re-audit of `docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md`
             against the current repo state. Review the diff before merging —
             this workflow never pushes straight to `main`.
 
+            Audit completed: **${{ needs.audit.outputs.audit_ok == 'true' && 'yes' || 'NO — see the FAILED entry in the diff' }}**
+
             See the plan doc's own `## Drift Audit Log` section for what
             changed, or `FAILED: ...` if the audit couldn't complete.
+
+            > Merging this PR is what makes the log entry visible to the
+            > staleness check, which reads the doc on `main`. Leaving audit PRs
+            > unmerged will eventually trip that check.
           branch: plan-drift-audit/weekly
           delete-branch: true
           labels: automated,plan-audit
@@ -144,22 +255,47 @@ jobs:
     # ran or succeeded, so it independently verifies the log itself is fresh
     # — the one thing that would NOT self-report if the scheduler stopped
     # firing entirely (deleted workflow, expired secret, disabled Actions).
-    if: always() && github.event_name == 'schedule'
+    # Also runs on workflow_dispatch so the guard can be tested on demand
+    # instead of only being exercised once a week.
+    if: always()
     steps:
       - uses: actions/checkout@v7
 
       - name: Verify last audit entry is under 10 days old
         run: |
-          LAST_ENTRY_DATE=$(grep -A200 '^## Drift Audit Log' docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md 2>/dev/null \
+          # Read from the log header to EOF. The previous version used
+          # `grep -A200`, which silently stops looking 200 lines in — once the
+          # log outgrew that window it would have read an OLD entry and either
+          # fired spuriously or, worse, gone quiet about a genuinely stale log.
+          LAST_ENTRY_DATE=$(sed -n '/^## Drift Audit Log/,$p' "$PLAN_DOC" 2>/dev/null \
             | grep -oE '^\*\*[0-9]{4}-[0-9]{2}-[0-9]{2}' | tail -1 | tr -d '*' || true)
+
           if [ -z "$LAST_ENTRY_DATE" ]; then
-            echo "::warning::No drift-audit log entry found at all — the audit job may never have run successfully."
+            echo "::error::No drift-audit log entry found at all — the audit job may never have run successfully."
             exit 1
           fi
-          LAST_EPOCH=$(date -d "$LAST_ENTRY_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%d" "$LAST_ENTRY_DATE" +%s)
+
+          LAST_EPOCH=$(date -d "$LAST_ENTRY_DATE" +%s 2>/dev/null \
+            || date -j -f "%Y-%m-%d" "$LAST_ENTRY_DATE" +%s 2>/dev/null || true)
+          if [ -z "$LAST_EPOCH" ]; then
+            echo "::error::Could not parse the last drift-audit date ('$LAST_ENTRY_DATE'). The log format may have drifted from **YYYY-MM-DD**."
+            exit 1
+          fi
+
           NOW_EPOCH=$(date +%s)
           AGE_DAYS=$(( (NOW_EPOCH - LAST_EPOCH) / 86400 ))
           echo "Last drift-audit entry: $LAST_ENTRY_DATE ($AGE_DAYS days ago)"
+
+          # A FAILED entry keeps the log fresh, so this check alone would go
+          # quiet while every audit failed. Flag a trailing FAILED explicitly.
+          LAST_LINE=$(sed -n '/^## Drift Audit Log/,$p' "$PLAN_DOC" | grep -E '^\*\*[0-9]{4}-[0-9]{2}-[0-9]{2}' | tail -1 || true)
+          case "$LAST_LINE" in
+            *FAILED:*)
+              echo "::error::The most recent drift-audit entry ($LAST_ENTRY_DATE) is a FAILED marker — the audit is not actually running. $LAST_LINE"
+              exit 1
+              ;;
+          esac
+
           if [ "$AGE_DAYS" -gt 10 ]; then
             echo "::error::Plan-drift audit log is $AGE_DAYS days stale (>10). The scheduler may have stopped firing silently — check this workflow's run history."
             exit 1

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Plus, Upload } from 'lucide-react';
+import { Copy, Download, Plus, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -19,13 +19,16 @@ import {
   AdminLoading,
   AdminPage,
 } from '@/components/admin/AdminPage';
+import { AdminCreateOrgModal } from '@/components/admin/AdminCreateOrgModal';
 import {
   countLocationsByOrg,
   countMembershipsByOrg,
   listAllOrganisations,
   listAllSubscriptions,
 } from '@/services/platformService';
+import type { CreatedOrganisationInvite } from '@/services/platformService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
+import { useToast } from '@/hooks/useToast';
 import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
 import { healthBreakdown } from '@/lib/tenantHealth';
 import { downloadCsv } from '@/lib/csv';
@@ -62,6 +65,13 @@ export function AdminOrganisationsPage(): JSX.Element {
   const [status, setStatus] = useState('');
   const [plan, setPlan] = useState('');
   const [sort, setSort] = useState<DataTableSort<OrgSortKey> | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createdInvite, setCreatedInvite] = useState<{
+    orgName: string;
+    email: string;
+    url: string;
+  } | null>(null);
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -93,6 +103,29 @@ export function AdminOrganisationsPage(): JSX.Element {
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
+
+  const handleOrgCreated = useCallback(
+    (result: CreatedOrganisationInvite, orgName: string, email: string) => {
+      setCreateModalOpen(false);
+      setCreatedInvite({ orgName, email, url: result.acceptUrl });
+      setReloadKey((k) => k + 1);
+      showSuccess(`${orgName} created. Copy the invite link and send it to ${email}.`);
+    },
+    [showSuccess],
+  );
+
+  const copyInviteLink = useCallback(
+    async (url: string): Promise<void> => {
+      try {
+        await navigator.clipboard.writeText(url);
+        showSuccess('Invitation link copied.');
+      } catch (err) {
+        reportError(err, { area: 'admin:create-org:copy-link' });
+        showError('Could not copy. Select the link and copy it manually.');
+      }
+    },
+    [showError, showSuccess],
+  );
 
   const subByOrg = useMemo(() => {
     const map = new Map<string, Subscription>();
@@ -264,7 +297,6 @@ export function AdminOrganisationsPage(): JSX.Element {
         sortable: true,
         cell: (org) => (
           <span className="flex flex-wrap items-center gap-1.5">
-            {org.is_demo && <Badge tone="neutral">Demo</Badge>}
             <Badge tone={STATUS_TONE[org.status as OrganisationStatus] ?? 'neutral'} dot>
               {humaniseKey(org.status)}
             </Badge>
@@ -383,17 +415,42 @@ export function AdminOrganisationsPage(): JSX.Element {
             <Download size={15} aria-hidden="true" />
             Export
           </Button>
-          {/* Creating a tenant from the console is not built: an organisation is
-              created by its owner during onboarding, which also provisions the
-              owner membership by trigger. A console form would have to
-              reimplement that and pick an owner who has not signed up. */}
-          <Button disabled title="Organisations are created by their owner at sign-up">
+          <Button onClick={() => setCreateModalOpen(true)}>
             <Plus size={15} aria-hidden="true" />
             Add organisation
           </Button>
         </>
       }
     >
+      {createdInvite && (
+        <div className="mb-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <h2 className="mb-1 font-medium text-content dark:text-content-dark">
+            Invitation link for {createdInvite.email}
+          </h2>
+          <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
+            {createdInvite.orgName} is created. Send this link to {createdInvite.email} so
+            they can accept and become its owner. It is shown once — RotaFlow stores only
+            a hash of the token, so it cannot be retrieved again.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+              {createdInvite.url}
+            </code>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void copyInviteLink(createdInvite.url)}
+            >
+              <Copy size={14} aria-hidden="true" className="mr-1.5" />
+              Copy
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setCreatedInvite(null)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
+
       {failed ? (
         <AdminError onRetry={retry} />
       ) : !organisations || !summary ? (
@@ -502,6 +559,12 @@ export function AdminOrganisationsPage(): JSX.Element {
           </Card>
         </div>
       )}
+
+      <AdminCreateOrgModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreated={handleOrgCreated}
+      />
     </AdminPage>
   );
 }

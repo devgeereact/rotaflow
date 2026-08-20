@@ -329,8 +329,12 @@ export function AdminSupportPage(): JSX.Element {
               <table className="w-full table-fixed border-collapse text-sm">
                 <caption className="sr-only">Support cases</caption>
                 <colgroup>
-                  {WIDTHS.map((w) => (
-                    <col key={w} className={w} />
+                  {WIDTHS.map((w, i) => (
+                    // Keyed by index, not `w`: WIDTHS repeats values
+                    // (two 11% columns, two 12%), so the value collides.
+                    // The column order is fixed and matches COLUMNS, so
+                    // position is a stable, correct key here.
+                    <col key={i} className={w} />
                   ))}
                 </colgroup>
                 <thead>

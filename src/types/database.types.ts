@@ -2553,6 +2553,7 @@ export type Database = {
           contract_type: string | null;
           created_at: string;
           department_id: string | null;
+          email: string | null;
           first_name: string;
           holiday_allowance: number | null;
           id: string;
@@ -2573,6 +2574,7 @@ export type Database = {
           contract_type?: string | null;
           created_at?: string;
           department_id?: string | null;
+          email?: string | null;
           first_name: string;
           holiday_allowance?: number | null;
           id?: string;
@@ -2593,6 +2595,7 @@ export type Database = {
           contract_type?: string | null;
           created_at?: string;
           department_id?: string | null;
+          email?: string | null;
           first_name?: string;
           holiday_allowance?: number | null;
           id?: string;
@@ -3021,6 +3024,20 @@ export type Database = {
         Args: { p_body: string; p_incident: string; p_status: string };
         Returns: string;
       };
+      admin_create_organisation_with_invite: {
+        Args: {
+          p_name: string;
+          p_owner_email: string;
+          p_plan: string;
+          p_price_pence?: number;
+          p_slug: string;
+        };
+        Returns: {
+          invite_expires_at: string;
+          invite_token: string;
+          org_id: string;
+        }[];
+      };
       anonymize_staff_member: {
         Args: { p_org: string; p_staff_profile_id: string };
         Returns: undefined;
@@ -3173,6 +3190,13 @@ export type Database = {
           mfa_enrolled: number;
           total_accounts: number;
           unverified: number;
+        }[];
+      };
+      platform_location_counts: {
+        Args: never;
+        Returns: {
+          locations: number;
+          org_id: string;
         }[];
       };
       platform_tenant_counts: {

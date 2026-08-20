@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -257,6 +257,54 @@ function stepAction(step: number, onBackToStep2: () => void): JSX.Element | null
 const EMPTY_LOCATION: AboutValues['locations'][number] = { name: '', address: '' };
 
 /**
+ * Step 1's form values only, `sessionStorage`-backed, cleared once the
+ * organisation is actually created. Steps 2-4 are deliberately not covered:
+ * once `orgId` exists a refresh already re-enters via the "already has a
+ * real org, go to dashboard" guard below, and drafting around that would mean
+ * touching the duplicate-org guard `handleCreateOrg` already has hard-won
+ * comments about. `sessionStorage`, not `localStorage`: this is a
+ * same-tab-refresh draft, not something that should reappear on a shared
+ * computer days later or after the tab has closed.
+ */
+const ONBOARDING_DRAFT_KEY = 'rotaflow:onboarding-draft';
+
+interface OnboardingDraft {
+  userId: string;
+  createValues: CreateOrgValues;
+}
+
+function loadOnboardingDraft(userId: string): CreateOrgValues | null {
+  try {
+    const raw = sessionStorage.getItem(ONBOARDING_DRAFT_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as Partial<OnboardingDraft>;
+    if (draft.userId !== userId || !draft.createValues) return null;
+    return draft.createValues;
+  } catch {
+    // Corrupt or inaccessible storage — the draft is a convenience, never a
+    // dependency; the step still works with a blank form.
+    return null;
+  }
+}
+
+function saveOnboardingDraft(userId: string, createValues: CreateOrgValues): void {
+  try {
+    const draft: OnboardingDraft = { userId, createValues };
+    sessionStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Storage full/unavailable (private browsing) — fine, just no draft.
+  }
+}
+
+function clearOnboardingDraft(): void {
+  try {
+    sessionStorage.removeItem(ONBOARDING_DRAFT_KEY);
+  } catch {
+    // Nothing to clean up if storage was never reachable.
+  }
+}
+
+/**
  * Five-step organisation onboarding (design/Organisation-Onboarding.png →
  * design/Onboarding-Complete.png), replacing the single-field create-only stub.
  *
@@ -303,6 +351,36 @@ export function OnboardingPage(): JSX.Element {
       void navigate('/app/dashboard', { replace: true });
     }
   }, [loading, memberships, orgId, navigate]);
+
+  // Restore step 1's draft once, as soon as we know who's typing — a refresh
+  // mid-form (e.g. while troubleshooting a "could not create" error, BUG-002
+  // in docs/QA-AUDIT-REPORT.md) must not throw away what was already typed.
+  //
+  // Guarded by a ref, not just the `[user, orgId]` deps: `AuthContext`'s
+  // `user` is a new object reference on every `onAuthStateChange` fire (token
+  // refresh, tab focus, etc), which re-triggers this effect long after the
+  // real one-time restore already ran. Without the ref, a later re-fire reads
+  // sessionStorage AFTER the save effect below has already persisted the
+  // user's real typing over the original draft — restoring the *now-current*
+  // (but momentarily stale, pre-merge) value back over itself, in the worst
+  // case a permanent blank if it lands between two keystrokes. The ref makes
+  // "restore" a true one-shot regardless of how many times `user` changes.
+  const restoredDraftRef = useRef(false);
+  useEffect(() => {
+    if (!user || orgId || restoredDraftRef.current) return;
+    restoredDraftRef.current = true;
+    const draft = loadOnboardingDraft(user.id);
+    if (draft) setCreateValues((v) => ({ ...v, ...draft }));
+  }, [user, orgId]);
+
+  // Keep the draft current while step 1 is being filled in; stop entirely
+  // once the org is real so a later refresh doesn't resurrect stale step-1
+  // text over an organisation that already exists. Gated on the same ref so
+  // this can never persist a pre-restore snapshot ahead of the effect above.
+  useEffect(() => {
+    if (!user || orgId || !restoredDraftRef.current) return;
+    saveOnboardingDraft(user.id, createValues);
+  }, [user, orgId, createValues]);
 
   const steps: OnboardingStepMeta[] = [
     {
@@ -357,6 +435,7 @@ export function OnboardingPage(): JSX.Element {
         user.id,
       );
       setOrgId(org.id);
+      clearOnboardingDraft();
       await refresh();
       switchOrg(org.id);
       setAboutValues((v) => ({ ...v, industry: createValues.industry || v.industry }));

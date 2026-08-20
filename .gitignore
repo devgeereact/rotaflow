@@ -38,8 +38,13 @@ Thumbs.db
 # Sentry
 .sentryclirc
 
-# Design-match loop artefacts — iteration screenshots, regenerated on every run
+# Design-match loop artefacts — iteration screenshots, regenerated on every run.
+# `design/` was moved under `docs/` without `git mv`, which silently unignored
+# 45 MB of scratch — including a Chrome user-data-dir holding Cookies and
+# Login Data — in a public repo. Both paths are listed so the rename cannot
+# reopen the hole.
 design/.loop/
+docs/design/.loop/
 
 # Claude Code local state. `worktrees/` in particular is where agent sessions
 # check out isolated copies of this repo — it was 84 MB of nested checkouts
@@ -59,10 +64,13 @@ test-results/
 playwright-report/
 blob-report/
 
-# Ruflo local secrets and runtime data
-.claude-flow/data/
-.claude-flow/logs/
-.claude-flow/sessions/
+# Ruflo/claude-flow local runtime state — daemon/swarm/metrics files churn
+# every session and carry no reviewable value; regenerates automatically.
+.claude-flow/
 .swarm/
 ruvector.db
 .gstack/
+.agents/
+
+# Graphify knowledge-graph output — regenerated on every /graphify run.
+graphify-out/

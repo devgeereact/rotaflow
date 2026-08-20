@@ -238,23 +238,112 @@ export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRef
 Tables must also be in the `supabase_realtime` publication, `0012_realtime.sql`. Adding a table to `RealtimeTable` without adding it there
 silently produces a subscription that never fires.
 
-### 12. `useNavBadges`
+### 12. `useNavBadgeCounts`
 
-`src/hooks/useNavBadges.ts`
-Live pending-count badges for the sidebar's Leave and Shift Swaps rows.
+`src/hooks/useNavBadgeCounts.ts`
+Pending-count badges for the sidebar's Leave and Shift Swaps rows.
 
 ```ts
 interface NavBadgeCounts {
   leave: number;
   swaps: number;
 }
-export function useNavBadges(orgId: string | null): NavBadgeCounts;
+export function useNavBadgeCounts(orgId: string | null): NavBadgeCounts;
 ```
 
 Both counts come back pre-scoped by RLS: a manager gets the org's pending
 queue, a staff member gets only their own still-pending requests. No role
-branching in the hook. Built on `useRealtimeRefresh`, so an approval
-elsewhere updates the badge without a poll or a manual refresh.
+branching in the hook. Polls every 60s rather than subscribing to Realtime —
+this mounts on every `/app/*` page via `Sidebar`, and a live channel per tab
+for two numbers is more infrastructure than the badge is worth. It would also
+collide with `useRealtimeRefresh` channels already open on `LeavePage`/
+`SwapsPage` for the same tables.
+
+### 13. `useConfirm`
+
+`src/hooks/useConfirm.ts`
+Promise-based confirmation dialog. Must be used inside `ConfirmProvider`
+(`src/context/ConfirmContext.tsx`); throws if the provider is missing.
+
+```ts
+export function useConfirm(): ConfirmContextValue;
+```
+
+### 14. `useFocusTrap`
+
+`src/hooks/useFocusTrap.ts`
+Traps focus inside an open drawer or dialog, closes it on Escape, hides the
+page behind it from assistive technology (`aria-hidden`), and restores focus
+on close. Shared by `Sidebar`'s mobile drawer and the platform console shell
+so both get identical, correct behaviour instead of two subtly-different
+copies.
+
+```ts
+export function useFocusTrap(
+  ref: RefObject<HTMLElement | null>,
+  open: boolean,
+  onClose: () => void,
+  containerSelector?: string, // defaults to 'main'
+): void;
+```
+
+### 15. `useFeatureAccess`
+
+`src/hooks/useFeatureAccess.ts`
+What the active organisation may use, and why — one call to
+`my_feature_access` per org load rather than a round trip per gate.
+
+```ts
+interface FeatureAccess {
+  loading: boolean; // gates read false while true
+  has: (feature: string) => boolean;
+  sourceOf: (feature: string) => 'plan' | 'flag' | null;
+  refresh: () => void;
+}
+export function useFeatureAccess(): FeatureAccess;
+```
+
+> **Rule: fails closed.** If the RPC errors, the granted set is empty and
+> every gate reads false — deliberately silent, not reported to Sentry (would
+> bury real errors on every page load). A gate that renders on a failed check
+> is worse than one that stays hidden.
+
+### 16. `useWebPush`
+
+`src/hooks/useWebPush.ts`
+Subscribes this device to Web Push, storing the subscription in
+`push_subscriptions` for the `send-notification` Edge Function to read.
+Requires `VITE_VAPID_PUBLIC_KEY`. The sending side is written but not
+deployed in this environment — cannot be verified end-to-end yet.
+
+```ts
+type WebPushStatus = 'unsupported' | 'default' | 'granted' | 'denied';
+interface UseWebPush {
+  status: WebPushStatus;
+  subscribing: boolean;
+  subscribe: (userId: string) => Promise<boolean>;
+  unsubscribe: () => Promise<void>;
+}
+export function useWebPush(): UseWebPush;
+```
+
+### 17. `useConsoleRefresh`
+
+`src/hooks/useConsoleRefresh.ts`
+How the platform console's topbar Refresh button reaches the screen under it.
+A screen *registers* its refetch via `useRegisterConsoleRefresh`; the shell
+renders the button only while something is registered, instead of a dead
+button wired to `location.reload()` that would discard filters/tab/scroll
+state.
+
+```ts
+interface ConsoleRefreshValue {
+  refresh: (() => void) | null;
+  register: (fn: (() => void) | null) => void;
+}
+export function useConsoleRefresh(): ConsoleRefreshValue;
+export function useRegisterConsoleRefresh(fn: () => void): void; // for screens
+```
 
 ## Conventions
 

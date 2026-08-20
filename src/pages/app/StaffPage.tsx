@@ -71,6 +71,7 @@ function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
     payroll_id: values.payrollId.trim() || null,
     start_date: values.startDate || null,
     phone: values.phone.trim() || null,
+    email: values.email.trim() ? values.email.trim().toLowerCase() : null,
   };
 }
 

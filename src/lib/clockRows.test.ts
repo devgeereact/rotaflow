@@ -5,7 +5,7 @@ import {
   buildAttendance,
   buildCurrentShift,
   buildRecentActivity,
-  buildTodaySchedule,
+  buildThisWeekRows,
   buildWeeklySummary,
   clockStage,
   clockWindow,
@@ -255,40 +255,36 @@ describe('buildCurrentShift', () => {
   });
 });
 
-describe('buildTodaySchedule', () => {
-  it('follows each shift with its break', () => {
-    const rows = buildTodaySchedule([shift()], LOOKUPS, new Date('2026-05-14T08:48:00'));
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({
-      timeRange: '09:00-17:00',
-      title: 'Senior Care Assistant',
-      badgeLabel: 'Upcoming',
-      tone: 'upcoming',
-      locationName: 'Sunnyvale Care Home',
-    });
-    expect(rows[1]).toMatchObject({
-      title: 'Unpaid Break',
-      badgeLabel: 'Break',
-      tone: 'break',
-    });
-    expect(rows[1]?.locationName).toBeUndefined();
-  });
-
-  it('tones the shift by where the day has got to', () => {
-    const at = (iso: string): string | undefined =>
-      buildTodaySchedule([shift()], LOOKUPS, new Date(iso))[0]?.tone;
-    expect(at('2026-05-14T08:00:00')).toBe('upcoming');
-    expect(at('2026-05-14T12:00:00')).toBe('active');
-    expect(at('2026-05-14T18:00:00')).toBe('done');
-  });
-
-  it('omits the break row for a shift that has none', () => {
-    const rows = buildTodaySchedule(
-      [shift({ break_minutes: 0 })],
-      LOOKUPS,
-      new Date('2026-05-14T08:48:00'),
-    );
+describe('buildThisWeekRows', () => {
+  it('pairs a shift with the segment clocked in on the same day', () => {
+    const events = [
+      event({ id: 'in', type: 'in', event_at: '2026-05-14T09:00:00' }),
+      event({ id: 'out', type: 'out', event_at: '2026-05-14T17:03:00' }),
+    ];
+    const segments = pairClockEvents(events, new Date('2026-05-14T18:00:00'));
+    const rows = buildThisWeekRows([shift()], segments);
     expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      dateLabel: 'Thu 14 May',
+      plannedLabel: '09:00, 17:00',
+      actualLabel: '09:00, 17:03',
+      paidLabel: '8h 03m',
+    });
+  });
+
+  it('shows a dash, not a zero, for a shift with no matching segment', () => {
+    const rows = buildThisWeekRows([shift()], []);
+    expect(rows[0]).toMatchObject({ actualLabel: '-', paidLabel: '-' });
+  });
+
+  it('sorts by shift start', () => {
+    const monday = shift({
+      id: 'mon',
+      starts_at: '2026-05-11T09:00:00',
+      ends_at: '2026-05-11T17:00:00',
+    });
+    const rows = buildThisWeekRows([shift(), monday], []);
+    expect(rows.map((r) => r.id)).toEqual(['mon', 'shift-1']);
   });
 });
 

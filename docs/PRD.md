@@ -84,9 +84,15 @@ role membership, never in the client alone.
 - Advanced analytics (labour cost, utilisation, coverage gaps).
 - Documents with expiry reminders (DBS, Right to Work, visas, certificates).
 - SSO, custom per-tenant branding, open API, advanced compliance.
-- **Subscription billing**. Apple Pay, Google Pay, PayPal (and similar) via a
-  pluggable payment-provider abstraction; plan gating (Starter / Professional /
-  Business). Built **last**, but the architecture accommodates it from the start.
+- **Subscription billing**. Stripe Checkout + Billing Portal shipped `0050`
+  (`create-checkout-session`, `create-portal-session`, `stripe-webhook` — see
+  `ARCHITECTURE.md` §9c): plan gating, invoice sync, dunning-triggered
+  suspension all wired to real `subscriptions`/`invoices` tables, and every
+  plan (Starter/Professional/Business/Enterprise) has a real Stripe price
+  configured — checkout is not gated on any plan. What's not yet done: no
+  real completed charge has been run through it end-to-end (verified
+  2026-08-20 that the code path is correctly wired; see
+  `docs/QA-AUDIT-REPORT.md`). Apple Pay / Google Pay / PayPal remain unbuilt.
 
 ## 6. Non-functional requirements
 
@@ -104,8 +110,9 @@ role membership, never in the client alone.
 
 ## 7. Out of scope (V1)
 
-- Full Super Admin billing console and live subscription charging (role/seams exist;
-  charging is the final phase).
+- Full Super Admin billing console self-serve on every plan, and a real
+  end-to-end-verified live charge (infra is built — see §5's Phase 2 billing
+  entry — but not yet exercised with a real completed payment).
 - SMS notifications (schema + channel seam reserved; **not** wired up yet).
 - AI scheduling, payroll integrations, SSO, open API (all Phase 2).
 - Native app-store submission (the Expo bridge is a later milestone).

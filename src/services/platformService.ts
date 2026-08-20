@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { buildAcceptUrl } from '@/services/inviteService';
 import { grantPlatformRole, revokePlatformRole } from '@/services/platformRoleService';
 import type { AuditLog, Organisation, Profile, Subscription } from '@/types';
 
@@ -97,23 +98,21 @@ export async function countMembershipsByOrg(): Promise<Map<string, number>> {
 /**
  * Locations per organisation, across every tenant.
  *
- * Reads one column and tallies client-side, exactly as `countMembershipsByOrg`
- * does, because PostgREST has no GROUP BY. That is affordable here, a location
- * is a building, so the row count is small even across a large deployment, and
- * it is not affordable for shifts, which is why there is no equivalent for
- * those.
- *
- * Visible cross-tenant because `locations_select` uses `is_org_member(org_id)`,
- * and `is_org_member` ends in `or public.is_platform_admin()`. Nothing extra is
- * granted here; a non-administrator calling this gets only their own.
+ * Routed through `platform_location_counts()` (0054), not a direct select —
+ * `locations_select` uses plain `is_org_member(org_id)`, which since 0028
+ * requires an active support-access session for a platform administrator
+ * (0031's carve-out for organisations/subscriptions/memberships never
+ * covered `locations`). A direct select here silently returned zero rows
+ * for every org without an open session, exactly the failure
+ * `countPublishedRotas()` below already routes around the same way.
  */
 export async function countLocationsByOrg(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.from('locations').select('org_id');
+  const { data, error } = await supabase.rpc('platform_location_counts');
   if (error) throw error;
 
   const counts = new Map<string, number>();
   for (const row of data ?? []) {
-    counts.set(row.org_id, (counts.get(row.org_id) ?? 0) + 1);
+    counts.set(row.org_id, Number(row.locations));
   }
   return counts;
 }
@@ -183,4 +182,55 @@ export async function setPlatformAdmin(
     return;
   }
   await revokePlatformRole(userId);
+}
+
+export interface CreateOrganisationWithInviteInput {
+  name: string;
+  slug: string;
+  plan: 'starter' | 'professional' | 'business' | 'enterprise';
+  ownerEmail: string;
+  /** Pence. Omit or null to use the plan's list price. */
+  pricePence?: number | null;
+}
+
+export interface CreatedOrganisationInvite {
+  orgId: string;
+  inviteToken: string;
+  inviteExpiresAt: string;
+  /** Ready-to-send URL for the contact, same shape as inviteService's own. */
+  acceptUrl: string;
+}
+
+/**
+ * Platform-admin-only. Creates an organisation for a prospect who contacted
+ * sales directly, at a plan and (optionally) negotiated price the admin
+ * sets, and mints an owner invite for the real contact — the admin never
+ * holds membership in the org, not even briefly (enforced inside
+ * `admin_create_organisation_with_invite`, 0051_admin_assisted_org_creation.sql).
+ *
+ * Raises rather than returning empty, same posture as `setPlatformAdmin`
+ * above and `platformRoleService`'s grant/revoke functions — a refused
+ * write must never look like a successful one.
+ */
+export async function createOrganisationWithInvite(
+  input: CreateOrganisationWithInviteInput,
+): Promise<CreatedOrganisationInvite> {
+  const { data, error } = await supabase.rpc('admin_create_organisation_with_invite', {
+    p_name: input.name,
+    p_slug: input.slug,
+    p_plan: input.plan,
+    p_owner_email: input.ownerEmail,
+    p_price_pence: input.pricePence ?? undefined,
+  });
+  if (error) throw error;
+
+  const row = data?.[0];
+  if (!row) throw new Error('The organisation could not be created.');
+
+  return {
+    orgId: row.org_id,
+    inviteToken: row.invite_token,
+    inviteExpiresAt: row.invite_expires_at,
+    acceptUrl: buildAcceptUrl(row.invite_token),
+  };
 }

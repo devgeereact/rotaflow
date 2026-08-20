@@ -25,6 +25,7 @@ export interface StaffFormValues {
   payrollId: string;
   startDate: string;
   phone: string;
+  email: string;
 }
 
 interface StaffFormModalProps {
@@ -48,6 +49,7 @@ function toFormValues(staff?: StaffProfile | null): StaffFormValues {
     payrollId: staff?.payroll_id ?? '',
     startDate: staff?.start_date ?? '',
     phone: staff?.phone ?? '',
+    email: staff?.email ?? '',
   };
 }
 
@@ -212,6 +214,22 @@ export function StaffFormModal({
               onChange={(e) => setValues((v) => ({ ...v, phone: e.target.value }))}
             />
           </div>
+        </div>
+
+        <div>
+          <Label htmlFor="staff-email">Email</Label>
+          <Input
+            id="staff-email"
+            type="email"
+            value={values.email}
+            onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
+            placeholder="jordan@example.com"
+          />
+          <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+            {initial?.user_id
+              ? 'Linked to their account — they can see their own schedule.'
+              : "Matched against their invite email so they can see their own schedule once they accept it. Doesn't send them anything directly."}
+          </p>
         </div>
 
         <div>

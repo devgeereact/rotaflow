@@ -7,17 +7,25 @@ import { ClockSecurityFooter } from '@/components/clockin/ClockSecurityFooter';
 import { CurrentShiftPane } from '@/components/clockin/CurrentShiftPane';
 import { NeedHelpCard } from '@/components/clockin/NeedHelpCard';
 import { RecentActivityCard } from '@/components/clockin/RecentActivityCard';
-import { TodayScheduleCard } from '@/components/clockin/TodayScheduleCard';
 import { WeeklySummaryCard } from '@/components/clockin/WeeklySummaryCard';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import type { HelpLink } from '@/components/clockin/NeedHelpCard';
 import type {
   AttendanceSummary,
   ClockActivityEntry,
   ClockStage,
   CurrentShiftInfo,
-  TodayScheduleEntry,
+  ThisWeekRow,
   WeeklySummaryStat,
 } from '@/lib/clockRows';
+
+const STAGE_LABEL: Record<ClockStage, string> = {
+  ready: 'Off',
+  working: 'Clocked in',
+  break: 'On break',
+  done: 'Clocked out',
+};
 
 export interface ClockInViewProps {
   policy: { title: string; body: string; onViewPolicy?: () => void };
@@ -36,8 +44,11 @@ export interface ClockInViewProps {
   /** Rendered under the clock actions. The location picker on `/app/clock`. */
   actionExtra?: ReactNode;
 
-  schedule: TodayScheduleEntry[];
-  onViewFullSchedule?: () => void;
+  /** True when this device has a connection. Drives the "Sync" row. */
+  online: boolean;
+
+  thisWeekRows: ThisWeekRow[];
+  onViewTimesheet?: () => void;
 
   activity: ClockActivityEntry[];
   onViewAllActivity?: () => void;
@@ -48,7 +59,6 @@ export interface ClockInViewProps {
     completedPercent: number;
     progressLabel: string;
   };
-  onViewTimesheet?: () => void;
 
   attendance: AttendanceSummary;
   onViewAttendanceReport?: () => void;
@@ -61,12 +71,18 @@ export interface ClockInViewProps {
 }
 
 /**
- * The whole clock-in screen (design/clockin.png), layout only.
+ * The whole clock-in screen (`docs/ORGANISATION_WORKSPACE.html`'s
+ * `SCREENS.clock`): shift + clock action on the left, "Today" and "This
+ * week" on the right — the reference's own two cards. Weekly variance,
+ * attendance trend, recent activity and help links are real, additive
+ * capability the reference has no equivalent for; they stay, one row down,
+ * rather than competing with the reference's own layout for the top of the
+ * screen.
  *
- * Owns no data and no clock: `/app/clock` feeds it Supabase rows mapped through
- * `@/lib/clockRows`, and `/clockin-preview` feeds it the frozen values from
- * `@/lib/clockinDemo`, so the design loop screenshots the same render tree the
- * product ships.
+ * Owns no data and no clock: `/app/clock` feeds it Supabase rows mapped
+ * through `@/lib/clockRows`, and `/clockin-preview` feeds it the frozen
+ * values from `@/lib/clockinDemo`, so the design loop screenshots the same
+ * render tree the product ships.
  *
  * Carries no outer padding, `AppShell` supplies `px-6 py-8 md:px-10` on the
  * live route, and the preview page supplies its own.
@@ -83,12 +99,12 @@ export function ClockInView({
   onSecondaryAction,
   busy,
   actionExtra,
-  schedule,
-  onViewFullSchedule,
+  online,
+  thisWeekRows,
+  onViewTimesheet,
   activity,
   onViewAllActivity,
   weekly,
-  onViewTimesheet,
   attendance,
   onViewAttendanceReport,
   help,
@@ -112,24 +128,8 @@ export function ClockInView({
         />
       </div>
 
-      {/*
-        Both rows are 12-column grids on the SAME column track, and every cell
-        is `h-full`.
-
-        Neither was true before, and the screen showed it: the right rail
-        (Today's Schedule + Recent Activity) is naturally taller than the shift
-        card beside it, so the grid row grew to the rail's height while the
-        shift card kept its own. Leaving the two columns ending 60px apart. The
-        row-2 cards had the same latent problem, held together only by their
-        content happening to be the same height.
-
-        `h-full` on each cell plus `h-full` inside each card is what makes a
-        row end on one line regardless of what is in it. The grid's default
-        `items-stretch` stretches the *cell*; without the card also filling that
-        cell, the card just sits at its natural height inside a taller box.
-      */}
       <div className="mt-5 grid gap-5 lg:grid-cols-12">
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-7">
           {/* 7/5 split, not 50/50. The reference gives Current Shift ~55% so
               "09:00-17:00" and the location rows each stay on one line. */}
           <div className="grid h-full divide-y divide-surface-border overflow-hidden rounded-xl border border-surface-border bg-surface shadow-sm dark:divide-surface-border-dark dark:border-surface-border-dark dark:bg-surface-dark md:grid-cols-12 md:divide-x md:divide-y-0">
@@ -152,20 +152,108 @@ export function ClockInView({
           </div>
         </div>
 
-        {/* `flex` + `flex-1` on the last card rather than `space-y-5`: the rail
-            has to fill the row exactly, and Recent Activity is the item that
-            should absorb the slack. It is a list, so extra height shows more
-            of it rather than stretching a fixed layout. */}
-        <div className="flex flex-col gap-5 lg:col-span-4">
-          <TodayScheduleCard entries={schedule} onViewFull={onViewFullSchedule} />
-          <div className="flex-1">
-            <RecentActivityCard entries={activity} onViewAll={onViewAllActivity} />
-          </div>
+        <div className="flex flex-col gap-5 lg:col-span-5">
+          <Card className="p-0">
+            <div className="border-b border-surface-border px-5 py-4 dark:border-surface-border-dark">
+              <h2 className="font-semibold text-content dark:text-content-dark">Today</h2>
+            </div>
+            <dl className="divide-y divide-surface-border text-sm dark:divide-surface-border-dark">
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <dt className="text-content-muted dark:text-content-muted-dark">
+                  Scheduled
+                </dt>
+                <dd className="font-medium text-content dark:text-content-dark">
+                  {shift ? `${shift.shiftTypeName}, ${shift.timeRange}` : 'Not scheduled'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <dt className="text-content-muted dark:text-content-muted-dark">Site</dt>
+                <dd className="font-medium text-content dark:text-content-dark">
+                  {shift?.locationName ?? '-'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <dt className="text-content-muted dark:text-content-muted-dark">Break</dt>
+                <dd className="font-medium text-content dark:text-content-dark">
+                  {shift ? `${shift.breakRange} ${shift.breakDuration}` : '-'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <dt className="text-content-muted dark:text-content-muted-dark">
+                  Status
+                </dt>
+                <dd className="font-medium text-content dark:text-content-dark">
+                  {STAGE_LABEL[stage]}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-5 py-3">
+                <dt className="text-content-muted dark:text-content-muted-dark">Sync</dt>
+                <dd
+                  className={
+                    online
+                      ? 'font-medium text-success'
+                      : 'font-medium text-warning dark:text-warning'
+                  }
+                >
+                  {online ? 'Synced' : 'Offline, will sync'}
+                </dd>
+              </div>
+            </dl>
+          </Card>
+
+          <Card className="flex-1 p-0">
+            <div className="flex items-center justify-between gap-3 border-b border-surface-border px-5 py-4 dark:border-surface-border-dark">
+              <h2 className="font-semibold text-content dark:text-content-dark">
+                This week
+              </h2>
+              {onViewTimesheet && (
+                <Button size="sm" variant="secondary" onClick={onViewTimesheet}>
+                  Timesheet
+                </Button>
+              )}
+            </div>
+            {thisWeekRows.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-content-muted dark:text-content-muted-dark">
+                No shifts scheduled this week.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+                      <th className="px-5 py-2.5">Day</th>
+                      <th className="px-3 py-2.5">Planned</th>
+                      <th className="px-3 py-2.5">Actual</th>
+                      <th className="px-5 py-2.5 text-right">Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-border dark:divide-surface-border-dark">
+                    {thisWeekRows.map((row) => (
+                      <tr key={row.id}>
+                        <td className="px-5 py-2.5 text-content dark:text-content-dark">
+                          {row.dateLabel}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-xs text-content-muted dark:text-content-muted-dark">
+                          {row.plannedLabel}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-xs text-content-muted dark:text-content-muted-dark">
+                          {row.actualLabel}
+                        </td>
+                        <td className="px-5 py-2.5 text-right font-mono text-xs text-content dark:text-content-dark">
+                          {row.paidLabel}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </div>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-12">
-        <div className="h-full lg:col-span-5">
+        <div className="h-full lg:col-span-3">
           <WeeklySummaryCard
             periodLabel={weekly.periodLabel}
             stats={weekly.stats}
@@ -186,7 +274,10 @@ export function ClockInView({
             onViewReport={onViewAttendanceReport}
           />
         </div>
-        <div className="h-full lg:col-span-4">
+        <div className="h-full lg:col-span-3">
+          <RecentActivityCard entries={activity} onViewAll={onViewAllActivity} />
+        </div>
+        <div className="h-full lg:col-span-3">
           <NeedHelpCard links={help} />
         </div>
       </div>

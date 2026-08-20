@@ -7,9 +7,9 @@ import {
   DEMO_FOOTER,
   DEMO_HELP,
   DEMO_POLICY,
-  DEMO_SCHEDULE,
   DEMO_SHIFT,
   DEMO_SUMMARY,
+  DEMO_THIS_WEEK_ROWS,
   DEMO_WEEK_LABEL,
   DEMO_WINDOW_LABEL,
 } from '@/lib/clockinDemo';
@@ -42,7 +42,8 @@ export function ClockInPreviewPage(): JSX.Element {
         clockTime={DEMO_CLOCK_TIME}
         clockDateLabel={DEMO_CLOCK_DATE}
         windowLabel={DEMO_WINDOW_LABEL}
-        schedule={DEMO_SCHEDULE}
+        online={true}
+        thisWeekRows={DEMO_THIS_WEEK_ROWS}
         activity={DEMO_ACTIVITY}
         weekly={{
           periodLabel: DEMO_WEEK_LABEL,
