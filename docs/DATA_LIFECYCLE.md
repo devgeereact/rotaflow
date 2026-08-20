@@ -6,13 +6,16 @@ not yet reviewed by counsel. This is the technical record
 Privacy Notice; it is not that notice. Where something is a gap rather than a
 fact, it is written as a gap.
 
-**Revised 20 August 2026.** §1 was re-examined: the backup gap is unchanged
-and now deliberately deferred, with the condition that ends the deferral
-written down in §1a. **§3 (Retention) is known to be out of date** — it
-describes the world before migration `0029_retention_enforcement.sql`, which
-built the very purge job §3 calls unstarted work. Deliberately not corrected
-here, so that this revision stays about one thing; treat §3's "Enforced? No"
-column as unreliable until it is rewritten.
+**Revised 20 August 2026, twice.** §1 was re-examined: the backup gap is
+unchanged and now deliberately deferred, with the condition that ends the
+deferral written down in §1a.
+
+§3 was then rewritten, and rewriting it turned up a live defect rather than
+just stale prose. §3 had claimed the retention purge job was unstarted work.
+It exists (`0029`), it is scheduled and active — and it had **failed on all
+14 of its scheduled runs** with a runtime ambiguity error, while
+`retention_policies.enforced` advertised `true` to users. Fixed by `0057`,
+guarded by a pgTAP test that actually calls the function. Detail in §3a.
 
 ## 1. Backup and restore
 
@@ -99,17 +102,66 @@ mistaken for a running job:
 
 | Data type                         | Declared retention          | Enforced?                                                                                                         |
 | --------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Rota and shift history            | 84 months                   | **No**                                                                                                            |
-| Attendance / clock-in (incl. GPS) | 36 months                   | **No**                                                                                                            |
-| Leave records                     | 72 months                   | **No**                                                                                                            |
-| Support cases                     | 36 months                   | **No**                                                                                                            |
+| Rota and shift history            | 84 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
+| Attendance / clock-in (incl. GPS) | 36 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
+| Leave records                     | 72 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
+| Support cases                     | 36 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
 | Platform audit log                | Indefinite                  | **Yes** — a dedicated trigger rejects every `UPDATE`/`DELETE` (§5); enforced by the database, not a scheduled job |
-| Deleted-tenant data               | 1 month grace, then erasure | **No**                                                                                                            |
+| Deleted-tenant data               | 1 month grace, then erasure | **No**, and deliberately so: erasing an organisation and everything cascading from it has no assigned owner yet   |
 
-Five of six rows are a stated intention with no purge job behind them yet:
-data older than its declared retention period is not automatically removed.
-Building that job (and deciding whether it runs as a scheduled Edge Function
-or an Inngest cron) is unstarted work, not a hidden one-line fix.
+### 3a. The purge job exists, and has never once completed
+
+This section previously said the purge job was unstarted work. That was wrong
+in both directions, and the truth is worse than what it claimed.
+
+Migration `0029_retention_enforcement.sql` — titled "Retention stops being a
+promise" — built the whole thing: `enforce_retention()`, the
+`public.retention_runs` evidence table, and a pg_cron entry running it nightly
+at 02:15 UTC. It also flipped `retention_policies.enforced` to `true` for the
+four scheduled types. All of that is live and verifiable: the cron job is
+present, `active = true`, on schedule `15 2 * * *`.
+
+**And it has failed on every single execution.** Verified 20 August 2026 in
+`cron.job_run_details`: 14 consecutive failures, 2026-08-07 through
+2026-08-20, every one of them:
+
+```
+ERROR:  column reference "data_type" is ambiguous
+DETAIL:  It could refer to either a PL/pgSQL variable or a table column.
+```
+
+`enforce_retention` is declared `returns table (data_type text, ...)`, which
+makes `data_type` a variable inside the body; `0029`'s driving loop referenced
+it unqualified, so it was ambiguous against `retention_policies.data_type`.
+Postgres accepts that definition and fails only at execution — which is why
+it passed review, passed `create or replace`, and produced a cron entry that
+looks healthy.
+
+Two consequences worth stating plainly, because they are the reason this
+matters more than an ordinary broken job:
+
+- **`public.retention_runs` is empty. Zero rows, ever.** That table was built
+  as "the evidence that the schedule is enforced rather than published", and
+  it worked exactly as designed — it recorded nothing, because nothing ran.
+  Nobody looked.
+- **The application has been asserting a guarantee it never performed.**
+  `enforced = true` is shown to every signed-in user via `/app/settings` and
+  to platform staff in the console. That is a compliance-facing claim.
+
+No data was wrongly deleted; the failure mode is that nothing was deleted at
+all. A promise silently unkept, not damage.
+
+Fixed by `0057_fix_enforce_retention_ambiguity.sql`, which qualifies the
+references, and guarded by
+`supabase/tests/database/enforce_retention.test.sql`, which **calls** the
+function. That call is the missing check: the definition was reviewed and the
+schedule was confirmed active, and neither of those can catch a runtime-only
+ambiguity error.
+
+**Until `0057` is applied to production, treat every "Enforced?" cell above as
+false.** Enforcement begins at the first successful nightly run, and the way
+to confirm it is `select * from public.retention_runs order by ran_at desc` —
+a non-empty result, not a green migration.
 
 ## 4. Export and deletion (GDPR Articles 15-21)
 
