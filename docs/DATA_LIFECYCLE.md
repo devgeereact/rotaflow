@@ -17,6 +17,12 @@ It exists (`0029`), it is scheduled and active — and it had **failed on all
 `retention_policies.enforced` advertised `true` to users. Fixed by `0057`,
 guarded by a pgTAP test that actually calls the function. Detail in §3a.
 
+**Updated 22 August 2026: that defect is resolved.** The nightly job has run
+successfully every night since 2026-08-21 — verified in both `retention_runs`
+and `cron.job_run_details`, with no failures after the fix. Retention is now
+genuinely enforced, and §3's "Enforced?" column can be trusted again. §3b
+carries the evidence and the query to re-check it.
+
 ## 1. Backup and restore
 
 **Verified 13 August 2026 via the Supabase Management API**
@@ -102,14 +108,17 @@ mistaken for a running job:
 
 | Data type                         | Declared retention          | Enforced?                                                                                                         |
 | --------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Rota and shift history            | 84 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
-| Attendance / clock-in (incl. GPS) | 36 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
-| Leave records                     | 72 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
-| Support cases                     | 36 months                   | Job written (`0029`), **never successfully run** — see below                                                      |
+| Rota and shift history            | 84 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
+| Attendance / clock-in (incl. GPS) | 36 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
+| Leave records                     | 72 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
+| Support cases                     | 36 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
 | Platform audit log                | Indefinite                  | **Yes** — a dedicated trigger rejects every `UPDATE`/`DELETE` (§5); enforced by the database, not a scheduled job |
 | Deleted-tenant data               | 1 month grace, then erasure | **No**, and deliberately so: erasing an organisation and everything cascading from it has no assigned owner yet   |
 
-### 3a. The purge job exists, and has never once completed
+### 3a. Incident, 7–20 August 2026: the job existed and never once completed
+
+_Resolved — see §3b. Kept because the failure mode is worth remembering, not
+because it is still true._
 
 This section previously said the purge job was unstarted work. That was wrong
 in both directions, and the truth is worse than what it claimed.
@@ -158,10 +167,50 @@ function. That call is the missing check: the definition was reviewed and the
 schedule was confirmed active, and neither of those can catch a runtime-only
 ambiguity error.
 
-**Until `0057` is applied to production, treat every "Enforced?" cell above as
-false.** Enforcement begins at the first successful nightly run, and the way
-to confirm it is `select * from public.retention_runs order by ran_at desc` —
-a non-empty result, not a green migration.
+### 3b. Resolved — enforcement is real as of 21 August 2026
+
+`0057` reached production on 20 August and is recorded in the ledger under its
+numeric version (57 migrations, no timestamp orphans). The nightly job has run
+successfully every night since:
+
+|                        |                                            |
+| ---------------------- | ------------------------------------------ |
+| Failed runs            | 14, 2026-08-07 → 2026-08-20                |
+| Successful runs        | 2, 2026-08-21 → 2026-08-22, both 02:15 UTC |
+| Failures since the fix | none                                       |
+| `retention_runs` rows  | 4 per night, `dry_run = false`             |
+| Rows actually removed  | 0                                          |
+
+`pg_cron` reports `succeeded` with return message `4 rows`, matching the
+function's own row count — two independent records agreeing.
+
+**Zero rows removed is the correct result, not a quiet failure.** The cutoffs
+are 2019–2023 and no data in this database is older than a few weeks, so there
+is genuinely nothing aged out. The proof the job _worked_ is that the
+`retention_runs` rows exist at all: the code path executed and recorded
+itself. The cutoffs also advance a day each night (attendance 2023-08-21 →
+2023-08-22), which is what a correctly computed relative window does.
+
+The "Enforced?" cells in the table above can now be read as true for the four
+scheduled types. More to the point, so can the `enforced` flag the application
+shows to every signed-in user in `/app/settings` — between 7 and 20 August it
+asserted a retention guarantee that had never once been performed.
+
+**How to check this is still true**, rather than trusting this section:
+
+```sql
+select data_type, rows_removed, ran_at
+from public.retention_runs
+where not dry_run
+order by ran_at desc limit 8;
+```
+
+Expect four rows dated within the last 24 hours. A gap of more than a day
+means the job has stopped again, and `cron.job_run_details` filtered to
+`jobname = 'rotaflow-retention'` will say why. Note that an empty
+`retention_runs` is the _only_ outward sign of this class of failure — the
+pg_cron entry reads `active = true` whether or not the function it calls
+actually completes, which is exactly how the original bug hid for two weeks.
 
 ## 4. Export and deletion (GDPR Articles 15-21)
 
