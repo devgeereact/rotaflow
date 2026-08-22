@@ -74,3 +74,6 @@ ruvector.db
 
 # Graphify knowledge-graph output — regenerated on every /graphify run.
 graphify-out/
+
+# Codex local tool config — machine-specific MCP endpoint, never shared
+.codex/
