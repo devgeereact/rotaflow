@@ -11,6 +11,13 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    # Wait a week before proposing a newly published version. Compromised
+    # releases are typically pulled within days of publication, so the delay
+    # costs nothing and takes this repo out of the blast radius of a fresh
+    # supply-chain attack. Backported from Vitalcare-Training-Hub, which has
+    # been running it since it was set up.
+    cooldown:
+      default-days: 7
     # Batch the noisy, low-risk updates into one PR each so review effort goes to
     # the things that actually change behaviour.
     groups:
@@ -126,6 +133,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns: ['*']
