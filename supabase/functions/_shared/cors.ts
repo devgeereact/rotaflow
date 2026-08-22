@@ -9,7 +9,7 @@
 // using this still requires its own valid auth independently.
 const ALLOWED_ORIGINS = new Set<string>([
   'https://rota.gakinz.com',
-  // Per-project dev ports (CLAUDE.md §4): 5042 is rotaflow's assigned port,
+  // Per-project dev ports (~/.claude/CLAUDE.md "Dev-server ports"): 5042 is rotaflow's assigned port,
   // 5142/5842 cover a second worktree and a preview run on the Supabase Auth
   // redirect allowlist.
   'http://localhost:5042',
