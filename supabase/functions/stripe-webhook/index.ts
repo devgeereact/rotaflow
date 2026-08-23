@@ -25,7 +25,16 @@
 // (still used for off-Stripe deals).
 //
 // Deploy: `supabase functions deploy stripe-webhook --no-verify-jwt`.
-// Secrets: STRIPE_SECRET_KEY (shared), STRIPE_WEBHOOK_SECRET (from the
+// Unlike the other two Stripe functions this one does NOT read STRIPE_MODE.
+// Test and live events arrive at the same URL, and both must keep being
+// processed while STRIPE_MODE points at one of them — flipping to test for a
+// QA run must not start dropping live subscription updates. So the mode is
+// taken per event from Stripe's own `livemode` flag and the matching signing
+// secret is used to verify it. Register this URL as a webhook endpoint in
+// both Stripe modes and set both secrets.
+//
+// Secrets: STRIPE_SECRET_KEY / STRIPE_TEST_SECRET_KEY (shared), STRIPE_WEBHOOK_SECRET
+// and STRIPE_TEST_WEBHOOK_SECRET (from the
 // Stripe dashboard's webhook endpoint config, or `stripe listen`'s own
 // printed secret for local testing).
 //
@@ -36,7 +45,12 @@
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { getStripeClient } from '../_shared/stripe.ts';
+import {
+  getStripeClient,
+  getWebhookSecret,
+  priceColumn,
+  type StripeMode,
+} from '../_shared/stripe.ts';
 import type Stripe from 'npm:stripe@17';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -77,6 +91,7 @@ function mapSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): string
 async function handleCheckoutCompleted(
   supabase: SupabaseClient,
   session: Stripe.Checkout.Session,
+  mode: StripeMode,
 ): Promise<void> {
   const orgId = session.metadata?.org_id;
   const plan = session.metadata?.plan;
@@ -85,7 +100,7 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  const stripe = getStripeClient();
+  const stripe = getStripeClient(mode);
   const subscriptionId =
     typeof session.subscription === 'string'
       ? session.subscription
@@ -105,6 +120,10 @@ async function handleCheckoutCompleted(
         provider_ref: subscription.id,
         stripe_customer_id:
           typeof session.customer === 'string' ? session.customer : session.customer?.id,
+        // Records which Stripe namespace the two ids above live in, so
+        // Checkout and the Portal can tell a reusable customer from one that
+        // belongs to the other mode — see migration 0058.
+        stripe_mode: mode,
         started_at: new Date(subscription.start_date * 1000).toISOString(),
         current_period_end: new Date(
           subscription.current_period_end * 1000,
@@ -125,12 +144,16 @@ async function handleCheckoutCompleted(
 async function resolvePlanCode(
   supabase: SupabaseClient,
   priceId: string | undefined,
+  mode: StripeMode,
 ): Promise<string | null> {
   if (!priceId) return null;
+  // Match against this mode's Price column: a test Price never appears in
+  // stripe_price_id, so looking in the wrong column resolves to no plan and
+  // silently skips the `plan` update.
   const { data, error } = await supabase
     .from('plans')
     .select('code')
-    .eq('stripe_price_id', priceId)
+    .eq(priceColumn(mode), priceId)
     .maybeSingle();
   if (error) throw new Error(`plan lookup failed: ${error.message}`);
   return data?.code ?? null;
@@ -139,6 +162,7 @@ async function resolvePlanCode(
 async function handleSubscriptionUpdated(
   supabase: SupabaseClient,
   subscription: Stripe.Subscription,
+  mode: StripeMode,
 ): Promise<void> {
   const orgId = subscription.metadata?.org_id;
   if (!orgId) {
@@ -149,6 +173,7 @@ async function handleSubscriptionUpdated(
   const planCode = await resolvePlanCode(
     supabase,
     subscription.items.data[0]?.price.id,
+    mode,
   );
   if (!planCode) {
     console.error(
@@ -298,14 +323,17 @@ async function handleInvoicePaid(
 // webhook payload (not fetched fresh), so `payment_intent` is likely a
 // string id rather than an expanded object; retrieve it to read
 // `last_payment_error`.
-async function resolveFailureReason(invoice: Stripe.Invoice): Promise<string> {
+async function resolveFailureReason(
+  invoice: Stripe.Invoice,
+  mode: StripeMode,
+): Promise<string> {
   const piId =
     typeof invoice.payment_intent === 'string'
       ? invoice.payment_intent
       : invoice.payment_intent?.id;
   if (piId) {
     try {
-      const stripe = getStripeClient();
+      const stripe = getStripeClient(mode);
       const pi = await stripe.paymentIntents.retrieve(piId);
       if (pi.last_payment_error?.message) return pi.last_payment_error.message;
     } catch (err) {
@@ -318,11 +346,12 @@ async function resolveFailureReason(invoice: Stripe.Invoice): Promise<string> {
 async function handleInvoicePaymentFailed(
   supabase: SupabaseClient,
   invoice: Stripe.Invoice,
+  mode: StripeMode,
 ): Promise<void> {
   const orgId = invoice.subscription_details?.metadata?.org_id;
   if (!orgId) return;
 
-  const failureReason = await resolveFailureReason(invoice);
+  const failureReason = await resolveFailureReason(invoice, mode);
 
   const { data: existing } = await supabase
     .from('invoices')
@@ -375,20 +404,55 @@ async function handleInvoicePaymentFailed(
   }
 }
 
+/**
+ * Reads `livemode` out of an as-yet-unverified event body. Defaults to live
+ * when the body is unparseable or the flag is absent: an unsigned request is
+ * about to be rejected either way, and defaulting to live keeps a malformed
+ * *genuine* live event failing loudly against the live secret rather than
+ * being misreported as a test-mode configuration problem.
+ */
+function peekLivemode(body: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (parsed && typeof parsed === 'object' && 'livemode' in parsed) {
+      return (parsed as { livemode: unknown }).livemode !== false;
+    }
+  } catch {
+    // not JSON — signature verification will reject it in a moment
+  }
+  return true;
+}
+
 Deno.serve(async (req: Request) => {
   const signature = req.headers.get('stripe-signature');
   if (!signature) {
     return jsonResponse({ error: 'Missing stripe-signature header' }, 400);
   }
 
-  const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+  const body = await req.text();
+
+  // Which mode this event came from, read from the unverified body purely to
+  // choose a signing secret. Nothing is trusted on the strength of it: the
+  // signature is still verified against that secret immediately below, so a
+  // forged `livemode` only picks the wrong secret and fails verification.
+  //
+  // This is why the webhook does not consult STRIPE_MODE. Both modes' events
+  // arrive at the same URL and both must keep working while STRIPE_MODE
+  // points at one of them — otherwise flipping to test mode for a QA run
+  // would start silently dropping live subscription updates.
+  const mode: StripeMode = peekLivemode(body) ? 'live' : 'test';
+
+  const webhookSecret = getWebhookSecret(mode);
   if (!webhookSecret) {
-    console.error('STRIPE_WEBHOOK_SECRET is not set');
+    console.error(
+      `No webhook signing secret configured for ${mode} mode — set ${
+        mode === 'live' ? 'STRIPE_WEBHOOK_SECRET' : 'STRIPE_TEST_WEBHOOK_SECRET'
+      }`,
+    );
     return jsonResponse({ error: 'Webhook not configured' }, 500);
   }
 
-  const body = await req.text();
-  const stripe = getStripeClient();
+  const stripe = getStripeClient(mode);
 
   let event: Stripe.Event;
   try {
@@ -397,7 +461,7 @@ Deno.serve(async (req: Request) => {
     // specifically for edge runtimes.
     event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
   } catch (err) {
-    console.error('Stripe signature verification failed:', err);
+    console.error(`Stripe signature verification failed (${mode} mode):`, err);
     return jsonResponse({ error: 'Invalid signature' }, 400);
   }
 
@@ -412,12 +476,14 @@ Deno.serve(async (req: Request) => {
         await handleCheckoutCompleted(
           supabase,
           event.data.object as Stripe.Checkout.Session,
+          mode,
         );
         break;
       case 'customer.subscription.updated':
         await handleSubscriptionUpdated(
           supabase,
           event.data.object as Stripe.Subscription,
+          mode,
         );
         break;
       case 'customer.subscription.deleted':
@@ -433,6 +499,7 @@ Deno.serve(async (req: Request) => {
         await handleInvoicePaymentFailed(
           supabase,
           event.data.object as Stripe.Invoice,
+          mode,
         );
         break;
       default:

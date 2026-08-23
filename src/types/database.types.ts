@@ -1678,6 +1678,7 @@ export type Database = {
           seat_limit: number | null;
           sort_order: number;
           stripe_price_id: string | null;
+          stripe_test_price_id: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1692,6 +1693,7 @@ export type Database = {
           seat_limit?: number | null;
           sort_order?: number;
           stripe_price_id?: string | null;
+          stripe_test_price_id?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1706,6 +1708,7 @@ export type Database = {
           seat_limit?: number | null;
           sort_order?: number;
           stripe_price_id?: string | null;
+          stripe_test_price_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -2650,6 +2653,7 @@ export type Database = {
           started_at: string;
           status: string;
           stripe_customer_id: string | null;
+          stripe_mode: string;
           trial_ends_at: string | null;
           updated_at: string;
         };
@@ -2667,6 +2671,7 @@ export type Database = {
           started_at?: string;
           status?: string;
           stripe_customer_id?: string | null;
+          stripe_mode?: string;
           trial_ends_at?: string | null;
           updated_at?: string;
         };
@@ -2684,6 +2689,7 @@ export type Database = {
           started_at?: string;
           status?: string;
           stripe_customer_id?: string | null;
+          stripe_mode?: string;
           trial_ends_at?: string | null;
           updated_at?: string;
         };

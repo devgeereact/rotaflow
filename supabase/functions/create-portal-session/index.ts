@@ -8,12 +8,13 @@
 // Same JWT-forwarding + owner-check pattern as create-checkout-session.
 //
 // Deploy: `supabase functions deploy create-portal-session`.
-// Secret: shares STRIPE_SECRET_KEY with the other two Stripe functions.
+// Secrets: shares STRIPE_MODE and the mode's secret key with the other two
+// Stripe functions — see _shared/stripe.ts.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getStripeClient } from '../_shared/stripe.ts';
+import { getStripeClient, getStripeMode } from '../_shared/stripe.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -79,9 +80,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const mode = getStripeMode();
+
     const { data: sub, error: subError } = await supabase
       .from('subscriptions')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, stripe_mode')
       .eq('org_id', orgId)
       .maybeSingle();
     if (subError) throw subError;
@@ -92,7 +95,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const stripe = getStripeClient();
+    // Unlike Checkout, the Portal has no fallback: it needs an existing
+    // customer, and a customer from the other Stripe mode does not exist in
+    // this one. Say so plainly rather than letting Stripe answer with a raw
+    // "No such customer" — this is a deployment misconfiguration, not
+    // something the owner did wrong.
+    if (sub.stripe_mode !== mode) {
+      console.error(
+        `portal blocked: org ${orgId} customer is ${sub.stripe_mode}-mode, STRIPE_MODE is ${mode}`,
+      );
+      return jsonResponse(
+        { error: 'Billing is temporarily unavailable — please contact support' },
+        409,
+      );
+    }
+
+    const stripe = getStripeClient(mode);
     const origin = req.headers.get('Origin') || 'https://rota.gakinz.com';
 
     const portalSession = await stripe.billingPortal.sessions.create({
