@@ -418,9 +418,40 @@ export function OnboardingPage(): JSX.Element {
     // and told the owner their own brand-new organisation's name was taken.
     // Changing the slug to get past that created a SECOND organisation,
     // silently owned by the same person, with steps 2-4 now writing against
-    // it instead of the first. Once created, Continue is just "next step".
+    // it instead of the first.
+    //
+    // Skipping straight to step 2 stopped the duplicate, but threw the
+    // caller's edits away to do it: after Back, changing the name or
+    // subdomain advanced the wizard as if saved while issuing no request at
+    // all, leaving the organisation under a name its owner believed they had
+    // changed. So re-entry updates the existing organisation instead of
+    // either creating another one or silently discarding the edit.
     if (orgId) {
-      setStep(2);
+      setSubmitting(true);
+      setError(null);
+      try {
+        await updateOrganisation(orgId, {
+          name: createValues.name.trim(),
+          slug: createValues.slug.trim(),
+        });
+        await mergeOrgSettings(orgId, {
+          industry: createValues.industry,
+          size: createValues.size,
+        });
+        await refresh();
+        setAboutValues((v) => ({ ...v, industry: createValues.industry || v.industry }));
+        setStep(2);
+      } catch (err) {
+        reportError(err, { area: 'onboarding:update-org' });
+        const conflict = (err as { code?: string } | null)?.code === '23505';
+        setError(
+          conflict
+            ? 'That organisation identifier is already taken. Try another.'
+            : 'Could not save your changes. Please try again.',
+        );
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
     setSubmitting(true);
@@ -602,6 +633,7 @@ export function OnboardingPage(): JSX.Element {
           onCancel={() => void navigate('/login')}
           submitting={submitting}
           error={error}
+          existingOrgId={orgId}
         />
       )}
 

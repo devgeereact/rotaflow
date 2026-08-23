@@ -3322,7 +3322,10 @@ export type Database = {
         Args: { p_case: string; p_note?: string; p_status: string };
         Returns: undefined;
       };
-      slug_available: { Args: { p_slug: string }; Returns: boolean };
+      slug_available: {
+        Args: { p_slug: string; p_exclude_org_id?: string };
+        Returns: boolean;
+      };
       subscription_mrr_pence: { Args: { p_org: string }; Returns: number };
       support_access_status: {
         Args: {

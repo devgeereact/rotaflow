@@ -32,6 +32,12 @@ interface StepCreateOrgProps {
   onCancel: () => void;
   submitting: boolean;
   error: string | null;
+  /**
+   * Set once the organisation exists, i.e. whenever this step is re-entered
+   * via Back. The slug check must then ignore that org, or the caller's own
+   * identifier reports as taken and Continue can never re-enable.
+   */
+  existingOrgId?: string | null;
 }
 
 type SlugState = 'idle' | 'checking' | 'available' | 'taken' | 'unknown';
@@ -55,6 +61,7 @@ export function StepCreateOrg({
   onCancel,
   submitting,
   error,
+  existingOrgId,
 }: StepCreateOrgProps): JSX.Element {
   const [slugState, setSlugState] = useState<SlugState>('idle');
   // True once the user edits the slug directly, after which it stops tracking
@@ -78,7 +85,9 @@ export function StepCreateOrg({
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          setSlugState((await isSlugAvailable(slug)) ? 'available' : 'taken');
+          setSlugState(
+            (await isSlugAvailable(slug, existingOrgId)) ? 'available' : 'taken',
+          );
         } catch (err) {
           // The check needs migration 0007; without it, don't block the user, // the unique constraint still rejects a genuine clash on submit.
           reportError(err, { area: 'onboarding:slug-check' });
@@ -87,7 +96,7 @@ export function StepCreateOrg({
       })();
     }, 400);
     return () => clearTimeout(timer);
-  }, [values.slug]);
+  }, [values.slug, existingOrgId]);
 
   const canContinue =
     values.name.trim().length > 0 &&
