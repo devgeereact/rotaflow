@@ -15,6 +15,7 @@
 import { addMinutes, differenceInMinutes, format, isSameDay, subDays } from 'date-fns';
 import { pairClockEvents, totalWorkedMinutes } from '@/lib/hours';
 import type { WorkedSegment } from '@/lib/hours';
+import type { GeolocationStatus } from '@/hooks/useGeolocation';
 import type { ClockEvent, Shift } from '@/types';
 
 /**
@@ -137,6 +138,42 @@ export function clockStage(latest: ClockEvent | null): ClockStage {
       return 'done';
     default:
       return 'ready';
+  }
+}
+
+/**
+ * Whether the screen should offer a manual version of the current action,
+ * and which action that is.
+ *
+ * BUG-008: manual clock-IN existed and manual clock-OUT did not. A person
+ * whose phone refused a position — permission declined, GPS unavailable, the
+ * request timed out indoors — could start a shift but never end one. The
+ * screen said "Use manual clock-in instead" while they were already clocked
+ * in, and the attendance record stayed open indefinitely, needing a manager
+ * to amend it by hand. Location permission must not be able to lock a
+ * timesheet.
+ *
+ * Deliberately gated on a location attempt having already FAILED, rather than
+ * always on. An always-visible "clock out without location" is a one-tap way
+ * around the whole point of GPS attendance; offering it the moment the device
+ * cannot supply a position is a fallback. `denied` is the person's decision
+ * and `unavailable` covers everything else (timeout, no hardware, insecure
+ * context) — both leave the same person equally stuck, so both qualify.
+ */
+export function manualFallbackFor(
+  stage: ClockStage,
+  geoStatus: GeolocationStatus,
+): { type: 'in' | 'out'; label: string } | null {
+  if (geoStatus !== 'denied' && geoStatus !== 'unavailable') return null;
+
+  switch (stage) {
+    case 'working':
+    case 'break':
+      return { type: 'out', label: 'Clock Out Manually' };
+    // 'ready' and 'done' already offer manual clock-in as the standing
+    // second action, so there is nothing extra to surface for them.
+    default:
+      return null;
   }
 }
 
