@@ -52,6 +52,17 @@ select set_config(
 insert into public.organisations (name, slug, created_by)
 values ('Doomed Care Ltd', 'doomed-care', '44444444-4444-4444-4444-444444444444');
 
+-- The id is carried in a transaction-local setting rather than looked up
+-- again where it is needed. Two of the assertions below run as somebody who
+-- CANNOT see this organisation — one deliberately (a different tenant's
+-- owner), one because the row no longer exists — and a subquery for it there
+-- returns null, which would make those tests pass or fail for reasons that
+-- have nothing to do with what they are checking. A GUC is role-independent.
+select set_config(
+  'test.doomed_org',
+  (select id::text from public.organisations where slug = 'doomed-care'),
+  true);
+
 insert into public.locations (org_id, name)
 values ((select id from public.organisations where slug = 'doomed-care'), 'Doomed Site');
 
@@ -134,10 +145,14 @@ select set_config(
   true
 );
 
+-- Not a subquery for the id: RLS hides the doomed organisation from this
+-- user, so a lookup here would return null and the function would answer
+-- "not found" — a pass for the wrong reason, proving nothing about who is
+-- allowed to delete what.
 select throws_ok(
-  $$ select public.delete_organisation(
-       (select id from public.organisations where slug = 'doomed-care'),
-       'Doomed Care Limited') $$,
+  format(
+    $$ select public.delete_organisation(%L::uuid, 'Doomed Care Limited') $$,
+    current_setting('test.doomed_org')),
   '42501',
   null,
   'an owner of a DIFFERENT organisation cannot delete this one'
@@ -160,6 +175,15 @@ select lives_ok(
   'BUG-009: a populated organisation deletes, cascades and all'
 );
 
+-- Everything from here is read as the session role rather than as a member of
+-- the deleted organisation. Under RLS that member can no longer see any of
+-- these rows — `is_org_member` has nothing left to match — so "count is zero"
+-- would be true whether the cascade worked or not, and every assertion below
+-- would pass for the wrong reason. Reading past RLS is what makes them mean
+-- something.
+reset role;
+select set_config('request.jwt.claims', '', true);
+
 select is(
   (select count(*)::int from public.organisations where slug = 'doomed-care'),
   0,
@@ -181,6 +205,11 @@ select is(
 );
 
 -- ---------- 5. the audit trail outlives the tenant ---------------------
+-- `audit_logs_select` requires `org_id is not null` plus org membership, and
+-- the whole point of these rows is that their org_id is now null and the
+-- organisation is gone: nobody could read them through that policy. A
+-- platform administrator is the real-world reader; the session role stands in
+-- for one.
 select is(
   (select count(*)::int from public.audit_logs
     where action = 'org.deleted' and metadata->>'slug' = 'doomed-care'),
@@ -214,8 +243,6 @@ select is(
 -- ---------- 6. the bystander's guards were never lowered ---------------
 -- The failure mode of the `disable trigger` workaround this migration
 -- avoids: it would have unarmed 0047 for every tenant at once.
-reset role;
-select set_config('request.jwt.claims', '', true);
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
