@@ -16,6 +16,7 @@ import {
   type WeeklyRosterSummary,
 } from '@/services/dashboardService';
 import { resolvePeriod, todayIso } from '@/lib/schedulePeriod';
+import { isWeekPublished } from '@/lib/rotaRollup';
 import { downloadIcs } from '@/lib/ics';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
@@ -141,9 +142,7 @@ export function SchedulePage(): JSX.Element {
           const overlapping = rotas.filter(
             (r) => r.period_start <= weekEnd && r.period_end >= weekStart,
           );
-          setMyWeekPublished(
-            overlapping.length > 0 && overlapping.every((r) => r.status === 'published'),
-          );
+          setMyWeekPublished(isWeekPublished(overlapping));
         } else {
           setMyShifts([]);
           setMyWeekPublished(false);
