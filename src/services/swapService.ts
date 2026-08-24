@@ -110,6 +110,26 @@ export async function reviewShiftSwap(
 }
 
 /**
+ * Move the shift to whoever is taking it, once the swap is approved.
+ *
+ * Goes through an RPC rather than a plain `updateShift` because the shift is
+ * almost always on a PUBLISHED rota, and 0061 froze those: the whole point of
+ * BUG-028's fix is that a manager cannot quietly change what staff have
+ * already been told. An approved swap is the one exception the product
+ * genuinely wants — both people agreed and it was approved, so staff should
+ * see the new name immediately — and `apply_swap_reassignment` is that
+ * exception, narrowed to one column and audited, which the old client-side
+ * update was not.
+ */
+export async function applySwapReassignment(swapId: string): Promise<Shift> {
+  const { data, error } = await supabase.rpc('apply_swap_reassignment', {
+    p_swap_id: swapId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
  * A colleague claiming an open ("anyone") swap — `SCREENS.swaps`'s "Take
  * this shift". Sets the claimer as target and jumps straight to
  * 'accepted': the claim itself is their consent, so there is no separate
