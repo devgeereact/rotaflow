@@ -32,6 +32,17 @@ export interface RotaScope {
 export type RotaWeekStatus = 'none' | 'draft' | 'published';
 
 /**
+ * Superseded versions of a week (0061). They are history: never shown to
+ * staff, never edited, and — the reason they are filtered here rather than
+ * left to each caller — never evidence about the week's current status. An
+ * archived rota left in the set would make `every(published)` false and
+ * relabel a published week as a draft, which is the exact shape of BUG-007.
+ */
+function isCurrent(rota: RotaScope): boolean {
+  return rota.status !== 'archived';
+}
+
+/**
  * One rota per (location, period) — the shape 0004's unique indexes describe.
  * Where duplicates exist a published one wins, matching findRotaForPeriod.
  *
@@ -42,7 +53,7 @@ export type RotaWeekStatus = 'none' | 'draft' | 'published';
  */
 export function dedupeRotasByScope<T extends RotaScope>(rotas: T[]): T[] {
   const winners = new Map<string, T>();
-  for (const rota of rotas) {
+  for (const rota of rotas.filter(isCurrent)) {
     const key = `${rota.location_id ?? ''}|${rota.period_start}|${rota.period_end}`;
     const held = winners.get(key);
     if (!held || (held.status !== 'published' && rota.status === 'published')) {
@@ -62,8 +73,8 @@ export function dedupeRotasByScope<T extends RotaScope>(rotas: T[]): T[] {
  * empty draft can no longer outvote the published rota it duplicates.
  */
 export function rotaWeekStatus(overlapping: RotaScope[]): RotaWeekStatus {
-  if (overlapping.length === 0) return 'none';
   const scoped = dedupeRotasByScope(overlapping);
+  if (scoped.length === 0) return 'none';
   return scoped.every((r) => r.status === 'published') ? 'published' : 'draft';
 }
 

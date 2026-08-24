@@ -41,6 +41,8 @@ import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgAvailability } from '@/services/availabilityService';
 import { listExpiringDocuments } from '@/services/documentService';
 import {
+  beginRotaRevision,
+  discardRotaRevision,
   getOrCreateRotaForPeriod,
   publishRota,
   unpublishRota,
@@ -207,6 +209,11 @@ export function RotaBuilderPage(): JSX.Element {
   const [orgDataLoading, setOrgDataLoading] = useState(true);
   const [orgDataFailed, setOrgDataFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Bumped when the week's rotas change identity rather than content —
+  // starting or discarding an amendment swaps in a different rota whose
+  // shifts are copies with their own ids, so the week has to be refetched
+  // rather than patched in place.
+  const [weekReloadKey, setWeekReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -322,7 +329,7 @@ export function RotaBuilderPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [orgId, locations, weekStart, weekEnd, showError]);
+  }, [orgId, locations, weekStart, weekEnd, weekReloadKey, showError]);
 
   /**
    * Leave, availability and documents for the warning rules.
@@ -626,11 +633,42 @@ export function RotaBuilderPage(): JSX.Element {
   const rotasInScope = filteredLocations
     .map((l) => rotasByLocation.get(l.id))
     .filter((r): r is Rota => Boolean(r));
-  const draftRotasInScope = rotasInScope.filter((r) => r.status !== 'published');
+  const draftRotasInScope = rotasInScope.filter((r) => r.status === 'draft');
+  const publishedRotasInScope = rotasInScope.filter((r) => r.status === 'published');
   const allPublished = rotasInScope.length > 0 && draftRotasInScope.length === 0;
+
+  /** An amendment of an already-published week, rather than a first draft. */
+  const amendmentsInScope = draftRotasInScope.filter((r) => r.supersedes_rota_id);
+  const isAmending = amendmentsInScope.length > 0;
+  /**
+   * The published week is immutable — enforced by the database, not by this
+   * screen (0061's `shifts_guard_immutable_rota`). Until someone amends it
+   * there is nothing here to edit, and offering edits that the server will
+   * refuse is how BUG-028 read to a manager: the builder said edits returned
+   * the rota to draft, and instead they went straight to staff.
+   */
+  const readOnly = allPublished;
   const pendingShiftCount = shifts.filter((s) =>
     draftRotasInScope.some((r) => r.id === s.rota_id),
   ).length;
+
+  /**
+   * Refuse a mutation the database is going to refuse anyway, and say why.
+   *
+   * `shifts_guard_immutable_rota` (0061) rejects any write to a published
+   * rota's shifts, including one made by a direct API call. This is the
+   * screen agreeing with that rule rather than discovering it through a
+   * failed request — and it is the honest version of the sentence this
+   * builder used to print, which claimed edits returned the rota to draft
+   * while they in fact went straight out to staff.
+   */
+  const guardEditable = useCallback((): boolean => {
+    if (!readOnly) return true;
+    showError(
+      'This week is published. Choose Amend rota to change it — staff keep seeing the published version until you publish the amendment.',
+    );
+    return false;
+  }, [readOnly, showError]);
 
   const placeShift = useCallback(
     async (
@@ -651,6 +689,7 @@ export function RotaBuilderPage(): JSX.Element {
       against?: readonly Shift[],
     ): Promise<PlaceResult> => {
       if (!orgId) return { ok: false, reason: 'unavailable' };
+      if (!guardEditable()) return { ok: false, reason: 'unavailable' };
       const location = locationById.get(input.locationId);
       const rota = rotasByLocation.get(input.locationId);
       if (!location || !rota) return { ok: false, reason: 'unavailable' };
@@ -686,7 +725,7 @@ export function RotaBuilderPage(): JSX.Element {
       setLastSavedAt(new Date());
       return { ok: true, shift: created };
     },
-    [orgId, locationById, rotasByLocation],
+    [orgId, locationById, rotasByLocation, guardEditable],
   );
 
   /** Plain-English "who is already on what", for the refusal toast. */
@@ -719,6 +758,7 @@ export function RotaBuilderPage(): JSX.Element {
     (event: DragEndEvent): void => {
       const { active, over } = event;
       if (!over) return;
+      if (!guardEditable()) return;
       const cellLocationId = (over.data.current as { locationId?: string } | undefined)
         ?.locationId;
       const cellDate = (over.data.current as { date?: string } | undefined)?.date;
@@ -807,10 +847,19 @@ export function RotaBuilderPage(): JSX.Element {
           });
       }
     },
-    [locationById, shiftTypes, shifts, placeShift, showError, describeClash],
+    [
+      locationById,
+      shiftTypes,
+      shifts,
+      placeShift,
+      showError,
+      describeClash,
+      guardEditable,
+    ],
   );
 
   const handleModalSave = async (values: AssignShiftFormValues): Promise<void> => {
+    if (!guardEditable()) return;
     const locationId =
       assignModal.shift?.location_id ??
       values.locationId ??
@@ -860,6 +909,7 @@ export function RotaBuilderPage(): JSX.Element {
   };
 
   const handleModalDelete = async (shiftId: string): Promise<void> => {
+    if (!guardEditable()) return;
     await deleteShift(shiftId);
     setShifts((prev) => prev.filter((s) => s.id !== shiftId));
     if (selectedShiftId === shiftId) setSelectedShiftId(null);
@@ -868,6 +918,7 @@ export function RotaBuilderPage(): JSX.Element {
 
   const handleDeleteSelectedShift = useCallback(
     (shift: Shift): void => {
+      if (!guardEditable()) return;
       void deleteShift(shift.id)
         .then(() => {
           setShifts((prev) => prev.filter((s) => s.id !== shift.id));
@@ -879,7 +930,7 @@ export function RotaBuilderPage(): JSX.Element {
           showError('Could not delete that shift.');
         });
     },
-    [showError],
+    [showError, guardEditable],
   );
 
   /**
@@ -948,7 +999,11 @@ export function RotaBuilderPage(): JSX.Element {
         for (const rota of updated) next.set(rota.location_id ?? '', rota);
         return next;
       });
-      showSuccess('Rota published. Staff can now see this week.');
+      showSuccess(
+        isAmending
+          ? 'Amendment published. Staff now see the updated week; the version it replaced is kept as history.'
+          : 'Rota published. Staff can now see this week.',
+      );
 
       const recipientUserIds = [
         ...new Set(
@@ -976,7 +1031,7 @@ export function RotaBuilderPage(): JSX.Element {
   };
 
   const handleUnpublish = async (): Promise<void> => {
-    const publishedRotas = rotasInScope.filter((r) => r.status === 'published');
+    const publishedRotas = publishedRotasInScope;
     if (publishedRotas.length === 0) return;
     setPublishing(true);
     setPublishError(null);
@@ -990,12 +1045,73 @@ export function RotaBuilderPage(): JSX.Element {
       showSuccess('Rota returned to draft. Re-publish when your changes are ready.');
     } catch (err) {
       reportError(err, { area: 'rota:unpublish' });
-      const conflict = (err as { code?: string } | null)?.code === '23505';
+      const code = (err as { code?: string } | null)?.code;
       setPublishError(
-        conflict
-          ? 'A separate draft already exists for this week, so this rota cannot be unpublished. Contact support to merge them.'
+        code === 'ROTA8'
+          ? 'This week has an amendment open. Publish or discard the amendment first, then unpublish.'
           : 'Could not unpublish this rota. Please try again.',
       );
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  /**
+   * Start amending a published week.
+   *
+   * The published rota is left exactly as staff were told and a draft copy is
+   * created alongside it, so the week never disappears from anyone's phone
+   * mid-edit. The copy's shifts have their own ids, so the grid is refetched
+   * rather than patched — carrying the old ids across would send edits at
+   * rows the database has already frozen.
+   */
+  const handleAmend = async (): Promise<void> => {
+    if (publishedRotasInScope.length === 0) return;
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      await Promise.all(publishedRotasInScope.map((r) => beginRotaRevision(r.id)));
+      setWeekReloadKey((k) => k + 1);
+      showSuccess(
+        'Amendment started. Staff keep seeing the published week until you publish this.',
+      );
+    } catch (err) {
+      reportError(err, { area: 'rota:amend' });
+      setPublishError('Could not start an amendment. Please try again.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  /**
+   * Throw the amendment away and go back to the published week.
+   *
+   * BUG-029 was a state with no way out: once unpublishing had happened there
+   * was no route back that did not involve editing rows by hand. An amendment
+   * is only safe to offer if abandoning it is equally easy.
+   */
+  const handleDiscardAmendment = async (): Promise<void> => {
+    if (amendmentsInScope.length === 0) return;
+    const amendedShiftCount = shifts.filter((s) =>
+      amendmentsInScope.some((r) => r.id === s.rota_id),
+    ).length;
+    const ok = await confirm({
+      title: 'Discard this amendment?',
+      message: `The ${amendedShiftCount} ${amendedShiftCount === 1 ? 'shift' : 'shifts'} in this amendment are deleted and ${formatWeekRange(dates)} goes back to the published version staff are already seeing. This cannot be undone.`,
+      confirmLabel: 'Discard amendment',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      await Promise.all(amendmentsInScope.map((r) => discardRotaRevision(r.id)));
+      setWeekReloadKey((k) => k + 1);
+      showSuccess('Amendment discarded. The published week is unchanged.');
+    } catch (err) {
+      reportError(err, { area: 'rota:discard-amendment' });
+      setPublishError('Could not discard the amendment. Please try again.');
     } finally {
       setPublishing(false);
     }
@@ -1323,6 +1439,7 @@ export function RotaBuilderPage(): JSX.Element {
    * somebody's Saturday. Unpublish first if that is genuinely the intent.
    */
   const handleClearShifts = useCallback((): void => {
+    if (!guardEditable()) return;
     const draftShiftIds = shiftsForDisplay
       .filter((s) => draftRotasInScope.some((r) => r.id === s.rota_id))
       .map((s) => s.id);
@@ -1359,11 +1476,20 @@ export function RotaBuilderPage(): JSX.Element {
         setBusyAction(null);
       }
     })();
-  }, [shiftsForDisplay, draftRotasInScope, dates, confirm, showError, showSuccess]);
+  }, [
+    shiftsForDisplay,
+    draftRotasInScope,
+    dates,
+    confirm,
+    showError,
+    showSuccess,
+    guardEditable,
+  ]);
 
   /** Fill an open shift from the assistant's ranked suggestions. */
   const handleAssistantAssign = useCallback(
     async (shiftId: string, staffProfileId: string): Promise<void> => {
+      if (!guardEditable()) return;
       try {
         const target = shiftsRef.current.find((s) => s.id === shiftId);
         if (target) {
@@ -1393,7 +1519,7 @@ export function RotaBuilderPage(): JSX.Element {
         showError('Could not assign that shift. Please try again.');
       }
     },
-    [showError, showSuccess, describeClash],
+    [showError, showSuccess, describeClash, guardEditable],
   );
 
   const reloadShifts = (): void => {
@@ -1553,14 +1679,14 @@ export function RotaBuilderPage(): JSX.Element {
             </Button>
 
             <div className="relative flex">
-              {allPublished ? (
+              {readOnly ? (
                 <Button
                   size="sm"
-                  variant="secondary"
-                  onClick={() => void handleUnpublish()}
-                  disabled={publishing || rotasInScope.length === 0}
+                  className="rounded-r-none"
+                  onClick={() => void handleAmend()}
+                  disabled={publishing}
                 >
-                  {publishing ? 'Updating…' : 'Unpublish'}
+                  {publishing ? 'Starting…' : 'Amend rota'}
                 </Button>
               ) : (
                 <Button
@@ -1574,31 +1700,47 @@ export function RotaBuilderPage(): JSX.Element {
                       : undefined
                   }
                 >
-                  {publishing ? 'Publishing…' : `Publish (${pendingShiftCount} changes)`}
+                  {publishing
+                    ? 'Publishing…'
+                    : isAmending
+                      ? 'Publish amendment'
+                      : `Publish (${pendingShiftCount} changes)`}
                 </Button>
               )}
-              {!allPublished && (
-                <button
-                  type="button"
-                  aria-label="Publish options"
-                  onClick={() => setPublishMenuOpen((v) => !v)}
-                  className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg hover:bg-primary/90"
-                >
-                  <ChevronDown size={14} />
-                </button>
-              )}
+              <button
+                type="button"
+                aria-label="Publish options"
+                onClick={() => setPublishMenuOpen((v) => !v)}
+                className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg hover:bg-primary/90"
+              >
+                <ChevronDown size={14} />
+              </button>
               {publishMenuOpen && (
-                <div className="absolute right-0 top-full z-10 mt-1 w-56 rounded-xl border border-surface-border bg-surface p-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark">
+                <div className="absolute right-0 top-full z-10 mt-1 w-64 rounded-xl border border-surface-border bg-surface p-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark">
                   <button
                     type="button"
                     onClick={() => {
                       setPublishMenuOpen(false);
                       void handleUnpublish();
                     }}
-                    disabled={rotasInScope.every((r) => r.status !== 'published')}
+                    disabled={publishedRotasInScope.length === 0 || isAmending}
+                    title={
+                      isAmending ? 'Publish or discard the amendment first' : undefined
+                    }
                     className="w-full rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50 dark:text-content-dark dark:hover:bg-surface-subtle-dark"
                   >
-                    Unpublish current rota
+                    Unpublish — hide this week from staff
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPublishMenuOpen(false);
+                      void handleDiscardAmendment();
+                    }}
+                    disabled={!isAmending}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50 dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                  >
+                    Discard amendment
                   </button>
                 </div>
               )}
@@ -1611,15 +1753,27 @@ export function RotaBuilderPage(): JSX.Element {
           <Callout tone="danger" title="Can't publish yet" className="mb-4">
             {publishError}
           </Callout>
-        ) : allPublished ? (
+        ) : readOnly ? (
           <Callout tone="success" title="Published" className="mb-4">
-            Staff can see this week. Editing a shift returns its rota to draft.
+            Staff can see this week, and it is locked while they are working to it. Choose
+            Amend rota to change it — staff keep seeing this version until you publish the
+            amendment.
+          </Callout>
+        ) : isAmending && criticalWarnings.length === 0 ? (
+          <Callout tone="info" title="Amendment in progress" className="mb-4">
+            Staff still see the published version of this week. Publish the amendment to
+            replace it, or discard it to leave the published week as it is.
           </Callout>
         ) : criticalWarnings.length > 0 ? (
-          <Callout tone="danger" title="Draft, not visible to staff" className="mb-4">
+          <Callout
+            tone="danger"
+            title={isAmending ? 'Amendment blocked' : 'Draft, not visible to staff'}
+            className="mb-4"
+          >
             {criticalWarnings.length} critical{' '}
             {criticalWarnings.length === 1 ? 'issue blocks' : 'issues block'} publication.
             See the Warnings tab.
+            {isAmending ? ' Staff continue to see the published version meanwhile.' : ''}
           </Callout>
         ) : rotasInScope.length > 0 ? (
           <Callout tone="info" title="Draft, not visible to staff" className="mb-4">
@@ -1827,18 +1981,21 @@ export function RotaBuilderPage(): JSX.Element {
                   conflictedShiftIds={conflictedShiftIds}
                   shiftTypeFilter={shiftTypeFilter}
                   onShiftTypeFilterChange={setShiftTypeFilter}
-                  onAddShift={(staffProfileId, date, locationId) =>
+                  onAddShift={(staffProfileId, date, locationId) => {
+                    if (!guardEditable()) return;
                     setAssignModal({
                       open: true,
                       context: { staffProfileId, date, locationId },
                       shift: null,
-                    })
-                  }
+                    });
+                  }}
                   onSelectShift={(shift) => {
                     setSelectedShiftId(shift.id);
                     setAssignModal({ open: true, context: null, shift });
                   }}
-                  onDeleteShift={handleDeleteShiftFromChip}
+                  // A published week's chips lose their × — the database
+                  // refuses the delete, so offering it would be a lie.
+                  onDeleteShift={readOnly ? undefined : handleDeleteShiftFromChip}
                 />
               </div>
             )}
@@ -2176,8 +2333,13 @@ export function RotaBuilderPage(): JSX.Element {
           weekEnd={weekEnd}
           timezone={autoFillLocation?.timezone ?? DEFAULT_TZ}
           applyTarget={
-            autoFillLocation && autoFillRota
-              ? { locationId: autoFillLocation.id, rotaId: autoFillRota.id }
+            readOnly || !autoFillLocation || !autoFillRota
+              ? null
+              : { locationId: autoFillLocation.id, rotaId: autoFillRota.id }
+          }
+          applyBlockedReason={
+            readOnly
+              ? 'This week is published, so shifts cannot be written into it. Choose Amend rota first — staff keep seeing the published version until you publish the amendment.'
               : null
           }
           onPreview={setPreviewSuggestions}

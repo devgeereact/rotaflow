@@ -2202,7 +2202,9 @@ export type Database = {
       };
       rotas: {
         Row: {
+          archived_at: string | null;
           created_at: string;
+          created_by: string | null;
           id: string;
           location_id: string | null;
           name: string;
@@ -2210,11 +2212,15 @@ export type Database = {
           period_end: string;
           period_start: string;
           published_at: string | null;
+          published_by: string | null;
           status: string;
+          supersedes_rota_id: string | null;
           updated_at: string;
         };
         Insert: {
+          archived_at?: string | null;
           created_at?: string;
+          created_by?: string | null;
           id?: string;
           location_id?: string | null;
           name: string;
@@ -2222,11 +2228,15 @@ export type Database = {
           period_end: string;
           period_start: string;
           published_at?: string | null;
+          published_by?: string | null;
           status?: string;
+          supersedes_rota_id?: string | null;
           updated_at?: string;
         };
         Update: {
+          archived_at?: string | null;
           created_at?: string;
+          created_by?: string | null;
           id?: string;
           location_id?: string | null;
           name?: string;
@@ -2234,7 +2244,9 @@ export type Database = {
           period_end?: string;
           period_start?: string;
           published_at?: string | null;
+          published_by?: string | null;
           status?: string;
+          supersedes_rota_id?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -3047,6 +3059,26 @@ export type Database = {
       anonymize_staff_member: {
         Args: { p_org: string; p_staff_profile_id: string };
         Returns: undefined;
+      };
+      apply_swap_reassignment: {
+        Args: { p_swap_id: string };
+        Returns: Database['public']['Tables']['shifts']['Row'];
+      };
+      begin_rota_revision: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
+      };
+      discard_rota_revision: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
+      };
+      publish_rota: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
+      };
+      unpublish_rota: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
       };
       delete_organisation: {
         Args: { p_confirm_name: string; p_org: string };

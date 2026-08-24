@@ -111,6 +111,50 @@ describe('dedupeRotasByScope', () => {
   });
 });
 
+// 0061 added a third status. A superseded version of a week is history: it is
+// never shown to staff and, crucially, is not evidence about the week's
+// current state. Left in the set it would make `every(published)` false and
+// relabel a published week as a draft — BUG-007's failure, reintroduced by the
+// fix for BUG-028.
+describe('archived rotas (0061 amendments)', () => {
+  it('ignores the superseded version of a published week', () => {
+    expect(rotaWeekStatus([rota('published'), rota('archived')])).toBe('published');
+  });
+
+  it('ignores it whichever order it arrives in', () => {
+    expect(rotaWeekStatus([rota('archived'), rota('published')])).toBe('published');
+  });
+
+  it('reports published while an amendment of that week is open', () => {
+    // The amendment is a draft, but staff are still being shown the published
+    // rota it supersedes — so the week is published, not draft.
+    expect(rotaWeekStatus([rota('published'), rota('draft'), rota('archived')])).toBe(
+      'published',
+    );
+  });
+
+  it('reports none for a week whose only rota is archived', () => {
+    // Nothing is published and nothing is in progress: there is no current
+    // rota for this week, which is not the same as a draft awaiting work.
+    expect(rotaWeekStatus([rota('archived')])).toBe('none');
+  });
+
+  it('keeps a second location honest — archived elsewhere, draft here', () => {
+    expect(
+      rotaWeekStatus([
+        rota('published'),
+        rota('archived'),
+        rota('draft', { location_id: 'loc-2' }),
+      ]),
+    ).toBe('draft');
+  });
+
+  it('drops archived rows from the deduped set entirely', () => {
+    const kept = dedupeRotasByScope([rota('archived'), rota('published')]);
+    expect(kept.map((r) => r.status)).toEqual(['published']);
+  });
+});
+
 describe('isWeekPublished', () => {
   it('is false for a week with no rota at all', () => {
     expect(isWeekPublished([])).toBe(false);
