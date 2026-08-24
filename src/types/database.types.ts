@@ -3080,6 +3080,23 @@ export type Database = {
         Args: { p_rota_id: string };
         Returns: Database['public']['Tables']['rotas']['Row'];
       };
+      delete_organisation: {
+        Args: { p_confirm_name: string; p_org: string };
+        Returns: undefined;
+      };
+      organisation_deletion_preview: {
+        Args: { p_org: string };
+        Returns: {
+          clock_events: number;
+          documents: number;
+          leave_requests: number;
+          locations: number;
+          members: number;
+          rotas: number;
+          shifts: number;
+          staff_profiles: number;
+        }[];
+      };
       assign_support_case: {
         Args: { p_agent?: string; p_case: string };
         Returns: undefined;

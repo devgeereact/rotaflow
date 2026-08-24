@@ -368,6 +368,33 @@ Audit coverage is `rota.published`, `rota.republished`, `rota.unpublished`,
 Before this a rota could disappear with no record at all, which made a production
 disappearance impossible to attribute.
 
+## 6b. Deleting an organisation (`0063`)
+
+Nothing could delete a tenant before this — no UI, no console action, no RPC
+(BUG-009). Five database guards refused it, and they surfaced one at a time,
+each failure hiding the next:
+
+| Guard | Why it refused |
+|---|---|
+| `organisations_audit`, `memberships_audit`, `rotas_audit`, `invites_audit` | each cascade fires an audit trigger that INSERTs an `audit_logs` row referencing the organisation being deleted → `audit_logs_org_id_fkey` |
+| `memberships_keep_one_owner` (`0047`) | refuses to remove the last owner, with no exemption for "the organisation is going too" |
+
+`delete_organisation(org, confirm_name)` sets a transaction-local
+`rotaflow.org_deleting`; `audit_write` and `memberships_keep_one_owner` stand
+down **for that organisation, in that transaction only**. Every other tenant's
+guards stay armed — which `alter table … disable trigger` would not have
+managed, and which has already gone wrong here once: a script disabled
+`audit_logs_no_update` and never re-enabled it.
+
+Caller must be an owner of the organisation or a platform admin, and must type
+the organisation's name exactly. `organisation_deletion_preview(org)` returns
+the row counts the confirmation dialog shows.
+
+What survives, by design: `audit_logs`, `gdpr_requests` and `support_cases` all
+hold `org_id … on delete set null`, and audit rows carry an `org_name`
+snapshot. The `org.deleted` event is written *before* the delete so it survives
+the same way. Everything else org-scoped (32 cascading tables) goes.
+
 ## 7. Generating TypeScript types
 
 Keep `src/types/database.types.ts` in sync once the DB exists:
