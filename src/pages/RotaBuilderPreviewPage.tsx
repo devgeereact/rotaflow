@@ -178,6 +178,10 @@ const ROTA_SUNSHINE: Rota = {
   period_end: getWeekDates(getMonday(now))[6] ?? getMonday(now),
   status: 'draft',
   published_at: null,
+  published_by: null,
+  supersedes_rota_id: null,
+  archived_at: null,
+  created_by: null,
   created_at: ISO(now),
   updated_at: ISO(now),
 };
