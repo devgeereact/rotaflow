@@ -293,18 +293,48 @@ export const CURRENCIES = [
   { value: 'USD', label: 'USD ($)' },
 ] as const;
 
-export function orgProfileFields(settings: Json): OrgProfileFields {
+/**
+ * The five profile fields that are real columns on `organisations`.
+ *
+ * 0023 added them for exactly this — "they are attributes of the customer,
+ * not of a rota, so they belong on the organisation rather than in
+ * `settings`, where nothing can index them and every reader has to guess the
+ * key" — and then nothing ever wrote them. Both the onboarding wizard and the
+ * settings page kept putting industry, country, timezone and the contact
+ * details into the jsonb, so the columns the admin console reads stayed null
+ * for every tenant and it invented values instead (BUG-026).
+ *
+ * The columns are canonical now. `settings` is still read as a fallback,
+ * because rows written before this exist and their values are not wrong,
+ * just in the wrong place.
+ */
+export interface OrgProfileColumns {
+  industry: string | null;
+  country: string | null;
+  timezone: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+}
+
+export function orgProfileFields(
+  settings: Json,
+  columns?: OrgProfileColumns | null,
+): OrgProfileFields {
+  /** Column first, jsonb second. An empty string in a column is not an answer. */
+  const col = (value: string | null | undefined, fallback: string): string =>
+    value?.trim() ? value : fallback;
+
   return {
-    industry: str(settings, 'industry'),
+    industry: col(columns?.industry, str(settings, 'industry')),
     orgType: str(settings, 'org_type'),
-    country: str(settings, 'country', 'United Kingdom'),
-    timezone: str(settings, 'timezone', 'Europe/London'),
+    country: col(columns?.country, str(settings, 'country', 'United Kingdom')),
+    timezone: col(columns?.timezone, str(settings, 'timezone', 'Europe/London')),
     workingWeek: str(settings, 'working_week', 'mon-sun'),
-    phone: str(settings, 'phone'),
+    phone: col(columns?.contact_phone, str(settings, 'phone')),
     website: str(settings, 'website'),
     addressLine: str(settings, 'address_line'),
     registrationNo: str(settings, 'registration_no'),
-    contactEmail: str(settings, 'contact_email'),
+    contactEmail: col(columns?.contact_email, str(settings, 'contact_email')),
     primaryContact: str(settings, 'primary_contact'),
     dateFormat: str(settings, 'date_format', DATE_FORMATS[0]),
     currency: str(settings, 'currency', CURRENCIES[0].value),

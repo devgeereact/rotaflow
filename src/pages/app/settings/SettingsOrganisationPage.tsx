@@ -93,7 +93,7 @@ export function SettingsOrganisationPage(): JSX.Element {
         ]);
         if (!active) return;
         setName(org.name);
-        setFields(orgProfileFields(org.settings));
+        setFields(orgProfileFields(org.settings, org));
         setSiteCount(locations?.length ?? null);
       } catch (err) {
         if (!active) return;
@@ -120,18 +120,24 @@ export function SettingsOrganisationPage(): JSX.Element {
     if (!orgId || !name.trim()) return;
     setSaving(true);
     try {
-      await updateOrganisation(orgId, { name: name.trim() });
-      await mergeOrgSettings(orgId, {
-        industry: fields.industry,
-        org_type: fields.orgType,
+      // The five with real columns go to the columns (0023 added them for
+      // this and nothing had ever written them, which is why the admin
+      // console had nothing to read and invented values instead — BUG-026).
+      // The rest stay in `settings`, which has no column to go to.
+      await updateOrganisation(orgId, {
+        name: name.trim(),
+        industry: fields.industry.trim() || null,
         country: fields.country,
         timezone: fields.timezone,
+        contact_email: fields.contactEmail.trim() || null,
+        contact_phone: fields.phone.trim() || null,
+      });
+      await mergeOrgSettings(orgId, {
+        org_type: fields.orgType,
         working_week: fields.workingWeek,
-        phone: fields.phone,
         website: fields.website,
         address_line: fields.addressLine,
         registration_no: fields.registrationNo,
-        contact_email: fields.contactEmail,
         primary_contact: fields.primaryContact,
         date_format: fields.dateFormat,
         currency: fields.currency,
