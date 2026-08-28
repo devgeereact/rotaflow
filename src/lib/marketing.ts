@@ -24,7 +24,7 @@ import { BRAND } from '@/lib/brand';
  *
  * RotaFlow is pre-launch. It has **no customers**, so it has no user counts, no
  * organisation counts, no uptime record and no testimonials. This site is live
- * at rota.gakinz.com and is read by real prospective buyers.
+ * at rotaflow.space and is read by real prospective buyers.
  *
  * Publishing invented traction ("10,000+ active users", "500+ organisations",
  * "99.9% uptime") or a testimonial attributed to a named person at a named
@@ -64,20 +64,22 @@ export const PRIMARY_CTA = 'Join the beta';
 /**
  * Where `/contact` sends enquiries.
  *
- * ⚠️ Was `info@rota.gakinz.com` until 2026-08-13, verified live to be
- * undeliverable: `dig MX rota.gakinz.com` returns nothing, and the
- * subdomain's A record points at Cloudflare's proxy, not a mail server —
- * every enquiry the form ever generated was silently unreachable. `gakinz.com`
- * (no subdomain) has real MX (`mx1-3-hosting.jellyfish.systems`) and is
- * already the address used for commit signing (CLAUDE.md §3), so it is a
- * real, monitored mailbox rather than a guess.
+ * On `rotaflow.space` as of 2026-08-29, the product's own domain. Two earlier
+ * addresses failed in ways worth not repeating:
  *
- * If a `rota.gakinz.com`-branded address is wanted later, that needs an MX
- * record added in Cloudflare DNS pointing at the same mail host `gakinz.com`
- * uses — a DNS change outside what this codebase can fix, and worth
- * confirming actually delivers (not just resolves) before switching back.
+ *   - `info@rota.gakinz.com` (until 2026-08-13) was undeliverable INBOUND.
+ *     The subdomain carries SPF and DKIM but has no MX at all, so it could
+ *     sign outbound mail and silently drop every reply. Note the failure was
+ *     the missing MX specifically, not "no mail records" — the distinction
+ *     matters when diagnosing the next one.
+ *   - `info@gakinz.com` (2026-08-13 to 2026-08-29) delivered correctly, but
+ *     it is the operator's own address, not the product's.
+ *
+ * `rotaflow.space` has the full standard record set — MX ×3, one SPF, one
+ * DKIM, one DMARC — verified in Cloudflare before this switch. Confirm any
+ * future change actually DELIVERS, not merely resolves.
  */
-export const CONTACT_EMAIL = 'info@gakinz.com';
+export const CONTACT_EMAIL = 'support@rotaflow.space';
 
 export const HERO = {
   eyebrow: 'UK-first workforce scheduling',

@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const stripe = getStripeClient(mode);
-    const origin = req.headers.get('Origin') || 'https://rota.gakinz.com';
+    const origin = req.headers.get('Origin') || 'https://rotaflow.space';
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id,

@@ -27,7 +27,7 @@ const sentryRelease = resolveSentryRelease();
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Absolute base: rota.gakinz.com serves this bundle from its domain root,
+  // Absolute base: rotaflow.space serves this bundle from its domain root,
   // not a cPanel sub-directory. A relative base ('./') resolves asset/manifest
   // URLs against the CURRENT route path, not the site root — so landing
   // directly on any nested route (e.g. /app/dashboard after sign-in) requests

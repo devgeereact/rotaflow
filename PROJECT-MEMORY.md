@@ -1,6 +1,39 @@
 # Project Memory — RotaFlow
 
-_Last updated: 2026-07-29_
+_Last updated: 2026-08-29_
+
+## Domain move to rotaflow.space (2026-08-29)
+
+**Canonical URL is now `https://rotaflow.space`**, its own registered domain and
+its own cPanel docroot `~/rotaflow.space/`. `rota.gakinz.com` was retired in the
+same change: docroot archived, cPanel subdomain removed, and all 16 `rota.*`
+records deleted from the `gakinz.com` Cloudflare zone. It was a subdomain of a
+signed zone rather than a zone of its own, so there was no DS record to unwind
+at the registrar.
+
+**Why it was worth doing.** `rota.gakinz.com` carried SPF and DKIM but **no MX**
+— it could sign outbound mail and silently drop every reply. That is what made
+`info@rota.gakinz.com` undeliverable, and it is why the product had no way to
+send an invitation email. `rotaflow.space` was built to the full 19-record
+standard (MX ×3, exactly one SPF, one DKIM, one DMARC), so product mail is now
+possible for the first time. Note the precise failure: not "no mail records",
+which is what earlier notes in this repo claimed — the missing record was MX
+specifically.
+
+**Cutover was hard, with no redirect period.** Production held 3 organisations,
+7 accounts (all internal), 1 staff profile, 1 shift, **0 live invites and 0
+clock events**, so there were no pending invite links to strand and nothing
+sitting in an origin-scoped offline outbox. The elaborate migration sequence
+this would otherwise need — sync window, service-worker tombstone, long 301 —
+was unnecessary and deliberately skipped. Re-derive that from live counts before
+assuming the same is true next time.
+
+**Also fixed in the same pass:** the Supabase Auth `uri_allow_list` on project
+`vwqqbdvlskngrqrejzxi` had been overwritten with **kokolett-beauty's** URLs
+(`kokolettbeauty.com`, `localhost:5082`) and contained no RotaFlow origin at
+all. Every `redirectTo` the app sends carries a path — `/reset-password`,
+`/app/dashboard`, the invite token — so anything not matching fell back to Site
+URL. Rebuilt with the correct RotaFlow set.
 
 ## Domain & auth configuration (2026-07-29)
 **Canonical URL: `https://rota.gakinz.com`** — a subdomain of the `gakinz.com`
