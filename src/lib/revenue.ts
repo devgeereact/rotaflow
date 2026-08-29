@@ -123,7 +123,8 @@ export function collectedByMonth(
  *
  * The gate for whether a trend chart has enough real history to draw, per
  * the design decision to never zero-pad pre-launch months into a fake
- * longer history — see `docs/superpowers/specs/2026-08-19-admin-billing-real-data-design.md`.
+ * longer history — the design rationale now lives in `0051_org_status_service_role.sql`
+ * and `docs/SAAS.md`.
  */
 export function monthsOfPaidHistory(invoices: readonly InvoiceLike[]): number {
   const months = new Set(

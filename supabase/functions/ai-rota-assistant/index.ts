@@ -24,7 +24,7 @@
 // below for why a service-role write is the correct exception here, not a
 // pattern to copy elsewhere. The row carries the requester, `PROMPT_VERSION`,
 // the model, and (for rota suggestions) the accept/drop counts — the raw
-// material for docs/PRODUCT_TRANSFORMATION_PLAN.md §8.6's invalid-suggestion
+// material for `docs/SAAS.md`'s invalid-suggestion
 // rate, not yet aggregated into a dashboard anywhere.
 //
 // MODEL FALLBACK: none. `OPENROUTER_MODEL` (default `openai/gpt-4o-mini`) is
@@ -591,7 +591,7 @@ Deno.serve(async (req: Request) => {
 
     const modelSummary = typeof parsed.summary === 'string' ? parsed.summary : '';
     // This is also the invalid-suggestion-rate measurement
-    // docs/PRODUCT_TRANSFORMATION_PLAN.md §8.6 (AI operations) asks for:
+    // `docs/SAAS.md` (AI operations) asks for:
     // `accepted.length` against how many were dropped, and why, per request.
     await auditAiRequest('ai_assistant.rota_suggestions_generated', {
       requestedBy: requester ? { id: requester.id, email: requester.email } : null,

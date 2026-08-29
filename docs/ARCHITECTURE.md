@@ -48,13 +48,18 @@ src/
 ```
 
 **Dependency direction:** `pages → services → lib`. Components consume `hooks`
-and `context`. Nothing in `lib` imports from `pages`/`components` (no cycles).
+and `context`. `lib` should import nothing from `pages`/`components`; six files
+currently break that with type-only imports (`clockinDemo`, `swapRows`,
+`workspaceTabs`, `settingsTabs`, `reportsDemo`) — tracked in `docs/SAAS.md`.
 
 **RotaFlow services** (typed Supabase data access, all `org_id`-scoped):
-`orgService`, `membershipService`, `staffService`, `locationService`,
-`rotaService`, `shiftService`, `availabilityService`, `leaveService`,
-`swapService`, `clockService`, `timesheetService`, `announcementService`,
-`notificationService`, `reportService`, `syncQueue` (offline outbox). Contexts:
+`orgService`, `staffService`, `locationService`, `rotaService`, `shiftService`,
+`availabilityService`, `leaveService`, `swapService`, `clockService`,
+`timesheetService`, `announcementService`, `notificationService`,
+`reportsService`, `orgLifecycleService`, `syncQueue` (offline outbox).
+Membership access lives in `orgService` and `platformUserService`; there is no
+`membershipService`, and the reports service is `reportsService.ts`, not
+`reportService.ts`. Contexts:
 `AuthProvider`, `OrgProvider` (active tenant + role), `ThemeProvider`.
 
 ## 3. Rendering & routing
@@ -93,8 +98,8 @@ TENANT SHELL, /app (requires membership, else redirects to /onboarding)
   /app/rota               rota builder. Drag-drop, AI auto-fill, publish   [manager]
   /app/schedule           published schedule. Day/week/month/agenda + ICS
   /app/clock              GPS clock in/out with an offline queue
-  /app/staff              staff directory                                   [manager]
-  /app/staff/:staffId     staff profile                                     [manager]
+  /app/team               staff directory                                   [manager]
+  /app/team/:staffId      staff profile                                     [manager]
   /app/locations          locations & departments                           [manager]
   /app/availability       my availability / team availability
   /app/leave              leave requests + approvals
@@ -106,10 +111,17 @@ TENANT SHELL, /app (requires membership, else redirects to /onboarding)
   /app/settings           layout route + tab bar                            [manager]
     organisation · permissions · roles · policies
     notifications · integrations · billing · audit
+  /app/overtime           overtime requests + approvals
+  /app/help               help & support; opens a support case
   /app/account            layout route + tab bar (every role)
-    profile · preferences · security · sessions · tokens · activity
-  /app/team               → redirects to /app/settings/permissions
+    profile · preferences · security · accounts · sessions · tokens · activity
+  /app/staff              → redirects to /app/team
   /app/integrations       → redirects to /app/settings/integrations
+
+  /legal/privacy · /legal/terms · /legal/cookies · /legal/accessibility
+  /auth/callback          OAuth return
+  /admin/*                platform console, 19 screens (RequirePlatformAdmin)
+  *-preview               ~30 DEV-only design-loop routes, dropped from the build
 ```
 
 `[manager]` = gated by `RequireRole` on the `<Route>`, rendering
@@ -124,13 +136,13 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 
 ### App shell
 
-| Piece                     | Module                                    | Note                                                                                                                                                                            |
-| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sidebar                   | `layout/Sidebar`                          | Role-resolved items; collapse persisted in `localStorage`, read during initial `useState` so the page does not jump on load                                                     |
-| Org identity + switcher   | `layout/SidebarOrgSwitcher`               | Always shows the org name; interactive only with >1 membership                                                                                                                  |
-| Profile / help / collapse | `layout/SidebarFooter`                    |                                                                                                                                                                                 |
+| Piece                     | Module                                    | Note                                                                                                                                                                           |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Sidebar                   | `layout/Sidebar`                          | Role-resolved items; collapse persisted in `localStorage`, read during initial `useState` so the page does not jump on load                                                    |
+| Org identity + switcher   | `layout/SidebarOrgSwitcher`               | Always shows the org name; interactive only with >1 membership                                                                                                                 |
+| Profile / help / collapse | `layout/SidebarFooter`                    |                                                                                                                                                                                |
 | Global search             | `layout/GlobalSearch`, `lib/globalSearch` | `⌘K`. Searches **screens and actions, not records**, a per-keystroke `ilike` fan-out across a dozen tables is a query storm at real tenant size. Role-filtered before matching |
-| Mobile tab bar            | `layout/MobileTabBar`                     | Home · Schedule · Clock in · Leave · More; `More` opens the sidebar drawer, whose open state is owned by `AppShell` so both controls share it                                   |
+| Mobile tab bar            | `layout/MobileTabBar`                     | Home · Schedule · Clock in · Leave · More; `More` opens the sidebar drawer, whose open state is owned by `AppShell` so both controls share it                                  |
 
 ## 4. State management
 
@@ -169,9 +181,11 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 
 ```
 RotaBuilderPage (manager, org-scoped)
-  → rotaService.publish(orgId, rotaId)
-    → supabase.from('shifts').update({ status:'assigned' })...   // RLS: has_org_role(org,['owner','manager'])
-    → supabase.from('rotas').update({ status:'published', published_at })
+  → rotaService.publishRota(rotaId)
+    → supabase.rpc('publish_rota', { p_rota_id })                // SECURITY DEFINER, owner/manager only
+        • archives the rota this one supersedes, then publishes, in one transaction
+        • a raw PATCH of rotas.status is REFUSED by rotas_guard_status_change (0061)
+        • a raw write to a published rota's shifts is REFUSED by shifts_guard_immutable_rota
   → on error: Sentry.captureException + toast; local draft preserved
   → useInngestDispatch().send('rota/published', { orgId, rotaId })
       → POST https://inn.gs/e/<VITE_INNGEST_EVENT_KEY>   // write-only event key

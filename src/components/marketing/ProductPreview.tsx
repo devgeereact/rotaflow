@@ -4,7 +4,7 @@
  *
  * Built from real markup and real design tokens rather than a screenshot, for
  * three reasons: a PNG of the app would be another megabyte in the precache
- * (`docs/audit01.md` records a 1.2 MB logo that sat there through 45 PRs), an
+ * (`docs/SAAS.md` records a 1.2 MB logo that sat there through 45 PRs), an
  * exported screenshot goes stale the moment the UI moves, and markup respects
  * dark mode and the viewer's reduced-motion setting where an image cannot.
  *
@@ -21,7 +21,7 @@ const METRICS = [
   // at 2.27:1, well under the 3:1 large-text minimum. `warning` has no
   // darker text-safe ink token yet (only DEFAULT/wash), so this is a
   // one-off local value rather than inventing one — a real design-system
-  // gap tracked in docs/PRODUCT_TRANSFORMATION_PLAN.md §8.5, not solved here.
+  // gap tracked in `docs/SAAS.md`, not solved here.
   { label: 'Open shifts', value: '23', tone: 'text-[#96650F] dark:text-warning' },
 ];
 

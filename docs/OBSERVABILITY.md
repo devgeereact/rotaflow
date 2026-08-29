@@ -1,7 +1,7 @@
 # Observability and the success-metrics taxonomy
 
 **Status:** First pass, 13 August 2026. Answers
-`docs/PRODUCT_TRANSFORMATION_PLAN.md` §8.3 ("publish event taxonomy") and
+`docs/SAAS.md` ("publish event taxonomy") and
 maps directly onto that plan's §12 success-metrics table — this document
 names, for each metric, exactly what data computes it and whether that data
 exists today. Nothing here is instrumented as a dashboard; several rows are
@@ -42,6 +42,14 @@ implied.
 
 Every row marked "computable now" was actually run against the live
 demo/seed dataset (13 August 2026), not just checked for schema presence.
+
+> ⚠️ **That dataset no longer exists.** It was torn down on 2026-08-14 and every seed
+> script was deleted in `#120`. Production now holds one organisation and zero clock
+> events, so none of the figures below can be reproduced, and the recommendation later
+> in this document to "re-run the six computable queries against the seed data" is not
+> executable. The _queries_ and the schema columns they rely on are still correct; only
+> the numbers are historical. Re-derive them against a real tenant before quoting any.
+
 Two things came back wrong, and both point at the same root cause rather
 than at the metric definitions:
 
@@ -87,7 +95,7 @@ outcome (edited/used as-is/discarded), and Web Vitals collection. The rest
 are a query away from real, not a new instrumentation project — the
 temptation to build a generic "event tracking" system before checking which
 metrics already have their data is exactly the premature-dashboard mistake
-`docs/PRODUCT_TRANSFORMATION_PLAN.md`'s own Phase 3 guidance warns against
+`docs/SAAS.md`'s own Phase 3 guidance warns against
 ("do not invent targets before observing the first design partners").
 
 **Recommended order, cheapest first:**

@@ -6,7 +6,7 @@ export type TimesheetStatus = Timesheet['status'];
 
 /**
  * The `timesheets` table, which had no reader and no writer in the whole
- * application until now (audit01 P2-7 flagged the same shape for
+ * application until now (the 2026-08-04 audit (now `docs/SAAS.md`) P2-7 flagged the same shape for
  * `overtime_requests` and `shift_templates`).
  *
  * ## Why the screen worked without it

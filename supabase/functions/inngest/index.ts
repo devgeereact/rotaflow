@@ -30,7 +30,7 @@
 // After deploying: Inngest dashboard → Apps → Sync new app, pointed at
 // <SUPABASE_URL>/functions/v1/inngest
 //
-// VERIFICATION STATUS (2026-08-01, docs/audit01.md P0-3)
+// VERIFICATION STATUS (2026-08-01, `docs/SAAS.md`)
 //
 // Deployed and ACTIVE (version 1, verify_jwt: false. Correct, since Inngest
 // cannot present a Supabase JWT). The thing that matters given the platform

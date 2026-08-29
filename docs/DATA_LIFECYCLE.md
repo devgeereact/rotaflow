@@ -2,7 +2,7 @@
 
 **Status:** First pass, verified against the live deployment 13 August 2026 —
 not yet reviewed by counsel. This is the technical record
-`docs/PRODUCT_TRANSFORMATION_PLAN.md` P0 #1 needs as input for the published
+`docs/SAAS.md` P0 needs as input for the published
 Privacy Notice; it is not that notice. Where something is a gap rather than a
 fact, it is written as a gap.
 
@@ -96,24 +96,46 @@ the deferral has expired.
 
 The Supabase project runs in `eu-west-1` (Ireland). Sentry is configured for
 an EU ingest region (`docs/DEPLOYMENT.md` §5). ImageKit and the cPanel mail
-host (`premium17.web-hosting.com`) are UK-based. No component in the current
-stack processes personal data outside the UK/EU.
+host (`premium17.web-hosting.com`) are UK-based.
+
+**Two components do send personal data outside the UK/EU. Both are US-based, and
+both must appear in the Privacy Notice and the sub-processor list.** This section
+previously claimed the opposite; that claim was wrong and was corrected on
+2026-08-29.
+
+| Processor                                                                          | What leaves the UK/EU                                                                                                                                                                    | Where                                                 |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **OpenRouter** (and the model provider behind it, `openai/gpt-4o-mini` by default) | Staff first and last names, job titles, skills, weekly hours, contract type, plus shift, location and approved-leave rows for the week being drafted — assembled into the prompt context | `supabase/functions/ai-rota-assistant/index.ts`       |
+| **Stripe**                                                                         | Billing identity for the organisation's owner: email, and whatever Checkout collects                                                                                                     | `supabase/functions/create-checkout-session/index.ts` |
+
+Neither is optional today: the AI assistant's third tab and the whole billing path
+depend on them. What _is_ available is disclosure and, for the AI, scope — the two
+deterministic assistant tabs run entirely on rows the org already has and make no
+network call at all, so a tenant that never opens "Ask AI" never sends staff data
+to OpenRouter.
+
+Anyone writing the Privacy Notice, the DPA or a security questionnaire answer should
+treat this table as the authoritative list, not §2's previous sentence.
 
 ## 3. Retention
 
-`public.retention_policies` (migration `0027`) is the schedule, read by any
-signed-in user via `/app/settings` and by platform admins in the console. Its
+`public.retention_policies` (migration `0027`) is the schedule. RLS permits any
+signed-in user to read it, but **no tenant-facing screen does** — its only readers
+are `AdminSettingsPage` and `AdminGdprPage` in the platform console. Earlier
+revisions of this section said it was shown "to every signed-in user via
+`/app/settings`"; that screen does not exist, and the §3a framing that rested on it
+has been corrected accordingly. Its
 `enforced` column exists specifically so a declared schedule is never
 mistaken for a running job:
 
-| Data type                         | Declared retention          | Enforced?                                                                                                         |
-| --------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Rota and shift history            | 84 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
-| Attendance / clock-in (incl. GPS) | 36 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
-| Leave records                     | 72 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
-| Support cases                     | 36 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                   |
-| Platform audit log                | Indefinite                  | **Yes** — a dedicated trigger rejects every `UPDATE`/`DELETE` (§5); enforced by the database, not a scheduled job |
-| Deleted-tenant data               | 1 month grace, then erasure | **No**, and deliberately so: erasing an organisation and everything cascading from it has no assigned owner yet   |
+| Data type                         | Declared retention          | Enforced?                                                                                                                                                                                                                                                       |
+| --------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rota and shift history            | 84 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                                                                                                                                                                 |
+| Attendance / clock-in (incl. GPS) | 36 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                                                                                                                                                                 |
+| Leave records                     | 72 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                                                                                                                                                                 |
+| Support cases                     | 36 months                   | **Yes** — nightly at 02:15 UTC (`0029`, fixed by `0057`); running since 2026-08-21, see §3a/§3b                                                                                                                                                                 |
+| Platform audit log                | Indefinite                  | **Yes** — a dedicated trigger rejects every `UPDATE`/`DELETE` (§5); enforced by the database, not a scheduled job                                                                                                                                               |
+| Deleted-tenant data               | 1 month grace, then erasure | **Partly.** An owner can delete their organisation on demand (`0063`, `delete_organisation`, pgTAP-tested), which cascades immediately. What is _not_ enforced is the one-month grace window or any scheduled purge — deletion is a deliberate act, not a timer |
 
 ### 3a. Incident, 7–20 August 2026: the job existed and never once completed
 
@@ -170,7 +192,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (57 migrations, no timestamp orphans). The nightly job has run
+numeric version (66 migrations, no timestamp orphans). The nightly job has run
 successfully every night since:
 
 |                        |                                            |
@@ -234,10 +256,14 @@ self-service flow. What each type actually does today:
   flow) and does not delete the file behind `documents.file_url` on
   ImageKit, only the database row — both limits are in the migration's own
   header, and neither was contradicted by the live test.
-- **Access / portability**: no one-click export exists. Fulfilling one today
-  means a platform admin manually querying and exporting the relevant tables
-  (the console's existing per-table CSV export, `src/lib/csv.ts`, covers the
-  mechanics; nothing assembles a single subject-access package automatically).
+- **Access / portability**: an **organisation-level** one-click export exists —
+  `exportOrganisationData()` (`src/services/orgLifecycleService.ts`) assembles 20
+  tables into a single JSON file from Settings → Organisation, read through the
+  caller's own session so RLS decides what is included and anything unreadable is
+  listed under `omitted`. A **per-subject** package still does not exist:
+  `exportStaffData()` (`src/services/gdprService.ts`) covers eight datasets for one
+  staff member, but neither export includes the person's `auth.users` row, and
+  nothing assembles a subject-access package across organisations.
 - **Rectification / restriction / objection**: tracked as cases with no
   automated action; each is a manual data change by whoever is assigned the
   request.
@@ -253,7 +279,8 @@ happened.
 mutation (`memberships_audit` and equivalents) and is immutable by a
 dedicated trigger (`audit_logs_no_update`, migration `0016`): any `UPDATE` or
 `DELETE` raises `audit_logs is append-only`, with a documented carve-out for
-the row cascading away when its organisation itself is deleted. This
+the row's `org_id` being detached when its organisation is deleted — the row
+itself survives, carrying the `org_name` snapshot taken at write time. This
 session's live RLS testing confirmed no role below platform admin can even
 _read_ another tenant's audit rows (`ST1 (staff) cannot read own-org
 audit_logs`); it did not separately attempt a write against this trigger, so
@@ -279,8 +306,7 @@ build one on:
 - **Missing**: a defined severity → response-time mapping, an on-call
   rotation, an escalation path from "Sentry fired" to "a human is paged", and
   a template for the customer communication that goes out during a live
-  incident. This is squarely `docs/PRODUCT_TRANSFORMATION_PLAN.md` P0 #2
-  ("confirm ownership... of error alerts... incident response"), which needs
+  incident. This is squarely `docs/SAAS.md`'s P0 incident-response item, which needs
   a person named, not more code.
 
 ## 7. Support escalation
@@ -300,7 +326,9 @@ not become a case automatically.
    code.
 3. **Wire a scheduled health probe** so detection does not depend on someone
    opening the console (§6).
-4. **Build the retention-purge job** for the five unenforced policies (§3),
+4. **Build the deleted-tenant grace window** — the one policy in §3 still not on a
+   timer. Four of the five listed here as unenforced have been running nightly since
+   2026-08-21 (`0029`, fixed by `0057`); this item was left stale and is corrected,
    once the retention periods themselves are confirmed against legal advice.
 5. **Build a subject-access export** that assembles one package instead of a
    manual per-table pull (§4).

@@ -71,7 +71,7 @@ updates:
       # nothing about `npm ci`.** CI caught it, as it did for
       # eslint-plugin-react-refresh below.
       #
-      # Same shape as the tailwind-merge/tailwind coupling in audit01 §2: a
+      # Same shape as the tailwind-merge/tailwind coupling in the 2026-08-04 audit (now `docs/SAAS.md`): a
       # package whose major is meaningless except in lockstep with its host.
       # Lift this only in the same PR that moves vitest itself to 4.
       - dependency-name: '@vitest/coverage-v8'

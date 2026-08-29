@@ -14,6 +14,7 @@ gstack storage; the session scratchpad itself is ephemeral and will not
 persist.
 
 ## Product Context
+
 - **What this is:** RotaFlow, a multi-tenant, offline-first workforce scheduling PWA.
 - **Who it's for:** UK multi-site, shift-based organisations (care/home-care primary wedge).
 - **Space/industry:** Workforce scheduling SaaS, competing with Deputy, Rotaready, Planday.
@@ -22,6 +23,7 @@ persist.
   during failure (offline sync, no-signal clock-in), not growth-SaaS excitement.
 
 ## Research findings (Phase 2)
+
 Deputy and Rotaready (screenshots in `consultation-artifacts/`, see Preview
 above) both converge
 on bubbly-illustration / stat-badge growth-SaaS marketing conventions — 3-col icon
@@ -31,6 +33,7 @@ differentiator (dependability under failure) justifies a deliberately calmer,
 more instrument-panel register than either competitor.
 
 ## Aesthetic Direction
+
 - **Direction:** Industrial/Utilitarian — function-first, data-dense, monospace
   accents, muted confident palette.
 - **Decoration level:** Intentional (subtle grid texture nod, no illustration).
@@ -39,6 +42,7 @@ more instrument-panel register than either competitor.
   rotaready.com.
 
 ## Typography
+
 - **Display/Hero:** Inter, 700 — unchanged from `docs/DESIGN.md`.
 - **Body:** Inter, 400 — unchanged.
 - **UI/Labels:** Inter — same as body.
@@ -50,9 +54,10 @@ more instrument-panel register than either competitor.
   CI work referenced this session.
 
 ## Color
+
 - **Approach:** Restrained, evolved not replaced.
 - **Primary:** `#3B6FE0` — retained (brand equity; Premise 3 in
-  `docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md` confirmed no positioning pivot).
+  the 20 August plan review confirmed no positioning pivot; see `docs/SAAS.md`).
 - **Primary ink (new):** `#1E3A73` — deeper navy for marketing surfaces and
   higher-confidence UI moments, reducing the pastel-wash-everywhere feel.
 - **Neutrals:** unchanged from `docs/DESIGN.md` (`#F5F7FA` background, `#FFFFFF`
@@ -66,10 +71,12 @@ more instrument-panel register than either competitor.
 - **Dark mode:** unchanged strategy from `docs/DESIGN.md`.
 
 ## Spacing / Layout / Motion
+
 Unchanged from `docs/DESIGN.md` — this exploration is scoped to aesthetic
 register and colour/typography emphasis, not the underlying system mechanics.
 
 ## Deliberate risks taken
+
 1. **Hero shows the real rota grid + monospace time**, not illustration or
    abstract graphics — differentiates from both researched competitors, who
    neither show their product with this much confidence.
@@ -81,10 +88,12 @@ register and colour/typography emphasis, not the underlying system mechanics.
    Pass 2 finding from `/plan-design-review` on the same session).
 
 ## Risk rejected
+
 - **Typeface swap** — considered, explicitly declined. See Typography above.
 
 ## Decisions Log
-| Date | Decision | Rationale |
-|------|----------|-----------|
+
+| Date       | Decision                                              | Rationale                                                                                                                                                                                         |
+| ---------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-13 | Design exploration created via `/design-consultation` | Researched Deputy/Rotaready, found a differentiation gap (dependability vs. growth-SaaS excitement), proposed industrial/utilitarian register evolving existing tokens rather than replacing them |
-| 2026-08-13 | Shipped as `DESIGN_EXPLORATION.md`, not `DESIGN.md` | User chose not to replace the live enforced design system until validated through `/design-shotgun` and `/design-html` |
+| 2026-08-13 | Shipped as `DESIGN_EXPLORATION.md`, not `DESIGN.md`   | User chose not to replace the live enforced design system until validated through `/design-shotgun` and `/design-html`                                                                            |

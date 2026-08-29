@@ -25,7 +25,11 @@ alongside light ones, don't defer them.
 
 ## 2. Design tokens
 
-These map 1:1 to `tailwind.config.ts`. **Always use the token class, never a raw
+These are the tokens this document defines. `tailwind.config.ts` is the runtime source
+of truth and currently carries more than are listed here — `primary.ink`, `success.ink`,
+`warning.ink`, `danger.ink`, `brand.*`, `ink.*`, `clock.*`, `avail.*`, `shift-tint.*`,
+`leave.*`, `shift-deep.*`, plus wordmark type and lockup spacing. Read the config when
+the two disagree, and treat an undocumented token as legal if the config defines it. **Always use the token class, never a raw
 hex.** Token values below are the **light** (base, default) palette. Pair every
 one with a `dark:` variant using the dark column, e.g.
 `bg-background dark:bg-background-dark`.

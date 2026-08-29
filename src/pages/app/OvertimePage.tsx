@@ -29,7 +29,7 @@ import type { OvertimeRequest, StaffProfile } from '@/types';
 
 /**
  * `/app/overtime` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.overtime`).
- * `overtime_requests` is a real, working feature (audit01 P2-7 closed it;
+ * `overtime_requests` is a real, working feature (the 2026-08-04 audit (now `docs/SAAS.md`) P2-7 closed it;
  * see `overtimeService.ts`), not the stub `LeavePage.tsx`'s comment used to
  * describe.
  *

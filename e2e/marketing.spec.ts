@@ -73,7 +73,7 @@ test('marketing nav reaches every top-level link via the keyboard', async ({ pag
 //      them shifts) and swapped every public-page text/link usage onto them.
 // The same `text-primary`-as-link pattern almost certainly exists in
 // authenticated `/app` screens too; extending the swap there is
-// docs/PRODUCT_TRANSFORMATION_PLAN.md §8.5 (design-system health), deliberately
+// `docs/SAAS.md` (design-system health), deliberately
 // not done in this pass — those files are also where a concurrent worktree
 // (`mockup-parity`) is actively doing pixel-parity work against reference
 // designs, and touching shared files there right now risks a collision this

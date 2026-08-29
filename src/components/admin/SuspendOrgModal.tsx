@@ -10,7 +10,7 @@ const MIN_REASON = 5;
  *
  * ## Why a modal and not `window.prompt`
  *
- * audit01 P0-2 was exactly this: five destructive actions sitting behind native
+ * the 2026-08-04 audit (now `docs/SAAS.md`) P0-2 was exactly this: five destructive actions sitting behind native
  * browser dialogs, all replaced with themed ones. A native prompt is unstyled,
  * unbranded, silently blocked in some contexts, and cannot show the caveat
  * below, which is the most important thing on this screen.

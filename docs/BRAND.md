@@ -36,7 +36,9 @@ judgement, payroll provider, or employment-law advice.
 ## Evidence boundary
 
 RotaFlow is pre-launch. It has no verified customer count, testimonials,
-customer logos, uptime record, quantified time saving, or live billing. Public
+customer logos, uptime record, quantified time saving, or a completed live charge. (Billing itself
+is built — Stripe Checkout, Billing Portal and a signature-verified webhook — but no
+real payment has been taken end to end, so no revenue claim is evidenced.) Public
 copy must not invent any of those. Every product claim should map to a shipped
 screen or an implemented capability in `docs/SCREENS.md` and `docs/PRD.md`.
 

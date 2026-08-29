@@ -30,7 +30,7 @@ import { BRAND } from '@/lib/brand';
  * "99.9% uptime") or a testimonial attributed to a named person at a named
  * company would be a false factual claim to those buyers. Under the UK CAP Code
  * that is a straightforward breach, and it is the kind of claim a competitor or
- * the ASA can act on. `docs/audit01.md` §4 reached the same conclusion
+ * the ASA can act on. `docs/SAAS.md` reached the same conclusion
  * independently: _"do not fabricate testimonials or logos"_.
  *
  * So the sections a SaaS landing page normally fills with social proof are

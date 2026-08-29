@@ -10,7 +10,7 @@ import type { Json } from '@/types/database.types';
  *
  * Until 0016 it had exactly one writer in the whole system. The
  * `anonymize_staff_member` RPC in 0011, so for almost every organisation this
- * query correctly returned nothing (audit01 §P1-5). 0016 adds the writers:
+ * query correctly returned nothing (recorded in `docs/SAAS.md`). 0016 adds the writers:
  * database triggers for events the database can observe (membership role and
  * status changes, rota publish/unpublish, invites issued/revoked/accepted,
  * organisation plan/name/settings changes, platform role grants) and a

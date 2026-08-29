@@ -1,5 +1,10 @@
 # Product Requirements Document (PRD). RotaFlow
 
+> **Scope, not status.** This document says what RotaFlow is meant to do.
+> **`docs/SAAS.md` says what it actually does** — per capability, with evidence, and
+> including the ones this file has claimed in the wrong direction. Where the two
+> disagree, the register wins.
+
 ## 1. Overview
 
 RotaFlow is a **multi-tenant, offline-first workforce scheduling PWA**. Organisations
@@ -37,12 +42,12 @@ with minimal industry-specific customisation.
 
 ## 4. Roles & permissions (drives PRD + Supabase RLS)
 
-| Role                   | Scope                    | Can do                                                                                                                                                                                      |
-| ---------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Super Admin**        | Platform                 | Tenant management, subscription/billing oversight, support, audit logs, feature flags, GDPR tools. _(Full console is a later phase; role + guardrails exist from day one.)_                 |
-| **Organisation Owner** | One org                  | Invite managers, manage subscription, locations, departments, roles, company settings, policies, org-wide reports.                                                                          |
-| **Manager**            | Org / assigned locations | Build & publish rotas, assign shifts, approve leave & overtime, review clock-ins, approve swaps, manage availability, export payroll/timesheets, send announcements.                        |
-| **Staff**              | Self                     | View rota, receive notifications, clock in/out, request leave & overtime, request/accept shift swaps, set availability, view hours, download rota, manage emergency contact, calendar sync. |
+| Role                   | Scope                    | Can do                                                                                                                                                                                                                                 |
+| ---------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Super Admin**        | Platform                 | Tenant management, subscription/billing oversight, support, audit logs, feature flags, GDPR tools. _(Shipped: 19 console screens under `/admin`, gated by `RequirePlatformAdmin` with four routes narrowed further by platform role.)_ |
+| **Organisation Owner** | One org                  | Invite managers, manage subscription, locations, departments, roles, company settings, policies, org-wide reports.                                                                                                                     |
+| **Manager**            | Org / assigned locations | Build & publish rotas, assign shifts, approve leave & overtime, review clock-ins, approve swaps, manage availability, export payroll/timesheets, send announcements.                                                                   |
+| **Staff**              | Self                     | View rota, receive notifications, clock in/out, request leave & overtime, request/accept shift swaps, set availability, view hours, download rota, manage emergency contact, calendar sync.                                            |
 
 All permissions are enforced by **Supabase RLS predicates** scoped by `org_id` and
 role membership, never in the client alone.
@@ -56,25 +61,25 @@ role membership, never in the client alone.
 2. **Staff management**. Profiles (photo, job title, department, skills, contract
    type, working hours, holiday allowance, emergency contact, documents, payroll ID).
 3. **Rota builder**. Weekly/fortnightly/monthly grid, drag-and-drop, shift templates,
-   copy-previous-week, duplicate day/week, undo/redo, colour coding, conflict
+   copy-previous-week, colour coding, conflict
    detection (double-booking, availability, leave, max hours, min rest).
 4. **Shift types & templates**. Reusable, org-defined (Morning, Late, Night, Split,
    Weekend, On-Call, Bank, Training, etc.).
 5. **Staff mobile rota view**. Installable PWA, offline-first, calendar month/week/day
-   views, ICS calendar subscription.
+   views, ICS calendar **file download** (no subscription feed — a static PWA cannot serve one).
 6. **Availability**. Staff submit available/unavailable/preferred/recurring; managers
    schedule around it.
 7. **Leave**. Request, approve/reject, entitlement tracking, calendar conflicts.
 8. **Shift swaps**. Staff request → colleague → manager approval → rota updates.
-9. **GPS clock in/out**. QR + GPS + manual, timesheets, hours dashboard.
+9. **GPS clock in/out**. GPS + manual (QR is deferred; the schema accepts `'qr'` but nothing generates a code), timesheets, hours dashboard.
 10. **Notifications**. Web Push + email (SMTP) for assignments, changes, approvals,
     reminders, announcements.
 11. **Announcements / communication centre**. Org/department/location broadcasts.
-12. **Reports & exports**. Hours, absence, holiday, overtime; CSV/Excel payroll export;
+12. **Reports & exports**. Hours, absence, holiday, overtime; CSV payroll export (no Excel writer in the dependency tree);
     per-employee/department/location rota export.
 13. **Offline + background sync**. View rota, clock in/out, request leave, read
     announcements offline; reconcile on reconnect.
-14. **GDPR essentials**. Consent, audit logging, data export/delete.
+14. **GDPR essentials**. Audit logging, data export and anonymisation. **No consent capture exists** — nothing records or stores a consent decision.
 
 ### Phase 2. Intelligence, enterprise & billing
 
@@ -82,7 +87,7 @@ role membership, never in the client alone.
   scheduling ("schedule three nurses for nights next weekend").
 - Payroll integrations (Sage, Xero, QuickBooks, BrightPay, Staffology).
 - Advanced analytics (labour cost, utilisation, coverage gaps).
-- Documents with expiry reminders (DBS, Right to Work, visas, certificates).
+- Documents with expiry **automation** — expiry is already stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`); what is missing is a scheduled reminder. (DBS, Right to Work, visas, certificates).
 - SSO, custom per-tenant branding, open API, advanced compliance.
 - **Subscription billing**. Stripe Checkout + Billing Portal shipped `0050`
   (`create-checkout-session`, `create-portal-session`, `stripe-webhook` — see
@@ -114,7 +119,9 @@ role membership, never in the client alone.
   end-to-end-verified live charge (infra is built — see §5's Phase 2 billing
   entry — but not yet exercised with a real completed payment).
 - SMS notifications (schema + channel seam reserved; **not** wired up yet).
-- AI scheduling, payroll integrations, SSO, open API (all Phase 2).
+- Payroll integrations, SSO, open API (all Phase 2). **AI scheduling shipped early** —
+  `supabase/functions/ai-rota-assistant` plus two deterministic tabs; see
+  `docs/ARCHITECTURE.md` §9. Auto-fill, forecasting and burnout detection remain Phase 2.
 - Native app-store submission (the Expo bridge is a later milestone).
 
 ## 8. Future roadmap
