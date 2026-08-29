@@ -59,12 +59,12 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 
 | Status                | Count | Δ since 08-29 |
 | --------------------- | ----- | ------------- |
-| 🟢 Complete           | 33    | +9            |
+| 🟢 Complete           | 34    | +10           |
 | 🟡 Partial            | 20    | +2            |
 | 🟠 Defective          | 7     | −7            |
 | 🔵 Hardening required | 9     | —             |
 | ⚪ Surface only       | 7     | —             |
-| 🔴 Missing            | 20    | −2            |
+| 🔴 Missing            | 19    | −3            |
 | ⚫ Deferred           | 19    | —             |
 | ❓ Not audited        | 7     | +1            |
 
@@ -224,8 +224,8 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/functions/_shared/stripe.ts` · BUG-052 closed #163 · deployed v11, 2026-08-29
 - [ ] CAP-038 ⚪ Feature entitlements — `useFeatureAccess` and `org_has_feature()` have zero callers
       `src/hooks/useFeatureAccess.ts` · GAP-008 · P2
-- [ ] CAP-039 🔴 Plan-limit enforcement — `seat_limit`/`location_limit` enforced nowhere
-      `supabase/migrations/0023_commercials.sql` · GAP-008 · P2
+- [x] CAP-039 🟢 Plan-limit enforcement — seats and sites refused at the database, inclusive of the cap
+      `supabase/migrations/0070_enforce_plan_limits.sql` · GAP-008 closed #176 · 8 pgTAP assertions
 - [ ] CAP-040 🟠 Price source of truth — prices duplicated between `plans` and marketing copy
       `src/lib/marketing.ts` · BUG-053 · P2
 - [ ] CAP-041 🟡 Subscription state — mirrored DB row, no grace-period column, no dunning window

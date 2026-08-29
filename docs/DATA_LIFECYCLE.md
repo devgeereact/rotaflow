@@ -48,17 +48,18 @@ Re-examined 20 August 2026. The gap above is real and the wording stands, but
 it is being **consciously deferred rather than forgotten**, for one reason:
 production holds almost no data.
 
-| table                                          | rows |
-| ---------------------------------------------- | ---- |
-| `audit_logs`                                   | 348  |
-| `memberships`                                  | 2    |
-| `organisations`                                | 1    |
-| `staff_profiles`                               | 1    |
-| `shifts`                                       | 1    |
-| `clock_events`, `timesheets`, `leave_requests` | 0    |
+| table                                                                      | rows |
+| -------------------------------------------------------------------------- | ---- |
+| `audit_logs`                                                               | 366  |
+| `auth.users`                                                               | 1    |
+| `organisations`, `memberships`, `staff_profiles`, `shifts`, `clock_events` | 0    |
 
-One organisation, two users, one shift, no attendance history. If the database
-were lost today, recovery is: re-run the migrations and recreate two accounts.
+Re-counted live 2026-08-29. **Production now holds no organisations at all** — `0066`
+purged the QA accounts and the tenant they had created. The earlier reading (1 org, 2
+memberships, 1 shift) is superseded.
+
+No organisations, one auth user, no attendance history. If the database were lost
+today, recovery is: re-run the migrations and recreate one account.
 That path genuinely works as of migration `0056` — before it, the migration
 set could not rebuild a working database at all, because no migration granted
 table privileges (they were inherited from Supabase's ambient defaults, which
