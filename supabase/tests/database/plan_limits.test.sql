@@ -80,9 +80,25 @@ select lives_ok(
 );
 
 -- 4: freeing a seat lets the next person in.
+--
+-- Deactivating has to be done AS the owner. `staff_profiles_restrict_self_edit`
+-- (0042) runs as invoker, and with `auth.uid()` null `has_org_role` is false, so
+-- an unauthenticated update reads as someone editing their own profile and is
+-- refused. Setting the claim is not a workaround — it is who actually performs
+-- this in the product.
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', 'e1111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text,
+  true
+);
+
 update public.staff_profiles set active = false
  where org_id = 'eeeeeeee-0000-0000-0000-000000000001'
    and last_name = '1';
+
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 select lives_ok(
   $$insert into public.staff_profiles (org_id, first_name, last_name)
