@@ -78,9 +78,17 @@ success for writes that never reached Postgres, an unset `STRIPE_MODE` no longer
 cards, and the notification path now honours the preferences it collects and can actually
 display a push.
 
-⚠️ **Two of those five live only in the repo.** `supabase/functions/` does not deploy on merge —
-CAP-021, CAP-023 and CAP-037 reach production only after
-`supabase functions deploy send-notification create-checkout-session create-portal-session`.
+**Deployed 2026-08-29.** `supabase/functions/` does not deploy on merge, so this is a separate
+manual step and worth recording when it happens: `send-notification` v17,
+`create-checkout-session` v11 and `create-portal-session` v11 are live, and all three still
+return 401 unauthenticated. CAP-020, CAP-021 and CAP-037 are therefore in production, not just
+on `main`.
+
+`STRIPE_MODE=live` was set on the project as part of that deploy. It had never existed — the old
+code read "unset" as live, so the secret's absence was invisible until #163 made it a refusal.
+Setting it preserves exactly the behaviour production already had. **`STRIPE_TEST_SECRET_KEY` is
+still absent**, so the test-mode half of `0058` cannot be exercised, and the first charge (CAP-036)
+cannot be a test charge until that secret exists.
 
 The product is further along than its own documentation claimed in one direction and less far in
 another. The scheduling core, the rota lifecycle, tenant isolation and the audit trail are
@@ -154,9 +162,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 ### Communications
 
 - [x] CAP-020 🟡 Notification dispatch — a failed dispatch now queues in the offline outbox and retries; still browser-initiated
-      `src/services/notificationDispatchService.ts` · BUG-047 closed #166 · GAP-026 · P1
+      `src/services/notificationDispatchService.ts` · BUG-047 closed #166 · deployed 2026-08-29 · GAP-026 · P1
 - [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
-      `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · ⚠️ needs `supabase functions deploy`
+      `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · deployed v17, 2026-08-29
 - [ ] CAP-022 🟠 Channel record — `notifications.channel` hardcoded `'push'` regardless of delivery
       `supabase/functions/send-notification/index.ts` · BUG-049 · P1
 - [x] CAP-023 🟡 Web push — handler shipped and imported into the generated SW; **not yet seen arriving on a device**
@@ -194,9 +202,10 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-035 🟢 Dual test/live credentials coexisting
       `supabase/migrations/0058_stripe_dual_mode.sql`
 - [ ] CAP-036 ❓-002 No real charge has ever completed end to end
-      **Test:** run one Stripe test-mode charge, then one live charge, and confirm the `subscriptions` row · **P0**
+      **Test:** run one Stripe test-mode charge, then one live charge, and confirm the `subscriptions` row.
+      Blocked on `STRIPE_TEST_SECRET_KEY`, which is not set on the project · **P0**
 - [x] CAP-037 🟢 `STRIPE_MODE` fails closed — unset is refused with a 503 naming the secret, never assumed live
-      `supabase/functions/_shared/stripe.ts` · BUG-052 closed #163 · ⚠️ needs `supabase functions deploy` to reach production
+      `supabase/functions/_shared/stripe.ts` · BUG-052 closed #163 · deployed v11, 2026-08-29
 - [ ] CAP-038 ⚪ Feature entitlements — `useFeatureAccess` and `org_has_feature()` have zero callers
       `src/hooks/useFeatureAccess.ts` · GAP-008 · P2
 - [ ] CAP-039 🔴 Plan-limit enforcement — `seat_limit`/`location_limit` enforced nowhere
@@ -533,9 +542,9 @@ one real Stripe charge (CAP-036) · re-run the multi-tenant isolation test (CAP-
 `e2e` and `db-tests` as merge checks (GAP-003) · rotate the platform-owner credential onto a
 live domain.
 
-**Deploy debt.** Three closed P0s are in the repo but not in production: edge functions do not
-deploy on merge. Run `supabase functions deploy send-notification create-checkout-session
-create-portal-session` to land CAP-021, CAP-023 and CAP-037.
+**Deploy debt: cleared 2026-08-29.** All three edge functions are deployed (see §2). Remember
+that merging never deploys them; a future edge-function fix needs `supabase functions deploy`
+naming it, or the register will claim something production does not have.
 
 **P1 — reliability and communications as a system.**
 Server-side notification dispatch · delivery outcomes persisted · preferences read at send time ·
