@@ -7,7 +7,21 @@ const KIND_LABELS: Record<DeadLetterRecord['kind'], string> = {
   clock: 'Clock event',
   leave: 'Leave request',
   swap: 'Shift swap request',
+  notify: 'Staff notification',
 };
+
+/**
+ * `notify` is the one kind where the underlying action DID happen.
+ *
+ * A rota cannot be published offline — `publishRota` calls an RPC — so a
+ * dead-lettered `notify` means the publish landed and only the announcement of
+ * it failed. Telling that manager "it did not happen, do it again" would send
+ * them back to republish a rota that is already live. The two cases therefore
+ * get different wording, and this is the whole reason the notice is split.
+ */
+function actionFailed(item: DeadLetterRecord): boolean {
+  return item.kind !== 'notify';
+}
 
 interface Props {
   items: DeadLetterRecord[];
@@ -31,6 +45,12 @@ interface Props {
  *
  * Discarding is deliberately explicit and per-item. Nothing here expires or
  * clears itself: an un-acknowledged failed clock-in should keep nagging.
+ *
+ * Since BUG-047 the outbox also carries `notify`, where the opposite is true —
+ * the write landed and only the notification failed. Those render as their own
+ * group with their own wording, because the sentence above ("they did not
+ * happen, do them again") would send a manager off to republish a rota that is
+ * already live. See `actionFailed`.
  */
 export function FailedWritesNotice({
   items,
@@ -39,6 +59,65 @@ export function FailedWritesNotice({
 }: Props): JSX.Element | null {
   if (items.length === 0) return null;
 
+  const lost = items.filter(actionFailed);
+  const unannounced = items.filter((item) => !actionFailed(item));
+
+  return (
+    <>
+      {lost.length > 0 && (
+        <FailedGroup
+          items={lost}
+          className={className}
+          heading={
+            lost.length === 1
+              ? "1 action didn't save"
+              : `${lost.length} actions didn't save`
+          }
+          body={
+            <>
+              These were saved on this device while you were offline, but the server
+              rejected them. <strong>They did not happen</strong>. Please do them again,
+              or ask your manager to add them for you.
+            </>
+          }
+          onDiscard={onDiscard}
+        />
+      )}
+      {unannounced.length > 0 && (
+        <FailedGroup
+          items={unannounced}
+          className={className}
+          heading={
+            unannounced.length === 1
+              ? '1 notification was not sent'
+              : `${unannounced.length} notifications were not sent`
+          }
+          body={
+            <>
+              <strong>Your change was saved</strong> — the rota, leave decision or swap
+              went through. What failed was telling the staff it affects. Nobody was
+              notified, so let them know another way.
+            </>
+          }
+          onDiscard={onDiscard}
+        />
+      )}
+    </>
+  );
+}
+
+interface GroupProps extends Props {
+  heading: string;
+  body: JSX.Element;
+}
+
+function FailedGroup({
+  items,
+  onDiscard,
+  className,
+  heading,
+  body,
+}: GroupProps): JSX.Element {
   return (
     <section
       // `assertive`: this contradicts a success message the user has already
@@ -54,15 +133,9 @@ export function FailedWritesNotice({
           aria-hidden="true"
         />
         <div>
-          <h2 className="text-sm font-semibold text-danger">
-            {items.length === 1
-              ? "1 action didn't save"
-              : `${items.length} actions didn't save`}
-          </h2>
+          <h2 className="text-sm font-semibold text-danger">{heading}</h2>
           <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
-            These were saved on this device while you were offline, but the server
-            rejected them. <strong>They did not happen</strong>. Please do them again, or
-            ask your manager to add them for you.
+            {body}
           </p>
         </div>
       </div>
