@@ -66,9 +66,15 @@ select is(
   1,
   'the owner can read a visibility=both row — the regression 0032 introduced'
 );
+-- Scoped to the actions this test inserts. Creating the organisations and
+-- memberships above also fires `memberships_audit` (0016), which writes its
+-- own org-visible `membership.added` rows — counting everything would be
+-- asserting on that trigger rather than on the policy.
 select is(
-  (select count(*)::int from public.audit_logs where visibility = 'org'),
-  4,
+  (select count(*)::int from public.audit_logs
+    where visibility = 'org'
+      and action in ('rota.published', 'report.exported', 'timesheet.exported')),
+  3,
   'and still reads every org-visible row for their organisation'
 );
 select is(
