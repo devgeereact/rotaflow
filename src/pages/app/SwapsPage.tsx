@@ -270,7 +270,19 @@ export function SwapsPage(): JSX.Element {
       if (!user || !orgId) return;
       try {
         const swap = swaps.find((s) => s.id === row.id);
-        await reviewShiftSwap(row.id, status, user.id);
+        const decided = await reviewShiftSwap(row.id, status, user.id);
+        if (!decided) {
+          // Someone else decided or withdrew it first (BUG-061). Returning here
+          // matters more than on the leave screen: falling through would run
+          // `applySwapReassignment` for a decision this manager did not make,
+          // moving a shift on the back of someone else's approval — or of a
+          // cancellation.
+          setReloadKey((k) => k + 1);
+          showError(
+            'This swap has already been decided or withdrawn. Reloading so you can see where it stands.',
+          );
+          return;
+        }
 
         if (status === 'approved' && swap?.shift_id && swap.target_staff_profile_id) {
           try {

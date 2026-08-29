@@ -163,6 +163,13 @@ export function OvertimePage(): JSX.Element {
       if (!user) return;
       try {
         const updated = await reviewOvertimeRequest(row.id, status, user.id);
+        if (!updated) {
+          setReloadKey((k) => k + 1);
+          showError(
+            'This claim has already been decided or withdrawn. Reloading so you can see where it stands.',
+          );
+          return;
+        }
         setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
         showSuccess(
           status === 'approved'
@@ -180,7 +187,16 @@ export function OvertimePage(): JSX.Element {
   const handleWithdraw = useCallback(
     async (row: OvertimeRow): Promise<void> => {
       try {
-        await cancelOvertimeRequest(row.id);
+        const withdrawn = await cancelOvertimeRequest(row.id);
+        if (!withdrawn) {
+          // A manager decided it first. Painting the row 'cancelled' would
+          // contradict what payroll has.
+          setReloadKey((k) => k + 1);
+          showError(
+            'A manager has already decided this claim, so it cannot be withdrawn.',
+          );
+          return;
+        }
         setRequests((prev) =>
           prev.map((r) => (r.id === row.id ? { ...r, status: 'cancelled' } : r)),
         );
