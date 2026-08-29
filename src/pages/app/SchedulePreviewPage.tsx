@@ -151,6 +151,7 @@ function mkClockEvent(staffId: string, type: string, time: string): ClockEvent {
     longitude: null,
     accuracy: null,
     location_name: null,
+    event_at_reported: null,
     synced: true,
     created_at: NOW.toISOString(),
     updated_at: NOW.toISOString(),

@@ -66,6 +66,23 @@ export function AmendClockEventModal({
     setTouched(false);
   }, [open, clockInEvent, clockOutEvent, timezone]);
 
+  // Events whose submitted time the 0068 guard replaced. `event_at_reported`
+  // is null on every ordinary event, so this is empty in the normal case.
+  const overrides = [
+    { label: 'Clock in', event: clockInEvent },
+    { label: 'Clock out', event: clockOutEvent },
+  ].flatMap(({ label, event }) =>
+    event?.event_at_reported
+      ? [
+          {
+            label,
+            reported: fromIsoInTimezone(event.event_at_reported, timezone).time,
+            recorded: fromIsoInTimezone(event.event_at, timezone).time,
+          },
+        ]
+      : [],
+  );
+
   const noChange = clockInTime.trim() === '' && clockOutTime.trim() === '';
   const tooShort = reason.trim().length < MIN_REASON;
   const invalid = noChange || tooShort;
@@ -91,6 +108,33 @@ export function AmendClockEventModal({
           isn&rsquo;t kept on the event itself, only your reason below and this
           row&rsquo;s last-updated timestamp.
         </p>
+
+        {overrides.length > 0 && (
+          // The whole reason 0068 exists. Before it, the guard rewrote these
+          // times to the moment they synced and said nothing, so the one
+          // person who could correct a mis-timed shift never learned there
+          // was anything to correct.
+          <div className="mt-4 rounded-lg border border-warning/30 bg-warning/5 p-3">
+            <p className="text-sm font-medium text-warning-ink dark:text-warning">
+              {overrides.length === 1
+                ? 'One of these times was adjusted automatically'
+                : 'These times were adjusted automatically'}
+            </p>
+            <ul className="mt-1 space-y-0.5 text-xs text-content-muted dark:text-content-muted-dark">
+              {overrides.map((o) => (
+                <li key={o.label}>
+                  {o.label}: the device reported{' '}
+                  <span className="font-mono">{o.reported}</span>, recorded as{' '}
+                  <span className="font-mono">{o.recorded}</span>.
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
+              This happens when a phone syncs more than 72 hours late, or its clock is
+              wrong. If the reported time is the real one, correct it below.
+            </p>
+          </div>
+        )}
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>

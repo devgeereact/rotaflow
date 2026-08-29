@@ -50,6 +50,7 @@ function event(type: string, at: string): ClockEvent {
     longitude: null,
     accuracy: null,
     location_name: null,
+    event_at_reported: null,
     synced: true,
     created_at: at,
     updated_at: at,
