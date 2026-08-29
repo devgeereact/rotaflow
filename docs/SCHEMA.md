@@ -63,8 +63,10 @@ auth.users ──1:1──> public.profiles
 Per-user preferences (`theme`, `notifications_enabled`). Unchanged. `theme` values
 `dark`/`light`. The app defaults to **light** and never reads
 `prefers-color-scheme` — a brand decision, see `src/context/ThemeContext.tsx`.
-`notifications_enabled` is stored but **not consulted at send time**; see
-`docs/SAAS.md` BUG-048.
+`notifications_enabled` is read on the send path by
+`supabase/functions/send-notification` — a person who switches it off is dropped
+before any channel runs. An **absent row means the column default (`true`)**, never
+"opted out"; do not infer consent from a missing row.
 
 ## 3. RotaFlow tables (from `0002_rotaflow.sql`)
 

@@ -54,23 +54,33 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`).
+Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the same day as
+#162, #163, #164 and #165 landed.
 
-| Status                | Count |
-| --------------------- | ----- |
-| 🟢 Complete           | 24    |
-| 🟡 Partial            | 18    |
-| 🟠 Defective          | 14    |
-| 🔵 Hardening required | 9     |
-| ⚪ Surface only       | 7     |
-| 🔴 Missing            | 22    |
-| ⚫ Deferred           | 19    |
-| ❓ Not audited        | 6     |
+| Status                | Count | Δ since 08-29 |
+| --------------------- | ----- | ------------- |
+| 🟢 Complete           | 29    | +5            |
+| 🟡 Partial            | 18    | —             |
+| 🟠 Defective          | 9     | −5            |
+| 🔵 Hardening required | 9     | —             |
+| ⚪ Surface only       | 7     | —             |
+| 🔴 Missing            | 22    | —             |
+| ⚫ Deferred           | 19    | —             |
+| ❓ Not audited        | 7     | +1            |
 
-**Overall maturity: 6.5/10**, down from the 7.5/10 recorded on 2026-08-20. Nothing regressed;
-the audit was deeper. Three things pull it down: the offline clock-in reports success for writes
-that never reached Postgres, the notification path can silently deliver nothing, and there is no
-rate limiting anywhere in the stack.
+**Overall maturity: 7/10**, revised up from 6.5 on 2026-08-29 after five P0 defects closed
+(#162, #163, #165). It sat below the 7.5 recorded on 2026-08-20 not because anything regressed
+but because the audit was deeper.
+
+What still holds it here: production has no backups, no charge has ever completed, and there is
+no rate limiting anywhere in the stack. What moved: the offline clock-in no longer reports
+success for writes that never reached Postgres, an unset `STRIPE_MODE` no longer bills real
+cards, and the notification path now honours the preferences it collects and can actually
+display a push.
+
+⚠️ **Two of those five live only in the repo.** `supabase/functions/` does not deploy on merge —
+CAP-021, CAP-023 and CAP-037 reach production only after
+`supabase functions deploy send-notification create-checkout-session create-portal-session`.
 
 The product is further along than its own documentation claimed in one direction and less far in
 another. The scheduling core, the rota lifecycle, tenant isolation and the audit trail are
@@ -81,17 +91,17 @@ truthfulness of what the UI tells a user — are where the work is.
 
 Each gate is phrased so two people could argue about whether it has been met.
 
-| Stage           | Gate                                                                                                                                                      | Blocking                           |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001, BUG-043, BUG-044, BUG-045 |
-| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | BUG-047, GAP-004, GAP-005          |
-| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008                    |
-| 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                   |
-| 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                   |
-| 6. Connected    | A third-party system can read a rota and receive a webhook when it changes                                                                                | GAP-019, GAP-020                   |
-| 7. Intelligent  | A manager is warned about a coverage problem before it happens, from real data                                                                            | GAP-023                            |
-| 8. Vertical     | One vertical's workflow is configurable without a code change                                                                                             | GAP-025                            |
-| 9. Scaled       | A 500-staff, 20-site tenant loads the rota grid inside the performance budget                                                                             | HARDEN-007                         |
+| Stage           | Gate                                                                                                                                                      | Blocking                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001, BUG-045 (043/044 closed) |
+| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | BUG-047, GAP-004, GAP-005, ❓-007 |
+| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008 (BUG-052 closed)  |
+| 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                  |
+| 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                  |
+| 6. Connected    | A third-party system can read a rota and receive a webhook when it changes                                                                                | GAP-019, GAP-020                  |
+| 7. Intelligent  | A manager is warned about a coverage problem before it happens, from real data                                                                            | GAP-023                           |
+| 8. Vertical     | One vertical's workflow is configurable without a code change                                                                                             | GAP-025                           |
+| 9. Scaled       | A 500-staff, 20-site tenant loads the rota grid inside the performance budget                                                                             | HARDEN-007                        |
 
 Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
@@ -124,10 +134,10 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 - [x] CAP-011 🟢 Clock in/out — GPS and manual, offline outbox, geofence recorded
       `src/pages/app/ClockInPage.tsx`
-- [ ] CAP-012 🟠 Offline clock-in honesty — a queued write renders "Clocked in" for a row not in Postgres
-      `src/pages/app/ClockInPage.tsx` · BUG-043 · **P0**
-- [ ] CAP-013 🟠 Sync state display — reads `navigator.onLine` only; shows "Synced" with writes queued
-      `src/components/clockin/ClockInView.tsx` · BUG-044 · **P0**
+- [x] CAP-012 🟢 Offline clock-in honesty — a queued write is labelled "Saved on this device, not sent yet"
+      `src/pages/app/ClockInPage.tsx` · BUG-043 closed #162
+- [x] CAP-013 🟢 Sync state display — reads queue depth, not `navigator.onLine`
+      `src/lib/clockRows.ts` (`syncStatusLabel`, 4 tests) · BUG-044 closed #162
 - [ ] CAP-014 🟠 Offline timestamp integrity — `event_at` silently overwritten with `now()` past 72h
       `supabase/migrations/0037_close_self_approval_gaps.sql` · BUG-045 · **P0**
 - [ ] CAP-015 🟠 Replay idempotency — no unique constraint, no id in payload; replay double-inserts
@@ -145,12 +155,14 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 - [ ] CAP-020 🟠 Notification dispatch — client-side fire-and-forget; offline manager means nobody is told
       `src/hooks/useInngestDispatch.ts` · BUG-047 · **P0**
-- [ ] CAP-021 🟠 Notification preferences — org matrix and per-user toggle read by nothing at send time
-      `src/lib/orgPreferences.ts` · BUG-048 · **P0**
+- [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
+      `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · ⚠️ needs `supabase functions deploy`
 - [ ] CAP-022 🟠 Channel record — `notifications.channel` hardcoded `'push'` regardless of delivery
       `supabase/functions/send-notification/index.ts` · BUG-049 · P1
-- [ ] CAP-023 🟠 Web push — no `push`/`notificationclick` service-worker handler exists in the repo
-      `vite.config.ts` · BUG-050 · **P0**
+- [x] CAP-023 🟡 Web push — handler shipped and imported into the generated SW; **not yet seen arriving on a device**
+      `public/push-sw.js` · BUG-050 closed #165 · ❓-007 · P1
+- [ ] CAP-023a ❓-007 A push has still never been seen arriving on a real device
+      **Test:** subscribe on a phone, publish a rota, confirm the notification appears and opens `/app/notifications` · P1
 - [ ] CAP-024 🔴 Delivery tracking — outcomes computed then discarded; no table
       `supabase/functions/send-notification/index.ts` · GAP-004 · P1
 - [ ] CAP-025 🔴 Invite emails — `create_invite` returns a token the manager copies by hand
@@ -183,8 +195,8 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0058_stripe_dual_mode.sql`
 - [ ] CAP-036 ❓-002 No real charge has ever completed end to end
       **Test:** run one Stripe test-mode charge, then one live charge, and confirm the `subscriptions` row · **P0**
-- [ ] CAP-037 🟠 `STRIPE_MODE` defaults to **live** when unset — a missing secret bills real cards
-      `supabase/functions/_shared/stripe.ts` · BUG-052 · **P0**
+- [x] CAP-037 🟢 `STRIPE_MODE` fails closed — unset is refused with a 503 naming the secret, never assumed live
+      `supabase/functions/_shared/stripe.ts` · BUG-052 closed #163 · ⚠️ needs `supabase functions deploy` to reach production
 - [ ] CAP-038 ⚪ Feature entitlements — `useFeatureAccess` and `org_has_feature()` have zero callers
       `src/hooks/useFeatureAccess.ts` · GAP-008 · P2
 - [ ] CAP-039 🔴 Plan-limit enforcement — `seat_limit`/`location_limit` enforced nowhere
@@ -421,27 +433,27 @@ database with no backups. Both are recorded here instead of chased.
 New findings start at BUG-043; 001–042 are in use across `docs/QA-AUDIT-REPORT.md`, migration
 headers and source comments.
 
-| ID      | Feature                  | Expected                        | Actual                                                                                                                                                | Severity |
-| ------- | ------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| BUG-043 | Offline clock-in         | Queued state shown until synced | An optimistic local event flips the card to "Clocked in" for a row not in Postgres — `src/pages/app/ClockInPage.tsx`                                  | P0       |
-| BUG-044 | Sync indicator           | Reflects queue depth            | Reads `navigator.onLine` only; prints "Synced" with writes queued — `src/components/clockin/ClockInView.tsx`                                          | P0       |
-| BUG-045 | Clock timestamp          | The time the user clocked in    | Silently overwritten with `now()` past 72h, no error, counted as synced — `supabase/migrations/0037_close_self_approval_gaps.sql`                     | P0       |
-| BUG-046 | Outbox replay            | Exactly once                    | No unique constraint and no id in the payload; a replay double-inserts — `src/services/syncQueue.ts`                                                  | P1       |
-| BUG-047 | Notification dispatch    | Delivered or recorded as failed | Client-side fire-and-forget; an offline manager notifies nobody while the rota publishes — `src/hooks/useInngestDispatch.ts`                          | P0       |
-| BUG-048 | Notification preferences | Honoured at send time           | Read by nothing; a staff member who opts out is still emailed — `src/lib/orgPreferences.ts`                                                           | P0       |
-| BUG-049 | `notifications.channel`  | Records how it was delivered    | Hardcoded `'push'` on every row — `supabase/functions/send-notification/index.ts`                                                                     | P1       |
-| BUG-050 | Web push                 | Displayed on the device         | No `push`/`notificationclick` handler exists; sends are never shown — `vite.config.ts`                                                                | P0       |
-| BUG-051 | `shift_templates`        | Read by the builder             | No UI reader or writer; only the org export touches it — `src/services/orgLifecycleService.ts`                                                        | P2       |
-| BUG-052 | `STRIPE_MODE`            | Fails closed                    | Defaults to **live**; a missing secret bills real cards — `supabase/functions/_shared/stripe.ts`                                                      | P0       |
-| BUG-053 | Pricing page             | Reads `plans`                   | Prices hardcoded in marketing copy; a price change makes the page lie — `src/lib/marketing.ts`                                                        | P2       |
-| BUG-054 | Audit screen             | Labels the actions written      | Holds one label for ~30 actions; the rest render as raw codes — `src/pages/app/settings/SettingsAuditPage.tsx`                                        | P2       |
-| BUG-055 | Own activity             | A user sees their own actions   | `audit_logs_select` filters out managers and staff — `supabase/migrations/0016_audit_events.sql`                                                      | P2       |
-| BUG-056 | Data-residency claim     | Accurate                        | Says no personal data leaves the UK/EU; staff names, titles, skills and hours go to OpenRouter (US) — `supabase/functions/ai-rota-assistant/index.ts` | P0       |
-| BUG-057 | Connector catalogue      | Reflects real state             | Eight connectors carry fabricated statuses; `integration_sync_runs` has no writer — `supabase/migrations/0026_integrations.sql`                       | P2       |
-| BUG-058 | AI announcement          | Grounded like the rota task     | Returned with no validation against org rows — `supabase/functions/ai-rota-assistant/index.ts`                                                        | P1       |
-| BUG-059 | Console figures          | Real data                       | `adminOverviewDemo.ts` still imported by five live files — `src/lib/adminOverviewDemo.ts`                                                             | P2       |
-| BUG-060 | Support CSAT             | Collectable                     | `rate_support_case` has zero callers — `supabase/migrations/0024_support_cases.sql`                                                                   | P2       |
-| BUG-061 | Concurrent approval      | Second writer is rejected       | No version check; both succeed and the second overwrites — `src/services/leaveService.ts`                                                             | P2       |
+| ID          | Feature                  | Expected                        | Actual                                                                                                                                                | Severity |
+| ----------- | ------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| ~~BUG-043~~ | Offline clock-in         | Queued state shown until synced | **CLOSED #162** — the status row now carries "Saved on this device, not sent yet" while the latest event is unsynced                                  | —        |
+| ~~BUG-044~~ | Sync indicator           | Reflects queue depth            | **CLOSED #162** — `syncStatusLabel()` reads queue depth; "Synced" only when the outbox is empty                                                       | —        |
+| BUG-045     | Clock timestamp          | The time the user clocked in    | Silently overwritten with `now()` past 72h, no error, counted as synced — `supabase/migrations/0037_close_self_approval_gaps.sql`                     | P0       |
+| BUG-046     | Outbox replay            | Exactly once                    | No unique constraint and no id in the payload; a replay double-inserts — `src/services/syncQueue.ts`                                                  | P1       |
+| BUG-047     | Notification dispatch    | Delivered or recorded as failed | Client-side fire-and-forget; an offline manager notifies nobody while the rota publishes — `src/hooks/useInngestDispatch.ts`                          | P0       |
+| ~~BUG-048~~ | Notification preferences | Honoured at send time           | **CLOSED #165** — org matrix and per-user switch both read in `send-notification`; opt-out drops the recipient                                        | —        |
+| BUG-049     | `notifications.channel`  | Records how it was delivered    | Hardcoded `'push'` on every row — `supabase/functions/send-notification/index.ts`                                                                     | P1       |
+| ~~BUG-050~~ | Web push                 | Displayed on the device         | **CLOSED #165** — `public/push-sw.js` imported into the generated SW. Unproven on a real device (❓-007)                                              | —        |
+| BUG-051     | `shift_templates`        | Read by the builder             | No UI reader or writer; only the org export touches it — `src/services/orgLifecycleService.ts`                                                        | P2       |
+| ~~BUG-052~~ | `STRIPE_MODE`            | Fails closed                    | **CLOSED #163** — unset is a 503 naming the secret, never assumed live                                                                                | —        |
+| BUG-053     | Pricing page             | Reads `plans`                   | Prices hardcoded in marketing copy; a price change makes the page lie — `src/lib/marketing.ts`                                                        | P2       |
+| BUG-054     | Audit screen             | Labels the actions written      | Holds one label for ~30 actions; the rest render as raw codes — `src/pages/app/settings/SettingsAuditPage.tsx`                                        | P2       |
+| BUG-055     | Own activity             | A user sees their own actions   | `audit_logs_select` filters out managers and staff — `supabase/migrations/0016_audit_events.sql`                                                      | P2       |
+| BUG-056     | Data-residency claim     | Accurate                        | Says no personal data leaves the UK/EU; staff names, titles, skills and hours go to OpenRouter (US) — `supabase/functions/ai-rota-assistant/index.ts` | P0       |
+| BUG-057     | Connector catalogue      | Reflects real state             | Eight connectors carry fabricated statuses; `integration_sync_runs` has no writer — `supabase/migrations/0026_integrations.sql`                       | P2       |
+| BUG-058     | AI announcement          | Grounded like the rota task     | Returned with no validation against org rows — `supabase/functions/ai-rota-assistant/index.ts`                                                        | P1       |
+| BUG-059     | Console figures          | Real data                       | `adminOverviewDemo.ts` still imported by five live files — `src/lib/adminOverviewDemo.ts`                                                             | P2       |
+| BUG-060     | Support CSAT             | Collectable                     | `rate_support_case` has zero callers — `supabase/migrations/0024_support_cases.sql`                                                                   | P2       |
+| BUG-061     | Concurrent approval      | Second writer is rejected       | No version check; both succeed and the second overwrites — `src/services/leaveService.ts`                                                             | P2       |
 
 **Carried forward, still open** from the 2026-08-23 release audit, which had no home in the repo
 until this file: BUG-010, 011, 012, 013, 014, 015, 024, 029, 030, 031, 032, plus the `auth.users`
@@ -506,10 +518,21 @@ half of GDPR erasure.
 ## §10 Roadmap
 
 **P0 — nothing ships to a paying customer until these close.**
-Backups and one completed restore · stop reporting success for unsynced writes (BUG-043, 044, 045) · fix or withdraw push (BUG-050) · make the preference controls real (BUG-048) ·
-`STRIPE_MODE` fails closed (BUG-052) · one real charge · re-run the multi-tenant isolation test ·
-require `e2e` and `db-tests` · correct the data-residency claim before it reaches a Privacy
-Notice (BUG-056) · rotate the platform-owner credential onto a live domain.
+
+Closed 2026-08-29: ~~unsynced writes reported as success~~ (BUG-043, BUG-044, #162) ·
+~~`STRIPE_MODE` defaulting live~~ (BUG-052, #163) · ~~preference controls read by nothing~~
+(BUG-048, #165) · ~~push with no handler~~ (BUG-050, #165) · ~~the data-residency claim~~
+(BUG-056, #161).
+
+Still open: backups and one completed restore (GAP-001) · `event_at` silently rewritten past
+72h (BUG-045 — needs a migration, and migrations auto-apply into a database with no backups) ·
+one real Stripe charge (CAP-036) · re-run the multi-tenant isolation test (CAP-045) · require
+`e2e` and `db-tests` as merge checks (GAP-003) · rotate the platform-owner credential onto a
+live domain.
+
+**Deploy debt.** Three closed P0s are in the repo but not in production: edge functions do not
+deploy on merge. Run `supabase functions deploy send-notification create-checkout-session
+create-portal-session` to land CAP-021, CAP-023 and CAP-037.
 
 **P1 — reliability and communications as a system.**
 Server-side notification dispatch · delivery outcomes persisted · preferences read at send time ·

@@ -45,6 +45,12 @@
 // it, treat push/email delivery as unproven. The auth path is not the whole
 // journey.
 //
+// One reason it could never have worked is now closed: until 2026-08-29 no
+// service worker in the repo listened for `push`, so every message this
+// function signed and delivered was discarded by the browser with no error.
+// `public/push-sw.js` handles it now. That removes a known cause, it does not
+// constitute a delivery test — see docs/SAAS.md ❓-007.
+//
 // PREFERENCES (added 2026-08-29, BUG-048)
 //
 // Two preference controls have existed in the UI since the settings screens
@@ -64,6 +70,17 @@
 // Both are now read here, on the send path, because this is the only place
 // that can honour them: the dispatch sites do not know the recipients'
 // preferences and the Inngest hop carries no session.
+//
+// The two controls do different jobs, deliberately:
+//
+//   * The ORG matrix governs channels, including in-app. Switching its in-app
+//     column off skips the `notifications` row entirely — a toggle that writes
+//     the row anyway is the same class of lie this change exists to remove.
+//   * The PERSON's switch suppresses only the interruptive channels, push and
+//     email. Their inbox keeps filling, because the copy beside that switch
+//     promises exactly that: "You will not receive any notifications. You can
+//     still see everything in the app." Dropping them from the inbox too would
+//     silently delete information the screen says is still there.
 //
 // Defaults are deliberately permissive. An absent `app_settings` row means the
 // column default (`true`), never "opted out", and an absent or malformed
@@ -326,17 +343,17 @@ Deno.serve(async (req: Request) => {
         .filter((row) => row.notifications_enabled === false)
         .map((row) => row.user_id),
     );
-    const scopedUserIds = memberUserIds.filter((id) => !optedOut.has(id));
 
-    const droppedCount = userIds.length - scopedUserIds.length;
-    if (scopedUserIds.length === 0) {
-      return jsonResponse({
-        ok: true,
-        results: { push: null, email: null },
-        dropped: droppedCount,
-        reason: 'every recipient has notifications switched off, or is not a member',
-      });
-    }
+    // The per-user switch suppresses the INTERRUPTIVE channels only. Its own
+    // copy on /app/account/preferences reads "You will not receive any
+    // notifications. You can still see everything in the app." — so the in-app
+    // row keeps being written and the person can catch up in their own time.
+    // Dropping them from the inbox as well would silently delete information
+    // the screen promises is still there.
+    const scopedUserIds = memberUserIds;
+    const reachableUserIds = memberUserIds.filter((id) => !optedOut.has(id));
+
+    const droppedCount = userIds.length - memberUserIds.length;
 
     // The caller may narrow the channels further, but may not widen past what
     // the organisation has allowed for this event.
@@ -374,7 +391,7 @@ Deno.serve(async (req: Request) => {
         const { data: subscriptions } = await supabase
           .from('push_subscriptions')
           .select('id, endpoint, p256dh, auth_key')
-          .in('user_id', scopedUserIds);
+          .in('user_id', reachableUserIds);
 
         const expiredIds: string[] = [];
         for (const sub of subscriptions ?? []) {
@@ -395,7 +412,7 @@ Deno.serve(async (req: Request) => {
         // Matches the SMS posture elsewhere in this project: the channel is
         // reserved in the schema, but not live until real credentials exist
         //. Either the org's own, or the global fallback.
-        results.email.skipped = scopedUserIds.length;
+        results.email.skipped = reachableUserIds.length;
       } else {
         const { default: nodemailer } = await import('npm:nodemailer@6');
         const transport = nodemailer.createTransport({
@@ -413,7 +430,7 @@ Deno.serve(async (req: Request) => {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, email')
-          .in('id', scopedUserIds);
+          .in('id', reachableUserIds);
 
         for (const profile of profiles ?? []) {
           try {

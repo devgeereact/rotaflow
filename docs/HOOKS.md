@@ -313,8 +313,11 @@ export function useFeatureAccess(): FeatureAccess;
 `src/hooks/useWebPush.ts`
 Subscribes this device to Web Push, storing the subscription in
 `push_subscriptions` for the `send-notification` Edge Function to read.
-Requires `VITE_VAPID_PUBLIC_KEY`. The sending side is written but not
-deployed in this environment — cannot be verified end-to-end yet.
+Requires `VITE_VAPID_PUBLIC_KEY`. The receiving side is `public/push-sw.js`,
+imported into the generated service worker (`workbox.importScripts`) — before
+2026-08-29 no handler existed and every push the sender signed was silently
+discarded by the browser. Delivery has still never been observed on a real
+device; see `docs/SAAS.md` ❓-007.
 
 ```ts
 type WebPushStatus = 'unsupported' | 'default' | 'granted' | 'denied';
@@ -331,7 +334,7 @@ export function useWebPush(): UseWebPush;
 
 `src/hooks/useConsoleRefresh.ts`
 How the platform console's topbar Refresh button reaches the screen under it.
-A screen *registers* its refetch via `useRegisterConsoleRefresh`; the shell
+A screen _registers_ its refetch via `useRegisterConsoleRefresh`; the shell
 renders the button only while something is registered, instead of a dead
 button wired to `location.reload()` that would discard filters/tab/scroll
 state.
