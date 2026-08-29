@@ -41,11 +41,14 @@ insert into public.organisations (id, name, slug, created_by) values
   ('aaaaaaaa-0000-0000-0000-000000000001', 'Org A', 'org-a-nd', '11111111-1111-1111-1111-111111111111'),
   ('bbbbbbbb-0000-0000-0000-000000000002', 'Org B', 'org-b-nd', '44444444-4444-4444-4444-444444444444');
 
+-- Only the staff. `on_org_created` (0002) already granted each `created_by`
+-- an active OWNER membership when the organisations above were inserted, and
+-- inserting it again violates memberships_org_id_user_id_key. Owner satisfies
+-- has_org_role(['owner','manager']) either way, which is what the read policy
+-- checks, so the privileged reader below is that auto-created owner.
 insert into public.memberships (org_id, user_id, role, status) values
-  ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'manager', 'active'),
-  ('aaaaaaaa-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'staff',   'active'),
-  ('aaaaaaaa-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 'staff',   'active'),
-  ('bbbbbbbb-0000-0000-0000-000000000002', '44444444-4444-4444-4444-444444444444', 'manager', 'active');
+  ('aaaaaaaa-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'staff', 'active'),
+  ('aaaaaaaa-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 'staff', 'active');
 
 -- Written as the send path does: service_role, bypassing RLS.
 insert into public.notification_deliveries (org_id, user_id, channel, status, event_type, detail) values
@@ -77,7 +80,7 @@ select throws_ok(
   'an unknown status is refused rather than stored'
 );
 
--- ---------- 2. a manager sees their org, and only their org -----------
+-- ---------- 2. an owner/manager sees their org, and only their org ----
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -88,7 +91,7 @@ select set_config(
 select is(
   (select count(*)::int from public.notification_deliveries),
   3,
-  'the manager sees all three of org A''s delivery rows'
+  'the org''s owner sees all three of org A''s delivery rows'
 );
 select is(
   (select count(*)::int from public.notification_deliveries
