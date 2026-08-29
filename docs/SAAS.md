@@ -60,8 +60,8 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 | Status                | Count | Δ since 08-29 |
 | --------------------- | ----- | ------------- |
 | 🟢 Complete           | 29    | +5            |
-| 🟡 Partial            | 18    | —             |
-| 🟠 Defective          | 9     | −5            |
+| 🟡 Partial            | 20    | +2            |
+| 🟠 Defective          | 8     | −6            |
 | 🔵 Hardening required | 9     | —             |
 | ⚪ Surface only       | 7     | —             |
 | 🔴 Missing            | 22    | —             |
@@ -94,7 +94,7 @@ Each gate is phrased so two people could argue about whether it has been met.
 | Stage           | Gate                                                                                                                                                      | Blocking                          |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001, BUG-045 (043/044 closed) |
-| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | BUG-047, GAP-004, GAP-005, ❓-007 |
+| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-004, GAP-005, GAP-026, ❓-007 |
 | 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008 (BUG-052 closed)  |
 | 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                  |
 | 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                  |
@@ -153,8 +153,8 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 ### Communications
 
-- [ ] CAP-020 🟠 Notification dispatch — client-side fire-and-forget; offline manager means nobody is told
-      `src/hooks/useInngestDispatch.ts` · BUG-047 · **P0**
+- [x] CAP-020 🟡 Notification dispatch — a failed dispatch now queues in the offline outbox and retries; still browser-initiated
+      `src/services/notificationDispatchService.ts` · BUG-047 closed #166 · GAP-026 · P1
 - [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
       `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · ⚠️ needs `supabase functions deploy`
 - [ ] CAP-022 🟠 Channel record — `notifications.channel` hardcoded `'push'` regardless of delivery
@@ -433,27 +433,27 @@ database with no backups. Both are recorded here instead of chased.
 New findings start at BUG-043; 001–042 are in use across `docs/QA-AUDIT-REPORT.md`, migration
 headers and source comments.
 
-| ID          | Feature                  | Expected                        | Actual                                                                                                                                                | Severity |
-| ----------- | ------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| ~~BUG-043~~ | Offline clock-in         | Queued state shown until synced | **CLOSED #162** — the status row now carries "Saved on this device, not sent yet" while the latest event is unsynced                                  | —        |
-| ~~BUG-044~~ | Sync indicator           | Reflects queue depth            | **CLOSED #162** — `syncStatusLabel()` reads queue depth; "Synced" only when the outbox is empty                                                       | —        |
-| BUG-045     | Clock timestamp          | The time the user clocked in    | Silently overwritten with `now()` past 72h, no error, counted as synced — `supabase/migrations/0037_close_self_approval_gaps.sql`                     | P0       |
-| BUG-046     | Outbox replay            | Exactly once                    | No unique constraint and no id in the payload; a replay double-inserts — `src/services/syncQueue.ts`                                                  | P1       |
-| BUG-047     | Notification dispatch    | Delivered or recorded as failed | Client-side fire-and-forget; an offline manager notifies nobody while the rota publishes — `src/hooks/useInngestDispatch.ts`                          | P0       |
-| ~~BUG-048~~ | Notification preferences | Honoured at send time           | **CLOSED #165** — org matrix and per-user switch both read in `send-notification`; opt-out drops the recipient                                        | —        |
-| BUG-049     | `notifications.channel`  | Records how it was delivered    | Hardcoded `'push'` on every row — `supabase/functions/send-notification/index.ts`                                                                     | P1       |
-| ~~BUG-050~~ | Web push                 | Displayed on the device         | **CLOSED #165** — `public/push-sw.js` imported into the generated SW. Unproven on a real device (❓-007)                                              | —        |
-| BUG-051     | `shift_templates`        | Read by the builder             | No UI reader or writer; only the org export touches it — `src/services/orgLifecycleService.ts`                                                        | P2       |
-| ~~BUG-052~~ | `STRIPE_MODE`            | Fails closed                    | **CLOSED #163** — unset is a 503 naming the secret, never assumed live                                                                                | —        |
-| BUG-053     | Pricing page             | Reads `plans`                   | Prices hardcoded in marketing copy; a price change makes the page lie — `src/lib/marketing.ts`                                                        | P2       |
-| BUG-054     | Audit screen             | Labels the actions written      | Holds one label for ~30 actions; the rest render as raw codes — `src/pages/app/settings/SettingsAuditPage.tsx`                                        | P2       |
-| BUG-055     | Own activity             | A user sees their own actions   | `audit_logs_select` filters out managers and staff — `supabase/migrations/0016_audit_events.sql`                                                      | P2       |
-| BUG-056     | Data-residency claim     | Accurate                        | Says no personal data leaves the UK/EU; staff names, titles, skills and hours go to OpenRouter (US) — `supabase/functions/ai-rota-assistant/index.ts` | P0       |
-| BUG-057     | Connector catalogue      | Reflects real state             | Eight connectors carry fabricated statuses; `integration_sync_runs` has no writer — `supabase/migrations/0026_integrations.sql`                       | P2       |
-| BUG-058     | AI announcement          | Grounded like the rota task     | Returned with no validation against org rows — `supabase/functions/ai-rota-assistant/index.ts`                                                        | P1       |
-| BUG-059     | Console figures          | Real data                       | `adminOverviewDemo.ts` still imported by five live files — `src/lib/adminOverviewDemo.ts`                                                             | P2       |
-| BUG-060     | Support CSAT             | Collectable                     | `rate_support_case` has zero callers — `supabase/migrations/0024_support_cases.sql`                                                                   | P2       |
-| BUG-061     | Concurrent approval      | Second writer is rejected       | No version check; both succeed and the second overwrites — `src/services/leaveService.ts`                                                             | P2       |
+| ID          | Feature                  | Expected                        | Actual                                                                                                                                                                                                                                                                                                               | Severity |
+| ----------- | ------------------------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| ~~BUG-043~~ | Offline clock-in         | Queued state shown until synced | **CLOSED #162** — the status row now carries "Saved on this device, not sent yet" while the latest event is unsynced                                                                                                                                                                                                 | —        |
+| ~~BUG-044~~ | Sync indicator           | Reflects queue depth            | **CLOSED #162** — `syncStatusLabel()` reads queue depth; "Synced" only when the outbox is empty                                                                                                                                                                                                                      | —        |
+| BUG-045     | Clock timestamp          | The time the user clocked in    | Silently overwritten with `now()` past 72h, no error, counted as synced — `supabase/migrations/0037_close_self_approval_gaps.sql`                                                                                                                                                                                    | P0       |
+| BUG-046     | Outbox replay            | Exactly once                    | No unique constraint and no id in the payload; a replay double-inserts — `src/services/syncQueue.ts`                                                                                                                                                                                                                 | P1       |
+| ~~BUG-047~~ | Notification dispatch    | Delivered or recorded as failed | **CLOSED #166** — a failed dispatch queues in the outbox and retries. _The original diagnosis here was wrong: a rota cannot be published offline, because `publish_rota` is an RPC. The real failure is the second request to `inn.gs` failing after the publish already landed — a hostname content blockers drop._ | —        |
+| ~~BUG-048~~ | Notification preferences | Honoured at send time           | **CLOSED #165** — org matrix and per-user switch both read in `send-notification`; opt-out drops the recipient                                                                                                                                                                                                       | —        |
+| BUG-049     | `notifications.channel`  | Records how it was delivered    | Hardcoded `'push'` on every row — `supabase/functions/send-notification/index.ts`                                                                                                                                                                                                                                    | P1       |
+| ~~BUG-050~~ | Web push                 | Displayed on the device         | **CLOSED #165** — `public/push-sw.js` imported into the generated SW. Unproven on a real device (❓-007)                                                                                                                                                                                                             | —        |
+| BUG-051     | `shift_templates`        | Read by the builder             | No UI reader or writer; only the org export touches it — `src/services/orgLifecycleService.ts`                                                                                                                                                                                                                       | P2       |
+| ~~BUG-052~~ | `STRIPE_MODE`            | Fails closed                    | **CLOSED #163** — unset is a 503 naming the secret, never assumed live                                                                                                                                                                                                                                               | —        |
+| BUG-053     | Pricing page             | Reads `plans`                   | Prices hardcoded in marketing copy; a price change makes the page lie — `src/lib/marketing.ts`                                                                                                                                                                                                                       | P2       |
+| BUG-054     | Audit screen             | Labels the actions written      | Holds one label for ~30 actions; the rest render as raw codes — `src/pages/app/settings/SettingsAuditPage.tsx`                                                                                                                                                                                                       | P2       |
+| BUG-055     | Own activity             | A user sees their own actions   | `audit_logs_select` filters out managers and staff — `supabase/migrations/0016_audit_events.sql`                                                                                                                                                                                                                     | P2       |
+| BUG-056     | Data-residency claim     | Accurate                        | Says no personal data leaves the UK/EU; staff names, titles, skills and hours go to OpenRouter (US) — `supabase/functions/ai-rota-assistant/index.ts`                                                                                                                                                                | P0       |
+| BUG-057     | Connector catalogue      | Reflects real state             | Eight connectors carry fabricated statuses; `integration_sync_runs` has no writer — `supabase/migrations/0026_integrations.sql`                                                                                                                                                                                      | P2       |
+| BUG-058     | AI announcement          | Grounded like the rota task     | Returned with no validation against org rows — `supabase/functions/ai-rota-assistant/index.ts`                                                                                                                                                                                                                       | P1       |
+| BUG-059     | Console figures          | Real data                       | `adminOverviewDemo.ts` still imported by five live files — `src/lib/adminOverviewDemo.ts`                                                                                                                                                                                                                            | P2       |
+| BUG-060     | Support CSAT             | Collectable                     | `rate_support_case` has zero callers — `supabase/migrations/0024_support_cases.sql`                                                                                                                                                                                                                                  | P2       |
+| BUG-061     | Concurrent approval      | Second writer is rejected       | No version check; both succeed and the second overwrites — `src/services/leaveService.ts`                                                                                                                                                                                                                            | P2       |
 
 **Carried forward, still open** from the 2026-08-23 release audit, which had no home in the repo
 until this file: BUG-010, 011, 012, 013, 014, 015, 024, 029, 030, 031, 032, plus the `auth.users`
@@ -461,33 +461,34 @@ half of GDPR erasure.
 
 ## §7 Gap register
 
-| ID      | Gap                                                        | Why it matters                                                                          | Priority |
-| ------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------- |
-| GAP-001 | No production backups                                      | A bad migration is unrecoverable, and migrations auto-apply on merge                    | P0       |
-| GAP-002 | No migration safety gate                                   | "CI is green" is not "this is safe to apply to production"                              | P0       |
-| GAP-003 | `e2e` and `db-tests` are not required checks               | A PR can merge with Playwright and pgTAP failing                                        | P0       |
-| GAP-004 | No delivery tracking table                                 | A manager cannot tell whether staff were told; no data source for a notification centre | P1       |
-| GAP-005 | Invites send no email                                      | A silent hole in the onboarding funnel                                                  | P1       |
-| GAP-006 | Minimum cover is client-side only                          | A direct RPC call publishes an understaffed rota                                        | P1       |
-| GAP-007 | No amendment diff                                          | The data is already archived by `0061`; nothing derives what changed                    | P1       |
-| GAP-008 | Entitlements enforced nowhere                              | Plan limits are advisory in both the UI and the database                                | P2       |
-| GAP-009 | No rate limiting                                           | Unlimited org creation, unlimited invites, uncapped AI spend                            | P1       |
-| GAP-010 | No authenticated E2E coverage                              | The core loop is never exercised end to end by CI                                       | P2       |
-| GAP-011 | No scheduled health probe                                  | Uptime is arithmetic over rows an admin's browser inserted                              | P2       |
-| GAP-012 | Support has no reply path to the customer                  | RLS permits a thread; no screen renders one                                             | P2       |
-| GAP-013 | No scheduled job for expiry or missed clock-in             | Both are recomputed per page view, so neither can page anyone                           | P2       |
-| GAP-014 | DPA, sub-processors, AI notice, security disclosure absent | Blocks enterprise procurement                                                           | P2       |
-| GAP-015 | Onboarding has no resume path                              | Abandon after step 1 and steps 2–4 are unreachable forever                              | P2       |
-| GAP-016 | No per-tenant branding                                     | Requires a schema change, not a settings screen                                         | P3       |
-| GAP-017 | No MFA                                                     | Enterprise buyers assume it                                                             | P3       |
-| GAP-018 | No SSO or SCIM                                             | Gates larger organisations                                                              | P3       |
-| GAP-019 | No public API                                              | Nothing can integrate                                                                   | P3       |
-| GAP-020 | No outbound webhooks                                       | Nothing can react to a rota change                                                      | P3       |
-| GAP-021 | No payroll integration                                     | The highest-value adjacency to the existing data                                        | P3       |
-| GAP-022 | No CSV import                                              | Every prospect is migrating off a spreadsheet                                           | P3       |
-| GAP-023 | No predictive insight                                      | The differentiator the data could support                                               | P3       |
-| GAP-024 | No customer-facing status page                             | `incidents.is_public` exists and grants nothing                                         | P3       |
-| GAP-025 | No vertical configuration                                  | Care, security, cleaning and hospitality all get one generic product                    | P3       |
+| ID      | Gap                                                        | Why it matters                                                                                                                    | Priority |
+| ------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| GAP-001 | No production backups                                      | A bad migration is unrecoverable, and migrations auto-apply on merge                                                              | P0       |
+| GAP-002 | No migration safety gate                                   | "CI is green" is not "this is safe to apply to production"                                                                        | P0       |
+| GAP-003 | `e2e` and `db-tests` are not required checks               | A PR can merge with Playwright and pgTAP failing                                                                                  | P0       |
+| GAP-004 | No delivery tracking table                                 | A manager cannot tell whether staff were told; no data source for a notification centre                                           | P1       |
+| GAP-005 | Invites send no email                                      | A silent hole in the onboarding funnel                                                                                            | P1       |
+| GAP-006 | Minimum cover is client-side only                          | A direct RPC call publishes an understaffed rota                                                                                  | P1       |
+| GAP-007 | No amendment diff                                          | The data is already archived by `0061`; nothing derives what changed                                                              | P1       |
+| GAP-008 | Entitlements enforced nowhere                              | Plan limits are advisory in both the UI and the database                                                                          | P2       |
+| GAP-009 | No rate limiting                                           | Unlimited org creation, unlimited invites, uncapped AI spend                                                                      | P1       |
+| GAP-010 | No authenticated E2E coverage                              | The core loop is never exercised end to end by CI                                                                                 | P2       |
+| GAP-011 | No scheduled health probe                                  | Uptime is arithmetic over rows an admin's browser inserted                                                                        | P2       |
+| GAP-012 | Support has no reply path to the customer                  | RLS permits a thread; no screen renders one                                                                                       | P2       |
+| GAP-013 | No scheduled job for expiry or missed clock-in             | Both are recomputed per page view, so neither can page anyone                                                                     | P2       |
+| GAP-014 | DPA, sub-processors, AI notice, security disclosure absent | Blocks enterprise procurement                                                                                                     | P2       |
+| GAP-015 | Onboarding has no resume path                              | Abandon after step 1 and steps 2–4 are unreachable forever                                                                        | P2       |
+| GAP-026 | Dispatch is still browser-initiated                        | Close the tab before the outbox write flushes and the event is lost. Moving it into `publish_rota` or a trigger needs a migration | P1       |
+| GAP-016 | No per-tenant branding                                     | Requires a schema change, not a settings screen                                                                                   | P3       |
+| GAP-017 | No MFA                                                     | Enterprise buyers assume it                                                                                                       | P3       |
+| GAP-018 | No SSO or SCIM                                             | Gates larger organisations                                                                                                        | P3       |
+| GAP-019 | No public API                                              | Nothing can integrate                                                                                                             | P3       |
+| GAP-020 | No outbound webhooks                                       | Nothing can react to a rota change                                                                                                | P3       |
+| GAP-021 | No payroll integration                                     | The highest-value adjacency to the existing data                                                                                  | P3       |
+| GAP-022 | No CSV import                                              | Every prospect is migrating off a spreadsheet                                                                                     | P3       |
+| GAP-023 | No predictive insight                                      | The differentiator the data could support                                                                                         | P3       |
+| GAP-024 | No customer-facing status page                             | `incidents.is_public` exists and grants nothing                                                                                   | P3       |
+| GAP-025 | No vertical configuration                                  | Care, security, cleaning and hospitality all get one generic product                                                              | P3       |
 
 ## §8 Hardening register
 
@@ -523,6 +524,8 @@ Closed 2026-08-29: ~~unsynced writes reported as success~~ (BUG-043, BUG-044, #1
 ~~`STRIPE_MODE` defaulting live~~ (BUG-052, #163) · ~~preference controls read by nothing~~
 (BUG-048, #165) · ~~push with no handler~~ (BUG-050, #165) · ~~the data-residency claim~~
 (BUG-056, #161).
+
+Closed since: ~~notification dispatch was fire-and-forget~~ (BUG-047, #166).
 
 Still open: backups and one completed restore (GAP-001) · `event_at` silently rewritten past
 72h (BUG-045 — needs a migration, and migrations auto-apply into a database with no backups) ·

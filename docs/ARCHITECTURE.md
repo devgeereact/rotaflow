@@ -187,8 +187,12 @@ RotaBuilderPage (manager, org-scoped)
         • a raw PATCH of rotas.status is REFUSED by rotas_guard_status_change (0061)
         • a raw write to a published rota's shifts is REFUSED by shifts_guard_immutable_rota
   → on error: Sentry.captureException + toast; local draft preserved
-  → useInngestDispatch().send('rota/published', { orgId, rotaId })
+  → await useInngestDispatch().send('rota/published', { orgId, rotaId })
       → POST https://inn.gs/e/<VITE_INNGEST_EVENT_KEY>   // write-only event key
+      → on failure: queued in the IndexedDB outbox as kind 'notify' and
+        retried on reconnect; the manager is told staff were not notified
+        // BUG-047. The publish itself needs the network (publish_rota is an
+        // RPC), so this guards "the write landed, the notice did not".
       → Inngest invokes a Supabase Edge Function which:
           • reads the org's notification matrix and each recipient's own
             switch, and drops anyone who has opted out       // BUG-048

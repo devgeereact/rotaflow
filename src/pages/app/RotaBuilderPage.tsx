@@ -1015,12 +1015,24 @@ export function RotaBuilderPage(): JSX.Element {
         ),
       ];
       if (recipientUserIds.length > 0) {
-        void send('rota/published', {
+        // Awaited, not fire-and-forget. The publish has already landed, so a
+        // failed dispatch cannot be reported as a failed publish — but it must
+        // not be silent either. Before BUG-047 this was `void send(...)` and a
+        // manager could watch "Rota published" appear while not one member of
+        // staff was ever told (see notificationDispatchService's header).
+        const dispatch = await send('rota/published', {
           orgId,
           userIds: recipientUserIds,
           type: 'rota',
           title: `${formatWeekRange(dates)} published`,
         });
+        if (!dispatch.ok) {
+          showError(
+            dispatch.queued
+              ? 'Staff have not been notified yet. The notification is queued and will retry automatically.'
+              : 'Staff could not be notified, and the notification could not be queued. Tell them another way.',
+          );
+        }
       }
     } catch (err) {
       reportError(err, { area: 'rota:publish' });

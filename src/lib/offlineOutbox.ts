@@ -36,7 +36,7 @@ const DB_VERSION = 2;
 const STORE = 'queued_writes';
 const DEAD_LETTER_STORE = 'dead_letters';
 
-export type OutboxKind = 'clock' | 'leave' | 'swap';
+export type OutboxKind = 'clock' | 'leave' | 'swap' | 'notify';
 
 export interface OutboxRecord {
   id: string;

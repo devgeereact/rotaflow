@@ -13,6 +13,10 @@ import {
 import { recordClockEvent } from '@/services/clockService';
 import { createLeaveRequest } from '@/services/leaveService';
 import { requestShiftSwap } from '@/services/swapService';
+import {
+  postInngestEvent,
+  type InngestEventPayload,
+} from '@/services/notificationDispatchService';
 import { reportError } from '@/lib/sentry';
 import type { ClockEventInsert, LeaveRequestInsert, ShiftSwapInsert } from '@/types';
 
@@ -39,6 +43,11 @@ const REPLAYERS: {
   leave: (payload) =>
     createLeaveRequest(payload as LeaveRequestInsert).then(() => undefined),
   swap: (payload) => requestShiftSwap(payload as ShiftSwapInsert).then(() => undefined),
+  // Not a Supabase write. A notification dispatch that failed after its rota,
+  // leave or swap write had already landed — see BUG-047 and
+  // notificationDispatchService's header. It is queued for the same reason the
+  // others are: the work is owed, and dropping it silently is the failure.
+  notify: (payload) => postInngestEvent(payload as InngestEventPayload),
 };
 
 /**
