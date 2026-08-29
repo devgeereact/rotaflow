@@ -37,6 +37,7 @@ function mkEvent(staffProfileId: string, type: string, eventAt: string): ClockEv
     longitude: null,
     accuracy: null,
     location_name: null,
+    event_at_reported: null,
     synced: true,
     created_at: eventAt,
     updated_at: eventAt,

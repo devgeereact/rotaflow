@@ -61,6 +61,7 @@ function event(overrides: Partial<ClockEvent> = {}): ClockEvent {
     latitude: null,
     longitude: null,
     accuracy: null,
+    event_at_reported: null,
     synced: true,
     created_at: '2026-05-13T09:00:00',
     updated_at: '2026-05-13T09:00:00',

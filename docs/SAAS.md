@@ -59,9 +59,9 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 
 | Status                | Count | Δ since 08-29 |
 | --------------------- | ----- | ------------- |
-| 🟢 Complete           | 31    | +7            |
+| 🟢 Complete           | 32    | +8            |
 | 🟡 Partial            | 20    | +2            |
-| 🟠 Defective          | 8     | −6            |
+| 🟠 Defective          | 7     | −7            |
 | 🔵 Hardening required | 9     | —             |
 | ⚪ Surface only       | 7     | —             |
 | 🔴 Missing            | 20    | −2            |
@@ -99,17 +99,17 @@ truthfulness of what the UI tells a user — are where the work is.
 
 Each gate is phrased so two people could argue about whether it has been met.
 
-| Stage           | Gate                                                                                                                                                      | Blocking                          |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001, BUG-045 (043/044 closed) |
-| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-026, ❓-007                   |
-| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008 (BUG-052 closed)  |
-| 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                  |
-| 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                  |
-| 6. Connected    | A third-party system can read a rota and receive a webhook when it changes                                                                                | GAP-019, GAP-020                  |
-| 7. Intelligent  | A manager is warned about a coverage problem before it happens, from real data                                                                            | GAP-023                           |
-| 8. Vertical     | One vertical's workflow is configurable without a code change                                                                                             | GAP-025                           |
-| 9. Scaled       | A 500-staff, 20-site tenant loads the rota grid inside the performance budget                                                                             | HARDEN-007                        |
+| Stage           | Gate                                                                                                                                                      | Blocking                         |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001 (043/044/045 closed)     |
+| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-026, ❓-007                  |
+| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008 (BUG-052 closed) |
+| 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                 |
+| 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                 |
+| 6. Connected    | A third-party system can read a rota and receive a webhook when it changes                                                                                | GAP-019, GAP-020                 |
+| 7. Intelligent  | A manager is warned about a coverage problem before it happens, from real data                                                                            | GAP-023                          |
+| 8. Vertical     | One vertical's workflow is configurable without a code change                                                                                             | GAP-025                          |
+| 9. Scaled       | A 500-staff, 20-site tenant loads the rota grid inside the performance budget                                                                             | HARDEN-007                       |
 
 Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
@@ -146,8 +146,8 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/pages/app/ClockInPage.tsx` · BUG-043 closed #162
 - [x] CAP-013 🟢 Sync state display — reads queue depth, not `navigator.onLine`
       `src/lib/clockRows.ts` (`syncStatusLabel`, 4 tests) · BUG-044 closed #162
-- [ ] CAP-014 🟠 Offline timestamp integrity — `event_at` silently overwritten with `now()` past 72h
-      `supabase/migrations/0037_close_self_approval_gaps.sql` · BUG-045 · **P0**
+- [x] CAP-014 🟢 Offline timestamp integrity — the guard still clamps, but records what the device claimed
+      `supabase/migrations/0068_clock_event_reported_time.sql` · BUG-045 closed #172 · 9 pgTAP assertions
 - [ ] CAP-015 🟠 Replay idempotency — no unique constraint, no id in payload; replay double-inserts
       `src/services/syncQueue.ts` · BUG-046 · P1
 - [ ] CAP-016 🟡 Dead-letter recovery — surfaced and dismissable, but no retry path

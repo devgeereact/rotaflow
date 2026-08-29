@@ -372,6 +372,8 @@ export type Database = {
           accuracy: number | null;
           created_at: string;
           event_at: string;
+          /** What the device claimed, when the 0068 guard overrode it. Null = untouched. */
+          event_at_reported: string | null;
           id: string;
           latitude: number | null;
           location_name: string | null;
@@ -388,6 +390,7 @@ export type Database = {
           accuracy?: number | null;
           created_at?: string;
           event_at?: string;
+          event_at_reported?: string | null;
           id?: string;
           latitude?: number | null;
           location_name?: string | null;
@@ -404,6 +407,7 @@ export type Database = {
           accuracy?: number | null;
           created_at?: string;
           event_at?: string;
+          event_at_reported?: string | null;
           id?: string;
           latitude?: number | null;
           location_name?: string | null;
