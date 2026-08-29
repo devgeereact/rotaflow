@@ -59,7 +59,9 @@ function lazyPage<K extends string>(
  * whole ternary folds to the stub and Rollup drops the `import()` along with
  * every preview page and mock dataset behind it.
  *
- * Verify with `grep -c PreviewPage dist/sw.js` after a build: it must be 0.
+ * CI enforces this since 2026-08-30 — `npm run check:bundle` fails the build if
+ * any preview chunk is emitted or precached, so the rule is no longer carried
+ * by this comment alone. Locally: build, then `npm run check:bundle`.
  */
 function devPage<K extends string>(
   name: K,

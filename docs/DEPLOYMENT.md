@@ -53,11 +53,20 @@ and only the built artifacts are shipped.
 ```bash
 npm run typecheck && npm run lint    # gates
 npm run build                        # emits ./dist (hashed JS/CSS, sw.js, manifest, source maps)
+npm run check:bundle                 # size budgets + "no DEV page shipped"; reads dist/
 npm run preview                      # smoke-test the production bundle before shipping
 ```
 
 The only shippable output is `dist/` plus the repo-root **`.htaccess`** (HTTPS
 redirect, SPA rewrite to `index.html`, MIME types, cache + security headers).
+
+`check:bundle` runs in CI's `verify` job too, so a breach fails the PR rather
+than the deploy. Run it locally anyway before shipping a build you are about to
+rsync: it is the only check that reads the actual output, and the two bundle
+regressions this repo has had — DEV preview pages precached to every visitor
+(#75) and a lazy route becoming a static import (#69) — were both invisible to
+typecheck, lint and the test suite. Budgets and the reasoning behind each number
+live in `bundle-budget.json`; raising one is a reviewable diff, not a flag.
 
 ---
 
