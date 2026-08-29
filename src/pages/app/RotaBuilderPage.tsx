@@ -29,7 +29,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { PermissionDenied } from '@/components/PermissionDenied';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
-import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import {
   listLocations,
   listDepartments,
@@ -175,7 +174,6 @@ export function RotaBuilderPage(): JSX.Element {
   const { canBuildRota } = usePermissions();
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
-  const { send } = useInngestDispatch();
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -1005,35 +1003,14 @@ export function RotaBuilderPage(): JSX.Element {
           : 'Rota published. Staff can now see this week.',
       );
 
-      const recipientUserIds = [
-        ...new Set(
-          shifts
-            .map((s) =>
-              s.staff_profile_id ? staffById.get(s.staff_profile_id)?.user_id : null,
-            )
-            .filter((id): id is string => Boolean(id)),
-        ),
-      ];
-      if (recipientUserIds.length > 0) {
-        // Awaited, not fire-and-forget. The publish has already landed, so a
-        // failed dispatch cannot be reported as a failed publish — but it must
-        // not be silent either. Before BUG-047 this was `void send(...)` and a
-        // manager could watch "Rota published" appear while not one member of
-        // staff was ever told (see notificationDispatchService's header).
-        const dispatch = await send('rota/published', {
-          orgId,
-          userIds: recipientUserIds,
-          type: 'rota',
-          title: `${formatWeekRange(dates)} published`,
-        });
-        if (!dispatch.ok) {
-          showError(
-            dispatch.queued
-              ? 'Staff have not been notified yet. The notification is queued and will retry automatically.'
-              : 'Staff could not be notified, and the notification could not be queued. Tell them another way.',
-          );
-        }
-      }
+      // Nothing dispatched from here any more. `rotas_enqueue_publish_notification`
+      // (0069) writes the notification into `notification_outbox` inside the same
+      // transaction as the publish, and pg_cron drains it — so closing this tab
+      // cannot lose it, which the browser-initiated path could (GAP-026).
+      //
+      // Both paths firing would notify every affected person twice, so this one
+      // goes. The recipient list is computed in SQL from the rota's own shifts,
+      // which is the same set this code was deriving from `staffById`.
     } catch (err) {
       reportError(err, { area: 'rota:publish' });
       setPublishError('Could not publish this rota. Please try again.');

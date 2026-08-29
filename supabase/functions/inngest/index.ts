@@ -100,6 +100,11 @@ function notifyFn(eventName: string) {
 
 const functions = [
   notifyFn('leave/reviewed'),
+  // Nothing dispatches this from the client any more: since 0069 a rota
+  // publish enqueues its own notification in the same transaction and pg_cron
+  // drains it (docs/SAAS.md GAP-026). Kept registered so the event name stays
+  // reserved and a stray emitter is still handled — but do NOT re-add a client
+  // dispatch for it, or every affected person is notified twice.
   notifyFn('rota/published'),
   notifyFn('swap/reviewed'),
   notifyFn('announcement/published'),

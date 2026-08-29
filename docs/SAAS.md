@@ -59,7 +59,7 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 
 | Status                | Count | Δ since 08-29 |
 | --------------------- | ----- | ------------- |
-| 🟢 Complete           | 32    | +8            |
+| 🟢 Complete           | 33    | +9            |
 | 🟡 Partial            | 20    | +2            |
 | 🟠 Defective          | 7     | −7            |
 | 🔵 Hardening required | 9     | —             |
@@ -102,7 +102,7 @@ Each gate is phrased so two people could argue about whether it has been met.
 | Stage           | Gate                                                                                                                                                      | Blocking                         |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
 | 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001 (043/044/045 closed)     |
-| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-026, ❓-007                  |
+| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | ❓-007 (GAP-026 closed)          |
 | 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008 (BUG-052 closed) |
 | 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                 |
 | 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                 |
@@ -161,8 +161,10 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 ### Communications
 
-- [x] CAP-020 🟡 Notification dispatch — a failed dispatch now queues in the offline outbox and retries; still browser-initiated
-      `src/services/notificationDispatchService.ts` · BUG-047 closed #166 · deployed 2026-08-29 · GAP-026 · P1
+- [x] CAP-020 🟢 Notification dispatch — a rota publish enqueues its own notification in the same transaction; pg_cron drains it
+      `supabase/migrations/0069_notification_outbox.sql` · BUG-047 #166, GAP-026 #174 · 10 pgTAP assertions
+- [ ] CAP-020a 🟡 Leave, swap and announcement dispatch — still browser-initiated; only the rota publish moved server-side
+      `src/hooks/useInngestDispatch.ts` · queues and retries since #166 · P2
 - [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
       `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · deployed v17, 2026-08-29
 - [ ] CAP-022 🟠 Channel record — `notifications.channel` hardcoded `'push'` regardless of delivery
@@ -367,8 +369,8 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       **Test:** sign up → publish → no-signal clock-in → reconnect → correction, on real hardware · P1
 - [ ] CAP-107 ❓-005 No restore has ever been performed from a backup
       **Test:** restore a snapshot into a scratch project and diff the row counts · **P0**
-- [ ] CAP-108 ❓-006 `pg_cron` retention job scheduling is unverified against the live project
-      **Test:** query `cron.job` on production · P2
+- [x] CAP-108 🟢 `pg_cron` retention job — verified scheduled on production as `rotaflow-retention @ 15 2 * * *`
+      `supabase/migrations/0029_retention_enforcement.sql` · ❓-006 answered 2026-08-29
 
 ## §5 The recommendation we rejected
 
