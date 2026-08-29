@@ -251,7 +251,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     const stripe = getStripeClient();
-    const origin = req.headers.get('Origin') || 'https://rota.gakinz.com';
+    const origin = req.headers.get('Origin') || 'https://rotaflow.space';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -412,7 +412,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const stripe = getStripeClient();
-    const origin = req.headers.get('Origin') || 'https://rota.gakinz.com';
+    const origin = req.headers.get('Origin') || 'https://rotaflow.space';
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id,

@@ -264,8 +264,13 @@ These are unambiguous and I can do them whenever you want:
 
 ## Already settled, recorded so it is not relitigated
 
-- Email sends as `info@gakinz.com`, because `rota.gakinz.com` has no SPF or
-  DKIM and Gmail drops it silently.
+- Email sends from `rotaflow.space` as of 2026-08-29 (`support@` for contact,
+  `noreply@` for automated mail). Between 2026-08-13 and then it sent as
+  `info@gakinz.com`. The reason recorded here previously — that the old host
+  had "no SPF or DKIM" — was wrong: it had both. What it lacked was **MX**, so
+  it could sign outbound mail and silently drop every reply. `rotaflow.space`
+  carries MX ×3, one SPF, one DKIM and one DMARC, and a real password-reset
+  email was verified landing in a Gmail inbox (not spam) on 2026-08-29.
 - Migrations 0021 to 0027 are applied and their files are frozen. 0021 needed a
   repair after being recorded without its DDL running.
 - Every write to the new tables goes through a SECURITY DEFINER function with

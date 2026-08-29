@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase, Building2, Calendar, Clock, Globe, Mail, Phone } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
@@ -8,7 +8,14 @@ import {
   mergeOrgSettings,
   updateOrganisation,
 } from '@/services/orgService';
+import {
+  deleteOrganisation,
+  exportOrganisationData,
+  organisationDeletionPreview,
+  type OrganisationDeletionPreview,
+} from '@/services/orgLifecycleService';
 import { listLocations } from '@/services/locationService';
+import { downloadJson } from '@/lib/csv';
 import { CURRENCIES, DATE_FORMATS, orgProfileFields } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +24,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { DeleteOrganisationModal } from '@/components/settings/DeleteOrganisationModal';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
 import {
   COUNTRIES,
@@ -52,6 +60,7 @@ import {
 export function SettingsOrganisationPage(): JSX.Element {
   const { orgId, role, refresh } = useOrg();
   const { showError, showSuccess } = useToast();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -61,6 +70,12 @@ export function SettingsOrganisationPage(): JSX.Element {
   const [name, setName] = useState('');
   const [fields, setFields] = useState(() => orgProfileFields(null));
   const [siteCount, setSiteCount] = useState<number | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [deletePreview, setDeletePreview] = useState<OrganisationDeletionPreview | null>(
+    null,
+  );
 
   const canEdit = role === 'owner';
 
@@ -78,7 +93,7 @@ export function SettingsOrganisationPage(): JSX.Element {
         ]);
         if (!active) return;
         setName(org.name);
-        setFields(orgProfileFields(org.settings));
+        setFields(orgProfileFields(org.settings, org));
         setSiteCount(locations?.length ?? null);
       } catch (err) {
         if (!active) return;
@@ -105,18 +120,24 @@ export function SettingsOrganisationPage(): JSX.Element {
     if (!orgId || !name.trim()) return;
     setSaving(true);
     try {
-      await updateOrganisation(orgId, { name: name.trim() });
-      await mergeOrgSettings(orgId, {
-        industry: fields.industry,
-        org_type: fields.orgType,
+      // The five with real columns go to the columns (0023 added them for
+      // this and nothing had ever written them, which is why the admin
+      // console had nothing to read and invented values instead — BUG-026).
+      // The rest stay in `settings`, which has no column to go to.
+      await updateOrganisation(orgId, {
+        name: name.trim(),
+        industry: fields.industry.trim() || null,
         country: fields.country,
         timezone: fields.timezone,
+        contact_email: fields.contactEmail.trim() || null,
+        contact_phone: fields.phone.trim() || null,
+      });
+      await mergeOrgSettings(orgId, {
+        org_type: fields.orgType,
         working_week: fields.workingWeek,
-        phone: fields.phone,
         website: fields.website,
         address_line: fields.addressLine,
         registration_no: fields.registrationNo,
-        contact_email: fields.contactEmail,
         primary_contact: fields.primaryContact,
         date_format: fields.dateFormat,
         currency: fields.currency,
@@ -130,6 +151,79 @@ export function SettingsOrganisationPage(): JSX.Element {
       setSaving(false);
     }
   }, [orgId, name, fields, refresh, showError, showSuccess]);
+
+  const handleExport = useCallback(async (): Promise<void> => {
+    if (!orgId) return;
+    setExporting(true);
+    try {
+      const data = await exportOrganisationData(orgId);
+      downloadJson(
+        `${data.organisation.slug}_export_${new Date().toISOString().slice(0, 10)}`,
+        data,
+      );
+      // An export that silently skipped a table would look complete. Say so.
+      if (data.omitted.length > 0) {
+        showError(
+          `Exported, but ${data.omitted.length} ${data.omitted.length === 1 ? 'table' : 'tables'} could not be read and are listed in the file under "omitted".`,
+        );
+      } else {
+        showSuccess('Export downloaded.');
+      }
+    } catch (err) {
+      reportError(err, { area: 'settings-organisation:export' });
+      showError('Could not build the export. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  }, [orgId, showError, showSuccess]);
+
+  const openDelete = useCallback(async (): Promise<void> => {
+    if (!orgId) return;
+    setDeleteOpen(true);
+    try {
+      // Non-fatal: the dialog is still correct without the counts, and
+      // refusing to open it because a count failed would leave the owner with
+      // no way to delete at all.
+      setDeletePreview(await organisationDeletionPreview(orgId));
+    } catch (err) {
+      reportError(err, { area: 'settings-organisation:delete-preview' });
+      setDeletePreview(null);
+    }
+  }, [orgId]);
+
+  const handleDelete = useCallback(
+    async (typedName: string): Promise<void> => {
+      if (!orgId) return;
+      setDeleting(true);
+      try {
+        await deleteOrganisation(orgId, typedName);
+        setDeleteOpen(false);
+        // The organisation this session was scoped to no longer exists, so
+        // there is nothing here to return to. Refresh first: leaving stale
+        // membership in context would render the next screen against a
+        // tenant that has been deleted.
+        // refresh() is fire-and-forget by design here: the screen is being
+        // navigated away from either way, and blocking the exit on a context
+        // reload for an organisation that no longer exists would just show a
+        // spinner over a deleted tenant.
+        void refresh();
+        void navigate('/', { replace: true });
+      } catch (err) {
+        reportError(err, { area: 'settings-organisation:delete' });
+        const code = (err as { code?: string } | null)?.code;
+        showError(
+          code === 'ORG02'
+            ? 'That name does not match this organisation.'
+            : code === '42501'
+              ? 'Only an owner of this organisation can delete it.'
+              : 'Could not delete this organisation. Nothing has been removed.',
+        );
+      } finally {
+        setDeleting(false);
+      }
+    },
+    [orgId, refresh, navigate, showError],
+  );
 
   if (!canEdit) return <OwnerOnlyNotice section="organisation settings" />;
 
@@ -372,6 +466,47 @@ export function SettingsOrganisationPage(): JSX.Element {
           </p>
         </SettingsSection>
       )}
+
+      {/*
+        BUG-009: there was no way to delete an organisation from anywhere in
+        the product — no button, no console action, no RPC — which made GDPR
+        erasure impossible and left every test tenant in production for good.
+        It sits at the bottom of the owner-only settings page, behind a typed
+        confirmation, with the export offered in the same dialog.
+      */}
+      <SettingsSection
+        title="Delete this organisation"
+        description="Permanent, immediate, and not recoverable. Export first if you might need the data."
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => void handleExport()}
+            disabled={exporting}
+          >
+            {exporting ? 'Preparing export…' : 'Export all data'}
+          </Button>
+          <Button variant="danger" onClick={() => void openDelete()}>
+            Delete organisation
+          </Button>
+        </div>
+        <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
+          Everyone in this organisation loses access the moment it is deleted. Audit
+          records are kept, without the organisation attached, because an audit trail a
+          deletion erases is not an audit trail.
+        </p>
+      </SettingsSection>
+
+      <DeleteOrganisationModal
+        open={deleteOpen}
+        organisationName={name}
+        preview={deletePreview}
+        busy={deleting}
+        exporting={exporting}
+        onExport={() => void handleExport()}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={(typedName) => void handleDelete(typedName)}
+      />
 
       {/* Sticky so the Save control is reachable without scrolling back up. This page is two screens tall on a laptop. */}
       <div className="sticky bottom-0 -mx-1 flex justify-end gap-3 border-t border-surface-border bg-background/90 px-1 py-4 backdrop-blur dark:border-surface-border-dark dark:bg-background-dark/90">

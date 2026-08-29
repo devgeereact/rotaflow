@@ -9,6 +9,7 @@ import {
   buildWeeklySummary,
   clockStage,
   clockWindow,
+  manualFallbackFor,
   formatHm,
   formatSignedHm,
   pickCurrentShift,
@@ -425,5 +426,46 @@ describe('buildAttendance', () => {
     expect(summary.thisWeekValue).toBe('-');
     expect(summary.lastWeekValue).toBe('-');
     expect(summary.statusBody).toBe('Nothing scheduled this week.');
+  });
+});
+
+/**
+ * BUG-008: manual clock-IN existed and manual clock-OUT did not.
+ *
+ * Someone whose phone refused a position could start a shift and never end
+ * one — the screen told them to "use manual clock-in instead" while they were
+ * already clocked in, and the attendance event stayed open until a manager
+ * amended it by hand. Location permission must not be able to lock a
+ * timesheet.
+ */
+describe('manualFallbackFor', () => {
+  it('offers a manual clock-out to someone stuck mid-shift with location denied', () => {
+    expect(manualFallbackFor('working', 'denied')).toEqual({
+      type: 'out',
+      label: 'Clock Out Manually',
+    });
+  });
+
+  it('offers it on a break too — nobody is trapped on a break they forgot to end', () => {
+    expect(manualFallbackFor('break', 'unavailable')?.type).toBe('out');
+  });
+
+  it('treats a timeout or missing hardware the same as a refusal', () => {
+    // `unavailable` is every non-permission failure: indoors with no fix, no
+    // GPS at all, an insecure context. The person is equally stuck.
+    expect(manualFallbackFor('working', 'unavailable')).not.toBeNull();
+  });
+
+  it('stays hidden until the device has actually failed', () => {
+    // An always-visible "clock out without location" is a one-tap way around
+    // GPS attendance. This is a fallback, not an alternative.
+    expect(manualFallbackFor('working', 'idle')).toBeNull();
+    expect(manualFallbackFor('working', 'prompting')).toBeNull();
+    expect(manualFallbackFor('working', 'granted')).toBeNull();
+  });
+
+  it('adds nothing before a shift, where manual clock-in is already the second action', () => {
+    expect(manualFallbackFor('ready', 'denied')).toBeNull();
+    expect(manualFallbackFor('done', 'denied')).toBeNull();
   });
 });

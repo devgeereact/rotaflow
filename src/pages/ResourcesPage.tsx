@@ -145,7 +145,7 @@ interface Update {
  * What changed, for someone deciding whether to look again after a "no" a
  * few weeks ago. Each entry is a real, shipped change, in the order it
  * happened — not a marketing recap. Add to the top as things ship; do not
- * backfill dates, and do not list anything not yet live on rota.gakinz.com.
+ * backfill dates, and do not list anything not yet live on rotaflow.space.
  */
 const UPDATES: readonly Update[] = [
   {

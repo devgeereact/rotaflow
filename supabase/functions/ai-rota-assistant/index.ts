@@ -403,7 +403,7 @@ Deno.serve(async (req: Request) => {
       headers: {
         Authorization: `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': Deno.env.get('APP_URL') || 'https://rota.gakinz.com',
+        'HTTP-Referer': Deno.env.get('APP_URL') || 'https://rotaflow.space',
         'X-Title': 'RotaFlow',
       },
       body: JSON.stringify({

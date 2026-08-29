@@ -433,11 +433,9 @@ export function OnboardingPage(): JSX.Element {
         await updateOrganisation(orgId, {
           name: createValues.name.trim(),
           slug: createValues.slug.trim(),
+          industry: createValues.industry.trim() || null,
         });
-        await mergeOrgSettings(orgId, {
-          industry: createValues.industry,
-          size: createValues.size,
-        });
+        await mergeOrgSettings(orgId, { size: createValues.size });
         await refresh();
         setAboutValues((v) => ({ ...v, industry: createValues.industry || v.industry }));
         setStep(2);
@@ -461,7 +459,8 @@ export function OnboardingPage(): JSX.Element {
         {
           name: createValues.name.trim(),
           slug: createValues.slug.trim(),
-          settings: { industry: createValues.industry, size: createValues.size },
+          industry: createValues.industry.trim() || null,
+          settings: { size: createValues.size },
         },
         user.id,
       );
@@ -490,11 +489,17 @@ export function OnboardingPage(): JSX.Element {
       setSubmitting(true);
       setError(null);
       try {
-        await mergeOrgSettings(orgId, {
-          industry: aboutValues.industry,
-          org_type: aboutValues.orgType,
+        // industry/country/timezone are columns on `organisations` (0023),
+        // which is where the admin console reads them from. Writing them only
+        // into `settings` is what left those columns null for every tenant
+        // and had the console invent values instead (BUG-026).
+        await updateOrganisation(orgId, {
+          industry: aboutValues.industry.trim() || null,
           country: aboutValues.country,
           timezone: aboutValues.timezone,
+        });
+        await mergeOrgSettings(orgId, {
+          org_type: aboutValues.orgType,
           working_week: aboutValues.workingWeek,
         });
 

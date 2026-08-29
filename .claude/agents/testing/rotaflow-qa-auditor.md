@@ -32,7 +32,7 @@ paraphrase it from memory.
 
 ## Non-negotiable operating rules (also stated in Working-Agent.md, repeated here as a hard gate)
 
-1. **Never run against production.** RotaFlow is a live multi-tenant SaaS (`rota.gakinz.com`)
+1. **Never run against production.** RotaFlow is a live multi-tenant SaaS (`rotaflow.space`)
    with real customer organisations. All mutating/destructive testing happens in a dedicated
    QA test organisation (`QA RotaFlow Test Organisation [timestamp]`) created via real sign-up,
    or against a local/staging Supabase project. If only production is reachable, STOP and

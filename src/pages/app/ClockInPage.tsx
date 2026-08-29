@@ -32,6 +32,7 @@ import {
   buildWeeklySummary,
   clockStage,
   clockWindow,
+  manualFallbackFor,
   pickCurrentShift,
   segmentsInRange,
 } from '@/lib/clockRows';
@@ -275,10 +276,16 @@ export function ClockInPage(): JSX.Element {
         if (method === 'gps') {
           position = await geo.request();
           if (!position) {
+            // The old copy said "manual clock-in" whatever the person was
+            // doing. Told to a person who is already clocked in and trying to
+            // leave, it pointed at a button that does not apply and left them
+            // with no way out at all — BUG-008. The fallback for the action
+            // they actually took now appears on the pane behind this toast.
+            const manual = type === 'out' ? 'Clock Out Manually' : 'Clock In Manually';
             showError(
               geo.status === 'denied'
-                ? 'Location access was denied. Use manual clock-in instead, or allow location access and try again.'
-                : 'Could not get your location. Try manual clock-in instead.',
+                ? `Location access was denied. Use ${manual}, or allow location access and try again.`
+                : `Could not get your location. Use ${manual} instead.`,
             );
             setSubmitting(false);
             return;
@@ -402,6 +409,15 @@ export function ClockInPage(): JSX.Element {
     else void submit('in', 'manual');
   }, [stage, submit]);
 
+  /**
+   * Once the device has actually failed to supply a position, offer the
+   * manual version of whatever the person is trying to do. Gated on a real
+   * failure rather than shown always: an ever-present "clock out without
+   * location" is a one-tap way around GPS attendance entirely, while this
+   * only appears to someone the hardware has already refused.
+   */
+  const manualFallback = manualFallbackFor(stage, geo.status);
+
   const help = useMemo<HelpLink[]>(
     () => [
       {
@@ -505,6 +521,15 @@ export function ClockInPage(): JSX.Element {
         windowLabel={view.window.label}
         onPrimaryAction={onPrimary}
         onSecondaryAction={onSecondary}
+        tertiaryActionLabel={manualFallback?.label}
+        onTertiaryAction={
+          manualFallback ? () => void submit(manualFallback.type, 'manual') : undefined
+        }
+        locationNote={
+          manualFallback
+            ? 'Location unavailable on this device. A manual event records the time without a position, and your manager can see which method was used.'
+            : undefined
+        }
         busy={submitting}
         actionExtra={picker}
         online={online}
@@ -553,6 +578,14 @@ export function ClockInPage(): JSX.Element {
                 </span>{' '}
                 Use Clock In Manually. It records the same event without a position, and
                 your manager can see which method was used.
+              </p>
+              <p>
+                <span className="font-semibold text-content dark:text-content-dark">
+                  Already clocked in and your location stopped working?
+                </span>{' '}
+                Try Clock Out first; if the device cannot find you, Clock Out Manually
+                appears underneath and ends the shift without a position. Never leave
+                yourself clocked in — the hours are counted from the clock-out.
               </p>
               <p>
                 <span className="font-semibold text-content dark:text-content-dark">

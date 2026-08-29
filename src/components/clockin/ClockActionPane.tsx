@@ -66,6 +66,21 @@ interface ClockActionPaneProps {
   windowLabel: string;
   onPrimary?: () => void;
   onSecondary?: () => void;
+  /**
+   * A third action, shown only when it exists. The screen uses it for the
+   * manual fallback once the device has failed to supply a position: without
+   * it, someone whose phone refuses a location can start a shift and never
+   * end one (BUG-008).
+   */
+  tertiaryLabel?: string;
+  onTertiary?: () => void;
+  /**
+   * Overrides the footer note. The default promises the location will be
+   * recorded, which is untrue the moment the fallback above is the only way
+   * through — and a screen that claims a GPS record it is not making is the
+   * same class of defect as the one that made the fallback necessary.
+   */
+  locationNote?: ReactNode;
   /** Disables both actions while a write is in flight. */
   busy?: boolean;
   /** Slot under the actions. The location picker on the live screen. */
@@ -90,6 +105,9 @@ export function ClockActionPane({
   windowLabel,
   onPrimary,
   onSecondary,
+  tertiaryLabel,
+  onTertiary,
+  locationNote,
   busy = false,
   children,
 }: ClockActionPaneProps): JSX.Element {
@@ -155,9 +173,21 @@ export function ClockActionPane({
         {copy.secondaryLabel}
       </button>
 
+      {tertiaryLabel && onTertiary ? (
+        <button
+          type="button"
+          onClick={onTertiary}
+          disabled={busy}
+          className="mt-3 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-lg border border-surface-border bg-surface text-base font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-60 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+        >
+          <MapPinOff size={20} aria-hidden="true" />
+          {tertiaryLabel}
+        </button>
+      ) : null}
+
       <p className="mt-4 flex items-center gap-1.5 text-xs text-content-muted dark:text-content-muted-dark">
         <ShieldCheck size={14} aria-hidden="true" />
-        Your location will be recorded for accuracy
+        {locationNote ?? 'Your location will be recorded for accuracy'}
       </p>
 
       {children}
