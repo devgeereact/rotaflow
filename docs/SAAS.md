@@ -59,12 +59,12 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 
 | Status                | Count | Δ since 08-29 |
 | --------------------- | ----- | ------------- |
-| 🟢 Complete           | 29    | +5            |
+| 🟢 Complete           | 30    | +6            |
 | 🟡 Partial            | 20    | +2            |
 | 🟠 Defective          | 8     | −6            |
 | 🔵 Hardening required | 9     | —             |
 | ⚪ Surface only       | 7     | —             |
-| 🔴 Missing            | 22    | —             |
+| 🔴 Missing            | 21    | −1            |
 | ⚫ Deferred           | 19    | —             |
 | ❓ Not audited        | 7     | +1            |
 
@@ -102,7 +102,7 @@ Each gate is phrased so two people could argue about whether it has been met.
 | Stage           | Gate                                                                                                                                                      | Blocking                          |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001, BUG-045 (043/044 closed) |
-| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-004, GAP-005, GAP-026, ❓-007 |
+| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-005, GAP-026, ❓-007          |
 | 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008 (BUG-052 closed)  |
 | 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                  |
 | 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                  |
@@ -171,8 +171,8 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `public/push-sw.js` · BUG-050 closed #165 · ❓-007 · P1
 - [ ] CAP-023a ❓-007 A push has still never been seen arriving on a real device
       **Test:** subscribe on a phone, publish a rota, confirm the notification appears and opens `/app/notifications` · P1
-- [ ] CAP-024 🔴 Delivery tracking — outcomes computed then discarded; no table
-      `supabase/functions/send-notification/index.ts` · GAP-004 · P1
+- [x] CAP-024 🟢 Delivery tracking — one row per recipient per channel, with why a send was skipped
+      `supabase/migrations/0067_notification_deliveries.sql` · GAP-004 closed #168 · 11 pgTAP assertions
 - [ ] CAP-025 🔴 Invite emails — `create_invite` returns a token the manager copies by hand
       `supabase/migrations/0006_invites.sql` · GAP-005 · P1
 - [x] CAP-026 🟢 In-app notifications — per-recipient rows, no client insert policy
@@ -470,34 +470,35 @@ half of GDPR erasure.
 
 ## §7 Gap register
 
-| ID      | Gap                                                        | Why it matters                                                                                                                    | Priority |
-| ------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| GAP-001 | No production backups                                      | A bad migration is unrecoverable, and migrations auto-apply on merge                                                              | P0       |
-| GAP-002 | No migration safety gate                                   | "CI is green" is not "this is safe to apply to production"                                                                        | P0       |
-| GAP-003 | `e2e` and `db-tests` are not required checks               | A PR can merge with Playwright and pgTAP failing                                                                                  | P0       |
-| GAP-004 | No delivery tracking table                                 | A manager cannot tell whether staff were told; no data source for a notification centre                                           | P1       |
-| GAP-005 | Invites send no email                                      | A silent hole in the onboarding funnel                                                                                            | P1       |
-| GAP-006 | Minimum cover is client-side only                          | A direct RPC call publishes an understaffed rota                                                                                  | P1       |
-| GAP-007 | No amendment diff                                          | The data is already archived by `0061`; nothing derives what changed                                                              | P1       |
-| GAP-008 | Entitlements enforced nowhere                              | Plan limits are advisory in both the UI and the database                                                                          | P2       |
-| GAP-009 | No rate limiting                                           | Unlimited org creation, unlimited invites, uncapped AI spend                                                                      | P1       |
-| GAP-010 | No authenticated E2E coverage                              | The core loop is never exercised end to end by CI                                                                                 | P2       |
-| GAP-011 | No scheduled health probe                                  | Uptime is arithmetic over rows an admin's browser inserted                                                                        | P2       |
-| GAP-012 | Support has no reply path to the customer                  | RLS permits a thread; no screen renders one                                                                                       | P2       |
-| GAP-013 | No scheduled job for expiry or missed clock-in             | Both are recomputed per page view, so neither can page anyone                                                                     | P2       |
-| GAP-014 | DPA, sub-processors, AI notice, security disclosure absent | Blocks enterprise procurement                                                                                                     | P2       |
-| GAP-015 | Onboarding has no resume path                              | Abandon after step 1 and steps 2–4 are unreachable forever                                                                        | P2       |
-| GAP-026 | Dispatch is still browser-initiated                        | Close the tab before the outbox write flushes and the event is lost. Moving it into `publish_rota` or a trigger needs a migration | P1       |
-| GAP-016 | No per-tenant branding                                     | Requires a schema change, not a settings screen                                                                                   | P3       |
-| GAP-017 | No MFA                                                     | Enterprise buyers assume it                                                                                                       | P3       |
-| GAP-018 | No SSO or SCIM                                             | Gates larger organisations                                                                                                        | P3       |
-| GAP-019 | No public API                                              | Nothing can integrate                                                                                                             | P3       |
-| GAP-020 | No outbound webhooks                                       | Nothing can react to a rota change                                                                                                | P3       |
-| GAP-021 | No payroll integration                                     | The highest-value adjacency to the existing data                                                                                  | P3       |
-| GAP-022 | No CSV import                                              | Every prospect is migrating off a spreadsheet                                                                                     | P3       |
-| GAP-023 | No predictive insight                                      | The differentiator the data could support                                                                                         | P3       |
-| GAP-024 | No customer-facing status page                             | `incidents.is_public` exists and grants nothing                                                                                   | P3       |
-| GAP-025 | No vertical configuration                                  | Care, security, cleaning and hospitality all get one generic product                                                              | P3       |
+| ID          | Gap                                                        | Why it matters                                                                                                                                                                              | Priority |
+| ----------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| GAP-001     | No production backups                                      | A bad migration is unrecoverable, and migrations auto-apply on merge                                                                                                                        | P0       |
+| GAP-002     | No migration safety gate                                   | "CI is green" is not "this is safe to apply to production"                                                                                                                                  | P0       |
+| GAP-003     | `e2e` and `db-tests` are not required checks               | A PR can merge with Playwright and pgTAP failing                                                                                                                                            | P0       |
+| ~~GAP-004~~ | No delivery tracking table                                 | **CLOSED #168** — `notification_deliveries` (`0067`). The manager-facing screen that reads it is not built yet                                                                              | —        |
+| GAP-005     | Invites send no email                                      | A silent hole in the onboarding funnel                                                                                                                                                      | P1       |
+| GAP-006     | Minimum cover is client-side only                          | A direct RPC call publishes an understaffed rota                                                                                                                                            | P1       |
+| GAP-007     | No amendment diff                                          | The data is already archived by `0061`; nothing derives what changed                                                                                                                        | P1       |
+| GAP-008     | Entitlements enforced nowhere                              | Plan limits are advisory in both the UI and the database                                                                                                                                    | P2       |
+| GAP-009     | No rate limiting                                           | Unlimited org creation, unlimited invites, uncapped AI spend                                                                                                                                | P1       |
+| GAP-010     | No authenticated E2E coverage                              | The core loop is never exercised end to end by CI                                                                                                                                           | P2       |
+| GAP-011     | No scheduled health probe                                  | Uptime is arithmetic over rows an admin's browser inserted                                                                                                                                  | P2       |
+| GAP-012     | Support has no reply path to the customer                  | RLS permits a thread; no screen renders one                                                                                                                                                 | P2       |
+| GAP-013     | No scheduled job for expiry or missed clock-in             | Both are recomputed per page view, so neither can page anyone                                                                                                                               | P2       |
+| GAP-014     | DPA, sub-processors, AI notice, security disclosure absent | Blocks enterprise procurement                                                                                                                                                               | P2       |
+| GAP-015     | Onboarding has no resume path                              | Abandon after step 1 and steps 2–4 are unreachable forever                                                                                                                                  | P2       |
+| GAP-027     | `notification_deliveries` has no retention policy          | `enforce_retention` is an if/elsif chain over hardcoded data types, so a policy row alone would error nightly and delete nothing. The table grows unbounded until that function is extended | P2       |
+| GAP-026     | Dispatch is still browser-initiated                        | Close the tab before the outbox write flushes and the event is lost. Moving it into `publish_rota` or a trigger needs a migration                                                           | P1       |
+| GAP-016     | No per-tenant branding                                     | Requires a schema change, not a settings screen                                                                                                                                             | P3       |
+| GAP-017     | No MFA                                                     | Enterprise buyers assume it                                                                                                                                                                 | P3       |
+| GAP-018     | No SSO or SCIM                                             | Gates larger organisations                                                                                                                                                                  | P3       |
+| GAP-019     | No public API                                              | Nothing can integrate                                                                                                                                                                       | P3       |
+| GAP-020     | No outbound webhooks                                       | Nothing can react to a rota change                                                                                                                                                          | P3       |
+| GAP-021     | No payroll integration                                     | The highest-value adjacency to the existing data                                                                                                                                            | P3       |
+| GAP-022     | No CSV import                                              | Every prospect is migrating off a spreadsheet                                                                                                                                               | P3       |
+| GAP-023     | No predictive insight                                      | The differentiator the data could support                                                                                                                                                   | P3       |
+| GAP-024     | No customer-facing status page                             | `incidents.is_public` exists and grants nothing                                                                                                                                             | P3       |
+| GAP-025     | No vertical configuration                                  | Care, security, cleaning and hospitality all get one generic product                                                                                                                        | P3       |
 
 ## §8 Hardening register
 
