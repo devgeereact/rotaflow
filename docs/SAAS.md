@@ -79,8 +79,7 @@ cards, and the notification path now honours the preferences it collects and can
 display a push.
 
 **Deployed 2026-08-29.** `supabase/functions/` does not deploy on merge, so this is a separate
-manual step and worth recording when it happens: `send-notification` v18 (v17, then v18 for
-`0067`'s delivery writes),
+manual step and worth recording when it happens: `send-notification` v19, `send-invite` v1,
 `create-checkout-session` v11 and `create-portal-session` v11 are live, and all three still
 return 401 unauthenticated. CAP-020, CAP-021 and CAP-037 are therefore in production, not just
 on `main`.
@@ -175,7 +174,7 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-024 🟢 Delivery tracking — one row per recipient per channel, with why a send was skipped
       `supabase/migrations/0067_notification_deliveries.sql` · GAP-004 closed #168 · 11 pgTAP assertions · migration applied and send-notification redeployed v18, 2026-08-29
 - [x] CAP-025 🟢 Invite emails — sent automatically on creation; the copyable link stays as the fallback
-      `supabase/functions/send-invite/index.ts` · GAP-005 closed #170
+      `supabase/functions/send-invite/index.ts` · GAP-005 closed #170 · deployed v1, 2026-08-29
 - [x] CAP-026 🟢 In-app notifications — per-recipient rows, no client insert policy
       `supabase/migrations/0002_rotaflow.sql`
 - [x] CAP-027 🟢 Announcements with read receipts
