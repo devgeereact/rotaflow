@@ -13,9 +13,16 @@ vi.mock('@/services/clockService', () => ({
 }));
 vi.mock('@/services/leaveService', () => ({ createLeaveRequest: vi.fn() }));
 vi.mock('@/services/swapService', () => ({ requestShiftSwap: vi.fn() }));
+vi.mock('@/services/notificationDispatchService', async (importOriginal) => ({
+  // The error class is a plain object with no Supabase import, so it is kept
+  // real; only the network call is mocked.
+  ...(await importOriginal<object>()),
+  postInngestEvent: vi.fn(),
+}));
 vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 
 import { recordClockEvent } from '@/services/clockService';
+import { InngestDispatchError } from '@/services/notificationDispatchService';
 import {
   MAX_ATTEMPTS,
   classifyFailure,
@@ -357,5 +364,24 @@ describe('enqueueWrite', () => {
     const item = first(await listQueuedWrites());
     expect(item.attempts).toBe(0);
     expect(item.kind).toBe('leave');
+  });
+});
+
+describe('classifyFailure, for a notification dispatch (BUG-047)', () => {
+  it('retries a 5xx — Inngest being down is not our payload being wrong', () => {
+    expect(classifyFailure(new InngestDispatchError('down', 503))).toBe('transient');
+  });
+
+  it('retries a dropped or blocked request', () => {
+    // A content blocker eating `inn.gs` rejects as a TypeError with no status,
+    // which is indistinguishable from a dropped connection — and both deserve
+    // another attempt.
+    expect(classifyFailure(new TypeError('Failed to fetch'))).toBe('transient');
+  });
+
+  it('does not retry a rejected payload', () => {
+    expect(classifyFailure(new InngestDispatchError('bad request', 400))).toBe(
+      'permanent',
+    );
   });
 });
