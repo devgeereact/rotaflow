@@ -126,3 +126,54 @@ export async function revokeInvite(inviteId: string): Promise<void> {
 
   if (error) throw error;
 }
+
+export interface InviteEmailResult {
+  sent: boolean;
+  /** Present when the send failed; safe to show a manager. */
+  reason?: string;
+}
+
+/**
+ * Email the join link to the person invited.
+ *
+ * Split from `createInvite` on purpose rather than folded into it: the invite
+ * is the durable thing and the email is a delivery attempt, so a mail server
+ * being down must not roll back a perfectly good invitation. The caller keeps
+ * the link either way and can still pass it on by hand — which was the only
+ * option before this existed (docs/SAAS.md GAP-005).
+ *
+ * The token is sent because it exists nowhere else: `invites` stores only its
+ * sha256. The Edge Function verifies it against that hash and reads the
+ * destination address from the invite row, so this cannot redirect an
+ * invitation to somewhere the database did not say.
+ */
+export async function sendInviteEmail(
+  orgId: string,
+  invite: CreatedInvite,
+): Promise<InviteEmailResult> {
+  // Typed at the call, matching billingCheckoutService: an untyped invoke
+  // returns `any` and destructuring it trips no-unsafe-assignment.
+  const result = await supabase.functions.invoke<{ sent?: boolean; error?: string }>(
+    'send-invite',
+    { body: { orgId, inviteId: invite.inviteId, token: invite.token } },
+  );
+
+  if (result.error) {
+    // The function returns a human-readable `error` for the cases a manager can
+    // act on — no mailbox configured, SMTP refused — and it is more useful than
+    // "FunctionsHttpError". Same unwrap as billingCheckoutService.
+    let reason: string | undefined;
+    const context = (result.error as { context?: Response }).context;
+    if (context && typeof context.json === 'function') {
+      try {
+        const body = (await context.json()) as { error?: string };
+        reason = body.error;
+      } catch {
+        reason = undefined;
+      }
+    }
+    return { sent: false, reason };
+  }
+
+  return { sent: Boolean(result.data?.sent) };
+}

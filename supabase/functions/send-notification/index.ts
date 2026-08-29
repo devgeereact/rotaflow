@@ -105,6 +105,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 import { corsHeaders } from '../_shared/cors.ts';
+import { createSmtpTransport, resolveSmtpConfig } from '../_shared/smtp.ts';
 
 const ALLOW_HEADERS = 'x-notification-secret, content-type';
 // Set per-request at the top of the `Deno.serve` handler below. See
@@ -199,66 +200,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
-/** Placeholder values ship in .env.example; sending against them would just fail loudly. */
-function globalSmtpIsConfigured(): boolean {
-  const host = Deno.env.get('SMTP_HOST');
-  const pass = Deno.env.get('SMTP_PASS');
-  return Boolean(host) && host !== 'smtp.yourhost.com' && Boolean(pass) && pass !== 'your-smtp-password';
-}
 
-interface SmtpTransportConfig {
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  from: string;
-}
-
-/**
- * An org's own SMTP account (0010_org_smtp_settings.sql) if it has one
- * configured, so mail comes from their domain/mailbox rather than a shared
- * system sender. Falls back to the global SMTP_* secrets otherwise. The
- * same posture as before org-level settings existed. Reads smtp_pass via the
- * service-role client, which is the only role that ever can (see the
- * migration's file header).
- */
-async function resolveSmtpConfig(
-  supabase: ReturnType<typeof createClient>,
-  orgId: string,
-): Promise<SmtpTransportConfig | null> {
-  const { data: orgSmtp, error: orgSmtpError } = await supabase
-    .from('org_smtp_settings')
-    .select('smtp_host, smtp_port, smtp_user, smtp_pass, from_email, from_name')
-    .eq('org_id', orgId)
-    .maybeSingle();
-
-  if (orgSmtpError) {
-    // A transient lookup failure must not silently look identical to "this
-    // org has no SMTP configured". That's exactly the shared-sender outcome
-    // this feature exists to avoid. Never log the row itself: it carries
-    // smtp_pass.
-    console.error('resolveSmtpConfig: org SMTP lookup failed', orgSmtpError.message);
-  }
-
-  if (orgSmtp) {
-    return {
-      host: orgSmtp.smtp_host,
-      port: orgSmtp.smtp_port,
-      user: orgSmtp.smtp_user,
-      pass: orgSmtp.smtp_pass,
-      from: orgSmtp.from_name ? `"${orgSmtp.from_name}" <${orgSmtp.from_email}>` : orgSmtp.from_email,
-    };
-  }
-
-  if (!globalSmtpIsConfigured()) return null;
-  return {
-    host: Deno.env.get('SMTP_HOST')!,
-    port: Number(Deno.env.get('SMTP_PORT') ?? '587'),
-    user: Deno.env.get('SMTP_USER')!,
-    pass: Deno.env.get('SMTP_PASS')!,
-    from: Deno.env.get('SMTP_FROM')!,
-  };
-}
 
 async function sendPush(
   subscription: { endpoint: string; p256dh: string; auth_key: string },
@@ -490,18 +432,7 @@ Deno.serve(async (req: Request) => {
           record(userId, 'email', 'skipped', 'no SMTP configured for this organisation or platform');
         }
       } else {
-        const { default: nodemailer } = await import('npm:nodemailer@6');
-        const transport = nodemailer.createTransport({
-          host: smtpConfig.host,
-          port: smtpConfig.port,
-          // 465 is implicit TLS; every other port (587 included) starts plain
-          // and upgrades via STARTTLS. Secure:true there breaks the handshake.
-          secure: smtpConfig.port === 465,
-          auth: { user: smtpConfig.user, pass: smtpConfig.pass },
-          // A bad owner-provided host must fail fast, not hang the function.
-          connectionTimeout: 10_000,
-          greetingTimeout: 10_000,
-        });
+        const transport = await createSmtpTransport(smtpConfig);
 
         const { data: profiles } = await supabase
           .from('profiles')

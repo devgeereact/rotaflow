@@ -59,12 +59,12 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 
 | Status                | Count | Δ since 08-29 |
 | --------------------- | ----- | ------------- |
-| 🟢 Complete           | 30    | +6            |
+| 🟢 Complete           | 31    | +7            |
 | 🟡 Partial            | 20    | +2            |
 | 🟠 Defective          | 8     | −6            |
 | 🔵 Hardening required | 9     | —             |
 | ⚪ Surface only       | 7     | —             |
-| 🔴 Missing            | 21    | −1            |
+| 🔴 Missing            | 20    | −2            |
 | ⚫ Deferred           | 19    | —             |
 | ❓ Not audited        | 7     | +1            |
 
@@ -103,7 +103,7 @@ Each gate is phrased so two people could argue about whether it has been met.
 | Stage           | Gate                                                                                                                                                      | Blocking                          |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001, BUG-045 (043/044 closed) |
-| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-005, GAP-026, ❓-007          |
+| 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | GAP-026, ❓-007                   |
 | 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002, GAP-008 (BUG-052 closed)  |
 | 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                  |
 | 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                  |
@@ -174,8 +174,8 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       **Test:** subscribe on a phone, publish a rota, confirm the notification appears and opens `/app/notifications` · P1
 - [x] CAP-024 🟢 Delivery tracking — one row per recipient per channel, with why a send was skipped
       `supabase/migrations/0067_notification_deliveries.sql` · GAP-004 closed #168 · 11 pgTAP assertions · migration applied and send-notification redeployed v18, 2026-08-29
-- [ ] CAP-025 🔴 Invite emails — `create_invite` returns a token the manager copies by hand
-      `supabase/migrations/0006_invites.sql` · GAP-005 · P1
+- [x] CAP-025 🟢 Invite emails — sent automatically on creation; the copyable link stays as the fallback
+      `supabase/functions/send-invite/index.ts` · GAP-005 closed #170
 - [x] CAP-026 🟢 In-app notifications — per-recipient rows, no client insert policy
       `supabase/migrations/0002_rotaflow.sql`
 - [x] CAP-027 🟢 Announcements with read receipts
