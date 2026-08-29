@@ -11,14 +11,19 @@
 // owner-only, matching subscriptions' own RLS.
 //
 // Deploy: `supabase functions deploy create-checkout-session`.
-// Secrets: STRIPE_MODE (test | live, defaults to live) selects which of
+// Secrets: STRIPE_MODE (test | live, REQUIRED — no default) selects which of
 // STRIPE_SECRET_KEY / STRIPE_TEST_SECRET_KEY is used and which `plans`
 // Price column is read — see _shared/stripe.ts and migration 0058.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getStripeClient, getStripeMode, priceColumn } from '../_shared/stripe.ts';
+import {
+  getStripeClient,
+  getStripeMode,
+  stripeModeIsConfigured,
+  priceColumn,
+} from '../_shared/stripe.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -84,6 +89,17 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(
         { error: 'Only the organisation owner can change billing' },
         403,
+      );
+    }
+
+    if (!stripeModeIsConfigured()) {
+      return jsonResponse(
+        {
+          error:
+            'Billing is not configured on this deployment: the STRIPE_MODE secret is not set. ' +
+            'Set it to "test" or "live" on the Supabase project.',
+        },
+        503,
       );
     }
 

@@ -24,18 +24,45 @@ const WEBHOOK_SECRET_ENV: Record<StripeMode, string> = {
 };
 
 /**
- * Which mode Checkout and the Portal run in.
+ * Whether a mode has been chosen at all. Callers use this to refuse the
+ * request with an actionable 503 rather than surfacing a generic 500.
+ */
+export function stripeModeIsConfigured(): boolean {
+  return Boolean(Deno.env.get('STRIPE_MODE')?.trim());
+}
+
+/**
+ * Which mode Checkout and the Portal run in. Must be set explicitly.
  *
- * Unset means live. That default is deliberate: a deployment that predates
- * this seam has no STRIPE_MODE secret, and it must keep charging real cards
- * exactly as before rather than quietly falling back to test mode and
- * accepting no money at all. Anything other than a recognised value is
- * treated as a misconfiguration, not as "probably test" — guessing wrong in
- * that direction is the expensive one.
+ * This used to default to `live` when unset, on the reasoning that a
+ * deployment predating the dual-mode seam had no STRIPE_MODE secret and must
+ * keep charging real cards rather than quietly falling back to test and
+ * accepting no money. That argument no longer applies and was always the
+ * wrong shape:
+ *
+ *   * There is no such deployment. No charge has ever completed end to end
+ *     through this code, in either mode, so there is nothing to preserve.
+ *   * Both of the old options fail silently. Defaulting to live means a
+ *     forgotten secret in a new environment — a staging project, a fork, a
+ *     restored backup — bills real cards. Defaulting to test means a
+ *     production deployment stops taking money and says nothing. Silence was
+ *     the actual defect, not the direction of the guess.
+ *
+ * So an absent STRIPE_MODE is now a refusal, not a guess. That is the same
+ * posture the rest of this project's server code already takes toward a
+ * missing secret: ai-rota-assistant returns 503 naming the secret it needs,
+ * and send-notification skips the email channel rather than pretending.
+ *
+ * An unrecognised value stays an error for the same reason it always was.
  */
 export function getStripeMode(): StripeMode {
   const raw = Deno.env.get('STRIPE_MODE')?.trim().toLowerCase();
-  if (!raw) return 'live';
+  if (!raw) {
+    throw new Error(
+      'STRIPE_MODE is not set. Set it to "test" or "live" — it is deliberately not ' +
+        'defaulted, because guessing either way fails silently.',
+    );
+  }
   if (raw === 'test' || raw === 'live') return raw;
   throw new Error(`STRIPE_MODE must be "test" or "live", got "${raw}"`);
 }

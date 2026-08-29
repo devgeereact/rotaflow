@@ -14,7 +14,11 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getStripeClient, getStripeMode } from '../_shared/stripe.ts';
+import {
+  getStripeClient,
+  getStripeMode,
+  stripeModeIsConfigured,
+} from '../_shared/stripe.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -77,6 +81,17 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(
         { error: 'Only the organisation owner can manage billing' },
         403,
+      );
+    }
+
+    if (!stripeModeIsConfigured()) {
+      return jsonResponse(
+        {
+          error:
+            'Billing is not configured on this deployment: the STRIPE_MODE secret is not set. ' +
+            'Set it to "test" or "live" on the Supabase project.',
+        },
+        503,
       );
     }
 
