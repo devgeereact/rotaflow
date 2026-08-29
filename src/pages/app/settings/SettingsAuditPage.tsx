@@ -8,12 +8,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { formatAuditAction } from '@/lib/auditActions';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
-
-/** Actions the system records today. Anything else renders as its raw key. */
-const ACTION_LABELS: Record<string, string> = {
-  anonymize_staff_member: 'Staff record anonymised',
-};
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString('en-GB', {
@@ -130,9 +126,7 @@ export function SettingsAuditPage(): JSX.Element {
                       {formatTimestamp(entry.created_at)}
                     </td>
                     <td className="py-3 pr-4">
-                      <Badge tone="info">
-                        {ACTION_LABELS[entry.action] ?? entry.action}
-                      </Badge>
+                      <Badge tone="info">{formatAuditAction(entry.action)}</Badge>
                     </td>
                     <td className="py-3 pr-4 text-content dark:text-content-dark">
                       {entry.actorName ?? (

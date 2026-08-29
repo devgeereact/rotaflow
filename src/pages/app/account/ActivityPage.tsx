@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { History } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
+import { formatAuditAction } from '@/lib/auditActions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { listMyAuditLogs, type AuditLogEntry } from '@/services/auditService';
@@ -95,7 +96,7 @@ export function ActivityPage(): JSX.Element {
               <li key={entry.id} className="flex items-start justify-between gap-4 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-content dark:text-content-dark">
-                    {entry.action}
+                    {formatAuditAction(entry.action)}
                   </p>
                   {entry.entity_type && (
                     <p className="mt-0.5 text-xs text-content-muted dark:text-content-muted-dark">

@@ -59,9 +59,9 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 
 | Status                | Count | Δ since 08-29 |
 | --------------------- | ----- | ------------- |
-| 🟢 Complete           | 34    | +10           |
+| 🟢 Complete           | 36    | +12           |
 | 🟡 Partial            | 20    | +2            |
-| 🟠 Defective          | 7     | −7            |
+| 🟠 Defective          | 5     | −9            |
 | 🔵 Hardening required | 9     | —             |
 | ⚪ Surface only       | 7     | —             |
 | 🔴 Missing            | 19    | −3            |
@@ -264,10 +264,12 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0029_retention_enforcement.sql`
 - [x] CAP-055 🟢 Audit trail — severity, scope, visibility, actor snapshot, immutability trigger
       `supabase/migrations/0016_audit_events.sql`
-- [ ] CAP-056 🟠 Audit labelling — ~30 actions are written; the screen holds one label, so most render raw
-      `src/pages/app/settings/SettingsAuditPage.tsx` · BUG-054 · P2
-- [ ] CAP-057 🟠 Own-activity visibility — `/app/account/activity` is empty for anyone but an owner
-      `supabase/migrations/0016_audit_events.sql` · BUG-055 · P2
+- [x] CAP-056 🟢 Audit labelling — every action the system writes has a name, with a readable fallback
+      `src/lib/auditActions.ts` · BUG-054 closed #177 · 5 tests
+- [x] CAP-057 🟢 Audit visibility — `visibility='both'` is readable by the tenant it concerns
+      `supabase/migrations/0071_audit_visibility_both_readable.sql` · BUG-055 closed #177 · 7 pgTAP assertions
+- [ ] CAP-057a 🟡 Own-activity is thin — 291 of 331 org rows carry no `actor_user_id`, so the screen stays sparse
+      `supabase/migrations/0016_audit_events.sql` · BUG-063 · P2
 - [ ] CAP-058 🔴 Consent capture — `docs/PRD.md` claims it; nothing exists
       `docs/PRD.md` · P3
 - [ ] CAP-059 🔴 DPA, sub-processor list, AI transparency notice, security disclosure
