@@ -16,10 +16,11 @@ and only the built artifacts are shipped.
 > product. It had leaked into `VITE_APP_URL` (the auth redirect target), the VAPID
 > subject and the SMTP identities.
 >
-> **`rota.gakinz.com` was retired 2026-08-29** — docroot archived, cPanel subdomain
-> removed, all 16 `rota.*` records deleted from the `gakinz.com` zone. It should not
-> appear in any new config. It carried SPF and DKIM but **no MX**, which is why mail
-> addressed to it was undeliverable; `rotaflow.space` has the full record set.
+> **The previous host — a subdomain of a personal domain — was retired 2026-08-29:**
+> docroot and mailbox archived to `~/private_backups/docroots/`, mail account deleted,
+> and all 15 of its DNS records removed from the parent zone. It should not appear in
+> any config. It carried SPF and DKIM but **no MX**, which is why mail addressed to it
+> was undeliverable; `rotaflow.space` has the full record set.
 >
 > **DNS/TLS:** `A @` and `CNAME www` → `185.61.152.45`, both **proxied (orange
 > cloud)**. The origin holds Cloudflare _Origin_ certs that browsers reject directly,

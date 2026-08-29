@@ -116,8 +116,8 @@ npm run preview    # smoke-test the production bundle
 The server has **no Node** — build locally, ship only the artifacts.
 
 **Target: `https://rotaflow.space`**, its own docroot at `~/rotaflow.space/` on the
-same cPanel account. (RotaFlow ran on `rota.gakinz.com` until 2026-08-29; that
-subdomain and its DNS are gone.)
+same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
+2026-08-29; that subdomain, its docroot and its DNS have all been removed.)
 
 1. Run `npm run build` (emits `./dist`).
 2. Upload **everything inside `dist/`** plus the repo-root **`.htaccess`** into

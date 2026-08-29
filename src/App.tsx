@@ -420,7 +420,7 @@ export function App(): JSX.Element {
                     its reference PNG's exact numbers. See docs/LOOP.md.
 
                     They shipped to production unguarded until 2026-07-31: all
-                    seven answered 200 unauthenticated on rota.gakinz.com, so
+                    seven answered 200 unauthenticated in production, so
                     anyone who guessed a URL got a page of invented staff names
                     and metrics with no branding and no way back into the app.
                     Every preview page and its mock dataset was also carried in

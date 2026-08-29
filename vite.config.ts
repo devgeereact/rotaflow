@@ -195,7 +195,7 @@ export default defineConfig({
     // trace, but the `//# sourceMappingURL=` comment is left out of the bundle.
     //
     // With `true`, every shipped .js pointed at its .map and the production host
-    // served them: https://rota.gakinz.com/assets/index-*.js.map returned 200 and
+    // served them: the production host answered /assets/index-*.js.map with 200 and
     // handed out the app's complete original TypeScript. That is not a secret leak
     // — VITE_* values are inlined into the bundle regardless, and the anon key is
     // public by design — but it does publish the exact shape of every Supabase

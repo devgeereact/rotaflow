@@ -67,10 +67,10 @@ export const PRIMARY_CTA = 'Join the beta';
  * On `rotaflow.space` as of 2026-08-29, the product's own domain. Two earlier
  * addresses failed in ways worth not repeating:
  *
- *   - `info@rota.gakinz.com` (until 2026-08-13) was undeliverable INBOUND.
- *     The subdomain carries SPF and DKIM but has no MX at all, so it could
- *     sign outbound mail and silently drop every reply. Note the failure was
- *     the missing MX specifically, not "no mail records" — the distinction
+ *   - An address on the old subdomain (until 2026-08-13) was undeliverable
+ *     INBOUND. That subdomain carried SPF and DKIM but had no MX at all, so it
+ *     could sign outbound mail and silently drop every reply. Note the failure
+ *     was the missing MX specifically, not "no mail records" — the distinction
  *     matters when diagnosing the next one.
  *   - `info@gakinz.com` (2026-08-13 to 2026-08-29) delivered correctly, but
  *     it is the operator's own address, not the product's.
