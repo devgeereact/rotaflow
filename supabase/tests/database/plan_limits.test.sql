@@ -128,15 +128,21 @@ select lives_ok(
   'and so is its location limit'
 );
 
--- 6: an unrecognised plan code fails open, not shut.
-insert into public.organisations (id, name, slug, created_by, plan) values
-  ('eeeeeeee-0000-0000-0000-000000000003', 'Org Renamed', 'org-renamed-lim',
-   'e1111111-1111-1111-1111-111111111111', 'plan_that_does_not_exist');
-
-select lives_ok(
-  $$insert into public.staff_profiles (org_id, first_name, last_name)
-    values ('eeeeeeee-0000-0000-0000-000000000003', 'Still', 'Works')$$,
-  'a plan code that resolves to no row is uncapped — a data-entry mistake must not take the product away'
+-- 6: how unreachable the fail-open branch actually is.
+--
+-- 0070 treats a plan code that resolves to no `plans` row as uncapped, so a
+-- renamed plan cannot take a tenant's product away. This pins why that branch
+-- is defensive rather than routine: `organisations.plan` carries a CHECK
+-- constraint, so the column cannot hold an unknown code in the first place.
+-- The branch is reachable only if a `plans` ROW is deleted out from under an
+-- organisation still referencing its code.
+select throws_ok(
+  $$insert into public.organisations (id, name, slug, created_by, plan)
+    values ('eeeeeeee-0000-0000-0000-000000000003', 'Org Renamed', 'org-renamed-lim',
+            'e1111111-1111-1111-1111-111111111111', 'plan_that_does_not_exist')$$,
+  '23514',
+  null,
+  'the plan column is constrained to known codes, so 0070''s uncapped fallback is a guard against a deleted plans row, not a typo'
 );
 
 select * from finish();

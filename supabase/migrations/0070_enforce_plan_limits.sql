@@ -32,7 +32,10 @@
 -- NULL MEANS UNCAPPED, and is the Enterprise tier's whole point. A plan
 -- code that does not resolve to a row is also uncapped: refusing writes
 -- because a plan was renamed would take a tenant's product away over a
--- data-entry mistake.
+-- data-entry mistake. That branch is defensive rather than routine —
+-- `organisations.plan` carries a CHECK constraint, so the column cannot
+-- hold an unknown code, and the only way to reach it is deleting a `plans`
+-- row out from under an organisation still on it.
 --
 -- EXISTING TENANTS ARE NOT BROKEN. These are BEFORE INSERT triggers only.
 -- An organisation already over its limit keeps every row it has; it simply
