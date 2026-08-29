@@ -278,7 +278,7 @@ platform-admin session.
 ## Marketing copy. The standing rule
 
 RotaFlow is **pre-launch and has no customers**, and `/` is live at
-rota.gakinz.com where real prospective buyers read it. So the public site carries
+rotaflow.space where real prospective buyers read it. So the public site carries
 no invented traction, no testimonials and no customer logos.
 
 `src/lib/marketing.ts` holds every word of copy and states the rule in full.

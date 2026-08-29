@@ -2,7 +2,7 @@
 
 **Auditor:** rotaflow-qa-auditor (autonomous agent)
 **Date:** 2026-08-14
-**Target:** `http://localhost:5042` (dev server, live-wired to the real `rotaflow` Supabase project, ref `vwqqbdvlskngrqrejzxi`, region `eu-west-1`) — **not production** (`rota.gakinz.com`)
+**Target:** `http://localhost:5042` (dev server, live-wired to the real `rotaflow` Supabase project, ref `vwqqbdvlskngrqrejzxi`, region `eu-west-1`) — **not production**
 **Methodology:** `docs/Working-Agent.md`, followed in full
 **QA test identity used:**
 - Organisation name attempted: `QA RotaFlow Test Organisation 20260814-141047`
@@ -93,7 +93,7 @@ No P1s were *found*, but that is largely because BUG-001 prevented the entire su
 
 - **Area:** Onboarding / Organisation service (`src/services/orgService.ts`, `src/pages/OnboardingPage.tsx`)
 - **Feature:** Step 1 of onboarding — "Create your organisation"
-- **Environment:** `localhost:5042` dev server against live Supabase project `vwqqbdvlskngrqrejzxi` (same project the audit was told to treat as authoritative; this is a database-level RLS defect, not a dev-only artifact — it will reproduce identically on `rota.gakinz.com`)
+- **Environment:** `localhost:5042` dev server against live Supabase project `vwqqbdvlskngrqrejzxi` (same project the audit was told to treat as authoritative; this is a database-level RLS defect, not a dev-only artifact — it will reproduce identically in production)
 - **Role:** Any newly-registered, email-confirmed user (Organisation Owner-to-be)
 - **Preconditions:** Fresh account, no existing organisation
 - **Steps to reproduce:**
@@ -122,7 +122,7 @@ No P1s were *found*, but that is largely because BUG-001 prevented the entire su
   - Duplicate/rapid-click handling: the **Continue** button correctly shows "Creating account…"/disables during the sign-up submit; the onboarding Continue button was not caught mid-flight for a true double-click race, but repeated sequential clicks each independently fail the same way — no duplicate/partial organisation rows were ever created (confirmed via DB).
 - **Frequency/reproducibility:** 100%, every attempt, every account.
 - **Likely cause:** `supabase/migrations/0031_platform_metadata_reads.sql`, lines ~37–45, dropped the `created_by = auth.uid() and not exists (select 1 from memberships where org_id = id)` clause that `0005_narrow_organisations_select_rls.sql` had established as the correct, safe bootstrap fix.
-- **Impact:** Total. No new customer, on `rota.gakinz.com` or anywhere else this schema is deployed, can create an organisation. This is the single most important finding in this audit — it blocks 100% of the product's value proposition for any new signup.
+- **Impact:** Total. No new customer, in production or anywhere else this schema is deployed, can create an organisation. This is the single most important finding in this audit — it blocks 100% of the product's value proposition for any new signup.
 - **Recommended fix:** Restore the bootstrap clause in the current policy definition, e.g.:
   ```sql
   drop policy if exists organisations_select on public.organisations;
