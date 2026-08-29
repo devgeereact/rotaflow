@@ -78,6 +78,19 @@ success for writes that never reached Postgres, an unset `STRIPE_MODE` no longer
 cards, and the notification path now honours the preferences it collects and can actually
 display a push.
 
+**One step outstanding, 2026-08-29.** `0069` is applied, `pg_net` 0.20.4 is installed, the
+cron job `rotaflow-notification-outbox` is scheduled, and two of its three Vault secrets are
+provisioned (`send_notification_url`, `supabase_anon_key` — neither is a credential; the anon
+key is already inlined into the browser bundle).
+
+**`notification_function_secret` is not set**, and cannot be provisioned from here:
+`supabase secrets list` returns hashes, not values, so the running secret is unreadable by
+anyone who did not keep a copy. Until it exists the drain raises a warning and returns 0 each
+minute — the queue fills, nothing is lost, and nothing is delivered. Deliberately visible
+rather than silent. To finish it, either insert the existing value or rotate to a new one on
+both sides (`supabase secrets set` and `vault.create_secret`), never pasting it into a
+transcript.
+
 **Deployed 2026-08-29.** `supabase/functions/` does not deploy on merge, so this is a separate
 manual step and worth recording when it happens: `send-notification` v19, `send-invite` v1,
 `create-checkout-session` v11 and `create-portal-session` v11 are live, and all three still
@@ -163,6 +176,7 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 - [x] CAP-020 🟢 Notification dispatch — a rota publish enqueues its own notification in the same transaction; pg_cron drains it
       `supabase/migrations/0069_notification_outbox.sql` · BUG-047 #166, GAP-026 #174 · 10 pgTAP assertions
+      ⚠️ **Queue fills but does not drain yet** — `notification_function_secret` is missing from `vault`; see §2
 - [ ] CAP-020a 🟡 Leave, swap and announcement dispatch — still browser-initiated; only the rota publish moved server-side
       `src/hooks/useInngestDispatch.ts` · queues and retries since #166 · P2
 - [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
