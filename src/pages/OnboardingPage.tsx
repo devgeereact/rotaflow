@@ -26,7 +26,7 @@ import {
   updateOrganisation,
 } from '@/services/orgService';
 import { createLocation } from '@/services/locationService';
-import { createInvite } from '@/services/inviteService';
+import { createInvite, sendInviteEmail } from '@/services/inviteService';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -536,6 +536,10 @@ export function OnboardingPage(): JSX.Element {
         staged.map(async (invite): Promise<StagedInvite> => {
           try {
             const created = await createInvite(orgId, invite.email, invite.role);
+            // Emailing is best effort on top of a real invite: a mail server
+            // being down must not lose the invitation. The link is still shown
+            // for every row, so the owner can pass it on either way.
+            await sendInviteEmail(orgId, created);
             return { ...invite, url: created.acceptUrl };
           } catch (err) {
             reportError(err, { area: 'onboarding:invite' });
@@ -553,7 +557,7 @@ export function OnboardingPage(): JSX.Element {
       if (failed > 0) {
         showError(`${failed} invitation${failed === 1 ? '' : 's'} could not be created.`);
       } else {
-        showSuccess('Invitations created. Copy each link to send it.');
+        showSuccess('Invitations sent. Each link is shown below as a fallback.');
       }
     } finally {
       setSubmitting(false);

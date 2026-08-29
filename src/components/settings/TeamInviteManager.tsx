@@ -4,7 +4,12 @@ import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
-import { createInvite, listPendingInvites, revokeInvite } from '@/services/inviteService';
+import {
+  createInvite,
+  listPendingInvites,
+  revokeInvite,
+  sendInviteEmail,
+} from '@/services/inviteService';
 import { reportError } from '@/lib/sentry';
 import { isValidEmail } from '@/lib/email';
 import { Button } from '@/components/ui/Button';
@@ -36,8 +41,8 @@ function formatExpiry(iso: string): string {
 }
 
 /**
- * Invitation management: create an invite, copy its one-time link, revoke a
- * pending one.
+ * Invitation management: create an invite, email its one-time link, copy that
+ * link as a fallback, revoke a pending one.
  *
  * This was `/app/team`, a top-level sidebar item. The designed sidebar has no
  * Team entry, and what this screen actually does. Decide who may join the
@@ -106,12 +111,27 @@ export function TeamInviteManager(): JSX.Element {
     setFormError(null);
     try {
       const created = await createInvite(orgId, email.trim(), role);
-      setLastLink({ email: email.trim(), url: created.acceptUrl });
+      const invitedEmail = email.trim();
+      setLastLink({ email: invitedEmail, url: created.acceptUrl });
       setEmail('');
       setRole('staff');
       setModalOpen(false);
       setReloadKey((k) => k + 1);
-      showSuccess('Invitation created. Copy the link and send it to them.');
+
+      // The invite already exists and the link is on screen, so emailing is a
+      // best effort on top — never a reason to fail the invitation. The link
+      // stays visible either way, because the manager is the fallback when no
+      // mailbox is configured or the send is refused.
+      const delivery = await sendInviteEmail(orgId, created);
+      if (delivery.sent) {
+        showSuccess(`Invitation emailed to ${invitedEmail}.`);
+      } else {
+        showSuccess('Invitation created.');
+        showError(
+          delivery.reason ??
+            'The invite could not be emailed. Copy the link below and send it to them.',
+        );
+      }
     } catch (err) {
       reportError(err, { area: 'team:create-invite' });
       // The database raises specific messages (already a member, bad address,
@@ -124,7 +144,7 @@ export function TeamInviteManager(): JSX.Element {
     } finally {
       setSubmitting(false);
     }
-  }, [orgId, email, role, showSuccess]);
+  }, [orgId, email, role, showError, showSuccess]);
 
   const handleRevoke = useCallback(
     async (invite: Invite): Promise<void> => {
@@ -186,7 +206,8 @@ export function TeamInviteManager(): JSX.Element {
             Invitation link for {lastLink.email}
           </h2>
           <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
-            Send this to them. It is shown once. RotaFlow stores only a hash of the token,
+            RotaFlow emails this link automatically; the copy here is your fallback if the
+            email does not arrive. It is shown once — only a hash of the token is stored,
             so it cannot be retrieved again. Revoke and reissue if it is lost.
           </p>
           <div className="flex flex-wrap items-center gap-2">
