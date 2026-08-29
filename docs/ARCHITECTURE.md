@@ -190,8 +190,12 @@ RotaBuilderPage (manager, org-scoped)
   → useInngestDispatch().send('rota/published', { orgId, rotaId })
       → POST https://inn.gs/e/<VITE_INNGEST_EVENT_KEY>   // write-only event key
       → Inngest invokes a Supabase Edge Function which:
-          • inserts notifications rows (channel: push/email)
+          • reads the org's notification matrix and each recipient's own
+            switch, and drops anyone who has opted out       // BUG-048
+          • inserts notifications rows (unless the org has muted in-app)
           • sends Web Push (VAPID) + email via SMTP        // secrets stay server-side
+          • the push is displayed by public/push-sw.js, imported into the
+            generated service worker via workbox.importScripts // BUG-050
           • (sms channel reserved, not delivered in V1)
 
 Offline example (staff clock-in with no signal)

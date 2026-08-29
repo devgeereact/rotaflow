@@ -46,6 +46,19 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
  * The three channels here are the three the product can actually deliver on:
  * an in-app `notifications` row, email via the org's SMTP settings, and web
  * push via the VAPID pair that has been verified as a genuine keypair.
+ *
+ * ## These toggles are read at send time (since 2026-08-29)
+ *
+ * Worth stating because for a while they were not. `send-notification` now
+ * reads this matrix out of `organisations.settings.notification_defaults` and
+ * narrows the channels it sends on; switching the in-app column off genuinely
+ * skips the `notifications` row rather than writing one anyway. Each person's
+ * own switch (`app_settings.notifications_enabled`, My Profile → Preferences)
+ * removes them from the send entirely and wins over anything set here.
+ *
+ * Defaults are permissive on purpose: a malformed settings blob reads as
+ * all-channels-on, because muting a rota publication over a bad jsonb shape
+ * would be a worse failure than sending it.
  */
 export function SettingsNotificationsPage(): JSX.Element {
   const { orgId, role, refresh } = useOrg();

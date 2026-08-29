@@ -100,6 +100,13 @@ export default defineConfig({
       },
 
       workbox: {
+        // Web Push handlers. `generateSW` writes the whole service worker and
+        // takes no inline code, so `importScripts` is the supported seam for
+        // adding a `push` listener. Without one the browser silently discards
+        // every push the VAPID keypair signs — no error, nothing for the
+        // sender to notice, and no staff member ever sees a notification.
+        // See public/push-sw.js.
+        importScripts: ['/push-sw.js'],
         // Precache the shell so the SPA boots with no network.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         // SPA navigations resolve to the precached index.html.
