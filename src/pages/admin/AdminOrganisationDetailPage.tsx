@@ -12,7 +12,7 @@ import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
-import { DEMO_ORG_PROFILE, DEMO_ORG_STORAGE } from '@/lib/adminOverviewDemo';
+import { HEALTH_LABEL, healthBand } from '@/lib/tenantHealth';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { SuspendOrgModal } from '@/components/admin/SuspendOrgModal';
 import {
@@ -101,6 +101,16 @@ const STATUS_TONE = {
   suspended: 'warning',
   archived: 'neutral',
 } as const;
+
+const HEALTH_TONE = {
+  healthy: 'success',
+  attention: 'warning',
+  at_risk: 'danger',
+  suspended: 'neutral',
+} as const;
+
+/** What an unset column says. Never a plausible-looking guess. */
+const notRecorded = 'Not available';
 
 interface Detail {
   organisation: Organisation;
@@ -440,6 +450,10 @@ export function AdminOrganisationDetailPage(): JSX.Element {
 
   const { organisation: org } = detail;
   const status = (org.status as OrganisationStatus) ?? 'active';
+  // The same function the Overview's health meter and the organisations
+  // table's "At risk" tile call, so one tenant cannot be healthy on one
+  // screen and at risk on another.
+  const band = healthBand(org, detail.subscription?.status, new Date());
   // The tenant's own owner, not a platform administrator. This is who a
   // support conversation actually starts with.
   const owner = detail.members.find((m) => m.role === 'owner') ?? null;
@@ -554,11 +568,11 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                 value={detail.usage.shiftsThisMonth.toLocaleString('en-GB')}
                 hint="This calendar month"
               />
-              <StatTile
-                label="Storage"
-                value={DEMO_ORG_STORAGE}
-                hint={<span className="text-warning">Placeholder</span>}
-              />
+              {/* A "Storage: 14.2 GB" tile stood here. Nothing measures a
+                  tenant's storage — documents live in ImageKit and only their
+                  URLs are recorded — so the figure was invented. An admin
+                  reading it would have been sizing a plan against a number
+                  with no source. (BUG-026.) */}
               <StatTile
                 label="MRR"
                 value={orgMrrPence === null ? '—' : formatMoney(orgMrrPence)}
@@ -586,17 +600,27 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                   <Row label="Created">
                     {new Date(org.created_at).toLocaleDateString('en-GB')}
                   </Row>
-                  {/* Everything below is placeholder, `organisations` records
-                      none of it. Chipped rather than footnoted, so a reader
-                      scanning the column cannot mistake one for the other. */}
-                  {DEMO_ORG_PROFILE.map((row) => (
-                    <Row key={row.label} label={row.label}>
-                      <span className="flex flex-wrap items-center gap-2">
-                        {row.value}
-                        <Badge tone="warning">Placeholder</Badge>
-                      </span>
-                    </Row>
-                  ))}
+                  {/* These five were invented constants until BUG-026 — an
+                      industry, a country, a timezone, a health grade and a
+                      last-activity string, identical for every tenant and
+                      chipped "Placeholder". Four are real columns on
+                      `organisations`; the fifth is computed by the same
+                      `healthBand` the Overview's health meter reads, so this
+                      panel and that meter can no longer disagree about a
+                      tenant. */}
+                  <Row label="Industry">{org.industry ?? notRecorded}</Row>
+                  <Row label="Country">{org.country || notRecorded}</Row>
+                  <Row label="Timezone">{org.timezone || notRecorded}</Row>
+                  <Row label="Account health">
+                    <Badge tone={HEALTH_TONE[band]} dot>
+                      {HEALTH_LABEL[band]}
+                    </Badge>
+                  </Row>
+                  <Row label="Last activity">
+                    {org.last_activity_at
+                      ? new Date(org.last_activity_at).toLocaleString('en-GB')
+                      : 'Never'}
+                  </Row>
                 </dl>
               </Panel>
 

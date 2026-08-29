@@ -8,7 +8,8 @@
 // unaffected either way — CORS is a browser-only check, and every function
 // using this still requires its own valid auth independently.
 const ALLOWED_ORIGINS = new Set<string>([
-  'https://rota.gakinz.com',
+  'https://rotaflow.space',
+  'https://www.rotaflow.space',
   // Per-project dev ports (~/.claude/CLAUDE.md "Dev-server ports"): 5042 is rotaflow's assigned port,
   // 5142/5842 cover a second worktree and a preview run on the Supabase Auth
   // redirect allowlist.

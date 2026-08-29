@@ -13,7 +13,7 @@ import { env } from '@/lib/env';
  * and every real `.env` copies it.
  *
  * The effect on localhost was that sign-up, sign-in, magic link, Google, GitHub
- * and password reset all pointed back at `https://rota.gakinz.com`. Nothing
+ * and password reset all pointed back at the production origin. Nothing
  * errored; the session simply landed on production and the dev server was never
  * told anything happened, so all six looked broken in the same way.
  *

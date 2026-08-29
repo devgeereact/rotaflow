@@ -59,6 +59,14 @@ interface RotaAssistantPanelProps {
    * on the manager's behalf would silently roster people at the wrong site.
    */
   applyTarget: { locationId: string; rotaId: string } | null;
+  /**
+   * Why applying is unavailable, when it is. Null means the only reason is
+   * the one applyTarget already implies (no single location chosen). A
+   * published week supplies its own reason: the shifts cannot be written at
+   * all until it is amended, and saying "pick a location" there would send
+   * the manager off to fix something that is not the problem.
+   */
+  applyBlockedReason?: string | null;
   onPreview: (suggestions: AiShiftSuggestion[]) => void;
   onApplied: () => void;
   onAssign: (shiftId: string, staffProfileId: string) => Promise<void>;
@@ -109,6 +117,7 @@ export function RotaAssistantPanel({
   weekEnd,
   timezone,
   applyTarget,
+  applyBlockedReason = null,
   onPreview,
   onApplied,
   onAssign,
@@ -594,8 +603,8 @@ export function RotaAssistantPanel({
                   </Button>
                 ) : (
                   <p className="text-sm text-warning-ink">
-                    Select a single location in the filters above to apply these, a shift
-                    has to be written into one site&rsquo;s rota.
+                    {applyBlockedReason ??
+                      'Select a single location in the filters above to apply these, a shift has to be written into one site’s rota.'}
                   </p>
                 )}
               </>

@@ -84,7 +84,7 @@ export function SettingsBillingPage(): JSX.Element {
         setSubscription(sub);
         setStaffCount(staff?.length ?? null);
         setSiteCount(sites?.length ?? null);
-        setBillingContact(org ? orgProfileFields(org.settings).contactEmail : '');
+        setBillingContact(org ? orgProfileFields(org.settings, org).contactEmail : '');
         setPlans(planList);
       } catch (err) {
         if (!active) return;

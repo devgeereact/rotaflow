@@ -1,10 +1,45 @@
 # Project Memory — RotaFlow
 
-_Last updated: 2026-07-29_
+_Last updated: 2026-08-29_
+
+## Domain move to rotaflow.space (2026-08-29)
+
+**Canonical URL is now `https://rotaflow.space`**, its own registered domain and
+its own cPanel docroot `~/rotaflow.space/`. The previous host — a subdomain of
+the operator's personal domain — was retired in the same change: docroot and
+mailbox archived to `~/private_backups/docroots/`, the mail account deleted, and
+all 15 of its DNS records removed from the parent Cloudflare zone. It was a
+subdomain of a signed zone rather than a zone of its own, so there was no DS
+record to unwind at the registrar.
+
+**Why it was worth doing.** The old host carried SPF and DKIM but **no MX** — it
+could sign outbound mail and silently drop every reply. That is what made its
+contact address undeliverable, and it is why the product had no way to send an
+invitation email. `rotaflow.space` was built to the full 19-record
+standard (MX ×3, exactly one SPF, one DKIM, one DMARC), so product mail is now
+possible for the first time. Note the precise failure: not "no mail records",
+which is what earlier notes in this repo claimed — the missing record was MX
+specifically.
+
+**Cutover was hard, with no redirect period.** Production held 3 organisations,
+7 accounts (all internal), 1 staff profile, 1 shift, **0 live invites and 0
+clock events**, so there were no pending invite links to strand and nothing
+sitting in an origin-scoped offline outbox. The elaborate migration sequence
+this would otherwise need — sync window, service-worker tombstone, long 301 —
+was unnecessary and deliberately skipped. Re-derive that from live counts before
+assuming the same is true next time.
+
+**Also fixed in the same pass:** the Supabase Auth `uri_allow_list` on project
+`vwqqbdvlskngrqrejzxi` had been overwritten with **kokolett-beauty's** URLs
+(`kokolettbeauty.com`, `localhost:5082`) and contained no RotaFlow origin at
+all. Every `redirectTo` the app sends carries a path — `/reset-password`,
+`/app/dashboard`, the invite token — so anything not matching fell back to Site
+URL. Rebuilt with the correct RotaFlow set.
 
 ## Domain & auth configuration (2026-07-29)
-**Canonical URL: `https://rota.gakinz.com`** — a subdomain of the `gakinz.com`
-cPanel account, docroot `~/rota.gakinz.com/`, origin `185.61.152.45`.
+**Canonical URL at the time: a subdomain of the operator's personal domain**,
+docroot alongside it on the same cPanel account, origin `185.61.152.45`.
+(Superseded 2026-08-29 — see the entry above.)
 
 `rotaflow.app` — the scaffold placeholder — **is not ours.** It resolves to
 Vercel and serves an unrelated, already-shipped shift-scheduling product
@@ -13,8 +48,8 @@ Vercel and serves an unrelated, already-shipped shift-scheduling product
 were being asked to return users to a third party's website. Replaced everywhere:
 `.env`, `.env.example`, `forge.config.json`, `docs/DEPLOYMENT.md`, `README.md`,
 and the `ai-rota-assistant` Edge Function's `HTTP-Referer`. The `VAPID_SUBJECT` /
-`SMTP_USER` / `SMTP_FROM` identities moved to `@gakinz.com`, since mailboxes at a
-domain we don't own could never have worked.
+`SMTP_USER` / `SMTP_FROM` identities moved to a domain the operator controlled,
+since mailboxes at a domain we don't own could never have worked.
 
 **Still open — an existing competitor ships under the RotaFlow name in the same
 category and holds the `.app` domain.** Naming has not been revisited.
@@ -28,15 +63,15 @@ would necessarily be wrong for one provider whenever the two differ.
 **LIVE as of 2026-07-29**, with **Google sign-in confirmed working end to end**
 against the deployed site (the redirect allowlist can only be proven by a real
 token round-trip — external probing cannot settle it). Verified: DNS
-(Cloudflare-proxied, DNSSEC valid), TLS (`*.gakinz.com` wildcard), origin cert,
-cPanel subdomain vhost (docroot `~/rota.gakinz.com`), app shell, SPA deep links,
+(Cloudflare-proxied, DNSSEC valid), TLS (parent wildcard), origin cert,
+cPanel subdomain vhost, app shell, SPA deep links,
 PWA assets, HTTP→HTTPS redirect, and the security headers from `.htaccess`. The
 live bundle has the correct `VITE_APP_URL` and both OAuth providers inlined.
 
 **Two traps hit during that first deploy — both now fixed in the tooling:**
 - **cPanel's Document Root field is relative to `$HOME`.** Entering the absolute
-  path produced `/home/devgeereact/home/devgeereact/rota.gakinz.com`. Leave the
-  auto-filled value; the stray nested directory was removed.
+  path produced a doubled `/home/devgeereact/home/devgeereact/...` path. Leave
+  the auto-filled value; the stray nested directory was removed.
 - **`rsync -a` preserves local file modes.** This repo's files are `600` locally,
   so `.htaccess` landed `600`, the web server could not read it, and the site
   served a **directory listing with no SPA routing**. `cpanel-deploy` now

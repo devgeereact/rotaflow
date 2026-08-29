@@ -40,6 +40,11 @@ export interface ClockInViewProps {
   windowLabel: string;
   onPrimaryAction?: () => void;
   onSecondaryAction?: () => void;
+  /** The manual fallback, present only once the device has failed to supply a position. */
+  tertiaryActionLabel?: string;
+  onTertiaryAction?: () => void;
+  /** Replaces the pane's "your location will be recorded" footer note. */
+  locationNote?: ReactNode;
   busy?: boolean;
   /** Rendered under the clock actions. The location picker on `/app/clock`. */
   actionExtra?: ReactNode;
@@ -97,6 +102,9 @@ export function ClockInView({
   windowLabel,
   onPrimaryAction,
   onSecondaryAction,
+  tertiaryActionLabel,
+  onTertiaryAction,
+  locationNote,
   busy,
   actionExtra,
   online,
@@ -144,6 +152,9 @@ export function ClockInView({
                 windowLabel={windowLabel}
                 onPrimary={onPrimaryAction}
                 onSecondary={onSecondaryAction}
+                tertiaryLabel={tertiaryActionLabel}
+                onTertiary={onTertiaryAction}
+                locationNote={locationNote}
                 busy={busy}
               >
                 {actionExtra}

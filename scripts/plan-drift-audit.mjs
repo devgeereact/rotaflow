@@ -40,7 +40,7 @@ import { execSync } from 'node:child_process';
 const PLAN_DOC = process.env.PLAN_DOC || 'docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md';
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 const API_KEY = process.env.OPENROUTER_API_KEY;
-const APP_URL = process.env.APP_URL || 'https://rota.gakinz.com';
+const APP_URL = process.env.APP_URL || 'https://rotaflow.space';
 
 /** Fail in a way the workflow can turn into a FAILED log entry. */
 function bail(reason) {
