@@ -60,7 +60,7 @@ export function useInngestDispatch(): UseInngestDispatch {
         reportError(error, { event: name, area: 'notify:dispatch' });
         try {
           const payload: InngestEventPayload = { name, data };
-          await enqueue('notify', payload as unknown as Record<string, unknown>);
+          await enqueue('notify', payload);
           return { ok: false, queued: true };
         } catch (queueError) {
           // The outbox itself is unavailable — private browsing with IndexedDB
