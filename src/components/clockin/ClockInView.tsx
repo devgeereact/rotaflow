@@ -19,6 +19,7 @@ import type {
   ThisWeekRow,
   WeeklySummaryStat,
 } from '@/lib/clockRows';
+import { syncStatusLabel } from '@/lib/clockRows';
 
 const STAGE_LABEL: Record<ClockStage, string> = {
   ready: 'Off',
@@ -34,6 +35,18 @@ export interface ClockInViewProps {
   onViewReminder?: () => void;
 
   stage: ClockStage;
+  /**
+   * True when the most recent clock event exists only in this device's outbox.
+   * The action is real and will replay, but Postgres does not have it yet, so
+   * the Status row must not present it as a recorded fact.
+   */
+  latestIsPending?: boolean;
+  /**
+   * How many writes are waiting in the outbox. Drives the Sync row, which used
+   * to read `navigator.onLine` alone and so printed "Synced" while a transient
+   * failure had left items queued.
+   */
+  pendingCount?: number;
   /** Ticking wall clock, pre-formatted, e.g. "08:48:37". */
   clockTime: string;
   clockDateLabel: string;
@@ -97,6 +110,8 @@ export function ClockInView({
   shift,
   onViewReminder,
   stage,
+  latestIsPending = false,
+  pendingCount = 0,
   clockTime,
   clockDateLabel,
   windowLabel,
@@ -119,6 +134,8 @@ export function ClockInView({
   footer,
   notices,
 }: ClockInViewProps): JSX.Element {
+  const syncLabel = syncStatusLabel(online, pendingCount);
+
   return (
     <>
       <WorkspaceHeader
@@ -193,20 +210,25 @@ export function ClockInView({
                 <dt className="text-content-muted dark:text-content-muted-dark">
                   Status
                 </dt>
-                <dd className="font-medium text-content dark:text-content-dark">
+                <dd className="text-right font-medium text-content dark:text-content-dark">
                   {STAGE_LABEL[stage]}
+                  {latestIsPending ? (
+                    <span className="block text-xs font-normal text-warning-ink dark:text-warning">
+                      Saved on this device, not sent yet
+                    </span>
+                  ) : null}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-4 px-5 py-3">
                 <dt className="text-content-muted dark:text-content-muted-dark">Sync</dt>
                 <dd
                   className={
-                    online
-                      ? 'font-medium text-success'
-                      : 'font-medium text-warning dark:text-warning'
+                    pendingCount > 0 || !online
+                      ? 'font-medium text-warning-ink dark:text-warning'
+                      : 'font-medium text-success-ink dark:text-success'
                   }
                 >
-                  {online ? 'Synced' : 'Offline, will sync'}
+                  {syncLabel}
                 </dd>
               </div>
             </dl>

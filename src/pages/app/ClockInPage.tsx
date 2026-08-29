@@ -122,7 +122,7 @@ export function ClockInPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const geo = useGeolocation();
-  const { enqueue, deadLettered, discard } = useSyncQueue();
+  const { enqueue, deadLettered, discard, pending } = useSyncQueue();
   const { showError, showSuccess } = useToast();
   const navigate = useNavigate();
 
@@ -516,6 +516,8 @@ export function ClockInPage(): JSX.Element {
         }}
         shift={view.currentShift}
         stage={stage}
+        latestIsPending={data.latest?.synced === false}
+        pendingCount={pending.length}
         clockTime={format(now, 'HH:mm:ss')}
         clockDateLabel={format(now, 'EEEE, d MMM yyyy')}
         windowLabel={view.window.label}

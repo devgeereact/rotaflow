@@ -16,6 +16,7 @@ import {
   scheduledMinutes,
   segmentsInRange,
   shiftCountdownLabel,
+  syncStatusLabel,
 } from '@/lib/clockRows';
 import type { ClockLookups } from '@/lib/clockRows';
 import type { ClockEvent, Shift } from '@/types';
@@ -467,5 +468,34 @@ describe('manualFallbackFor', () => {
   it('adds nothing before a shift, where manual clock-in is already the second action', () => {
     expect(manualFallbackFor('ready', 'denied')).toBeNull();
     expect(manualFallbackFor('done', 'denied')).toBeNull();
+  });
+});
+
+describe('syncStatusLabel', () => {
+  it('says Synced only when the queue is actually empty', () => {
+    expect(syncStatusLabel(true, 0)).toBe('Synced');
+  });
+
+  it('does NOT say Synced while writes are still queued on a connected device', () => {
+    // The defect this closes: the row read `navigator.onLine` alone, so a
+    // transient failure left entries in the outbox while the screen claimed
+    // everything had reached the server.
+    expect(syncStatusLabel(true, 1)).toBe('Sending 1 entry…');
+    expect(syncStatusLabel(true, 3)).toBe('Sending 3 entries…');
+    expect(syncStatusLabel(true, 2)).not.toContain('Synced');
+  });
+
+  it('reports queue depth when offline, not just that it is offline', () => {
+    expect(syncStatusLabel(false, 0)).toBe('Offline');
+    expect(syncStatusLabel(false, 1)).toBe('Offline, 1 waiting');
+    expect(syncStatusLabel(false, 4)).toBe('Offline, 4 waiting');
+  });
+
+  it('never claims a send is complete when it is not', () => {
+    for (const online of [true, false]) {
+      for (const pending of [1, 2, 10]) {
+        expect(syncStatusLabel(online, pending)).not.toBe('Synced');
+      }
+    }
   });
 });
