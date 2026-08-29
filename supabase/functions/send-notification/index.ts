@@ -45,6 +45,31 @@
 // it, treat push/email delivery as unproven. The auth path is not the whole
 // journey.
 //
+// PREFERENCES (added 2026-08-29, BUG-048)
+//
+// Two preference controls have existed in the UI since the settings screens
+// shipped, and until now NEITHER reached this function:
+//
+//   * the organisation's matrix, 5 events x 3 channels, stored in
+//     `organisations.settings.notification_defaults` and edited at
+//     /app/settings/notifications;
+//   * each person's own switch, `app_settings.notifications_enabled`, edited
+//     at /app/account/preferences.
+//
+// `channels` defaulted to ['push','email'] unconditionally, so a staff member
+// who had switched notifications off was emailed anyway. That is a consent
+// problem, not a cosmetic one — the product asked, recorded the answer, and
+// then ignored it.
+//
+// Both are now read here, on the send path, because this is the only place
+// that can honour them: the dispatch sites do not know the recipients'
+// preferences and the Inngest hop carries no session.
+//
+// Defaults are deliberately permissive. An absent `app_settings` row means the
+// column default (`true`), never "opted out", and an absent or malformed
+// settings blob reads as all-channels-on. Muting a rota publication because a
+// jsonb field was the wrong shape would be a worse failure than sending it.
+//
 // RECIPIENT SCOPING (added 2026-08-10, security audit)
 //
 // The shared secret proves the CALLER is this project's own Inngest function,
@@ -77,6 +102,65 @@ interface RequestBody {
   body?: string;
   /** Defaults to both. Most notifications should reach a device on whichever channel works. */
   channels?: ('push' | 'email')[];
+}
+
+/** Channel keys, matching src/lib/orgPreferences.ts's NOTIFICATION_CHANNELS. */
+type ChannelKey = 'in_app' | 'email' | 'push';
+
+/**
+ * Dispatch `type` -> the settings-screen event key it is governed by.
+ *
+ * The four values on the left are what the app's dispatch sites actually send
+ * (RotaBuilderPage, LeavePage, SwapsPage, AnnouncementsPage). The keys on the
+ * right are `NOTIFICATION_EVENTS` in src/lib/orgPreferences.ts. `shift_reminder`
+ * has a toggle but no dispatch site yet, so nothing maps to it.
+ *
+ * A type with no mapping is NOT silently dropped — it falls through to
+ * everything-allowed below, because refusing to send something an owner never
+ * had the chance to configure would be a worse failure than sending it.
+ */
+const EVENT_KEY_BY_TYPE: Record<string, string | undefined> = {
+  rota: 'rota_published',
+  leave: 'leave_updates',
+  swap: 'swap_requests',
+  announcement: 'announcements',
+};
+
+const ALL_CHANNELS_ON: Record<ChannelKey, boolean> = {
+  in_app: true,
+  email: true,
+  push: true,
+};
+
+/**
+ * Which channels this organisation permits for this event.
+ *
+ * Mirrors `notificationMatrix()` in src/lib/orgPreferences.ts, including its
+ * default: anything absent or malformed reads as ON. An unreadable settings
+ * blob must not silently mute a rota publication.
+ */
+function resolveOrgChannels(
+  settings: unknown,
+  eventKey: string | undefined,
+): Record<ChannelKey, boolean> {
+  if (!eventKey) return { ...ALL_CHANNELS_ON };
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    return { ...ALL_CHANNELS_ON };
+  }
+  const defaults = (settings as Record<string, unknown>)['notification_defaults'];
+  if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) {
+    return { ...ALL_CHANNELS_ON };
+  }
+  const row = (defaults as Record<string, unknown>)[eventKey];
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    return { ...ALL_CHANNELS_ON };
+  }
+  const typed = row as Record<string, unknown>;
+  const resolved = { ...ALL_CHANNELS_ON };
+  for (const channel of ['in_app', 'email', 'push'] as ChannelKey[]) {
+    if (typeof typed[channel] === 'boolean') resolved[channel] = typed[channel] as boolean;
+  }
+  return resolved;
 }
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -188,7 +272,6 @@ Deno.serve(async (req: Request) => {
     if (!orgId || !userIds?.length || !type || !title) {
       return jsonResponse({ error: 'orgId, userIds, type and title are required' }, 400);
     }
-    const channels = body.channels ?? ['push', 'email'];
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -207,25 +290,76 @@ Deno.serve(async (req: Request) => {
       .in('user_id', userIds);
     if (membersError) throw membersError;
 
-    const scopedUserIds = members?.map((m) => m.user_id) ?? [];
-    const droppedCount = userIds.length - scopedUserIds.length;
-    if (scopedUserIds.length === 0) {
+    const memberUserIds = members?.map((m) => m.user_id) ?? [];
+    if (memberUserIds.length === 0) {
       return jsonResponse({ ok: true, results: { push: null, email: null }, dropped: userIds.length });
     }
 
+    // ---- Preferences. See "PREFERENCES" in the file header. ----------------
+    //
+    // Two controls exist in the UI and, until now, neither reached this
+    // function: the organisation's per-event/per-channel matrix, and each
+    // person's own on/off switch. Both were writable and read by nothing, so a
+    // staff member who opted out was emailed anyway.
+
+    const { data: org, error: orgError } = await supabase
+      .from('organisations')
+      .select('settings')
+      .eq('id', orgId)
+      .maybeSingle();
+    if (orgError) throw orgError;
+
+    const eventKey = EVENT_KEY_BY_TYPE[type];
+    const orgChannels = resolveOrgChannels(org?.settings, eventKey);
+
+    // A person who has switched notifications off gets nothing on any channel.
+    // Absent row means the column default, `true` — never treat "no row" as
+    // "opted out".
+    const { data: appSettings, error: settingsError } = await supabase
+      .from('app_settings')
+      .select('user_id, notifications_enabled')
+      .in('user_id', memberUserIds);
+    if (settingsError) throw settingsError;
+
+    const optedOut = new Set(
+      (appSettings ?? [])
+        .filter((row) => row.notifications_enabled === false)
+        .map((row) => row.user_id),
+    );
+    const scopedUserIds = memberUserIds.filter((id) => !optedOut.has(id));
+
+    const droppedCount = userIds.length - scopedUserIds.length;
+    if (scopedUserIds.length === 0) {
+      return jsonResponse({
+        ok: true,
+        results: { push: null, email: null },
+        dropped: droppedCount,
+        reason: 'every recipient has notifications switched off, or is not a member',
+      });
+    }
+
+    // The caller may narrow the channels further, but may not widen past what
+    // the organisation has allowed for this event.
+    const requested = body.channels ?? ['push', 'email'];
+    const channels = requested.filter((c) => orgChannels[c]);
+
     // Row per recipient. Read_at and delivery are per-person, so the row has
     // to be too; a single shared row could not track who has seen it.
-    const { error: insertError } = await supabase.from('notifications').insert(
-      scopedUserIds.map((userId) => ({
-        org_id: orgId,
-        user_id: userId,
-        type,
-        title,
-        body: body.body ?? null,
-        channel: 'push',
-      })),
-    );
-    if (insertError) throw insertError;
+    // Skipped entirely when the org has switched the in-app channel off for
+    // this event — that toggle has to mean something or it should not exist.
+    if (orgChannels.in_app) {
+      const { error: insertError } = await supabase.from('notifications').insert(
+        scopedUserIds.map((userId) => ({
+          org_id: orgId,
+          user_id: userId,
+          type,
+          title,
+          body: body.body ?? null,
+          channel: 'push',
+        })),
+      );
+      if (insertError) throw insertError;
+    }
 
     const results = { push: { sent: 0, expired: 0, failed: 0 }, email: { sent: 0, skipped: 0, failed: 0 } };
 
