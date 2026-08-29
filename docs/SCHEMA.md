@@ -409,6 +409,36 @@ hold `org_id … on delete set null`, and audit rows carry an `org_name`
 snapshot. The `org.deleted` event is written _before_ the delete so it survives
 the same way. Everything else org-scoped (32 cascading tables) goes.
 
+## 6c. Indexes (`0002`, then `0072`)
+
+`0002` gave every table single-column indexes on its foreign keys. Almost every
+list query in `src/services` is shaped `.eq(<scope>, …).order(<time>, desc)`, so
+those served the filter and Postgres sorted the result afterwards. `0072` adds
+the composite that covers both halves, one per query that actually issues it:
+
+| Table               | Index                                                                      | Read it serves                                                                                                                                                           |
+| ------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `rotas`             | `(org_id, location_id, period_start, period_end)`                          | `listRotasForPeriod` — the only prior cover was 0059's two **partial** unique indexes (`where status = 'draft'`), and this lookup deliberately does not filter on status |
+| `shifts`            | `(org_id, starts_at)`                                                      | `listShiftsForPeriod` — every schedule view                                                                                                                              |
+| `shifts`            | `(rota_id, starts_at)`                                                     | `listShiftsForRotas` — the builder grid                                                                                                                                  |
+| `clock_events`      | `(staff_profile_id, event_at)`                                             | one person's timesheet                                                                                                                                                   |
+| `clock_events`      | `(org_id, event_at desc)`                                                  | manager review                                                                                                                                                           |
+| `staff_profiles`    | `(org_id, first_name) where active`                                        | `listStaff`, on nearly every screen — partial, so it stays small                                                                                                         |
+| `leave_requests`    | `(org_id, created_at desc)`, `(staff_profile_id, created_at desc)`         | the manager queue and a person's own history                                                                                                                             |
+| `overtime_requests` | `(org_id, created_at desc)`, `(staff_profile_id, date desc)`               | same pair; the staff view sorts by the day worked, not the claim date                                                                                                    |
+| `shift_swaps`       | `(org_id, created_at desc)`, `(requested_by)`, `(target_staff_profile_id)` | the last two are separate rather than composite so the `requested_by OR target` lookup can take a BitmapOr                                                               |
+| `notifications`     | `(user_id, created_at desc)`                                               | the bell, polled on every page                                                                                                                                           |
+| `audit_logs`        | `(org_id, created_at desc)`                                                | 0016 indexed the actor and platform views but not the org-scoped one an owner opens                                                                                      |
+| `documents`         | `(org_id, expires_at)`                                                     | expiry reminders                                                                                                                                                         |
+
+The single-column indexes stay — they still serve lookups that do not sort.
+
+⚠️ `0072` uses a plain `CREATE INDEX`, not `CONCURRENTLY`, because the latter
+cannot run inside a transaction and the CLI wraps each migration in one. That is
+safe only because production is effectively empty. **Replaying it against a
+populated database would take a SHARE lock and block writes for the duration —
+build those by hand with `CONCURRENTLY` instead.**
+
 ## 7. Generating TypeScript types
 
 Keep `src/types/database.types.ts` in sync once the DB exists:
