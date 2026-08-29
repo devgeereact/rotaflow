@@ -28,7 +28,7 @@ create table if not exists public.platform_settings (
 
   platform_name          text not null default 'RotaFlow',
   support_email          text not null default 'support@rotaflow.app',
-  platform_url           text not null default 'https://rota.gakinz.com',
+  platform_url           text not null default 'https://rotaflow.space',
   default_timezone       text not null default 'Europe/London',
 
   -- Registration and verification are read by the sign-up screen; they are

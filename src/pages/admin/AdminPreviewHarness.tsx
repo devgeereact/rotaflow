@@ -255,7 +255,7 @@ const SMTP = [0, 1].map((orgIndex) => ({
 const PLATFORM_SETTINGS = {
   id: true,
   platform_name: 'RotaFlow',
-  platform_url: 'https://rota.gakinz.com',
+  platform_url: 'https://rotaflow.space',
   support_email: 'support@rotaflow.co.uk',
   default_timezone: 'Europe/London',
   registration_enabled: true,

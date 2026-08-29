@@ -418,9 +418,38 @@ export function OnboardingPage(): JSX.Element {
     // and told the owner their own brand-new organisation's name was taken.
     // Changing the slug to get past that created a SECOND organisation,
     // silently owned by the same person, with steps 2-4 now writing against
-    // it instead of the first. Once created, Continue is just "next step".
+    // it instead of the first.
+    //
+    // Skipping straight to step 2 stopped the duplicate, but threw the
+    // caller's edits away to do it: after Back, changing the name or
+    // subdomain advanced the wizard as if saved while issuing no request at
+    // all, leaving the organisation under a name its owner believed they had
+    // changed. So re-entry updates the existing organisation instead of
+    // either creating another one or silently discarding the edit.
     if (orgId) {
-      setStep(2);
+      setSubmitting(true);
+      setError(null);
+      try {
+        await updateOrganisation(orgId, {
+          name: createValues.name.trim(),
+          slug: createValues.slug.trim(),
+          industry: createValues.industry.trim() || null,
+        });
+        await mergeOrgSettings(orgId, { size: createValues.size });
+        await refresh();
+        setAboutValues((v) => ({ ...v, industry: createValues.industry || v.industry }));
+        setStep(2);
+      } catch (err) {
+        reportError(err, { area: 'onboarding:update-org' });
+        const conflict = (err as { code?: string } | null)?.code === '23505';
+        setError(
+          conflict
+            ? 'That organisation identifier is already taken. Try another.'
+            : 'Could not save your changes. Please try again.',
+        );
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
     setSubmitting(true);
@@ -430,7 +459,8 @@ export function OnboardingPage(): JSX.Element {
         {
           name: createValues.name.trim(),
           slug: createValues.slug.trim(),
-          settings: { industry: createValues.industry, size: createValues.size },
+          industry: createValues.industry.trim() || null,
+          settings: { size: createValues.size },
         },
         user.id,
       );
@@ -459,11 +489,17 @@ export function OnboardingPage(): JSX.Element {
       setSubmitting(true);
       setError(null);
       try {
-        await mergeOrgSettings(orgId, {
-          industry: aboutValues.industry,
-          org_type: aboutValues.orgType,
+        // industry/country/timezone are columns on `organisations` (0023),
+        // which is where the admin console reads them from. Writing them only
+        // into `settings` is what left those columns null for every tenant
+        // and had the console invent values instead (BUG-026).
+        await updateOrganisation(orgId, {
+          industry: aboutValues.industry.trim() || null,
           country: aboutValues.country,
           timezone: aboutValues.timezone,
+        });
+        await mergeOrgSettings(orgId, {
+          org_type: aboutValues.orgType,
           working_week: aboutValues.workingWeek,
         });
 
@@ -602,6 +638,7 @@ export function OnboardingPage(): JSX.Element {
           onCancel={() => void navigate('/login')}
           submitting={submitting}
           error={error}
+          existingOrgId={orgId}
         />
       )}
 

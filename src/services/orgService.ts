@@ -24,8 +24,21 @@ export function slugify(name: string): string {
  * outside that org. Backed by a SECURITY DEFINER function that returns a
  * boolean and nothing else, so it cannot be used to enumerate tenants.
  */
-export async function isSlugAvailable(slug: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc('slug_available', { p_slug: slug });
+export async function isSlugAvailable(
+  slug: string,
+  /**
+   * An organisation to ignore — the one the caller is editing. Onboarding
+   * creates the org at the end of step 1, so re-entering that step re-checks a
+   * slug the caller now owns; without this it reports their own brand-new
+   * identifier as taken. The database verifies the caller actually owns this
+   * org before honouring it (0060), so it cannot be used to probe.
+   */
+  excludeOrgId?: string | null,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('slug_available', {
+    p_slug: slug,
+    ...(excludeOrgId ? { p_exclude_org_id: excludeOrgId } : {}),
+  });
   if (error) throw error;
   return data === true;
 }
@@ -111,7 +124,13 @@ export interface CreateOrganisationInput {
   name: string;
   /** Defaults to a slugified name when omitted. */
   slug?: string;
-  /** Merged into the org's `settings` jsonb (industry, size, locale…). */
+  /**
+   * A real column (0023), not a `settings` key. It is what the admin console
+   * reads, and writing it into the jsonb instead is what left that column
+   * null for every tenant — see BUG-026.
+   */
+  industry?: string | null;
+  /** Merged into the org's `settings` jsonb (size, locale…). */
   settings?: Record<string, unknown>;
 }
 
@@ -132,6 +151,7 @@ export async function createOrganisation(
     .insert({
       name: normalised.name,
       slug: normalised.slug?.trim() || slugify(normalised.name),
+      industry: normalised.industry ?? null,
       settings: (normalised.settings ?? {}) as never,
       created_by: createdBy,
     })

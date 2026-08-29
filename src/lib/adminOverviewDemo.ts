@@ -28,12 +28,15 @@
  *   latency or another service's history, and nothing stores one. The three
  *   probes that page genuinely runs (database, auth, realtime) are real and
  *   marked as such on screen; everything else there is invented.
- * - **Organisation industry / usage / last-activity** (`demoOrgFacts`,
- *   `/admin/organisations`) — none of the three is a column, and usage would
- *   need a plan seat/shift ceiling that doesn't exist as a denominator.
- * - **Organisation detail extras** (`DEMO_ORG_PROFILE`, `DEMO_ORG_STORAGE`) —
- *   `organisations` has no industry, country, timezone, health grade or
- *   storage figure.
+ * Removed by BUG-026, and worth recording so nobody reinstates them: this
+ * file used to invent an industry, a usage percentage and a last-activity
+ * string per organisation, plus an org-detail panel of industry / country /
+ * timezone / account health / last activity and a "14.2 GB" storage figure.
+ * Industry, country, timezone and `last_activity_at` are all real columns
+ * now, account health is computed by `tenantHealth.healthBand`, and the two
+ * that measure nothing — usage percentage and storage — were deleted rather
+ * than relabelled. An administrator acts on what this console tells them, so
+ * a plausible-looking invention is worse here than an absent field.
  * - **Support-access refusal count** (`DEMO_DENIED_BY_OWNER`) — refusals are
  *   not recorded anywhere; `request_support_access` just refuses.
  *
@@ -84,66 +87,6 @@ export const DEMO_SERVICES: readonly DemoService[] = [
 ];
 
 export type DemoActivityTone = 'success' | 'info' | 'warning' | 'danger';
-
-/* ---------------------------------------------------------------------------
- * `/admin/organisations`
- * ------------------------------------------------------------------------- */
-
-/**
- * Industry, usage and last-activity per organisation.
- *
- * None of the three exists:
- *
- * - **Industry** is not a column on `organisations` and there is no taxonomy.
- * - **Usage** would need a plan with a seat or shift ceiling to be a percentage
- *   *of* something. No plan carries a limit, so there is no denominator.
- * - **Last activity** would need a per-tenant last-write timestamp. Nothing
- *   maintains one, and deriving it would mean touching every tenant-scoped
- *   table on every page load.
- *
- * Keyed by slug so a demo row follows the organisation it was invented for
- * rather than whichever happens to sort into that position.
- */
-export interface DemoOrgFacts {
-  industry: string;
-  /** Percentage of an imaginary allowance. */
-  usage: number;
-  lastActivity: string;
-}
-
-const DEMO_INDUSTRIES = [
-  'Residential care',
-  'Hospitality',
-  'Domiciliary care',
-  'Retail',
-  'Healthcare',
-  'Childcare',
-  'Logistics',
-  'Security',
-  'Facilities',
-] as const;
-
-const DEMO_LAST_ACTIVITY = [
-  '4 minutes ago',
-  '22 minutes ago',
-  '6 days ago',
-  '11 minutes ago',
-  '2 minutes ago',
-  '1 hour ago',
-  '34 days ago',
-  '48 minutes ago',
-  '3 hours ago',
-] as const;
-
-/** Stable per-organisation placeholder, derived from the id so it never moves. */
-export function demoOrgFacts(id: string, index: number): DemoOrgFacts {
-  const seed = index + id.charCodeAt(0);
-  return {
-    industry: DEMO_INDUSTRIES[seed % DEMO_INDUSTRIES.length] ?? 'Residential care',
-    usage: [92, 74, 41, 88, 96, 28, 0, 63, 34][seed % 9] ?? 50,
-    lastActivity: DEMO_LAST_ACTIVITY[seed % DEMO_LAST_ACTIVITY.length] ?? 'today',
-  };
-}
 
 /* ---------------------------------------------------------------------------
  * System status (`/admin/platform-health`)
@@ -277,26 +220,6 @@ export const DEMO_LATENCY_P99 = [
 /* ---------------------------------------------------------------------------
  * Organisation detail
  * ------------------------------------------------------------------------- */
-
-/**
- * The organisation attributes the console reference shows that RotaFlow does
- * not record.
- *
- * `organisations` has a name, a slug, a plan, a status and a settings jsonb,
- * no industry, no country, no timezone and no account-health grade. Every row
- * built from this constant is drawn with a "placeholder" chip beside it, so a
- * reader never has to work out which half of the panel is real.
- */
-export const DEMO_ORG_PROFILE: readonly { label: string; value: string }[] = [
-  { label: 'Industry', value: 'Residential care' },
-  { label: 'Country', value: 'United Kingdom' },
-  { label: 'Timezone', value: 'Europe/London' },
-  { label: 'Account health', value: 'Healthy' },
-  { label: 'Last activity', value: '4 minutes ago' },
-];
-
-/** Storage consumed by one tenant. No file storage is wired up, so nothing measures this. */
-export const DEMO_ORG_STORAGE = '14.2 GB';
 
 /* ---------------------------------------------------------------------------
  * `/admin/support-access`

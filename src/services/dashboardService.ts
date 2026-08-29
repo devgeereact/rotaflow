@@ -17,6 +17,7 @@ import { listClockEventsForOrg } from '@/services/clockService';
 import { shiftNetMinutes } from '@/lib/rotaInsights';
 import { findMissedClockIns } from '@/lib/clockInAlerts';
 import { resolvePeriod, stepPeriod } from '@/lib/schedulePeriod';
+import { rotaWeekStatus } from '@/lib/rotaRollup';
 import type {
   Announcement,
   Location,
@@ -382,12 +383,7 @@ export async function loadWeeklyRosterSummary(
   const overlapping = rotas.filter(
     (r) => r.period_start <= weekEnd && r.period_end >= weekStart,
   );
-  const rotaStatus: WeeklyRosterSummary['rotaStatus'] =
-    overlapping.length === 0
-      ? 'none'
-      : overlapping.every((r) => r.status === 'published')
-        ? 'published'
-        : 'draft';
+  const rotaStatus: WeeklyRosterSummary['rotaStatus'] = rotaWeekStatus(overlapping);
 
   return {
     totalHours,

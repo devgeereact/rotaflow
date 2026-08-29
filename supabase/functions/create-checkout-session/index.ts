@@ -11,13 +11,14 @@
 // owner-only, matching subscriptions' own RLS.
 //
 // Deploy: `supabase functions deploy create-checkout-session`.
-// Secret: `supabase secrets set STRIPE_SECRET_KEY=...` (shared with the
-// other two Stripe functions).
+// Secrets: STRIPE_MODE (test | live, defaults to live) selects which of
+// STRIPE_SECRET_KEY / STRIPE_TEST_SECRET_KEY is used and which `plans`
+// Price column is read — see _shared/stripe.ts and migration 0058.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getStripeClient } from '../_shared/stripe.ts';
+import { getStripeClient, getStripeMode, priceColumn } from '../_shared/stripe.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -86,16 +87,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Test and live Prices are different objects in different Stripe
+    // namespaces, so each mode reads its own column — see 0058.
+    const mode = getStripeMode();
+    const column = priceColumn(mode);
+
     const { data: plan, error: planError } = await supabase
       .from('plans')
-      .select('code, name, stripe_price_id')
+      .select(`code, name, ${column}`)
       .eq('code', planCode)
       .maybeSingle();
     if (planError) throw planError;
     if (!plan) {
       return jsonResponse({ error: `Unknown plan: ${planCode}` }, 400);
     }
-    if (!plan.stripe_price_id) {
+    const priceId = (plan as Record<string, string | null>)[column];
+    if (!priceId) {
       return jsonResponse(
         { error: `${plan.name} is not available for checkout yet` },
         409,
@@ -104,18 +111,27 @@ Deno.serve(async (req: Request) => {
 
     const { data: existingSub, error: subError } = await supabase
       .from('subscriptions')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, stripe_mode')
       .eq('org_id', orgId)
       .maybeSingle();
     if (subError) throw subError;
 
-    const stripe = getStripeClient();
-    const origin = req.headers.get('Origin') || 'https://rota.gakinz.com';
+    // A customer id only exists inside the mode that created it. Reusing a
+    // live one in test mode (or vice versa) is a "No such customer" error
+    // from Stripe, so let Stripe create a fresh customer for this mode
+    // instead of handing it an id it cannot resolve.
+    const reusableCustomerId =
+      existingSub && existingSub.stripe_mode === mode
+        ? existingSub.stripe_customer_id
+        : null;
+
+    const stripe = getStripeClient(mode);
+    const origin = req.headers.get('Origin') || 'https://rotaflow.space';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
-      customer: existingSub?.stripe_customer_id || undefined,
+      line_items: [{ price: priceId, quantity: 1 }],
+      customer: reusableCustomerId || undefined,
       client_reference_id: orgId,
       subscription_data: { metadata: { org_id: orgId, plan: planCode } },
       metadata: { org_id: orgId, plan: planCode },

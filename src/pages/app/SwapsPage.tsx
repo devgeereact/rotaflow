@@ -10,10 +10,11 @@ import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
-import { listShiftsForPeriod, updateShift } from '@/services/shiftService';
+import { listShiftsForPeriod } from '@/services/shiftService';
 import { listLocations } from '@/services/locationService';
 import { getOrganisation } from '@/services/orgService';
 import {
+  applySwapReassignment,
   cancelShiftSwap,
   claimShiftSwap,
   listOrgShiftSwaps,
@@ -273,13 +274,11 @@ export function SwapsPage(): JSX.Element {
 
         if (status === 'approved' && swap?.shift_id && swap.target_staff_profile_id) {
           try {
-            await updateShift(swap.shift_id, {
-              staff_profile_id: swap.target_staff_profile_id,
-            });
+            await applySwapReassignment(row.id);
           } catch (err) {
             reportError(err, { area: 'swaps:reassign-shift' });
             showError(
-              'The swap was approved but the shift could not be reassigned. Move it by hand in the Rota Builder.',
+              'The swap was approved but the shift could not be reassigned. Open the week in the Rota Builder, amend it, and move the shift by hand.',
             );
           }
         }

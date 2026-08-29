@@ -35,8 +35,9 @@ alter table public.platform_settings
 
   -- ---------- Email -----------------------------------------------------
   -- The sender address must be on a domain with published SPF and DKIM.
-  -- rota.gakinz.com has neither, so mail sent as that subdomain is dropped
-  -- silently by Gmail — the default here is the domain that is actually signed.
+  -- The host in use when this migration was written had neither, so mail sent
+  -- as it was dropped silently by Gmail — the default here is a signed domain.
+  -- Superseded by 0064, which moves both columns onto rotaflow.space.
   add column if not exists email_sender_name    text not null default 'RotaFlow',
   add column if not exists email_sender_address text not null default 'info@gakinz.com',
   add column if not exists email_provider       text not null default 'smtp'

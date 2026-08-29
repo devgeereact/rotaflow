@@ -76,7 +76,7 @@ Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, excep
 | `staff_profiles`     | `org_id`, `user_id?`, `email?` (`0053`), `first_name`, `last_name`, `job_title`, `department_id?`, `contract_type`, `weekly_hours`, `holiday_allowance`, `skills text[]`, `payroll_id`, `start_date`, `phone`, `photo_url`, `active` | Employee record. `email` (`0053`) exists only to auto-link `user_id` to the real login once matched by a trigger or `accept_invite()`, in whichever order the HR record and the invite happen — before `0053` nothing ever set `user_id`, so a published rota was invisible to every real invited staff member. |
 | `shift_types`        | `org_id`, `name`, `colour`, `default_start`, `default_end`, `is_paid`, `category`                                                                                                                                 | Morning/Late/Night/On-Call…                                                                    |
 | `shift_templates`    | `org_id`, `name`, `shift_type_id?`, `location_id?`, `department_id?`, `start_time`, `end_time`, `break_minutes`, `required_skills text[]`                                                                         | Reusable shift presets.                                                                        |
-| `rotas`              | `org_id`, `location_id`, `name`, `period_start`, `period_end`, `status` (`draft`\|`published`), `published_at`                                                                                                    | A schedule for a period/location.                                                              |
+| `rotas`              | `org_id`, `location_id`, `name`, `period_start`, `period_end`, `status` (`draft`\|`published`\|`archived`), `published_at`, `published_by`, `supersedes_rota_id`, `archived_at`, `created_by`                     | A schedule for a period/location. See §6a for the lifecycle — `0061` made it server-enforced.  |
 | `shifts`             | `org_id`, `rota_id?`, `location_id`, `department_id?`, `staff_profile_id?`, `shift_type_id?`, `starts_at`, `ends_at`, `break_minutes`, `status` (`open`\|`assigned`\|`confirmed`\|`cancelled`), `colour`, `notes` | The atomic scheduled unit. `staff_profile_id` null = open shift.                               |
 | `availability`       | `org_id`, `staff_profile_id`, `weekday?`, `date?`, `start_time`, `end_time`, `status` (`available`\|`unavailable`\|`preferred`), `recurring`                                                                      | Recurring or one-off availability.                                                             |
 | `leave_requests`     | `org_id`, `staff_profile_id`, `type`, `start_date`, `end_date`, `status` (`pending`\|`approved`\|`rejected`), `reason`, `reviewed_by?`, `reviewed_at?`                                                            | Holiday/sick/unpaid requests.                                                                  |
@@ -318,6 +318,82 @@ and only `is_org_member()` governs access, same as every other tenant table.
   `platform_tenant_counts` above — `locations_select` itself stayed gated behind
   `is_org_member()` (`0028`)/`0031`'s carve-out never covered it, so a direct count
   silently read zero for every org without an open session.
+
+## 6a. Rota lifecycle (`0061`) — Draft, Published, Amended
+
+A published rota is **immutable**. It is what staff have been told, so it is not
+edited in place; it is replaced.
+
+```text
+draft ──publish_rota()──> published ──begin_rota_revision()──> draft (supersedes_rota_id = published.id)
+                              │                                     │
+                              │                                     ├─ publish_rota()  ─> published, and the one it
+                              │                                     │                     supersedes becomes archived
+                              │                                     └─ discard_rota_revision() ─> gone; published unchanged
+                              └── unpublish_rota() ─> draft   (refused while an amendment is open)
+```
+
+Staff read paths filter on `status = 'published'` and need no change: both the
+amendment (`draft`) and the version it replaced (`archived`) fall outside that
+filter, so staff see exactly one version of a week at all times, including
+during an amendment.
+
+Three guards make this true for a direct PostgREST call, not only for the UI —
+the defect being closed (BUG-028) was a rule stated in one screen's copy and
+honoured by no mutation path at all:
+
+- **`shifts_guard_immutable_rota`** — refuses any `insert`/`update`/`delete` of a
+  shift whose rota is `published` (`ROTA1`) or `archived` (`ROTA2`).
+- **`rotas_guard_status_change`** — a rota is born a draft, and `status` moves only
+  inside the functions below, which set a transaction-local
+  `rotaflow.rota_transition` flag. A raw `PATCH` of the column is refused (`ROTA3`).
+- **`rotas_published_unique_location` / `_no_location`** — at most one published
+  rota per org/location/period, the published-side counterpart to `0059`'s draft
+  indexes.
+
+Both guards stand down when `auth.uid()` is null: that is server-side code (the
+nightly retention job, Edge Functions on `service_role`), not an end user.
+
+**The one end-user exception** is `apply_swap_reassignment(swap_id)`. Approving a
+shift swap legitimately changes a published rota — both people agreed and it was
+approved, and staff should see the new name immediately rather than waiting for a
+republish. It is narrowed to one column, checks the same people 0002/0043 allow to
+finalize the swap, sets `rotaflow.shift_transition` to pass the guard, and writes a
+`rota.shift_reassigned` audit event that the previous client-side `updateShift`
+call did not.
+
+Audit coverage is `rota.published`, `rota.republished`, `rota.unpublished`,
+`rota.superseded`, `rota.amendment_started`, `rota.amendment_discarded`,
+`rota.shift_reassigned` and — new in `0061`, closing BUG-035 — **`rota.deleted`**.
+Before this a rota could disappear with no record at all, which made a production
+disappearance impossible to attribute.
+
+## 6b. Deleting an organisation (`0063`)
+
+Nothing could delete a tenant before this — no UI, no console action, no RPC
+(BUG-009). Five database guards refused it, and they surfaced one at a time,
+each failure hiding the next:
+
+| Guard | Why it refused |
+|---|---|
+| `organisations_audit`, `memberships_audit`, `rotas_audit`, `invites_audit` | each cascade fires an audit trigger that INSERTs an `audit_logs` row referencing the organisation being deleted → `audit_logs_org_id_fkey` |
+| `memberships_keep_one_owner` (`0047`) | refuses to remove the last owner, with no exemption for "the organisation is going too" |
+
+`delete_organisation(org, confirm_name)` sets a transaction-local
+`rotaflow.org_deleting`; `audit_write` and `memberships_keep_one_owner` stand
+down **for that organisation, in that transaction only**. Every other tenant's
+guards stay armed — which `alter table … disable trigger` would not have
+managed, and which has already gone wrong here once: a script disabled
+`audit_logs_no_update` and never re-enabled it.
+
+Caller must be an owner of the organisation or a platform admin, and must type
+the organisation's name exactly. `organisation_deletion_preview(org)` returns
+the row counts the confirmation dialog shows.
+
+What survives, by design: `audit_logs`, `gdpr_requests` and `support_cases` all
+hold `org_id … on delete set null`, and audit rows carry an `org_name`
+snapshot. The `org.deleted` event is written *before* the delete so it survives
+the same way. Everything else org-scoped (32 cascading tables) goes.
 
 ## 7. Generating TypeScript types
 

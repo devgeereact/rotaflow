@@ -32,7 +32,6 @@ import { useToast } from '@/hooks/useToast';
 import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
 import { healthBreakdown } from '@/lib/tenantHealth';
 import { downloadCsv } from '@/lib/csv';
-import { demoOrgFacts } from '@/lib/adminOverviewDemo';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, OrganisationStatus, Subscription } from '@/types';
 
@@ -43,7 +42,6 @@ type OrgSortKey =
   | 'locations'
   | 'plan'
   | 'status'
-  | 'usage'
   | 'activity'
   | 'actions';
 
@@ -133,17 +131,6 @@ export function AdminOrganisationsPage(): JSX.Element {
     return map;
   }, [subscriptions]);
 
-  // Placeholder industry / usage / last-activity, keyed so a row keeps the same
-  // invented values as it is sorted and filtered. See `adminOverviewDemo`.
-  const facts = useCallback(
-    (org: Organisation) =>
-      demoOrgFacts(
-        org.id,
-        (organisations ?? []).findIndex((o) => o.id === org.id),
-      ),
-    [organisations],
-  );
-
   const planOf = useCallback(
     (org: Organisation): string => subByOrg.get(org.id)?.plan ?? org.plan,
     [subByOrg],
@@ -210,9 +197,11 @@ export function AdminOrganisationsPage(): JSX.Element {
         case 'status':
           return a.status.localeCompare(b.status) * direction;
         case 'industry':
-          return facts(a).industry.localeCompare(facts(b).industry) * direction;
-        case 'usage':
-          return (facts(a).usage - facts(b).usage) * direction;
+          // Unset sorts last in either direction: "we don't know" is not a
+          // value that belongs between two real industries.
+          return (
+            (a.industry ?? '\uffff').localeCompare(b.industry ?? '\uffff') * direction
+          );
         case 'activity':
           // The real column, not created_at: `activity` sorts the same field
           // the "Last activity" cell now shows and the "At risk" tile above
@@ -227,7 +216,7 @@ export function AdminOrganisationsPage(): JSX.Element {
           return a.name.localeCompare(b.name) * direction;
       }
     });
-  }, [organisations, search, status, plan, sort, members, sites, planOf, facts]);
+  }, [organisations, search, status, plan, sort, members, sites, planOf]);
 
   const columns = useMemo<DataTableColumn<Organisation, OrgSortKey>[]>(
     () => [
@@ -265,7 +254,17 @@ export function AdminOrganisationsPage(): JSX.Element {
         label: 'Industry',
         width: 'w-[11%]',
         sortable: true,
-        cell: (org) => facts(org).industry,
+        // `organisations.industry`, collected during onboarding. It is
+        // nullable, and an organisation that never supplied one says so —
+        // this cell used to invent a plausible industry from the row's
+        // position in the list, which is exactly the kind of fact an admin
+        // would go on to act on. (BUG-026.)
+        cell: (org) =>
+          org.industry ?? (
+            <span className="text-content-muted dark:text-content-muted-dark">
+              Not available
+            </span>
+          ),
       },
       {
         key: 'plan',
@@ -303,26 +302,13 @@ export function AdminOrganisationsPage(): JSX.Element {
           </span>
         ),
       },
-      {
-        key: 'usage',
-        label: 'Usage',
-        width: 'w-[10%]',
-        sortable: true,
-        cell: (org) => {
-          const { usage } = facts(org);
-          return (
-            <span className="flex items-center justify-end gap-2">
-              <span className="font-mono text-xs tabular-nums">{usage}%</span>
-              <span className="block h-1.5 w-11 overflow-hidden rounded-full border border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
-                <span
-                  className={`block h-full ${usage > 90 ? 'bg-warning' : 'bg-primary'}`}
-                  style={{ width: `${usage}%` }}
-                />
-              </span>
-            </span>
-          );
-        },
-      },
+      // A "Usage %" column stood here. It was invented outright — RotaFlow has
+      // no seat or shift ceiling to be a denominator, so there is no such
+      // percentage to compute — and it was drawn as a progress bar that turned
+      // amber past 90%, which is a specific and actionable-looking claim about
+      // a tenant. It is removed rather than replaced with "Not available",
+      // because the column measured nothing at all. Users and Sites either
+      // side of it are real counts.
       {
         key: 'activity',
         label: 'Last activity',
@@ -376,22 +362,20 @@ export function AdminOrganisationsPage(): JSX.Element {
         ),
       },
     ],
-    [members, sites, planOf, facts],
+    [members, sites, planOf],
   );
 
   // Exports what is on screen, not the whole table: the filters above are the
   // question being asked, and an export that quietly ignores them is the wrong
   // answer to it.
-  // Industry and Usage % are deliberately NOT here — both come from
-  // demoOrgFacts, a fixture keyed by row position, not real data (see
-  // `facts` above). AdminSubscriptionsPage's export already omits its own
-  // demo columns for the same reason; this file's own on-screen table
-  // discloses them as placeholders, but a CSV leaves the product and lands
-  // in someone's real reporting with no such disclosure attached.
+  // Industry is exported now that it is a real column rather than a fixture
+  // keyed by row position. The Usage % column it used to sit beside is gone
+  // entirely — see the note where it was defined.
   const exportCsv = useCallback(() => {
     downloadCsv(`organisations_${new Date().toISOString().slice(0, 10)}`, visible, [
       { label: 'Name', value: (org) => org.name },
       { label: 'Slug', value: (org) => org.slug },
+      { label: 'Industry', value: (org) => org.industry ?? 'Not available' },
       { label: 'Plan', value: (org) => planOf(org) },
       { label: 'Status', value: (org) => org.status },
       { label: 'Members', value: (org) => members.get(org.id) ?? 0 },

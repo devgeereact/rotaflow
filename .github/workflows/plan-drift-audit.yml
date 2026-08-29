@@ -128,7 +128,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'openai/gpt-4o-mini' }}
-          APP_URL: https://rota.gakinz.com
+          APP_URL: https://rotaflow.space
         run: node scripts/plan-drift-audit.mjs
 
       # Deterministic failure reporting. No model runs here — this is the step

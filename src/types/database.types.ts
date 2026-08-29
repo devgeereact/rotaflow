@@ -1678,6 +1678,7 @@ export type Database = {
           seat_limit: number | null;
           sort_order: number;
           stripe_price_id: string | null;
+          stripe_test_price_id: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1692,6 +1693,7 @@ export type Database = {
           seat_limit?: number | null;
           sort_order?: number;
           stripe_price_id?: string | null;
+          stripe_test_price_id?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1706,6 +1708,7 @@ export type Database = {
           seat_limit?: number | null;
           sort_order?: number;
           stripe_price_id?: string | null;
+          stripe_test_price_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -2199,7 +2202,9 @@ export type Database = {
       };
       rotas: {
         Row: {
+          archived_at: string | null;
           created_at: string;
+          created_by: string | null;
           id: string;
           location_id: string | null;
           name: string;
@@ -2207,11 +2212,15 @@ export type Database = {
           period_end: string;
           period_start: string;
           published_at: string | null;
+          published_by: string | null;
           status: string;
+          supersedes_rota_id: string | null;
           updated_at: string;
         };
         Insert: {
+          archived_at?: string | null;
           created_at?: string;
+          created_by?: string | null;
           id?: string;
           location_id?: string | null;
           name: string;
@@ -2219,11 +2228,15 @@ export type Database = {
           period_end: string;
           period_start: string;
           published_at?: string | null;
+          published_by?: string | null;
           status?: string;
+          supersedes_rota_id?: string | null;
           updated_at?: string;
         };
         Update: {
+          archived_at?: string | null;
           created_at?: string;
+          created_by?: string | null;
           id?: string;
           location_id?: string | null;
           name?: string;
@@ -2231,7 +2244,9 @@ export type Database = {
           period_end?: string;
           period_start?: string;
           published_at?: string | null;
+          published_by?: string | null;
           status?: string;
+          supersedes_rota_id?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -2650,6 +2665,7 @@ export type Database = {
           started_at: string;
           status: string;
           stripe_customer_id: string | null;
+          stripe_mode: string;
           trial_ends_at: string | null;
           updated_at: string;
         };
@@ -2667,6 +2683,7 @@ export type Database = {
           started_at?: string;
           status?: string;
           stripe_customer_id?: string | null;
+          stripe_mode?: string;
           trial_ends_at?: string | null;
           updated_at?: string;
         };
@@ -2684,6 +2701,7 @@ export type Database = {
           started_at?: string;
           status?: string;
           stripe_customer_id?: string | null;
+          stripe_mode?: string;
           trial_ends_at?: string | null;
           updated_at?: string;
         };
@@ -3042,6 +3060,43 @@ export type Database = {
         Args: { p_org: string; p_staff_profile_id: string };
         Returns: undefined;
       };
+      apply_swap_reassignment: {
+        Args: { p_swap_id: string };
+        Returns: Database['public']['Tables']['shifts']['Row'];
+      };
+      begin_rota_revision: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
+      };
+      discard_rota_revision: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
+      };
+      publish_rota: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
+      };
+      unpublish_rota: {
+        Args: { p_rota_id: string };
+        Returns: Database['public']['Tables']['rotas']['Row'];
+      };
+      delete_organisation: {
+        Args: { p_confirm_name: string; p_org: string };
+        Returns: undefined;
+      };
+      organisation_deletion_preview: {
+        Args: { p_org: string };
+        Returns: {
+          clock_events: number;
+          documents: number;
+          leave_requests: number;
+          locations: number;
+          members: number;
+          rotas: number;
+          shifts: number;
+          staff_profiles: number;
+        }[];
+      };
       assign_support_case: {
         Args: { p_agent?: string; p_case: string };
         Returns: undefined;
@@ -3316,7 +3371,10 @@ export type Database = {
         Args: { p_case: string; p_note?: string; p_status: string };
         Returns: undefined;
       };
-      slug_available: { Args: { p_slug: string }; Returns: boolean };
+      slug_available: {
+        Args: { p_slug: string; p_exclude_org_id?: string };
+        Returns: boolean;
+      };
       subscription_mrr_pence: { Args: { p_org: string }; Returns: number };
       support_access_status: {
         Args: {
