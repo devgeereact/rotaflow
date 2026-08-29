@@ -494,3 +494,25 @@ export function buildThisWeekRows(
       };
     });
 }
+
+/**
+ * What the Sync row on the clock-in screen should say.
+ *
+ * This exists because the row used to read `navigator.onLine` alone and print
+ * a flat "Synced" whenever the browser believed it had a connection. A device
+ * that is online but has writes sitting in the outbox — a transient failure
+ * behind a captive portal or associated-but-dead wifi, routine on a ward — was
+ * told everything had reached the server. Queue depth is the only input that
+ * answers the question the row is actually asking.
+ *
+ * Being online is not the same claim as having sent anything, so the two are
+ * reported separately rather than collapsed into one word.
+ */
+export function syncStatusLabel(online: boolean, pendingCount: number): string {
+  if (pendingCount > 0) {
+    return online
+      ? `Sending ${pendingCount} ${pendingCount === 1 ? 'entry' : 'entries'}…`
+      : `Offline, ${pendingCount} waiting`;
+  }
+  return online ? 'Synced' : 'Offline';
+}
