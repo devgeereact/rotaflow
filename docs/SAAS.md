@@ -147,7 +147,7 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-013 🟢 Sync state display — reads queue depth, not `navigator.onLine`
       `src/lib/clockRows.ts` (`syncStatusLabel`, 4 tests) · BUG-044 closed #162
 - [x] CAP-014 🟢 Offline timestamp integrity — the guard still clamps, but records what the device claimed
-      `supabase/migrations/0068_clock_event_reported_time.sql` · BUG-045 closed #172 · 9 pgTAP assertions
+      `supabase/migrations/0068_clock_event_reported_time.sql` · BUG-045 closed #172 · 9 pgTAP assertions · applied to production 2026-08-29
 - [ ] CAP-015 🟠 Replay idempotency — no unique constraint, no id in payload; replay double-inserts
       `src/services/syncQueue.ts` · BUG-046 · P1
 - [ ] CAP-016 🟡 Dead-letter recovery — surfaced and dismissable, but no retry path
