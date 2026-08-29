@@ -5,7 +5,7 @@ import type { OvertimeRequest, OvertimeRequestInsert } from '@/types';
  * `overtime_requests` reader/writer.
  *
  * The table has existed since migration 0001 and carried no service at all,
- * audit01 P2-7, and NEW_STRUCTURE §34's `/app/overtime` had nothing behind it.
+ * the 2026-08-04 audit (now `docs/SAAS.md`) P2-7, and NEW_STRUCTURE §34's `/app/overtime` had nothing behind it.
  * Staff could not offer overtime and managers could not allocate it, so the
  * hours a rota actually costs beyond contract were invisible outside the
  * timesheet totals.

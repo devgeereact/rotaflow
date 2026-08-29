@@ -172,10 +172,12 @@ Two long-standing ❌ rows here have been closed and moved:
 
 ## 8. Tables with no UI
 
-**`shift_templates`. That is the whole list.** Verified by grepping `src/` and
-`supabase/` for `from('<table>')`: the only hits are its generated row type in
-`src/types/database.types.ts` and a passing mention in a comment. No reader, no
-writer, client or server. It is empty structure someone deliberately left.
+**`shift_templates`. That is the whole list** for the _UI_. Verified by grepping `src/` and
+`supabase/` for `from('<table>')`: no screen reads or writes it, and its generated row
+type in `src/types/database.types.ts` is otherwise unused. One server-side reader does
+exist — `orgLifecycleService.ts` includes it in the organisation export, and `0063`
+deletes it with the tenant — so "no reader anywhere" is no longer true. It remains
+empty structure someone deliberately left.
 
 This section used to name four tables. The other three grew UI and are listed
 here so nobody re-derives the old claim from a stale memory:
@@ -255,7 +257,7 @@ mockup file for any of these, so none of them appears in the §-counts below.
 | ✅     | Support access      | `/admin/support-access`                | Time-boxed tenant access. Since 0028 a session genuinely gates RLS via `has_support_access()`                                                  |
 | ✅     | Audit logs          | `/admin/audit`                         | Cross-tenant `audit_logs`                                                                                                                      |
 | ✅     | Platform health     | `/admin/platform-health`               | Configured-integration reporting plus a re-probing Watch mode                                                                                  |
-| ✅     | Incidents           | `/admin/incidents`                     | `platform_incidents` (0021)                                                                                                                    |
+| ✅     | Incidents           | `/admin/incidents`                     | `incidents` + `incident_updates` (0021)                                                                                                        |
 | ✅     | Integrations        | `/admin/integrations`                  | Platform services (build-time config) kept separate from tenant integrations (per-org SMTP, the only one)                                      |
 | ✅     | Notifications       | `/admin/notifications`                 | `PLATFORM_CONFIG_ROLES`, gated on the route as well as the nav: it is a cross-tenant view of who was told what                                 |
 | ✅     | Feature flags       | `/admin/feature-flags`                 | `PLATFORM_CONFIG_ROLES`. Reports `platform_settings`' two real switches; per-tenant flags have no table and are absent rather than faked       |

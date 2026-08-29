@@ -58,7 +58,7 @@ export function AdminPage({
  *
  * A skeleton rather than the word "Loading…": these screens resolve into
  * tables of a known shape, and a one-line placeholder that becomes a
- * forty-row table makes the page jump every time (audit01 P2-2).
+ * forty-row table makes the page jump every time (recorded in `docs/SAAS.md`).
  */
 export function AdminLoading({
   variant = 'table',

@@ -19,7 +19,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
  * `LegalNotice`). That was the bar the previous version of this comment set —
  * no link to a page that does not exist — and it is met without waiting on
  * final legal text, which is tracked separately in
- * docs/PRODUCT_TRANSFORMATION_PLAN.md P0 #1.
+ * `docs/SAAS.md`.
  */
 export function PublicFooter(): JSX.Element {
   return (

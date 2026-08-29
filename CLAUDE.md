@@ -18,17 +18,26 @@ Treat the constraints below as ground truth for every response.
 | Visual/design tokens         | `docs/DESIGN.md`        |
 | Product scope & metrics      | `docs/PRD.md`           |
 | Deploy process & safety      | `docs/DEPLOYMENT.md`    |
+| What is built vs missing     | `docs/SAAS.md`          |
+
+`docs/SAAS.md` is the capability register and the single plan of record. Check a
+capability's row there before assuming a feature exists — several documents in this
+repo have claimed features that do not, and vice versa. Any PR that changes a
+capability's status updates its row in the same PR.
 
 ## Hard constraints
-- **Static build only.** Output is `dist/`, deployed via Git/FTP to cPanel.
-  No server runtime of any kind.
+- **Static build only.** Output is `dist/`, deployed by rsync over SSH with
+  `cpanel-deploy` (see `docs/DEPLOYMENT.md` for the `--keep` flags and the
+  `.htaccess` composition). No server runtime of any kind on the origin.
 - **TypeScript strict.** No implicit `any`; explicit return types on functions
   and hooks.
 - **Styling:** NativeWind / Tailwind classes, tokens from `tailwind.config.ts`.
 - **Offloaded systems:** Supabase (Auth/DB + RLS + Edge Functions — the only
   server compute, see `supabase/functions/`), ImageKit (media), Sentry
   (monitoring), Inngest (background workflows), OpenRouter (AI, called only
-  from an Edge Function — key never reaches the client).
+  from an Edge Function — key never reaches the client), **Stripe** (billing:
+  Checkout, Billing Portal and a signature-verified webhook, all three Edge
+  Functions; secret and webhook secret never reach the client).
 - **OpenRouter is the only AI provider.** Nothing in this project calls
   Anthropic, OpenAI or any other vendor directly. Two callers, both
   server-side: `supabase/functions/ai-rota-assistant` (product AI, keyed by

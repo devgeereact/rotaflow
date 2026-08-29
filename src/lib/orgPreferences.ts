@@ -10,7 +10,7 @@ import type { Organisation } from '@/types';
  * `week_start: "Monday"` while another reads `week_starts_on: 1`, and no
  * typecheck, lint or test would notice. The value simply reads back empty and
  * the screen shows its default. That is a silent-wrong-value bug class, and it
- * is the same one `audit01` §7b found in the timesheet code.
+ * is the same one the 2026-08-04 audit (now `docs/SAAS.md`) found in the timesheet code.
  *
  * So every key lives here once, with its parser and its default. Screens never
  * index the blob directly.
@@ -18,7 +18,7 @@ import type { Organisation } from '@/types';
  * These are **preferences**, not enforcement. Nothing in this file constrains
  * what the database will accept, an overtime threshold set to 30 hours does
  * not stop a 40-hour week being written. The policy *engine* that would do
- * that is a separate project (audit01 §4 Tier 3); this is the settings surface
+ * that is a separate project (the 2026-08-04 audit (now `docs/SAAS.md`) Tier 3); this is the settings surface
  * it will read from when it exists, which is why the shapes are worth getting
  * right now rather than later.
  */

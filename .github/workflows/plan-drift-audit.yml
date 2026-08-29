@@ -1,6 +1,6 @@
 name: Plan drift audit
 
-# Weekly re-audit of docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md against the live
+# Weekly re-audit of docs/SAAS.md — the capability register — against the live
 # repo — git log, migrations, and shipped code — so the plan can't go stale
 # and silent the way its predecessor did (a two-week gap caught only by
 # chance during an unrelated session). Requires the same rigor as a human
@@ -67,7 +67,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PLAN_DOC: docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md
+  PLAN_DOC: docs/SAAS.md
   AUDIT_BRANCH: plan-drift-audit/weekly
 
 jobs:
@@ -189,7 +189,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: plan-doc
-          path: docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md
+          path: docs/SAAS.md
           retention-days: 7
 
       # Last, so the artifact is uploaded and `publish-branch` still runs. This makes
@@ -229,7 +229,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: plan-doc
-          path: docs/FRESH/
+          path: docs/
 
       - name: Push the audit branch
         id: push

@@ -13,7 +13,7 @@ interface LegalNoticeProps {
 /**
  * Shared shell for the four legal-IA pages (Privacy, Terms, Cookies,
  * Accessibility). These are placeholders, not the published policies: the
- * final text needs UK counsel review (see docs/PRODUCT_TRANSFORMATION_PLAN.md
+ * final text needs UK counsel review (see docs/SAAS.md
  * P0 #1) and must not be drafted here. What this establishes now is the site
  * structure — a real, linkable route for each policy — so the footer and any
  * external audit of "does this site have a privacy page" finds a truthful

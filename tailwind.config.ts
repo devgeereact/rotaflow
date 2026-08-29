@@ -59,7 +59,7 @@ const config: Config = {
           // marketing/legal/about pages fixed this session; the same
           // `text-primary`-as-link pattern likely exists in authenticated `/app`
           // screens too and needs the same swap as part of the sitewide
-          // design-system contrast pass (docs/PRODUCT_TRANSFORMATION_PLAN.md §8.5).
+          // design-system contrast pass (`docs/SAAS.md`).
           ink: '#2F5BC0',
         },
         // Vivid marketing blue + navy ink ramp, sampled from

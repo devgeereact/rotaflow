@@ -26,7 +26,7 @@
 //   (SMTP_HOST/PORT/USER/PASS/FROM optional. Email is skipped without them,
 //   unless the recipient org has configured its own SMTP)
 //
-// VERIFICATION STATUS (2026-08-01, docs/audit01.md P0-3)
+// VERIFICATION STATUS (2026-08-01, `docs/SAAS.md`)
 //
 // Deployed and ACTIVE (version 3, verify_jwt: true). Its AUTH is verified
 // against the live project. Probed, not assumed:

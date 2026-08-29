@@ -34,7 +34,7 @@
   #   * It defeats verification. Uptime monitors, link checkers, CI steps
   #     asserting an asset deployed, and any agent checking its own deploy all
   #     read 200 as "present". This audit was itself fooled into reporting a
-  #     source-map leak that did not exist (docs/audit01.md §2, P1-7).
+  #     source-map leak that did not exist (`docs/SAAS.md`).
   #   * It is the exact failure vite.config.ts warns about under `base: '/'` —
   #     a script request answered with HTML, failing the MIME check, leaving a
   #     blank page with a 200 in the access log and nothing in Sentry.
@@ -122,7 +122,7 @@
   # index.html carries no inline script.
   #
   # img-src allows any https: on purpose. Staff photos are arbitrary pasted
-  # URLs today (docs/audit01.md P2-3), so locking this to ImageKit would break
+  # URLs today (`docs/SAAS.md`), so locking this to ImageKit would break
   # real avatars. Images cannot execute; the job here is stopping script
   # injection, not policing image hosts. Tighten it when uploads land.
   #

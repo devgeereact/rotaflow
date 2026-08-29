@@ -88,7 +88,18 @@ prompt appears.
 
 ## 3. Deploy safety rules (non-negotiable)
 
-These are generic cPanel-static truths. Obey them regardless of tooling:
+Three of these were learned by breaking the live site, not by reading a manual. They are
+generic cPanel-static truths — obey them regardless of tooling:
+
+0. **Three traps that have each cost a live site once.**
+   - **cPanel's Document Root field is relative to `$HOME`.** Typing the absolute path
+     produces `/home/<user>/home/<user>/<domain>`. Leave the auto-filled value alone.
+   - **`rsync -a` preserves local file modes.** This repo's files are `600` locally, so
+     `.htaccess` landed unreadable by the web server and the site served a **directory
+     listing with no SPA routing**. Normalise to dirs `755` / files `644` over SSH after
+     each sync — macOS ships `openrsync`, which rejects `--chmod=D755,F644`.
+   - **The SPA fallback returns 200 for every unknown path.** A `200` is therefore not
+     evidence a file exists. Check the content-type, or verify over SSH.
 
 1. **Dry-run any mirror/delete first.** If your deploy mirrors with `--delete`, run it
    in dry-run and read the diff before writing. A mirror-delete pointed at the wrong

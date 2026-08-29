@@ -2,8 +2,9 @@
 // =====================================================================
 // scripts/plan-drift-audit.mjs
 //
-// Re-audits docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md against the
-// repository, using OpenRouter — the same provider and endpoint the app's
+// Re-audits docs/SAAS.md — the capability register, and the single plan of
+// record since 2026-08-29 — against the repository, using OpenRouter, the
+// same provider and endpoint the app's
 // own AI already uses (supabase/functions/ai-rota-assistant). There is no
 // Anthropic dependency anywhere in this project.
 //
@@ -37,7 +38,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
-const PLAN_DOC = process.env.PLAN_DOC || 'docs/FRESH/PRODUCT_TRANSFORMATION_PLAN_V2.md';
+const PLAN_DOC = process.env.PLAN_DOC || 'docs/SAAS.md';
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 const API_KEY = process.env.OPENROUTER_API_KEY;
 const APP_URL = process.env.APP_URL || 'https://rotaflow.space';
@@ -134,17 +135,27 @@ if (commitCount < MIN_COMMITS) {
 
 // ---------- the model's part ------------------------------------------
 
-const SYSTEM_PROMPT = `You audit a product plan document against the real state of a
+const SYSTEM_PROMPT = `You audit a capability register against the real state of a
 repository. You are given the document, recent git history, the repository's migration
 list, and an exists/missing verdict for every file path the document cites. You cannot
 browse the repository — the evidence provided is all you get, so never claim to have
 checked something that is not in it.
 
+The document is docs/SAAS.md. Its structure, which you must audit against:
+  * "§4 Capability register" — checkbox rows of the form
+    "- [ ] CAP-nnn <status emoji> <name>" followed by an indented evidence path.
+    The status marks are 🟢 complete, 🟡 partial, 🔴 missing, 🟠 defective,
+    🔵 needs hardening, ⚪ surface-only, ⚫ deferred, ❓ not audited.
+  * "§6 Defect register" (BUG-nnn), "§7 Gap register" (GAP-nnn) and
+    "§8 Hardening register" (HARDEN-nnn) — tables of open items.
+  * "§2 Verdict summary" — status counts and an overall maturity score.
+
 Your job:
-1. Decide whether each claim in the document's status tables (section 1 "New P0
-   status", section 2 score-delta table, and the "New Phase 0" task list) still holds.
-   Treat a cited path that is MISSING, or a task marked incomplete whose evidence
-   clearly shipped per git log, as drift.
+1. Decide whether each row's status still holds. Three things count as drift:
+   a cited path reported MISSING; a row marked 🔴/🟡/⚪/❓ whose work clearly shipped
+   according to git log; and a status count in §2 that no longer matches §4.
+   A row marked 🟢 whose evidence path still EXISTS is not drift on its own — you
+   cannot see inside the file, so do not invent a regression.
 2. Return corrections as exact string replacements. "old" MUST be copied verbatim from
    the document, long enough to appear exactly once. Prefer a whole line. If you are
    not confident a string is unique and verbatim, omit the correction rather than

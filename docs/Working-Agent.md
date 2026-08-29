@@ -1,6 +1,7 @@
 # ROTAFLOW — FULL AUTONOMOUS QA, E2E, CRUD & PRODUCTION READINESS AUDIT
 
-> Draft for review. Not yet wired into an agent/hook. Read, edit, then say go.
+> Wired — `.claude/agents/testing/rotaflow-qa-auditor.md` is the agent this
+> document specifies.
 
 ## ROLE
 
@@ -118,9 +119,9 @@ Avoid directly manipulating the database to make a feature seem functional.
 
 Do not manually insert database records via SQL/Supabase Studio unless the test specifically requires database inspection to verify persistence.
 
-Avoid modifying application state via undocumented shortcuts, and do not bypass the UI simply because it's inconvenient. The primary test must realistically represent what a real customer can achieve. Database inspection is for verifying persistence and integrity *after* the UI workflow, never for making a broken feature appear to pass.
+Avoid modifying application state via undocumented shortcuts, and do not bypass the UI simply because it's inconvenient. The primary test must realistically represent what a real customer can achieve. Database inspection is for verifying persistence and integrity _after_ the UI workflow, never for making a broken feature appear to pass.
 
-Never run this audit against production data. RotaFlow is a live multi-tenant SaaS with real customer orgs — see `docs/SCHEMA.md` for RLS/`org_id` isolation. All destructive/mutating testing happens inside a dedicated QA organisation created for this purpose, or against a local/staging Supabase project. If only production is reachable, stop and flag this before creating any test org, rather than assuming it's safe.
+Never run this audit against production data. RotaFlow is a pre-launch multi-tenant SaaS — production currently holds one organisation and no attendance history — so treat production as precious anyway — see `docs/SCHEMA.md` for RLS/`org_id` isolation. All destructive/mutating testing happens inside a dedicated QA organisation created for this purpose, or against a local/staging Supabase project. If only production is reachable, stop and flag this before creating any test org, rather than assuming it's safe.
 
 ---
 
@@ -143,20 +144,20 @@ Create a completely new test account through the standard sign-up flow, not by i
 
 Use multiple agents or sub-agents whenever feasible. Recommended parallel workstreams:
 
-| Agent | Focus |
-|---|---|
-| 1 | Fresh install / new org — sign-up, onboarding, building everything from an empty organisation, persistence after refresh/logout |
-| 2 | Live rota operator — Draft → Publish → staff schedule view → clock-in/out → timesheet → manager approval → report, treated as the highest-risk workflow |
-| 3 | CRUD / data — entity-by-entity matrix, every operation demonstrated through the real UI |
-| 4 | AI rota assistant — suggestion quality, JWT-forwarding/RLS correctness (`supabase/functions/ai-rota-assistant`), auto-apply vs suggest-only boundaries |
-| 5 | Leave, swaps, overtime, availability — full lifecycle including conflict scenarios |
-| 6 | Notifications, announcements, reports & exports |
-| 7 | Multi-tenant security — org isolation, IDOR, direct-URL access, role/permission boundaries |
-| 8 | Super Admin / Platform Console — org management, support access, feature flags, GDPR, audit logs |
-| 9 | Offline / PWA & recovery — service worker, offline queueing, interrupted mutations, sync conflicts |
-| 10 | UI/UX, accessibility, responsive — against `docs/DESIGN.md` tokens |
-| 11 | Performance, console/network audit |
-| 12 | Final independent exploratory auditor — deliberately ignores Agents 1–11's conclusions and re-tests blind, then the results are diffed against the others |
+| Agent | Focus                                                                                                                                                     |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Fresh install / new org — sign-up, onboarding, building everything from an empty organisation, persistence after refresh/logout                           |
+| 2     | Live rota operator — Draft → Publish → staff schedule view → clock-in/out → timesheet → manager approval → report, treated as the highest-risk workflow   |
+| 3     | CRUD / data — entity-by-entity matrix, every operation demonstrated through the real UI                                                                   |
+| 4     | AI rota assistant — suggestion quality, JWT-forwarding/RLS correctness (`supabase/functions/ai-rota-assistant`), auto-apply vs suggest-only boundaries    |
+| 5     | Leave, swaps, overtime, availability — full lifecycle including conflict scenarios                                                                        |
+| 6     | Notifications, announcements, reports & exports                                                                                                           |
+| 7     | Multi-tenant security — org isolation, IDOR, direct-URL access, role/permission boundaries                                                                |
+| 8     | Super Admin / Platform Console — org management, support access, feature flags, GDPR, audit logs                                                          |
+| 9     | Offline / PWA & recovery — service worker, offline queueing, interrupted mutations, sync conflicts                                                        |
+| 10    | UI/UX, accessibility, responsive — against `docs/DESIGN.md` tokens                                                                                        |
+| 11    | Performance, console/network audit                                                                                                                        |
+| 12    | Final independent exploratory auditor — deliberately ignores Agents 1–11's conclusions and re-tests blind, then the results are diffed against the others |
 
 If the platform can't create sub-agents, simulate these workstreams sequentially, in the order above.
 
@@ -265,7 +266,9 @@ For every entity, answer: **"Can a completely new user create this from the UI?"
 
 `CRITICAL/HIGH — Missing Create Workflow (seed-data dependency)`
 
-Do not accept seed data, `supabase/seed/*.sql`, or demo orgs as evidence that CRUD is functional.
+Do not accept demo orgs as evidence that CRUD is functional. (The `supabase/seed/`
+directory this once warned about was deleted in `#120`; there are no seed scripts left
+to mistake for evidence.)
 
 ---
 
@@ -479,7 +482,7 @@ For every advertised feature (per `docs/PRD.md`, `docs/SCREENS.md`, `docs/SCHEMA
 
 ## SEED / DEMO DATA AUDIT
 
-Mandatory section. Note: the production demo dataset was already torn down (see [[rotaflow_demo_dataset]]) and `sunnyvale_seed.sql` exists but has never been run against a live database (see [[sunnyvale_seed_unverified]]) — do not assume either represents current reachable state; verify what's actually present before relying on it.
+Mandatory section. Note: the production demo dataset was torn down on 2026-08-14 and every seed script was deleted in `#120` — there is no seeded state to mistake for real state. Production holds one organisation and no attendance history. Verify what is actually present before relying on it.
 
 For every seeded/demo entity encountered: could a real user create the equivalent record through the UI alone? If not, report:
 

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E smoke suite (docs/PRODUCT_TRANSFORMATION_PLAN.md §8.2).
+ * E2E smoke suite (`docs/SAAS.md`).
  *
  * Runs against `npm run dev`, not the production build: the `-preview` routes
  * these tests use to reach role-specific screens without a live Supabase

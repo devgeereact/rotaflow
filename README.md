@@ -15,23 +15,25 @@ Security.
 
 - **Rota builder** — weekly/fortnightly/monthly drag-and-drop grid, shift templates,
   copy-previous-week, conflict detection, colour coding.
-- **Staff app** — installable, offline-first rota view with calendar (ICS) subscription.
+- **Staff app** — installable, offline-first rota view with an ICS calendar download.
 - **Availability, leave & overtime** — staff submit, managers approve.
 - **Shift swaps** — request → colleague → manager approval → rota updates.
-- **GPS clock in/out** — QR + GPS + manual, timesheets, hours dashboard.
+- **GPS clock in/out** — GPS + manual, timesheets, hours dashboard. (QR is deferred.)
 - **AI rota assistant** — a manager describes staffing needs in plain English and gets
   shift suggestions grounded in real staff, skills, availability and existing shifts
   (OpenRouter, called from a Supabase Edge Function — nothing is invented or written
   until the manager applies it). See [`docs/ARCHITECTURE.md` §9](docs/ARCHITECTURE.md).
 - **Notifications & announcements** — Web Push + email (SMTP); org/location/department
   broadcasts. *(SMS seam reserved, not wired in V1.)*
-- **Reports & payroll export** — hours, absence, overtime; CSV/Excel.
+- **Reports & payroll export** — hours, absence, overtime; CSV.
+- **Billing** — Stripe Checkout and Billing Portal, with a signature-verified webhook.
+  Four plan tiers. No live charge has been completed end to end yet.
 - **Roles** — Super Admin · Organisation Owner · Manager · Staff, enforced by RLS.
 - **Phase 2** — full AI auto-scheduling (demand forecasting, burnout detection),
-  payroll integrations, analytics, SSO, and subscription billing (Apple Pay / Google
-  Pay / PayPal via a pluggable provider). Architected in, built last.
+  payroll integrations, analytics and SSO.
 
-See [`docs/PRD.md`](docs/PRD.md) for the full scope and phasing.
+See [`docs/PRD.md`](docs/PRD.md) for scope, and **[`docs/SAAS.md`](docs/SAAS.md) for what
+is actually built** — the capability register is the honest, per-feature status.
 
 ---
 
@@ -48,6 +50,7 @@ See [`docs/PRD.md`](docs/PRD.md) for the full scope and phasing.
 | AI               | OpenRouter (via Edge Function)  | Rota suggestions grounded in real data; key never touches the client |
 | Media            | ImageKit                        | Real-time image resize/compress over a CDN     |
 | Background jobs  | Inngest                         | Event-driven workflows, cron, retries          |
+| Payments         | Stripe (via Edge Functions)     | Checkout + Billing Portal; secrets never reach the client |
 | Monitoring       | Sentry                          | Error + performance tracking with source maps  |
 | Motion           | Framer Motion                   | Micro-interactions & page transitions          |
 | AI code review   | CodeRabbit                      | PR checks against `docs/RULES.md`              |
@@ -75,11 +78,13 @@ In the Supabase SQL editor, run the migrations **in order**:
 ```
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_rotaflow.sql
-supabase/migrations/0003_fix_organisations_select_rls.sql
-supabase/migrations/0004_rotas_draft_unique.sql
-supabase/migrations/0005_narrow_organisations_select_rls.sql
+…
+supabase/migrations/0066_purge_qa_accounts.sql
 ```
-(Or use the Supabase CLI: `supabase db push`.)
+**Run every file in `supabase/migrations/`, in numeric order** — there are 66, and they
+are additive. Stopping early leaves a database that looks like it works and fails at the
+first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
+whole ledger.
 
 ### 4. Deploy the AI rota assistant (optional)
 The natural-language rota assistant runs as a Supabase Edge Function so its OpenRouter
@@ -108,9 +113,13 @@ npm run dev        # http://localhost:5042  (strictPort — fails loudly if take
 ```bash
 npm run typecheck
 npm run lint
-npm run build      # emits ./dist
-npm run preview    # smoke-test the production bundle
+npm run format:check   # a separate CI gate — green tsc + eslint does not imply this passes
+npm test               # 636 unit tests, pinned to Europe/London
+npm run build          # emits ./dist
+npm run preview        # smoke-test the production bundle
 ```
+CI additionally runs a Playwright + axe `e2e` job and a pgTAP `db-tests` job. Neither has
+an npm script; both run from `.github/workflows/ci.yml`.
 
 ### 7. Deploy to cPanel
 The server has **no Node** — build locally, ship only the artifacts.
@@ -150,7 +159,10 @@ same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
 | `npm run preview`      | Serve the production build locally               |
 | `npm run typecheck`    | `tsc --noEmit` strict check                      |
 | `npm run lint`         | ESLint (zero-warning policy)                     |
-| `npm run format`       | Prettier write                                   |
+| `npm run format`       | Prettier write (covers `docs/**/*.md` too)       |
+| `npm run format:check` | Prettier check — its own CI gate                 |
+| `npm test`             | Vitest, 636 unit tests                           |
+| `npm run test:coverage`| Vitest with coverage                             |
 
 ---
 
@@ -186,6 +198,7 @@ Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Documentation index
 
+- [`docs/SAAS.md`](docs/SAAS.md) — **the capability register: what is built, partial, broken or missing.** Start here
 - [`docs/PRD.md`](docs/PRD.md) — scope, MVP features, success metrics
 - [`docs/DESIGN.md`](docs/DESIGN.md) — visual language & tokens
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system + folder design
