@@ -124,6 +124,18 @@ interface RequestBody {
 /** Channel keys, matching src/lib/orgPreferences.ts's NOTIFICATION_CHANNELS. */
 type ChannelKey = 'in_app' | 'email' | 'push';
 
+/** Mirrors the check constraint on notification_deliveries.status (0067). */
+type DeliveryStatus = 'sent' | 'failed' | 'skipped' | 'expired';
+
+interface DeliveryRow {
+  org_id: string;
+  user_id: string;
+  channel: ChannelKey;
+  status: DeliveryStatus;
+  event_type: string;
+  detail: string | null;
+}
+
 /**
  * Dispatch `type` -> the settings-screen event key it is governed by.
  *
@@ -360,6 +372,44 @@ Deno.serve(async (req: Request) => {
     const requested = body.channels ?? ['push', 'email'];
     const channels = requested.filter((c) => orgChannels[c]);
 
+    // Delivery record (GAP-004). `results` above has always been computed and
+    // then discarded, so nobody could answer "were these people actually
+    // told?". Collected per recipient per channel and written once at the end,
+    // rather than a round trip per send.
+    const deliveries: DeliveryRow[] = [];
+    const record = (
+      userId: string,
+      channel: ChannelKey,
+      status: DeliveryStatus,
+      detail?: string,
+    ): void => {
+      deliveries.push({
+        org_id: orgId,
+        user_id: userId,
+        channel,
+        status,
+        event_type: type,
+        detail: detail ?? null,
+      });
+    };
+
+    // Anyone the org matrix or their own switch removed. Recorded as
+    // 'skipped' with the reason, because "nothing was sent and that was
+    // correct" is a different fact from "nothing was sent".
+    for (const userId of scopedUserIds) {
+      if (optedOut.has(userId)) {
+        record(userId, 'email', 'skipped', 'recipient opted out');
+        record(userId, 'push', 'skipped', 'recipient opted out');
+      }
+    }
+    for (const channel of ['email', 'push'] as ChannelKey[]) {
+      if (!orgChannels[channel]) {
+        for (const userId of reachableUserIds) {
+          record(userId, channel, 'skipped', 'channel disabled for this event by the organisation');
+        }
+      }
+    }
+
     // Row per recipient. Read_at and delivery are per-person, so the row has
     // to be too; a single shared row could not track who has seen it.
     // Skipped entirely when the org has switched the in-app channel off for
@@ -376,6 +426,11 @@ Deno.serve(async (req: Request) => {
         })),
       );
       if (insertError) throw insertError;
+      for (const userId of scopedUserIds) record(userId, 'in_app', 'sent');
+    } else {
+      for (const userId of scopedUserIds) {
+        record(userId, 'in_app', 'skipped', 'in-app disabled for this event by the organisation');
+      }
     }
 
     const results = { push: { sent: 0, expired: 0, failed: 0 }, email: { sent: 0, skipped: 0, failed: 0 } };
@@ -385,19 +440,37 @@ Deno.serve(async (req: Request) => {
       const vapidPublicKey = Deno.env.get('VITE_VAPID_PUBLIC_KEY');
       const vapidSubject = Deno.env.get('VAPID_SUBJECT');
 
+      if (!vapidPrivateKey || !vapidPublicKey || !vapidSubject) {
+        for (const userId of reachableUserIds) {
+          record(userId, 'push', 'skipped', 'VAPID keys not configured on this deployment');
+        }
+      }
       if (vapidPrivateKey && vapidPublicKey && vapidSubject) {
         webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
         const { data: subscriptions } = await supabase
           .from('push_subscriptions')
-          .select('id, endpoint, p256dh, auth_key')
+          // `user_id` selected so each outcome can be attributed to a person,
+          // not just counted. One person may hold several subscriptions.
+          .select('id, user_id, endpoint, p256dh, auth_key')
           .in('user_id', reachableUserIds);
 
         const expiredIds: string[] = [];
+        const pushed = new Set<string>();
         for (const sub of subscriptions ?? []) {
           const outcome = await sendPush(sub, { title, body: body.body });
           results.push[outcome]++;
+          pushed.add(sub.user_id);
+          record(sub.user_id, 'push', outcome === 'sent' ? 'sent' : outcome);
           if (outcome === 'expired') expiredIds.push(sub.id);
+        }
+        // Someone with no subscription at all is not a failure — they have
+        // simply never enabled push on a device — but it is the difference
+        // between "we tried" and "there was nothing to try".
+        for (const userId of reachableUserIds) {
+          if (!pushed.has(userId)) {
+            record(userId, 'push', 'skipped', 'no push subscription on any device');
+          }
         }
         // Prune dead subscriptions so future sends don't keep retrying them.
         if (expiredIds.length > 0) {
@@ -413,6 +486,9 @@ Deno.serve(async (req: Request) => {
         // reserved in the schema, but not live until real credentials exist
         //. Either the org's own, or the global fallback.
         results.email.skipped = reachableUserIds.length;
+        for (const userId of reachableUserIds) {
+          record(userId, 'email', 'skipped', 'no SMTP configured for this organisation or platform');
+        }
       } else {
         const { default: nodemailer } = await import('npm:nodemailer@6');
         const transport = nodemailer.createTransport({
@@ -441,14 +517,43 @@ Deno.serve(async (req: Request) => {
               text: body.body ?? title,
             });
             results.email.sent++;
-          } catch {
+            record(profile.id, 'email', 'sent');
+          } catch (mailError) {
             results.email.failed++;
+            // The SMTP error is the whole diagnostic value of this row — a
+            // bounce, a bad credential, a refused relay all look identical
+            // without it. `resolveSmtpConfig` never logs the row it read, so
+            // the password cannot reach here; the message is the server's.
+            record(
+              profile.id,
+              'email',
+              'failed',
+              mailError instanceof Error ? mailError.message.slice(0, 500) : 'unknown error',
+            );
           }
         }
       }
     }
 
-    return jsonResponse({ ok: true, results, dropped: droppedCount });
+    // Written last, in one insert, and deliberately non-fatal: a delivery
+    // record that fails to save must not turn a successful send into a 500 and
+    // have Inngest retry it, which would send everything twice. The send is
+    // the product; this is the audit of it.
+    if (deliveries.length > 0) {
+      const { error: deliveryError } = await supabase
+        .from('notification_deliveries')
+        .insert(deliveries);
+      if (deliveryError) {
+        console.error('notification_deliveries insert failed:', deliveryError.message);
+      }
+    }
+
+    return jsonResponse({
+      ok: true,
+      results,
+      dropped: droppedCount,
+      recorded: deliveries.length,
+    });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
