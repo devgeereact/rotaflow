@@ -62,8 +62,9 @@
 -- of a better one. Percentiles therefore come from whatever actually
 -- timed something, named in `latency_from`.
 --
--- Still one row per service, and both new columns are additive, so
--- nothing that reads the view breaks.
+-- Still one row per service, and both new columns are additive as far as
+-- any READER is concerned. Not as far as `create or replace view` is
+-- concerned, though — see the note above the view itself.
 --
 -- ## Retention, deliberately not in `retention_policies`
 --
@@ -208,7 +209,25 @@ comment on function public.probe_platform_health() is
 revoke all on function public.probe_platform_health() from public, anon, authenticated;
 
 -- ── the view stops blending sources ───────────────────────────────────
-create or replace view public.platform_health_summary
+-- DROP then CREATE, not CREATE OR REPLACE.
+--
+-- `create or replace view` can only APPEND columns; it cannot rename or
+-- reorder existing ones, and this puts `measured_from` where 0027 had
+-- `samples_24h`. Postgres refuses with
+--
+--     cannot change name of view column "samples_24h" to "measured_from"
+--     (SQLSTATE 42P16)
+--
+-- The first version of this file used `or replace` and was caught by the
+-- `db-tests` CI job, which applies every migration to a fresh Postgres.
+-- Validating the SELECT on its own — which is what I did — proves the query
+-- works and says nothing about whether the DDL will apply.
+--
+-- Dropping a view drops its grants with it, so they are re-issued below.
+-- Nothing depends on this view but the client, so there is no cascade.
+drop view if exists public.platform_health_summary;
+
+create view public.platform_health_summary
 with (security_invoker = true) as
 with recent as (
   select * from public.platform_health_samples
@@ -270,6 +289,12 @@ left join latency l on l.service = u.service;
 
 comment on view public.platform_health_summary is
   'Last 24 hours per service. UPTIME is computed from one source — scheduled probes where they exist, console probes otherwise — because averaging a browser round trip with an in-region one produces a number nobody can interpret; measured_from says which was used. LATENCY is computed separately, from whatever actually recorded a duration, because scheduled probes deliberately record none (0076); latency_from names that source. Null percentiles mean nothing timed was sampled, not that latency was zero.';
+
+-- Re-granted after the drop. Narrower than 0056, which handed out
+-- `insert, update, delete` on a summary view as well — meaningless on an
+-- aggregate and inconsistent with 0075's direction of travel. `anon` gets
+-- nothing, matching 0075.
+grant select on public.platform_health_summary to authenticated, service_role;
 
 -- ── schedule ──────────────────────────────────────────────────────────
 -- Every five minutes. Frequent enough that a short outage leaves a mark,
