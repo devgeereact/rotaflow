@@ -1,11 +1,19 @@
-import { useCallback, useState } from 'react';
-import { Info, MessageSquarePlus, ShieldCheck } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Info, MessageSquarePlus, ShieldCheck, Star } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
-import { openSupportCase } from '@/services/supportCaseService';
+import {
+  listCaseMessages,
+  listMyCases,
+  openSupportCase,
+  rateCase,
+  type SupportCase,
+  type SupportCaseMessage,
+} from '@/services/supportCaseService';
 import { reportError } from '@/lib/sentry';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Label } from '@/components/ui/Label';
@@ -30,6 +38,22 @@ const QUESTIONS: { q: string; a: string }[] = [
   },
 ];
 
+const STATUS_TONE: Record<string, BadgeTone> = {
+  open: 'info',
+  pending: 'warning',
+  on_hold: 'neutral',
+  resolved: 'success',
+  closed: 'neutral',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  open: 'Open',
+  pending: 'Awaiting support',
+  on_hold: 'On hold',
+  resolved: 'Resolved',
+  closed: 'Closed',
+};
+
 /**
  * `/app/help` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.help`).
  *
@@ -45,6 +69,76 @@ export function HelpPage(): JSX.Element {
   const { showError, showSuccess } = useToast();
 
   const [contactOpen, setContactOpen] = useState(false);
+
+  // BUG-060: `rate_support_case` shipped in 0024 and had no caller, so
+  // `support_cases.csat` could never be anything but null and the console's
+  // CSAT figure could never be anything but "no data". Rating needs somewhere
+  // to rate FROM, so this is also the first place a requester can see what
+  // happened to a request after they sent it.
+  const [myCases, setMyCases] = useState<SupportCase[]>([]);
+  const [casesReloadKey, setCasesReloadKey] = useState(0);
+  const [openCaseId, setOpenCaseId] = useState<string | null>(null);
+  const [thread, setThread] = useState<SupportCaseMessage[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [rating, setRating] = useState<string | null>(null);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+    let active = true;
+    void listMyCases(userId)
+      .then((rows) => {
+        if (active) setMyCases(rows);
+      })
+      .catch((err) => {
+        // Not fatal to the page. Help still has to work when the case list
+        // does not — its main job is letting someone ask for help.
+        reportError(err, { area: 'help:my-cases' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, casesReloadKey]);
+
+  const toggleCase = useCallback(
+    (caseId: string): void => {
+      if (openCaseId === caseId) {
+        setOpenCaseId(null);
+        return;
+      }
+      setOpenCaseId(caseId);
+      setThread([]);
+      setThreadLoading(true);
+      // Internal notes are excluded by the RLS policy itself (0024), not by a
+      // filter here — a client-side one is a single forgotten `.eq()` away
+      // from showing a customer what the team said about them.
+      void listCaseMessages(caseId)
+        .then(setThread)
+        .catch((err) => {
+          reportError(err, { area: 'help:case-thread' });
+          showError('Could not load that conversation.');
+        })
+        .finally(() => setThreadLoading(false));
+    },
+    [openCaseId, showError],
+  );
+
+  const handleRate = useCallback(
+    async (caseId: string, score: number): Promise<void> => {
+      setRating(caseId);
+      try {
+        await rateCase(caseId, score);
+        setCasesReloadKey((k) => k + 1);
+        showSuccess('Thank you — that helps us see where support is falling short.');
+      } catch (err) {
+        reportError(err, { area: 'help:rate-case' });
+        showError('Could not save that rating. Please try again.');
+      } finally {
+        setRating(null);
+      }
+    },
+    [showError, showSuccess],
+  );
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,6 +156,9 @@ export function HelpPage(): JSX.Element {
       showSuccess('Message sent. Support replies within one working day.');
       setMessage('');
       setContactOpen(false);
+      // So it appears in "Your requests" immediately, rather than the next
+      // time the page happens to mount.
+      setCasesReloadKey((k) => k + 1);
     } catch (err) {
       reportError(err, { area: 'help:contact-support' });
       showError('Could not send that message. Please try again.');
@@ -93,6 +190,7 @@ export function HelpPage(): JSX.Element {
       });
       showSuccess('Thanks — that goes straight to the team building this.');
       setFeedback('');
+      setCasesReloadKey((k) => k + 1);
     } catch (err) {
       reportError(err, { area: 'help:feedback' });
       showError('Could not send that. Please try again.');
@@ -188,6 +286,130 @@ export function HelpPage(): JSX.Element {
           </Card>
         </div>
       </div>
+
+      {myCases.length > 0 && (
+        <Card className="mt-4 p-0">
+          <div className="border-b border-surface-border p-4 dark:border-surface-border-dark">
+            <h2 className="font-semibold text-content dark:text-content-dark">
+              Your requests
+            </h2>
+            <p className="mt-0.5 text-sm text-content-muted dark:text-content-muted-dark">
+              What you have asked us, and what happened next. Internal notes stay internal
+              — the database excludes them, not this screen.
+            </p>
+          </div>
+          <ul>
+            {myCases.map((row) => {
+              const expanded = openCaseId === row.id;
+              return (
+                <li
+                  key={row.id}
+                  className="border-b border-surface-border last:border-0 dark:border-surface-border-dark"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleCase(row.id)}
+                    aria-expanded={expanded}
+                    className="flex w-full flex-wrap items-center gap-2.5 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <span className="font-mono text-xs text-content-muted dark:text-content-muted-dark">
+                      {row.reference}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-content dark:text-content-dark">
+                      {row.subject}
+                    </span>
+                    <Badge tone={STATUS_TONE[row.status] ?? 'neutral'} dot>
+                      {STATUS_LABEL[row.status] ?? row.status}
+                    </Badge>
+                  </button>
+
+                  {expanded && (
+                    <div className="px-4 pb-4">
+                      {threadLoading ? (
+                        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                          Loading…
+                        </p>
+                      ) : thread.length === 0 ? (
+                        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                          No replies yet.
+                        </p>
+                      ) : (
+                        <ul className="space-y-3">
+                          {thread.map((msg) => (
+                            <li
+                              key={msg.id}
+                              className="rounded-lg border border-surface-border p-3 dark:border-surface-border-dark"
+                            >
+                              <span className="block text-xs font-medium text-content-muted dark:text-content-muted-dark">
+                                {msg.author_side === 'agent'
+                                  ? 'Support'
+                                  : (msg.author_name ?? 'You')}
+                                {' · '}
+                                {new Date(msg.created_at).toLocaleString('en-GB')}
+                              </span>
+                              <span className="mt-1 block whitespace-pre-wrap text-sm text-content dark:text-content-dark">
+                                {msg.body}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {/* Only on a resolved case, because `rate_support_case`
+                          refuses before resolution (0024) — offering the
+                          control earlier would be a button that errors. */}
+                      {row.resolved_at !== null && (
+                        <div className="mt-4 border-t border-surface-border pt-3 dark:border-surface-border-dark">
+                          <span className="block text-sm font-medium text-content dark:text-content-dark">
+                            {row.csat === null
+                              ? 'How did we do?'
+                              : 'Your rating. Change it if you like'}
+                          </span>
+                          <div className="mt-2 flex gap-1.5">
+                            {[1, 2, 3, 4, 5].map((score) => {
+                              const chosen = row.csat !== null && score <= row.csat;
+                              return (
+                                <button
+                                  key={score}
+                                  type="button"
+                                  disabled={rating === row.id}
+                                  onClick={() => void handleRate(row.id, score)}
+                                  aria-label={`Rate ${score} out of 5`}
+                                  aria-pressed={row.csat === score}
+                                  className="grid h-11 w-11 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                                >
+                                  {/* Fill is `warning`, stroke is
+                                      `warning-ink`. `warning.DEFAULT` is
+                                      2.27:1 on white — tailwind.config.ts says
+                                      so in its own comment — and a control
+                                      carrying meaning needs 3:1 under WCAG
+                                      1.4.11, so the shape is drawn in the ink
+                                      token. Filled-vs-outline is a non-colour
+                                      cue as well, and `aria-pressed` carries
+                                      it for anyone not looking. */}
+                                  <Star
+                                    size={20}
+                                    aria-hidden="true"
+                                    className={
+                                      chosen
+                                        ? 'fill-warning text-warning-ink dark:text-warning'
+                                        : undefined
+                                    }
+                                  />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
 
       <Modal
         open={contactOpen}

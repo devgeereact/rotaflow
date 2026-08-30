@@ -83,6 +83,49 @@ export async function listCaseMessages(caseId: string): Promise<SupportCaseMessa
   return data ?? [];
 }
 
+/**
+ * The signed-in person's own support cases, newest first.
+ *
+ * Deliberately narrower than RLS. `support_cases_select` (0024) also admits an
+ * organisation OWNER to every case raised inside their organisation, which is
+ * right for an owner reviewing what their staff have asked — but this feeds
+ * the requester's own "Your requests" list on `/app/help`, and only the
+ * requester may rate a case (`rate_support_case` checks `requester_id =
+ * auth.uid()`). Showing an owner a colleague's case here would offer a rating
+ * control that refuses.
+ */
+export async function listMyCases(userId: string, limit = 10): Promise<SupportCase[]> {
+  const { data, error } = await supabase
+    .from('support_cases')
+    .select('*')
+    .eq('requester_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Score a resolved case, 1 to 5 (BUG-060).
+ *
+ * `rate_support_case` shipped in 0024 and had no caller for the whole of that
+ * time, so `support_cases.csat` could never be anything but null and the
+ * console's CSAT figure could never be anything but "no data". Re-rating is
+ * allowed by the function on purpose — a mis-tap should be correctable.
+ */
+export async function rateCase(
+  caseId: string,
+  score: number,
+  comment?: string | null,
+): Promise<void> {
+  const { error } = await supabase.rpc('rate_support_case', {
+    p_case: caseId,
+    p_score: score,
+    p_comment: comment?.trim() ? comment.trim() : undefined,
+  });
+  if (error) throw error;
+}
+
 export async function replyToCase(
   caseId: string,
   body: string,
