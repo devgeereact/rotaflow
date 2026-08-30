@@ -133,39 +133,34 @@ for (const { path, heading } of ALL_SCREENS) {
  */
 const CONTRAST_BUDGET = 172;
 
-test('the authenticated surface has no non-contrast WCAG violations', async ({
-  page,
-}) => {
-  // A hard zero, unlike contrast. These are the violations that were fixable
-  // in the same change: six inline links distinguished from their surrounding
-  // prose by colour alone, and one horizontally-scrolling table a keyboard
-  // user could not reach into.
+/**
+ * One pass, two assertions.
+ *
+ * Both questions need every screen scanned, so asking them separately meant 52
+ * page loads and 52 axe runs where 26 of each will do. That was comfortable
+ * locally and timed out in CI, which runs a single worker against a cold dev
+ * server — the assertions were right and the shape was wasteful.
+ *
+ * The timeout is raised deliberately rather than nudged: 26 navigations plus 26
+ * axe scans is genuinely minutes of work, and this is a whole-surface sweep, not
+ * a unit test that ought to be fast.
+ */
+test('the authenticated surface meets WCAG basics', async ({ page }) => {
+  test.setTimeout(240_000);
+
+  // Non-contrast violations are a hard zero. These are the ones that were
+  // fixable in the same change: six inline links distinguished from their prose
+  // by colour alone, and one horizontally-scrolling table a keyboard user could
+  // not reach into.
   const offenders: string[] = [];
-
-  for (const { path } of ALL_SCREENS) {
-    await page.goto(path);
-    await expect(page.getByRole('heading').first()).toBeVisible();
-
-    const results = await new AxeBuilder({ page })
-      .exclude(AXE_EXCLUDE)
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze();
-
-    for (const violation of results.violations) {
-      if (violation.id === 'color-contrast') continue;
-      offenders.push(`${path}: ${violation.id} (${violation.nodes.length})`);
-    }
-  }
-
-  expect(offenders).toEqual([]);
-});
-
-test('colour-contrast debt does not grow', async ({ page }) => {
-  let total = 0;
+  let contrastTotal = 0;
   const perScreen: string[] = [];
 
   for (const { path } of ALL_SCREENS) {
     await page.goto(path);
+    // Wait for the heading rather than a fixed delay: several of these load
+    // fixtures asynchronously, and scanning mid-render produces a violation set
+    // that differs run to run.
     await expect(page.getByRole('heading').first()).toBeVisible();
 
     const results = await new AxeBuilder({ page })
@@ -173,24 +168,29 @@ test('colour-contrast debt does not grow', async ({ page }) => {
       .withTags(['wcag2a', 'wcag2aa'])
       .analyze();
 
-    const count = results.violations
-      .filter((v) => v.id === 'color-contrast')
-      .reduce((n, v) => n + v.nodes.length, 0);
-    if (count > 0) perScreen.push(`${path}: ${count}`);
-    total += count;
+    let contrast = 0;
+    for (const violation of results.violations) {
+      if (violation.id === 'color-contrast') {
+        contrast += violation.nodes.length;
+        continue;
+      }
+      offenders.push(`${path}: ${violation.id} (${violation.nodes.length})`);
+    }
+    if (contrast > 0) perScreen.push(`${path}: ${contrast}`);
+    contrastTotal += contrast;
   }
 
   // Printed whether or not it passes, so the number is visible on every run and
-  // a reduction gets noticed rather than only a regression — the same reason
-  // the bundle-size gate prints its figures. This is the one place the debt is
-  // actually counted, so it is worth a line in the log.
+  // a reduction gets noticed rather than only a regression — the same reason the
+  // bundle-size gate prints its figures.
   // eslint-disable-next-line no-console
   console.log(
-    `colour-contrast nodes: ${total} / ${CONTRAST_BUDGET}\n  ${perScreen.join('\n  ')}`,
+    `colour-contrast nodes: ${contrastTotal} / ${CONTRAST_BUDGET}\n  ${perScreen.join('\n  ')}`,
   );
 
+  expect(offenders).toEqual([]);
   expect(
-    total,
+    contrastTotal,
     `Colour-contrast violations went up. Either fix them, or if you have genuinely ` +
       `reduced the debt elsewhere, lower CONTRAST_BUDGET to the new total — never raise it.`,
   ).toBeLessThanOrEqual(CONTRAST_BUDGET);
