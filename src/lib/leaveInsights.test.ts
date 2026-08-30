@@ -23,6 +23,7 @@ function mkRequest(overrides: Partial<LeaveRequest> = {}): LeaveRequest {
     reason: null,
     reviewed_by: null,
     reviewed_at: null,
+    client_event_id: null,
     created_at: '2026-08-01T00:00:00.000Z',
     updated_at: '2026-08-01T00:00:00.000Z',
     ...overrides,

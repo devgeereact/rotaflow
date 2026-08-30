@@ -51,6 +51,7 @@ function event(type: string, at: string): ClockEvent {
     accuracy: null,
     location_name: null,
     event_at_reported: null,
+    client_event_id: null,
     synced: true,
     created_at: at,
     updated_at: at,

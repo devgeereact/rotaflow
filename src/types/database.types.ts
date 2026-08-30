@@ -369,6 +369,7 @@ export type Database = {
       };
       clock_events: {
         Row: {
+          client_event_id: string | null;
           accuracy: number | null;
           created_at: string;
           event_at: string;
@@ -387,6 +388,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          client_event_id?: string | null;
           accuracy?: number | null;
           created_at?: string;
           event_at?: string;
@@ -404,6 +406,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          client_event_id?: string | null;
           accuracy?: number | null;
           created_at?: string;
           event_at?: string;
@@ -1151,6 +1154,7 @@ export type Database = {
       };
       leave_requests: {
         Row: {
+          client_event_id: string | null;
           created_at: string;
           end_date: string;
           id: string;
@@ -1165,6 +1169,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          client_event_id?: string | null;
           created_at?: string;
           end_date: string;
           id?: string;
@@ -1179,6 +1184,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          client_event_id?: string | null;
           created_at?: string;
           end_date?: string;
           id?: string;
@@ -2272,6 +2278,7 @@ export type Database = {
       };
       shift_swaps: {
         Row: {
+          client_event_id: string | null;
           created_at: string;
           id: string;
           note: string | null;
@@ -2285,6 +2292,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          client_event_id?: string | null;
           created_at?: string;
           id?: string;
           note?: string | null;
@@ -2298,6 +2306,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          client_event_id?: string | null;
           created_at?: string;
           id?: string;
           note?: string | null;

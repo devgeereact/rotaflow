@@ -30,6 +30,7 @@ function request(
     reason: null,
     reviewed_by: null,
     reviewed_at: null,
+    client_event_id: null,
     created_at: `${start}T00:00:00Z`,
     updated_at: `${start}T00:00:00Z`,
   };

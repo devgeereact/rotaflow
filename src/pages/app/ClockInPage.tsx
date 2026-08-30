@@ -311,6 +311,15 @@ export function ClockInPage(): JSX.Element {
           type,
           method,
           event_at: eventAt,
+          // Minted HERE, before the online attempt, not when the write is
+          // queued (BUG-046). This branch is the one that needs it: if the
+          // request below reaches Postgres and only the RESPONSE is lost,
+          // `classifyFailure` calls that transient and the catch queues it —
+          // replaying a row that already exists. Carrying the key on the first
+          // attempt means the replay collides with 0081's unique index and is
+          // recognised as already applied, instead of duplicating a shift on
+          // somebody's timesheet.
+          client_event_id: crypto.randomUUID(),
           shift_id: view.shift?.id ?? null,
           location_name: activeLocation?.name ?? null,
           latitude: position?.latitude ?? null,

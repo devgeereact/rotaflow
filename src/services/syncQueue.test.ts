@@ -157,7 +157,18 @@ describe('flushQueuedWrites. The happy path', () => {
 
     await flushQueuedWrites();
 
-    expect(seen).toEqual([{ seq: 1 }, { seq: 2 }, { seq: 3 }]);
+    // `objectContaining`, because `enqueueWrite` now stamps an idempotency key
+    // onto every DB-bound payload (BUG-046). Order is what this test is about.
+    expect(seen).toEqual([
+      expect.objectContaining({ seq: 1 }),
+      expect.objectContaining({ seq: 2 }),
+      expect.objectContaining({ seq: 3 }),
+    ]);
+    expect(
+      seen.every(
+        (p) => typeof (p as { client_event_id?: unknown }).client_event_id === 'string',
+      ),
+    ).toBe(true);
   });
 
   it('does nothing with an empty queue', async () => {
@@ -195,7 +206,7 @@ describe('flushQueuedWrites, a permanent rejection must not block the queue', ()
 
     const dead = await listDeadLetteredWrites();
     expect(dead).toHaveLength(1);
-    expect(first(dead).payload).toEqual({ seq: 1 });
+    expect(first(dead).payload).toEqual(expect.objectContaining({ seq: 1 }));
     expect(first(dead).reason).toBe('permanent');
   });
 
@@ -208,7 +219,9 @@ describe('flushQueuedWrites, a permanent rejection must not block the queue', ()
 
     const dead = await listDeadLetteredWrites();
     expect(dead).toHaveLength(1);
-    expect(first(dead).payload).toEqual({ shiftId: 'deleted-shift' });
+    expect(first(dead).payload).toEqual(
+      expect.objectContaining({ shiftId: 'deleted-shift' }),
+    );
     expect(first(dead).lastError).toBeTruthy();
     expect(first(dead).failedAt).toBeTruthy();
   });
@@ -352,9 +365,71 @@ describe('dead letters', () => {
 
     const dead = first(await listDeadLetteredWrites());
     expect(dead.kind).toBe('clock');
-    expect(dead.payload).toEqual({ type: 'in', event_at: '2026-06-15T09:00:00Z' });
+    expect(dead.payload).toEqual(
+      expect.objectContaining({ type: 'in', event_at: '2026-06-15T09:00:00Z' }),
+    );
     expect(dead.queuedAt).toBeTruthy();
     expect(dead.lastError).toContain('permission denied');
+  });
+});
+
+describe('idempotency (BUG-046)', () => {
+  it('stamps a key on a DB-bound payload so a replay can collide instead of duplicating', async () => {
+    await enqueueWrite('leave', { start_date: '2026-06-15' });
+    const [item] = await listQueuedWrites();
+    const payload = item?.payload as { client_event_id?: unknown };
+    expect(typeof payload.client_event_id).toBe('string');
+  });
+
+  it('keeps a key the caller minted before its own online attempt', async () => {
+    // The case that matters: ClockInPage generates the key BEFORE trying the
+    // network, so a write whose response was lost is already in Postgres under
+    // it. Overwriting here would reopen exactly the hole this closes.
+    await enqueueWrite('clock', { type: 'in', client_event_id: 'minted-by-caller' });
+    const [item] = await listQueuedWrites();
+    expect((item?.payload as { client_event_id?: unknown }).client_event_id).toBe(
+      'minted-by-caller',
+    );
+  });
+
+  it('leaves a notify payload alone — it posts to Inngest, not a table', async () => {
+    await enqueueWrite('notify', { name: 'leave/reviewed', data: {} });
+    const [item] = await listQueuedWrites();
+    expect(item?.payload).toEqual({ name: 'leave/reviewed', data: {} });
+  });
+
+  it('treats "already applied" as synced, not as a dead letter', async () => {
+    // 23505 classifies as permanent, so without this the person would be told a
+    // clock-in failed that is sitting in their timesheet.
+    await enqueueWrite('clock', { type: 'in' });
+    mockedRecordClockEvent.mockRejectedValue(
+      postgrestError(
+        '23505',
+        'duplicate key value violates unique constraint "clock_events_client_event_id_key"',
+      ),
+    );
+
+    const result = await flushQueuedWrites();
+
+    expect(result.synced).toBe(1);
+    expect(result.deadLettered).toBe(0);
+    expect(await listQueuedWrites()).toHaveLength(0);
+    expect(await listDeadLetteredWrites()).toHaveLength(0);
+  });
+
+  it('still dead-letters a unique violation from a different constraint', async () => {
+    await enqueueWrite('clock', { type: 'in' });
+    mockedRecordClockEvent.mockRejectedValue(
+      postgrestError(
+        '23505',
+        'duplicate key value violates unique constraint "memberships_org_id_user_id_key"',
+      ),
+    );
+
+    const result = await flushQueuedWrites();
+
+    expect(result.synced).toBe(0);
+    expect(result.deadLettered).toBe(1);
   });
 });
 
