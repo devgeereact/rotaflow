@@ -146,7 +146,7 @@ select is(
 -- 8: an amendment that changes nobody's hours sends nothing at all.
 insert into public.rotas (id,org_id,location_id,name,period_start,period_end,status,supersedes_rota_id) values
   ('fadddddd-3000-0000-0000-000000000003','fadddddd-0000-0000-0000-000000000001',
-   null,'Quiet week','2099-04-06','2099-04-07','published'),
+   null,'Quiet week','2099-04-06','2099-04-07','published',null),
   ('fadddddd-3000-0000-0000-000000000004','fadddddd-0000-0000-0000-000000000001',
    null,'Quiet week','2099-04-06','2099-04-07','draft','fadddddd-3000-0000-0000-000000000003');
 
