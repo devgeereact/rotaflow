@@ -178,7 +178,20 @@ fallback when Framer Motion isn't warranted.
 
 ## 5. Accessibility (frontline-critical)
 
-- Contrast ≥ **4.5:1** for text (AA), verified in **both** light and dark.
+- Contrast ≥ **4.5:1** for text (AA). **Light mode is verified and gated at zero**
+  across the 13 public pages and the 26 authenticated screens
+  (`e2e/app-surface.spec.ts`). **Dark mode is measured but NOT met** — ~200 nodes as
+  of 2026-08-30, capped by a budget so it can only fall, tracked as `docs/SAAS.md`
+  GAP-032. This line used to claim both themes were verified; nothing had ever
+  scanned dark mode, and it turned out to carry more debt than light did.
+- The `-ink` tokens are how a status colour becomes text: `text-{tone}-ink` in light,
+  `dark:text-{tone}` in dark. The `DEFAULT` status colours are fills and icons, and
+  run 2.02–4.29:1 as small text on their own washes. If you are writing
+  `text-warning` on anything a person reads, you want `text-warning-ink`.
+- **Muted grey does not go on a tinted panel.** `content-muted` is designed against
+  white and lands 4.23–4.49:1 on the washes — under the line, and a hundredth under
+  is under. Use `text-content` there; the semibold heading above it is what carries
+  the hierarchy.
 - Interactive targets ≥ **44×44px**. Staff use this one-handed on phones.
 - Every focusable element shows a ring: `focus-visible:ring-2 focus-visible:ring-primary`.
 - Images require `alt`; icon-only buttons require `aria-label`.

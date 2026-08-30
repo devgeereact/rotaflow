@@ -167,7 +167,9 @@ export function AdminNotificationsPage(): JSX.Element {
               value={announceStats.failed}
               hint={
                 announceStats.failed > 0 ? (
-                  <span className="font-semibold text-danger">Provider rejected</span>
+                  <span className="font-semibold text-danger-ink dark:text-danger">
+                    Provider rejected
+                  </span>
                 ) : (
                   'Nothing rejected'
                 )
@@ -384,7 +386,9 @@ export function AdminNotificationsPage(): JSX.Element {
           </div>
 
           <Callout tone="warning" title="“Opened” is not a delivery rate">
-            <p className="text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
+            {/* Inherits `text-content` from Callout. Muted grey is 4.34 : 1
+                on the warning wash (GAP-030). */}
+            <p className="text-sm leading-relaxed">
               The only engagement signal in the schema is <code>read_at</code>. There is
               no sent, delivered, bounced or failed column, so an unread notification may
               have arrived perfectly and simply not been opened. Read that percentage as

@@ -43,13 +43,13 @@ function environmentBadge(): { label: string; className: string } {
     return {
       label: 'Production',
       className:
-        'bg-danger-wash text-danger ring-1 ring-inset ring-danger/30 dark:bg-danger-wash-dark',
+        'bg-danger-wash text-danger-ink ring-1 ring-inset ring-danger/30 dark:bg-danger-wash-dark dark:text-danger',
     };
   }
   return {
     label: env.mode === 'staging' ? 'Staging' : 'Development',
     className:
-      'bg-warning-wash text-warning ring-1 ring-inset ring-warning/30 dark:bg-warning-wash-dark',
+      'bg-warning-wash text-warning-ink ring-1 ring-inset ring-warning/30 dark:bg-warning-wash-dark dark:text-warning',
   };
 }
 

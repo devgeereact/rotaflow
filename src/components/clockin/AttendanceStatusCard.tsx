@@ -60,7 +60,12 @@ export function AttendanceStatusCard({
           <p className="text-base font-semibold text-content dark:text-content-dark">
             {statusTitle}
           </p>
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          {/* `content`, not `content-muted`: this line sits inside the toned
+              wash above, where muted grey lands at 4.49 : 1 against a 4.5 : 1
+              minimum (GAP-030). One hundredth under is still under. The rows
+              below keep `content-muted` — they sit on the card, not the
+              wash. */}
+          <p className="text-sm text-content dark:text-content-muted-dark">
             {statusBody}
           </p>
         </div>

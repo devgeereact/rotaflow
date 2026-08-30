@@ -277,7 +277,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
             value={measured.queued.toLocaleString('en-GB')}
             hint={
               measured.failed > 0 ? (
-                <span className="font-semibold text-danger">
+                <span className="font-semibold text-danger-ink dark:text-danger">
                   {measured.failed} failed
                 </span>
               ) : (

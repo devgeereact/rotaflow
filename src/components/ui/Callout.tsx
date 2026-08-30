@@ -65,9 +65,18 @@ export function Callout({
       <Icon size={18} aria-hidden="true" className={cn('mt-0.5 shrink-0', icon)} />
       <div className="min-w-0 text-sm leading-relaxed text-content dark:text-content-dark">
         {title && <p className="mb-1 font-semibold">{title}</p>}
-        <div className="[&_p]:text-content-muted dark:[&_p]:text-content-muted-dark [&_p+p]:mt-2">
-          {children}
-        </div>
+        {/* Body copy stays `text-content`, inherited from the wrapper above.
+            It used to be forced to `text-content-muted`, which is 4.26 : 1 on
+            the info wash and 4.38 : 1 on the divider — under the 4.5 : 1 line,
+            and a hair under is a fail. That single override accounted for 60
+            of the 172 contrast violations in the authenticated app (GAP-030),
+            because every `<p>`, `<code>` and `<strong>` inside a callout
+            inherited it.
+
+            Muted grey is designed against white; a tinted panel has no room
+            for it. The hierarchy the muting was for is already carried by the
+            semibold title. */}
+        <div className="[&_p+p]:mt-2">{children}</div>
       </div>
     </div>
   );

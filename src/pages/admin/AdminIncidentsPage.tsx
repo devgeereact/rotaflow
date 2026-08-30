@@ -224,7 +224,9 @@ export function AdminIncidentsPage(): JSX.Element {
                 <>
                   <span
                     className={`font-semibold ${
-                      metrics.change.startsWith('+') ? 'text-danger' : 'text-success'
+                      metrics.change.startsWith('+')
+                        ? 'text-danger-ink dark:text-danger'
+                        : 'text-success-ink dark:text-success'
                     }`}
                   >
                     {metrics.change}

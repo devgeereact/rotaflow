@@ -46,11 +46,18 @@ export interface ReportRow {
 // illegible as text). See docs/DESIGN.md §2.
 const VIOLET =
   'bg-shift-tint-violet text-shift-tint-violet-fg dark:bg-shift-deep-violet dark:text-shift-violet';
-const BLUE = 'bg-primary/10 text-primary dark:bg-primary/15';
-const AMBER = 'bg-warning/15 text-warning';
-const GREEN = 'bg-success/10 text-success';
+// Light mode uses the `ink` tokens, dark mode keeps `DEFAULT` — the same
+// pairing Badge.tsx settled on. At 0.72rem these are small text, and the
+// DEFAULT status colours run 2.02-4.08 : 1 on their own washes against a
+// 4.5 : 1 minimum. GAP-030.
+const BLUE = 'bg-primary/10 text-primary-ink dark:bg-primary/15 dark:text-primary';
+const AMBER = 'bg-warning/15 text-warning-ink dark:text-warning';
+const GREEN = 'bg-success/10 text-success-ink dark:text-success';
+// `content-muted` on `divider` is 4.38 : 1 — under the line by a hair, and a
+// hair is a fail. `content` is the body ink and reads correctly on a fill this
+// pale.
 const NEUTRAL =
-  'bg-divider text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark';
+  'bg-divider text-content dark:bg-surface-subtle-dark dark:text-content-muted-dark';
 
 /** `id` of a tab button in the reports tab bar, and the panel's `aria-labelledby`. */
 export function reportsTabId(tab: string): string {

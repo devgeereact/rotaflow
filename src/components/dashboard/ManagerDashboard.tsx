@@ -152,7 +152,9 @@ export function ManagerDashboard({
           value={shiftsToFill}
           hint={
             shiftsToFill > 0 ? (
-              <span className="text-danger">below minimum cover</span>
+              <span className="text-danger-ink dark:text-danger">
+                below minimum cover
+              </span>
             ) : (
               'fully covered'
             )
@@ -183,7 +185,9 @@ export function ManagerDashboard({
             weekly?.rotaStatus === 'published' ? (
               <span className="text-success">staff notified</span>
             ) : (
-              <span className="text-danger">not visible to staff</span>
+              <span className="text-danger-ink dark:text-danger">
+                not visible to staff
+              </span>
             )
           }
           to="/app/rota"
@@ -280,7 +284,7 @@ export function ManagerDashboard({
                       className={cn(
                         'grid h-8 w-8 shrink-0 place-items-center rounded-full',
                         request.kind === 'leave'
-                          ? 'bg-warning-wash text-warning dark:bg-warning-wash-dark'
+                          ? 'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning'
                           : request.kind === 'swap'
                             ? 'bg-info-wash text-info dark:bg-info-wash-dark'
                             : 'bg-danger-wash text-danger dark:bg-danger-wash-dark',

@@ -267,7 +267,9 @@ export function AdminBillingPage(): JSX.Element {
                   <>
                     <span
                       className={`font-semibold ${
-                        derived.collectedChange >= 0 ? 'text-success' : 'text-danger'
+                        derived.collectedChange >= 0
+                          ? 'text-success-ink dark:text-success'
+                          : 'text-danger-ink dark:text-danger'
                       }`}
                     >
                       {derived.collectedChange >= 0 ? '+' : ''}
@@ -283,7 +285,7 @@ export function AdminBillingPage(): JSX.Element {
               value={formatMoney(derived.outstanding)}
               hint={
                 derived.pastDueCount > 0 ? (
-                  <span className="font-semibold text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger">
                     {formatMoney(derived.pastDue)} past due
                   </span>
                 ) : (
@@ -412,14 +414,22 @@ export function AdminBillingPage(): JSX.Element {
                             </td>
                             <td className="px-4 py-2.5">
                               <span className="flex justify-end gap-1.5">
+                                {/* Real disabled buttons, not spans dressed as
+                                    them: `opacity-60` over muted grey is
+                                    2.32 : 1, and the disabled-control exemption
+                                    does not apply to a span (GAP-030). It also
+                                    tells a screen reader these are unavailable,
+                                    which the spans never did. */}
                                 {['View', 'Credit'].map((label) => (
-                                  <span
+                                  <button
                                     key={label}
+                                    type="button"
+                                    disabled
                                     title="This console has no Stripe-side lookup or credit action wired in yet, so nothing can be opened or credited from here"
                                     className="cursor-not-allowed rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
                                   >
                                     {label}
-                                  </span>
+                                  </button>
                                 ))}
                               </span>
                             </td>

@@ -161,7 +161,9 @@ export function AdminIntegrationsPage(): JSX.Element {
               value={totals.failed24h}
               hint={
                 totals.failed24h > 0 ? (
-                  <span className="font-semibold text-danger">Needs attention</span>
+                  <span className="font-semibold text-danger-ink dark:text-danger">
+                    Needs attention
+                  </span>
                 ) : (
                   'Nothing failed'
                 )
@@ -172,7 +174,7 @@ export function AdminIntegrationsPage(): JSX.Element {
               value={`${totals.built} of ${connectors.length}`}
               hint={
                 totals.degraded > 0 ? (
-                  <span className="font-semibold text-warning">
+                  <span className="font-semibold text-warning-ink dark:text-warning">
                     {totals.degraded} degraded
                   </span>
                 ) : totals.built === 0 ? (
@@ -289,7 +291,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                         <td
                           className={`px-3 py-2.5 text-right font-mono tabular-nums ${
                             (connector.success_rate_7d ?? 100) < 95
-                              ? 'text-danger'
+                              ? 'text-danger-ink dark:text-danger'
                               : 'text-content dark:text-content-dark'
                           }`}
                         >
@@ -310,7 +312,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                         <td
                           className={`px-3 py-2.5 text-right font-mono tabular-nums ${
                             connector.failed_24h
-                              ? 'font-semibold text-danger'
+                              ? 'font-semibold text-danger-ink dark:text-danger'
                               : 'text-content-muted dark:text-content-muted-dark'
                           }`}
                         >

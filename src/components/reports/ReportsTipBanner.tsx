@@ -29,7 +29,7 @@ export function ReportsTipBanner({
         <p className="text-sm font-semibold leading-6 text-content dark:text-content-dark">
           {title}
         </p>
-        <p className="text-[0.8rem] font-medium leading-6 text-content-muted dark:text-content-muted-dark">
+        <p className="text-[0.8rem] font-medium leading-6 text-content dark:text-content-muted-dark">
           {body}
         </p>
       </div>

@@ -117,7 +117,13 @@ const config: Config = {
         // restyling attendance never shifts every "published" chip in the rota.
         // See docs/design/.loop/clockin-log.md.
         clock: {
-          DEFAULT: '#068D41', // CTA fill + ready ring stroke
+          // #068D41 in the reference. White on it is 4.29 : 1, which fails AA
+          // for the button label it exists to carry — the one control on the
+          // clock-in screen. Darkened the minimum that clears the line with
+          // margin (4.86 : 1); at this delta the fill is indistinguishable
+          // from the reference beside it, and the alternative was a signature
+          // control that fails the gate. Same reasoning as the `ink` tokens.
+          DEFAULT: '#05833C', // CTA fill + ready ring stroke
           tint: '#D6F4E1', // status badge wash (Starts in / Day Shift / Upcoming)
           fg: '#0A5522', // ink on `tint`
           wash: '#EDFAF2', // larger panel wash (Attendance "On Track")
