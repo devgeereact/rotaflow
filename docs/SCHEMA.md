@@ -348,6 +348,13 @@ and only `is_org_member()` governs access, same as every other tenant table.
   uptime from scheduled samples where they exist (`measured_from`), latency from
   whatever actually timed something (`latency_from`). Averaging a browser round trip
   with an in-region one is what `0027` warned about.
+- **`rate_support_case(case, score, comment?)`** (`0024`, message clarified in
+  `0077`): the requester's satisfaction score for a _resolved_ case, 1-5. Three
+  refusals, all with their own wording since `0077`: not the requester (`42501`),
+  not yet resolved (`22023`), score out of range (`22023` — it used to fall through
+  to the column CHECK and read as `support_cases_csat_check`). Re-rating is allowed
+  deliberately, so a mis-tap is correctable. Called from `/app/help`; it had no
+  caller at all between `0024` and 2026-08-30, which is why `csat` was always null.
 - **`enforce_retention(dry_run?)`** (`0029`, `security definer`, `pg_cron` nightly):
   deletes rows past their `retention_policies.retain_months` window and writes a
   `retention_runs` row. Skips any policy with `retain_months = null` (indefinite —
