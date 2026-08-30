@@ -38,6 +38,7 @@ function mkEvent(staffProfileId: string, type: string, eventAt: string): ClockEv
     accuracy: null,
     location_name: null,
     event_at_reported: null,
+    client_event_id: null,
     synced: true,
     created_at: eventAt,
     updated_at: eventAt,

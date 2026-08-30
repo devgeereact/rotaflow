@@ -130,11 +130,59 @@ export function classifyFailure(error: unknown): FailureKind {
   return 'transient';
 }
 
+/**
+ * The index names 0081 creates, one per table the outbox replays into.
+ *
+ * A 23505 naming one of these means the row is already there — the write
+ * landed and we are replaying it — which is success. A 23505 from any other
+ * constraint is a real rejection and must still dead-letter, so this matches
+ * on the name rather than on the code alone.
+ */
+const IDEMPOTENCY_INDEXES = [
+  'clock_events_client_event_id_key',
+  'leave_requests_client_event_id_key',
+  'shift_swaps_client_event_id_key',
+];
+
+/** Did this replay collide with its own earlier, successful insert? */
+export function isAlreadyApplied(error: unknown): boolean {
+  const e = error as { code?: unknown; message?: unknown; details?: unknown } | null;
+  if (!e || e.code !== '23505') return false;
+  // Only genuine strings. PostgREST sends both as text, and coercing an
+  // unexpected object would produce "[object Object]" and match nothing —
+  // silently turning a recognisable collision into a dead letter.
+  const text = [e.message, e.details]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' ');
+  return IDEMPOTENCY_INDEXES.some((name) => text.includes(name));
+}
+
+/**
+ * Attach an idempotency key to a payload that does not already carry one.
+ *
+ * `notify` is excluded: it posts to Inngest rather than inserting a row, so
+ * there is no unique index to collide with and an unexpected column would just
+ * ride along in the event body.
+ *
+ * A caller that mints its own key BEFORE its first online attempt — which
+ * `ClockInPage` does — keeps it here, and that is the case that matters: a
+ * write whose response was lost is already in Postgres under that key, so the
+ * replay collides instead of duplicating. Stamping only at enqueue time would
+ * close the smaller hole and leave the larger one open.
+ */
+function withIdempotencyKey(kind: OutboxKind, payload: unknown): unknown {
+  if (kind === 'notify') return payload;
+  if (payload === null || typeof payload !== 'object') return payload;
+  const record = payload as Record<string, unknown>;
+  if (typeof record['client_event_id'] === 'string') return payload;
+  return { ...record, client_event_id: crypto.randomUUID() };
+}
+
 export async function enqueueWrite(kind: OutboxKind, payload: unknown): Promise<void> {
   await outboxAdd({
     id: crypto.randomUUID(),
     kind,
-    payload,
+    payload: withIdempotencyKey(kind, payload),
     queuedAt: new Date().toISOString(),
     attempts: 0,
   });
@@ -201,6 +249,18 @@ export async function flushQueuedWrites(): Promise<FlushResult> {
       synced++;
       continue;
     } catch (err) {
+      // The row is already there under this item's key, so the write landed —
+      // on an earlier replay whose `outboxRemove` never ran, or on an online
+      // attempt whose response was lost. Either way the work is done and the
+      // item should leave the queue. Without this it would dead-letter, since
+      // 23505 classifies as permanent, and the person would be told a clock-in
+      // failed that is sitting in their timesheet.
+      if (isAlreadyApplied(err)) {
+        await outboxRemove(item.id);
+        synced++;
+        continue;
+      }
+
       const failureKind = classifyFailure(err);
       const attempts = item.attempts + 1;
       const lastError = messageOf(err);

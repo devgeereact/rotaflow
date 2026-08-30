@@ -43,6 +43,7 @@ function mkEvent(overrides: Partial<ClockEvent> = {}): ClockEvent {
     accuracy: null,
     location_name: null,
     event_at_reported: null,
+    client_event_id: null,
     synced: true,
     created_at: '2026-08-11T07:00:00.000Z',
     updated_at: '2026-08-11T07:00:00.000Z',
