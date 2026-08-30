@@ -64,6 +64,7 @@ export function AnnouncementComposerModal({
   const [aiPrompt, setAiPrompt] = useState('');
   const [drafting, setDrafting] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
+  const [aiUnverified, setAiUnverified] = useState<string[]>([]);
   const [aiError, setAiError] = useState<string | null>(null);
   // Drafting calls the same Edge Function as the rota assistant and is gated
   // by the same entitlement (CAP-038).
@@ -79,6 +80,7 @@ export function AnnouncementComposerModal({
     setAiPrompt('');
     setAiNote(null);
     setAiError(null);
+    setAiUnverified([]);
   }, [open]);
 
   const handleDraft = async (): Promise<void> => {
@@ -86,6 +88,7 @@ export function AnnouncementComposerModal({
     setDrafting(true);
     setAiError(null);
     setAiNote(null);
+    setAiUnverified([]);
     try {
       const draft = await draftAnnouncement({
         orgId,
@@ -96,6 +99,11 @@ export function AnnouncementComposerModal({
       setBody(draft.body);
       setUrgent(draft.urgent);
       setAiNote(draft.reasoning || 'Draft ready. Read it through before posting.');
+      // Words the Edge Function could not tie to anyone on the roster, any
+      // site, any shift type, or anything the manager typed (BUG-058). Shown
+      // rather than acted on: a draft with an invented date never gets this
+      // far, but a name is a judgement the person posting has to make.
+      setAiUnverified(draft.unverified ?? []);
     } catch (err) {
       // A plan refusal is not an outage. Telling an owner it is "unavailable
       // right now" sends them to check their connection over what is actually
@@ -166,6 +174,13 @@ export function AnnouncementComposerModal({
             {aiNote && (
               <p className="mt-1.5 text-xs text-success" role="status">
                 {aiNote}
+              </p>
+            )}
+            {aiUnverified.length > 0 && (
+              <p className="mt-1.5 text-xs text-warning" role="status">
+                {aiUnverified.length === 1
+                  ? `“${aiUnverified[0]}” does not match anyone on your team. Check it before posting.`
+                  : `${aiUnverified.map((n) => `“${n}”`).join(', ')} do not match anyone on your team. Check them before posting.`}
               </p>
             )}
             {aiError && (

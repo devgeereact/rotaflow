@@ -87,19 +87,22 @@ actually reads them.
 
 Every one of these runs in CI and blocks a merge:
 
-| Gate                       | What it catches                                               |
-| -------------------------- | ------------------------------------------------------------- |
-| `npm run typecheck`        | implicit `any`, missing return types                          |
-| `npm run lint`             | zero warnings tolerated (`--max-warnings 0`)                  |
-| `npm run format:check`     | a separate gate from lint; green tsc/eslint does not imply it |
-| `npm test`                 | pure-logic unit suite over `src/lib` and `src/services`       |
-| `npm run check:bundle`     | size budgets, and that no DEV preview page shipped            |
-| `npm run check:migrations` | destructive SQL without a `-- SAFETY(...)` declaration        |
-| `npx playwright test`      | 40 screens rendered and scanned for WCAG basics               |
-| `supabase test db`         | pgTAP, the only gate that can catch an RLS regression         |
+| Gate                       | What it catches                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`        | implicit `any`, missing return types                                                                        |
+| `npm run lint`             | zero warnings tolerated (`--max-warnings 0`)                                                                |
+| `npm run format:check`     | a separate gate from lint; green tsc/eslint does not imply it                                               |
+| `npm test`                 | pure-logic unit suite over `src/lib`, `src/services`, and any pure module extracted out of an Edge Function |
+| `npm run check:bundle`     | size budgets, and that no DEV preview page shipped                                                          |
+| `npm run check:migrations` | destructive SQL without a `-- SAFETY(...)` declaration                                                      |
+| `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                             |
+| `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                       |
 
 `supabase/functions/**` is Deno and is excluded from typecheck and lint — no
-automated check stands in for reading those files.
+automated check stands in for reading those files. The exception is a module
+with no Deno globals in it, which vitest can run unchanged: `ai-rota-assistant/
+grounding.ts` is the worked example, and extracting the decision-making part of
+a function that way is preferred to leaving it untested inside the handler.
 
 ## Scope discipline
 

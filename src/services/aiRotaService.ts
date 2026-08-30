@@ -16,6 +16,17 @@ export interface AiAnnouncementDraft {
   urgent: boolean;
   /** Which facts the model drew on. Shown so the manager can sanity-check it. */
   reasoning: string;
+  /**
+   * Name-shaped words in the draft that match nobody on the roster, no site,
+   * no shift type, and nothing the manager typed (BUG-058).
+   *
+   * A warning, never a verdict: English capitalises plenty of words that are
+   * not names. A draft with an invented DATE never reaches here at all — the
+   * Edge Function refuses it, because the composer pre-fills these fields and
+   * a caution printed beside text already in the box is read after it is
+   * posted.
+   */
+  unverified?: string[];
 }
 
 export interface AiShiftSuggestion {

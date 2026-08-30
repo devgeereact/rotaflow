@@ -79,6 +79,7 @@ const ACTION_LABELS: Record<string, string> = {
   // AI assistant (ai-rota-assistant)
   'ai_assistant.rota_suggestions_generated': 'AI suggested rota cover',
   'ai_assistant.announcement_drafted': 'AI drafted an announcement',
+  'ai_assistant.announcement_rejected': 'AI announcement refused as ungrounded',
 };
 
 /**
