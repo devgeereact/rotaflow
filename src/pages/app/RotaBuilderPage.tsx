@@ -46,6 +46,7 @@ import {
   getOrCreateRotaForPeriod,
   pickRotaToOpen,
   publishRota,
+  rotaRefusalMessage,
   resolveRotasForLocations,
   unpublishRota,
 } from '@/services/rotaService';
@@ -1050,8 +1051,19 @@ export function RotaBuilderPage(): JSX.Element {
       // goes. The recipient list is computed in SQL from the rota's own shifts,
       // which is the same set this code was deriving from `staffById`.
     } catch (err) {
-      reportError(err, { area: 'rota:publish' });
-      setPublishError('Could not publish this rota. Please try again.');
+      // A lifecycle refusal is not a fault: `publish_rota` raises ROTA4-ROTA8
+      // with a sentence written for the manager, and minimum cover (0080) is
+      // the one that will actually be seen — the button already blocks on the
+      // client, so this fires when that view is stale, which is exactly when a
+      // vague message is least useful. "Please try again" is also wrong: no
+      // amount of retrying fills Saturday.
+      const refusal = rotaRefusalMessage(err);
+      if (refusal) {
+        setPublishError(refusal);
+      } else {
+        reportError(err, { area: 'rota:publish' });
+        setPublishError('Could not publish this rota. Please try again.');
+      }
     } finally {
       setPublishing(false);
     }
