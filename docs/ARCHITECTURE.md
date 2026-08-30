@@ -186,21 +186,22 @@ RotaBuilderPage (manager, org-scoped)
         • archives the rota this one supersedes, then publishes, in one transaction
         • a raw PATCH of rotas.status is REFUSED by rotas_guard_status_change (0061)
         • a raw write to a published rota's shifts is REFUSED by shifts_guard_immutable_rota
+        • enqueue_rota_published_notification writes the notification into
+          notification_outbox IN THE SAME TRANSACTION (0069), so a closed tab
+          cannot lose it — GAP-026. For an amendment it writes ONE ROW PER
+          AFFECTED PERSON, listing what changed for them (0083), rather than
+          paging the whole roster.
   → on error: Sentry.captureException + toast; local draft preserved
-  → await useInngestDispatch().send('rota/published', { orgId, rotaId })
-      → POST https://inn.gs/e/<VITE_INNGEST_EVENT_KEY>   // write-only event key
-      → on failure: queued in the IndexedDB outbox as kind 'notify' and
-        retried on reconnect; the manager is told staff were not notified
-        // BUG-047. The publish itself needs the network (publish_rota is an
-        // RPC), so this guards "the write landed, the notice did not".
-      → Inngest invokes a Supabase Edge Function which:
-          • reads the org's notification matrix and each recipient's own
-            switch, and drops anyone who has opted out       // BUG-048
-          • inserts notifications rows (unless the org has muted in-app)
-          • sends Web Push (VAPID) + email via SMTP        // secrets stay server-side
-          • the push is displayed by public/push-sw.js, imported into the
-            generated service worker via workbox.importScripts // BUG-050
-          • (sms channel reserved, not delivered in V1)
+
+dispatch_notification_outbox(), on a pg_cron schedule (0069)
+  → posts each pending row to the send-notification Edge Function, which:
+      • reads the org's notification matrix and each recipient's own
+        switch, and drops anyone who has opted out           // BUG-048
+      • inserts notifications rows (unless the org has muted in-app)
+      • sends Web Push (VAPID) + email via SMTP        // secrets stay server-side
+      • the push is displayed by public/push-sw.js, imported into the
+        generated service worker via workbox.importScripts   // BUG-050
+      • (sms channel reserved, not delivered in V1)
 
 Offline example (staff clock-in with no signal)
   → clockService.clockIn(orgId, staffProfileId, geo)

@@ -43,10 +43,15 @@ const REPLAYERS: {
   leave: (payload) =>
     createLeaveRequest(payload as LeaveRequestInsert).then(() => undefined),
   swap: (payload) => requestShiftSwap(payload as ShiftSwapInsert).then(() => undefined),
-  // Not a Supabase write. A notification dispatch that failed after its rota,
-  // leave or swap write had already landed — see BUG-047 and
-  // notificationDispatchService's header. It is queued for the same reason the
-  // others are: the work is owed, and dropping it silently is the failure.
+  // Not a Supabase write, and NOTHING ENQUEUES THIS ANY MORE. Every dispatch
+  // moved server-side in 0087 (GAP-026), so a notification is now written to
+  // `notification_outbox` by the same transaction as the event that owes it,
+  // and cannot fail after the fact.
+  //
+  // The replayer stays because the outbox lives in each user's IndexedDB: an
+  // install that queued a `notify` item before that release still holds it,
+  // and would otherwise carry an item nothing can drain. Delete this once
+  // no client that could have written one is plausibly still installed.
   notify: (payload) => postInngestEvent(payload as InngestEventPayload),
 };
 

@@ -6,7 +6,6 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 import { FailedWritesNotice } from '@/components/FailedWritesNotice';
-import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
@@ -52,7 +51,6 @@ export function SwapsPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const { enqueue, deadLettered, discard } = useSyncQueue();
-  const { send } = useInngestDispatch();
   const { showError, showSuccess } = useToast();
 
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
@@ -304,23 +302,17 @@ export function SwapsPage(): JSX.Element {
             : 'Swap declined.',
         );
 
-        const recipientUserId = swap
-          ? staffById.get(swap.requested_by)?.user_id
-          : undefined;
-        if (recipientUserId) {
-          void send('swap/reviewed', {
-            orgId,
-            userIds: [recipientUserId],
-            type: 'swap',
-            title: `Your shift swap was ${status}`,
-          });
-        }
+        // The requester is told by `shift_swaps_enqueue_reviewed` (0087),
+        // which enqueues the notification in the same transaction as the
+        // decision. Dispatching it from here meant a decision could commit,
+        // the toast could show, and the notification could never be sent
+        // (GAP-026).
       } catch (err) {
         reportError(err, { area: 'swaps:review' });
         showError('Could not update that swap.');
       }
     },
-    [user, orgId, swaps, staffById, send, showError, showSuccess],
+    [user, orgId, swaps, showError, showSuccess],
   );
 
   const handleWithdraw = useCallback(

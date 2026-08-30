@@ -5,7 +5,6 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 import { FailedWritesNotice } from '@/components/FailedWritesNotice';
-import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
@@ -87,7 +86,6 @@ export function LeavePage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const { enqueue, deadLettered, discard } = useSyncQueue();
-  const { send } = useInngestDispatch();
   const { showError, showSuccess } = useToast();
 
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
@@ -276,23 +274,12 @@ export function LeavePage(): JSX.Element {
     [orgId, myProfile, online, enqueue, showError, showSuccess],
   );
 
-  const notifyReviewed = useCallback(
-    (updated: LeaveRequest, verb: 'approved' | 'declined') => {
-      if (!orgId) return;
-      const recipientUserId = staffById.get(updated.staff_profile_id)?.user_id;
-      if (!recipientUserId) return;
-      // Fire-and-forget, after the write already succeeded and the UI
-      // already reflects it, a failed dispatch must not undo the review.
-      void send('leave/reviewed', {
-        orgId,
-        userIds: [recipientUserId],
-        type: 'leave',
-        title: `Your leave request was ${verb}`,
-        body: formatLeaveRange(updated.start_date, updated.end_date),
-      });
-    },
-    [orgId, staffById, send],
-  );
+  // Telling the staff member their request was decided is the database's job
+  // now (`leave_requests_enqueue_reviewed`, 0087): the notification is written
+  // into the outbox in the same transaction as the decision, so the two cannot
+  // come apart. It was dispatched from here, after the update had committed
+  // and the toast was already up — closing the tab on that toast recorded a
+  // decision the person it was about never heard (GAP-026).
 
   const handleApprove = useCallback(
     async (row: LeaveDisplayRow): Promise<void> => {
@@ -311,13 +298,12 @@ export function LeavePage(): JSX.Element {
         }
         setRequests((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
         showSuccess('Leave request approved.');
-        notifyReviewed(updated, 'approved');
       } catch (err) {
         reportError(err, { area: 'leave:approve' });
         showError('Could not approve that request.');
       }
     },
-    [user, showError, showSuccess, notifyReviewed],
+    [user, showError, showSuccess],
   );
 
   const handleDecline = useCallback(
@@ -338,13 +324,12 @@ export function LeavePage(): JSX.Element {
           decision: 'declined',
           reason,
         });
-        notifyReviewed(updated, 'declined');
       } catch (err) {
         reportError(err, { area: 'leave:decline' });
         showError('Could not decline that request.');
       }
     },
-    [user, orgId, showError, showSuccess, notifyReviewed],
+    [user, orgId, showError, showSuccess],
   );
 
   const handleWithdraw = useCallback(

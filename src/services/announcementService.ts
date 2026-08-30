@@ -12,7 +12,15 @@ export async function listAnnouncements(orgId: string): Promise<Announcement[]> 
   return data ?? [];
 }
 
-/** Publishes immediately, `published_at` is set here, not left null for a later "publish" step. */
+/**
+ * Publishes immediately, `published_at` is set here, not left null for a later
+ * "publish" step.
+ *
+ * Notifying the audience is NOT done here. `announcements_enqueue_published`
+ * (0087) writes the notification in the same transaction as the insert, so it
+ * cannot be lost by a tab that closes on the success toast — which is what
+ * happened while this page dispatched it itself (GAP-026).
+ */
 export async function createAnnouncement(
   input: AnnouncementInsert,
 ): Promise<Announcement> {
@@ -53,4 +61,26 @@ export async function markAnnouncementRead(
   });
   // A duplicate insert (already marked read) is expected, not a failure.
   if (error && error.code !== '23505') throw error;
+}
+
+/**
+ * Re-notify everyone in an announcement's audience who has not read it.
+ *
+ * The one dispatch no trigger can carry: pressing "Remind unread" changes no
+ * row, so there is no transition to hang it on. It goes through an RPC instead
+ * — which still commits the outbox row before returning, so the reminder
+ * survives the tab closing immediately afterwards.
+ *
+ * The audience and the read set are both computed server-side. The page used
+ * to derive them from whatever staff list it had loaded, so who got reminded
+ * depended on a client-side cache.
+ *
+ * Returns how many people it will actually reach.
+ */
+export async function remindAnnouncementUnread(announcementId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('remind_announcement_unread', {
+    p_announcement_id: announcementId,
+  });
+  if (error) throw error;
+  return data ?? 0;
 }

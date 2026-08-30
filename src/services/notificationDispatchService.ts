@@ -4,10 +4,19 @@ import { env } from '@/lib/env';
  * Posting a domain event to Inngest, which forwards it to the
  * `send-notification` Edge Function.
  *
- * This lives in a service rather than inside `useInngestDispatch` because two
- * callers need it and only one of them is a component: the hook, and the
- * offline outbox's `notify` replayer (`src/services/syncQueue.ts`), which has
- * no React context to reach a hook from.
+ * ## This path is retired (GAP-026, 0087)
+ *
+ * Nothing in the app calls it any more. Every notification the product owes is
+ * now enqueued by the database in the same transaction as the event that owed
+ * it — `publish_rota` (0069), leave and swap decisions and announcements
+ * (0087) — and drained by pg_cron. A dispatch that cannot be separated from
+ * its cause cannot go missing, which is what the retry machinery below was
+ * built to survive.
+ *
+ * It remains only for the offline outbox's `notify` replayer
+ * (`src/services/syncQueue.ts`): a `notify` item queued by an earlier install
+ * still sits in that user's IndexedDB, and dropping this would leave it
+ * undrainable. Everything below describes why that item is there.
  *
  * ## Why the retry path exists (BUG-047)
  *

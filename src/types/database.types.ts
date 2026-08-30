@@ -3319,6 +3319,11 @@ export type Database = {
         Args: { p_announcement: string };
         Returns: number;
       };
+      remind_announcement_unread: {
+        Args: { p_announcement_id: string };
+        /** How many people the reminder will actually reach (0087). */
+        Returns: number;
+      };
       rate_support_case: {
         Args: { p_case: string; p_comment?: string; p_score: number };
         Returns: undefined;
