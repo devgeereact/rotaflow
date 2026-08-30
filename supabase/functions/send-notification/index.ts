@@ -364,7 +364,14 @@ Deno.serve(async (req: Request) => {
           type,
           title,
           body: body.body ?? null,
-          channel: 'push',
+          // `in_app`, not `push` (BUG-049). This row IS the in-app
+          // notification — it exists only inside `if (orgChannels.in_app)`
+          // above — and calling it a push made the column a constant that
+          // recorded nothing. How a notification fared on push or email is in
+          // `notification_deliveries`, written by `record()` below; that is
+          // the delivery log, this is the inbox. 0082 widened the CHECK,
+          // which until now had no value this row could honestly take.
+          channel: 'in_app',
         })),
       );
       if (insertError) throw insertError;
