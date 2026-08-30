@@ -31,7 +31,9 @@
 --      ones exist — the regression above;
 --   7. `measured_from` and `latency_from` say which source was used;
 --   8. samples older than 90 days are pruned, because nothing else
---      prunes this table.
+--      prunes this table — and pruning happens BEFORE the Vault-secret
+--      check, so a missing credential cannot silently stop retention.
+--      That ordering bug was real, and this test is what found it.
 --
 -- pgTAP, run via `supabase test db`.
 -- =====================================================================
@@ -82,7 +84,7 @@ select is(
   (select count(*)::int from public.platform_health_samples
     where service = 'Ancient service'),
   0,
-  'samples past 90 days are pruned, because nothing else prunes this table'
+  'samples past 90 days are pruned even with no Vault secrets — retention must not depend on an unrelated credential'
 );
 
 -- ---------- the view's two questions ---------------------------------

@@ -153,7 +153,19 @@ begin
   values ('PostgreSQL database', 'operational', null, 'scheduled');
   v_wrote := v_wrote + 1;
 
-  -- 3. Fire this tick's HTTP probes.
+  -- 3. Prune, BEFORE anything that can return early.
+  --
+  --    It used to sit at the end, after the Vault-secret check — so on any
+  --    deployment without those secrets the probe warned, returned, and
+  --    silently stopped pruning. Retention would have quietly depended on an
+  --    unrelated credential being present. Caught by the pgTAP test, which
+  --    runs against a local stack that has no Vault secrets at all.
+  --
+  --    See the header for why this is here and not in `retention_policies`.
+  delete from public.platform_health_samples
+   where checked_at < timezone('utc', now()) - interval '90 days';
+
+  -- 4. Fire this tick's HTTP probes.
   select decrypted_secret into v_anon
     from vault.decrypted_secrets where name = 'supabase_anon_key';
 
@@ -193,11 +205,6 @@ begin
     ),
     'REST API'
   );
-
-  -- 4. Prune. See the header for why this is here and not in
-  --    `retention_policies`.
-  delete from public.platform_health_samples
-   where checked_at < timezone('utc', now()) - interval '90 days';
 
   return v_wrote;
 end;
