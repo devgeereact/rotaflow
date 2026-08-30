@@ -10,8 +10,9 @@ import { format, isBefore, startOfMonth, subMonths } from 'date-fns';
  *
  * Every figure here is derived from rows the console already reads. Where the
  * console reference shows a metric this deployment genuinely cannot produce,
- * that is stated on the screen itself (`DEMO_SECTIONS` in
- * `adminOverviewDemo.ts`) rather than invented here.
+ * the screen says so and shows nothing, rather than inventing one here. The
+ * file that held those placeholders, `adminOverviewDemo.ts`, was deleted with
+ * BUG-059 once its last constant had a real source.
  */
 
 /** Organisation columns these derivations need. Narrower than the row type so

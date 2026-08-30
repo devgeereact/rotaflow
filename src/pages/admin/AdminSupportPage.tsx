@@ -87,8 +87,9 @@ const WIDTHS = [
  * recorded rather than silently deleted: it said time-boxed support access "is
  * not built" and `support_access_sessions` "exists in no migration", both true
  * when written and both stopped being true at 0019. It then said the case
- * queue was placeholder from `src/lib/adminOverviewDemo.ts`, true until the
- * `support_cases` table (0024) and `listSupportCases` replaced it — see the
+ * queue was placeholder from `src/lib/adminOverviewDemo.ts` — true until the
+ * `support_cases` table (0024) and `listSupportCases` replaced it, and that
+ * file no longer exists at all (BUG-059). See the
  * "Where these cases come from" callout on the screen for what is real today.
  */
 export function AdminSupportPage(): JSX.Element {

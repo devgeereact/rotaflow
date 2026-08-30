@@ -19,7 +19,6 @@ import {
 } from '@/components/admin/AdminPage';
 import { useToast } from '@/hooks/useToast';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
-import { DEMO_DENIED_BY_OWNER } from '@/lib/adminOverviewDemo';
 import { listAllOrganisations } from '@/services/platformService';
 import {
   listSupportAccessSessions,
@@ -115,6 +114,26 @@ export function AdminSupportAccessPage(): JSX.Element {
   useRegisterConsoleRefresh(refresh);
 
   const stats = useMemo(() => summariseSessions(sessions ?? [], now), [sessions, now]);
+
+  /**
+   * Organisations that have switched support access off.
+   *
+   * This tile used to read a hardcoded 2 from `adminOverviewDemo.ts`, labelled
+   * "Denied by owner", because a refusal of a specific request is recorded
+   * nowhere — `request_support_access` simply raises. Rather than keep a
+   * placeholder or invent a recording mechanism, the tile now shows the
+   * standing refusal that IS recorded: `organisations.support_access_allowed`
+   * (0017), the flag `request_support_access` checks before it raises.
+   *
+   * It is a different number from the old label, so the label changed too.
+   * "How many tenants have us locked out" is the question a platform
+   * administrator was reaching for, and unlike a count of past refusals it is
+   * true right now.
+   */
+  const lockedOut = useMemo(
+    () => orgs.filter((o) => o.support_access_allowed === false).length,
+    [orgs],
+  );
 
   const active = useMemo(
     () => (sessions ?? []).filter((s) => sessionStatus(s, now) === 'active'),
@@ -271,13 +290,14 @@ export function AdminSupportAccessPage(): JSX.Element {
             hint="by administrator or owner"
           />
           <StatTile label="Expired" value={stats.expired} hint="Ran to the deadline" />
-          {/* The reference calls this "Denied by owner". A refusal is not
-              recorded anywhere, `request_support_access` simply raises, so
-              this is the one placeholder on an otherwise measured screen. */}
           <StatTile
-            label="Denied by owner"
-            value={DEMO_DENIED_BY_OWNER}
-            hint="Placeholder. Refusals are not recorded"
+            label="Access turned off"
+            value={lockedOut}
+            hint={
+              lockedOut > 0
+                ? 'Owners refusing support access'
+                : 'Every organisation permits it'
+            }
           />
         </TileGrid>
 

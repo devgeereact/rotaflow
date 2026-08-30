@@ -107,6 +107,11 @@ export function AdminIntegrationsPage(): JSX.Element {
       orgsConnected: connectors.reduce((t, c) => t + (c.orgs_connected ?? 0), 0),
       runs24h: connectors.reduce((t, c) => t + (c.runs_24h ?? 0), 0),
       failed24h: connectors.reduce((t, c) => t + (c.failed_24h ?? 0), 0),
+      // 'planned' (0073) means the connector does not exist yet. Counting what
+      // is BUILT is the number an administrator needs first — a catalogue of
+      // eight with none built reads very differently from eight running ones,
+      // and the old "Degraded: 0 / All operational" tile said the opposite.
+      built: connectors.filter((c) => c.status !== 'planned').length,
       degraded: connectors.filter((c) => c.status === 'degraded' || c.status === 'down')
         .length,
       medianMs: medians.length === 0 ? null : medians[Math.floor(medians.length / 2)]!,
@@ -163,13 +168,17 @@ export function AdminIntegrationsPage(): JSX.Element {
               }
             />
             <StatTile
-              label="Degraded"
-              value={totals.degraded}
+              label="Built"
+              value={`${totals.built} of ${connectors.length}`}
               hint={
                 totals.degraded > 0 ? (
-                  <span className="font-semibold text-warning">Connector-side</span>
+                  <span className="font-semibold text-warning">
+                    {totals.degraded} degraded
+                  </span>
+                ) : totals.built === 0 ? (
+                  'The rest are planned, not running'
                 ) : (
-                  'All operational'
+                  'None degraded'
                 )
               }
             />
@@ -263,7 +272,11 @@ export function AdminIntegrationsPage(): JSX.Element {
                                 ? 'success'
                                 : connector.status === 'beta'
                                   ? 'info'
-                                  : 'warning'
+                                  : // 'planned' is not a warning — nothing is
+                                    // wrong with a connector nobody has built.
+                                    connector.status === 'planned'
+                                    ? 'neutral'
+                                    : 'warning'
                             }
                             dot
                           >
@@ -429,11 +442,23 @@ export function AdminIntegrationsPage(): JSX.Element {
               days, because a connector nobody used is not one that worked perfectly.
             </p>
             <p>
-              What is still absent is the syncing itself. No Edge Function talks to Sage,
-              Xero or BrightHR yet, so the runs in the table are the ones the seed wrote.
+              Every connector in the catalogue carries{' '}
+              <code>status = &lsquo;planned&rsquo;</code> and{' '}
+              <code>available = false</code> (migration <code>0073</code>): none of them
+              exists, no Edge Function talks to Sage, Xero or BrightHR, and{' '}
+              <code>integration_sync_runs</code> has never had a writer. They were
+              previously seeded as &ldquo;operational&rdquo;, &ldquo;degraded&rdquo; and
+              &ldquo;beta&rdquo;, which described software that was never written — and
+              because <code>connect_integration</code> checks <code>available</code>, the
+              database would have let an owner connect Sage Payroll and then sync nothing
+              indefinitely. It now refuses.
+            </p>
+            <p>
               The nearest real integration is the CSV payroll export a manager downloads
               from Reports, which is a file rather than a connection and has nothing to
-              monitor.
+              monitor. Setting a connector to anything other than <code>planned</code>{' '}
+              asserts running code; do not do it until there is an Edge Function behind
+              it.
             </p>
           </Callout>
         </div>
