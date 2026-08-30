@@ -332,7 +332,9 @@ Deno.serve(async (req: Request) => {
         .lte('starts_at', `${periodEnd}T23:59:59Z`),
       supabase
         .from('leave_requests')
-        .select('staff_profile_id, start_date, end_date, type')
+        // No `type`: see `approvedLeave` below. Not selected at all, rather
+        // than selected and dropped, so it cannot drift back into the payload.
+        .select('staff_profile_id, start_date, end_date')
         .eq('org_id', orgId)
         .eq('status', 'approved')
         .lte('start_date', periodEnd)
@@ -414,11 +416,23 @@ Deno.serve(async (req: Request) => {
         startsAt: s.starts_at,
         endsAt: s.ends_at,
       })),
+      // `type` is deliberately NOT sent (docs/SAAS.md GAP-014).
+      //
+      // Leave types include `sick`, and this array is joinable by
+      // `staffProfileId` to the `staff` array above, which carries real first
+      // and last names. Sending both meant a named person's sickness-absence
+      // dates left the UK/EU on every request — special-category health data
+      // under UK GDPR Article 9, disclosed to a US processor and the model
+      // provider behind it.
+      //
+      // Nothing wanted it. The only rule that reads this array is rule 1,
+      // "never schedule someone whose id appears in context.approvedLeave for
+      // a date inside that leave", which needs the dates and not the reason.
+      // Writing the sub-processor page is what surfaced it.
       approvedLeave: (leave ?? []).map((l) => ({
         staffProfileId: l.staff_profile_id,
         startDate: l.start_date,
         endDate: l.end_date,
-        type: l.type,
       })),
       unavailability: (availability ?? []).map((a) => ({
         staffProfileId: a.staff_profile_id,

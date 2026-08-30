@@ -104,10 +104,24 @@ both must appear in the Privacy Notice and the sub-processor list.** This sectio
 previously claimed the opposite; that claim was wrong and was corrected on
 2026-08-29.
 
-| Processor                                                                          | What leaves the UK/EU                                                                                                                                                                    | Where                                                 |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **OpenRouter** (and the model provider behind it, `openai/gpt-4o-mini` by default) | Staff first and last names, job titles, skills, weekly hours, contract type, plus shift, location and approved-leave rows for the week being drafted — assembled into the prompt context | `supabase/functions/ai-rota-assistant/index.ts`       |
-| **Stripe**                                                                         | Billing identity for the organisation's owner: email, and whatever Checkout collects                                                                                                     | `supabase/functions/create-checkout-session/index.ts` |
+| Processor                                                                          | What leaves the UK/EU                                                                                                                                                                                                                   | Where                                                 |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **OpenRouter** (and the model provider behind it, `openai/gpt-4o-mini` by default) | Staff first and last names, job titles, skills, weekly hours, contract type, plus shift, location and approved-leave **dates** for the week being drafted — assembled into the prompt context. **Leave `type` is not sent** (see below) | `supabase/functions/ai-rota-assistant/index.ts`       |
+| **Stripe**                                                                         | Billing identity for the organisation's owner: email, and whatever Checkout collects                                                                                                                                                    | `supabase/functions/create-checkout-session/index.ts` |
+
+⚠️ **Leave type used to be sent, and should not have been. Corrected 2026-08-30.**
+The prompt carried `approvedLeave[].type` alongside a `staff` array holding real
+first and last names, joinable by `staffProfileId`. Leave types include `sick`
+(`src/lib/leaveRows.ts`), so a named person's **sickness-absence dates** left the
+UK/EU on every request — special-category health data under UK GDPR Article 9,
+disclosed to a US processor and to the model provider behind it.
+
+Nothing wanted it. The only rule that reads that array is the system prompt's
+rule 1, "never schedule someone whose id appears in `context.approvedLeave` for a
+date inside that leave", which needs the dates and not the reason. The field is
+now not even selected from the database, so it cannot drift back into the
+payload. This was found while writing the sub-processor page (`GAP-014`), which
+is the argument for writing one.
 
 Neither is optional today: the AI assistant's third tab and the whole billing path
 depend on them. What _is_ available is disclosure and, for the AI, scope — the two
@@ -116,7 +130,9 @@ network call at all, so a tenant that never opens "Ask AI" never sends staff dat
 to OpenRouter.
 
 Anyone writing the Privacy Notice, the DPA or a security questionnaire answer should
-treat this table as the authoritative list, not §2's previous sentence.
+treat this table as the authoritative list, not §2's previous sentence. It is now
+also published, at **`/legal/trust`**, built from `src/lib/subprocessors.ts` — that
+page and this table must not be allowed to disagree.
 
 ## 3. Retention
 

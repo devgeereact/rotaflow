@@ -31,12 +31,24 @@ interface BadgeProps {
  * these replace resolved against whatever sat behind them, so the same pill
  * rendered as three different shades across a card, a table row and the canvas.
  */
+// Light mode uses the `ink` tokens, dark mode keeps `DEFAULT`.
+//
+// Every `DEFAULT`-on-`wash` pair here failed WCAG AA: success 3.11:1, warning
+// 2.04:1, danger 3.70:1, info 3.06:1, primary 3.36:1, against a 4.5:1 minimum
+// for text this size. The `ink` tokens exist for exactly this and take the
+// same pairs to 5.09-6.09:1. `wash-dark` is a dark background, so `DEFAULT`
+// is already the high-contrast choice there and is left alone.
+//
+// This was a known open item (an app-wide contrast audit closed 63 of 84
+// violations and left these) and it survived because the axe gate only covers
+// public pages, where no Badge appeared until `/legal/trust`. The gate found
+// it the moment one did.
 const TONES: Record<BadgeTone, string> = {
-  success: 'bg-success-wash text-success dark:bg-success-wash-dark',
-  warning: 'bg-warning-wash text-warning dark:bg-warning-wash-dark',
-  danger: 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
-  info: 'bg-info-wash text-info dark:bg-info-wash-dark',
-  primary: 'bg-primary-wash text-primary dark:bg-primary-wash-dark',
+  success: 'bg-success-wash text-success-ink dark:bg-success-wash-dark dark:text-success',
+  warning: 'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning',
+  danger: 'bg-danger-wash text-danger-ink dark:bg-danger-wash-dark dark:text-danger',
+  info: 'bg-info-wash text-info-ink dark:bg-info-wash-dark dark:text-info',
+  primary: 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary',
   // Location / department type chips (docs/design/Locations-Management.png,
   // docs/design/Location-department.png) run across the shift palette, which is the
   // only token set with enough distinct hues for org-defined type lists. These

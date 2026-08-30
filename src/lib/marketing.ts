@@ -479,6 +479,10 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       { label: 'Terms', to: '/legal/terms' },
       { label: 'Cookies', to: '/legal/cookies' },
       { label: 'Accessibility', to: '/legal/accessibility' },
+      // The one legal page that is not a placeholder: it is a statement of
+      // fact about the system rather than a policy needing counsel, so it is
+      // published now (docs/SAAS.md GAP-014).
+      { label: 'Trust and sub-processors', to: '/legal/trust' },
     ],
   },
 ] as const;

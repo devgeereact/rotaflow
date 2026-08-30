@@ -143,6 +143,10 @@ const config: Config = {
           DEFAULT: '#388FD4', // informational / neutral status
           wash: '#E8F2FA',
           'wash-dark': '#12253A',
+          // The one status family that had no `ink`, which only showed up when
+          // a `Badge tone="info"` finally landed on a public page where the
+          // axe gate runs. `DEFAULT` on `wash` is 3.06:1; this is 6.09:1.
+          ink: '#1B5E8E',
         },
         content: {
           DEFAULT: '#16191F', // headings, body (light)
