@@ -1,0 +1,128 @@
+name: backup
+
+# Nightly logical backup of production (docs/SAAS.md GAP-001).
+#
+# ## This is a mitigation, not the fix
+#
+# The fix for "no production backups" is Supabase's own: daily backups come
+# with Pro, and point-in-time recovery is an add-on on top of that. The
+# organisation is on the FREE plan, which has neither, and buying either is a
+# recurring charge that is the owner's decision, not something to enable on
+# their behalf. Until that happens this is what exists.
+#
+# What it gives: a nightly `pg_dump` of the whole database, encrypted, kept as
+# a build artifact for 90 days. Enough to rebuild a table somebody dropped.
+#
+# What it does NOT give, and PITR does: recovery to a moment. If a bad
+# migration lands at 14:00, the most recent copy is from last night, and
+# everything since is gone. That is the gap this cannot close.
+#
+# ## Why the dump is encrypted
+#
+# This repository is PUBLIC. Artifacts on a public repository are downloadable
+# by anyone who can read it, and this artifact is every staff record, every
+# clock-in with its GPS trace, and the audit log. So it is encrypted with a
+# passphrase held only in Actions secrets, and the workflow refuses to run
+# without one — an unencrypted dump here would be a data breach dressed up as
+# a backup.
+#
+# ## Setup, which is not done yet
+#
+# Two repository secrets, and the workflow fails loudly until both exist:
+#
+#   SUPABASE_DB_URL     the pooler connection string, from
+#                       Project Settings → Database → Connection string (URI)
+#   BACKUP_PASSPHRASE   any long random string, stored somewhere that is NOT
+#                       this repository. Lose it and the backups are scrap.
+#
+# Restore:
+#   gpg --decrypt --batch --passphrase "$BACKUP_PASSPHRASE" rotaflow-*.sql.gpg \
+#     | psql "$TARGET_DB_URL"
+#
+# Restore into a SCRATCH project first and look at it. A backup nobody has
+# restored is a belief, not a backup — GAP-001 tracks that separately as the
+# test restore that has never been performed.
+
+on:
+  schedule:
+    # 02:40 UTC, after the retention job at 02:15 so the dump reflects the
+    # state retention leaves behind rather than catching it mid-delete.
+    - cron: '40 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    name: dump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the secrets exist
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "$DB_URL" ]     || missing="$missing SUPABASE_DB_URL"
+          [ -n "$PASSPHRASE" ] || missing="$missing BACKUP_PASSPHRASE"
+          if [ -n "$missing" ]; then
+            echo "::error::Backups are not configured. Missing secret(s):$missing."
+            echo "::error::See the header of .github/workflows/backup.yml. Until these exist there is no backup of production at all."
+            exit 1
+          fi
+          echo "Both secrets present."
+
+      # The runner image ships PostgreSQL client tools, but not necessarily the
+      # major version the server runs. A pg_dump older than the server refuses
+      # outright, which is the right behaviour and a confusing failure, so the
+      # matching client is installed explicitly.
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Dump and encrypt
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          stamp="$(date -u +%Y%m%d-%H%M)"
+          # Piped straight into gpg: the plaintext dump never touches the
+          # runner's disk, where a later step or a cached path could pick it up.
+          # `pipefail` above is what makes a pg_dump failure fail the job rather
+          # than producing a valid encryption of nothing.
+          pg_dump --no-owner --no-privileges --format=plain "$DB_URL" \
+            | gzip -9 \
+            | gpg --batch --yes --symmetric --cipher-algo AES256 \
+                  --passphrase "$PASSPHRASE" \
+                  --output "rotaflow-${stamp}.sql.gz.gpg"
+
+          size=$(stat -c%s "rotaflow-${stamp}.sql.gz.gpg")
+          echo "Encrypted dump: rotaflow-${stamp}.sql.gz.gpg (${size} bytes)"
+
+          # A dump of an empty or failed connection compresses to almost
+          # nothing. Refuse it rather than retaining a file that looks like a
+          # backup and restores to nothing.
+          if [ "$size" -lt 2000 ]; then
+            echo "::error::Dump is only ${size} bytes. That is not a real backup — check SUPABASE_DB_URL."
+            exit 1
+          fi
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: rotaflow-db-backup
+          path: '*.sql.gz.gpg'
+          retention-days: 90
+          if-no-files-found: error
