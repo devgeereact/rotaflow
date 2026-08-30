@@ -76,7 +76,26 @@ recovery path. The moment a real rota, real clock-ins and real timesheets
 exist, they are not — losing a day of attendance data means payroll disputes
 that cannot be reasoned back from a schema.
 
-What to buy at that point, in order:
+### What exists in the meantime, and what it is not
+
+Since 30 August 2026 `.github/workflows/backup.yml` takes a nightly `pg_dump`,
+gzipped and encrypted, retained 90 days as a build artifact. Encrypted because
+this repository is **public** and artifacts on a public repository are
+downloadable by anyone who can read it — that dump is every staff record, every
+GPS-stamped clock-in and the audit log, so an unencrypted one would be a breach
+dressed up as a backup.
+
+Three things to be clear about:
+
+- **It is inert until two secrets exist** (`SUPABASE_DB_URL`,
+  `BACKUP_PASSPHRASE`) and fails loudly naming the missing one, rather than
+  reporting success on an empty file.
+- **It does not give recovery to a moment.** A bad migration at 14:00 costs
+  everything since the previous night. Only PITR closes that.
+- **No restore has ever been performed.** A backup nobody has restored is a
+  belief, not a backup; that is tracked as ❓-005.
+
+So it narrows the gap and does not close it. What to buy, in order:
 
 1. **A paid plan is the prerequisite** — the organisation is on `free`, which
    has no backups of any kind. A paid plan includes scheduled daily backups
@@ -209,7 +228,8 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations, no timestamp orphans). The nightly job has run
+numeric version (66 migrations as at 21 August 2026 — 82 today; the figure dates
+the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
 |                        |                                            |

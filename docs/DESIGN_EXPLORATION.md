@@ -1,7 +1,8 @@
 # Design Exploration — RotaFlow
 
-**Status:** Proposal from `/design-consultation`, 2026-08-13. Not yet applied to
-production. `docs/DESIGN.md` remains the enforced source of truth until this
+**Status: NOT ADOPTED.** Proposal from `/design-consultation`, 2026-08-13, kept as
+a record of the decision rather than a direction. It was never applied to
+production and there is no plan to apply it. `docs/DESIGN.md` remains the enforced source of truth until this
 exploration is validated through `/design-shotgun` and `/design-html` and
 explicitly promoted.
 

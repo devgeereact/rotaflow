@@ -5,6 +5,11 @@
 > `tailwind.config.ts` are the enforced, code-level expression of those
 > references. **Every future screen, component, or asset must match this
 > document, never invent a colour, size, or radius outside it.**
+>
+> A rejected alternative is kept at `docs/DESIGN_EXPLORATION.md` — a 2026-08-13
+> proposal that was **not** adopted. It is linked here so it stops being an
+> orphan nobody can place: read it as a record of a decision taken, not as a
+> direction to follow. This document stays the enforced one.
 
 ## 1. Aesthetic direction
 
