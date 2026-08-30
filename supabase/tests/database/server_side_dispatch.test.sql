@@ -206,6 +206,15 @@ select is(
   2,
   'editing an already-published announcement notifies nobody a second time');
 
+-- As the owner, because `staff_profiles_restrict_self_edit` (0042/0055) lets
+-- only an owner or manager change anything but a phone number and photo — and
+-- unlike 0061's rota guards it has no `auth.uid() is null` bypass, so the
+-- fixture cannot make somebody a leaver anonymously.
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', 'd1111111-1111-1111-1111-111111111111', 'role', 'authenticated')::text,
+  true);
+
 update public.staff_profiles set active = false
  where id = 'dddddddd-2000-0000-0000-000000000003';
 
@@ -216,6 +225,8 @@ select is(
 
 update public.staff_profiles set active = true
  where id = 'dddddddd-2000-0000-0000-000000000003';
+
+select set_config('request.jwt.claims', '', true);
 
 -- ── reminders ─────────────────────────────────────────────────────────
 insert into public.announcement_reads (org_id, announcement_id, staff_profile_id) values
