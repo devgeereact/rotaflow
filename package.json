@@ -18,7 +18,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "check:bundle": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

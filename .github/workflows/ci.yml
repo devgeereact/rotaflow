@@ -97,6 +97,15 @@ jobs:
           test -f dist/manifest.webmanifest || { echo "::error::dist/manifest.webmanifest missing"; exit 1; }
           echo "✅ sw.js + manifest.webmanifest present"
 
+      # Two bundle regressions have reached production and both were found by a
+      # human reading `dist/` months later, never here: DEV preview pages
+      # precached to every visitor (#75), and a lazy route becoming a static
+      # import (#69). Neither changed a test, a type or a lint rule, so this is
+      # the only step in `verify` that can catch them. Prints the numbers on
+      # every run, pass or fail, so growth is visible while it is still small.
+      - name: Bundle budget
+        run: npm run check:bundle
+
       # High/critical only: low/moderate in a 700-package tree is mostly
       # transitive dev-tooling noise that would make this gate cry wolf and
       # get ignored. `audit-level=high` still fails the build the day

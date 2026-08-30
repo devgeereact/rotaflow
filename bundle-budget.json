@@ -1,0 +1,27 @@
+{
+  "$comment": [
+    "Size budgets for the production build, enforced by scripts/check-bundle-size.mjs (docs/SAAS.md CAP-101).",
+    "Raising a number here is allowed — it is a deliberate, reviewable decision about what staff download on ward wifi, which is exactly what a budget is for. Raising one WITHOUT first finding out what grew is how the two regressions this gate exists to catch got in.",
+    "Measured 2026-08-30. Headroom is roughly 15%: tight enough to catch a regression, loose enough that ordinary feature work does not trip it."
+  ],
+  "precacheGzipKiB": {
+    "budget": 760,
+    "measured": 665.0,
+    "why": "What a first visit downloads before the app is usable offline. The number that matters most: a carer on hospital wifi pays it once, in full, up front."
+  },
+  "precacheEntries": {
+    "budget": 190,
+    "measured": 161,
+    "why": "Guards chunk-count explosions. PR #75: thirteen DEV preview pages were defined outside the import.meta.env.DEV guard, so Rollup emitted a chunk for each and Workbox precached all thirteen — 87 kB of fabricated staff names shipped to every user."
+  },
+  "entryJsGzipKiB": {
+    "budget": 175,
+    "measured": 149.9,
+    "why": "The entry chunk blocks first paint and is the tell for code-splitting collapse. If a lazy route becomes a static import this grows while the per-route chunks vanish — the regression PR #69 fixed, where opening /app/clock pulled in the rest of the app."
+  },
+  "shippedGzipKiB": {
+    "budget": 700,
+    "measured": 617.6,
+    "why": "Every JS and CSS file that reaches the server, service worker included. Excludes .map, which cpanel-deploy does not deploy."
+  }
+}

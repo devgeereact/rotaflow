@@ -64,7 +64,7 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 | 🟠 Defective          | 4     | −10           |
 | 🔵 Hardening required | 8     | −1            |
 | ⚪ Surface only       | 7     | —             |
-| 🔴 Missing            | 19    | −3            |
+| 🔴 Missing            | 18    | −4            |
 | ⚫ Deferred           | 19    | —             |
 | ❓ Not audited        | 7     | +1            |
 
@@ -371,8 +371,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `e2e/marketing.spec.ts` · GAP-010 · P2
 - [ ] CAP-100 🔴 Component tests — node environment, `.ts` only, so none exist
       `vitest.config.ts` · P2
-- [ ] CAP-101 🔴 Bundle size gate — two bundle regressions found by audit, never by CI
-      `.github/workflows/ci.yml` · P2
+- [x] CAP-101 🟢 Bundle size gate — four budgets plus a hard "no DEV page ships" invariant,
+      enforced in `verify` and printed on every run
+      `scripts/check-bundle-size.mjs` · `bundle-budget.json` · P2
 - [ ] CAP-102 🔴 Product analytics — no events, no `product_events` table
       `docs/OBSERVABILITY.md` · P3
 - [ ] CAP-103 🟡 Error tracking — Sentry in the client; **no edge function reports to it**
@@ -577,7 +578,7 @@ real-device UAT.
 **P2 — entitlements, truthfulness, coverage.**
 Enforce seat and location limits at write time · wire or delete `useFeatureAccess` · one price
 source · stop advertising dead connectors · optimistic concurrency on approvals · composite
-indexes and the builder N+1 · authenticated E2E and axe · a bundle-size gate · DPA and
+indexes and the builder N+1 · authenticated E2E and axe · DPA and
 sub-processors · label the audit actions · tighten grants · a scheduled health probe.
 
 **P3 — after product-market fit.** Everything in §7 marked P3, in the order the maturity ladder
