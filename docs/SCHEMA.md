@@ -270,6 +270,15 @@ Fifteen `returns trigger` functions still carry PUBLIC EXECUTE and are left
 alone: Postgres refuses to call a trigger function directly, so the grant
 confers nothing.
 
+> ⚠️ **The default ACL keeps `authenticated`, so a new function is callable by
+> every signed-in user unless you say otherwise — and `revoke … from public,
+anon` does NOT say otherwise.** `announcement_audience` (`0087`) shipped with
+> exactly that mistake and needed `0088` to close it: revoking the two roles
+> named left the grant that was never named. A SECURITY DEFINER helper whose
+> callers do its authorisation for it must be revoked from `authenticated`
+> explicitly, and the revoke is worth an assertion, because nothing about the
+> migration's text shows the grant that is still there.
+
 Baseline policy shape:
 
 | Scope                                                                                                                                      | Read                                                                                                       | Write                                                                    |
