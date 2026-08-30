@@ -54,19 +54,22 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the same day as
-#162, #163, #164 and #165 landed.
+Recounted 2026-08-30, after eleven pull requests landed (#178-#188) and took `main` to 78 migrations.
 
-| Status                | Count | Δ since 08-29 |
-| --------------------- | ----- | ------------- |
-| 🟢 Complete           | 37    | +13           |
-| 🟡 Partial            | 20    | +2            |
-| 🟠 Defective          | 4     | −10           |
-| 🔵 Hardening required | 8     | −1            |
-| ⚪ Surface only       | 7     | —             |
-| 🔴 Missing            | 18    | −4            |
-| ⚫ Deferred           | 19    | —             |
-| ❓ Not audited        | 7     | +1            |
+**These counts are derived from the register, not maintained by hand.** Each is a straight tally of the 111 `CAP-` rows in §4 by their status glyph, so the table and the register cannot disagree. The previous version was hand-edited on every change and had drifted: its columns summed to 120 against 111 rows, and it counted deferred and unaudited items that are not capability rows at all. The Δ column went with it — a delta nobody could reproduce was worse than no delta.
+
+`❓` is a capability whose status is unaudited; the specific open questions are numbered `❓-001` to `❓-007` inline. `⚫` here is a _capability_ that is deferred — the seven things this project has decided not to build at all are listed separately in §9.
+
+| Status                | Count |
+| --------------------- | ----- |
+| 🟢 Complete           | 49    |
+| 🟡 Partial            | 19    |
+| 🟠 Defective          | 6     |
+| 🔵 Hardening required | 2     |
+| ⚪ Surface only       | 2     |
+| 🔴 Missing            | 27    |
+| ⚫ Deferred           | 1     |
+| ❓ Not audited        | 5     |
 
 **Overall maturity: 7/10**, revised up from 6.5 on 2026-08-29 after five P0 defects closed
 (#162, #163, #165). It sat below the 7.5 recorded on 2026-08-20 not because anything regressed
