@@ -119,18 +119,39 @@ generic cPanel-static truths — obey them regardless of tooling:
    subdirectory** instead. Mirroring the shared root deletes the neighbours.
 3. **Exclude runtime & secret files from deletes:** at minimum `uploads/`, `.env`,
    `config.php`, `*.bak*`, `*.zip`, `*.sql`, `error_log`, `node_modules`, `.git`,
-   and **`.well-known/`** — see rule 4.
-4. **Protect `.well-known/` on every single deploy.** `dist/` never contains it:
-   `public/` holds only `favicon.svg`, `icons/`, `offline.html` and `robots.txt`, so
-   the build has nothing to put there. But the live docroot **does** — it holds the
-   TLS domain-validation file. To rsync, "not in my source" and "stale, delete it"
-   look identical, so a mirror-with-delete removes it and certificate renewal fails.
+   and the TLS validation directory — see rule 4.
+4. **Protect the TLS validation directory on every single deploy.** The live
+   docroot holds the domain-validation file certificate renewal depends on. To
+   rsync, "not in my source" and "stale, delete it" look identical, so a
+   mirror-with-delete removes it and renewal fails.
 
-   The deploy command for this app is therefore always:
+   The full command for this app — `cgi-bin` is created by cPanel and the deploy
+   guard refuses without it, and the live `.htaccess` is the repo file with the
+   server's Cloudflare origin-lock block prepended:
 
    ```bash
-   cpanel-deploy dist rotaflow.space --keep .well-known --go
+   cpanel-deploy dist rotaflow.space \
+     --keep .well-known/pki-validation \
+     --keep .well-known/acme-challenge \
+     --keep cgi-bin \
+     --with-htaccess <composed-file> --go
    ```
+
+   ⚠️ **This changed on 2026-08-30, and the old form now has a silent failure
+   mode.** It used to be `--keep .well-known`, on the premise that "`dist/` never
+   contains it". That premise stopped being true when `public/.well-known/
+security.txt` was added (GAP-014) — and `--keep` is implemented as an rsync
+   `--exclude`, which is **bidirectional**. So the whole-directory form would have
+   built a `security.txt`, passed CI, and quietly never uploaded it.
+
+   The two paths above are named individually instead. `pki-validation` is what the
+   live docroot actually holds — verified over SSH, it is the only entry —
+   and `acme-challenge` is listed as well because a future change of validation
+   method would write there instead, and an unprotected renewal path is not a thing
+   to discover during an outage.
+
+   Anything else under `.well-known/` is now mirrored from `dist/`, which is what
+   lets `security.txt` reach production.
 
    This is not optional and not situational. It applies to every deploy of this
    app, including a one-file hotfix.

@@ -1,0 +1,17 @@
+# RotaFlow — security contact (RFC 9116)
+#
+# If you have found a vulnerability, tell us. We will acknowledge within two
+# working days and say what we intend to do and roughly when.
+#
+# Please give us a reasonable chance to fix it before publishing, do not access
+# or modify anyone else's data, and do not run tests that degrade the service
+# for other customers. Report what you found rather than proving how far it
+# goes. Stay within those lines and we will not pursue you for the report.
+#
+# There is no paid bug-bounty programme. We would rather say so than imply one.
+
+Contact: mailto:support@rotaflow.space
+Expires: 2027-08-30T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://rotaflow.space/.well-known/security.txt
+Policy: https://rotaflow.space/legal/trust

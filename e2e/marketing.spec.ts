@@ -21,6 +21,7 @@ const PUBLIC_PAGES = [
   { path: '/legal/terms', heading: /terms/i },
   { path: '/legal/cookies', heading: /cookie/i },
   { path: '/legal/accessibility', heading: /accessibility/i },
+  { path: '/legal/trust', heading: /trust and sub-processors/i },
 ];
 
 /**
@@ -92,6 +93,7 @@ for (const path of [
   '/legal/terms',
   '/legal/cookies',
   '/legal/accessibility',
+  '/legal/trust',
 ]) {
   test(`${path} has no WCAG 2 A/AA violations`, async ({ page }) => {
     await page.goto(path);

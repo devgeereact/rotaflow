@@ -103,6 +103,7 @@ const AccessibilityPage = lazyPage(
   'AccessibilityPage',
   () => import('@/pages/legal/AccessibilityPage'),
 );
+const TrustPage = lazyPage('TrustPage', () => import('@/pages/legal/TrustPage'));
 
 const OnboardingPage = lazyPage('OnboardingPage', () => import('@/pages/OnboardingPage'));
 const OnboardingPreviewPage = devPage(
@@ -403,6 +404,7 @@ export function App(): JSX.Element {
                     <Route path="/legal/terms" element={<TermsPage />} />
                     <Route path="/legal/cookies" element={<CookiesPage />} />
                     <Route path="/legal/accessibility" element={<AccessibilityPage />} />
+                    <Route path="/legal/trust" element={<TrustPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
