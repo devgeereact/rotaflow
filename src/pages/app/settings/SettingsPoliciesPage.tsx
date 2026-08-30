@@ -281,7 +281,10 @@ export function SettingsPoliciesPage(): JSX.Element {
       <Callout tone="info" title="Staffing minimums live in Locations">
         How many people a site needs on shift is set per site, per day of the week, from
         that site's own Settings tab in{' '}
-        <Link to="/app/locations" className="font-medium text-primary hover:underline">
+        <Link
+          to="/app/locations"
+          className="font-medium text-primary-ink hover:underline dark:text-primary"
+        >
           Locations
         </Link>
         . A single org-wide number could not say Willow Court needs more cover on a

@@ -270,7 +270,7 @@ export function AdminSupportPage(): JSX.Element {
                     </span>
                     <Link
                       to={`/admin/organisations/${session.orgId}`}
-                      className="text-sm font-medium text-primary hover:underline"
+                      className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
                     >
                       {session.orgName}
                     </Link>
@@ -385,7 +385,7 @@ export function AdminSupportPage(): JSX.Element {
                           <td className="px-3 py-2.5">
                             <Link
                               to={`/admin/support/${item.id}`}
-                              className="block truncate font-medium text-content hover:text-primary hover:underline dark:text-content-dark"
+                              className="block truncate font-medium text-content hover:text-primary-ink hover:underline dark:text-primary dark:text-content-dark"
                             >
                               {item.subject}
                             </Link>
@@ -397,7 +397,7 @@ export function AdminSupportPage(): JSX.Element {
                             {org ? (
                               <Link
                                 to={`/admin/organisations/${org.id}`}
-                                className="block truncate text-primary hover:underline"
+                                className="block truncate text-primary-ink hover:underline dark:text-primary"
                               >
                                 {item.orgName}
                               </Link>
@@ -441,7 +441,10 @@ export function AdminSupportPage(): JSX.Element {
               What is not built is an inbound channel: nothing turns an email into a case
               yet, so the queue only contains what the app itself created. Support access
               sessions are separate and live on{' '}
-              <Link to="/admin/support-access" className="text-primary hover:underline">
+              <Link
+                to="/admin/support-access"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              >
                 Support Access
               </Link>
               .

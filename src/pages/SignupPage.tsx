@@ -311,7 +311,10 @@ export function SignupPage(): JSX.Element {
 
         <p className="mt-6 text-center text-sm text-ink-muted dark:text-content-muted-dark">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-primary hover:underline">
+          <Link
+            to="/login"
+            className="font-medium text-primary-ink hover:underline dark:text-primary"
+          >
             Sign in
           </Link>
         </p>

@@ -276,7 +276,7 @@ function ShiftDetails({
         <button
           type="button"
           onClick={() => onEdit(shift)}
-          className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          className="flex items-center gap-1 text-xs font-medium text-primary-ink hover:underline dark:text-primary"
         >
           <Pencil size={12} aria-hidden="true" />
           Edit
@@ -322,7 +322,7 @@ function ShiftDetails({
             <button
               type="button"
               onClick={() => onEdit(shift)}
-              className="text-xs font-medium text-primary hover:underline"
+              className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
             >
               Edit
             </button>

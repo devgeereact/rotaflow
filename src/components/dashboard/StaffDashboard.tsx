@@ -92,7 +92,7 @@ export function StaffDashboard({
             </h2>
             <Link
               to="/app/schedule"
-              className="text-sm font-medium text-primary hover:underline"
+              className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
             >
               Full schedule
             </Link>
@@ -138,7 +138,7 @@ export function StaffDashboard({
             </h2>
             <Link
               to="/app/announcements"
-              className="text-sm font-medium text-primary hover:underline"
+              className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
             >
               All
             </Link>

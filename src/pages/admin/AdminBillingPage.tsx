@@ -392,7 +392,7 @@ export function AdminBillingPage(): JSX.Element {
                               {org ? (
                                 <Link
                                   to={`/admin/organisations/${org.id}`}
-                                  className="text-primary hover:underline"
+                                  className="text-primary-ink hover:underline dark:text-primary"
                                 >
                                   {org.name}
                                 </Link>
@@ -461,7 +461,7 @@ export function AdminBillingPage(): JSX.Element {
                         {org ? (
                           <Link
                             to={`/admin/organisations/${org.id}`}
-                            className="text-sm font-medium text-primary hover:underline"
+                            className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
                           >
                             {org.name}
                           </Link>

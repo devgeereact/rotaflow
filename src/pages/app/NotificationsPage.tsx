@@ -187,7 +187,7 @@ export function NotificationsPage(): JSX.Element {
         notified about in{' '}
         <Link
           to="/app/account/preferences"
-          className="font-medium text-primary hover:underline"
+          className="font-medium text-primary-ink hover:underline dark:text-primary"
         >
           Notification preferences
         </Link>

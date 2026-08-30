@@ -421,7 +421,7 @@ export function AdminOverviewPage(): JSX.Element {
                 actions={
                   <Link
                     to="/admin/organisations"
-                    className="text-xs font-medium text-primary hover:underline"
+                    className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
                   >
                     Review
                   </Link>
@@ -465,7 +465,7 @@ export function AdminOverviewPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/platform-health"
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
                 >
                   All services
                 </Link>
@@ -515,7 +515,7 @@ export function AdminOverviewPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/audit"
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
                 >
                   Audit log
                 </Link>
@@ -574,7 +574,7 @@ export function AdminOverviewPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/support"
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
                 >
                   Support centre
                 </Link>

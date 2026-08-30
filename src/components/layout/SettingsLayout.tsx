@@ -53,7 +53,7 @@ export function SettingsLayout(): JSX.Element {
               Looking for your own password, sessions or two-factor?{' '}
               <Link
                 to="/app/account/security"
-                className="font-medium text-primary hover:underline"
+                className="font-medium text-primary-ink hover:underline dark:text-primary"
               >
                 Account security
               </Link>{' '}

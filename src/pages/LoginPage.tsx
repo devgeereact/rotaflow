@@ -164,7 +164,7 @@ export function LoginPage(): JSX.Element {
         <p className="mb-6 text-right text-sm">
           <Link
             to="/forgot-password"
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-primary-ink hover:underline dark:text-primary"
           >
             Forgot password?
           </Link>
@@ -221,7 +221,10 @@ export function LoginPage(): JSX.Element {
 
         <p className="mt-6 text-center text-sm text-ink-muted dark:text-content-muted-dark">
           Don&rsquo;t have an account?{' '}
-          <Link to="/signup" className="font-medium text-primary hover:underline">
+          <Link
+            to="/signup"
+            className="font-medium text-primary-ink hover:underline dark:text-primary"
+          >
             Sign up
           </Link>
         </p>
