@@ -367,9 +367,10 @@ export function AdminPlatformHealthPage(): JSX.Element {
             <Panel title="Latency, last 24 hours" flush>
               {sampledLatency.length === 0 ? (
                 <p className="px-4 py-3 text-sm text-content-muted dark:text-content-muted-dark">
-                  Nothing has been sampled in the last 24 hours. Samples are recorded when
-                  this page runs its checks, so opening it is currently the only thing
-                  that measures anything.
+                  Nothing timed has been sampled in the last 24 hours. The scheduled probe
+                  records status but deliberately not duration, so these percentiles come
+                  from the checks this page runs — open it, or use Watch, and they fill
+                  in.
                 </p>
               ) : (
                 <ul>
@@ -436,9 +437,18 @@ export function AdminPlatformHealthPage(): JSX.Element {
               rather than 100% where there is nothing to compute from.
             </p>
             <p>
-              That honesty has a cost worth knowing: samples are only written when
-              somebody opens this page, so the figures describe the moments an
-              administrator happened to look. A scheduled probe is not running yet.{' '}
+              <strong>Uptime is measured every five minutes by a scheduled probe</strong>,
+              whether or not anyone is looking (migration <code>0076</code>) — so an
+              outage at 3am leaves a mark now, which it did not before. That probe records
+              status only: <code>pg_net</code> reports no duration, and the timing
+              available to it includes its own worker&rsquo;s polling interval, which
+              would be mostly scheduler noise dressed up as latency.
+            </p>
+            <p>
+              So the percentiles still come from this page&rsquo;s own checks — a real
+              browser round trip, from wherever you are — and <code>latency_from</code>{' '}
+              says so, separately from <code>measured_from</code> for uptime. Averaging
+              the two would produce a number nobody could interpret.{' '}
               <strong>Watch</strong> keeps the last twenty samples in this tab for the
               sparklines; those are not stored, because one browser&rsquo;s timings are
               not platform uptime.
