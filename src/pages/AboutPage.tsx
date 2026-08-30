@@ -124,7 +124,7 @@ export function AboutPage(): JSX.Element {
           today, and a{' '}
           <Link
             to="/resources"
-            className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             published list of what is and is not built
           </Link>

@@ -2113,11 +2113,11 @@ export function RotaBuilderPage(): JSX.Element {
               </h2>
               <div className="flex items-center gap-2">
                 {criticalWarnings.length > 0 ? (
-                  <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger-ink">
+                  <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger-ink dark:text-danger-ink-dark">
                     {criticalWarnings.length} blocking
                   </span>
                 ) : (
-                  <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success-ink">
+                  <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success-ink dark:text-success-ink-dark">
                     None blocking
                   </span>
                 )}
@@ -2313,7 +2313,7 @@ export function RotaBuilderPage(): JSX.Element {
               type="checkbox"
               checked={problemsOnly}
               onChange={(e) => setProblemsOnly(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
             <span>
               Only show shifts that need attention
@@ -2329,7 +2329,7 @@ export function RotaBuilderPage(): JSX.Element {
               type="checkbox"
               checked={hideEmptyStaff}
               onChange={(e) => setHideEmptyStaff(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
             <span>
               Hide staff with no shifts this week

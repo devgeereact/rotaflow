@@ -37,10 +37,10 @@ export function ReportsQuickActionsCard({
                 size={20}
                 strokeWidth={2}
                 aria-hidden="true"
-                className="shrink-0 text-primary"
+                className="shrink-0 text-primary dark:text-primary-ink-dark"
               />
               <span className="min-w-0">
-                <span className="block truncate text-[0.8rem] font-semibold text-primary">
+                <span className="block truncate text-[0.8rem] font-semibold text-primary dark:text-primary-ink-dark">
                   {label}
                 </span>
                 <span className="block truncate text-[0.78rem] font-medium text-content-muted dark:text-content-muted-dark">

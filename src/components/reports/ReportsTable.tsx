@@ -160,7 +160,7 @@ export function ReportsTable({
                     aria-busy={runningId === row.id}
                     aria-label={`Run ${row.name}`}
                     title={row.runnable ? `Run ${row.name}` : 'Not available yet'}
-                    className={cn(ACTION, 'text-primary')}
+                    className={cn(ACTION, 'text-primary dark:text-primary-ink-dark')}
                   >
                     <Play
                       size={16}

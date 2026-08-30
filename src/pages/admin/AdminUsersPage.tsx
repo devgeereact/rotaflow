@@ -272,7 +272,7 @@ export function AdminUsersPage(): JSX.Element {
         sortable: true,
         cell: (profile) => (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary-ink dark:bg-primary-wash-dark dark:text-primary">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark">
               {(profile.full_name ?? profile.email ?? '?')
                 .split(/[\s@.]+/)
                 .slice(0, 2)
@@ -283,7 +283,7 @@ export function AdminUsersPage(): JSX.Element {
             <span className="min-w-0">
               <Link
                 to={`/admin/users/${profile.id}`}
-                className="block truncate font-medium text-content hover:text-primary dark:text-content-dark"
+                className="block truncate font-medium text-content hover:text-primary dark:text-primary-ink-dark dark:text-content-dark"
               >
                 {profile.full_name ?? '-'}
                 {profile.id === user?.id && (
@@ -314,7 +314,7 @@ export function AdminUsersPage(): JSX.Element {
             );
           }
           return (
-            <span className="block truncate text-primary">
+            <span className="block truncate text-primary dark:text-primary-ink-dark">
               {m.soleOrgName ?? `${m.organisations} organisations`}
             </span>
           );
@@ -507,7 +507,7 @@ export function AdminUsersPage(): JSX.Element {
               value={authFacts ? authFacts.unverified.toLocaleString('en-GB') : '-'}
               hint={
                 authFacts && authFacts.unverified > 0 ? (
-                  <span className="font-semibold text-danger-ink dark:text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                     Email never confirmed
                   </span>
                 ) : (
@@ -520,7 +520,7 @@ export function AdminUsersPage(): JSX.Element {
               value={authFacts ? authFacts.mfaEnrolled.toLocaleString('en-GB') : '-'}
               hint={
                 authFacts && authFacts.mfaEnrolled === 0 ? (
-                  <span className="font-semibold text-warning-ink dark:text-warning">
+                  <span className="font-semibold text-warning-ink dark:text-warning-ink-dark">
                     Nobody, including staff
                   </span>
                 ) : (

@@ -28,7 +28,7 @@ export function EmailSuggestion({
       <button
         type="button"
         onClick={() => onAccept(suggestion)}
-        className="font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {suggestion}
       </button>

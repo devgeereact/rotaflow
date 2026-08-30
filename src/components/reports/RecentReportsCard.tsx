@@ -43,7 +43,7 @@ export function RecentReportsCard({
           <button
             type="button"
             onClick={onViewAll}
-            className="rounded-lg text-[0.78rem] font-semibold text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="rounded-lg text-[0.78rem] font-semibold text-primary dark:text-primary-ink-dark transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             View all
           </button>

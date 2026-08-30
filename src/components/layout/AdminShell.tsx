@@ -43,13 +43,13 @@ function environmentBadge(): { label: string; className: string } {
     return {
       label: 'Production',
       className:
-        'bg-danger-wash text-danger-ink ring-1 ring-inset ring-danger/30 dark:bg-danger-wash-dark dark:text-danger',
+        'bg-danger-wash text-danger-ink ring-1 ring-inset ring-danger/30 dark:bg-danger-wash-dark dark:text-danger-ink-dark',
     };
   }
   return {
     label: env.mode === 'staging' ? 'Staging' : 'Development',
     className:
-      'bg-warning-wash text-warning-ink ring-1 ring-inset ring-warning/30 dark:bg-warning-wash-dark dark:text-warning',
+      'bg-warning-wash text-warning-ink ring-1 ring-inset ring-warning/30 dark:bg-warning-wash-dark dark:text-warning-ink-dark',
   };
 }
 
@@ -352,7 +352,7 @@ export function AdminShell(): JSX.Element {
             >
               <Menu size={18} aria-hidden="true" />
             </button>
-            <p className="text-xs font-medium text-danger-ink">
+            <p className="text-xs font-medium text-danger-ink dark:text-danger-ink-dark">
               Platform administration. You are viewing data belonging to every
               organisation on RotaFlow.
             </p>

@@ -277,7 +277,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
             value={measured.queued.toLocaleString('en-GB')}
             hint={
               measured.failed > 0 ? (
-                <span className="font-semibold text-danger-ink dark:text-danger">
+                <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                   {measured.failed} failed
                 </span>
               ) : (
@@ -460,7 +460,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
               The register lives on{' '}
               <Link
                 to="/admin/incidents"
-                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
               >
                 Incidents
               </Link>

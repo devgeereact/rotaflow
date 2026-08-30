@@ -86,7 +86,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }): JSX.Elem
                 className={
                   options.tone === 'danger'
                     ? 'grid h-10 w-10 shrink-0 place-items-center rounded-full bg-danger/10 text-danger'
-                    : 'grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary'
+                    : 'grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary dark:text-primary-ink-dark'
                 }
               >
                 <AlertTriangle size={20} aria-hidden="true" />

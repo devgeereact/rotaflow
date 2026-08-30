@@ -293,7 +293,7 @@ export function AdminGdprPage(): JSX.Element {
             value={counts.dueSoon}
             hint={
               counts.overdue > 0 ? (
-                <span className="font-semibold text-danger-ink dark:text-danger">
+                <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                   {counts.overdue} already overdue
                 </span>
               ) : (
@@ -310,7 +310,7 @@ export function AdminGdprPage(): JSX.Element {
             label="Median turnaround"
             value={counts.median === null ? '-' : `${counts.median} days`}
             hint={
-              <span className="font-semibold text-success-ink dark:text-success">
+              <span className="font-semibold text-success-ink dark:text-success-ink-dark">
                 statutory 30 days
               </span>
             }

@@ -46,7 +46,11 @@ export function TrustPage(): JSX.Element {
             would be a decision about what they notice. */}
         <Card>
           <div className="mb-3 flex items-center gap-2">
-            <Globe2 size={18} className="text-primary" aria-hidden="true" />
+            <Globe2
+              size={18}
+              className="text-primary dark:text-primary-ink-dark"
+              aria-hidden="true"
+            />
             <h2 className="font-semibold text-content dark:text-content-dark">
               What leaves the UK and EU
             </h2>
@@ -138,7 +142,11 @@ export function TrustPage(): JSX.Element {
 
         <Card>
           <div className="mb-3 flex items-center gap-2">
-            <AlertTriangle size={18} className="text-primary" aria-hidden="true" />
+            <AlertTriangle
+              size={18}
+              className="text-primary dark:text-primary-ink-dark"
+              aria-hidden="true"
+            />
             <h2 className="font-semibold text-content dark:text-content-dark">
               The AI assistant, in detail
             </h2>
@@ -179,7 +187,11 @@ export function TrustPage(): JSX.Element {
 
         <Card>
           <div className="mb-3 flex items-center gap-2">
-            <ShieldCheck size={18} className="text-primary" aria-hidden="true" />
+            <ShieldCheck
+              size={18}
+              className="text-primary dark:text-primary-ink-dark"
+              aria-hidden="true"
+            />
             <h2 className="font-semibold text-content dark:text-content-dark">
               Reporting a security problem
             </h2>
@@ -188,7 +200,7 @@ export function TrustPage(): JSX.Element {
             If you have found a vulnerability, email{' '}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-primary dark:text-primary-ink-dark hover:underline"
             >
               {CONTACT_EMAIL}
             </a>{' '}
@@ -222,7 +234,7 @@ export function TrustPage(): JSX.Element {
             If you need a DPA signed before you can proceed, email{' '}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-primary dark:text-primary-ink-dark hover:underline"
             >
               {CONTACT_EMAIL}
             </a>{' '}

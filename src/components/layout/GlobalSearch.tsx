@@ -247,7 +247,7 @@ export function GlobalSearch({
                           className={cn(
                             'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm',
                             isActive
-                              ? 'bg-primary/10 text-primary'
+                              ? 'bg-primary/10 text-primary dark:text-primary-ink-dark'
                               : 'text-content dark:text-content-dark',
                           )}
                         >

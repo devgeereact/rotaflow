@@ -25,7 +25,7 @@ export function ClockSecurityFooter({
         <ShieldCheck
           size={20}
           aria-hidden="true"
-          className="mt-0.5 shrink-0 text-primary"
+          className="mt-0.5 shrink-0 text-primary dark:text-primary-ink-dark"
         />
         <div>
           <p className="text-base font-semibold text-content dark:text-content-dark">

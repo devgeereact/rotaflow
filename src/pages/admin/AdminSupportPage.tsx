@@ -216,7 +216,7 @@ export function AdminSupportPage(): JSX.Element {
               value={counts.urgent}
               hint={
                 counts.urgent > 0 ? (
-                  <span className="font-semibold text-danger-ink dark:text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                     Still open
                   </span>
                 ) : (
@@ -272,7 +272,7 @@ export function AdminSupportPage(): JSX.Element {
                     </span>
                     <Link
                       to={`/admin/organisations/${session.orgId}`}
-                      className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
+                      className="text-sm font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                     >
                       {session.orgName}
                     </Link>
@@ -387,7 +387,7 @@ export function AdminSupportPage(): JSX.Element {
                           <td className="px-3 py-2.5">
                             <Link
                               to={`/admin/support/${item.id}`}
-                              className="block truncate font-medium text-content hover:text-primary-ink hover:underline dark:text-primary dark:text-content-dark"
+                              className="block truncate font-medium text-content hover:text-primary-ink hover:underline dark:text-primary-ink-dark dark:text-content-dark"
                             >
                               {item.subject}
                             </Link>
@@ -399,7 +399,7 @@ export function AdminSupportPage(): JSX.Element {
                             {org ? (
                               <Link
                                 to={`/admin/organisations/${org.id}`}
-                                className="block truncate text-primary-ink hover:underline dark:text-primary"
+                                className="block truncate text-primary-ink hover:underline dark:text-primary-ink-dark"
                               >
                                 {item.orgName}
                               </Link>
@@ -445,7 +445,7 @@ export function AdminSupportPage(): JSX.Element {
               sessions are separate and live on{' '}
               <Link
                 to="/admin/support-access"
-                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
               >
                 Support Access
               </Link>

@@ -167,7 +167,7 @@ export function AdminNotificationsPage(): JSX.Element {
               value={announceStats.failed}
               hint={
                 announceStats.failed > 0 ? (
-                  <span className="font-semibold text-danger-ink dark:text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                     Provider rejected
                   </span>
                 ) : (
@@ -395,7 +395,7 @@ export function AdminNotificationsPage(): JSX.Element {
               attention, not as delivery, and for whether the mail path itself works, see{' '}
               <Link
                 to="/admin/integrations"
-                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
               >
                 Integrations
               </Link>

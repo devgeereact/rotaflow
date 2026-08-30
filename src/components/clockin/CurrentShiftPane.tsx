@@ -147,7 +147,7 @@ export function CurrentShiftPane({
               <button
                 type="button"
                 onClick={onViewReminder}
-                className="inline-flex shrink-0 items-center gap-1 rounded text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="inline-flex shrink-0 items-center gap-1 rounded text-sm font-semibold text-primary dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 View Details
                 <ChevronRight size={16} aria-hidden="true" />

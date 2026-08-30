@@ -132,7 +132,7 @@ export function ManagerDashboard({
           {blockers.length > 1 ? ` And ${blockers.length - 1} more.` : ''}{' '}
           <Link
             to="/app/rota"
-            className="font-medium text-primary-ink hover:underline dark:text-primary"
+            className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
           >
             Open the rota builder
           </Link>
@@ -152,7 +152,7 @@ export function ManagerDashboard({
           value={shiftsToFill}
           hint={
             shiftsToFill > 0 ? (
-              <span className="text-danger-ink dark:text-danger">
+              <span className="text-danger-ink dark:text-danger-ink-dark">
                 below minimum cover
               </span>
             ) : (
@@ -185,7 +185,7 @@ export function ManagerDashboard({
             weekly?.rotaStatus === 'published' ? (
               <span className="text-success">staff notified</span>
             ) : (
-              <span className="text-danger-ink dark:text-danger">
+              <span className="text-danger-ink dark:text-danger-ink-dark">
                 not visible to staff
               </span>
             )
@@ -248,7 +248,7 @@ export function ManagerDashboard({
             site&rsquo;s own setting in{' '}
             <Link
               to="/app/locations"
-              className="font-medium text-primary-ink hover:underline dark:text-primary"
+              className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
             >
               Locations
             </Link>
@@ -284,7 +284,7 @@ export function ManagerDashboard({
                       className={cn(
                         'grid h-8 w-8 shrink-0 place-items-center rounded-full',
                         request.kind === 'leave'
-                          ? 'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning'
+                          ? 'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning-ink-dark'
                           : request.kind === 'swap'
                             ? 'bg-info-wash text-info dark:bg-info-wash-dark'
                             : 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
@@ -312,7 +312,7 @@ export function ManagerDashboard({
                                 ? '/app/swaps'
                                 : '/app/timesheets'
                           }
-                          className="font-medium text-primary-ink hover:underline dark:text-primary"
+                          className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                         >
                           {request.kind === 'missed_clock_in' ? 'Timesheets' : 'Decide'}
                         </Link>

@@ -144,7 +144,10 @@ export function DataTable<Row, Key extends string = string>({
                     <button
                       type="button"
                       onClick={() => toggle(column.key)}
-                      className={cn(HEAD_LABEL, 'transition-colors hover:text-primary')}
+                      className={cn(
+                        HEAD_LABEL,
+                        'transition-colors hover:text-primary dark:text-primary-ink-dark',
+                      )}
                     >
                       {column.label}
                       <Icon
@@ -152,7 +155,7 @@ export function DataTable<Row, Key extends string = string>({
                         aria-hidden="true"
                         className={
                           active
-                            ? 'text-primary'
+                            ? 'text-primary dark:text-primary-ink-dark'
                             : 'text-content-muted dark:text-content-muted-dark'
                         }
                       />

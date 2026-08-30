@@ -238,7 +238,11 @@ export function HelpPage(): JSX.Element {
         <div className="space-y-4">
           <Card>
             <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck size={18} className="text-primary" aria-hidden="true" />
+              <ShieldCheck
+                size={18}
+                className="text-primary dark:text-primary-ink-dark"
+                aria-hidden="true"
+              />
               <h2 className="font-semibold text-content dark:text-content-dark">
                 Still stuck
               </h2>
@@ -254,7 +258,11 @@ export function HelpPage(): JSX.Element {
 
           <Card>
             <div className="mb-3 flex items-center gap-2">
-              <MessageSquarePlus size={18} className="text-primary" aria-hidden="true" />
+              <MessageSquarePlus
+                size={18}
+                className="text-primary dark:text-primary-ink-dark"
+                aria-hidden="true"
+              />
               <h2 className="font-semibold text-content dark:text-content-dark">
                 Got a thought?
               </h2>
@@ -392,7 +400,7 @@ export function HelpPage(): JSX.Element {
                                     aria-hidden="true"
                                     className={
                                       chosen
-                                        ? 'fill-warning text-warning-ink dark:text-warning'
+                                        ? 'fill-warning text-warning-ink dark:text-warning-ink-dark'
                                         : undefined
                                     }
                                   />

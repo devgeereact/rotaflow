@@ -175,7 +175,7 @@ export function ConnectedAccountsPage(): JSX.Element {
                   key={identity.identity_id}
                   className="flex flex-wrap items-center gap-3 px-5 py-4"
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary dark:text-primary-ink-dark">
                     {identity.provider === 'email' ? (
                       <Mail size={16} aria-hidden="true" />
                     ) : (

@@ -309,7 +309,11 @@ export function ReportsAnalyticsCard({
     <Card className="mb-4 p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-card-heading font-semibold text-content dark:text-content-dark">
-          <BarChart3 size={16} aria-hidden="true" className="text-primary" />
+          <BarChart3
+            size={16}
+            aria-hidden="true"
+            className="text-primary dark:text-primary-ink-dark"
+          />
           Workforce trends
         </h2>
         <span className="text-xs text-content-muted dark:text-content-muted-dark">

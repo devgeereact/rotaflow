@@ -143,7 +143,7 @@ export function DepartmentManager({
                       type="button"
                       onClick={() => startEdit(dept)}
                       aria-label={`Edit ${dept.name}`}
-                      className="text-content-muted hover:text-primary dark:text-content-muted-dark"
+                      className="text-content-muted hover:text-primary dark:text-primary-ink-dark dark:text-content-muted-dark"
                     >
                       <Pencil size={14} />
                     </button>

@@ -44,11 +44,15 @@ interface BadgeProps {
 // public pages, where no Badge appeared until `/legal/trust`. The gate found
 // it the moment one did.
 const TONES: Record<BadgeTone, string> = {
-  success: 'bg-success-wash text-success-ink dark:bg-success-wash-dark dark:text-success',
-  warning: 'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning',
-  danger: 'bg-danger-wash text-danger-ink dark:bg-danger-wash-dark dark:text-danger',
-  info: 'bg-info-wash text-info-ink dark:bg-info-wash-dark dark:text-info',
-  primary: 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary',
+  success:
+    'bg-success-wash text-success-ink dark:bg-success-wash-dark dark:text-success-ink-dark',
+  warning:
+    'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning-ink-dark',
+  danger:
+    'bg-danger-wash text-danger-ink dark:bg-danger-wash-dark dark:text-danger-ink-dark',
+  info: 'bg-info-wash text-info-ink dark:bg-info-wash-dark dark:text-info-ink-dark',
+  primary:
+    'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark',
   // Location / department type chips (docs/design/Locations-Management.png,
   // docs/design/Location-department.png) run across the shift palette, which is the
   // only token set with enough distinct hues for org-defined type lists. These

@@ -22,7 +22,11 @@ const METRICS = [
   // darker text-safe ink token yet (only DEFAULT/wash), so this is a
   // one-off local value rather than inventing one — a real design-system
   // gap tracked in `docs/SAAS.md`, not solved here.
-  { label: 'Open shifts', value: '23', tone: 'text-[#96650F] dark:text-warning' },
+  {
+    label: 'Open shifts',
+    value: '23',
+    tone: 'text-[#96650F] dark:text-warning-ink-dark',
+  },
 ];
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -86,7 +90,7 @@ export function ProductPreview(): JSX.Element {
                   key={item}
                   className={`mb-1 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
                     i === 1
-                      ? // Not the `bg-primary/10 text-primary` tint every other
+                      ? // Not the `bg-primary/10 text-primary dark:text-primary-ink-dark` tint every other
                         // icon-only badge on this page uses: with real text
                         // ("Rota") inside it reads at 4.08:1, under 4.5:1. A
                         // solid active-item fill reads as a legitimate nav

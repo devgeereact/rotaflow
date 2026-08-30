@@ -16,7 +16,7 @@ const LINK_BASE =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors';
 const LINK_INACTIVE =
   'text-content-muted hover:bg-primary-wash hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark';
-// Solid fill, not the earlier soft-tint idiom (`bg-primary/10 text-primary`):
+// Solid fill, not the earlier soft-tint idiom (`bg-primary/10 text-primary dark:text-primary-ink-dark`):
 // see docs/DESIGN.md §6, "Sidebar nav, active item" for the 2026-08-06 change
 // against `docs/ORGANISATION_WORKSPACE.html`.
 const LINK_ACTIVE = 'bg-primary text-primary-fg';
@@ -158,7 +158,8 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
             {!collapsed && (
               <span className="min-w-0">
                 <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
-                  Rota<span className="text-primary">Flow</span>
+                  Rota
+                  <span className="text-primary dark:text-primary-ink-dark">Flow</span>
                 </span>
                 <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
                   {BRAND.tagline}
@@ -217,7 +218,8 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
                 <BrandMark label={null} className="h-8 w-8" />
                 <span>
                   <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
-                    Rota<span className="text-primary">Flow</span>
+                    Rota
+                    <span className="text-primary dark:text-primary-ink-dark">Flow</span>
                   </span>
                   <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
                     {BRAND.tagline}

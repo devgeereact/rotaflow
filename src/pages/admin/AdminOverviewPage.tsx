@@ -98,8 +98,9 @@ const SEVERITY_TONE: Record<string, ActivityTone> = {
 
 const ACTIVITY_TONE: Record<ActivityTone, string> = {
   success: 'bg-success-wash text-success dark:bg-success-wash-dark',
-  info: 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary',
-  warning: 'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning',
+  info: 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark',
+  warning:
+    'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning-ink-dark',
   danger: 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
 };
 
@@ -308,7 +309,7 @@ export function AdminOverviewPage(): JSX.Element {
               value={data.organisations.length.toLocaleString('en-GB')}
               hint={
                 <>
-                  <span className="font-semibold text-success-ink">
+                  <span className="font-semibold text-success-ink dark:text-success-ink-dark">
                     +{derived.newThisMonth}
                   </span>{' '}
                   this month
@@ -421,7 +422,7 @@ export function AdminOverviewPage(): JSX.Element {
                 actions={
                   <Link
                     to="/admin/organisations"
-                    className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+                    className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                   >
                     Review
                   </Link>
@@ -465,7 +466,7 @@ export function AdminOverviewPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/platform-health"
-                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                 >
                   All services
                 </Link>
@@ -515,7 +516,7 @@ export function AdminOverviewPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/audit"
-                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                 >
                   Audit log
                 </Link>
@@ -574,7 +575,7 @@ export function AdminOverviewPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/support"
-                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                 >
                   Support centre
                 </Link>

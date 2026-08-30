@@ -256,7 +256,7 @@ export function AdminOrganisationsPage(): JSX.Element {
         sortable: true,
         cell: (org) => (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary-ink dark:bg-primary-wash-dark dark:text-primary">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark">
               {org.name
                 .split(/\s+/)
                 .slice(0, 2)
@@ -267,7 +267,7 @@ export function AdminOrganisationsPage(): JSX.Element {
             <span className="min-w-0">
               <Link
                 to={`/admin/organisations/${org.id}`}
-                className="block truncate font-medium text-content hover:text-primary dark:text-content-dark"
+                className="block truncate font-medium text-content hover:text-primary dark:text-primary-ink-dark dark:text-content-dark"
               >
                 {org.name}
               </Link>
@@ -382,7 +382,7 @@ export function AdminOrganisationsPage(): JSX.Element {
               className={`rounded-lg border px-2 py-1 text-xs font-medium ${
                 org.status === 'suspended'
                   ? 'border-surface-border text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark'
-                  : 'border-danger/34 text-danger-ink hover:bg-danger-wash dark:text-danger dark:hover:bg-danger-wash-dark'
+                  : 'border-danger/34 text-danger-ink hover:bg-danger-wash dark:text-danger-ink-dark dark:hover:bg-danger-wash-dark'
               }`}
             >
               {org.status === 'suspended' ? 'Reactivate' : 'Suspend'}
@@ -493,7 +493,7 @@ export function AdminOrganisationsPage(): JSX.Element {
               value={summary.suspended}
               hint={
                 summary.suspended ? (
-                  <span className="font-semibold text-danger-ink dark:text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                     payment or abuse
                   </span>
                 ) : (
@@ -511,7 +511,7 @@ export function AdminOrganisationsPage(): JSX.Element {
               value={summary.newThisMonth}
               hint={
                 summary.newThisMonthChange ? (
-                  <span className="font-semibold text-success-ink dark:text-success">
+                  <span className="font-semibold text-success-ink dark:text-success-ink-dark">
                     {summary.newThisMonthChange}
                   </span>
                 ) : (

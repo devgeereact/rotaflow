@@ -225,8 +225,8 @@ export function AdminIncidentsPage(): JSX.Element {
                   <span
                     className={`font-semibold ${
                       metrics.change.startsWith('+')
-                        ? 'text-danger-ink dark:text-danger'
-                        : 'text-success-ink dark:text-success'
+                        ? 'text-danger-ink dark:text-danger-ink-dark'
+                        : 'text-success-ink dark:text-success-ink-dark'
                     }`}
                   >
                     {metrics.change}
@@ -346,14 +346,14 @@ export function AdminIncidentsPage(): JSX.Element {
             closest record of what platform staff did is the{' '}
             <Link
               to="/admin/audit"
-              className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
             >
               audit log
             </Link>
             ; measured service state is on{' '}
             <Link
               to="/admin/platform-health"
-              className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
             >
               System status
             </Link>

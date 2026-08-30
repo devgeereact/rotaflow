@@ -38,7 +38,7 @@ export function Header(): JSX.Element {
       <Link to="/app/dashboard" className="flex shrink-0 items-center gap-2 md:hidden">
         <BrandMark label={null} className="h-8 w-8" />
         <span className="font-display text-base font-bold text-content dark:text-content-dark">
-          Rota<span className="text-primary">Flow</span>
+          Rota<span className="text-primary dark:text-primary-ink-dark">Flow</span>
         </span>
       </Link>
 

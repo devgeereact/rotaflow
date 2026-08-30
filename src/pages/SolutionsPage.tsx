@@ -82,7 +82,7 @@ export function SolutionsPage(): JSX.Element {
             {SHARED_PROBLEMS.map(({ problem, consequence, answer }) => (
               <Card key={problem} className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-danger-ink">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-danger-ink dark:text-danger-ink-dark">
                     The problem
                   </p>
                   <p className="mt-1.5 font-display font-semibold text-content dark:text-content-dark">
@@ -90,7 +90,7 @@ export function SolutionsPage(): JSX.Element {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-warning-ink">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-warning-ink dark:text-warning-ink-dark">
                     What it costs
                   </p>
                   <p className="mt-1.5 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
@@ -98,7 +98,7 @@ export function SolutionsPage(): JSX.Element {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-success-ink">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-success-ink dark:text-success-ink-dark">
                     In RotaFlow
                   </p>
                   <p className="mt-1.5 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
@@ -114,7 +114,7 @@ export function SolutionsPage(): JSX.Element {
             almost certainly fits,{' '}
             <Link
               to="/contact"
-              className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               tell us how you schedule
             </Link>

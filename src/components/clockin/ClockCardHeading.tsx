@@ -24,7 +24,7 @@ export function ClockCardHeading({
   return (
     <div className={cn('flex items-center justify-between gap-3', className)}>
       <div className="flex items-center gap-3">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary dark:bg-primary/15">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary dark:text-primary-ink-dark dark:bg-primary/15">
           <Icon size={16} aria-hidden="true" />
         </span>
         <h2 className="text-card-heading font-semibold text-content dark:text-content-dark">

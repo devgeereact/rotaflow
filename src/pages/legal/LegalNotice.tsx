@@ -38,7 +38,7 @@ export function LegalNotice({ title, eyebrow, summary }: LegalNoticeProps): JSX.
           </p>
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="inline-flex items-center gap-2 rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="inline-flex items-center gap-2 rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Mail size={16} aria-hidden="true" />
             {CONTACT_EMAIL}
@@ -47,7 +47,7 @@ export function LegalNotice({ title, eyebrow, summary }: LegalNoticeProps): JSX.
             Or use the{' '}
             <Link
               to="/contact"
-              className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               contact form
             </Link>

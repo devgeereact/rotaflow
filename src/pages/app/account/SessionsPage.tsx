@@ -87,7 +87,7 @@ export function SessionsPage(): JSX.Element {
         description="The session you are using right now."
       >
         <div className="flex flex-wrap items-center gap-4">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
             <Laptop size={18} aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">

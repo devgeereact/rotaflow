@@ -115,7 +115,7 @@ export function AmendClockEventModal({
           // person who could correct a mis-timed shift never learned there
           // was anything to correct.
           <div className="mt-4 rounded-lg border border-warning/30 bg-warning/5 p-3">
-            <p className="text-sm font-medium text-warning-ink dark:text-warning">
+            <p className="text-sm font-medium text-warning-ink dark:text-warning-ink-dark">
               {overrides.length === 1
                 ? 'One of these times was adjusted automatically'
                 : 'These times were adjusted automatically'}

@@ -93,7 +93,7 @@ export function AttendanceStatusCard({
       <button
         type="button"
         onClick={onViewReport}
-        className="mt-auto self-center rounded pt-5 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="mt-auto self-center rounded pt-5 text-sm font-semibold text-primary dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         View Attendance Report
       </button>

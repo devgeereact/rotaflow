@@ -29,7 +29,7 @@ export function SectorGrid({ variant = 'full' }: SectorGridProps): JSX.Element {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {SECTORS.map(({ icon: Icon, name, body, points }) => (
           <Card key={name} className="flex h-full flex-col">
-            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <Icon size={20} aria-hidden="true" />
             </span>
             <h3 className="mb-1.5 font-display text-lg font-semibold text-content dark:text-content-dark">
