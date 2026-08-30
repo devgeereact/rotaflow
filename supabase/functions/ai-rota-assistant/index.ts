@@ -293,6 +293,40 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Per-user ceiling on how often this can be called at all (GAP-009).
+    // Every request below spends real money at OpenRouter, and nothing bounded
+    // how many an authenticated member could make. 30 an hour is far above a
+    // manager trying several phrasings of a week and far below a loop.
+    //
+    // `consume_my_rate_limit` derives the subject from auth.uid() itself, so
+    // this cannot be pointed at another user's allowance — the generic
+    // limiter that takes a subject is revoked from every client role for
+    // exactly that reason (0085).
+    //
+    // Placed after the role and entitlement checks: somebody who may not use
+    // the assistant at all should not be able to consume a quota by asking.
+    const { error: limitError } = await supabase.rpc('consume_my_rate_limit', {
+      p_bucket: 'ai_assistant',
+      p_limit: 30,
+      p_window: '01:00:00',
+    });
+    if (limitError) {
+      // P0001 is the limiter refusing; anything else is the limiter itself
+      // failing, and a broken limiter must not become a free pass on the one
+      // endpoint that spends money.
+      const overLimit = limitError.code === 'P0001';
+      if (!overLimit) console.error('rate limit check failed', limitError);
+      return jsonResponse(
+        {
+          error: overLimit
+            ? 'You have used the AI assistant a lot in the last hour. Try again shortly.'
+            : 'The AI assistant is unavailable right now. Please try again shortly.',
+          code: 'rate_limited',
+        },
+        429,
+      );
+    }
+
     // `auditAiRequest` writes via the service-role client, where `auth.uid()`
     // is null, so `audit_write` cannot fill in the actor itself here the way
     // it does for a normal user-scoped write. Read the real caller's identity
@@ -457,6 +491,15 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model,
         temperature: task === 'announcement' ? 0.5 : 0.3,
+        // A ceiling on what one call can cost (docs/SAAS.md GAP-009,
+        // HARDEN-004). There was none, so a single request could generate
+        // until the model stopped and bill for all of it. A rota suggestion
+        // for a week is a few hundred tokens of JSON and an announcement is
+        // shorter; 2000 leaves generous headroom over both while bounding the
+        // worst case. A truncated response fails the JSON parse below and is
+        // reported as a failed suggestion, which is the right outcome — better
+        // than silently applying half a rota.
+        max_tokens: 2000,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
