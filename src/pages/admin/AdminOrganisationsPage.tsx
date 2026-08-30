@@ -27,6 +27,7 @@ import {
   listAllSubscriptions,
 } from '@/services/platformService';
 import type { CreatedOrganisationInvite } from '@/services/platformService';
+import { sendInviteEmail } from '@/services/inviteService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useToast } from '@/hooks/useToast';
 import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
@@ -107,9 +108,37 @@ export function AdminOrganisationsPage(): JSX.Element {
       setCreateModalOpen(false);
       setCreatedInvite({ orgName, email, url: result.acceptUrl });
       setReloadKey((k) => k + 1);
-      showSuccess(`${orgName} created. Copy the invite link and send it to ${email}.`);
+      showSuccess(`${orgName} created.`);
+
+      // Email the owner invite (GAP-005). This is the sales-led signup: the
+      // recipient has never seen the product and is waiting on us, so leaving
+      // delivery as "copy this link" made it a manual step somebody had to
+      // remember, correctly, out of hours. `send-invite` shipped in 0058 and
+      // this path was simply never wired to it — it could not be until 0084
+      // returned the invite id, which the function needs to look the
+      // invitation up before it will send anywhere.
+      //
+      // Best effort on top of a durable invite, the same posture every other
+      // invite path takes: the organisation and the invitation both exist and
+      // the link stays on screen, so a refused send is reported rather than
+      // failing anything.
+      void sendInviteEmail(result.orgId, {
+        inviteId: result.inviteId,
+        token: result.inviteToken,
+        expiresAt: result.inviteExpiresAt,
+        acceptUrl: result.acceptUrl,
+      }).then((delivery) => {
+        if (delivery.sent) {
+          showSuccess(`Owner invite emailed to ${email}.`);
+        } else {
+          showError(
+            delivery.reason ??
+              `The invite to ${email} could not be emailed. Copy the link below and send it to them.`,
+          );
+        }
+      });
     },
-    [showSuccess],
+    [showError, showSuccess],
   );
 
   const copyInviteLink = useCallback(

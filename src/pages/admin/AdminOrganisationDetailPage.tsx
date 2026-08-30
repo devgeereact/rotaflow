@@ -30,7 +30,7 @@ import {
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import { getOrgSmtpSettings } from '@/services/smtpSettingsService';
 import { listGdprRequests } from '@/services/gdprRequestService';
-import { createInvite } from '@/services/inviteService';
+import { createInvite, sendInviteEmail } from '@/services/inviteService';
 import { isValidEmail } from '@/lib/email';
 import {
   formatRemaining,
@@ -337,7 +337,27 @@ export function AdminOrganisationDetailPage(): JSX.Element {
     try {
       const invite = await createInvite(organisationId, trimmed, 'owner');
       setReinviteResult(invite.acceptUrl);
-      showSuccess(`Owner invite created for ${trimmed}. Copy the link and share it.`);
+
+      // Email it, like every other invite path does (GAP-005). This one was
+      // left out when `send-invite` shipped, and it is the worst place to
+      // leave out: it is the sales-led signup, where the recipient is a
+      // prospect who has never seen the product and is waiting on us. Telling
+      // an administrator to "copy the link and share it" makes delivery a
+      // manual step somebody has to remember, out of hours, correctly.
+      //
+      // Best effort on top of a durable invite, exactly as TeamInviteManager
+      // treats it: the row exists and the link is on screen either way, so a
+      // refused send is reported, never a reason to fail the invitation.
+      const delivery = await sendInviteEmail(organisationId, invite);
+      if (delivery.sent) {
+        showSuccess(`Owner invite emailed to ${trimmed}.`);
+      } else {
+        showSuccess(`Owner invite created for ${trimmed}.`);
+        showError(
+          delivery.reason ??
+            'It could not be emailed. Copy the link below and send it to them.',
+        );
+      }
     } catch (err) {
       reportError(err, { area: 'admin:organisation-detail:reinvite-owner' });
       setReinviteError(
@@ -348,7 +368,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
     } finally {
       setReinviting(false);
     }
-  }, [organisationId, reinviteEmail, showSuccess]);
+  }, [organisationId, reinviteEmail, showError, showSuccess]);
 
   const copyReinviteLink = useCallback(async (): Promise<void> => {
     if (!reinviteResult) return;

@@ -797,6 +797,9 @@ const TABLES: Record<string, unknown> = {
   'rpc/admin_create_organisation_with_invite': [
     {
       org_id: '77777777-7777-4777-8777-777777777777',
+      // 0084 returns this so the caller can email the invite instead of asking
+      // a person to copy a link. Without it the preview's success path throws.
+      invite_id: '77777777-7777-4777-8777-888888888888',
       invite_token: 'preview-invite-token',
       invite_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
     },

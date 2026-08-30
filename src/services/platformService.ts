@@ -221,6 +221,8 @@ export interface CreateOrganisationWithInviteInput {
 
 export interface CreatedOrganisationInvite {
   orgId: string;
+  /** Needed to email the invitation: `send-invite` looks it up by id (0084). */
+  inviteId: string;
   inviteToken: string;
   inviteExpiresAt: string;
   /** Ready-to-send URL for the contact, same shape as inviteService's own. */
@@ -255,6 +257,7 @@ export async function createOrganisationWithInvite(
 
   return {
     orgId: row.org_id,
+    inviteId: row.invite_id,
     inviteToken: row.invite_token,
     inviteExpiresAt: row.invite_expires_at,
     acceptUrl: buildAcceptUrl(row.invite_token),
