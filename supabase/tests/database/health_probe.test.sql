@@ -39,7 +39,7 @@
 -- =====================================================================
 
 begin;
-select plan(8);
+select plan(11);
 
 -- The local stack has no Vault secrets, so the probe records the database
 -- sample, raises its "cannot probe HTTP endpoints" warning, and returns
@@ -55,9 +55,13 @@ values
   ('Ancient service', 'operational', 10, 'console',
    timezone('utc', now()) - interval '120 days');
 
--- An in-flight probe whose response never arrived.
-insert into public.platform_health_probes (request_id, service, sent_at)
-values (999999999, 'Authentication', timezone('utc', now()) - interval '10 minutes');
+-- Two in-flight probes whose responses never arrived, one of each kind.
+-- Silence is a fault under both readings, which is the point of asserting it
+-- for the liveness one too (0079).
+insert into public.platform_health_probes (request_id, service, sent_at, classify)
+values
+  (999999999, 'Authentication', timezone('utc', now()) - interval '10 minutes', 'strict'),
+  (999999998, 'REST API',       timezone('utc', now()) - interval '10 minutes', 'liveness');
 
 select ok(
   public.probe_platform_health() >= 1,
@@ -77,7 +81,15 @@ select is(
     where service = 'Authentication' and source = 'scheduled'
     order by checked_at desc limit 1),
   'down',
-  'a probe with no response reconciles to down — silence is an answer'
+  'a strict probe with no response reconciles to down — silence is an answer'
+);
+
+select is(
+  (select status from public.platform_health_samples
+    where service = 'REST API' and source = 'scheduled'
+    order by checked_at desc limit 1),
+  'down',
+  'and so does a liveness one — 0079 makes 4xx tolerable, not silence'
 );
 
 select is(
@@ -125,6 +137,26 @@ select is(
   (select latency_from from public.platform_health_summary where service = 'Realtime'),
   'console',
   'and latency_from says so, rather than letting measured_from imply it'
+);
+
+-- 0079. `net._http_response` cannot be written from a test, so the 4xx branch
+-- cannot be driven end to end here; re-stating the CASE expression as an
+-- assertion would prove nothing but that I can copy it. What IS testable is the
+-- column the branch reads, and that both kinds still treat silence as a fault —
+-- asserted above for each.
+select is(
+  (select column_default from information_schema.columns
+    where table_name = 'platform_health_probes' and column_name = 'classify'),
+  '''strict''::text',
+  'a probe defaults to strict, so a new one must opt IN to the lenient reading'
+);
+
+select throws_ok(
+  $$insert into public.platform_health_probes (request_id, service, classify)
+    values (1, 'Nonsense', 'whatever')$$,
+  '23514',
+  null,
+  'and the column is constrained, so a typo cannot silently become "not strict"'
 );
 
 select * from finish();
