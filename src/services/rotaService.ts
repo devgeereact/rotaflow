@@ -91,10 +91,18 @@ export interface RotaPeriodResolution {
   archived: Rota[];
 }
 
-export async function resolveRotaForPeriod(
-  input: RotaPeriodQuery,
-): Promise<RotaPeriodResolution> {
-  const rows = await listRotasForPeriod(input);
+/**
+ * The precedence rule itself, over rows already fetched.
+ *
+ * Pure and shared, because the whole point of `RotaPeriodResolution` is that
+ * precedence is decided in exactly one place. The batch loader below reads the
+ * same rows in a single round trip and must reach the same answer as the
+ * per-location path, so it calls this rather than repeating the `find`s.
+ *
+ * Expects rows newest-first within the scope, which is the order
+ * `listRotasForPeriod` returns and the order the batch query asks for.
+ */
+export function resolveRotaRows(rows: Rota[]): RotaPeriodResolution {
   const published = rows.find((r) => r.status === 'published') ?? null;
   const draft = rows.find((r) => r.status === 'draft') ?? null;
 
@@ -104,6 +112,22 @@ export async function resolveRotaForPeriod(
     isAmendment: Boolean(draft?.supersedes_rota_id),
     archived: rows.filter((r) => r.status === 'archived'),
   };
+}
+
+/**
+ * Which of a resolution's rotas the builder should open. Same rule as
+ * `findRotaForPeriod`, factored out so the batch path cannot drift from it.
+ */
+export function pickRotaToOpen(resolution: RotaPeriodResolution): Rota | null {
+  const { published, draft, isAmendment } = resolution;
+  if (isAmendment && draft) return draft;
+  return published ?? draft ?? null;
+}
+
+export async function resolveRotaForPeriod(
+  input: RotaPeriodQuery,
+): Promise<RotaPeriodResolution> {
+  return resolveRotaRows(await listRotasForPeriod(input));
 }
 
 /**
@@ -118,9 +142,62 @@ export async function resolveRotaForPeriod(
  * the week had been wiped.
  */
 export async function findRotaForPeriod(input: RotaPeriodQuery): Promise<Rota | null> {
-  const { published, draft, isAmendment } = await resolveRotaForPeriod(input);
-  if (isAmendment && draft) return draft;
-  return published ?? draft ?? null;
+  return pickRotaToOpen(await resolveRotaForPeriod(input));
+}
+
+export interface MultiLocationRotaQuery {
+  orgId: string;
+  periodStart: string;
+  periodEnd: string;
+  locationIds: string[];
+}
+
+/**
+ * The rota to open for each of several locations, in ONE round trip.
+ *
+ * The builder shows every location at once, and used to resolve each one
+ * separately — `findRotaForPeriod` then a shift fetch, so two queries per
+ * location per week viewed (HARDEN-006). Six sites meant twelve round trips to
+ * change the week, and `Promise.all` only hid the latency behind itself; the
+ * database still did the work six times, and each of those lookups scanned
+ * every rota the org had ever had (0072 indexes that too).
+ *
+ * Returns a map keyed by location id. A location with no rota yet is simply
+ * absent — creating one is the caller's decision, because it is a write, and
+ * merely looking at a week should not create rows for locations nobody has
+ * scheduled.
+ */
+export async function resolveRotasForLocations(
+  input: MultiLocationRotaQuery,
+): Promise<Map<string, RotaPeriodResolution>> {
+  const byLocation = new Map<string, RotaPeriodResolution>();
+  if (input.locationIds.length === 0) return byLocation;
+
+  const { data, error } = await supabase
+    .from('rotas')
+    .select('*')
+    .eq('org_id', input.orgId)
+    .eq('period_start', input.periodStart)
+    .eq('period_end', input.periodEnd)
+    .in('location_id', input.locationIds)
+    // Same ordering as `listRotasForPeriod`, because `resolveRotaRows` picks
+    // the first row of each status and therefore depends on it.
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const grouped = new Map<string, Rota[]>();
+  for (const row of data ?? []) {
+    const key = row.location_id;
+    if (key === null) continue;
+    const bucket = grouped.get(key);
+    if (bucket) bucket.push(row);
+    else grouped.set(key, [row]);
+  }
+
+  for (const [locationId, rows] of grouped) {
+    byLocation.set(locationId, resolveRotaRows(rows));
+  }
+  return byLocation;
 }
 
 /**

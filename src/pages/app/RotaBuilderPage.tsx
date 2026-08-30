@@ -43,13 +43,15 @@ import {
   beginRotaRevision,
   discardRotaRevision,
   getOrCreateRotaForPeriod,
+  pickRotaToOpen,
   publishRota,
+  resolveRotasForLocations,
   unpublishRota,
 } from '@/services/rotaService';
 import {
   createShift,
   deleteShift,
-  listShiftsForRota,
+  listShiftsForRotas,
   updateShift,
 } from '@/services/shiftService';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
@@ -298,22 +300,53 @@ export function RotaBuilderPage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        const results = await Promise.all(
-          locations.map(async (loc) => {
-            const rota = await getOrCreateRotaForPeriod({
+        // One query for every location's rota, not one per location
+        // (HARDEN-006). Only the locations with no rota yet then need a
+        // write, and on a week that has been opened before that is none.
+        const existing = await resolveRotasForLocations({
+          orgId,
+          periodStart: weekStart,
+          periodEnd: weekEnd,
+          locationIds: locations.map((l) => l.id),
+        });
+
+        const rotaByLocation = new Map<string, Rota>();
+        const missing: Location[] = [];
+        for (const loc of locations) {
+          const resolved = existing.get(loc.id);
+          const open = resolved ? pickRotaToOpen(resolved) : null;
+          if (open) rotaByLocation.set(loc.id, open);
+          else missing.push(loc);
+        }
+
+        // `getOrCreateRotaForPeriod` rather than a plain insert: it re-reads
+        // the winner on a 23505, which is what makes two managers opening the
+        // same new week safe.
+        const created = await Promise.all(
+          missing.map(async (loc) => ({
+            locationId: loc.id,
+            rota: await getOrCreateRotaForPeriod({
               orgId,
               name: `Week of ${weekStart}`,
               periodStart: weekStart,
               periodEnd: weekEnd,
               locationId: loc.id,
-            });
-            const rows = await listShiftsForRota(rota.id);
-            return { locationId: loc.id, rota, shifts: rows };
-          }),
+            }),
+          })),
         );
+        for (const { locationId, rota } of created) rotaByLocation.set(locationId, rota);
+
+        // Every rota, including the ones just created. Excluding those would
+        // save nothing — it is one query either way — and would rest on "a new
+        // rota has no shifts", which the 23505 path can hand back someone
+        // else's rota and quietly break.
+        const rows = await listShiftsForRotas(
+          [...rotaByLocation.values()].map((r) => r.id),
+        );
+
         if (!active) return;
-        setRotasByLocation(new Map(results.map((r) => [r.locationId, r.rota])));
-        setShifts(results.flatMap((r) => r.shifts));
+        setRotasByLocation(rotaByLocation);
+        setShifts(rows);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'rota:load-week' });
@@ -1230,17 +1263,43 @@ export function RotaBuilderPage(): JSX.Element {
         const previousDates = getWeekDates(previousStart);
         const previousEnd = previousDates[6] ?? previousStart;
 
+        // Resolve, never create. This reads a week that has already happened,
+        // and `getOrCreateRotaForPeriod` was writing an empty draft rota into
+        // any past week a location had not been scheduled for — fabricating
+        // history as a side effect of looking at it, and making "was that week
+        // ever scheduled?" answer yes. A location with nothing to copy is now
+        // simply skipped. (It also cost two serial queries per location;
+        // HARDEN-006.)
+        const previousRotas = await resolveRotasForLocations({
+          orgId,
+          periodStart: previousStart,
+          periodEnd: previousEnd,
+          locationIds: filteredLocations.map((l) => l.id),
+        });
+
+        const previousRotaByLocation = new Map<string, string>();
+        for (const location of filteredLocations) {
+          const resolved = previousRotas.get(location.id);
+          const rota = resolved ? pickRotaToOpen(resolved) : null;
+          if (rota) previousRotaByLocation.set(location.id, rota.id);
+        }
+
+        const previousShifts = await listShiftsForRotas([
+          ...previousRotaByLocation.values(),
+        ]);
+        const shiftsByRota = new Map<string, Shift[]>();
+        for (const shift of previousShifts) {
+          if (shift.rota_id === null) continue;
+          const bucket = shiftsByRota.get(shift.rota_id);
+          if (bucket) bucket.push(shift);
+          else shiftsByRota.set(shift.rota_id, [shift]);
+        }
+
         const collected: CopiedShift[] = [];
         for (const location of filteredLocations) {
-          const rota = await getOrCreateRotaForPeriod({
-            orgId,
-            name: `Week of ${previousStart}`,
-            periodStart: previousStart,
-            periodEnd: previousEnd,
-            locationId: location.id,
-          });
-          const rows = await listShiftsForRota(rota.id);
-          for (const shift of rows) {
+          const rotaId = previousRotaByLocation.get(location.id);
+          if (!rotaId) continue;
+          for (const shift of shiftsByRota.get(rotaId) ?? []) {
             const { date, time: startTime } = fromIsoInTimezone(
               shift.starts_at,
               location.timezone,
@@ -1349,10 +1408,12 @@ export function RotaBuilderPage(): JSX.Element {
           }
           if (rotaByLocationId.size === 0) continue;
 
-          const working: Shift[] = [];
-          for (const rotaId of rotaByLocationId.values()) {
-            working.push(...(await listShiftsForRota(rotaId)));
-          }
+          // Creating above is deliberate — this tool exists to build weeks
+          // that do not yet have a rota. Fetching their shifts one at a time
+          // was not (HARDEN-006).
+          const working: Shift[] = await listShiftsForRotas([
+            ...rotaByLocationId.values(),
+          ]);
 
           for (const item of collected) {
             const date = targetDates[item.dayOffset];
@@ -1512,8 +1573,10 @@ export function RotaBuilderPage(): JSX.Element {
   );
 
   const reloadShifts = (): void => {
-    void Promise.all([...rotasByLocation.values()].map((r) => listShiftsForRota(r.id)))
-      .then((rows) => setShifts(rows.flat()))
+    // Runs after every create, move and delete, so it is the hottest of the
+    // builder's reads (HARDEN-006). One `in` instead of one query per location.
+    void listShiftsForRotas([...rotasByLocation.values()].map((r) => r.id))
+      .then((rows) => setShifts(rows))
       .catch((err) => {
         reportError(err, { area: 'rota:reload-shifts' });
         showError(

@@ -62,7 +62,7 @@ Audited 2026-08-29 against `main` (66 migrations, `0001`–`0066`). Revised the 
 | 🟢 Complete           | 37    | +13           |
 | 🟡 Partial            | 20    | +2            |
 | 🟠 Defective          | 4     | −10           |
-| 🔵 Hardening required | 9     | —             |
+| 🔵 Hardening required | 8     | −1            |
 | ⚪ Surface only       | 7     | —             |
 | 🔴 Missing            | 19    | −3            |
 | ⚫ Deferred           | 19    | —             |
@@ -377,8 +377,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `docs/OBSERVABILITY.md` · P3
 - [ ] CAP-103 🟡 Error tracking — Sentry in the client; **no edge function reports to it**
       `src/lib/sentry.ts` · HARDEN-005 · P2
-- [ ] CAP-104 🔵 Query shape — no composite index matches the hot predicates; the builder is N+1 per location
-      `src/pages/app/RotaBuilderPage.tsx` · HARDEN-006 · P2
+- [x] CAP-104 🟢 Query shape — 16 composite indexes cover the predicates the app issues; the
+      builder loads every location's week in two queries, not two per location
+      `supabase/migrations/0072_hot_path_indexes.sql` · HARDEN-006 · P2
 - [x] CAP-105 🟢 Concurrency on approvals — the UPDATE carries a state predicate, so the losing
       writer changes zero rows and is told so
       `src/services/reviewConcurrency.test.ts` · BUG-061 · P2
@@ -521,17 +522,17 @@ half of GDPR erasure.
 
 ## §8 Hardening register
 
-| ID         | Capability                 | Weakness                                                                                    | Priority |
-| ---------- | -------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| HARDEN-001 | Table grants               | `anon` holds CRUD on every tenant table; inert only because policies are `auth.uid()`-based | P2       |
-| HARDEN-002 | Security predicates        | Four keep default `PUBLIC EXECUTE` and answer at `/rest/v1/rpc/` for `anon`                 | P2       |
-| HARDEN-003 | URL fields                 | `photo_url` takes any scheme while `file_url` validates                                     | P2       |
-| HARDEN-004 | AI function                | No token cap, no spend guard, one model with no fallback                                    | P1       |
-| HARDEN-005 | Edge functions             | No Sentry; failures are `console.error` strings in a log nobody watches                     | P2       |
-| HARDEN-006 | Query shape                | No composite index on the hot predicates; ≥2 round trips per location per week load         | P2       |
-| HARDEN-007 | Scale                      | Never tested beyond a single-org tenant                                                     | P3       |
-| HARDEN-008 | Notification authorisation | The shared secret proves the caller, not that the caller was entitled to name those users   | P2       |
-| HARDEN-009 | Session control            | No server-side registry, so "sign out everywhere" is the only lever                         | P3       |
+| ID             | Capability                 | Weakness                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Priority |
+| -------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| HARDEN-001     | Table grants               | `anon` holds CRUD on every tenant table; inert only because policies are `auth.uid()`-based                                                                                                                                                                                                                                                                                                                                                                                          | P2       |
+| HARDEN-002     | Security predicates        | Four keep default `PUBLIC EXECUTE` and answer at `/rest/v1/rpc/` for `anon`                                                                                                                                                                                                                                                                                                                                                                                                          | P2       |
+| HARDEN-003     | URL fields                 | `photo_url` takes any scheme while `file_url` validates                                                                                                                                                                                                                                                                                                                                                                                                                              | P2       |
+| HARDEN-004     | AI function                | No token cap, no spend guard, one model with no fallback                                                                                                                                                                                                                                                                                                                                                                                                                             | P1       |
+| HARDEN-005     | Edge functions             | No Sentry; failures are `console.error` strings in a log nobody watches                                                                                                                                                                                                                                                                                                                                                                                                              | P2       |
+| ~~HARDEN-006~~ | Query shape                | ✅ **Closed 2026-08-30.** `0072` adds 16 composite indexes, each named against the function that issues its predicate; the builder resolves every location's rota in one query and their shifts in one more, so changing the week is 2 round trips rather than 2N. Found and fixed en route: copy-previous-week called `getOrCreateRotaForPeriod` on a **past** week, writing an empty rota into any week a site had not been scheduled for. `src/services/rotaBatchLoading.test.ts` | P2       |
+| HARDEN-007     | Scale                      | Never tested beyond a single-org tenant                                                                                                                                                                                                                                                                                                                                                                                                                                              | P3       |
+| HARDEN-008     | Notification authorisation | The shared secret proves the caller, not that the caller was entitled to name those users                                                                                                                                                                                                                                                                                                                                                                                            | P2       |
+| HARDEN-009     | Session control            | No server-side registry, so "sign out everywhere" is the only lever                                                                                                                                                                                                                                                                                                                                                                                                                  | P3       |
 
 ## §9 Not building, and why
 

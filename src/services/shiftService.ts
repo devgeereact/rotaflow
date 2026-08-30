@@ -11,11 +11,26 @@ export async function createShifts(shifts: ShiftInsert[]): Promise<Shift[]> {
   return data ?? [];
 }
 
-export async function listShiftsForRota(rotaId: string): Promise<Shift[]> {
+/**
+ * Every shift on these rotas, in one round trip (HARDEN-006).
+ *
+ * This replaces a per-rota `listShiftsForRota`. The rota builder holds one
+ * rota per location and fetched each one's shifts separately, so viewing a
+ * week across six sites cost six queries on top of six rota lookups — and
+ * every caller immediately concatenated the results anyway. Nothing wanted one
+ * rota's shifts on their own, so nothing lost a caller when it went.
+ *
+ * Ordered by rota then start, so a caller grouping by location gets each group
+ * already in the order the grid renders it.
+ */
+export async function listShiftsForRotas(rotaIds: string[]): Promise<Shift[]> {
+  if (rotaIds.length === 0) return [];
+
   const { data, error } = await supabase
     .from('shifts')
     .select('*')
-    .eq('rota_id', rotaId)
+    .in('rota_id', rotaIds)
+    .order('rota_id', { ascending: true })
     .order('starts_at', { ascending: true });
 
   if (error) throw error;
