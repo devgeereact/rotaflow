@@ -21,14 +21,9 @@ import {
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import { sessionStatus, type SupportAccessSession } from '@/lib/supportAccess';
 import { monthlyChurnCounts, monthlyGrowth } from '@/lib/platformOverview';
-import {
-  DEMO_SECTIONS,
-  DEMO_SERVICES,
-  type DemoActivityTone,
-  type DemoServiceState,
-} from '@/lib/adminOverviewDemo';
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
+import { getHealthSummary, type HealthSummaryRow } from '@/services/platformFactsService';
 import { formatMoney } from '@/lib/money';
 import { downloadCsv } from '@/lib/csv';
 import {
@@ -54,6 +49,7 @@ interface Snapshot {
   plans: { code: string; monthly_price_pence: number }[];
   invoices: Invoice[];
   supportCases: SupportCaseRow[];
+  health: HealthSummaryRow[];
 }
 
 const ACTIVITY_ICON = {
@@ -85,36 +81,27 @@ function activityIcon(
   return ACTIVITY_ICON.plug;
 }
 
-const SEVERITY_TONE: Record<string, DemoActivityTone> = {
+/**
+ * Tone for a row in the activity feed. Named for what it is now rather than
+ * where it came from: it lived in `adminOverviewDemo.ts` as `DemoActivityTone`,
+ * and outlived that file because it was never demo data — just a colour union
+ * the feed shares with `Badge`.
+ */
+type ActivityTone = 'success' | 'info' | 'warning' | 'danger';
+
+const SEVERITY_TONE: Record<string, ActivityTone> = {
   info: 'info',
   notice: 'info',
   warning: 'warning',
   critical: 'danger',
 };
 
-const ACTIVITY_TONE: Record<DemoActivityTone, string> = {
+const ACTIVITY_TONE: Record<ActivityTone, string> = {
   success: 'bg-success-wash text-success dark:bg-success-wash-dark',
   info: 'bg-primary-wash text-primary dark:bg-primary-wash-dark',
   warning: 'bg-warning-wash text-warning dark:bg-warning-wash-dark',
   danger: 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
 };
-
-const SEGMENT = {
-  operational: 'bg-success',
-  degraded: 'bg-warning',
-  outage: 'bg-danger',
-} as const;
-
-/** The twelve-slot uptime strip beside each service. */
-function StatusBars({ history }: { history: readonly DemoServiceState[] }): JSX.Element {
-  return (
-    <span className="ml-auto flex shrink-0 gap-[2px]" aria-hidden="true">
-      {history.map((state, i) => (
-        <span key={i} className={`block h-[18px] w-[4px] rounded-sm ${SEGMENT[state]}`} />
-      ))}
-    </span>
-  );
-}
 
 const HEALTH_COLOUR: Record<string, string> = {
   healthy: '#1EA06B',
@@ -142,15 +129,19 @@ const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
  * count series on the growth chart and the revenue-churn percentage in its
  * caption) all come from the database.
  *
- * ## Which are not
+ * System health too, since BUG-059: the per-service list is
+ * `platform_health_summary` over `platform_health_samples`, not the invented
+ * six-service list with fabricated hourly history strips that used to sit
+ * there. It shows "Not sampled" where nothing has been measured, because an
+ * uptime of 100% over zero observations is the most flattering possible
+ * reading of having measured nothing.
  *
- * The per-service status list is a **placeholder value** from
- * `src/lib/adminOverviewDemo.ts`: a browser cannot observe another user's
- * service latency. The reason is recorded in that file, alongside how to
- * remove it.
- * The notice at the foot of this screen names it, so nobody reads a
- * placeholder as a measurement — every stat tile on this page shows only real
- * figures, with no invented trend line or comparison hidden behind one.
+ * ## What is still worth knowing
+ *
+ * Nothing here is invented any more. The remaining caveat is frequency, not
+ * truthfulness: samples are written when an administrator opens System status,
+ * so health reflects the moments somebody looked. A scheduled probe is
+ * GAP-011.
  */
 export function AdminOverviewPage(): JSX.Element {
   const [data, setData] = useState<Snapshot | null>(null);
@@ -175,6 +166,7 @@ export function AdminOverviewPage(): JSX.Element {
           plans,
           invoices,
           supportCases,
+          health,
         ] = await Promise.all([
           listAllOrganisations(),
           listAllProfiles(),
@@ -186,6 +178,10 @@ export function AdminOverviewPage(): JSX.Element {
           listPlans(),
           listInvoices(),
           listSupportCases(),
+          // Never fatal to the dashboard: an empty summary renders as "not
+          // sampled", which is the truth, whereas failing the whole page
+          // because uptime could not be read would be a worse trade.
+          getHealthSummary().catch(() => []),
         ]);
         if (!active) return;
         setData({
@@ -199,6 +195,7 @@ export function AdminOverviewPage(): JSX.Element {
           plans,
           invoices,
           supportCases,
+          health,
         });
       } catch (err) {
         if (!active) return;
@@ -475,25 +472,41 @@ export function AdminOverviewPage(): JSX.Element {
               }
               flush
             >
-              <ul>
-                {DEMO_SERVICES.map((service) => (
-                  <li
-                    key={service.name}
-                    className="flex items-center gap-2.5 border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
-                  >
-                    <span className="text-sm font-semibold text-content dark:text-content-dark">
-                      {service.name}
-                    </span>
-                    <Badge
-                      tone={service.status === 'operational' ? 'success' : 'warning'}
-                      dot
-                    >
-                      {service.status === 'operational' ? 'Operational' : 'Degraded'}
-                    </Badge>
-                    <StatusBars history={service.history} />
-                  </li>
-                ))}
-              </ul>
+              {data.health.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-content-muted dark:text-content-muted-dark">
+                  Nothing has been sampled in the last 24 hours. Samples are written when
+                  System status runs its checks, so opening that screen is currently what
+                  measures the platform.
+                </p>
+              ) : (
+                <ul>
+                  {data.health.map((service) => {
+                    // Degraded at anything below four nines over the window.
+                    // A threshold rather than a stored status, because the view
+                    // aggregates samples and does not carry one.
+                    const uptime = service.uptime_pct_24h;
+                    const healthy = uptime === null || uptime >= 99.9;
+                    return (
+                      <li
+                        key={service.service}
+                        className="flex items-center gap-2.5 border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
+                      >
+                        <span className="text-sm font-semibold text-content dark:text-content-dark">
+                          {service.service}
+                        </span>
+                        <Badge tone={healthy ? 'success' : 'warning'} dot>
+                          {healthy ? 'Operational' : 'Degraded'}
+                        </Badge>
+                        <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                          {uptime === null
+                            ? 'Not sampled'
+                            : `${uptime}% · ${service.samples_24h ?? 0} samples`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </Panel>
 
             <Panel
@@ -617,19 +630,21 @@ export function AdminOverviewPage(): JSX.Element {
             </Panel>
           </div>
 
-          {/* Placeholder data must never be mistaken for a measurement. Named
-              here rather than badged on each card, which would break the
-              layout this screen was rebuilt to match. */}
+          {/* This paragraph used to name the sections whose figures were
+              invented. There are none left (BUG-059), so it now says what the
+              remaining caveat actually is — which is about how often the
+              platform is measured, not about whether the numbers are real. */}
           <p className="text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
             <span className="font-semibold text-content dark:text-content-dark">
-              Placeholder figures:
+              Every figure on this screen is measured.
             </span>{' '}
-            {DEMO_SECTIONS.join(', ')}. These are demonstration values, not measurements.
-            See <code>src/lib/adminOverviewDemo.ts</code> for why each cannot yet be
-            computed. Everything else is real: organisation counts and growth, users,
-            published rotas, recurring revenue and the subscription mix from{' '}
-            <code>subscriptions × plans</code>, the support queue, support access and the
-            audit feed.
+            Organisation counts and growth, users, published rotas, recurring revenue and
+            the subscription mix from <code>subscriptions × plans</code>, the support
+            queue, support access and the audit feed all come from the database. System
+            health is computed from <code>platform_health_samples</code>, which are
+            written when an administrator opens System status — so it reflects the moments
+            somebody looked, and reads &ldquo;Not sampled&rdquo; rather than 100% when
+            nobody has.
           </p>
         </div>
       )}

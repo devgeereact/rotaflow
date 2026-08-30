@@ -8,7 +8,7 @@ import { Callout } from '@/components/ui/Callout';
 import { MeterRows } from '@/components/ui/MeterRows';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
-import { Sparkline, TrendChart } from '@/components/ui/TrendChart';
+import { Sparkline } from '@/components/ui/TrendChart';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { runHealthChecks } from '@/services/platformHealthService';
 import {
@@ -22,27 +22,9 @@ import {
   overallStatus,
   statusLabel,
   type HealthCheck,
-  type HealthStatus,
 } from '@/lib/platformHealth';
-import {
-  DEMO_AUTH_SUCCESS,
-  DEMO_ERROR_RATE,
-  DEMO_ERROR_RATE_CHANGE,
-  DEMO_LATENCY_LABELS,
-  DEMO_LATENCY_P50,
-  DEMO_LATENCY_P95,
-  DEMO_LATENCY_P99,
-  DEMO_SERVICE_ROWS,
-  type DemoServiceRow,
-} from '@/lib/adminOverviewDemo';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { env } from '@/lib/env';
-
-const SEGMENT = {
-  operational: 'bg-success',
-  degraded: 'bg-warning',
-  outage: 'bg-danger',
-} as const;
 
 const ROW_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   operational: 'success',
@@ -58,11 +40,6 @@ const WATCH_INTERVAL_MS = 60_000;
 const HISTORY_LENGTH = 20;
 
 /** Which live probe, if any, backs a row of the services table. */
-function probeFor(row: DemoServiceRow, checks: HealthCheck[]): HealthCheck | undefined {
-  if (!row.probeKey) return undefined;
-  return checks.find((c) => c.name.toLowerCase().includes(row.probeKey ?? ''));
-}
-
 /**
  * `/admin/platform-health`. Reached from **System Status** in the console rail.
  *
@@ -82,10 +59,18 @@ function probeFor(row: DemoServiceRow, checks: HealthCheck[]): HealthCheck | und
  * do is call the platform and time the answer, which is what
  * `runHealthChecks()` does for the database, authentication and realtime.
  *
- * Those rows are marked **Live** and carry a real round trip. Everything else,
- * the other services, every uptime percentage, the twelve-slot history strips,
- * the latency percentiles and the job queues, is placeholder from
- * `src/lib/adminOverviewDemo.ts`.
+ * Those rows are marked **Live** and carry a real round trip. The rest are
+ * **Configured** — they read an environment variable and say whether a service
+ * is wired up, not whether it answers.
+ *
+ * Nothing on this screen is invented (BUG-059). Uptime and the latency
+ * percentiles come from `platform_health_summary` over
+ * `platform_health_samples`, and read "Not sampled" where there is nothing to
+ * compute from. An invented six-service list, a twelve-slot history strip per
+ * service, an error rate, an auth-success rate and a twelve-point latency
+ * trend chart were all deleted rather than relabelled — the shape of a trend
+ * line is itself a claim, and drawing one from constants is worse than not
+ * drawing it.
  *
  * **Watch** re-probes on an interval and keeps the last twenty samples per live
  * check in this tab's memory. Deliberately not persisted: writing one browser's
@@ -193,6 +178,49 @@ export function AdminPlatformHealthPage(): JSX.Element {
       failed: queues.reduce((t, q) => t + q.failed, 0),
     };
   }, [summary, queues]);
+  /**
+   * One row per service the platform actually has, joined to what has been
+   * sampled about it.
+   *
+   * This replaces a hand-written list of ten services in
+   * `adminOverviewDemo.ts` (BUG-059) that invented a status, a latency, an
+   * uptime percentage and a twelve-segment history strip for each — including
+   * two services that do not exist at all ("Web application", "Analytics", the
+   * latter permanently in "maintenance"). Three of the ten carried a
+   * `probeKey`, so those showed a real status over an invented history; the
+   * other seven were invented end to end.
+   *
+   * The real list is whatever `runHealthChecks()` returns: three live probes
+   * and six configuration checks. `recordHealthSample` stores samples under
+   * `check.name`, so `platform_health_summary` joins on the same key with no
+   * mapping table in between.
+   *
+   * Uptime is null, not 100%, where nothing has been sampled — for the reason
+   * the `measured` memo below already gives.
+   */
+  const services = useMemo(() => {
+    const aggregates = new Map(summary.map((row) => [row.service, row]));
+    return checks.map((check) => {
+      const aggregate = aggregates.get(check.name);
+      return {
+        name: check.name,
+        status: check.status,
+        detail: check.detail,
+        configuredOnly: check.configuredOnly === true,
+        latencyMs: check.latencyMs,
+        uptime24h: aggregate?.uptime_pct_24h ?? null,
+        samples24h: aggregate?.samples_24h ?? 0,
+        sparkline: history.get(check.name) ?? [],
+      };
+    });
+  }, [checks, summary, history]);
+
+  /** Only services with latency percentiles worth showing. */
+  const sampledLatency = useMemo(
+    () => summary.filter((row) => row.p95_ms !== null),
+    [summary],
+  );
+
   const overall = overallStatus(live);
 
   return (
@@ -237,19 +265,13 @@ export function AdminPlatformHealthPage(): JSX.Element {
             }
             hint={measured.p95Service ?? 'No samples in the last 24 hours'}
           />
-          <StatTile
-            label="Error rate"
-            value={DEMO_ERROR_RATE}
-            hint={
-              <>
-                <span className="font-semibold text-danger">
-                  {DEMO_ERROR_RATE_CHANGE}
-                </span>{' '}
-                in 24h
-              </>
-            }
-          />
-          <StatTile label="Auth success" value={DEMO_AUTH_SUCCESS} />
+          {/* "Error rate" and "Auth success" tiles used to sit here, reading
+              0.21% / +0.08pt / 99.7% from adminOverviewDemo.ts. Both are
+              deleted rather than relabelled: nothing in this system counts
+              errors (Sentry does, and the console cannot query it) and nothing
+              records authentication outcomes. Substituting a loosely related
+              real number to keep the grid full would fabricate relevance
+              instead of data, which is the same problem one step removed. */}
           <StatTile
             label="Queue depth"
             value={measured.queued.toLocaleString('en-GB')}
@@ -280,82 +302,94 @@ export function AdminPlatformHealthPage(): JSX.Element {
             title="Services"
             actions={
               <span className="text-xs text-content-muted dark:text-content-muted-dark">
-                last 12 hours
+                uptime over the last 24 hours
               </span>
             }
             flush
           >
-            <ul>
-              {DEMO_SERVICE_ROWS.map((row) => {
-                const probe = probeFor(row, live);
-                const status = probe ? probe.status : row.status;
-                const latency = probe
-                  ? formatLatency(probe.latencyMs)
-                  : row.latencyMs === null
-                    ? '-'
-                    : `${row.latencyMs} ms`;
-                const samples = probe ? (history.get(probe.name) ?? []) : [];
-                return (
+            {services.length === 0 ? (
+              // The demo list always had ten rows, so this state never
+              // existed before and the panel rendered as an empty box on
+              // first paint. `checks` is empty until the first probe resolves.
+              <p className="px-4 py-3 text-sm text-content-muted dark:text-content-muted-dark">
+                {running ? 'Running checks…' : 'No checks returned a result.'}
+              </p>
+            ) : (
+              <ul>
+                {services.map((service) => (
                   <li
-                    key={row.name}
+                    key={service.name}
                     className="flex flex-wrap items-center gap-2.5 border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
                   >
                     <span className="text-sm font-semibold text-content dark:text-content-dark">
-                      {row.name}
+                      {service.name}
                     </span>
-                    <Badge tone={ROW_TONE[status] ?? 'neutral'} dot>
-                      {status === 'maintenance'
-                        ? 'Maintenance'
-                        : statusLabel(status as HealthStatus)}
+                    <Badge tone={ROW_TONE[service.status] ?? 'neutral'} dot>
+                      {statusLabel(service.status)}
                     </Badge>
-                    {probe && <Badge tone="info">Live</Badge>}
-                    <span className="font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                      {latency}
-                    </span>
-                    {samples.length > 1 && (
-                      <Sparkline values={samples} colour="#388FD4" className="mt-0" />
+                    <Badge tone={service.configuredOnly ? 'neutral' : 'info'}>
+                      {/* The distinction the old table blurred: a configuration
+                        check reads an env var, it does not contact anything. */}
+                      {service.configuredOnly ? 'Configured' : 'Live'}
+                    </Badge>
+                    {!service.configuredOnly && (
+                      <span className="font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                        {formatLatency(service.latencyMs)}
+                      </span>
                     )}
-                    <span className="ml-auto flex items-center gap-3">
-                      <span className="flex gap-[2px]" aria-hidden="true">
-                        {row.history.map((state, i) => (
-                          <span
-                            key={i}
-                            className={`block h-[18px] w-[4px] rounded-sm ${SEGMENT[state]}`}
-                          />
-                        ))}
-                      </span>
-                      <span className="w-14 text-right font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                        {row.uptime}
-                      </span>
+                    {service.sparkline.length > 1 && (
+                      <Sparkline
+                        values={service.sparkline}
+                        colour="#388FD4"
+                        className="mt-0"
+                      />
+                    )}
+                    <span className="ml-auto text-right font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                      {service.uptime24h === null
+                        ? 'Not sampled'
+                        : `${service.uptime24h}% · ${service.samples24h} samples`}
                     </span>
                   </li>
-                );
-              })}
-            </ul>
+                ))}
+              </ul>
+            )}
           </Panel>
 
           <div className="grid content-start gap-4">
-            <Panel title="API latency">
-              <TrendChart
-                title="API latency percentiles over twelve hours. Placeholder figures"
-                labels={[...DEMO_LATENCY_LABELS]}
-                series={[
-                  { name: 'p50', values: DEMO_LATENCY_P50, colour: '#3B6FE0' },
-                  {
-                    name: 'p95',
-                    values: DEMO_LATENCY_P95,
-                    colour: '#E0A030',
-                    lineOnly: true,
-                  },
-                  {
-                    name: 'p99',
-                    values: DEMO_LATENCY_P99,
-                    colour: '#D94A3A',
-                    lineOnly: true,
-                  },
-                ]}
-                height={150}
-              />
+            {/* This was a twelve-point p50/p95/p99 trend chart drawn from
+                constants, titled "Placeholder figures" (BUG-059). The shape of
+                a time series is the claim — a rising p99 means something — and
+                drawing that from invented numbers is worse than not drawing it.
+                A real one needs samples over time, and samples are only written
+                when an administrator opens this page, so it waits on the
+                scheduled probe (GAP-011). The percentiles below are real, over
+                whatever has actually been sampled. */}
+            <Panel title="Latency, last 24 hours" flush>
+              {sampledLatency.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-content-muted dark:text-content-muted-dark">
+                  Nothing has been sampled in the last 24 hours. Samples are recorded when
+                  this page runs its checks, so opening it is currently the only thing
+                  that measures anything.
+                </p>
+              ) : (
+                <ul>
+                  {sampledLatency.map((row) => (
+                    <li
+                      key={row.service}
+                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-divider px-4 py-2.5 last:border-0 dark:border-divider-dark"
+                    >
+                      <span className="text-sm text-content dark:text-content-dark">
+                        {row.service}
+                      </span>
+                      <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
+                        p50 {formatLatency(row.p50_ms ?? undefined)} · p95{' '}
+                        {formatLatency(row.p95_ms ?? undefined)} · p99{' '}
+                        {formatLatency(row.p99_ms ?? undefined)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Panel>
 
             <Panel title="Background jobs">
@@ -382,7 +416,10 @@ export function AdminPlatformHealthPage(): JSX.Element {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <Callout tone="warning" title="Three rows are measured; the rest are not">
+          <Callout
+            tone="warning"
+            title="Three rows are probed; the rest report configuration"
+          >
             <p>
               RotaFlow ships as a static bundle with no server of its own, so a browser
               holding the anon key cannot observe uptime, error rate, request volume,
@@ -391,11 +428,20 @@ export function AdminPlatformHealthPage(): JSX.Element {
               <strong>Live</strong> do. Database, authentication and realtime.
             </p>
             <p>
-              Everything else here. The other services, every uptime percentage, the
-              history strips, the latency percentiles and the job queues, is placeholder
-              from <code>src/lib/adminOverviewDemo.ts</code>. <strong>Watch</strong> keeps
-              the last twenty live samples in this tab only; nothing is stored, because
-              one browser&rsquo;s timings are not platform uptime.
+              The remaining rows are <strong>configuration</strong> checks: they read an
+              environment variable and report whether a service is wired up, not whether
+              it is answering. Nothing on this page is invented any more — every uptime
+              percentage and percentile is computed from{' '}
+              <code>platform_health_samples</code>, and reads &ldquo;Not sampled&rdquo;
+              rather than 100% where there is nothing to compute from.
+            </p>
+            <p>
+              That honesty has a cost worth knowing: samples are only written when
+              somebody opens this page, so the figures describe the moments an
+              administrator happened to look. A scheduled probe is not running yet.{' '}
+              <strong>Watch</strong> keeps the last twenty samples in this tab for the
+              sparklines; those are not stored, because one browser&rsquo;s timings are
+              not platform uptime.
             </p>
           </Callout>
 
@@ -410,7 +456,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
               requires before an incident can close.
             </p>
             <p className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-              What is still absent is the public status page. <code>is_public</code>
+              What is still absent is the public status page. <code>is_public</code>{' '}
               exists on the table and no policy grants anonymous access, so it is a stored
               intent rather than a live switch. Publishing means a second surface with its
               own hosting and its own audience. Environment:{' '}

@@ -613,28 +613,40 @@ const ANNOUNCEMENT_DELIVERIES = ANNOUNCEMENTS.filter((a) => a.status === 'sent')
     })),
 );
 
+// Deliberately a mix. Production after 0073 has EVERY connector `planned`,
+// because none is built — but a preview showing five empty rows would exercise
+// none of this screen's layout, which is what a design harness is for. The two
+// planned rows below are here so the state that production actually has is
+// rendered somewhere: the neutral badge, the null success rate, and the
+// "Built 5 of 7" tile all come from them.
 const CONNECTOR_STATS = [
   ['sage_payroll', 'Sage Payroll', 'payroll', 'operational', 5, 412, 3, 99.4, 2400],
   ['xero', 'Xero', 'accounting', 'operational', 4, 288, 0, 99.8, 1800],
   ['brighthr', 'BrightHR', 'hr', 'degraded', 3, 194, 27, 91.2, 5200],
   ['google_calendar', 'Google Calendar', 'calendar', 'operational', 6, 706, 1, 99.9, 900],
   ['slack', 'Slack', 'communication', 'operational', 2, 96, 0, 100, 700],
+  ['quickbooks', 'QuickBooks', 'accounting', 'planned', 0, 0, 0, null, null],
+  ['bamboohr', 'BambooHR', 'hr', 'planned', 0, 0, 0, null, null],
 ].map(([key, name, category, status, orgs, runs, failed, rate, median]) => ({
   key,
   name,
   category,
   status,
-  available: true,
+  // The flag `connect_integration` checks. A planned connector refuses.
+  available: status !== 'planned',
   orgs_connected: orgs,
   runs_24h: runs,
   failed_24h: failed,
   success_rate_7d: rate,
   median_duration_ms: median,
-  last_sync_at: ISO(0),
+  last_sync_at: status === 'planned' ? null : ISO(0),
 }));
 
+// Service names must match what `runHealthChecks()` calls them, because
+// `recordHealthSample` stores samples under `check.name` and System status
+// joins the summary on it. 'Database' looked right and matched nothing.
 const HEALTH_SUMMARY = [
-  ['Database', 99.98, 18, 42, 61],
+  ['PostgreSQL database', 99.98, 18, 42, 61],
   ['Authentication', 99.9, 32, 78, 120],
   ['Realtime', 99.6, 24, 96, 180],
   ['Edge Functions', 99.2, 95, 210, 340],
