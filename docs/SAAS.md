@@ -184,7 +184,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       ⚠️ **Queue fills but does not drain yet** — `notification_function_secret` is missing from `vault`; see §2
 - [x] CAP-020a 🟢 Leave, swap and announcement dispatch — triggers, in the same transaction as the decision;
       the unread reminder is an RPC, because no row changes when you press it
-      `supabase/migrations/0087_server_side_dispatch.sql` · GAP-026 closed #200 · 12 pgTAP assertions
+      `supabase/migrations/0087_server_side_dispatch.sql` · GAP-026 closed #200 · 13 pgTAP assertions
+      ⚠️ `0088` follow-up: `announcement_audience` was still executable by `authenticated` — `0075` leaves a
+      default ACL granting new functions to that role, so revoking `public`/`anon` alone is not enough (#201)
 - [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
       `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · deployed v17, 2026-08-29
 - [x] CAP-022 🟢 Channel record — the column says what kind of record the row is (`in_app`); per-channel
