@@ -59,17 +59,35 @@ export async function countPendingLeaveRequests(orgId: string): Promise<number> 
 }
 
 /** Manager approve/reject. RLS (has_org_role) is the real enforcement. */
+/**
+ * Approve or decline a leave request.
+ *
+ * Returns `null` when the request was no longer pending — someone else decided
+ * it between this manager loading the queue and clicking.
+ *
+ * The `status = 'pending'` predicate is the whole fix for BUG-061, and it is a
+ * real one rather than a client-side check: Postgres locks the row and
+ * re-evaluates the WHERE clause during the UPDATE, so of two managers racing on
+ * the same request exactly one updates a row and the other updates none. Before
+ * this, both succeeded and the second silently overwrote the first's decision,
+ * `reviewed_by` and all — so the audit trail named the wrong person.
+ *
+ * Guarding on `pending` matches what the UI offers: `LeaveRowsTable` renders
+ * Approve/Decline only on a pending row, so this refuses nothing a manager is
+ * allowed to do.
+ */
 export async function reviewLeaveRequest(
   id: string,
   status: 'approved' | 'rejected',
   reviewedBy: string,
-): Promise<LeaveRequest> {
+): Promise<LeaveRequest | null> {
   const { data, error } = await supabase
     .from('leave_requests')
     .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('status', 'pending')
     .select('*')
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data;
 }

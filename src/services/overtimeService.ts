@@ -53,32 +53,52 @@ export async function createOvertimeRequest(
 }
 
 /**
- * Manager approve/reject.
+ * Manager approve/reject. Returns `null` when the claim was already decided
+ * or withdrawn by the time this landed (BUG-061).
  *
  * RLS (`has_org_role`) is the real enforcement. This only records the
  * decision. `reviewed_by` takes the reviewer's **user id**, matching
  * `reviewLeaveRequest`, because the column FKs `profiles`.
+ *
+ * The `status = 'pending'` predicate makes the decision atomic: Postgres
+ * re-evaluates the WHERE clause under the row lock, so two managers racing
+ * produce one update and one no-op instead of the second silently overwriting
+ * the first's `reviewed_by`. It also loses to a withdrawal, which is the
+ * behaviour a staff member expects from a button labelled Withdraw. Overtime
+ * carries this further than leave or swaps do — an approval is what sends the
+ * hours to payroll.
  */
 export async function reviewOvertimeRequest(
   id: string,
   status: 'approved' | 'rejected',
   reviewedBy: string,
-): Promise<OvertimeRequest> {
+): Promise<OvertimeRequest | null> {
   const { data, error } = await supabase
     .from('overtime_requests')
     .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('status', 'pending')
     .select('*')
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-/** Staff withdrawing their own still-pending request. */
-export async function cancelOvertimeRequest(id: string): Promise<void> {
-  const { error } = await supabase
+/**
+ * Staff withdrawing their own still-pending claim. Returns false when it was
+ * no longer pending — the same guard from the other side, so a withdrawal that
+ * arrives after a manager's decision cannot silently un-approve hours that
+ * have already gone to payroll. Until now the doc comment above was the only
+ * thing that said "still-pending"; nothing enforced it.
+ */
+export async function cancelOvertimeRequest(id: string): Promise<boolean> {
+  const { data, error } = await supabase
     .from('overtime_requests')
     .update({ status: 'cancelled' })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
   if (error) throw error;
+  return data !== null;
 }

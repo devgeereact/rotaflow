@@ -94,17 +94,32 @@ export async function respondToShiftSwap(
  * An open ("anyone") swap has no named colleague to have accepted, so only
  * the manager path applies to it.
  */
+/**
+ * A manager's decision on a swap. Returns `null` when it was already decided
+ * or withdrawn by the time this landed (BUG-061).
+ *
+ * The prior states are `pending` and `accepted`, not `pending` alone: a swap
+ * posted to the open board is reviewable while still `pending`, and a targeted
+ * one becomes `accepted` once the colleague agrees. `SwapRequestRow` offers the
+ * decision on exactly those two, so the predicate refuses nothing a manager may
+ * legitimately do — only a second decision on something already settled.
+ *
+ * Atomic for the same reason as `reviewLeaveRequest`: the WHERE clause is
+ * re-evaluated under the row lock, so two managers racing produce one update
+ * and one no-op rather than two overwrites.
+ */
 export async function reviewShiftSwap(
   id: string,
   status: 'approved' | 'rejected',
   reviewedBy: string,
-): Promise<ShiftSwap> {
+): Promise<ShiftSwap | null> {
   const { data, error } = await supabase
     .from('shift_swaps')
     .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
     .eq('id', id)
+    .in('status', ['pending', 'accepted'])
     .select('*')
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data;
 }

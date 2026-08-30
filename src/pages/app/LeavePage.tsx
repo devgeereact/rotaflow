@@ -299,6 +299,16 @@ export function LeavePage(): JSX.Element {
       if (!user) return;
       try {
         const updated = await reviewLeaveRequest(row.id, 'approved', user.id);
+        if (!updated) {
+          // Another manager decided it first (BUG-061). Saying "approved" here
+          // would be a lie — the stored decision is theirs, not this one — and
+          // the staff member would be told twice, differently.
+          setReloadKey((k) => k + 1);
+          showError(
+            'Another manager has already decided this request. Reloading so you can see their decision.',
+          );
+          return;
+        }
         setRequests((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
         showSuccess('Leave request approved.');
         notifyReviewed(updated, 'approved');
@@ -315,6 +325,13 @@ export function LeavePage(): JSX.Element {
       if (!user || !orgId) return;
       try {
         const updated = await reviewLeaveRequest(row.id, 'rejected', user.id);
+        if (!updated) {
+          setReloadKey((k) => k + 1);
+          showError(
+            'Another manager has already decided this request. Reloading so you can see their decision.',
+          );
+          return;
+        }
         setRequests((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
         showSuccess('Leave request declined.');
         void logAuditEvent(orgId, 'leave.reviewed', 'leave_requests', row.id, {
