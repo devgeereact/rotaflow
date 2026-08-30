@@ -63,19 +63,40 @@ export class PlanRequiredError extends Error {
 }
 
 /**
- * Invoke the assistant, turning a 403 plan refusal into `PlanRequiredError`.
+ * A refusal the person asking can do something about (HARDEN-004).
+ *
+ * The cost ceilings each have an answer that is not "try again later": shorten
+ * the request, narrow the period, wait for the hour to roll over. So their
+ * messages are written server-side, where the actual limit is known, and shown
+ * verbatim. Collapsing them into "unavailable right now" would hide the one
+ * piece of information that resolves them.
+ */
+export class AssistantRefusedError extends Error {
+  readonly code: string;
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = 'AssistantRefusedError';
+    this.code = code;
+  }
+}
+
+/** Statuses whose body carries a message worth showing the person who asked. */
+const EXPLAINED_STATUSES = new Set([400, 403, 413, 429]);
+
+/**
+ * Invoke the assistant, turning an explained refusal into a typed error.
  *
  * `supabase.functions.invoke` reports a non-2xx as a `FunctionsHttpError`
  * whose `message` is generic — the body has to be read off `context`, which is
- * the raw `Response`. Without this the entitlement message the Edge Function
- * carefully writes never reaches the user.
+ * the raw `Response`. Without this the messages the Edge Function carefully
+ * writes never reach the user.
  */
 async function invokeAssistant<T>(body: Record<string, unknown>): Promise<T> {
   const result = await supabase.functions.invoke<T>('ai-rota-assistant', { body });
 
   if (result.error) {
     const context = (result.error as { context?: unknown }).context;
-    if (context instanceof Response && context.status === 403) {
+    if (context instanceof Response && EXPLAINED_STATUSES.has(context.status)) {
       try {
         // `clone()`, because the SDK may already have consumed the body and a
         // Response can only be read once.
@@ -90,12 +111,16 @@ async function invokeAssistant<T>(body: Record<string, unknown>): Promise<T> {
             payload.feature ?? 'ai_rota_assistant',
           );
         }
+        if (payload.code && payload.error) {
+          throw new AssistantRefusedError(payload.error, payload.code);
+        }
       } catch (err) {
-        // A PlanRequiredError from the block above is the intended outcome and
-        // must pass through. Anything else means the body was not the JSON we
+        // A typed error from the block above is the intended outcome and must
+        // pass through. Anything else means the body was not the JSON we
         // expected — fall through to the original error, which is more
         // truthful than inventing a reason.
         if (err instanceof PlanRequiredError) throw err;
+        if (err instanceof AssistantRefusedError) throw err;
       }
     }
     throw result.error;

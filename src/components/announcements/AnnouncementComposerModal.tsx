@@ -6,7 +6,11 @@ import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { reportError } from '@/lib/sentry';
-import { draftAnnouncement, PlanRequiredError } from '@/services/aiRotaService';
+import {
+  AssistantRefusedError,
+  draftAnnouncement,
+  PlanRequiredError,
+} from '@/services/aiRotaService';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import type { Department, Location } from '@/types';
 
@@ -108,7 +112,10 @@ export function AnnouncementComposerModal({
       // A plan refusal is not an outage. Telling an owner it is "unavailable
       // right now" sends them to check their connection over what is actually
       // a billing decision, and it is the one error here they can act on.
-      if (err instanceof PlanRequiredError) {
+      if (err instanceof PlanRequiredError || err instanceof AssistantRefusedError) {
+        // Both have an answer the person can act on — upgrade, shorten the
+        // request, or wait for the hour to roll over (HARDEN-004). Only a
+        // genuine failure gets the generic line and a Sentry report.
         setAiError(err.message);
       } else {
         reportError(err, { area: 'announcements:ai-draft' });

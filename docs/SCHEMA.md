@@ -345,6 +345,14 @@ and only `is_org_member()` governs access, same as every other tenant table.
   that reads _past_ the `0028` gate — returns staff/location/rota/shift counts for
   an org with no open support session required, gated on `is_platform_admin()`
   directly. A number, never a row: sizing a tenant doesn't require knowing who's in it.
+- **`consume_org_rate_limit(bucket, org, limit, window)`** (`0089`,
+  `security definer`, `authenticated`): a per-ORGANISATION limiter, alongside
+  `consume_my_rate_limit`'s per-user one. It is the only client-callable
+  limiter that takes its subject as an argument, and it checks `is_org_member`
+  before using it — that check is the entire reason naming a subject is safe
+  here, since a member can only spend an allowance they could spend anyway by
+  making the requests. Buckets are a fixed list (`ai_assistant_org`), because
+  an invented bucket name would be an unlimited private allowance.
 - **`announcement_audience(announcement)`** (`0087`, `security definer`, stable): the
   user ids an announcement is addressed to, from its own department/location scope.
   One definition, shared by the publish trigger and the unread reminder — the page

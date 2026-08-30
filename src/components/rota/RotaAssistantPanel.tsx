@@ -20,6 +20,7 @@ import {
 } from '@/lib/rotaInsights';
 import { findClashingShift, type ShiftLike } from '@/lib/shiftConflicts';
 import {
+  AssistantRefusedError,
   generateRotaSuggestions,
   type AiShiftSuggestion,
 } from '@/services/aiRotaService';
@@ -276,10 +277,18 @@ export function RotaAssistantPanel({
       setSuggestions(result.suggestions);
       onPreview(result.suggestions);
     } catch (err) {
-      reportError(err, { area: 'rota:assistant-generate' });
-      setError(
-        'The AI drafting service is not available right now. Review and Fill gaps still work. They run on this device.',
-      );
+      // A refusal with an answer — too long, too much rota, hourly limit
+      // reached — is shown as written (HARDEN-004). It is not an outage, and
+      // telling somebody the service is down when the fix is "narrow the
+      // week" sends them to check their connection instead.
+      if (err instanceof AssistantRefusedError) {
+        setError(err.message);
+      } else {
+        reportError(err, { area: 'rota:assistant-generate' });
+        setError(
+          'The AI drafting service is not available right now. Review and Fill gaps still work. They run on this device.',
+        );
+      }
     } finally {
       setGenerating(false);
     }
