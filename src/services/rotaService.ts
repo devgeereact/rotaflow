@@ -225,6 +225,29 @@ export async function getOrCreateRotaForPeriod(
   }
 }
 
+/**
+ * The rota lifecycle's own refusals, as opposed to something going wrong.
+ *
+ * `0061` and `0080` raise with `ROTA4`–`ROTA8` and a message written for the
+ * manager to read: "Ward A is 1 short of its 2-person minimum on Sat 05 Sep.
+ * Fill the gap, or change that day's minimum in Settings → Policies."
+ *
+ * Those messages have to reach the screen. Every publish failure used to
+ * render as "Could not publish this rota. Please try again.", which is not
+ * only unhelpful for a rule violation but actively wrong advice — retrying
+ * cannot satisfy a minimum-cover rule, and the manager needs to know which day
+ * and which site.
+ *
+ * Only the `ROTA*` codes are surfaced. A connection failure or a genuine 500
+ * still gets the generic line, because those really are "try again".
+ */
+export function rotaRefusalMessage(err: unknown): string | null {
+  const code = (err as { code?: string } | null)?.code;
+  const message = (err as { message?: string } | null)?.message;
+  if (typeof code === 'string' && /^ROTA\d$/.test(code) && message) return message;
+  return null;
+}
+
 export async function updateRota(id: string, patch: RotaUpdate): Promise<Rota> {
   const { data, error } = await supabase
     .from('rotas')
