@@ -180,7 +180,7 @@ fallback when Framer Motion isn't warranted.
 
 - Contrast ≥ **4.5:1** for text (AA). **Light mode is verified and gated at zero**
   across the 13 public pages and the 26 authenticated screens
-  (`e2e/app-surface.spec.ts`). **Dark mode is measured but NOT met** — 195 nodes as
+  (`e2e/app-surface.spec.ts`). **Dark mode is measured but NOT met** — ~200 nodes as
   of 2026-08-30, capped by a budget so it can only fall, tracked as `docs/SAAS.md`
   GAP-032. This line used to claim both themes were verified; nothing had ever
   scanned dark mode, and it turned out to carry more debt than light did.

@@ -144,7 +144,7 @@ const CONTRAST_BUDGET = 0;
  *
  * The light-mode figure went 172 to 0 by moving the status palette onto its
  * `ink` tokens and taking muted grey off tinted panels. Adding the dark pass
- * immediately showed why one number was never enough: **195 violations that had
+ * immediately showed why one number was never enough: **~200 violations that had
  * been there all along**, in a theme the gate could not see — more than the
  * light-mode debt that took this whole change to clear. They are a
  * different problem with a different fix — `#3B6FE0` primary and `#D94A3A`
@@ -153,11 +153,18 @@ const CONTRAST_BUDGET = 0;
  * dark-side inks, which is a palette decision, not a class swap, and it is
  * tracked as GAP-032 rather than bundled into the change that found it.
  *
- * The budget exists so the number can only fall. Three above the measured 195, for the same reason the
- * light budget used to carry an allowance: CI and local disagreed by one node
- * on the old light figure, and font rasterisation differs on a runner.
+ * The budget exists so the number can only fall. It is set from the CI figure,
+ * not the local one: local reads 195 and CI reads **200**, a wider gap than the
+ * one node that separated them on the old light figure. Dark mode has more
+ * near-threshold text than light did, so more of it lands either side of the
+ * line depending on how a runner rasterises a glyph. 204 leaves four nodes of
+ * headroom over the observed 200 and still trips on a real regression.
+ *
+ * Light mode is a hard 0 with no allowance, and CI agreed with local exactly
+ * on that — which is what a debt actually cleared looks like, as against one
+ * measured to a number.
  */
-const DARK_CONTRAST_BUDGET = 198;
+const DARK_CONTRAST_BUDGET = 204;
 
 /**
  * One pass, two assertions.
