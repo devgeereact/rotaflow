@@ -509,7 +509,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
       <div className="space-y-5">
         <Link
           to="/admin/organisations"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-ink hover:underline dark:text-primary"
         >
           <ArrowLeft size={15} aria-hidden="true" />
           All organisations
@@ -766,7 +766,10 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               The counts above still work. They come from a function that returns numbers
               rather than rows, so the size of a tenant is readable without reading who is
               in it. Request access from{' '}
-              <Link to="/admin/support-access" className="text-primary hover:underline">
+              <Link
+                to="/admin/support-access"
+                className="text-primary-ink hover:underline dark:text-primary"
+              >
                 Support Access
               </Link>
               .
@@ -885,7 +888,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/support-access"
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
                 >
                   Request access
                 </Link>
@@ -1045,7 +1048,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/gdpr"
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
                 >
                   All requests
                 </Link>

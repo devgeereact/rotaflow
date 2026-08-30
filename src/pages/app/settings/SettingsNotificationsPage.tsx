@@ -190,7 +190,7 @@ export function SettingsNotificationsPage(): JSX.Element {
         action={
           <Link
             to="/app/settings/integrations"
-            className="text-sm font-semibold text-primary hover:underline"
+            className="text-sm font-semibold text-primary-ink hover:underline dark:text-primary"
           >
             Configure SMTP
           </Link>

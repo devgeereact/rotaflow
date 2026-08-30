@@ -200,7 +200,7 @@ export function AdminAuditPage(): JSX.Element {
           ) : (
             <Link
               to={`/admin/organisations/${entry.org_id ?? ''}`}
-              className="block truncate text-primary hover:underline"
+              className="block truncate text-primary-ink hover:underline dark:text-primary"
             >
               {orgById.get(entry.org_id ?? '')?.name ?? entry.org_name ?? 'Unknown'}
             </Link>

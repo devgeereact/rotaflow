@@ -260,7 +260,7 @@ export function AdminUserDetailPage(): JSX.Element {
       <div className="space-y-5">
         <Link
           to="/admin/users"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-ink hover:underline dark:text-primary"
         >
           <ArrowLeft size={15} aria-hidden="true" />
           All platform users
@@ -333,7 +333,7 @@ export function AdminUserDetailPage(): JSX.Element {
                         <Link
                           key={m.orgId}
                           to={`/admin/organisations/${m.orgId}`}
-                          className="text-primary hover:underline"
+                          className="text-primary-ink hover:underline dark:text-primary"
                         >
                           {m.orgName}
                         </Link>
@@ -384,7 +384,7 @@ export function AdminUserDetailPage(): JSX.Element {
                 Platform roles are granted and revoked on{' '}
                 <Link
                   to="/admin/settings?tab=administrators"
-                  className="text-primary hover:underline"
+                  className="text-primary-ink hover:underline dark:text-primary"
                 >
                   Platform settings
                 </Link>

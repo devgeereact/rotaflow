@@ -250,7 +250,7 @@ export function BarChart({
         onClick={() => setShowTable((v) => !v)}
         aria-expanded={showTable}
         aria-controls={tableId}
-        className="mt-2 text-xs font-medium text-primary hover:underline"
+        className="mt-2 text-xs font-medium text-primary-ink hover:underline dark:text-primary"
       >
         {showTable ? 'Hide figures' : 'Show figures'}
       </button>

@@ -342,11 +342,17 @@ export function AdminIncidentsPage(): JSX.Element {
           <p className="text-xs text-content-muted dark:text-content-muted-dark">
             Times are derived from each incident&rsquo;s own timestamps, not stored. The
             closest record of what platform staff did is the{' '}
-            <Link to="/admin/audit" className="text-primary hover:underline">
+            <Link
+              to="/admin/audit"
+              className="text-primary-ink underline underline-offset-2 dark:text-primary"
+            >
               audit log
             </Link>
             ; measured service state is on{' '}
-            <Link to="/admin/platform-health" className="text-primary hover:underline">
+            <Link
+              to="/admin/platform-health"
+              className="text-primary-ink underline underline-offset-2 dark:text-primary"
+            >
               System status
             </Link>
             .

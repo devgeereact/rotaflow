@@ -258,7 +258,7 @@ export function AdminSupportCaseDetailPage(): JSX.Element {
       <div className="space-y-5">
         <Link
           to="/admin/support"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-ink hover:underline dark:text-primary"
         >
           <ArrowLeft size={15} aria-hidden="true" />
           Support centre
@@ -274,7 +274,7 @@ export function AdminSupportCaseDetailPage(): JSX.Element {
                 {item.org_id ? (
                   <Link
                     to={`/admin/organisations/${item.org_id}`}
-                    className="text-primary hover:underline"
+                    className="text-primary-ink hover:underline dark:text-primary"
                   >
                     {detail.orgName ?? 'Unnamed organisation'}
                   </Link>

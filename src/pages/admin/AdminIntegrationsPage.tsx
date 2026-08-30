@@ -333,7 +333,10 @@ export function AdminIntegrationsPage(): JSX.Element {
             <p className="border-b border-divider px-4 py-2.5 text-sm text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
               Read from this deployment&rsquo;s build configuration. A key being present
               proves it will try to use the service, for whether it answers, see{' '}
-              <Link to="/admin/platform-health" className="text-primary hover:underline">
+              <Link
+                to="/admin/platform-health"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              >
                 System Status
               </Link>
               .

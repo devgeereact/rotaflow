@@ -191,7 +191,19 @@ export function AdminNotificationsPage(): JSX.Element {
           </TileGrid>
 
           <Panel title="Announcements" flush>
-            <div className="overflow-x-auto">
+            {/* This table scrolls horizontally and has no focusable child, so
+                without `tabIndex` its off-screen columns cannot be reached
+                without a mouse (axe `scrollable-region-focusable`, WCAG 2.1.1).
+                jsx-a11y objects to tabIndex on a non-interactive element; the
+                two rules genuinely disagree and axe is the one that is right
+                here, so its rule is disabled for this element only. */}
+            <div
+              className="overflow-x-auto"
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+              tabIndex={0}
+              role="region"
+              aria-label="Platform announcements, scrollable"
+            >
               <table className="w-full table-fixed border-collapse text-sm">
                 <caption className="sr-only">Platform announcements</caption>
                 <colgroup>
@@ -377,7 +389,10 @@ export function AdminNotificationsPage(): JSX.Element {
               no sent, delivered, bounced or failed column, so an unread notification may
               have arrived perfectly and simply not been opened. Read that percentage as
               attention, not as delivery, and for whether the mail path itself works, see{' '}
-              <Link to="/admin/integrations" className="text-primary hover:underline">
+              <Link
+                to="/admin/integrations"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              >
                 Integrations
               </Link>
               .

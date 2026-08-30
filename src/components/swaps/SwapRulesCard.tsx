@@ -31,7 +31,7 @@ export function SwapRulesCard({ rules, onEdit }: SwapRulesCardProps): JSX.Elemen
           <button
             type="button"
             onClick={onEdit}
-            className="rounded text-[0.78rem] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="rounded text-[0.78rem] font-semibold text-primary-ink hover:underline dark:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             Edit
           </button>

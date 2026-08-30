@@ -455,7 +455,7 @@ export function SettingsOrganisationPage(): JSX.Element {
           action={
             <Link
               to="/app/locations"
-              className="text-sm font-semibold text-primary hover:underline"
+              className="text-sm font-semibold text-primary-ink hover:underline dark:text-primary"
             >
               Manage
             </Link>

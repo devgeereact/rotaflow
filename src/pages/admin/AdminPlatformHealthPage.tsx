@@ -458,7 +458,10 @@ export function AdminPlatformHealthPage(): JSX.Element {
           <Panel title="Incidents are recorded elsewhere">
             <p className="text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
               The register lives on{' '}
-              <Link to="/admin/incidents" className="text-primary hover:underline">
+              <Link
+                to="/admin/incidents"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              >
                 Incidents
               </Link>
               , backed by the <code>incidents</code> table: severity, affected service,

@@ -130,7 +130,10 @@ export function ManagerDashboard({
         >
           {blockers[0]!.message}
           {blockers.length > 1 ? ` And ${blockers.length - 1} more.` : ''}{' '}
-          <Link to="/app/rota" className="font-medium text-primary hover:underline">
+          <Link
+            to="/app/rota"
+            className="font-medium text-primary-ink hover:underline dark:text-primary"
+          >
             Open the rota builder
           </Link>
           .
@@ -241,7 +244,7 @@ export function ManagerDashboard({
             site&rsquo;s own setting in{' '}
             <Link
               to="/app/locations"
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-primary-ink hover:underline dark:text-primary"
             >
               Locations
             </Link>
@@ -305,7 +308,7 @@ export function ManagerDashboard({
                                 ? '/app/swaps'
                                 : '/app/timesheets'
                           }
-                          className="font-medium text-primary hover:underline"
+                          className="font-medium text-primary-ink hover:underline dark:text-primary"
                         >
                           {request.kind === 'missed_clock_in' ? 'Timesheets' : 'Decide'}
                         </Link>

@@ -311,7 +311,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         sortable: true,
         cell: ({ organisation }) => (
           <Link to={`/admin/organisations/${organisation.id}`} className="block min-w-0">
-            <span className="block truncate font-medium text-primary hover:underline">
+            <span className="block truncate font-medium text-primary-ink hover:underline dark:text-primary">
               {organisation.name}
             </span>
             <span className="block truncate font-mono text-xs text-content-muted dark:text-content-muted-dark">
@@ -535,7 +535,10 @@ export function AdminSubscriptionsPage(): JSX.Element {
               MRR is the sum of each subscription&rsquo;s negotiated price, falling back
               to its plan price from <code>plans</code>, over the rows that are active or
               past due. The same arithmetic{' '}
-              <Link to="/admin/billing" className="text-primary hover:underline">
+              <Link
+                to="/admin/billing"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              >
                 Billing
               </Link>{' '}
               uses, so the two screens cannot disagree.
@@ -544,7 +547,10 @@ export function AdminSubscriptionsPage(): JSX.Element {
               Churn is real: <strong>Churn this month</strong> is MRR lost to
               subscriptions that actually, fully ended this month, over MRR at the
               month&rsquo;s start &mdash; the same figure the{' '}
-              <Link to="/admin" className="text-primary hover:underline">
+              <Link
+                to="/admin"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              >
                 Overview
               </Link>{' '}
               page shows. A subscription merely scheduled to cancel (still active or past

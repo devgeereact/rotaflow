@@ -361,7 +361,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
             actions={
               <Link
                 to="/admin/settings"
-                className="text-xs font-medium text-primary hover:underline"
+                className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
               >
                 Change in settings
               </Link>
@@ -442,7 +442,10 @@ export function AdminFeatureFlagsPage(): JSX.Element {
             <p className="border-t border-divider px-4 py-2.5 text-xs text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
               Set by build configuration, so changing one is a deploy rather than a
               toggle. The services behind them are listed on{' '}
-              <Link to="/admin/integrations" className="text-primary hover:underline">
+              <Link
+                to="/admin/integrations"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+              >
                 Integrations
               </Link>
               .
