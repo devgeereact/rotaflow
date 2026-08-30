@@ -324,7 +324,7 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/functions/ai-rota-assistant/index.ts`
 - [x] CAP-071 🟡 AI announcement drafting — a date in neither the rota period nor the manager's own prompt
       is refused; a name matching nobody on the roster is warned about. Numbers are still unchecked
-      `supabase/functions/ai-rota-assistant/grounding.ts` · BUG-058 closed #202 · 17 unit tests
+      `supabase/functions/ai-rota-assistant/grounding.ts` · BUG-058 closed #202 · 17 unit tests · deployed v19, 2026-08-30
 - [ ] CAP-072 🔵 AI cost control — no `max_tokens`, no prompt cap, no per-org request cap, no spend guard
       `supabase/functions/ai-rota-assistant/index.ts` · HARDEN-004 · P1
 - [ ] CAP-073 🔴 Predictive insight — coverage risk, absence patterns, cost forecasting
