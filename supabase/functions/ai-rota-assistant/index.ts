@@ -119,6 +119,30 @@ function extractJson(content: string): unknown {
 // specific manager actually saw generated.
 const PROMPT_VERSION = 1;
 
+// ---- Input-side cost ceilings (docs/SAAS.md HARDEN-004) ----------------
+//
+// `max_tokens` bounds what one call can GENERATE. It says nothing about what
+// one call SENDS, and for this function the input is the larger half of the
+// bill: every request serialises the period's staff, existing shifts, approved
+// leave and availability, and a 250-person organisation over a fortnight is
+// orders of magnitude more text than the reply.
+//
+// Two ceilings, both refusals rather than silent truncation. Dropping staff
+// from the context to fit would produce a rota that ignores half the roster
+// with nothing on screen to say so, which is worse than being told no.
+
+/** The manager's own words. Long enough for a detailed brief, not an essay. */
+const MAX_PROMPT_CHARS = 2_000;
+
+/**
+ * The serialised context. Roughly 4 characters to a token, so 120k characters
+ * is ~30k tokens — comfortably inside the model's window and a sane per-call
+ * spend. An organisation that exceeds it is told to narrow the period, which
+ * is a real answer: a fortnight of a large site is a legitimate thing to ask
+ * about, and a quarter of one is not what this feature is for.
+ */
+const MAX_CONTEXT_CHARS = 120_000;
+
 const ROTA_SYSTEM_PROMPT = `You are RotaFlow's rota-drafting assistant for a workforce scheduling app. \
 You suggest shifts for a manager based on real staff data. Never invent staff or shift types, only use \
 the ids given in the context.
@@ -188,6 +212,19 @@ Deno.serve(async (req: Request) => {
     if (!orgId || !prompt || !periodStart || !periodEnd) {
       return jsonResponse(
         { error: 'orgId, prompt, periodStart and periodEnd are required' },
+        400,
+      );
+    }
+
+    // Checked before anything else costs anything — before the org lookup,
+    // before the quota, and long before OpenRouter. A request that will be
+    // refused should be refused at its cheapest point.
+    if (prompt.length > MAX_PROMPT_CHARS) {
+      return jsonResponse(
+        {
+          error: `That request is too long. Keep it under ${MAX_PROMPT_CHARS} characters.`,
+          code: 'prompt_too_long',
+        },
         400,
       );
     }
@@ -311,17 +348,40 @@ Deno.serve(async (req: Request) => {
       p_limit: 30,
       p_window: '01:00:00',
     });
-    if (limitError) {
+    // And a ceiling on the ORGANISATION, because the invoice arrives per
+    // organisation (0089). Twenty managers each inside their own 30-an-hour
+    // allowance is 600 calls an hour, and nobody in that picture is abusing
+    // anything — the per-user limit is simply in the wrong unit to bound a
+    // bill. 200 is generous for a real team's week of planning and finite.
+    let orgLimitError: { code?: string } | null = null;
+    if (!limitError) {
+      const orgLimit = await supabase.rpc('consume_org_rate_limit', {
+        p_bucket: 'ai_assistant_org',
+        p_org: orgId,
+        p_limit: 200,
+        p_window: '01:00:00',
+      });
+      orgLimitError = orgLimit.error;
+    }
+    const anyLimitError = limitError ?? orgLimitError;
+    if (anyLimitError) {
       // P0001 is the limiter refusing; anything else is the limiter itself
       // failing, and a broken limiter must not become a free pass on the one
       // endpoint that spends money.
-      const overLimit = limitError.code === 'P0001';
-      if (!overLimit) console.error('rate limit check failed', limitError);
+      const overLimit = anyLimitError.code === 'P0001';
+      if (!overLimit) console.error('rate limit check failed', anyLimitError);
+      // Which ceiling was hit changes what the person should do: wait, or ask
+      // a colleague who has not been drafting all morning to stop. Saying
+      // "you" when the org ran out would send them looking for their own
+      // usage and finding nothing.
+      const mine = Boolean(limitError);
       return jsonResponse(
         {
-          error: overLimit
-            ? 'You have used the AI assistant a lot in the last hour. Try again shortly.'
-            : 'The AI assistant is unavailable right now. Please try again shortly.',
+          error: !overLimit
+            ? 'The AI assistant is unavailable right now. Please try again shortly.'
+            : mine
+              ? 'You have used the AI assistant a lot in the last hour. Try again shortly.'
+              : 'Your organisation has reached its hourly limit for the AI assistant. Try again shortly.',
           code: 'rate_limited',
         },
         429,
@@ -478,7 +538,25 @@ Deno.serve(async (req: Request) => {
 
     const systemPrompt =
       task === 'announcement' ? ANNOUNCEMENT_SYSTEM_PROMPT : ROTA_SYSTEM_PROMPT;
-    const userPrompt = `Context:\n${JSON.stringify(context, null, 2)}\n\nManager's request: "${prompt}"`;
+    // Compact, not pretty-printed. The two-space indentation was costing
+    // roughly a fifth of every request in whitespace nobody reads — the model
+    // parses JSON identically either way, and this is the cheapest saving
+    // available on the larger half of the bill.
+    const serialisedContext = JSON.stringify(context);
+    if (serialisedContext.length > MAX_CONTEXT_CHARS) {
+      // Refused, not trimmed. Dropping staff or shifts to fit would answer
+      // with a rota that ignores part of the roster and give no sign of it,
+      // and "the AI missed three people" is a bug nobody can see.
+      return jsonResponse(
+        {
+          error:
+            'There is too much on this rota for the assistant to read in one go. Narrow the period, or ask about one site at a time.',
+          code: 'context_too_large',
+        },
+        413,
+      );
+    }
+    const userPrompt = `Context:\n${serialisedContext}\n\nManager's request: "${prompt}"`;
 
     const model = Deno.env.get('OPENROUTER_MODEL') || 'openai/gpt-4o-mini';
     const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -516,6 +594,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const completion = await openRouterRes.json();
+    // What the call actually cost, from OpenRouter's own accounting rather
+    // than an estimate. Recorded on every audit row below, because "no spend
+    // guard" was really two problems and this is the second one: nothing
+    // anywhere knew what had been spent. A limit you cannot measure against
+    // is a guess.
+    const usage = {
+      promptTokens: Number(completion?.usage?.prompt_tokens) || 0,
+      completionTokens: Number(completion?.usage?.completion_tokens) || 0,
+      totalTokens: Number(completion?.usage?.total_tokens) || 0,
+    };
     const content: string | undefined = completion?.choices?.[0]?.message?.content;
     if (!content) {
       return jsonResponse({ error: 'The AI assistant returned an empty response' }, 502);
@@ -590,6 +678,8 @@ Deno.serve(async (req: Request) => {
         model,
         promptVersion: PROMPT_VERSION,
         promptLength: prompt.length,
+        contextLength: serialisedContext.length,
+        usage,
         titleLength: title.length,
         bodyLength: draftBody.length,
         urgent: parsed.urgent === true,
@@ -740,6 +830,8 @@ Deno.serve(async (req: Request) => {
       model,
       promptVersion: PROMPT_VERSION,
       promptLength: prompt.length,
+      contextLength: serialisedContext.length,
+      usage,
       periodStart,
       periodEnd,
       raw: raw.length,
