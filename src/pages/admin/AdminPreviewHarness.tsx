@@ -379,11 +379,14 @@ const FEATURE_FLAGS = [
     false,
     ['professional', 'business', 'enterprise'],
   ],
+  // Retired flags still appear in the console: the row stays so
+  // `feature_flag_changes` keeps its referent (0030), and the harness should
+  // show what the real screen shows.
   [
     'gps_clock_in',
     'GPS clock-in',
-    true,
-    100,
+    false,
+    0,
     'production',
     true,
     ['starter', 'professional', 'business', 'enterprise'],
@@ -785,8 +788,9 @@ const TABLES: Record<string, unknown> = {
       shifts_month: 412,
     },
   ],
+  // `gps_clock_in` is deliberately absent: 0090 removed it from every plan,
+  // because every plan had it and a gate that can never refuse is not a gate.
   'rpc/my_feature_access': [
-    { feature: 'gps_clock_in', source: 'plan' },
     { feature: 'advanced_reporting', source: 'plan' },
     { feature: 'ai_rota_assistant', source: 'flag' },
   ],

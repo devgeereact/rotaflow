@@ -149,12 +149,16 @@ reminder to re-run that diff before any future release.
 | `feature_flag_targets` | `flag_key`, `org_id` (composite PK)                                                                                         | Orgs explicitly opted in ahead of the rollout percentage (pilots).                                                                                                                                                                      |
 | `feature_flag_changes` | `flag_key`, `actor_id?`, `actor_name?`, `field`, `before_value?`, `after_value?`                                            | Before/after history in a shape the flag screen reads directly, alongside (not instead of) the immutable `audit_logs` entry for the same change.                                                                                        |
 
-`0030` drew a line this table can't enforce on its own: only `ai_rota_assistant` and
-`beta_integrations` are genuinely dark-launch flags the application now checks before
-rendering. The other four rows created in `0022` were what a customer pays for, not
-what's rolled out gradually — that belongs on `plans` (§4.4) instead, and got moved
-there. The four flag rows are marked retired rather than deleted, since
-`feature_flag_changes` still references them.
+`0030` drew a line this table can't enforce on its own: what a customer pays for
+belongs on `plans` (§4.4), not here, and four of the six rows `0022` created were
+entitlements wearing a flag's clothes. Those were moved and marked retired rather
+than deleted, since `feature_flag_changes` still references them.
+
+`0090` finished the job. `beta_integrations` was described here as a genuine
+dark-launch flag "the application now checks before rendering"; it checked nothing,
+and what it described — unreleased payroll and HR connectors — does not exist, so it
+is retired too. **`ai_rota_assistant` is the only live flag**, and the AI Edge
+Function honours it alongside the plan entitlement.
 
 ### 4.4 Commercials (`0023`; Stripe columns in `0050`)
 
@@ -418,9 +422,21 @@ and only `is_org_member()` governs access, same as every other tenant table.
   `or is_platform_admin()` would re-open the standing cross-tenant access `0028`
   exists to close. A non-member gets `false` and an empty set rather than an error,
   so the refusal does not confirm the organisation exists.
-- Three entitlements — `advanced_reporting`, `beta_integrations`, `gps_clock_in` —
-  are listed in `plans.features` and checked by nothing. That is deliberate and
-  tracked as `docs/SAAS.md` BUG-064, not an oversight. See also CAP-038 and CAP-076.
+- Every name in `plans.features` is read by something (`0090`, BUG-064).
+  `ai_rota_assistant` is enforced in the Edge Function that spends the money
+  (`0074`); `advanced_reporting` gates the Reports screen; `gps_clock_in` was
+  **removed from every plan**, because every plan included it and a gate that can
+  never refuse is not a gate. It now resolves to `false`, deliberately: a name that
+  answers "false" fails visibly if somebody wires it up, where one answering "true
+  for everyone" would not.
+- **`advanced_reporting` is enforced in the client, and that is the honest ceiling.**
+  The Reports screen computes every row in the browser from `clock_events` and
+  `staff_profiles` — rows RLS already grants the organisation because they are its
+  own records. There is no server-side report endpoint to refuse, and withholding a
+  customer's own data from them would be a worse product than an unlocked screen. It
+  is packaging, not a control, and the difference matters: `seat_limit` and
+  `location_limit` govern writes and are enforced by triggers (`0070`), and
+  `ai_rota_assistant` spends money per use and is enforced server-side (`0074`).
 - **`admin_create_organisation_with_invite(...)`** (`0052`, `security definer`,
   platform-admin-only): atomically inserts an organisation with `created_by = null`
   (so `on_org_created` never fires and no membership row is created), creates its

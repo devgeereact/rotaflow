@@ -3,6 +3,8 @@ import { CalendarRange, Download, Timer, Users } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PermissionDenied } from '@/components/PermissionDenied';
+import { PlanRequired } from '@/components/PlanRequired';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
 import { ReportsView } from '@/components/reports/ReportsView';
@@ -43,6 +45,7 @@ import type { ReportQuickAction } from '@/components/reports/ReportsQuickActions
 export function ReportsPage(): JSX.Element {
   const { orgId, orgName } = useOrg();
   const { canManageStaff } = usePermissions();
+  const { has: hasFeature, loading: featuresLoading } = useFeatureAccess();
   const { showError, showSuccess } = useToast();
 
   const [activeTab, setActiveTab] = useState<ReportsTab>('all');
@@ -295,6 +298,27 @@ export function ReportsPage(): JSX.Element {
   // just makes sure the manager UI never renders for a non-manager.
   if (!canManageStaff) {
     return <PermissionDenied area="reports" allowed={['owner', 'manager']} />;
+  }
+
+  // The plan gate (BUG-064). `plans.features` has said since 0030 that
+  // reporting starts at Professional, matching the pricing page — Starter's
+  // feature list has no reporting line — and until now nothing read it.
+  //
+  // Rendered only once the answer is known. `useFeatureAccess` fails closed,
+  // so gating while it loads would flash an upgrade screen at a customer who
+  // has paid for this, every time they open the page.
+  //
+  // Packaging, not a control: every row here is computed in this browser from
+  // the organisation's own `clock_events` and `staff_profiles`, which RLS
+  // grants them because the records are theirs. See `PlanRequired`.
+  if (!featuresLoading && !hasFeature('advanced_reporting')) {
+    return (
+      <PlanRequired
+        area="Reports"
+        plan="Professional and above"
+        summary="Timesheet, leave, shift and swap exports across every site, with the analytics that go with them. Your data is unaffected — this is the reporting workspace, not the records behind it."
+      />
+    );
   }
 
   return (

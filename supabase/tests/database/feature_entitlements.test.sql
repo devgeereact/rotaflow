@@ -29,14 +29,14 @@
 --   5. the platform grant actually took effect (so 6 tests something);
 --   6. a platform admin with NO support session gets nothing either;
 --   7. the same admin, with a session, gets the answer;
---   8. the tier boundary is real — Starter has no assistant;
+--   8. the tier boundary is real — Professional has no assistant;
 --   9. and the guard is not simply refusing everything.
 --
 -- pgTAP, run via `supabase test db`.
 -- =====================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
@@ -48,7 +48,7 @@ select
   now(), now(), now(), '{"provider":"email"}'::jsonb, '{}'::jsonb
 from (values
   ('c1111111-1111-1111-1111-111111111111'::uuid, 'owner-business@example.test'),
-  ('c2222222-2222-2222-2222-222222222222'::uuid, 'owner-starter@example.test'),
+  ('c2222222-2222-2222-2222-222222222222'::uuid, 'owner-professional@example.test'),
   ('c3333333-3333-3333-3333-333333333333'::uuid, 'platform@example.test')
 ) as u(id, email);
 
@@ -64,12 +64,18 @@ from (values
 insert into public.platform_admins (user_id, role)
 values ('c3333333-3333-3333-3333-333333333333', 'platform_admin');
 
--- 0030 put `ai_rota_assistant` on business and enterprise only.
+-- 0030 put `ai_rota_assistant` on business and enterprise only, and
+-- `advanced_reporting` on professional and above. The second org is
+-- Professional rather than Starter because these tests need a plan that
+-- INCLUDES something and EXCLUDES something else: after 0090 removed
+-- `gps_clock_in` from every plan, Starter's feature array is empty, and an org
+-- with no entitlements at all cannot show that a refusal is a real check
+-- rather than a blanket no.
 insert into public.organisations (id, name, slug, created_by, plan) values
   ('cccccccc-0000-0000-0000-000000000001', 'Org Business', 'org-business-ent',
    'c1111111-1111-1111-1111-111111111111', 'business'),
-  ('cccccccc-0000-0000-0000-000000000002', 'Org Starter', 'org-starter-ent',
-   'c2222222-2222-2222-2222-222222222222', 'starter');
+  ('cccccccc-0000-0000-0000-000000000002', 'Org Professional', 'org-professional-ent',
+   'c2222222-2222-2222-2222-222222222222', 'professional');
 
 -- ---------- the Business owner ---------------------------------------
 set local role authenticated;
@@ -85,7 +91,7 @@ select ok(
 );
 
 select ok(
-  not public.org_has_feature('cccccccc-0000-0000-0000-000000000002', 'gps_clock_in'),
+  not public.org_has_feature('cccccccc-0000-0000-0000-000000000002', 'advanced_reporting'),
   'and cannot read another organisation''s entitlements, even one that is true'
 );
 
@@ -149,7 +155,7 @@ select ok(
   'with an active session they can, which is how support answers "why can this customer not see it"'
 );
 
--- ---------- the Starter owner ----------------------------------------
+-- ---------- the Professional owner -----------------------------------
 reset role;
 select set_config('request.jwt.claims', '', true);
 set local role authenticated;
@@ -164,11 +170,20 @@ select set_config(
 -- at OpenRouter.
 select ok(
   not public.org_has_feature('cccccccc-0000-0000-0000-000000000002', 'ai_rota_assistant'),
-  'Starter does not include the AI assistant'
+  'Professional does not include the AI assistant'
 );
 select ok(
-  public.org_has_feature('cccccccc-0000-0000-0000-000000000002', 'gps_clock_in'),
-  'but does include GPS clock-in, so the guard is not simply refusing everything'
+  public.org_has_feature('cccccccc-0000-0000-0000-000000000002', 'advanced_reporting'),
+  'but does include advanced reporting, so the guard is not simply refusing everything'
+);
+
+-- 0090 removed `gps_clock_in` from every plan: every plan had it, so a gate on
+-- it could never refuse anything, and a name in `plans.features` that nothing
+-- checks reads as enforcement to the next person. It now resolves to false,
+-- which is the better trap — it fails visibly if somebody wires it up.
+select ok(
+  not public.org_has_feature('cccccccc-0000-0000-0000-000000000002', 'gps_clock_in'),
+  'gps_clock_in is not an entitlement any more: it is part of the product'
 );
 
 select * from finish();
