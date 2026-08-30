@@ -104,7 +104,7 @@ for (const { path, heading } of ALL_SCREENS) {
  *
  * Adding these 26 screens to the gate surfaced 303 WCAG violations that CI had
  * never seen. All but the contrast ones are fixed in the same change and are
- * asserted at zero below. The remaining 286 are one pre-existing cause: the
+ * asserted at zero below. The remaining 172 are one pre-existing cause: the
  * status palette used as *text*, where `DEFAULT` sits between 2.04:1 and
  * 3.70:1 against a 4.5:1 minimum. `tailwind.config.ts` predicted exactly this —
  * "the same `text-primary`-as-link pattern likely exists in authenticated
@@ -116,18 +116,22 @@ for (const { path, heading } of ALL_SCREENS) {
  * change whose purpose is to add test coverage would be unreviewable and
  * unverifiable screen by screen. It is tracked on its own.
  *
- * A TOTAL rather than a per-screen budget, because two screens are genuinely
- * variable: System status runs live probes whose results change what renders,
- * so its count moves between runs. A total absorbs that without the gate going
- * flaky, and still means no change can add contrast debt overall.
+ * A TOTAL rather than a per-screen budget, because System status runs live
+ * probes whose results change what renders, so its count can move between runs.
+ * A total absorbs that without the gate going flaky, and still means no change
+ * can add contrast debt overall.
  *
- * The budget is the observed MAXIMUM across repeated runs (277, 280 and 286
- * were all seen), so it carries roughly nine nodes of slack. That is the price
- * of not being flaky, and it is stated rather than hidden: a regression smaller
- * than the run-to-run variance will not be caught by this number. Lower it when
- * the debt is paid down.
+ * The figure was 277 when this suite was written and is 172 now: fixing
+ * `Badge.tsx`'s five tones, which landed separately, removed 105 nodes on its
+ * own. The budget is set to the current measurement rather than left at the old
+ * one — a ceiling 114 above the actual value is not a gate. Three consecutive
+ * runs all read exactly 172, so there is no variance to absorb today; if a
+ * future run proves otherwise, raise it to the observed maximum and say so here
+ * rather than padding it pre-emptively.
+ *
+ * Lower it whenever the debt is paid down. Never raise it to make a change pass.
  */
-const CONTRAST_BUDGET = 286;
+const CONTRAST_BUDGET = 172;
 
 test('the authenticated surface has no non-contrast WCAG violations', async ({
   page,
