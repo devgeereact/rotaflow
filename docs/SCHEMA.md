@@ -336,6 +336,18 @@ and only `is_org_member()` governs access, same as every other tenant table.
   that reads _past_ the `0028` gate — returns staff/location/rota/shift counts for
   an org with no open support session required, gated on `is_platform_admin()`
   directly. A number, never a row: sizing a tenant doesn't require knowing who's in it.
+- **`probe_platform_health()`** (`0076`, `security definer`, `pg_cron` every five
+  minutes): writes `platform_health_samples` with `source = 'scheduled'` whether or
+  not anyone is looking — the database directly, Auth and REST over `pg_net`. Records
+  **status only**: `net._http_response` carries no duration, and `created - sent_at`
+  includes the pg_net worker's polling interval, so a latency built from it would be
+  mostly scheduler noise. Prunes the table at 90 days, which nothing else does — it is
+  deliberately not in `retention_policies`, because that register is the
+  customer-facing data-protection one and platform telemetry holds no personal data.
+  `platform_health_summary` therefore answers **two questions from two sources**:
+  uptime from scheduled samples where they exist (`measured_from`), latency from
+  whatever actually timed something (`latency_from`). Averaging a browser round trip
+  with an in-region one is what `0027` warned about.
 - **`enforce_retention(dry_run?)`** (`0029`, `security definer`, `pg_cron` nightly):
   deletes rows past their `retention_policies.retain_months` window and writes a
   `retention_runs` row. Skips any policy with `retain_months = null` (indefinite —
