@@ -83,7 +83,7 @@ export function PricingPage(): JSX.Element {
               */}
               <span
                 aria-hidden={!featured}
-                className="mb-4 h-6 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase leading-4 tracking-wide text-primary-ink empty:bg-transparent"
+                className="mb-4 h-6 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase leading-4 tracking-wide text-primary-ink dark:text-primary-ink-dark empty:bg-transparent"
               >
                 {featured ? 'Most popular' : ''}
               </span>
@@ -156,7 +156,7 @@ export function PricingPage(): JSX.Element {
             Still deciding?{' '}
             <Link
               to="/contact"
-              className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Ask us anything
             </Link>

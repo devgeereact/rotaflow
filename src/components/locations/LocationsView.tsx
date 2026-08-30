@@ -82,7 +82,7 @@ export function LocationsView({
           {rows.map((row) => (
             <Card key={row.id} className="flex flex-col gap-3">
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary dark:text-primary-ink-dark">
                   <Building2 size={18} aria-hidden="true" />
                 </span>
                 <div className="min-w-0 flex-1">

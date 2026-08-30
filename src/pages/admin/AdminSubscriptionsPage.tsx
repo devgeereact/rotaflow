@@ -311,7 +311,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         sortable: true,
         cell: ({ organisation }) => (
           <Link to={`/admin/organisations/${organisation.id}`} className="block min-w-0">
-            <span className="block truncate font-medium text-primary-ink hover:underline dark:text-primary">
+            <span className="block truncate font-medium text-primary-ink hover:underline dark:text-primary-ink-dark">
               {organisation.name}
             </span>
             <span className="block truncate font-mono text-xs text-content-muted dark:text-content-muted-dark">
@@ -376,7 +376,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
             <span
               className={
                 days !== null && days < 0
-                  ? 'whitespace-nowrap text-warning-ink dark:text-warning'
+                  ? 'whitespace-nowrap text-warning-ink dark:text-warning-ink-dark'
                   : 'whitespace-nowrap text-content-muted dark:text-content-muted-dark'
               }
             >
@@ -510,7 +510,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
               value={money.pastDue}
               hint={
                 money.pastDue > 0 ? (
-                  <span className="font-semibold text-danger-ink dark:text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                     Payment failed
                   </span>
                 ) : (
@@ -541,7 +541,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
               past due. The same arithmetic{' '}
               <Link
                 to="/admin/billing"
-                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
               >
                 Billing
               </Link>{' '}
@@ -553,7 +553,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
               month&rsquo;s start &mdash; the same figure the{' '}
               <Link
                 to="/admin"
-                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
               >
                 Overview
               </Link>{' '}

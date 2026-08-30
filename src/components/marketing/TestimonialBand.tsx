@@ -46,7 +46,11 @@ export function TestimonialBand(): JSX.Element {
               key={`${name}-${organisation}`}
               className="flex h-full flex-col rounded-2xl border border-surface-border bg-surface p-6 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark"
             >
-              <Quote size={24} aria-hidden="true" className="mb-4 text-primary" />
+              <Quote
+                size={24}
+                aria-hidden="true"
+                className="mb-4 text-primary dark:text-primary-ink-dark"
+              />
               <blockquote className="flex-1 leading-relaxed text-content dark:text-content-dark">
                 {quote}
               </blockquote>
@@ -84,7 +88,7 @@ export function TestimonialBand(): JSX.Element {
             key={title}
             className="flex gap-4 rounded-2xl border border-surface-border bg-surface p-6 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark"
           >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <Icon size={20} aria-hidden="true" />
             </span>
             <div>

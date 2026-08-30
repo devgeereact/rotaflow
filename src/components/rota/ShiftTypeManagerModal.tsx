@@ -165,7 +165,7 @@ export function ShiftTypeManagerModal({
                     type="button"
                     onClick={() => startEdit(type)}
                     aria-label={`Edit ${type.name}`}
-                    className="text-content-muted hover:text-primary dark:text-content-muted-dark"
+                    className="text-content-muted hover:text-primary dark:text-primary-ink-dark dark:text-content-muted-dark"
                   >
                     <Pencil size={14} />
                   </button>
@@ -267,7 +267,7 @@ export function ShiftTypeManagerModal({
               type="checkbox"
               checked={form.isPaid}
               onChange={(e) => setForm((f) => ({ ...f, isPaid: e.target.checked }))}
-              className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              className="h-4 w-4 rounded border-surface-border text-primary dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
             Paid shift
           </label>

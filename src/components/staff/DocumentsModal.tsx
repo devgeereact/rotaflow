@@ -137,7 +137,7 @@ export function DocumentsModal({
                     href={d.file_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 font-medium text-content hover:text-primary dark:text-content-dark"
+                    className="flex items-center gap-1.5 font-medium text-content hover:text-primary dark:text-primary-ink-dark dark:text-content-dark"
                   >
                     <span className="truncate">{d.name}</span>
                     <ExternalLink size={14} aria-hidden="true" className="shrink-0" />

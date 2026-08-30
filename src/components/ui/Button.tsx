@@ -30,7 +30,7 @@ const VARIANTS: Record<Variant, string> = {
     'bg-surface text-content border border-surface-border hover:bg-surface-subtle ' +
     'dark:bg-surface-dark dark:text-content-dark dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark',
   ghost:
-    'bg-transparent text-primary hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
+    'bg-transparent text-primary dark:text-primary-ink-dark hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
   success: 'bg-success text-white hover:bg-success/90',
   // `warning` is the one fill in the set that fails contrast against white at
   // its token value (#E0A030), so its ink is the dark content token rather

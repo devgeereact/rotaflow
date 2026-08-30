@@ -91,7 +91,7 @@ export function ShiftInspectorPanel({
             className={cn(
               '-mb-px border-b-2 pb-2.5 text-xs font-semibold transition-colors',
               tab === t.key
-                ? 'border-primary text-primary-ink dark:text-primary'
+                ? 'border-primary text-primary-ink dark:text-primary-ink-dark'
                 : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
             )}
           >
@@ -241,7 +241,7 @@ function ShiftDetails({
           className="h-8 w-px bg-surface-border dark:bg-surface-border-dark"
         />
         <div className="flex-1 pl-4">
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-success-ink">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-success-ink dark:text-success-ink-dark">
             <TrendingUp size={14} aria-hidden="true" />
             {coveragePct}%
           </p>
@@ -260,7 +260,7 @@ function ShiftDetails({
             {skills.map((skill) => (
               <span
                 key={skill}
-                className="rounded-md bg-primary/10 px-2 py-1 text-[0.7rem] font-medium text-primary-ink"
+                className="rounded-md bg-primary/10 px-2 py-1 text-[0.7rem] font-medium text-primary-ink dark:text-primary-ink-dark"
               >
                 {skill}
               </span>
@@ -276,7 +276,7 @@ function ShiftDetails({
         <button
           type="button"
           onClick={() => onEdit(shift)}
-          className="flex items-center gap-1 text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+          className="flex items-center gap-1 text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
         >
           <Pencil size={12} aria-hidden="true" />
           Edit
@@ -322,7 +322,7 @@ function ShiftDetails({
             <button
               type="button"
               onClick={() => onEdit(shift)}
-              className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+              className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
             >
               Edit
             </button>
@@ -335,11 +335,15 @@ function ShiftDetails({
 
       <div className="mt-auto space-y-2 pt-4">
         <Button variant="secondary" className="w-full" onClick={() => onDuplicate(shift)}>
-          <Copy size={15} aria-hidden="true" className="text-primary" />
+          <Copy
+            size={15}
+            aria-hidden="true"
+            className="text-primary dark:text-primary-ink-dark"
+          />
           Duplicate Shift
         </Button>
         <Button
-          className="w-full bg-danger/10 text-danger-ink hover:bg-danger/15"
+          className="w-full bg-danger/10 text-danger-ink dark:text-danger-ink-dark hover:bg-danger/15"
           onClick={() => onDelete(shift)}
         >
           <Trash2 size={15} aria-hidden="true" />
@@ -375,7 +379,9 @@ function CoverageList({ dailyTotals }: { dailyTotals: DailyTotal[] }): JSX.Eleme
                 <span
                   className={cn(
                     'text-xs font-medium',
-                    t.status === 'understaffed' ? 'text-danger-ink' : 'text-success-ink',
+                    t.status === 'understaffed'
+                      ? 'text-danger-ink dark:text-danger-ink-dark'
+                      : 'text-success-ink dark:text-success-ink-dark',
                   )}
                 >
                   {t.status === 'understaffed'

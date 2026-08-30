@@ -30,7 +30,8 @@ export function PublicFooter(): JSX.Element {
             <Link to="/" className="flex items-center gap-2">
               <BrandMark label={null} className="h-8 w-8" />
               <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-                Rota<span className="text-primary-ink">Flow</span>
+                Rota
+                <span className="text-primary-ink dark:text-primary-ink-dark">Flow</span>
               </span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-content-muted dark:text-content-muted-dark">

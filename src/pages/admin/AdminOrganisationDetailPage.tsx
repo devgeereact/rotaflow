@@ -529,7 +529,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
       <div className="space-y-5">
         <Link
           to="/admin/organisations"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-ink hover:underline dark:text-primary"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
         >
           <ArrowLeft size={15} aria-hidden="true" />
           All organisations
@@ -788,7 +788,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               in it. Request access from{' '}
               <Link
                 to="/admin/support-access"
-                className="text-primary-ink hover:underline dark:text-primary"
+                className="text-primary-ink hover:underline dark:text-primary-ink-dark"
               >
                 Support Access
               </Link>
@@ -908,7 +908,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/support-access"
-                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                 >
                   Request access
                 </Link>
@@ -1068,7 +1068,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               actions={
                 <Link
                   to="/admin/gdpr"
-                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+                  className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                 >
                   All requests
                 </Link>

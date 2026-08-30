@@ -528,7 +528,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
 
             <Button
               size="sm"
-              className="ml-auto bg-success/10 text-success-ink hover:bg-success/15"
+              className="ml-auto bg-success/10 text-success-ink dark:text-success-ink-dark hover:bg-success/15"
             >
               <Sparkles size={14} aria-hidden="true" />
               Auto-assign

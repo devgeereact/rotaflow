@@ -36,7 +36,7 @@ export function StaffProfileHeader({
           <ChevronLeft size={14} aria-hidden="true" />
           <Link
             to={backTo}
-            className="rounded font-medium hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="rounded font-medium hover:text-primary dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             Staff
           </Link>
@@ -69,7 +69,7 @@ export function StaffProfileHeader({
         <button
           type="button"
           onClick={onEditProfile}
-          className={cn(ACTION, 'text-primary')}
+          className={cn(ACTION, 'text-primary dark:text-primary-ink-dark')}
         >
           <Pencil size={16} aria-hidden="true" />
           Edit Profile

@@ -37,7 +37,7 @@ export function ClockPolicyBanner({
         <button
           type="button"
           onClick={onViewPolicy}
-          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-surface-border bg-surface px-3 text-sm font-semibold text-primary transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-surface-border bg-surface px-3 text-sm font-semibold text-primary dark:text-primary-ink-dark transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
         >
           View Policy
           <ExternalLink size={14} aria-hidden="true" />

@@ -131,8 +131,8 @@ const BUILD_STATUS: readonly StatusGroup[] = [
 ];
 
 const STATE_STYLE: Record<StatusGroup['state'], { dot: string; label: string }> = {
-  built: { dot: 'bg-success', label: 'text-success-ink' },
-  partial: { dot: 'bg-warning', label: 'text-warning-ink' },
+  built: { dot: 'bg-success', label: 'text-success-ink dark:text-success-ink-dark' },
+  partial: { dot: 'bg-warning', label: 'text-warning-ink dark:text-warning-ink-dark' },
   planned: { dot: 'bg-content-muted', label: 'text-content-muted' },
 };
 
@@ -203,7 +203,7 @@ export function ResourcesPage(): JSX.Element {
 
       <section className="mx-auto max-w-6xl px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
             <BookOpen size={20} aria-hidden="true" />
           </span>
           <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
@@ -217,7 +217,7 @@ export function ResourcesPage(): JSX.Element {
         <div className="grid gap-6 md:grid-cols-2">
           {GUIDES.map(({ icon: Icon, title, body, steps }) => (
             <Card key={title} className="h-full">
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
                 <Icon size={20} aria-hidden="true" />
               </span>
               <h3 className="font-display text-lg font-semibold text-content dark:text-content-dark">
@@ -229,7 +229,7 @@ export function ResourcesPage(): JSX.Element {
               <ol className="mt-4 space-y-2.5 border-t border-surface-border pt-4 dark:border-surface-border-dark">
                 {steps.map((step, i) => (
                   <li key={step} className="flex gap-3 text-sm">
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary dark:text-primary-ink-dark">
                       {i + 1}
                     </span>
                     <span className="text-content dark:text-content-dark">{step}</span>
@@ -244,7 +244,7 @@ export function ResourcesPage(): JSX.Element {
       <section className="border-y border-surface-border bg-surface-subtle py-20 dark:border-surface-border-dark dark:bg-surface-subtle-dark">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <CircleDashed size={20} aria-hidden="true" />
             </span>
             <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
@@ -288,7 +288,7 @@ export function ResourcesPage(): JSX.Element {
 
       <section className="mx-auto max-w-3xl px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
             <Megaphone size={20} aria-hidden="true" />
           </span>
           <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
@@ -323,7 +323,7 @@ export function ResourcesPage(): JSX.Element {
       <section className="mx-auto max-w-4xl px-6 py-20">
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
-            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <Smartphone size={20} aria-hidden="true" />
             </span>
             <h2 className="font-display text-lg font-semibold text-content dark:text-content-dark">
@@ -338,7 +338,7 @@ export function ResourcesPage(): JSX.Element {
           </Card>
 
           <Card>
-            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <LifeBuoy size={20} aria-hidden="true" />
             </span>
             <h2 className="font-display text-lg font-semibold text-content dark:text-content-dark">
@@ -349,7 +349,7 @@ export function ResourcesPage(): JSX.Element {
               is no ticket queue and no chatbot, just{' '}
               <Link
                 to="/contact"
-                className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 get in touch
               </Link>{' '}

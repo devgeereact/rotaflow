@@ -92,7 +92,7 @@ export function StaffDashboard({
             </h2>
             <Link
               to="/app/schedule"
-              className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
+              className="text-sm font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
             >
               Full schedule
             </Link>
@@ -138,7 +138,7 @@ export function StaffDashboard({
             </h2>
             <Link
               to="/app/announcements"
-              className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
+              className="text-sm font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
             >
               All
             </Link>
@@ -156,7 +156,7 @@ export function StaffDashboard({
                       'grid h-9 w-9 shrink-0 place-items-center rounded-full',
                       a.urgent
                         ? 'bg-danger-wash text-danger dark:bg-danger-wash-dark'
-                        : 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary',
+                        : 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark',
                     )}
                   >
                     <Megaphone size={16} aria-hidden="true" />

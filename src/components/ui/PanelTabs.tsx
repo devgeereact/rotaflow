@@ -67,7 +67,7 @@ export function PanelTabs<T extends string>({
             '-mb-px whitespace-nowrap border-b-2 pb-3 text-sm font-semibold transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
             item.value === active
-              ? 'border-primary text-primary-ink dark:text-primary'
+              ? 'border-primary text-primary-ink dark:text-primary-ink-dark'
               : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
           )}
         >

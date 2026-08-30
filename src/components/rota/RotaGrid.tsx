@@ -180,7 +180,7 @@ export function RotaGrid({
 
       <Link
         to="/app/team"
-        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-primary dark:text-primary-ink-dark transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
       >
         <Plus size={14} aria-hidden="true" />
         Add staff
@@ -205,7 +205,9 @@ export function RotaGrid({
               <p
                 className={cn(
                   'font-mono text-sm font-bold',
-                  short ? 'text-danger-ink' : 'text-success-ink',
+                  short
+                    ? 'text-danger-ink dark:text-danger-ink-dark'
+                    : 'text-success-ink dark:text-success-ink-dark',
                 )}
               >
                 {total.staffCount} / {total.required}

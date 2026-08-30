@@ -17,7 +17,7 @@ interface QuickActionsCardProps {
 }
 
 const ROW =
-  'flex w-full items-center gap-2.5 rounded-lg border border-surface-border px-3 py-1.5 text-[0.72rem] font-semibold leading-4 text-primary transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark';
+  'flex w-full items-center gap-2.5 rounded-lg border border-surface-border px-3 py-1.5 text-[0.72rem] font-semibold leading-4 text-primary dark:text-primary-ink-dark transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark';
 
 /** Shortcuts under the timesheet rail (docs/design/Timesheets-Dashboard.png). */
 export function QuickActionsCard({ actions }: QuickActionsCardProps): JSX.Element {

@@ -104,7 +104,11 @@ export function SidebarOrgSwitcher({
               </span>
             </span>
             {m.orgId === orgId && (
-              <Check size={16} aria-hidden="true" className="shrink-0 text-primary" />
+              <Check
+                size={16}
+                aria-hidden="true"
+                className="shrink-0 text-primary dark:text-primary-ink-dark"
+              />
             )}
           </button>
         </li>

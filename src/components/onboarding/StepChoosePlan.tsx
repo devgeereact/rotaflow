@@ -142,7 +142,7 @@ export function StepChoosePlan({
                       <Check
                         size={15}
                         aria-hidden="true"
-                        className="mt-0.5 shrink-0 text-primary"
+                        className="mt-0.5 shrink-0 text-primary dark:text-primary-ink-dark"
                       />
                       {f}
                     </li>
@@ -153,7 +153,8 @@ export function StepChoosePlan({
                   variant={selected ? 'primary' : 'secondary'}
                   className={cn(
                     'w-full',
-                    !selected && 'border-primary text-primary hover:bg-primary/5',
+                    !selected &&
+                      'border-primary text-primary dark:text-primary-ink-dark hover:bg-primary/5',
                   )}
                   title={
                     enquiryOnly

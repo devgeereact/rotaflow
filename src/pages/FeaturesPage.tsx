@@ -154,7 +154,7 @@ export function FeaturesPage(): JSX.Element {
                       <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-sm font-bold text-primary-fg">
                         {i + 1}
                       </span>
-                      <span className="text-sm font-semibold uppercase tracking-wide text-primary">
+                      <span className="text-sm font-semibold uppercase tracking-wide text-primary dark:text-primary-ink-dark">
                         {step}
                       </span>
                     </div>

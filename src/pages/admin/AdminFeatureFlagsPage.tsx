@@ -361,7 +361,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
             actions={
               <Link
                 to="/admin/settings"
-                className="text-xs font-medium text-primary-ink hover:underline dark:text-primary"
+                className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
               >
                 Change in settings
               </Link>
@@ -444,7 +444,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
               toggle. The services behind them are listed on{' '}
               <Link
                 to="/admin/integrations"
-                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
               >
                 Integrations
               </Link>

@@ -213,7 +213,7 @@ export function ClockInView({
                 <dd className="text-right font-medium text-content dark:text-content-dark">
                   {STAGE_LABEL[stage]}
                   {latestIsPending ? (
-                    <span className="block text-xs font-normal text-warning-ink dark:text-warning">
+                    <span className="block text-xs font-normal text-warning-ink dark:text-warning-ink-dark">
                       Saved on this device, not sent yet
                     </span>
                   ) : null}
@@ -224,8 +224,8 @@ export function ClockInView({
                 <dd
                   className={
                     pendingCount > 0 || !online
-                      ? 'font-medium text-warning-ink dark:text-warning'
-                      : 'font-medium text-success-ink dark:text-success'
+                      ? 'font-medium text-warning-ink dark:text-warning-ink-dark'
+                      : 'font-medium text-success-ink dark:text-success-ink-dark'
                   }
                 >
                   {syncLabel}

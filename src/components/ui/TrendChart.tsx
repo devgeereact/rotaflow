@@ -107,7 +107,7 @@ export function TrendChart({
           onClick={() => setShowTable((v) => !v)}
           aria-expanded={showTable}
           aria-controls={tableId}
-          className="ml-auto text-xs font-medium text-primary-ink hover:underline dark:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="ml-auto text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           {showTable ? 'Hide figures' : 'Show figures'}
         </button>

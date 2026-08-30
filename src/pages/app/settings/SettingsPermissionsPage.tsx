@@ -184,7 +184,7 @@ export function SettingsPermissionsPage(): JSX.Element {
               const isOwner = member.role === 'owner';
               return (
                 <li key={member.userId} className="flex items-center gap-4 py-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary dark:text-primary-ink-dark">
                     {member.name
                       .split(' ')
                       .slice(0, 2)

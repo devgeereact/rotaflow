@@ -86,7 +86,9 @@ export function TeamDirectoryView({
           value={tiles.documentsExpiring}
           hint={
             tiles.documentsExpiring > 0 && (
-              <span className="text-danger-ink">within 30 days</span>
+              <span className="text-danger-ink dark:text-danger-ink-dark">
+                within 30 days
+              </span>
             )
           }
         />

@@ -70,7 +70,7 @@ export function Tabs({ items, label, className }: TabsProps): JSX.Element {
                   // visible against both the active and inactive states.
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                   isActive
-                    ? 'border-primary font-semibold text-primary'
+                    ? 'border-primary font-semibold text-primary dark:text-primary-ink-dark'
                     : 'border-transparent font-medium text-content-muted hover:border-surface-border hover:text-content dark:text-content-muted-dark dark:hover:border-surface-border-dark dark:hover:text-content-dark',
                 )
               }

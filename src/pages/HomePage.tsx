@@ -47,7 +47,7 @@ export function HomePage(): JSX.Element {
             {HERO.headline.map((line, i) => (
               <span key={line} className="block">
                 {i === HERO.headline.length - 1 ? (
-                  <span className="text-primary">{line}</span>
+                  <span className="text-primary dark:text-primary-ink-dark">{line}</span>
                 ) : (
                   line
                 )}

@@ -23,7 +23,7 @@ export function SkillsCompetenciesCard({
       <ul className="mt-3.5 space-y-2.5">
         {skills.map((skill) => (
           <li key={skill.name} className="flex items-center justify-between gap-3">
-            <span className="inline-flex min-w-0 items-center rounded-md bg-primary/[0.07] px-2 py-1 text-xs font-semibold text-primary">
+            <span className="inline-flex min-w-0 items-center rounded-md bg-primary/[0.07] px-2 py-1 text-xs font-semibold text-primary dark:text-primary-ink-dark">
               <span className="truncate">{skill.name}</span>
             </span>
             {skill.level && (

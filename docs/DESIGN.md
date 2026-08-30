@@ -178,16 +178,18 @@ fallback when Framer Motion isn't warranted.
 
 ## 5. Accessibility (frontline-critical)
 
-- Contrast ≥ **4.5:1** for text (AA). **Light mode is verified and gated at zero**
+- Contrast ≥ **4.5:1** for text (AA), **verified and gated at zero in both themes**
   across the 13 public pages and the 26 authenticated screens
-  (`e2e/app-surface.spec.ts`). **Dark mode is measured but NOT met** — ~200 nodes as
-  of 2026-08-30, capped by a budget so it can only fall, tracked as `docs/SAAS.md`
-  GAP-032. This line used to claim both themes were verified; nothing had ever
-  scanned dark mode, and it turned out to carry more debt than light did.
-- The `-ink` tokens are how a status colour becomes text: `text-{tone}-ink` in light,
-  `dark:text-{tone}` in dark. The `DEFAULT` status colours are fills and icons, and
-  run 2.02–4.29:1 as small text on their own washes. If you are writing
-  `text-warning` on anything a person reads, you want `text-warning-ink`.
+  (`e2e/app-surface.spec.ts`). This line used to claim as much on no evidence:
+  nothing had ever scanned dark mode, and when something did it held ~200
+  violations — more than light mode carried. Both were cleared on 2026-08-30
+  (`docs/SAAS.md` GAP-030, GAP-032).
+- **A status colour becomes text through its ink pair:
+  `text-{tone}-ink dark:text-{tone}-ink-dark`.** Both halves, every time. The
+  `DEFAULT` is a FILL — it runs 2.02–4.29:1 as small text on white and 3.15–4.47:1
+  on a dark surface, so neither `text-warning` nor `dark:text-warning` is a text
+  colour. And an `-ink` with no dark pairing is worse than none: the light ink
+  carries into dark mode at 2.5:1, so fixing one theme breaks the other.
 - **Muted grey does not go on a tinted panel.** `content-muted` is designed against
   white and lands 4.23–4.49:1 on the washes — under the line, and a hundredth under
   is under. Use `text-content` there; the semibold heading above it is what carries

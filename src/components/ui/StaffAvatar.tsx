@@ -40,7 +40,7 @@ export function StaffAvatar({
     <span
       aria-hidden="true"
       className={cn(
-        'grid shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-primary-ink',
+        'grid shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-primary-ink dark:text-primary-ink-dark',
         SIZES[size],
         className,
       )}

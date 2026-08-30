@@ -72,7 +72,7 @@ export function FeatureGrid(): JSX.Element {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(({ icon: Icon, title, body }) => (
           <Card key={title} className="h-full">
-            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <Icon size={20} aria-hidden="true" />
             </span>
             <h3 className="mb-1.5 font-display text-lg font-semibold text-content dark:text-content-dark">

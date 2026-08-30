@@ -167,7 +167,7 @@ export function ContactPage(): JSX.Element {
                   send there and it reaches us. If nothing opened, email us directly at{' '}
                   <a
                     href={`mailto:${CONTACT_EMAIL}`}
-                    className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     {CONTACT_EMAIL}
                   </a>
@@ -322,7 +322,7 @@ export function ContactPage(): JSX.Element {
 
           <div className="space-y-5">
             <Card>
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
                 <Mail size={20} aria-hidden="true" />
               </span>
               <h2 className="font-display text-base font-semibold text-content dark:text-content-dark">
@@ -332,7 +332,7 @@ export function ContactPage(): JSX.Element {
                 Prefer your own email client? Write to{' '}
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
-                  className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {CONTACT_EMAIL}
                 </a>
@@ -341,7 +341,7 @@ export function ContactPage(): JSX.Element {
             </Card>
 
             <Card>
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
                 <Rocket size={20} aria-hidden="true" />
               </span>
               <h2 className="font-display text-base font-semibold text-content dark:text-content-dark">
@@ -359,7 +359,7 @@ export function ContactPage(): JSX.Element {
             </Card>
 
             <Card>
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
                 <MessageSquare size={20} aria-hidden="true" />
               </span>
               <h2 className="font-display text-base font-semibold text-content dark:text-content-dark">

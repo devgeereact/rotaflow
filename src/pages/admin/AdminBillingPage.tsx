@@ -268,8 +268,8 @@ export function AdminBillingPage(): JSX.Element {
                     <span
                       className={`font-semibold ${
                         derived.collectedChange >= 0
-                          ? 'text-success-ink dark:text-success'
-                          : 'text-danger-ink dark:text-danger'
+                          ? 'text-success-ink dark:text-success-ink-dark'
+                          : 'text-danger-ink dark:text-danger-ink-dark'
                       }`}
                     >
                       {derived.collectedChange >= 0 ? '+' : ''}
@@ -285,7 +285,7 @@ export function AdminBillingPage(): JSX.Element {
               value={formatMoney(derived.outstanding)}
               hint={
                 derived.pastDueCount > 0 ? (
-                  <span className="font-semibold text-danger-ink dark:text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                     {formatMoney(derived.pastDue)} past due
                   </span>
                 ) : (
@@ -394,7 +394,7 @@ export function AdminBillingPage(): JSX.Element {
                               {org ? (
                                 <Link
                                   to={`/admin/organisations/${org.id}`}
-                                  className="text-primary-ink hover:underline dark:text-primary"
+                                  className="text-primary-ink hover:underline dark:text-primary-ink-dark"
                                 >
                                   {org.name}
                                 </Link>
@@ -471,7 +471,7 @@ export function AdminBillingPage(): JSX.Element {
                         {org ? (
                           <Link
                             to={`/admin/organisations/${org.id}`}
-                            className="text-sm font-medium text-primary-ink hover:underline dark:text-primary"
+                            className="text-sm font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                           >
                             {org.name}
                           </Link>

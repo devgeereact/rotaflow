@@ -61,6 +61,27 @@ const config: Config = {
           // screens too and needs the same swap as part of the sitewide
           // design-system contrast pass (`docs/SAAS.md`).
           ink: '#2F5BC0',
+          // The dark-side counterpart, and the reason it has to exist
+          // (docs/SAAS.md GAP-032). `ink` solves "this colour is too light
+          // against white". Dark mode has the mirror problem — the same
+          // `DEFAULT` is too DARK against a #111A2E surface, at 3.74:1 — and
+          // for a while the app answered it with `dark:text-primary`, which
+          // does not clear the line either. Worse, an `ink` class with no
+          // `dark:` pairing carried #2F5BC0 straight into dark mode at 2.5:1.
+          //
+          // Derived by mixing `DEFAULT` toward white until the value clears
+          // 5:1 against EVERY dark surface in the system — canvas #0B1220,
+          // surface #111A2E, subtle, divider, and each `wash-dark` — not just
+          // the common one. The washes are the constraint: #182848 is the
+          // lightest ground any of this text sits on, and a value tuned to the
+          // canvas alone fails there.
+          //
+          // The pattern is `text-{tone}-ink dark:text-{tone}-ink-dark`, used
+          // uniformly. `warning` needs no lightening at all (its `DEFAULT` is
+          // already 6.44:1 on the darkest ground) but still gets the token, so
+          // the rule has no exception for somebody to apply wrongly.
+          'ink-dark': '#769AE9',
+
         },
         // Vivid marketing blue + navy ink ramp, sampled from
         // docs/design/splash-screen.png (and matching signin/dashboard renders).
@@ -109,6 +130,7 @@ const config: Config = {
           // See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
           // text on white reads 3.33:1, under the 4.5:1 AA minimum.
           ink: '#12724E',
+          'ink-dark': '#35AA7A',
         },
         // Attendance green — the Clock In CTA, its "ready" ring, and the
         // on-shift status washes in docs/design/clockin.png. Sampled off that PNG:
@@ -136,6 +158,9 @@ const config: Config = {
           // text on white reads 2.27:1, the worst of the three status inks
           // against the 4.5:1 AA minimum.
           ink: '#7A5410',
+          // Unchanged from `DEFAULT`: amber is already 6.44:1 on the
+          // darkest ground here. The token exists so the rule stays uniform.
+          'ink-dark': '#E0A030',
         },
         danger: {
           DEFAULT: '#D94A3A', // conflict / rejected / absent / error
@@ -144,6 +169,7 @@ const config: Config = {
           // See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
           // text on white reads 4.2:1, under the 4.5:1 AA minimum.
           ink: '#B23A2C',
+          'ink-dark': '#E48075',
         },
         info: {
           DEFAULT: '#388FD4', // informational / neutral status
@@ -153,6 +179,7 @@ const config: Config = {
           // a `Badge tone="info"` finally landed on a public page where the
           // axe gate runs. `DEFAULT` on `wash` is 3.06:1; this is 6.09:1.
           ink: '#1B5E8E',
+          'ink-dark': '#56A0DA',
         },
         content: {
           DEFAULT: '#16191F', // headings, body (light)

@@ -28,7 +28,11 @@ export function NeedHelpCard({ links }: NeedHelpCardProps): JSX.Element {
               onClick={link.onSelect}
               className="flex w-full items-center gap-3 rounded-lg px-1 py-3.5 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
             >
-              <link.icon size={18} aria-hidden="true" className="shrink-0 text-primary" />
+              <link.icon
+                size={18}
+                aria-hidden="true"
+                className="shrink-0 text-primary dark:text-primary-ink-dark"
+              />
               <span className="flex-1 text-sm text-content dark:text-content-dark">
                 {link.label}
               </span>

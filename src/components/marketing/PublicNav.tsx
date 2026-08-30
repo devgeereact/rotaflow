@@ -76,7 +76,7 @@ export function PublicNav(): JSX.Element {
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <BrandMark label={null} className="h-8 w-8" />
           <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-            Rota<span className="text-primary-ink">Flow</span>
+            Rota<span className="text-primary-ink dark:text-primary-ink-dark">Flow</span>
           </span>
         </Link>
 
@@ -89,7 +89,7 @@ export function PublicNav(): JSX.Element {
                 cn(
                   'rounded text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   isActive
-                    ? 'text-primary'
+                    ? 'text-primary dark:text-primary-ink-dark'
                     : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
                 )
               }
@@ -149,7 +149,8 @@ export function PublicNav(): JSX.Element {
           >
             <div className="mb-6 flex items-center justify-between">
               <span className="font-display text-lg font-bold text-content dark:text-content-dark">
-                Rota<span className="text-primary-ink">Flow</span>
+                Rota
+                <span className="text-primary-ink dark:text-primary-ink-dark">Flow</span>
               </span>
               <button
                 type="button"
@@ -170,7 +171,7 @@ export function PublicNav(): JSX.Element {
                     cn(
                       'rounded-xl px-3 py-3 text-base font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                       isActive
-                        ? 'bg-primary/10 text-primary'
+                        ? 'bg-primary/10 text-primary dark:text-primary-ink-dark'
                         : 'text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark',
                     )
                   }

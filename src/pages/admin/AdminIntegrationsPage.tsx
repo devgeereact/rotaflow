@@ -161,7 +161,7 @@ export function AdminIntegrationsPage(): JSX.Element {
               value={totals.failed24h}
               hint={
                 totals.failed24h > 0 ? (
-                  <span className="font-semibold text-danger-ink dark:text-danger">
+                  <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
                     Needs attention
                   </span>
                 ) : (
@@ -174,7 +174,7 @@ export function AdminIntegrationsPage(): JSX.Element {
               value={`${totals.built} of ${connectors.length}`}
               hint={
                 totals.degraded > 0 ? (
-                  <span className="font-semibold text-warning-ink dark:text-warning">
+                  <span className="font-semibold text-warning-ink dark:text-warning-ink-dark">
                     {totals.degraded} degraded
                   </span>
                 ) : totals.built === 0 ? (
@@ -291,7 +291,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                         <td
                           className={`px-3 py-2.5 text-right font-mono tabular-nums ${
                             (connector.success_rate_7d ?? 100) < 95
-                              ? 'text-danger-ink dark:text-danger'
+                              ? 'text-danger-ink dark:text-danger-ink-dark'
                               : 'text-content dark:text-content-dark'
                           }`}
                         >
@@ -312,7 +312,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                         <td
                           className={`px-3 py-2.5 text-right font-mono tabular-nums ${
                             connector.failed_24h
-                              ? 'font-semibold text-danger-ink dark:text-danger'
+                              ? 'font-semibold text-danger-ink dark:text-danger-ink-dark'
                               : 'text-content-muted dark:text-content-muted-dark'
                           }`}
                         >
@@ -337,7 +337,7 @@ export function AdminIntegrationsPage(): JSX.Element {
               proves it will try to use the service, for whether it answers, see{' '}
               <Link
                 to="/admin/platform-health"
-                className="text-primary-ink underline underline-offset-2 dark:text-primary"
+                className="text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
               >
                 System Status
               </Link>
@@ -403,7 +403,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                       {org ? (
                         <Link
                           to={`/admin/organisations/${org.id}`}
-                          className="text-sm font-medium text-content hover:text-primary dark:text-content-dark"
+                          className="text-sm font-medium text-content hover:text-primary dark:text-primary-ink-dark dark:text-content-dark"
                         >
                           {org.name}
                         </Link>

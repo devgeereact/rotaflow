@@ -37,7 +37,10 @@ import type { Notification } from '@/types';
  * back to a plain bell for anything else rather than guessing.
  */
 const TYPE_META: Record<string, { icon: LucideIcon; tone: string }> = {
-  rota_published: { icon: Calendar, tone: 'bg-primary/10 text-primary' },
+  rota_published: {
+    icon: Calendar,
+    tone: 'bg-primary/10 text-primary dark:text-primary-ink-dark',
+  },
   leave_approved: { icon: Umbrella, tone: 'bg-success/10 text-success' },
   leave_declined: { icon: Umbrella, tone: 'bg-danger/10 text-danger' },
   swap_request: { icon: Repeat2, tone: 'bg-info/10 text-info' },
@@ -187,7 +190,7 @@ export function NotificationsPage(): JSX.Element {
         notified about in{' '}
         <Link
           to="/app/account/preferences"
-          className="font-medium text-primary-ink hover:underline dark:text-primary"
+          className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
         >
           Notification preferences
         </Link>
@@ -245,7 +248,7 @@ export function NotificationsPage(): JSX.Element {
                     <button
                       type="button"
                       onClick={() => void handleMarkRead(notification.id)}
-                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary dark:text-primary-ink-dark hover:bg-primary/10"
                     >
                       Mark read
                     </button>

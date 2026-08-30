@@ -283,7 +283,7 @@ export function SettingsPoliciesPage(): JSX.Element {
         that site's own Settings tab in{' '}
         <Link
           to="/app/locations"
-          className="font-medium text-primary-ink hover:underline dark:text-primary"
+          className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
         >
           Locations
         </Link>

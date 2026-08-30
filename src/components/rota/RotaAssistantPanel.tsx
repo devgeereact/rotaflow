@@ -80,12 +80,13 @@ const SEVERITY_STYLE: Record<
 > = {
   critical: {
     icon: CircleAlert,
-    className: 'border-danger/30 bg-danger/5 text-danger-ink',
+    className: 'border-danger/30 bg-danger/5 text-danger-ink dark:text-danger-ink-dark',
     label: 'Blocking',
   },
   warning: {
     icon: AlertTriangle,
-    className: 'border-warning/30 bg-warning/5 text-warning-ink',
+    className:
+      'border-warning/30 bg-warning/5 text-warning-ink dark:text-warning-ink-dark',
     label: 'Worth a look',
   },
   info: {
@@ -390,12 +391,12 @@ export function RotaAssistantPanel({
             <Sparkles
               size={15}
               aria-hidden="true"
-              className="mt-0.5 shrink-0 text-primary"
+              className="mt-0.5 shrink-0 text-primary dark:text-primary-ink-dark"
             />
             {contextLoading ? 'Reading the rota…' : overview.headline}
           </p>
           {contextFailed && (
-            <p className="mt-1.5 pl-[1.4rem] text-xs text-warning-ink">
+            <p className="mt-1.5 pl-[1.4rem] text-xs text-warning-ink dark:text-warning-ink-dark">
               Leave and availability could not be loaded, so clashes against them are not
               included below.
             </p>
@@ -411,7 +412,7 @@ export function RotaAssistantPanel({
               className={cn(
                 '-mb-px border-b-2 pb-2 text-xs font-semibold transition-colors',
                 tab === t.key
-                  ? 'border-primary text-primary-ink dark:text-primary'
+                  ? 'border-primary text-primary-ink dark:text-primary-ink-dark'
                   : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
               )}
             >
@@ -492,7 +493,7 @@ export function RotaAssistantPanel({
                     </p>
 
                     {candidates.length === 0 ? (
-                      <p className="text-xs text-warning-ink">
+                      <p className="text-xs text-warning-ink dark:text-warning-ink-dark">
                         Nobody on the roster is free for this one. Everyone is on leave,
                         already working, or has marked themselves unavailable.
                       </p>
@@ -513,12 +514,12 @@ export function RotaAssistantPanel({
                                 )}
                               </p>
                               {candidate.reasons.length > 0 && (
-                                <p className="text-xs text-success-ink">
+                                <p className="text-xs text-success-ink dark:text-success-ink-dark">
                                   {candidate.reasons.join(' · ')}
                                 </p>
                               )}
                               {candidate.blockers.length > 0 && (
-                                <p className="text-xs text-warning-ink">
+                                <p className="text-xs text-warning-ink dark:text-warning-ink-dark">
                                   {candidate.blockers.join(' · ')}
                                 </p>
                               )}
@@ -578,7 +579,10 @@ export function RotaAssistantPanel({
             </Button>
 
             {error && (
-              <p className="text-sm text-warning-ink" role="status">
+              <p
+                className="text-sm text-warning-ink dark:text-warning-ink-dark"
+                role="status"
+              >
                 {error}
               </p>
             )}
@@ -611,7 +615,7 @@ export function RotaAssistantPanel({
                       : `Apply ${suggestions.length} shift${suggestions.length === 1 ? '' : 's'}`}
                   </Button>
                 ) : (
-                  <p className="text-sm text-warning-ink">
+                  <p className="text-sm text-warning-ink dark:text-warning-ink-dark">
                     {applyBlockedReason ??
                       'Select a single location in the filters above to apply these, a shift has to be written into one site’s rota.'}
                   </p>
