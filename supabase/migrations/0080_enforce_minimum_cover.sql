@@ -107,6 +107,15 @@ begin
          and (s.starts_at at time zone l.timezone)::date = d.day
     ) c on true
    where r.org_id = v_rota.org_id
+     -- Only THIS rota's sites. Joining every rule in the organisation was the
+     -- first version's bug, and its worst form was not the one the test caught
+     -- (an org-wide rota judged against a site it has nothing to do with) but
+     -- the ordinary one: Ward B being short would have blocked Ward A's rota.
+     -- A rota covers one location, or carries its own shifts' locations.
+     and (r.location_id = v_rota.location_id
+          or exists (select 1 from public.shifts s2
+                      where s2.rota_id = v_rota.id
+                        and s2.location_id = r.location_id))
      and r.min_staff > 0
      and extract(dow from d.day)::smallint = r.weekday
      -- Yesterday cannot be fixed. Evaluated in the location's own timezone,

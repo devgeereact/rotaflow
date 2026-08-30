@@ -25,13 +25,15 @@
 --   7. `min_staff = 0` means no minimum, not "must be empty";
 --   8. a shift that has already ended still counts, or every site reads
 --      as critically understaffed each evening (0036's own note);
---   9. an organisation with no rules at all is unaffected.
+--   9. a rota is judged only against ITS OWN sites — a shortfall at Ward B
+--      must not block Ward A's rota, which is the dangerous form of the
+--      bug the first version of 0080 had.
 --
 -- pgTAP, run via `supabase test db`.
 -- =====================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
@@ -228,6 +230,41 @@ select set_config(
 select lives_ok(
   $$select public.publish_rota('bbbbbbbb-3000-0000-0000-000000000008')$$,
   'a day already past is skipped — nobody can fix yesterday'
+);
+
+-- ---------- 10: another site's shortfall must not block this one -------
+-- The first version of 0080 joined every minimum_cover_rules row in the
+-- organisation, so Ward B being short would have refused Ward A's rota. That
+-- is the same defect the null-location case surfaced, in the shape that would
+-- actually have bitten a customer.
+reset role;
+select set_config('request.jwt.claims','',true);
+
+insert into public.locations (id, org_id, name, timezone) values
+  ('bbbbbbbb-1000-0000-0000-000000000002',
+   'bbbbbbbb-0000-0000-0000-000000000001', 'Ward B', 'Europe/London');
+
+-- Ward B needs 5 every Thursday and has nobody, ever.
+insert into public.minimum_cover_rules (org_id, location_id, weekday, min_staff) values
+  ('bbbbbbbb-0000-0000-0000-000000000001','bbbbbbbb-1000-0000-0000-000000000002',4,5);
+
+insert into public.rotas (id, org_id, location_id, name, period_start, period_end, status)
+values ('bbbbbbbb-3000-0000-0000-000000000010',
+        'bbbbbbbb-0000-0000-0000-000000000001',
+        'bbbbbbbb-1000-0000-0000-000000000001',
+        'Ward A Thursday', date '2099-01-08', date '2099-01-08', 'draft');
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub','b1111111-1111-1111-1111-111111111111','role','authenticated')::text,
+  true);
+
+-- 2099-01-08 is a Thursday. Ward A has no Thursday minimum, so its rota
+-- publishes even though Ward B is five short on that day.
+select lives_ok(
+  $$select public.publish_rota('bbbbbbbb-3000-0000-0000-000000000010')$$,
+  'another site being short does not block this site''s rota'
 );
 
 select * from finish();
