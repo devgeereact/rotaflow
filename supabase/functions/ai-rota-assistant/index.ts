@@ -38,6 +38,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { checkAnnouncementGrounding } from './grounding.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 // Set per-request at the top of the `Deno.serve` handler below, once the
@@ -540,6 +541,50 @@ Deno.serve(async (req: Request) => {
           502,
         );
       }
+
+      // ---- Grounded like the rota task, as far as prose allows (BUG-058).
+      //
+      // Until now this was the only path that returned model output the
+      // function had not checked against a real row. `ANNOUNCEMENT_SYSTEM_
+      // PROMPT` tells the model never to invent a date, a name, a site or a
+      // number; the rota path exists BECAUSE being told a rule is not being
+      // held to one. See grounding.ts for what is decidable here and what is
+      // deliberately not attempted.
+      const grounding = checkAnnouncementGrounding(title, draftBody, {
+        periodStart,
+        periodEnd,
+        prompt,
+        known: [
+          org?.name ?? '',
+          ...staff.map((s) => `${s.first_name} ${s.last_name}`),
+          ...(shiftTypes ?? []).map((t) => t.name),
+          ...(locations ?? []).map((l) => l.name),
+        ],
+      });
+
+      // A date in neither the rota period nor the manager's own words is a
+      // fabrication, and it is the one that costs a shift: staff read "Friday
+      // 14th", turn up, and the ward is empty. Refused rather than returned
+      // with a warning, because the composer PRE-FILLS the fields — a warning
+      // beside text that is already in the box is read after it is posted.
+      if (grounding.ungroundedDates.length > 0) {
+        await auditAiRequest('ai_assistant.announcement_rejected', {
+          requestedBy: requester ? { id: requester.id, email: requester.email } : null,
+          model,
+          promptVersion: PROMPT_VERSION,
+          promptLength: prompt.length,
+          reason: 'ungrounded_dates',
+          ungroundedDates: grounding.ungroundedDates,
+        });
+        return jsonResponse(
+          {
+            error:
+              'The draft mentioned a date that is not in this rota period or in your request, so it was not used. Try again, or write the announcement yourself.',
+          },
+          502,
+        );
+      }
+
       await auditAiRequest('ai_assistant.announcement_drafted', {
         requestedBy: requester ? { id: requester.id, email: requester.email } : null,
         model,
@@ -548,12 +593,18 @@ Deno.serve(async (req: Request) => {
         titleLength: title.length,
         bodyLength: draftBody.length,
         urgent: parsed.urgent === true,
+        // Recorded even when it passes, so the false-positive rate of the name
+        // check is measurable from the audit log rather than guessed at.
+        suspectNames: grounding.suspectNames,
       });
       return jsonResponse({
         title: title.slice(0, 120),
         body: draftBody,
         urgent: parsed.urgent === true,
         reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : '',
+        // Warned, not refused: English capitalises plenty of words that are
+        // not names, so this is a prompt to read the draft, not a verdict.
+        unverified: grounding.suspectNames,
       });
     }
 

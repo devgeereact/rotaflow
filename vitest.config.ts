@@ -25,7 +25,13 @@ export default defineConfig({
     // Node, not jsdom. The outbox suite brings its own IndexedDB via
     // fake-indexeddb, which is cheaper and more deterministic than a full DOM.
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // `supabase/functions` is Deno and is excluded from typecheck and lint, so
+    // CLAUDE.md's "no automated check stands in for reading those files" holds
+    // for the request handling — it needs Deno, a JWT and OpenRouter. It does
+    // not have to hold for pure logic extracted out of one. `grounding.ts`
+    // decides whether a manager is shown an invented date; that is worth a
+    // test, and it imports nothing from Deno so it runs here unchanged.
+    include: ['src/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
 
     env: {
       // NOT the developer's zone, and NOT UTC either.
