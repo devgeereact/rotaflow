@@ -1,0 +1,32 @@
+-- =====================================================================
+-- 0088_announcement_audience_is_internal.sql — a helper nobody calls
+-- directly should not be callable directly
+--
+-- 0087 added `announcement_audience(uuid)` and revoked it from `public`
+-- and `anon`. That was not enough: `0075` leaves a default ACL granting
+-- EXECUTE on new functions to `authenticated`, so the revoke removed the
+-- grant I named and left the one I did not. Verified against production
+-- after 0087 applied — `has_function_privilege('authenticated', …)`
+-- returned true.
+--
+-- Why that matters, even though it is narrow. The function is SECURITY
+-- DEFINER and takes an announcement id with NO membership check, because
+-- both of its real callers are themselves SECURITY DEFINER and have
+-- already established who is asking:
+--
+--   * `announcements_enqueue_published`, a trigger; and
+--   * `remind_announcement_unread`, which checks `has_org_role` first.
+--
+-- Called directly it answers "which user ids is this announcement
+-- addressed to" for ANY announcement, in any organisation. Exploiting it
+-- needs a uuid from another tenant, which is not something an attacker
+-- can guess — but "they would have to guess a uuid" is obscurity, not a
+-- tenant boundary, and this project's rule is that the database is the
+-- guard.
+--
+-- The fix is the revoke, not a membership check inside the function: a
+-- check there would have to pass for the trigger too, and the trigger
+-- runs with no session at all.
+-- =====================================================================
+
+revoke all on function public.announcement_audience(uuid) from authenticated;

@@ -31,13 +31,18 @@
 --  11. it returns 0 and enqueues nothing when everyone has;
 --  12. a member with no management role cannot call it — it is
 --      SECURITY DEFINER, so its own check is the only thing between a
---      staff member and a broadcast to every phone in the org.
+--      staff member and a broadcast to every phone in the org;
+--  13. `announcement_audience` is not callable by a client at all. It is
+--      SECURITY DEFINER with no membership check of its own — correct,
+--      because both real callers have already established who is asking
+--      — so a direct grant would answer "who is this announcement for"
+--      for any organisation's announcement (0088).
 --
 -- pgTAP, run via `supabase test db`.
 -- =====================================================================
 
 begin;
-select plan(12);
+select plan(13);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
@@ -273,5 +278,10 @@ select throws_ok(
   'a staff member cannot broadcast a reminder to the whole department');
 
 reset role;
+
+select ok(
+  not has_function_privilege('authenticated', 'public.announcement_audience(uuid)', 'EXECUTE'),
+  'announcement_audience is internal: no client role may call it directly');
+
 select * from finish();
 rollback;
