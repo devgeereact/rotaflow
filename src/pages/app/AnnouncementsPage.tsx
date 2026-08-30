@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useInngestDispatch } from '@/hooks/useInngestDispatch';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
@@ -11,6 +10,7 @@ import {
   listAnnouncementReads,
   listAnnouncements,
   markAnnouncementRead,
+  remindAnnouncementUnread,
 } from '@/services/announcementService';
 import { listDepartments, listLocations } from '@/services/locationService';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
@@ -67,7 +67,6 @@ export function AnnouncementsPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canManageStaff } = usePermissions();
   const { user } = useSupabaseAuth();
-  const { send } = useInngestDispatch();
   const { showError, showSuccess } = useToast();
 
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
@@ -162,34 +161,15 @@ export function AnnouncementsPage(): JSX.Element {
       }
       setRows((prev) => [created, ...prev]);
       showSuccess('Announcement posted.');
-
-      const recipients = staff
-        .filter((s) => {
-          if (created.department_id) return s.department_id === created.department_id;
-          if (created.location_id) {
-            const deptIds = new Set(
-              departments
-                .filter((d) => d.location_id === created.location_id)
-                .map((d) => d.id),
-            );
-            return s.department_id && deptIds.has(s.department_id);
-          }
-          return true;
-        })
-        .map((s) => s.user_id)
-        .filter((id): id is string => Boolean(id));
-
-      if (recipients.length > 0) {
-        void send('announcement/published', {
-          orgId,
-          userIds: recipients,
-          type: 'announcement',
-          title: created.title,
-          body: created.body,
-        });
-      }
+      // Notifying the audience is the database's job now
+      // (`announcements_enqueue_published`, 0087). It used to be dispatched
+      // from here, after the insert had already committed and the toast was
+      // already on screen — so closing the tab on that toast posted an
+      // announcement nobody was told about. The audience was also resolved
+      // from this page's loaded staff list, which made an announcement's
+      // reach depend on a client-side cache.
     },
-    [orgId, user, staff, departments, send, showError, showSuccess],
+    [orgId, user, showError, showSuccess],
   );
 
   const handleMarkRead = useCallback(
@@ -219,51 +199,27 @@ export function AnnouncementsPage(): JSX.Element {
   );
 
   const handleRemindUnread = useCallback(
-    (card: AnnouncementCard): void => {
-      if (!orgId) return;
-      const row = rows.find((r) => r.id === card.id);
-      if (!row) return;
+    async (card: AnnouncementCard): Promise<void> => {
       setBusyId(card.id);
       try {
-        const readerIds = new Set(
-          reads
-            .filter((r) => r.announcement_id === card.id)
-            .map((r) => r.staff_profile_id),
-        );
-        const targeted = staff.filter((s) => {
-          if (row.department_id) return s.department_id === row.department_id;
-          if (row.location_id) {
-            const deptIds = new Set(
-              departments
-                .filter((d) => d.location_id === row.location_id)
-                .map((d) => d.id),
-            );
-            return s.department_id && deptIds.has(s.department_id);
-          }
-          return true;
-        });
-        const recipients = targeted
-          .filter((s) => !readerIds.has(s.id))
-          .map((s) => s.user_id)
-          .filter((id): id is string => Boolean(id));
-
-        if (recipients.length === 0) {
+        // Server-side for two reasons: the outbox row is committed before this
+        // returns, so the reminder cannot be lost with the tab; and the unread
+        // set is computed from the announcement's own audience rather than
+        // from `staff`/`reads` as this page happens to hold them.
+        const reached = await remindAnnouncementUnread(card.id);
+        if (reached === 0) {
           showError('Everyone in this audience has already read it.');
           return;
         }
-        void send('announcement/published', {
-          orgId,
-          userIds: recipients,
-          type: 'announcement',
-          title: row.title,
-          body: row.body,
-        });
-        showSuccess(`Reminder sent to ${recipients.length} unread.`);
+        showSuccess(`Reminder sent to ${reached} unread.`);
+      } catch (err) {
+        reportError(err, { area: 'announcements:remind' });
+        showError('Could not send that reminder.');
       } finally {
         setBusyId(null);
       }
     },
-    [orgId, rows, reads, staff, departments, send, showError, showSuccess],
+    [showError, showSuccess],
   );
 
   const handleTakeDown = useCallback(
@@ -306,7 +262,7 @@ export function AnnouncementsPage(): JSX.Element {
         canPost={canManageStaff}
         busyId={busyId}
         onNewAnnouncement={() => setComposerOpen(true)}
-        onRemindUnread={handleRemindUnread}
+        onRemindUnread={(card) => void handleRemindUnread(card)}
         onTakeDown={(card) => void handleTakeDown(card)}
         onMarkRead={(card) => void handleMarkRead(card)}
       />

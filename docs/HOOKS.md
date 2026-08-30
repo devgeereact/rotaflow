@@ -57,22 +57,18 @@ interface ImageTransform {
 export function useOptimizedImage(path: string, t?: ImageTransform): string;
 ```
 
-## 5. `useInngestDispatch`
+## 5. `useInngestDispatch` — REMOVED (0087)
 
-`src/hooks/useInngestDispatch.ts`
-Dispatches a typed event to Inngest's ingest endpoint using the write-only key.
-Fire-and-forget; failures are reported to Sentry, never thrown into the UI.
+Deleted. Every notification the product owes is now enqueued by the database
+in the same transaction as the event that owes it — rota publication (0069),
+leave and swap decisions and announcements (0087) — and drained by pg_cron.
 
-```ts
-interface DispatchResult {
-  ok: boolean;
-}
-interface UseInngestDispatch {
-  sending: boolean;
-  send: (name: string, data: Record<string, unknown>) => Promise<DispatchResult>;
-}
-export function useInngestDispatch(): UseInngestDispatch;
-```
+Nothing in the app dispatches a notification any more, so there is no hook to
+call. `postInngestEvent` survives in `src/services/notificationDispatchService.ts`
+for one reason: an install that queued a `notify` item in its IndexedDB outbox
+before this change still holds it, and the replayer needs somewhere to send it.
+
+See `docs/SAAS.md` GAP-026 for why browser-initiated dispatch was lossy.
 
 ## RotaFlow-specific hooks
 
