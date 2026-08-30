@@ -3065,6 +3065,7 @@ export type Database = {
         };
         Returns: {
           invite_expires_at: string;
+          invite_id: string;
           invite_token: string;
           org_id: string;
         }[];
