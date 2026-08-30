@@ -327,7 +327,7 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/functions/ai-rota-assistant/grounding.ts` · BUG-058 closed #202 · 17 unit tests · deployed v19, 2026-08-30
 - [x] CAP-072 🟢 AI cost control — `max_tokens`, a prompt cap, a context-size cap, per-user AND per-org
       hourly limits, and real token usage recorded on every audit row
-      `supabase/migrations/0089_org_rate_limit.sql` · HARDEN-004 closed #204 · 6 pgTAP assertions
+      `supabase/migrations/0089_org_rate_limit.sql` · HARDEN-004 closed #204 · 6 pgTAP assertions · deployed v20, 2026-08-30
 - [ ] CAP-072a 🔵 AI resilience — one model, no fallback: an OpenRouter outage is a 502 with no second try
       `supabase/functions/ai-rota-assistant/index.ts` · HARDEN-010 · P2
 - [ ] CAP-073 🔴 Predictive insight — coverage risk, absence patterns, cost forecasting
