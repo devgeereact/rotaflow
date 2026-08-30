@@ -231,6 +231,45 @@ from `0028`, which also redefined the first two) so membership checks don't recu
 | `public.has_support_access(org uuid, write boolean?)` | bool    | this admin holds an unrevoked, unexpired `support_access_sessions` row for `org` (`0028`); `write` additionally requires `scope = 'read_write'` |
 | `public.has_platform_role(roles text[])`              | bool    | current user holds one of these `platform_admins.role` values (`0015`)                                                                          |
 
+### 5a. Grants — the outer envelope (`0056`, narrowed by `0075`)
+
+RLS decides which rows; GRANT decides whether the role reaches the table at all.
+`0056` made the grants explicit so the migration set is reconstructible, and
+recorded them exactly as the hosted project had them. `0075` narrows `anon`,
+which `0056` deliberately left for a reviewed migration of its own.
+
+**`anon` now holds nothing in `public`** except `usage` on the schema and
+`execute` on `preview_invite` — the one thing the logged-out app calls, so
+`/invite/:token` can render who invited someone before they have an account.
+It also loses `execute` on the six security predicates and every other callable
+function, so `/rest/v1/rpc/` answers nothing to an anonymous caller.
+
+Three things worth knowing, each verified against the live catalogue rather than
+inferred from the migration files:
+
+- **The CRUD grants really were inert.** Every policy in `public` requires one
+  of the identity predicates above; no table has RLS disabled; no RLS-enabled
+  table lacks a policy; and all three views are `security_invoker = true`. An
+  anon session could already read no row.
+- **`TRUNCATE` was not inert.** The hosted default ACL grants `arwdDxtm`, not
+  the CRUD set `0056` documented, and **RLS does not filter TRUNCATE**. It was
+  unreachable only because `anon` is `NOLOGIN` and PostgREST never issues the
+  statement — a property of a component we do not control. `0075` removes it
+  from `anon` entirely and from `authenticated` too, along with `REFERENCES`
+  and `TRIGGER`.
+- **`0056`'s claim that "a new table gets no privileges" was false here.**
+  It holds for a fresh Postgres built from these migrations; on the hosted
+  project `pg_default_acl` grants `anon=arwdDxtm` on every table created in
+  `public`, so the next migration to add a table would have undone the revoke.
+  `0075` alters the default privileges for `anon` only. `authenticated` and
+  `service_role` keep theirs deliberately: a new table that is dead on arrival
+  for `authenticated` turns a forgotten GRANT into a silent 401 in a feature
+  nobody had reason to suspect.
+
+Fifteen `returns trigger` functions still carry PUBLIC EXECUTE and are left
+alone: Postgres refuses to call a trigger function directly, so the grant
+confers nothing.
+
 Baseline policy shape:
 
 | Scope                                                                                                                                      | Read                                                                                                       | Write                                                                    |
