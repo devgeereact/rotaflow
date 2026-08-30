@@ -16,7 +16,7 @@ import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import {
-  countMembershipsByOrg,
+  countActiveStaffByOrg,
   listAllOrganisations,
   listAllSubscriptions,
 } from '@/services/platformService';
@@ -104,7 +104,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [planPrices, setPlanPrices] = useState<Map<string, number>>(new Map());
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [memberCounts, setMemberCounts] = useState<Map<string, number>>(new Map());
+  const [staffCounts, setStaffCounts] = useState<Map<string, number>>(new Map());
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
@@ -123,14 +123,14 @@ export function AdminSubscriptionsPage(): JSX.Element {
           listAllSubscriptions(),
           listPlans(),
           listInvoices(),
-          countMembershipsByOrg(),
+          countActiveStaffByOrg(),
         ]);
         if (!active) return;
         setSubscriptions(subs);
         setPlans(planRows);
         setPlanPrices(new Map(planRows.map((p) => [p.code, p.monthly_price_pence])));
         setInvoices(invoiceRows);
-        setMemberCounts(counts);
+        setStaffCounts(counts);
         const byOrg = new Map(subs.map((s) => [s.org_id, s]));
         setRows(
           orgs.map((organisation) => ({
@@ -184,17 +184,34 @@ export function AdminSubscriptionsPage(): JSX.Element {
   useRegisterConsoleRefresh(retry);
 
   // Value from the subscription's negotiated price, falling back to the plan
-  // price; payment state from subscription status; usage from real
-  // membership headcount over the plan's seat limit.
+  // price; payment state from subscription status.
+  //
+  // Usage counts ACTIVE STAFF, not memberships (BUG-062). 0070 enforces
+  // `seat_limit` on `staff_profiles where active is true`, and so does the
+  // customer's own Settings → Billing screen. This bar used membership
+  // headcount — login accounts — and `staff_profiles.user_id` is nullable
+  // because most rostered staff never sign in, so an organisation at its cap
+  // could read "Usage 20%" here while the database refused its next hire. A
+  // support agent asking "why can this customer not add anyone?" was looking
+  // at a bar with room on it.
+  //
+  // `usage` is null rather than 0 for an uncapped plan. Zero is a real
+  // reading — an organisation with no staff — and Enterprise showing the same
+  // thing as an empty tenant is the kind of number nobody questions.
   const facts = useCallback(
     (
       row: Row,
-    ): { value: number | null; cycle: string; payment: PaymentState; usage: number } => {
+    ): {
+      value: number | null;
+      cycle: string;
+      payment: PaymentState;
+      usage: number | null;
+    } => {
       const sub = row.subscription;
       const plan = plans.find((p) => p.code === (sub?.plan ?? row.organisation.plan));
       const seatLimit = plan?.seat_limit ?? null;
-      const memberCount = memberCounts.get(row.organisation.id) ?? 0;
-      const usage = seatLimit ? Math.round((memberCount / seatLimit) * 100) : 0;
+      const staffCount = staffCounts.get(row.organisation.id) ?? 0;
+      const usage = seatLimit ? Math.round((staffCount / seatLimit) * 100) : null;
 
       if (!sub) return { value: null, cycle: 'Monthly', payment: 'pending', usage };
 
@@ -210,7 +227,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
             : 'paid';
       return { value, cycle: 'Monthly', payment, usage };
     },
-    [plans, memberCounts],
+    [plans, staffCounts],
   );
 
   const planOf = useCallback(
@@ -271,7 +288,9 @@ export function AdminSubscriptionsPage(): JSX.Element {
         case 'value':
           return ((facts(a).value ?? 0) - (facts(b).value ?? 0)) * direction;
         case 'usage':
-          return (facts(a).usage - facts(b).usage) * direction;
+          // An uncapped plan sorts as -1 so it groups at one end rather than
+          // mixing in among real percentages as though it were 0%.
+          return ((facts(a).usage ?? -1) - (facts(b).usage ?? -1)) * direction;
         case 'period': {
           const av = a.subscription?.current_period_end ?? '';
           const bv = b.subscription?.current_period_end ?? '';
@@ -389,7 +408,10 @@ export function AdminSubscriptionsPage(): JSX.Element {
         width: 'w-[7%]',
         numeric: true,
         sortable: true,
-        cell: (row) => `${facts(row).usage}%`,
+        cell: (row) => {
+          const { usage } = facts(row);
+          return usage === null ? 'Uncapped' : `${usage}%`;
+        },
       },
       {
         key: 'actions',
@@ -530,9 +552,14 @@ export function AdminSubscriptionsPage(): JSX.Element {
               actually terminates. In the table, <strong>Value</strong> is the
               subscription&rsquo;s negotiated price or its plan&rsquo;s list price;{' '}
               <strong>Payment</strong> reflects the subscription&rsquo;s status; and{' '}
-              <strong>Usage</strong> is real membership headcount over the plan&rsquo;s
-              seat limit. <strong>Cycle</strong> reads &ldquo;Monthly&rdquo; for every row
-              because no other billing interval exists anywhere in <code>plans</code>.
+              <strong>Usage</strong> is active staff over the plan&rsquo;s seat limit —
+              the same population the database enforces the limit on, and the same one the
+              customer sees on their own billing screen. It counted login accounts until
+              2026-08-30, which is a smaller and unrelated number: most rostered staff
+              never sign in, so a tenant at its cap could read 20% here while its next
+              hire was being refused. An uncapped plan reads <strong>Uncapped</strong>{' '}
+              rather than 0%. <strong>Cycle</strong> reads &ldquo;Monthly&rdquo; for every
+              row because no other billing interval exists anywhere in <code>plans</code>.
             </p>
           </Callout>
 

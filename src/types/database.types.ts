@@ -3258,6 +3258,13 @@ export type Database = {
           org_id: string;
         }[];
       };
+      platform_staff_counts: {
+        Args: never;
+        Returns: {
+          org_id: string;
+          staff_active: number;
+        }[];
+      };
       platform_tenant_counts: {
         Args: { p_org: string };
         Returns: {
