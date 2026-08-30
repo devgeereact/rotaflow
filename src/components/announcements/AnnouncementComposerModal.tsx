@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { reportError } from '@/lib/sentry';
-import { draftAnnouncement } from '@/services/aiRotaService';
+import { draftAnnouncement, PlanRequiredError } from '@/services/aiRotaService';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import type { Department, Location } from '@/types';
 
 export interface AnnouncementDraft {
@@ -64,6 +65,10 @@ export function AnnouncementComposerModal({
   const [drafting, setDrafting] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  // Drafting calls the same Edge Function as the rota assistant and is gated
+  // by the same entitlement (CAP-038).
+  const { has: hasFeature, loading: featuresLoading } = useFeatureAccess();
+  const hasAiAssistant = hasFeature('ai_rota_assistant');
 
   useEffect(() => {
     if (!open) return;
@@ -92,10 +97,17 @@ export function AnnouncementComposerModal({
       setUrgent(draft.urgent);
       setAiNote(draft.reasoning || 'Draft ready. Read it through before posting.');
     } catch (err) {
-      reportError(err, { area: 'announcements:ai-draft' });
-      setAiError(
-        'AI drafting is unavailable right now. Write the announcement below as normal.',
-      );
+      // A plan refusal is not an outage. Telling an owner it is "unavailable
+      // right now" sends them to check their connection over what is actually
+      // a billing decision, and it is the one error here they can act on.
+      if (err instanceof PlanRequiredError) {
+        setAiError(err.message);
+      } else {
+        reportError(err, { area: 'announcements:ai-draft' });
+        setAiError(
+          'AI drafting is unavailable right now. Write the announcement below as normal.',
+        );
+      }
     } finally {
       setDrafting(false);
     }
@@ -134,16 +146,22 @@ export function AnnouncementComposerModal({
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={drafting || !aiPrompt.trim()}
+                disabled={
+                  drafting || featuresLoading || !hasAiAssistant || !aiPrompt.trim()
+                }
                 onClick={() => void handleDraft()}
               >
                 <Wand2 size={15} aria-hidden="true" />
                 {drafting ? 'Drafting…' : 'Draft'}
               </Button>
             </div>
+            {/* The block stays visible on a plan without the assistant rather
+                than disappearing: an owner cannot ask for something they have
+                never seen. Only the helper line changes. */}
             <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
-              Grounded in the next fortnight&rsquo;s real rota. It fills the form below.
-              Nothing is posted until you press Post.
+              {featuresLoading || hasAiAssistant
+                ? 'Grounded in the next fortnight’s real rota. It fills the form below. Nothing is posted until you press Post.'
+                : 'Included with the Business and Enterprise plans. Upgrade in Settings → Billing, or write the announcement below as normal.'}
             </p>
             {aiNote && (
               <p className="mt-1.5 text-xs text-success" role="status">

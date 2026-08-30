@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { PermissionDenied } from '@/components/PermissionDenied';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -174,6 +175,10 @@ function formatWeekRange(dates: string[]): string {
 export function RotaBuilderPage(): JSX.Element {
   const { orgId, orgName } = useOrg();
   const { canBuildRota } = usePermissions();
+  // `plans.features` has listed the assistant as Business-and-above since 0030
+  // and nothing read it until now (CAP-038).
+  const { has: hasFeature, loading: featuresLoading } = useFeatureAccess();
+  const hasAiAssistant = hasFeature('ai_rota_assistant');
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
 
@@ -1590,6 +1595,17 @@ export function RotaBuilderPage(): JSX.Element {
   const autoFillRota = autoFillLocation ? rotasByLocation.get(autoFillLocation.id) : null;
 
   const handleAutoFillClick = (): void => {
+    // Courtesy, not enforcement. The refusal that counts is in
+    // `ai-rota-assistant` itself, which spends the OpenRouter budget and is
+    // reachable with any member's JWT (CAP-038). This exists so a manager on
+    // Starter sees an upgrade sentence instead of a 403 from a panel that
+    // opened as though it would work.
+    if (!hasAiAssistant) {
+      showError(
+        'The AI assistant is included with the Business and Enterprise plans. Upgrade in Settings → Billing to use it.',
+      );
+      return;
+    }
     if (!autoFillLocation || !autoFillRota) {
       showError('Select a single location above to auto-fill its rota.');
       return;
@@ -1725,7 +1741,22 @@ export function RotaBuilderPage(): JSX.Element {
             >
               {busyAction === 'previous-week' ? 'Copying…' : 'Copy last week'}
             </Button>
-            <Button size="sm" variant="secondary" onClick={handleAutoFillClick}>
+            {/* Shown but disabled rather than hidden while the entitlement is
+                unknown or absent: a button that disappears once the features
+                load reads as a bug, and one that was never there gives a
+                manager nothing to ask their owner about. `title` carries the
+                reason for a pointer; the click handler says it out loud. */}
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleAutoFillClick}
+              disabled={featuresLoading}
+              title={
+                hasAiAssistant
+                  ? undefined
+                  : 'Included with the Business and Enterprise plans'
+              }
+            >
               <Sparkles size={14} aria-hidden="true" />
               AI fill gaps
             </Button>
