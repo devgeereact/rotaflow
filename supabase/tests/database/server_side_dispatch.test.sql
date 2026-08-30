@@ -145,15 +145,12 @@ select is(
   'a withdrawal is not a decision and enqueues nothing');
 
 -- ── swaps ─────────────────────────────────────────────────────────────
-insert into public.rotas (id, org_id, location_id, period_start, period_end, status, created_by) values
-  ('dddddddd-4000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001',
-   'dddddddd-1000-0000-0000-000000000001', date '2027-03-01', date '2027-03-07',
-   'published', 'd1111111-1111-1111-1111-111111111111');
-
-insert into public.shifts (id, org_id, rota_id, location_id, staff_profile_id, starts_at, ends_at, status) values
+-- No rota: `shift_swaps.shift_id` is NOT NULL but `shifts.rota_id` is not, and
+-- the swap trigger reads neither. A published rota here would only couple this
+-- test to 0061's publish guards for nothing.
+insert into public.shifts (id, org_id, location_id, staff_profile_id, starts_at, ends_at, status) values
   ('dddddddd-4100-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001',
-   'dddddddd-4000-0000-0000-000000000001', 'dddddddd-1000-0000-0000-000000000001',
-   'dddddddd-2000-0000-0000-000000000002',
+   'dddddddd-1000-0000-0000-000000000001', 'dddddddd-2000-0000-0000-000000000002',
    timestamptz '2027-03-02 09:00+00', timestamptz '2027-03-02 17:00+00', 'assigned');
 
 insert into public.shift_swaps (id, org_id, shift_id, requested_by, target_staff_profile_id, status) values
