@@ -117,6 +117,32 @@ export async function countLocationsByOrg(): Promise<Map<string, number>> {
   return counts;
 }
 
+/**
+ * Active staff per organisation, across every tenant (BUG-062).
+ *
+ * This is the population `plans.seat_limit` is actually enforced on — 0070's
+ * trigger counts `staff_profiles where active is true`, and so does the
+ * customer's own Settings → Billing screen. The console's seat-usage bar used
+ * `countMembershipsByOrg` instead, which counts login accounts: a rota has far
+ * more people on it than sign in, so an organisation at its cap could show
+ * "Usage 20%" while the database was refusing its next staff member.
+ *
+ * Routed through an RPC for the same reason `countLocationsByOrg` above is —
+ * `staff_profiles` is not in 0031's carve-out, so reading it directly across
+ * every tenant returns nothing for any organisation without an open support
+ * session, turning a wrong number into a confident zero.
+ */
+export async function countActiveStaffByOrg(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc('platform_staff_counts');
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    counts.set(row.org_id, Number(row.staff_active));
+  }
+  return counts;
+}
+
 /** Published rotas across every tenant. The platform-wide total. */
 export async function countPublishedRotas(): Promise<number> {
   // Through the definer function, not a head count on `rotas`. Since 0028 a

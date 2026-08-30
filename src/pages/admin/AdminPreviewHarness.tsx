@@ -520,17 +520,20 @@ const SUPPORT_CASES = [
 );
 
 const PLANS = [
-  ['starter', 'Starter', 2900, 1],
-  ['professional', 'Professional', 12900, 2],
-  ['business', 'Business', 29900, 3],
-  ['enterprise', 'Enterprise', 79000, 4],
-].map(([code, name, price, sort]) => ({
+  ['starter', 'Starter', 2900, 1, 15, 1],
+  ['professional', 'Professional', 12900, 2, 60, 5],
+  ['business', 'Business', 29900, 3, 200, 20],
+  ['enterprise', 'Enterprise', 79000, 4, null, null],
+].map(([code, name, price, sort, seats, sites]) => ({
   code,
   name,
   monthly_price_pence: price,
   currency: 'GBP',
-  seat_limit: null,
-  location_limit: null,
+  // The real limits from 0023. They were all null here, so the seat-usage
+  // column rendered "Uncapped" for every row and the preview exercised none of
+  // the arithmetic it exists to show (BUG-062).
+  seat_limit: seats ?? null,
+  location_limit: sites ?? null,
   description: '',
   sort_order: sort,
   created_at: ISO(400),
@@ -764,6 +767,14 @@ const TABLES: Record<string, unknown> = {
       shifts_month: 4210,
     },
   ],
+  // Seat usage on /admin/subscriptions divides these by plans.seat_limit, so
+  // the numbers are chosen to exercise the states that matter: Brightpath is a
+  // Starter (15 seats) sitting at 14, Sunnyvale is Enterprise and therefore
+  // uncapped. Active STAFF, not memberships — see BUG-062.
+  'rpc/platform_staff_counts': ORG_IDS.slice(0, 6).map((id, i) => ({
+    org_id: id,
+    staff_active: [248, 96, 41, 33, 27, 14][i] ?? 0,
+  })),
   'rpc/platform_tenant_counts': [
     {
       staff_total: 24,

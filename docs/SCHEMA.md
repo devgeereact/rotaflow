@@ -355,6 +355,14 @@ and only `is_org_member()` governs access, same as every other tenant table.
   to the column CHECK and read as `support_cases_csat_check`). Re-rating is allowed
   deliberately, so a mis-tap is correctable. Called from `/app/help`; it had no
   caller at all between `0024` and 2026-08-30, which is why `csat` was always null.
+- **`platform_staff_counts()`** (`0078`, `security definer`, platform-admin-only):
+  active staff per organisation across every tenant, aggregate only. This is the
+  population `plans.seat_limit` is enforced on by `enforce_seat_limit()` (`0070`) —
+  the console's Usage bar used **memberships** until 2026-08-30, which is a
+  different and much smaller number because `staff_profiles.user_id` is nullable
+  (BUG-062). Aggregate-only for the reason `platform_location_counts()` gives: since
+  `0028` a platform administrator needs a support session to read tenant rows, so a
+  direct select would return a confident zero for every organisation without one.
 - **`enforce_retention(dry_run?)`** (`0029`, `security definer`, `pg_cron` nightly):
   deletes rows past their `retention_policies.retain_months` window and writes a
   `retention_runs` row. Skips any policy with `retain_months = null` (indefinite —
