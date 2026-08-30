@@ -156,7 +156,7 @@ export function StaffDashboard({
                       'grid h-9 w-9 shrink-0 place-items-center rounded-full',
                       a.urgent
                         ? 'bg-danger-wash text-danger dark:bg-danger-wash-dark'
-                        : 'bg-primary-wash text-primary dark:bg-primary-wash-dark',
+                        : 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary',
                     )}
                   >
                     <Megaphone size={16} aria-hidden="true" />

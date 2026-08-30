@@ -135,7 +135,10 @@ export function CurrentShiftPane({
                 <p className="text-base font-semibold text-content dark:text-content-dark">
                   {shift.reminder.title}
                 </p>
-                <p className="text-sm text-content-muted dark:text-content-muted-dark">
+                {/* `content`, not `content-muted`: on the warning tint this
+                    line is 4.49 : 1 against a 4.5 : 1 minimum (GAP-030). One
+                    hundredth under is still under. */}
+                <p className="text-sm text-content dark:text-content-muted-dark">
                   {shift.reminder.body}
                 </p>
               </div>

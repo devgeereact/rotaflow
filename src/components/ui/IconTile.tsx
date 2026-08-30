@@ -25,9 +25,9 @@ interface IconTileProps {
  * Purely decorative: the label beside it carries the meaning.
  */
 const TONES: Record<IconTileTone, string> = {
-  primary: 'bg-primary/10 text-primary',
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/15 text-warning',
+  primary: 'bg-primary/10 text-primary-ink dark:text-primary',
+  success: 'bg-success/10 text-success-ink dark:text-success',
+  warning: 'bg-warning/15 text-warning-ink dark:text-warning',
   violet: 'bg-shift-violet/15 text-shift-violet',
   info: 'bg-info/10 text-info',
   // Department-type tints on docs/design/Location-department.png. Same `bg-X/15

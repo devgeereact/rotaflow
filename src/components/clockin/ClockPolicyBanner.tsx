@@ -27,9 +27,10 @@ export function ClockPolicyBanner({
           <p className="text-sm font-semibold text-content dark:text-content-dark">
             {title}
           </p>
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            {body}
-          </p>
+          {/* `content`, not `content-muted`: this banner sits on a tinted
+              wash where muted grey is 4.34 : 1, under the 4.5 : 1 line
+              (GAP-030). The semibold title above carries the hierarchy. */}
+          <p className="text-sm text-content dark:text-content-muted-dark">{body}</p>
         </div>
       </div>
       {onViewPolicy && (

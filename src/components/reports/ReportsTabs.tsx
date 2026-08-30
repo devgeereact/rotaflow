@@ -97,7 +97,7 @@ export function ReportsTabs({
               '-mb-px flex items-center gap-2 border-b-2 px-4 pb-7 pt-4 text-[0.9rem] transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
               isActive
-                ? 'border-primary font-semibold text-primary'
+                ? 'border-primary font-semibold text-primary-ink dark:text-primary'
                 : 'border-transparent font-semibold text-content hover:text-primary dark:text-content-dark dark:hover:text-primary',
             )}
           >
@@ -106,7 +106,9 @@ export function ReportsTabs({
               <span
                 className={cn(
                   'grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[0.7rem] font-semibold',
-                  isActive ? 'bg-primary text-primary-fg' : 'bg-primary/10 text-primary',
+                  isActive
+                    ? 'bg-primary text-primary-fg'
+                    : 'bg-primary/10 text-primary-ink dark:text-primary',
                 )}
               >
                 {tab.count}

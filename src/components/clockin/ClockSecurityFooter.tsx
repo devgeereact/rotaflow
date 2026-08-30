@@ -15,6 +15,11 @@ export function ClockSecurityFooter({
   return (
     // `flex-wrap`, or the support block and the button push this row past a
     // phone's viewport and the whole page scrolls sideways.
+    //
+    // The secondary lines are `content` rather than `content-muted`: muted grey
+    // is 4.34 : 1 on this tinted strip, under the 4.5 : 1 line (GAP-030). The
+    // hierarchy is carried by the semibold headings above each one, which is
+    // where it should live on a panel with no room for a lighter grey.
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-xl bg-primary/5 px-5 py-4 dark:bg-primary/10">
       <div className="flex items-start gap-3">
         <ShieldCheck
@@ -26,7 +31,7 @@ export function ClockSecurityFooter({
           <p className="text-base font-semibold text-content dark:text-content-dark">
             Your data is secure and protected
           </p>
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          <p className="text-sm text-content dark:text-content-muted-dark">
             RotaFlow uses industry-leading security to protect your information.
           </p>
         </div>
@@ -37,7 +42,7 @@ export function ClockSecurityFooter({
           <p className="text-sm font-semibold text-content dark:text-content-dark">
             {supportLine}
           </p>
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          <p className="text-sm text-content dark:text-content-muted-dark">
             {contactLine}
           </p>
         </div>

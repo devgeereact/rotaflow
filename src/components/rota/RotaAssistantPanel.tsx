@@ -411,7 +411,7 @@ export function RotaAssistantPanel({
               className={cn(
                 '-mb-px border-b-2 pb-2 text-xs font-semibold transition-colors',
                 tab === t.key
-                  ? 'border-primary text-primary'
+                  ? 'border-primary text-primary-ink dark:text-primary'
                   : 'border-transparent text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
               )}
             >

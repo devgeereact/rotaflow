@@ -272,7 +272,7 @@ export function AdminUsersPage(): JSX.Element {
         sortable: true,
         cell: (profile) => (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary dark:bg-primary-wash-dark">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary-ink dark:bg-primary-wash-dark dark:text-primary">
               {(profile.full_name ?? profile.email ?? '?')
                 .split(/[\s@.]+/)
                 .slice(0, 2)
@@ -507,7 +507,9 @@ export function AdminUsersPage(): JSX.Element {
               value={authFacts ? authFacts.unverified.toLocaleString('en-GB') : '-'}
               hint={
                 authFacts && authFacts.unverified > 0 ? (
-                  <span className="font-semibold text-danger">Email never confirmed</span>
+                  <span className="font-semibold text-danger-ink dark:text-danger">
+                    Email never confirmed
+                  </span>
                 ) : (
                   'Every address confirmed'
                 )
@@ -518,7 +520,7 @@ export function AdminUsersPage(): JSX.Element {
               value={authFacts ? authFacts.mfaEnrolled.toLocaleString('en-GB') : '-'}
               hint={
                 authFacts && authFacts.mfaEnrolled === 0 ? (
-                  <span className="font-semibold text-warning">
+                  <span className="font-semibold text-warning-ink dark:text-warning">
                     Nobody, including staff
                   </span>
                 ) : (

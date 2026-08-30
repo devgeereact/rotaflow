@@ -137,7 +137,27 @@ for (const { path, heading } of ALL_SCREENS) {
  * Lower it whenever the debt is paid down. Never raise it to make a change pass;
  * raise it only against an observed measurement, and say why here.
  */
-const CONTRAST_BUDGET = 175;
+const CONTRAST_BUDGET = 0;
+
+/**
+ * The same measurement in DARK MODE, which nothing had ever measured.
+ *
+ * The light-mode figure went 172 to 0 by moving the status palette onto its
+ * `ink` tokens and taking muted grey off tinted panels. Adding the dark pass
+ * immediately showed why one number was never enough: **195 violations that had
+ * been there all along**, in a theme the gate could not see — more than the
+ * light-mode debt that took this whole change to clear. They are a
+ * different problem with a different fix — `#3B6FE0` primary and `#D94A3A`
+ * danger are too DARK for a `#111A2E` surface, where the light-mode fix was
+ * that the same colours were too light for white. Solving it means a set of
+ * dark-side inks, which is a palette decision, not a class swap, and it is
+ * tracked as GAP-032 rather than bundled into the change that found it.
+ *
+ * The budget exists so the number can only fall. Three above the measured 195, for the same reason the
+ * light budget used to carry an allowance: CI and local disagreed by one node
+ * on the old light figure, and font rasterisation differs on a runner.
+ */
+const DARK_CONTRAST_BUDGET = 198;
 
 /**
  * One pass, two assertions.
@@ -161,6 +181,8 @@ test('the authenticated surface meets WCAG basics', async ({ page }) => {
   const offenders: string[] = [];
   let contrastTotal = 0;
   const perScreen: string[] = [];
+  let darkTotal = 0;
+  const darkPerScreen: string[] = [];
 
   for (const { path } of ALL_SCREENS) {
     await page.goto(path);
@@ -184,6 +206,27 @@ test('the authenticated surface meets WCAG basics', async ({ page }) => {
     }
     if (contrast > 0) perScreen.push(`${path}: ${contrast}`);
     contrastTotal += contrast;
+
+    // Dark mode on the SAME page, by toggling the class Tailwind keys off
+    // rather than navigating again. A second navigation per screen is what
+    // made an earlier version of this suite time out in CI; a class toggle
+    // re-renders in place and costs one axe run.
+    //
+    // Only colour-contrast is counted here. Every other rule is
+    // theme-independent and is already asserted at zero above; counting them
+    // twice would just double-report one failure.
+    await page.evaluate(() => document.documentElement.classList.add('dark'));
+    const darkResults = await new AxeBuilder({ page })
+      .exclude(AXE_EXCLUDE)
+      .withTags(['wcag2a', 'wcag2aa'])
+      .analyze();
+    let darkContrast = 0;
+    for (const violation of darkResults.violations) {
+      if (violation.id === 'color-contrast') darkContrast += violation.nodes.length;
+    }
+    if (darkContrast > 0) darkPerScreen.push(`${path}: ${darkContrast}`);
+    darkTotal += darkContrast;
+    await page.evaluate(() => document.documentElement.classList.remove('dark'));
   }
 
   // Printed whether or not it passes, so the number is visible on every run and
@@ -191,13 +234,19 @@ test('the authenticated surface meets WCAG basics', async ({ page }) => {
   // bundle-size gate prints its figures.
   // eslint-disable-next-line no-console
   console.log(
-    `colour-contrast nodes: ${contrastTotal} / ${CONTRAST_BUDGET}\n  ${perScreen.join('\n  ')}`,
+    `colour-contrast nodes (light): ${contrastTotal} / ${CONTRAST_BUDGET}\n  ${perScreen.join('\n  ')}\n` +
+      `colour-contrast nodes (dark): ${darkTotal} / ${DARK_CONTRAST_BUDGET}\n  ${darkPerScreen.join('\n  ')}`,
   );
 
   expect(offenders).toEqual([]);
   expect(
     contrastTotal,
-    `Colour-contrast violations went up. Either fix them, or if you have genuinely ` +
-      `reduced the debt elsewhere, lower CONTRAST_BUDGET to the new total — never raise it.`,
+    `Colour-contrast violations went up in light mode, where the debt is now zero. ` +
+      `Put the text on its \`-ink\` token, or keep muted grey off tinted panels.`,
   ).toBeLessThanOrEqual(CONTRAST_BUDGET);
+  expect(
+    darkTotal,
+    `Colour-contrast violations went up in dark mode. Either fix them, or if you have ` +
+      `genuinely reduced the debt, lower DARK_CONTRAST_BUDGET to the new total — never raise it.`,
+  ).toBeLessThanOrEqual(DARK_CONTRAST_BUDGET);
 });

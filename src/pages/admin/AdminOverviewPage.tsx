@@ -98,8 +98,8 @@ const SEVERITY_TONE: Record<string, ActivityTone> = {
 
 const ACTIVITY_TONE: Record<ActivityTone, string> = {
   success: 'bg-success-wash text-success dark:bg-success-wash-dark',
-  info: 'bg-primary-wash text-primary dark:bg-primary-wash-dark',
-  warning: 'bg-warning-wash text-warning dark:bg-warning-wash-dark',
+  info: 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary',
+  warning: 'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning',
   danger: 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
 };
 

@@ -216,7 +216,9 @@ export function AdminSupportPage(): JSX.Element {
               value={counts.urgent}
               hint={
                 counts.urgent > 0 ? (
-                  <span className="font-semibold text-danger">Still open</span>
+                  <span className="font-semibold text-danger-ink dark:text-danger">
+                    Still open
+                  </span>
                 ) : (
                   'None open'
                 )

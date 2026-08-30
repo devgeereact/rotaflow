@@ -376,7 +376,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
             <span
               className={
                 days !== null && days < 0
-                  ? 'whitespace-nowrap text-warning'
+                  ? 'whitespace-nowrap text-warning-ink dark:text-warning'
                   : 'whitespace-nowrap text-content-muted dark:text-content-muted-dark'
               }
             >
@@ -430,12 +430,14 @@ export function AdminSubscriptionsPage(): JSX.Element {
             >
               Change plan
             </Link>
-            <span
+            <button
+              type="button"
+              disabled
               title="No pricing exists to discount. See the note below the table"
               className="cursor-not-allowed whitespace-nowrap rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
             >
               Discount
-            </span>
+            </button>
           </span>
         ),
       },
@@ -508,7 +510,9 @@ export function AdminSubscriptionsPage(): JSX.Element {
               value={money.pastDue}
               hint={
                 money.pastDue > 0 ? (
-                  <span className="font-semibold text-danger">Payment failed</span>
+                  <span className="font-semibold text-danger-ink dark:text-danger">
+                    Payment failed
+                  </span>
                 ) : (
                   'All payments current'
                 )
