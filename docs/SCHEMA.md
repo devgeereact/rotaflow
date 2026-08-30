@@ -302,10 +302,26 @@ and only `is_org_member()` governs access, same as every other tenant table.
   `retention_runs` row. Skips any policy with `retain_months = null` (indefinite —
   `audit_logs`) and skips deleted-tenant cascade entirely (§4.8).
 - **`flag_enabled_for_org(key, org)`** (`0022`): hashes `key` + `org_id` so the same
-  org always lands on the same side of a percentage rollout. **Nothing in `src/`
-  calls it.** The client-facing entry point is `my_feature_access(org)` (`0030`), read
-  by `useFeatureAccess` — which itself has no consumers, so no render path is gated on
-  any flag today. See `docs/SAAS.md` CAP-038 and CAP-076.
+  org always lands on the same side of a percentage rollout. Nothing in `src/` calls
+  it directly; the client-facing entry point is **`my_feature_access(org)`** (`0030`),
+  read by `useFeatureAccess`.
+- **`org_has_feature(org, feature)`** (`0030`): a plan entitlement, not a flag —
+  true when `plans.features` lists it. Enforced server-side by
+  `supabase/functions/ai-rota-assistant`, which refuses `ai_rota_assistant` with a
+  403 and `code: 'plan_required'` before reading any tenant data or contacting
+  OpenRouter. The UI gate is a courtesy; this is the control, because the endpoint is
+  reachable with any member's JWT and every call spends money.
+- Both entitlement functions are guarded by `is_org_member` since **`0074`**. They
+  are `security definer`, so RLS does not apply inside them, and before that guard
+  any signed-in user could read which plan tier any organisation was on by passing
+  its id. The predicate is `is_org_member` **alone**: per `0028` that already covers
+  a platform administrator holding an active support-access session, and adding
+  `or is_platform_admin()` would re-open the standing cross-tenant access `0028`
+  exists to close. A non-member gets `false` and an empty set rather than an error,
+  so the refusal does not confirm the organisation exists.
+- Three entitlements — `advanced_reporting`, `beta_integrations`, `gps_clock_in` —
+  are listed in `plans.features` and checked by nothing. That is deliberate and
+  tracked as `docs/SAAS.md` BUG-064, not an oversight. See also CAP-038 and CAP-076.
 - **`admin_create_organisation_with_invite(...)`** (`0052`, `security definer`,
   platform-admin-only): atomically inserts an organisation with `created_by = null`
   (so `on_org_created` never fires and no membership row is created), creates its

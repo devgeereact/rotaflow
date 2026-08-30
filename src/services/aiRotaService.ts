@@ -35,6 +35,64 @@ export interface AiRotaResponse {
 }
 
 /**
+ * The organisation's plan does not include the AI assistant.
+ *
+ * Distinguished from every other failure because the answer is different: a
+ * transient error means "try again", this means "upgrade, or stop asking". A
+ * screen that shows "unavailable right now" for a plan refusal sends an owner
+ * to check their connection over a billing decision.
+ */
+export class PlanRequiredError extends Error {
+  readonly feature: string;
+  constructor(message: string, feature: string) {
+    super(message);
+    this.name = 'PlanRequiredError';
+    this.feature = feature;
+  }
+}
+
+/**
+ * Invoke the assistant, turning a 403 plan refusal into `PlanRequiredError`.
+ *
+ * `supabase.functions.invoke` reports a non-2xx as a `FunctionsHttpError`
+ * whose `message` is generic — the body has to be read off `context`, which is
+ * the raw `Response`. Without this the entitlement message the Edge Function
+ * carefully writes never reaches the user.
+ */
+async function invokeAssistant<T>(body: Record<string, unknown>): Promise<T> {
+  const result = await supabase.functions.invoke<T>('ai-rota-assistant', { body });
+
+  if (result.error) {
+    const context = (result.error as { context?: unknown }).context;
+    if (context instanceof Response && context.status === 403) {
+      try {
+        // `clone()`, because the SDK may already have consumed the body and a
+        // Response can only be read once.
+        const payload = (await context.clone().json()) as {
+          code?: string;
+          error?: string;
+          feature?: string;
+        };
+        if (payload.code === 'plan_required') {
+          throw new PlanRequiredError(
+            payload.error ?? 'This feature is not included in your plan.',
+            payload.feature ?? 'ai_rota_assistant',
+          );
+        }
+      } catch (err) {
+        // A PlanRequiredError from the block above is the intended outcome and
+        // must pass through. Anything else means the body was not the JSON we
+        // expected — fall through to the original error, which is more
+        // truthful than inventing a reason.
+        if (err instanceof PlanRequiredError) throw err;
+      }
+    }
+    throw result.error;
+  }
+  return result.data as T;
+}
+
+/**
  * Ask the AI rota assistant (Supabase Edge Function → OpenRouter) to draft
  * shift suggestions from a natural-language prompt, grounded in the org's
  * real staff, skills and existing shifts. Returns suggestions only. Nothing
@@ -43,13 +101,9 @@ export interface AiRotaResponse {
 export async function generateRotaSuggestions(
   request: AiRotaRequest,
 ): Promise<AiRotaResponse> {
-  const result = await supabase.functions.invoke<AiRotaResponse>('ai-rota-assistant', {
-    body: { ...request, task: 'rota' },
-  });
-
-  if (result.error) throw result.error;
-  if (!result.data) throw new Error('AI rota assistant returned no data');
-  return result.data;
+  const data = await invokeAssistant<AiRotaResponse>({ ...request, task: 'rota' });
+  if (!data) throw new Error('AI rota assistant returned no data');
+  return data;
 }
 
 /**
@@ -61,12 +115,10 @@ export async function generateRotaSuggestions(
 export async function draftAnnouncement(
   request: AiAnnouncementRequest,
 ): Promise<AiAnnouncementDraft> {
-  const result = await supabase.functions.invoke<AiAnnouncementDraft>(
-    'ai-rota-assistant',
-    { body: { ...request, task: 'announcement' } },
-  );
-
-  if (result.error) throw result.error;
-  if (!result.data) throw new Error('AI assistant returned no announcement draft');
-  return result.data;
+  const data = await invokeAssistant<AiAnnouncementDraft>({
+    ...request,
+    task: 'announcement',
+  });
+  if (!data) throw new Error('AI assistant returned no announcement draft');
+  return data;
 }

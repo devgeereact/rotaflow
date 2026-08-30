@@ -259,6 +259,40 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // The plan entitlement, checked HERE and not only in the browser
+    // (docs/SAAS.md CAP-038).
+    //
+    // `plans.features` has listed `ai_rota_assistant` as Business-and-above
+    // since 0030, and nothing has ever read it. Every organisation on every
+    // tier could call this function, and each call spends real money at
+    // OpenRouter — so the gap was not only "a paid feature given away", it was
+    // an unmetered cost any tenant could run up.
+    //
+    // A hidden button is not a control. The UI now hides the assistant for a
+    // plan that does not include it, but this endpoint is reachable directly
+    // with any member's JWT, so the refusal has to live at the boundary that
+    // spends the money. The check runs before any tenant data is read and
+    // before OpenRouter is contacted.
+    //
+    // Fails CLOSED: an error resolving the entitlement refuses. Serving a paid
+    // feature because the entitlement query broke is the wrong way round.
+    const { data: entitled, error: entitlementError } = await supabase.rpc(
+      'org_has_feature',
+      { p_org: orgId, p_feature: 'ai_rota_assistant' },
+    );
+    if (entitlementError || !entitled) {
+      if (entitlementError) console.error('org_has_feature failed', entitlementError);
+      return jsonResponse(
+        {
+          error:
+            'The AI assistant is included with the Business and Enterprise plans. Upgrade in Settings → Billing to use it.',
+          code: 'plan_required',
+          feature: 'ai_rota_assistant',
+        },
+        403,
+      );
+    }
+
     // `auditAiRequest` writes via the service-role client, where `auth.uid()`
     // is null, so `audit_write` cannot fill in the actor itself here the way
     // it does for a normal user-scoped write. Read the real caller's identity
