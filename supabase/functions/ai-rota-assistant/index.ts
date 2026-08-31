@@ -27,13 +27,14 @@
 // material for `docs/SAAS.md`'s invalid-suggestion
 // rate, not yet aggregated into a dashboard anywhere.
 //
-// MODEL FALLBACK: available, off by default. `OPENROUTER_MODEL` (default
+// MODEL FALLBACK: configured. `OPENROUTER_MODEL` (default
 // `openai/gpt-4o-mini`) is the primary. Setting `OPENROUTER_FALLBACK_MODEL`
 // makes the call pass both to OpenRouter's `models` array with
 // `route: 'fallback'`, so a provider outage or a deprecated model routes to
-// the second inside the same request rather than returning 502. Unset, the
-// behaviour is exactly as before — which model to fall back to has a bill
-// attached and is the owner's choice, not this file's (HARDEN-010).
+// the second inside the same request rather than returning 502. Set to
+// `google/gemini-3.5-flash-lite` on this project — a different provider, so
+// it routes around a provider outage and not merely a model one. Unset it to
+// go back to failing fast (HARDEN-010).
 //
 // Deploy: `supabase functions deploy ai-rota-assistant`.
 // Secret: `supabase secrets set OPENROUTER_API_KEY=...`.
@@ -575,12 +576,22 @@ Deno.serve(async (req: Request) => {
     // request, so it costs no extra round trip and cannot double-charge for a
     // call that actually succeeded.
     //
-    // Unset by default, and that is deliberate rather than unfinished. Which
-    // model to fall back to is a cost and quality decision with a real bill
-    // attached, and picking one on the owner's behalf is exactly the sort of
-    // choice this project keeps writing down instead of assuming. With it
-    // unset the behaviour is identical to before; setting
-    // `OPENROUTER_FALLBACK_MODEL` is the whole configuration.
+    // SET on this project to `google/gemini-3.5-flash-lite` (2026-08-31).
+    // The choice, so it can be argued with rather than inherited:
+    //
+    //   * a DIFFERENT PROVIDER, which is the whole point — a fallback on the
+    //     same vendor routes around a model outage and not a provider one;
+    //   * `response_format` support, checked against OpenRouter's live model
+    //     list rather than assumed. Three of the four slugs guessed first did
+    //     not exist at all, which is how a fallback silently never works;
+    //   * a genuine capability peer. The cheapest models on the list are 20x
+    //     cheaper and much weaker, and a fallback that returns suggestions the
+    //     verify pass then drops is worse than a clean 502 — it spends money
+    //     to produce a worse answer.
+    //
+    // It costs about 2x the input and 4x the output of the primary, which is
+    // the right trade for something that only runs while the primary is down.
+    // Leave it unset in any deployment that would rather fail than pay.
     const fallbackModel = Deno.env.get('OPENROUTER_FALLBACK_MODEL');
     const routing =
       fallbackModel && fallbackModel !== model
