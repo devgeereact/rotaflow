@@ -127,3 +127,65 @@ export async function createStaffProfiles(
   if (error) throw error;
   return data ?? [];
 }
+
+/**
+ * Where a person works, as a set (CAP-089, `0105`).
+ *
+ * A site used to be inherited from the department, so somebody had exactly
+ * one by construction. That is why the team filter could not answer "who can
+ * cover at Ward B tonight" for anybody whose department lives at Ward A.
+ *
+ * Absence means "nothing recorded", not "works nowhere" — every read falls
+ * back to the department's site, so an organisation that never opens the
+ * control sees what it saw before.
+ */
+export async function listStaffLocations(orgId: string): Promise<Map<string, string[]>> {
+  const { data, error } = await supabase
+    .from('staff_locations')
+    .select('staff_profile_id, location_id')
+    .eq('org_id', orgId);
+
+  if (error) throw error;
+
+  const byStaff = new Map<string, string[]>();
+  for (const row of data ?? []) {
+    const existing = byStaff.get(row.staff_profile_id) ?? [];
+    existing.push(row.location_id);
+    byStaff.set(row.staff_profile_id, existing);
+  }
+  return byStaff;
+}
+
+/**
+ * Replace one person's sites.
+ *
+ * Delete-then-insert rather than a diff: the table is two foreign keys, the
+ * sets are tiny, and a diff would be more code to get subtly wrong for no
+ * measurable gain. Not a transaction — PostgREST has none — so the delete is
+ * ordered first: a failed insert leaves somebody with no sites recorded,
+ * which reads as "nothing recorded" and falls back to their department,
+ * rather than leaving a half-applied set nobody can tell is wrong.
+ */
+export async function setStaffLocations(
+  orgId: string,
+  staffProfileId: string,
+  locationIds: readonly string[],
+): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('staff_locations')
+    .delete()
+    .eq('org_id', orgId)
+    .eq('staff_profile_id', staffProfileId);
+  if (deleteError) throw deleteError;
+
+  if (locationIds.length === 0) return;
+
+  const { error } = await supabase.from('staff_locations').insert(
+    locationIds.map((locationId) => ({
+      org_id: orgId,
+      staff_profile_id: staffProfileId,
+      location_id: locationId,
+    })),
+  );
+  if (error) throw error;
+}

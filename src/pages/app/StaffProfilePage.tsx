@@ -193,6 +193,7 @@ export function StaffProfilePage(): JSX.Element {
         onClose={() => setEditOpen(false)}
         onSubmit={handleSubmit}
         departments={departments}
+        locations={locations}
         initial={staff}
       />
 
