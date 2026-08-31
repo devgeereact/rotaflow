@@ -1,4 +1,5 @@
 import { REGION_LABELS, type BankHolidayRegion } from '@/lib/bankHolidays';
+import { LEAVE_YEAR_START_MONTHS } from '@/lib/leaveYear';
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -230,6 +231,57 @@ export function SettingsPoliciesPage(): JSX.Element {
             disabled={!canEdit}
             onChange={(next) => setPolicies((prev) => ({ ...prev, breaksArePaid: next }))}
           />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Holiday year"
+        description="When the leave year runs, and what carries into the next one."
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="policy-leave-year">Leave year starts in</Label>
+            <Select
+              id="policy-leave-year"
+              value={String(policies.leaveYearStartMonth)}
+              disabled={!canEdit}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                setPolicies((prev) => ({
+                  ...prev,
+                  leaveYearStartMonth: Number(event.target.value),
+                }))
+              }
+            >
+              {LEAVE_YEAR_START_MONTHS.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
+              Balances are counted against this year, not the calendar one. April is the
+              usual choice in the public sector.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="policy-carry-over">Days that can carry over</Label>
+            <Input
+              id="policy-carry-over"
+              inputMode="numeric"
+              value={String(policies.leaveCarryOverMaxDays)}
+              disabled={!canEdit}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                const parsed = Number(event.target.value);
+                if (Number.isFinite(parsed) && parsed >= 0) {
+                  setPolicies((prev) => ({ ...prev, leaveCarryOverMaxDays: parsed }));
+                }
+              }}
+            />
+            <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
+              Zero is use it or lose it. Uncapped carry-over is how somebody accumulates
+              months of untaken leave nobody has budgeted cover for.
+            </p>
+          </div>
         </div>
       </SettingsSection>
 

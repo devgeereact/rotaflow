@@ -134,8 +134,12 @@ select is(
 reset role;
 insert into public.staff_pay_rates
   (org_id, staff_profile_id, hourly_rate_pence, effective_from)
+-- Dated DECEMBER on purpose. The colleague must have a rate for the
+-- visibility assertion below, and must still be unpriced in March for the
+-- "counted, never silently free" one — a rate from January would have made
+-- them rated for the whole test, which is how this was first written.
 values ('a0000000-0000-0000-0000-000000000001', 'a0200000-0000-0000-0000-000000000002',
-        9999, '2026-01-01');
+        9999, '2026-12-01');
 set local role authenticated;
 select set_config(
   'request.jwt.claims',

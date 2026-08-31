@@ -21,6 +21,12 @@ import { logAuditEvent } from '@/services/auditService';
 import { reportError } from '@/lib/sentry';
 import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
 import type { BankHolidayRegion } from '@/lib/bankHolidays';
+import {
+  DEFAULT_LEAVE_YEAR,
+  formatLeaveYear,
+  leaveYearFor,
+  type LeaveYearPolicy,
+} from '@/lib/leaveYear';
 import { todayIso } from '@/lib/schedulePeriod';
 import {
   computeAwaitingDecision,
@@ -102,6 +108,7 @@ export function LeavePage(): JSX.Element {
   const [bankHolidayRegion, setBankHolidayRegion] = useState<BankHolidayRegion>(
     DEFAULT_POLICIES.bankHolidayRegion,
   );
+  const [leaveYear, setLeaveYear] = useState<LeaveYearPolicy>(DEFAULT_LEAVE_YEAR);
   const [search, setSearch] = useState('');
   // Lands on Pending by default so a reviewer sees what needs a decision
   // first, not buried in a list of settled requests with nothing to do.
@@ -131,7 +138,14 @@ export function LeavePage(): JSX.Element {
         setStaff(staffRows);
         setDepartments(departmentRows);
         // Which nation's bank holidays to name in the request form (CAP-009).
-        setBankHolidayRegion(schedulingPolicies(org.settings).bankHolidayRegion);
+        const orgPolicies = schedulingPolicies(org.settings);
+        setBankHolidayRegion(orgPolicies.bankHolidayRegion);
+        // The holiday year is not necessarily the calendar year (CAP-085).
+        setLeaveYear({
+          startMonth: orgPolicies.leaveYearStartMonth,
+          startDay: 1,
+          carryOverMaxDays: orgPolicies.leaveCarryOverMaxDays,
+        });
 
         const rows = canApprove
           ? await listOrgLeaveRequests(orgId)
@@ -235,22 +249,45 @@ export function LeavePage(): JSX.Element {
   const staffTiles = useMemo<StaffLeaveTiles>(() => {
     const today = todayIso();
     const computed = myProfile
-      ? computeStaffLeaveTiles(myProfile, requests, today)
-      : { entitlementDays: null, takenDays: 0, remainingDays: null, pendingDays: 0 };
+      ? computeStaffLeaveTiles(myProfile, requests, today, leaveYear)
+      : {
+          entitlementDays: null,
+          takenDays: 0,
+          remainingDays: null,
+          pendingDays: 0,
+          yearLabel: formatLeaveYear(leaveYearFor(today, leaveYear.startMonth, 1)),
+          carriedOverDays: 0,
+          proRata: false,
+        };
+
+    // The sub-label used to read "book before 31 Dec", hardcoded — which was
+    // simply untrue for any organisation not on a calendar leave year, and
+    // was the visible half of CAP-085.
+    const endsOn = new Date(
+      new Date(`${leaveYearFor(today, leaveYear.startMonth, 1).to}T00:00:00Z`).getTime() -
+        86_400_000,
+    ).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
     return {
       entitlementLabel:
         computed.entitlementDays != null
           ? formatLeaveDuration(computed.entitlementDays)
           : 'Not set',
+      entitlementSubLabel:
+        computed.carriedOverDays > 0
+          ? `includes ${formatLeaveDuration(computed.carriedOverDays)} carried over`
+          : computed.proRata
+            ? 'pro rata from your start date'
+            : null,
       takenLabel: formatLeaveDuration(computed.takenDays),
       remainingLabel:
         computed.remainingDays != null
           ? formatLeaveDuration(computed.remainingDays)
           : '-',
-      remainingSubLabel: computed.remainingDays != null ? 'book before 31 Dec' : null,
+      remainingSubLabel: computed.remainingDays != null ? `book before ${endsOn}` : null,
       pendingLabel: formatLeaveDuration(computed.pendingDays),
     };
-  }, [myProfile, requests]);
+  }, [myProfile, requests, leaveYear]);
 
   const handleRequest = useCallback(
     async (draft: LeaveRequestDraft): Promise<void> => {

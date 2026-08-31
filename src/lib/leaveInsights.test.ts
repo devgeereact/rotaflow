@@ -273,7 +273,7 @@ describe('computeStaffLeaveTiles', () => {
         end_date: '2026-09-05',
       }),
     ];
-    expect(computeStaffLeaveTiles(profile, requests, '2026-08-12')).toEqual({
+    expect(computeStaffLeaveTiles(profile, requests, '2026-08-12')).toMatchObject({
       entitlementDays: 28,
       takenDays: 3,
       remainingDays: 25,
@@ -283,12 +283,57 @@ describe('computeStaffLeaveTiles', () => {
 
   it('reports entitlement and remaining as null when no allowance is recorded', () => {
     const profile = mkStaff({ id: 's1', holiday_allowance: null });
-    expect(computeStaffLeaveTiles(profile, [], '2026-08-12')).toEqual({
+    expect(computeStaffLeaveTiles(profile, [], '2026-08-12')).toMatchObject({
       entitlementDays: null,
       takenDays: 0,
       remainingDays: null,
       pendingDays: 0,
     });
+  });
+  it("uses the organisation's leave year, not the calendar year", () => {
+    // February under an April year belongs to the year that began LAST
+    // April. Before CAP-085 this counted January-to-December, so for every
+    // organisation on an April year the balance was wrong for nine months of
+    // it — and looked entirely plausible while being wrong.
+    const tiles = computeStaffLeaveTiles(
+      mkStaff({ id: 's1', holiday_allowance: 28 }),
+      [
+        mkRequest({
+          id: 'a',
+          status: 'approved',
+          type: 'holiday',
+          start_date: '2025-05-01',
+          end_date: '2025-05-05',
+        }),
+      ],
+      '2026-02-10',
+      { startMonth: 4, startDay: 1, carryOverMaxDays: 0 },
+    );
+    expect(tiles.yearLabel).toBe('1 April 2025 to 31 March 2026');
+    expect(tiles.takenDays).toBe(5);
+  });
+
+  it('carries unused days forward, up to the cap', () => {
+    const tiles = computeStaffLeaveTiles(
+      mkStaff({ id: 's1', holiday_allowance: 28 }),
+      [],
+      '2026-06-01',
+      { startMonth: 1, startDay: 1, carryOverMaxDays: 5 },
+    );
+    // Nothing taken last year, so the cap is what comes forward.
+    expect(tiles.carriedOverDays).toBe(5);
+    expect(tiles.entitlementDays).toBe(33);
+  });
+
+  it('pro-rates a joiner and says that it did', () => {
+    const tiles = computeStaffLeaveTiles(
+      mkStaff({ id: 's1', holiday_allowance: 28, start_date: '2026-07-01' }),
+      [],
+      '2026-09-01',
+      { startMonth: 1, startDay: 1, carryOverMaxDays: 0 },
+    );
+    expect(tiles.proRata).toBe(true);
+    expect(tiles.entitlementDays).toBeLessThan(28);
   });
 });
 

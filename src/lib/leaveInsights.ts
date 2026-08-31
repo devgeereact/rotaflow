@@ -10,6 +10,14 @@ import { addDays, format } from 'date-fns';
 import { sumApprovedLeaveDays } from '@/lib/leaveEntitlement';
 import { leaveDayCount, leaveTypeKey } from '@/lib/leaveRows';
 import type { LeaveRequest, StaffProfile } from '@/types';
+import {
+  carriedOverDays,
+  DEFAULT_LEAVE_YEAR,
+  formatLeaveYear,
+  leaveYearFor,
+  proRataEntitlement,
+  type LeaveYearPolicy,
+} from '@/lib/leaveYear';
 
 function parseDay(iso: string): Date {
   return new Date(`${iso}T00:00:00`);
@@ -192,6 +200,12 @@ export interface StaffLeaveTiles {
   takenDays: number;
   remainingDays: number | null;
   pendingDays: number;
+  /** Which leave year these figures are for, written out (CAP-085). */
+  yearLabel: string;
+  /** Days brought forward, already included in `entitlementDays`. */
+  carriedOverDays: number;
+  /** True when the allowance was reduced because the person joined mid-year. */
+  proRata: boolean;
 }
 
 /**
@@ -202,25 +216,71 @@ export function computeStaffLeaveTiles(
   profile: StaffProfile,
   requests: LeaveRequest[],
   yearAnchorIso: string,
+  policy: LeaveYearPolicy = DEFAULT_LEAVE_YEAR,
 ): StaffLeaveTiles {
   const allowance = profile.holiday_allowance;
-  const year = parseDay(yearAnchorIso).getFullYear();
-  const from = `${year}-01-01`;
-  const to = `${year + 1}-01-01`;
+
+  // The leave year, which is not necessarily the calendar year (CAP-085).
+  // This used to be hardcoded to 1 January, so for the many organisations
+  // running an April year every balance was wrong for nine months of it — in
+  // a way nobody questions, because the number still looks reasonable.
+  const year = leaveYearFor(yearAnchorIso, policy.startMonth, policy.startDay);
+  const previous = leaveYearFor(
+    isoDayBefore(year.from),
+    policy.startMonth,
+    policy.startDay,
+  );
 
   const annual = requests.filter((r) => leaveTypeKey(r.type) === 'annual');
-  const takenDays = roundDays(sumApprovedLeaveDays(annual, from, to));
+  const takenDays = roundDays(sumApprovedLeaveDays(annual, year.from, year.to));
   const pendingDays = roundDays(
     requests
       .filter((r) => r.status === 'pending')
       .reduce((total, r) => total + leaveDayCount(r.start_date, r.end_date), 0),
   );
 
+  if (allowance == null) {
+    return {
+      entitlementDays: null,
+      takenDays,
+      remainingDays: null,
+      pendingDays,
+      yearLabel: formatLeaveYear(year),
+      carriedOverDays: 0,
+      proRata: false,
+    };
+  }
+
+  const earned = proRataEntitlement(allowance, profile.start_date, year);
+
+  // Last year's leftovers, capped. Computed from the same allowance, which
+  // assumes it did not change — the honest simplification, since the schema
+  // records one allowance per person rather than one per year.
+  const previousTaken = roundDays(
+    sumApprovedLeaveDays(annual, previous.from, previous.to),
+  );
+  const previousEarned = proRataEntitlement(allowance, profile.start_date, previous);
+  const carried = carriedOverDays(
+    previousEarned - previousTaken,
+    policy.carryOverMaxDays,
+  );
+
+  const entitlement = roundDays(earned + carried);
+
   return {
-    entitlementDays: allowance != null ? roundDays(allowance) : null,
+    entitlementDays: entitlement,
     takenDays,
-    remainingDays:
-      allowance != null ? roundDays(Math.max(0, allowance - takenDays)) : null,
+    remainingDays: roundDays(Math.max(0, entitlement - takenDays)),
     pendingDays,
+    yearLabel: formatLeaveYear(year),
+    carriedOverDays: roundDays(carried),
+    proRata: earned < allowance,
   };
+}
+
+/** The day before an ISO date, for anchoring into the previous leave year. */
+function isoDayBefore(iso: string): string {
+  return new Date(new Date(`${iso}T00:00:00Z`).getTime() - 86_400_000)
+    .toISOString()
+    .slice(0, 10);
 }
