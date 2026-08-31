@@ -415,12 +415,20 @@ export const PLANS: readonly Plan[] = [
     name: 'Enterprise',
     price: '£790',
     cadence: 'per month',
-    summary: 'Unlimited sites and staff, with SSO.',
+    // Two bullets were removed on 2026-08-31: 'SSO with Microsoft 365 or
+    // Google' and 'Payroll and HR integrations'. Neither exists — there is no
+    // `supabase.auth.mfa` or SAML call anywhere in the product, and the whole
+    // of the payroll story is a `payroll_id` column and a timesheet CSV. This
+    // is a public page selling a £790/month plan; a bullet nobody can deliver
+    // is a promise made to somebody spending real money, and the fact that
+    // Enterprise is Contact-us rather than self-serve makes it worse, not
+    // better: it is the bullet the sales conversation opens on. Both are on
+    // the roadmap (CAP-068, CAP-067) and neither is sold until it is built.
+    summary: 'Unlimited sites and staff, with hands-on onboarding.',
     features: [
       'Everything in Business',
       'Unlimited locations and staff',
-      'SSO with Microsoft 365 or Google',
-      'Payroll and HR integrations',
+      'Timesheet export shaped for your payroll provider',
       'Onboarding and migration support',
     ],
     cta: 'Contact us',

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PLANS } from '@/lib/marketing';
 
@@ -21,9 +21,16 @@ import { PLANS } from '@/lib/marketing';
  * duplicated constant nothing checks, and that is what the register already
  * has a row about. A brittle test that fails loudly when the two drift beats a
  * comment asking people to remember.
+ *
+ * It replays later `update public.plans set description` statements over the
+ * seed, because a migration is never edited once applied — `0101` corrected
+ * Enterprise's description rather than rewriting `0023`, and a test that read
+ * only the seed would have demanded the page keep quoting text the database no
+ * longer holds.
  */
 
-const MIGRATION = 'supabase/migrations/0023_commercials.sql';
+const SEED = 'supabase/migrations/0023_commercials.sql';
+const MIGRATIONS = 'supabase/migrations';
 
 interface SeededPlan {
   code: string;
@@ -40,7 +47,7 @@ interface SeededPlan {
  * a name or a summary does, which is exactly when it should break.
  */
 function seededPlans(): SeededPlan[] {
-  const sql = readFileSync(MIGRATION, 'utf8');
+  const sql = readFileSync(SEED, 'utf8');
   const row =
     /\('(starter|professional|business|enterprise)',\s*'([^']+)',\s*(\d+),\s*(?:\d+|null),\s*(?:\d+|null),\s*'([^']+)'/g;
 
@@ -53,7 +60,36 @@ function seededPlans(): SeededPlan[] {
       summary: match[4] ?? '',
     });
   }
+  applyLaterDescriptionChanges(plans);
   return plans;
+}
+
+/**
+ * Replay `update public.plans set description = '…' where code = '…'` from
+ * every migration after the seed, in numeric order — which is the order
+ * Postgres applies them in, so the last one wins here for the same reason it
+ * wins there.
+ *
+ * Only `description` is replayed. A price change would need the same
+ * treatment, and deliberately does not have it yet: nothing has ever changed a
+ * price, and a replayer written for a case that has not happened is a guess
+ * about the shape of a statement nobody has written.
+ */
+function applyLaterDescriptionChanges(plans: SeededPlan[]): void {
+  const later = readdirSync(MIGRATIONS)
+    .filter((f) => f.endsWith('.sql') && f > '0023_commercials.sql')
+    .sort();
+
+  for (const file of later) {
+    const sql = readFileSync(`${MIGRATIONS}/${file}`, 'utf8');
+    const statement =
+      /update\s+public\.plans\s+set\s+description\s*=\s*'([^']+)'[\s\S]*?where\s+code\s*=\s*'(\w+)'/gi;
+
+    for (const match of sql.matchAll(statement)) {
+      const plan = plans.find((p) => p.code === match[2]);
+      if (plan) plan.summary = match[1] ?? plan.summary;
+    }
+  }
 }
 
 describe('the pricing page and the plans table', () => {
