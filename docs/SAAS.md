@@ -278,8 +278,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0028_support_access_gate.sql`
 - [x] CAP-044 🟢 Support access — a time-boxed session is the actual RLS gate, not a log of intent
       `supabase/migrations/0028_support_access_gate.sql`
-- [ ] CAP-045 ❓-003 Cross-tenant isolation has never been tested with two real orgs
-      **Test:** the org A/org B matrix `docs/QA-AUDIT-REPORT.md` was blocked from running · **P0**
+- [x] CAP-045 🟢 Cross-tenant isolation — the org A/org B matrix runs in CI: 20 assertions across every
+      tenant table, both write directions, and the org-scoped RPCs, as `authenticated` with real JWT claims
+      `supabase/tests/database/cross_tenant_isolation.test.sql` · ❓-003 answered 2026-08-31 #232
 - [x] CAP-046 🟡 Rate limiting — org creation, invitations and the AI all capped, with a token ceiling and
       a per-org cap; the auth endpoints are GoTrue's, now read and asserted, and sitting on defaults
       `supabase/migrations/0085_rate_limiting.sql` · `scripts/check-auth-config.mjs` · GAP-009 #199, GAP-031 #209
