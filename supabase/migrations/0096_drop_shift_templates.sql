@@ -1,0 +1,37 @@
+-- =====================================================================
+-- 0096_drop_shift_templates.sql — a table nothing has ever used
+-- (docs/SAAS.md CAP-005, BUG-051)
+--
+-- `shift_templates` was created in `0002` and has never been read or
+-- written by any screen, service or function in this product's life.
+-- The only code that touches it is the organisation export, which
+-- faithfully exports an empty array.
+--
+-- The register offered two ways to close this: build a reader in the
+-- rota builder, or remove it. Building one is speculative — no user has
+-- asked, nothing in the design references it, and `docs/ARCHITECTURE.md`
+-- warns against inventing surface. And it would largely duplicate what
+-- already works: `shift_types` carries the name, colour and default
+-- start/end, and the grid places one on a cell. A template's extra
+-- content — a location, a department, required skills — is a
+-- pre-filled placement, which is a genuinely different feature and
+-- should be designed as one if it is ever wanted, not resurrected from
+-- a table that happened to survive.
+--
+-- So it goes. What a dead table costs while it stays: a row in the
+-- schema documentation, an entry in every export, four foreign keys and
+-- a set of grants to keep correct, and a place in the mental model of
+-- everyone who reads the schema and assumes it means something.
+--
+-- SAFETY(drop_table): the table has never been written by any code path
+-- in this repository, and holds zero rows on production (verified
+-- 2026-08-31, against a database with zero organisations). There is
+-- nothing to lose, and re-creating it is one `create table` away if the
+-- feature is ever designed properly.
+--
+-- The export is updated in the same change. An export listing a table
+-- that no longer exists fails at the moment somebody most needs it —
+-- the point of leaving.
+-- =====================================================================
+
+drop table if exists public.shift_templates;
