@@ -24,7 +24,9 @@ Security.
   (OpenRouter, called from a Supabase Edge Function — nothing is invented or written
   until the manager applies it). See [`docs/ARCHITECTURE.md` §9](docs/ARCHITECTURE.md).
 - **Notifications & announcements** — Web Push + email (SMTP); org/location/department
-  broadcasts. *(SMS seam reserved, not wired in V1.)*
+  broadcasts. Every notification is written to an outbox **in the same transaction as
+  the event that owes it**, so closing the tab cannot lose one, and drained by
+  `pg_cron`. _(SMS seam reserved, not wired in V1.)_
 - **Reports & payroll export** — hours, absence, overtime; CSV.
 - **Billing** — Stripe Checkout and Billing Portal, with a signature-verified webhook.
   Four plan tiers. No live charge has been completed end to end yet.
@@ -39,34 +41,36 @@ is actually built** — the capability register is the honest, per-feature statu
 
 ## Tech stack
 
-| Layer            | Choice                          | Why                                            |
-| ---------------- | ------------------------------- | ---------------------------------------------- |
-| Framework        | React 18 + Vite 6               | Fast HMR, tiny hashed bundles                  |
-| Language         | TypeScript (strict)             | Safety enforced in CI                          |
-| Styling          | Tailwind CSS (NativeWind-ready) | Utility-first, portable to Expo later          |
-| PWA              | `vite-plugin-pwa` (Workbox)     | Precached app shell + runtime caching          |
-| Auth + DB        | Supabase (PostgreSQL + RLS)     | Managed Postgres, row-level security           |
-| Server compute   | Supabase Edge Functions         | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass |
-| AI               | OpenRouter (via Edge Function)  | Rota suggestions grounded in real data; key never touches the client |
-| Media            | ImageKit                        | Real-time image resize/compress over a CDN     |
-| Background jobs  | Inngest                         | Event-driven workflows, cron, retries          |
-| Payments         | Stripe (via Edge Functions)     | Checkout + Billing Portal; secrets never reach the client |
-| Monitoring       | Sentry                          | Error + performance tracking with source maps  |
-| Motion           | Framer Motion                   | Micro-interactions & page transitions          |
-| AI code review   | CodeRabbit                      | PR checks against `docs/RULES.md`              |
-| Hosting          | cPanel (static `dist/`)         | Low cost, no server runtime                    |
+| Layer           | Choice                           | Why                                                                                                                                            |
+| --------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework       | React 18 + Vite 6                | Fast HMR, tiny hashed bundles                                                                                                                  |
+| Language        | TypeScript (strict)              | Safety enforced in CI                                                                                                                          |
+| Styling         | Tailwind CSS (NativeWind-ready)  | Utility-first, portable to Expo later                                                                                                          |
+| PWA             | `vite-plugin-pwa` (Workbox)      | Precached app shell + runtime caching                                                                                                          |
+| Auth + DB       | Supabase (PostgreSQL + RLS)      | Managed Postgres, row-level security                                                                                                           |
+| Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                                 |
+| AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                                           |
+| Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                                     |
+| Background jobs | `pg_cron` + `pg_net` in Postgres | Notification outbox drain, nightly retention, health probe. Inngest is retired as a dispatch path (`0087`) — its key still ships and is unused |
+| Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                                      |
+| Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                                  |
+| Motion          | Framer Motion                    | Micro-interactions & page transitions                                                                                                          |
+| AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                                              |
+| Hosting         | cPanel (static `dist/`)          | Low cost, no server runtime                                                                                                                    |
 
 ---
 
 ## Quick start
 
 ### 1. Prerequisites
+
 - Node.js **>= 18**
 - npm (or pnpm)
 - [Supabase CLI](https://supabase.com/docs/guides/cli) — only needed to deploy the
   `ai-rota-assistant` Edge Function (step 4); everything else works without it
 
 ### 2. Install & configure
+
 ```bash
 git clone <your-repo> my-app && cd my-app
 npm install
@@ -74,13 +78,16 @@ cp .env.example .env      # then fill in your keys
 ```
 
 ### 3. Set up the database
+
 In the Supabase SQL editor, run the migrations **in order**:
+
 ```
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_rotaflow.sql
 …
 supabase/migrations/0090_entitlements_say_what_they_gate.sql
 ```
+
 **Run every file in `supabase/migrations/`, in numeric order** — there are 90, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
@@ -90,12 +97,15 @@ Don't hand-count this list: the number above has been wrong twice, because a REA
 is the last thing anyone updates. `ls supabase/migrations/*.sql | wc -l` is the answer.
 
 ### 4. Deploy the AI rota assistant (optional)
+
 The natural-language rota assistant runs as a Supabase Edge Function so its OpenRouter
 key never reaches the browser:
+
 ```bash
 supabase functions deploy ai-rota-assistant --project-ref <your-project-ref>
 supabase secrets set OPENROUTER_API_KEY=... --project-ref <your-project-ref>
 ```
+
 Without this, the feature degrades to a clean "not configured yet" message — nothing
 else in the app depends on it.
 
@@ -103,16 +113,18 @@ else in the app depends on it.
 (`.github/workflows/plan-drift-audit.yml`) goes through it too, so it needs
 `OPENROUTER_API_KEY` as a **GitHub Actions** secret as well — same variable name, a
 different store from the Supabase secret above. Optionally set an `OPENROUTER_MODEL`
-Actions *variable* to override the `openai/gpt-4o-mini` default. Without the Actions
+Actions _variable_ to override the `openai/gpt-4o-mini` default. Without the Actions
 secret the audit does not fail silently; it records a dated `FAILED:` entry in the plan
 doc and turns the run red.
 
 ### 5. Develop
+
 ```bash
 npm run dev        # http://localhost:5042  (strictPort — fails loudly if taken)
 ```
 
 ### 6. Verify before shipping
+
 ```bash
 npm run typecheck
 npm run lint
@@ -121,10 +133,12 @@ npm test               # 636 unit tests, pinned to Europe/London
 npm run build          # emits ./dist
 npm run preview        # smoke-test the production bundle
 ```
+
 CI additionally runs a Playwright + axe `e2e` job and a pgTAP `db-tests` job. Neither has
 an npm script; both run from `.github/workflows/ci.yml`.
 
 ### 7. Deploy to cPanel
+
 The server has **no Node** — build locally, ship only the artifacts.
 
 **Target: `https://rotaflow.space`**, its own docroot at `~/rotaflow.space/` on the
@@ -155,21 +169,21 @@ same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
 
 ## Available scripts
 
-| Script                 | Does                                             |
-| ---------------------- | ------------------------------------------------ |
-| `npm run dev`          | Start Vite dev server with HMR                   |
-| `npm run build`        | Type-check, then build the static PWA to `dist/` |
-| `npm run preview`      | Serve the production build locally               |
-| `npm run typecheck`    | `tsc --noEmit` strict check                      |
-| `npm run lint`         | ESLint (zero-warning policy)                     |
-| `npm run format`       | Prettier write (covers `docs/**/*.md` too)       |
-| `npm run format:check` | Prettier check — its own CI gate                 |
-| `npm test`             | Vitest unit suite (`src/**` plus pure modules extracted out of Edge Functions) |
-| `npm run test:watch`   | The same suite, on watch                         |
-| `npm run test:coverage`| Vitest with coverage                             |
-| `npm run lint:fix`     | ESLint with `--fix`                              |
-| `npm run check:bundle` | Size budgets, and that no DEV preview page shipped |
-| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration |
+| Script                     | Does                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `npm run dev`              | Start Vite dev server with HMR                                                 |
+| `npm run build`            | Type-check, then build the static PWA to `dist/`                               |
+| `npm run preview`          | Serve the production build locally                                             |
+| `npm run typecheck`        | `tsc --noEmit` strict check                                                    |
+| `npm run lint`             | ESLint (zero-warning policy)                                                   |
+| `npm run format`           | Prettier write (covers `docs/**/*.md` too)                                     |
+| `npm run format:check`     | Prettier check — its own CI gate                                               |
+| `npm test`                 | Vitest unit suite (`src/**` plus pure modules extracted out of Edge Functions) |
+| `npm run test:watch`       | The same suite, on watch                                                       |
+| `npm run test:coverage`    | Vitest with coverage                                                           |
+| `npm run lint:fix`         | ESLint with `--fix`                                                            |
+| `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                             |
+| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                           |
 
 Two more run against live state and so are not npm scripts:
 `npx playwright test` (40 screens, WCAG, light and dark) and `supabase test db`
@@ -221,4 +235,5 @@ Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - [`docs/HOOKS.md`](docs/HOOKS.md) — custom hook contracts
 
 ## License
+
 MIT — do whatever you want, no warranty.

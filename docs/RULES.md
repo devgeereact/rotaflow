@@ -52,7 +52,8 @@ codebase will drift from, and several below had.
   don't build raw queries inline.
 - Assume RLS is the last line of defense. Still scope every query to the user.
 - Never ship a secret. Browser-exposed keys must be write-only or RLS-guarded.
-  The `service_role` key and Inngest signing key are server-only.
+  The `service_role` key, Stripe's secrets and every SMTP credential are
+  server-only.
 
 ## 6. Errors & logging
 
@@ -107,6 +108,8 @@ codebase will drift from, and several below had.
   responses use `services/syncQueue` (never a raw insert that silently fails offline).
 - **Notifications channel `sms` is reserved, not delivered in V1.** Do not wire a
   Twilio/SMS send; the column value and seam exist for later.
-- **Secrets stay server-side.** SMTP credentials, payment-provider secrets, VAPID
-  private key and Inngest signing key live only in Supabase Edge Functions, never in
-  the client bundle or a `VITE_` var.
+- **Secrets stay server-side.** SMTP credentials, payment-provider secrets and the
+  VAPID private key live only in Supabase Edge Function secrets, never in the client
+  bundle or a `VITE_` var. The notification shared secret is stricter still: it is
+  generated inside Postgres and lives only in `vault` (`0091`), so no human handles
+  it and there is no second copy to keep in step.

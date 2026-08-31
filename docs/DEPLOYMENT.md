@@ -181,7 +181,8 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
   the EU region with PII scrubbing on. Only browser-safe DSN ships to the client.
 - **CodeRabbit only reviews pull requests.** Use branch → PR → merge; work pushed
   straight to the default branch is never reviewed.
-- **Supabase / ImageKit / Inngest keys shipped to the browser must be write-only or
-  RLS-guarded** (Supabase anon, ImageKit public, Inngest write-only event key). The
-  `service_role` key and Inngest signing key are server-only and never touch this
-  static bundle.
+- **Every key shipped to the browser must be write-only or RLS-guarded**
+  (Supabase anon, ImageKit public). The `service_role` key, Stripe's secret and
+  webhook secrets, the VAPID private key and all SMTP credentials are server-only and
+  never touch this static bundle. The Inngest write-only event key still ships and is
+  now unused — nothing has dispatched to Inngest since `0087`.

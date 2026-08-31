@@ -36,10 +36,14 @@ capability's status updates its row in the same PR.
 - **Styling:** NativeWind / Tailwind classes, tokens from `tailwind.config.ts`.
 - **Offloaded systems:** Supabase (Auth/DB + RLS + Edge Functions — the only
   server compute, see `supabase/functions/`), ImageKit (media), Sentry
-  (monitoring), Inngest (background workflows), OpenRouter (AI, called only
-  from an Edge Function — key never reaches the client), **Stripe** (billing:
-  Checkout, Billing Portal and a signature-verified webhook, all three Edge
-  Functions; secret and webhook secret never reach the client).
+  (monitoring), OpenRouter (AI, called only from an Edge Function — key never
+  reaches the client), **Stripe** (billing: Checkout, Billing Portal and a
+  signature-verified webhook, all three Edge Functions; secret and webhook
+  secret never reach the client). Background work is `pg_cron` + `pg_net`
+  inside Postgres — the notification outbox drain, nightly retention and the
+  health probe. **Inngest is retired as a dispatch path** (`0087`): its
+  function is still deployed and its write-only key still ships in the bundle,
+  but nothing sends to it.
 - **OpenRouter is the only AI provider.** Nothing in this project calls
   Anthropic, OpenAI or any other vendor directly. Two callers, both
   server-side: `supabase/functions/ai-rota-assistant` (product AI, keyed by
@@ -65,9 +69,13 @@ actually reads them.
   disabled button is not a control. That sentence has been earned repeatedly:
   plan limits (`0070`), the AI entitlement (`0074`) and minimum cover (`0080`)
   were all enforced only in the browser until someone checked.
-- Server-only secrets — SMTP, Stripe, the VAPID private key, the Inngest signing
-  key — live in Supabase Edge Function secrets. Never a `VITE_` variable, which
-  is compiled into the bundle every visitor downloads.
+- Server-only secrets — SMTP, Stripe, the VAPID private key — live in Supabase
+  Edge Function secrets. Never a `VITE_` variable, which is compiled into the
+  bundle every visitor downloads. The notification shared secret is stricter
+  still: `0091` generates it inside Postgres and it lives only in `vault`, so
+  no human ever handles it and there is no second copy to keep in step. That
+  is not fastidiousness — the copy-in-two-places design is exactly why the
+  notification queue delivered nothing for a month.
 - `anon` holds nothing in `public` beyond schema usage and one function grant
   (`0075`). If you find yourself granting to `anon`, that is a decision to argue
   for in the PR, and CI will ask you to write down why.
