@@ -82,14 +82,14 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 58    |
-| 🟡 Partial            | 19    |
-| 🟠 Defective          | 2     |
-| 🔵 Hardening required | 2     |
-| ⚪ Surface only       | 1     |
-| 🔴 Missing            | 24    |
-| ⚫ Deferred           | 1     |
-| ❓ Not audited        | 5     |
+| 🟢 Complete             | 58    |
+| 🟡 Partial              | 19    |
+| 🟠 Defective            | 2     |
+| 🔵 Hardening required   | 2     |
+| ⚪ Surface only         | 1     |
+| 🔴 Missing              | 24    |
+| ⚫ Deferred             | 1     |
+| ❓ Not audited          | 5     |
 
 **Overall maturity: 7/10**, revised up from 6.5 on 2026-08-29 after five P0 defects closed
 (#162, #163, #165). It sat below the 7.5 recorded on 2026-08-20 not because anything regressed
@@ -290,8 +290,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/pages/app/account/SecurityPage.tsx` · GAP-017 · P3
 - [ ] CAP-050 🟡 Sessions — current session only; no server-side registry, no per-device revoke
       `src/pages/app/account/SessionsPage.tsx` · P3
-- [ ] CAP-051 🔵 URL scheme validation — `photo_url` accepts any scheme; `file_url` validates `^https?://`
-      `src/pages/app/account/ProfilePage.tsx` · HARDEN-003 · P2
+- [x] CAP-051 🟢 URL scheme validation — both columns carry a database CHECK, so the browser is no longer
+      the only thing between a `javascript:` link and an `<a href>`
+      `supabase/migrations/0092_url_schemes_and_notification_retention.sql` · HARDEN-003 closed #213 · 7 pgTAP assertions
 
 ### Compliance
 
