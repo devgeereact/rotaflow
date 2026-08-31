@@ -209,3 +209,32 @@ export async function mergeOrgSettings(
   const merged = { ...((current?.settings as Record<string, unknown>) ?? {}), ...patch };
   return updateOrganisation(orgId, { settings: merged as never });
 }
+
+/**
+ * Has this organisation's setup wizard ever been finished? (GAP-015)
+ *
+ * The wizard creates the organisation at the end of step 1, so the org
+ * existing says nothing about whether steps 2-4 were ever done. Before this
+ * column, `/onboarding` bounced anybody with a membership to the dashboard —
+ * which made locations, invitations and plan selection unreachable the moment
+ * step 1 succeeded.
+ *
+ * Returns true when unknown. A failed read must not drop somebody back into a
+ * wizard they finished weeks ago; the cost of the wrong answer here is
+ * asymmetric.
+ */
+export async function isOnboardingComplete(orgId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('organisations')
+    .select('onboarding_completed_at')
+    .eq('id', orgId)
+    .maybeSingle();
+  if (error) return true;
+  return data?.onboarding_completed_at != null;
+}
+
+/** Stamp the wizard as finished. Owner only, idempotent (0094). */
+export async function completeOnboarding(orgId: string): Promise<void> {
+  const { error } = await supabase.rpc('complete_onboarding', { p_org: orgId });
+  if (error) throw error;
+}
