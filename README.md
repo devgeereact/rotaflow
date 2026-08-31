@@ -185,6 +185,7 @@ same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
 | `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                             |
 | `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                           |
 | `npm run check:docs`       | Counts in prose against the tree, and `docs/SAAS.md`'s summary against its rows |
+| `npm run check:export`     | Every table with an `org_id` is in the organisation export, or excluded with a reason |
 
 Two more run against live state and so are not npm scripts:
 `npx playwright test` (40 screens, WCAG, light and dark) and `supabase test db`

@@ -1396,6 +1396,58 @@ export type Database = {
           },
         ];
       };
+      notification_deliveries: {
+        Row: {
+          id: string;
+          org_id: string;
+          user_id: string;
+          channel: string;
+          status: string;
+          event_type: string;
+          detail: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          user_id: string;
+          channel: string;
+          status: string;
+          event_type: string;
+          detail?: string | null;
+          created_at?: string;
+        };
+        Update: { detail?: string | null };
+        Relationships: [];
+      };
+      notification_templates: {
+        Row: {
+          id: string;
+          org_id: string | null;
+          key: string;
+          channel: string;
+          subject: string;
+          body: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id?: string | null;
+          key: string;
+          channel?: string;
+          subject: string;
+          body: string;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          channel?: string;
+          subject?: string;
+          body?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       notifications: {
         Row: {
           body: string | null;

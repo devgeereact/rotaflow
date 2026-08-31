@@ -70,17 +70,35 @@ export async function deleteOrganisation(
 /**
  * Every table in the export, in the order a human would read them.
  *
- * Listed as data rather than written out as 20 awaited calls so the set is
+ * Listed as data rather than written out as awaited calls so the set is
  * reviewable: the risk in an export is a table quietly missing from it, and
  * that is much easier to spot in a list than in a paragraph of code.
+ *
+ * ## It was materially incomplete until 2026-08-31
+ *
+ * Nineteen tables, against forty that carry an `org_id`. Missing were the
+ * organisation's **invoices**, its staff **inboxes and delivery record**, its
+ * **minimum-cover rules**, its **integration configuration and history**, its
+ * own **GDPR request log**, its **support cases**, and the record of when
+ * platform staff had **support access to its data** — that last being exactly
+ * the sort of thing a customer is entitled to a copy of. Five more tables
+ * added the same day (pay rates, sites, delegations, templates) would have
+ * joined them.
+ *
+ * `scripts/check-export-coverage.mjs` now fails CI when a table with an
+ * `org_id` is in neither this list nor `DELIBERATELY_EXCLUDED`, so the next
+ * table cannot be forgotten the way these were.
  */
 const EXPORTED_TABLES = [
   'locations',
   'departments',
   'staff_profiles',
+  'staff_locations',
+  'staff_pay_rates',
   'shift_types',
   'rotas',
   'shifts',
+  'minimum_cover_rules',
   'availability',
   'leave_requests',
   'overtime_requests',
@@ -90,13 +108,65 @@ const EXPORTED_TABLES = [
   'emergency_contacts',
   'documents',
   'announcements',
+  'announcement_reads',
+  'notifications',
+  'notification_deliveries',
+  'notification_templates',
   'invites',
   'memberships',
+  'role_delegations',
   'audit_logs',
+  'gdpr_requests',
+  'support_cases',
+  'support_access_sessions',
+  'org_integrations',
+  'integration_sync_runs',
   'subscriptions',
+  'invoices',
 ] as const;
 
 type ExportedTable = (typeof EXPORTED_TABLES)[number];
+
+/**
+ * Tables with an `org_id` that are deliberately NOT exported, and why.
+ *
+ * Read by the coverage gate, and repeated to the reader in `notes` below —
+ * an export that silently omits something is the failure this whole file is
+ * organised against, so the omissions are part of the output.
+ */
+export const DELIBERATELY_EXCLUDED: readonly { table: string; reason: string }[] = [
+  {
+    table: 'org_smtp_settings',
+    reason:
+      'Contains the SMTP password for your own mailbox. Exporting a live credential into a file that gets emailed around is a worse outcome than an incomplete export; the settings are on your Integrations screen.',
+  },
+  {
+    table: 'calendar_feed_tokens',
+    reason:
+      "Each row IS a live credential — the URL that lets a calendar read one person's shifts. Anyone who opened this file could read those rotas. Each person can see and rotate their own from their account screen.",
+  },
+  {
+    table: 'notification_outbox',
+    reason:
+      'A dispatch queue that empties within a minute, not a record of anything. What was actually sent is in `notification_deliveries`, which is included.',
+  },
+  {
+    table: 'background_jobs',
+    reason: 'Platform scheduling, not your data.',
+  },
+  {
+    table: 'feature_flag_targets',
+    reason: 'Which platform features are switched on for you. Ours, not yours.',
+  },
+  {
+    table: 'platform_announcement_deliveries',
+    reason: 'Whether we managed to deliver a message from us to you.',
+  },
+  {
+    table: 'platform_announcement_optouts',
+    reason: 'Which of our platform messages you have muted.',
+  },
+];
 
 export interface OrganisationExport {
   exportedAt: string;
@@ -147,6 +217,9 @@ export async function exportOrganisationData(orgId: string): Promise<Organisatio
       'Files themselves are not included. `documents` records the URL of each uploaded file, held by ImageKit; download anything you need to keep before deleting the organisation.',
       "Staff accounts are not included. A person's RotaFlow login can belong to more than one organisation, so it is not this organisation's to export. Their employment record with you is in `staff_profiles` and the tables around it.",
       "Audit rows survive the organisation being deleted, by design: an audit trail a tenant deletion erases is not an audit trail. They are kept with the organisation's name and no longer linked to it.",
+      ...DELIBERATELY_EXCLUDED.map(
+        (excluded) => `Not included — ${excluded.table}: ${excluded.reason}`,
+      ),
     ],
   };
 }

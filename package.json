@@ -21,7 +21,8 @@
     "test:coverage": "vitest run --coverage",
     "check:bundle": "node scripts/check-bundle-size.mjs",
     "check:migrations": "node scripts/check-migration-safety.mjs",
-    "check:docs": "node scripts/check-doc-counts.mjs"
+    "check:docs": "node scripts/check-doc-counts.mjs",
+    "check:export": "node scripts/check-export-coverage.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
