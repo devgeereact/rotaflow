@@ -82,8 +82,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 95    |
-| 🟡 Partial            | 1     |
+| 🟢 Complete           | 96    |
+| 🟡 Partial            | 0     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -143,7 +143,7 @@ with `gen_random_bytes`, lives in `vault` alone, and is checked by a verifier gr
 **What is actually deployed, read from the project on 2026-08-31.** `supabase/functions/` does
 **not** deploy on merge — it is a separate manual step, and a merged function that nobody
 deployed is the most common way this register goes stale. Live versions: `ai-rota-assistant`
-v26, `send-notification` v25, `test-smtp` v19, `create-checkout-session` v15,
+v26, `send-notification` v26, `test-smtp` v19, `create-checkout-session` v15,
 `create-portal-session` v15, `stripe-webhook` v15, `send-invite` v5, `calendar-feed` v1.
 
 Two of the eight run with `verify_jwt: false`, both deliberately and both with their own
@@ -302,13 +302,16 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       free either: a tenant logo is an upload path, a moderation question and a second place every
       email template has to be correct
       `src/types/database.types.ts` · GAP-016 · P3
-- [x] CAP-033 🟡 Email templates — `notification_templates` with a platform default per event
+- [x] CAP-033 🟢 Email templates — `notification_templates` with a platform default per event
       and an organisation's own wording overriding it, substituted in TWO passes so a value
       containing `{{…}}` cannot rewrite the email around it. In the database rather than the
       Edge Function on purpose: functions do not deploy on merge, so copy living in one is copy
-      nobody can fix. **🟡 until the function is deployed and a real email has been read** —
-      absence of a template keeps today's exact behaviour, so merging alone changes nothing
-      `supabase/migrations/0108_notification_templates.sql` · 10 pgTAP assertions
+      nobody can fix. **Deployed 2026-08-31: `send-notification` v26**, verified after —
+      unauthenticated and wrong-secret both still 401, and `render_notification` returns a real
+      message ("Sunnyvale Care: Your leave request was approved"). What is still unproven is
+      the same thing that is unproven for push: nobody has read one of these in a mailbox. That
+      is a real-recipient test, tracked with ❓-004, not a build
+      `supabase/migrations/0108_notification_templates.sql` · 10 pgTAP assertions · deployed v26
 - [x] CAP-034 🟢 Stripe Checkout, Billing Portal, signature-verified webhook
       `supabase/functions/stripe-webhook/index.ts`
 - [x] CAP-035 🟢 Dual test/live credentials coexisting
