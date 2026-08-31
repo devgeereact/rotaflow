@@ -204,6 +204,14 @@ row reads as unsent rather than assumed delivered.
 | `org_integrations`       | `org_id`, `connector_key`, `status` (`connected`\|`paused`\|`error`\|`disconnected`), `credentials_ref?`, `last_sync_at?`, `last_error?`                                                       | One tenant's connection. `credentials_ref` **names** a secret held by an Edge Function or the provider — no token, key or password is stored in this schema.                                                                                                                                                                                            |
 | `integration_sync_runs`  | `org_integration_id`, `connector_key`, `org_id`, `started_at`, `finished_at?`, `duration_ms?`, `outcome` (`running`\|`success`\|`partial`\|`failed`), `records`, `error?`                      | One sync attempt. "Organisations connected" and failure counts are sums over this table, never columns on the catalogue, so they can't drift from the rows they summarise. **Has never had a writer** — no Edge Function syncs anything yet, which is why every connector is `planned`.                                                                 |
 
+**Plus a view.** `integration_connector_stats` (`0026`, `security_invoker`) joins the three
+tables above into the row `/admin/integrations` renders: `key`, `name`, `category`, `status`,
+`available`, `orgs_connected`, `runs_24h`, `failed_24h`, `success_rate_7d`,
+`median_duration_ms`, `last_sync_at`. It is one of the three views in `public` and, like the
+other two, invoker-rights — so a caller sees the aggregate of exactly the rows their own RLS
+lets them see, not the platform total. Since `0073` marked every connector `planned`, every
+count it returns is zero, and that is correct rather than broken.
+
 ### 4.8 Platform configuration, health & retention (`0027`, `0029`)
 
 | Table                     | Key columns                                                                                                                       | Purpose                                                                                                                                                                                                                                                                                                                                                                            |
@@ -213,6 +221,24 @@ row reads as unsent rather than assumed delivered.
 | `retention_runs`          | `ran_at`, `dry_run`, `data_type`, `rows_removed`, `cutoff?`, `error?`                                                             | One row per nightly run (or dry run) of `enforce_retention()`.                                                                                                                                                                                                                                                                                                                     |
 | `platform_health_samples` | `service`, `status` (`operational`\|`degraded`\|`down`), `latency_ms?`, `source` (`console`\|`scheduled`\|`manual`), `checked_at` | Point-in-time reachability probes. `source` is kept distinct because a browser in London and a cron in `eu-west-2` measure different things — averaging them silently would produce a number someone eventually depends on.                                                                                                                                                        |
 | `background_jobs`         | `queue`, `job_key`, `status` (`queued`\|`running`\|`succeeded`\|`failed`\|`cancelled`), `attempts`, `org_id?`, `payload jsonb`    | Generic job-queue bookkeeping for whatever schedules through it.                                                                                                                                                                                                                                                                                                                   |
+
+**Two more tables live here that no role but `service_role` can touch**, added after this
+section was last written and absent from it until 2026-08-31:
+
+| Table                    | Key columns                                                     | Purpose                                                                                     |
+| ------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `platform_health_probes` | `request_id` (the `pg_net` id), `service`, `sent_at`, `classify` | `0076`/`0079`. One row per in-flight probe, so the reply can be matched back to what asked it |
+| `rate_limit_events`      | `id`, `bucket`, `subject`, `created_at`                          | `0085`. The shared limiter's ledger — one row per counted attempt, per bucket and subject     |
+
+Both have **RLS enabled and zero policies**, and grants to `service_role` alone. That is not
+an oversight and it is not the RLS-without-a-policy hazard `rls_invariants.test.sql` fails on:
+that test asks whether a table any client role can *reach* has a policy, and no client role
+can reach these. `anon` and `authenticated` hold nothing on either, so RLS-on-no-policy is a
+second closed door behind a locked one.
+
+`rate_limit_events` in particular must stay unreadable. It records who attempted what and
+when, keyed by user id or IP, across every limited action — an audit trail of failed
+attempts that would tell one tenant about another.
 
 Deleted-tenant data (the thirty-day grace on a removed organisation and everything
 cascading from it) is deliberately **not** on this schedule — a different and more
@@ -364,6 +390,22 @@ inserts the owner's membership row (same transaction), the `not exists` check fl
 and only `is_org_member()` governs access, same as every other tenant table.
 
 ## 6. Automation
+
+**This section is selective, and says so on purpose.** It explains the functions whose
+*behaviour* a reader has to know before changing something — the ones that are load-bearing
+for tenancy, for the audit trail, or for a boundary. It is **not** a catalogue: there are
+111 `security definer` functions in `public` and roughly half are named here. Do not read an
+absence as "does not exist". The list itself is one query, and a query cannot go stale:
+
+```sql
+select proname, prosecdef from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' order by 1;
+```
+
+Enumerating all of them here was considered and rejected: a hand-maintained list of a
+hundred names is the same shape as every count this repository has had to correct, and the
+one thing it would add over the query is the opportunity to be wrong.
 
 - **`handle_new_user()`** (from `0001`): creates `profiles` + `app_settings` on sign-up.
 - **`set_updated_at()`**: keeps `updated_at` accurate on every table.
