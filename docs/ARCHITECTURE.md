@@ -42,7 +42,7 @@ serves files. It never runs application logic.
 
 ```text
 src/
-├── assets/        # images/svgs imported by code
+├── assets/        # images/svgs imported by code — EMPTY today (`.gitkeep` only)
 ├── components/    # presentational + wiring components
 │   └── ui/        # design-system primitives (Button, Card…)
 ├── context/       # AuthProvider, ThemeProvider (React Context)
@@ -62,9 +62,15 @@ src/
 ```
 
 **Dependency direction:** `pages → services → lib`. Components consume `hooks`
-and `context`. `lib` should import nothing from `pages`/`components`; six files
-currently break that with type-only imports (`clockinDemo`, `swapRows`,
-`workspaceTabs`, `settingsTabs`, `reportsDemo`) — tracked in `docs/SAAS.md`.
+and `context`. `lib` should import nothing from `pages`/`components`; five files
+currently break that with type-only imports — `clockinDemo`, `reportsDemo`,
+`settingsTabs`, `swapRows`, `workspaceTabs` — tracked in `docs/SAAS.md`. This
+said "six" while naming five, which is the kind of number that survives because
+nobody counts the list beside it. Count it rather than trusting either:
+
+```bash
+grep -ln "from '@/pages\|from '@/components" src/lib/*.ts
+```
 
 **RotaFlow services** (typed Supabase data access, all `org_id`-scoped):
 `orgService`, `staffService`, `locationService`, `rotaService`, `shiftService`,
@@ -129,13 +135,15 @@ TENANT SHELL, /app (requires membership, else redirects to /onboarding)
     organisation · permissions · roles · policies
     notifications · integrations · billing · audit
   /app/overtime           overtime requests + approvals
-  /app/help               help & support; opens a support case
+  /app/help               help & support; opens a support case, reads its thread
+                          and replies into it
   /app/account            layout route + tab bar (every role)
     profile · preferences · security · accounts · sessions · tokens · activity
   /app/staff              → redirects to /app/team
   /app/integrations       → redirects to /app/settings/integrations
 
   /legal/privacy · /legal/terms · /legal/cookies · /legal/accessibility
+  /legal/trust            sub-processors, AI notice, security disclosure
   /auth/callback          OAuth return
   /admin/*                platform console, 19 screens (RequirePlatformAdmin)
                           `is_platform_admin()` requires an aal2 session when
