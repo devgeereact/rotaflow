@@ -340,3 +340,40 @@ export async function unpublishRota(id: string): Promise<Rota> {
   if (error) throw error;
   return data;
 }
+
+export interface RepeatResult {
+  weeksCreated: number;
+  shiftsCreated: number;
+  /** Weeks left alone: a published rota, or a draft already holding work. */
+  weeksSkipped: number;
+}
+
+/**
+ * Copy a week's shifts into the following N weeks (CAP-006, `0107`).
+ *
+ * One call, one transaction. The client could do this with the paste
+ * machinery it already has, but twelve weeks that way is twelve rota
+ * creations and several hundred round trips, each able to fail on its own —
+ * leaving a quarter half-built with no record of where it stopped.
+ *
+ * It never writes over a published week or a draft somebody has already
+ * started, and returns how many it left alone so the screen can say so
+ * rather than implying the whole quarter is filled.
+ */
+export async function repeatRotaWeeks(
+  rotaId: string,
+  weeks: number,
+): Promise<RepeatResult> {
+  const { data, error } = await supabase.rpc('repeat_rota_weeks', {
+    p_rota: rotaId,
+    p_weeks: weeks,
+  });
+  if (error) throw error;
+
+  const row = (data ?? [])[0];
+  return {
+    weeksCreated: row?.weeks_created ?? 0,
+    shiftsCreated: row?.shifts_created ?? 0,
+    weeksSkipped: row?.weeks_skipped ?? 0,
+  };
+}
