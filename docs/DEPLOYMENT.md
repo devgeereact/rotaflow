@@ -189,3 +189,30 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
   deleted its last reader, because Vite inlines every `VITE_*` variable into
   `import.meta.env` whether code reads it or not. **Retiring a service means
   removing its variable from `.env`, then checking the built bundle.**
+
+## A deploy does not undo a leak
+
+Learned on 2026-08-31, deploying the removal of a retired credential (HARDEN-010).
+
+`dist/assets/*` is served with `cache-control: public, max-age=31536000, immutable`, which
+is correct — the filenames are content-hashed, so a changed file is a changed name. The
+consequence is that **Cloudflare keeps serving a superseded chunk from its edge for up to a
+year**, at a URL that nothing links to any more but that anybody who has seen it can still
+fetch. Verified: the pre-`0087` `useInngestDispatch-*.js` returned 200 with
+`cf-cache-status: HIT` after the deploy that removed it from the origin.
+
+So the checks after a deploy that exists to *remove* something must be:
+
+1. **Over SSH, not over HTTP.** `ssh cpanel 'ls ~/<docroot>/assets/ | grep <thing>'`. HTTP
+   answers from the edge, and the SPA fallback answers 200 for a missing file anyway —
+   `docs/SAAS.md` has a security finding that was false for exactly that reason.
+2. **Then the served bundle by content**, not by status code: fetch the `index-*.js` the
+   live HTML actually references and grep it.
+3. **Then accept that the old URL stays fetchable.** Purge it if a token exists; the
+   account has none stored on the deploying machine today. Either way a purge is not the
+   remedy for a leaked credential — **rotation is.** A cached artefact you cannot reach is
+   still an artefact somebody else already has.
+
+The general rule: shipping a new artefact hides the old one from new visitors. It does not
+retract it. Anything secret that was ever in a built bundle is compromised, and the only
+action that changes that is revoking it at the service that issued it.
