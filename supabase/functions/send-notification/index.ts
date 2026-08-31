@@ -230,18 +230,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const expectedSecret = Deno.env.get('NOTIFICATION_FUNCTION_SECRET');
-    if (!expectedSecret) {
-      return jsonResponse({ error: 'Notification delivery is not configured yet' }, 503);
-    }
-    if (req.headers.get('x-notification-secret') !== expectedSecret) {
+    const presented = req.headers.get('x-notification-secret');
+    if (!presented) {
       return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-
-    const body = (await req.json()) as Partial<RequestBody>;
-    const { orgId, userIds, type, title } = body;
-    if (!orgId || !userIds?.length || !type || !title) {
-      return jsonResponse({ error: 'orgId, userIds, type and title are required' }, 400);
     }
 
     const supabase = createClient(
@@ -250,6 +241,52 @@ Deno.serve(async (req: Request) => {
       // key or a caller's JWT beyond this function.
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    // ---- The shared secret, from `vault` first (0091) ------------------
+    //
+    // It used to come only from `Deno.env`, which meant the same value had
+    // to be set twice — here, and in `vault` for the outbox drain to send —
+    // and a Supabase secret cannot be read back once set. So keeping the two
+    // equal required somebody to know the value and type it into two places.
+    // For a month nobody did, and the queue drained nothing while looking
+    // healthy.
+    //
+    // `vault` is now the source of truth: 0091 generates the secret inside
+    // Postgres, so no human ever handles it and there is no second copy to
+    // drift. The env var is still accepted, because functions do not deploy
+    // on merge — a project running the old function against the new
+    // migration, or the reverse, has to keep working.
+    // The comparison happens IN the database. `vault` is not a
+    // PostgREST-exposed schema, so it cannot be read over the API — and it
+    // should not be: this function needs to know whether the caller is right,
+    // not what the secret is.
+    const { data: vaultOk, error: vaultError } = await supabase.rpc(
+      'verify_notification_secret',
+      { p_presented: presented },
+    );
+    if (vaultError) console.error('verify_notification_secret failed', vaultError);
+
+    // The env var still counts, because functions do not deploy on merge: a
+    // project running the new migration against the old function, or the
+    // reverse, has to keep working. Once every deployment is past 0091 this
+    // fallback can go, and `NOTIFICATION_FUNCTION_SECRET` with it.
+    const envSecret = Deno.env.get('NOTIFICATION_FUNCTION_SECRET');
+    const envOk = Boolean(envSecret) && presented === envSecret;
+
+    if (vaultError && !envSecret) {
+      // Cannot tell either way. Refusing is the only safe answer, and 503
+      // rather than 401 because this is our fault, not the caller's.
+      return jsonResponse({ error: 'Notification delivery is not configured yet' }, 503);
+    }
+    if (vaultOk !== true && !envOk) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
+    const body = (await req.json()) as Partial<RequestBody>;
+    const { orgId, userIds, type, title } = body;
+    if (!orgId || !userIds?.length || !type || !title) {
+      return jsonResponse({ error: 'orgId, userIds, type and title are required' }, 400);
+    }
 
     // See "RECIPIENT SCOPING" above: never trust that every userId actually
     // belongs to orgId just because the caller said so.
