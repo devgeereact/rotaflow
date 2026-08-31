@@ -295,10 +295,19 @@ self-service flow. What each type actually does today:
   ImageKit, only the database row — both limits are in the migration's own
   header, and neither was contradicted by the live test.
 - **Access / portability**: an **organisation-level** one-click export exists —
-  `exportOrganisationData()` (`src/services/orgLifecycleService.ts`) assembles 20
-  tables into a single JSON file from Settings → Organisation, read through the
-  caller's own session so RLS decides what is included and anything unreadable is
-  listed under `omitted`. A **per-subject** package still does not exist:
+  `exportOrganisationData()` (`src/services/orgLifecycleService.ts`) assembles
+  **33** tables into a single JSON file from Settings → Organisation, read through
+  the caller's own session so RLS decides what is included and anything unreadable
+  is listed under `omitted`. It assembled 19 until 2026-08-31, against 40 tables
+  carrying an `org_id`: the organisation's invoices, its staff inboxes and
+  delivery record, its minimum-cover rules, its integration configuration and
+  history, its own GDPR request log, its support cases and the record of platform
+  support access to its data were all absent, none of it deliberately. The seven
+  still excluded are excluded **with a reason printed in the file itself** — two
+  are live credentials (`org_smtp_settings`, `calendar_feed_tokens`), one is a
+  queue that empties in a minute, and four are platform plumbing.
+  `npm run check:export` fails CI when a table with an `org_id` is in neither
+  list, so this cannot drift again. A **per-subject** package still does not exist:
   `exportStaffData()` (`src/services/gdprService.ts`) covers eight datasets for one
   staff member, but neither export includes the person's `auth.users` row, and
   nothing assembles a subject-access package across organisations.

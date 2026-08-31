@@ -381,8 +381,14 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 - [x] CAP-052 🟢 GDPR anonymisation — live-tested end to end
       `supabase/migrations/0011_gdpr_anonymize.sql`
-- [x] CAP-053 🟢 Organisation export and delete, with a pgTAP test
-      `supabase/migrations/0063_delete_organisation.sql`
+- [x] CAP-053 🟢 Organisation export and delete, with a pgTAP test — and the export was
+      **materially incomplete until 2026-08-31**: 19 tables against 40 carrying an `org_id`,
+      missing the organisation's invoices, staff inboxes, minimum-cover rules, integration
+      history, GDPR log, support cases and the record of platform support access to its data.
+      None of that was a decision; each table was added and nobody went back. Now 33 exported
+      and 7 excluded with a reason printed in the file, and `npm run check:export` fails CI
+      when a tenant table is in neither list
+      `supabase/migrations/0063_delete_organisation.sql` · `scripts/check-export-coverage.mjs`
 - [x] CAP-054 🟢 Retention enforcement — nightly `pg_cron`, running since 2026-08-21
       `supabase/migrations/0029_retention_enforcement.sql`
 - [x] CAP-055 🟢 Audit trail — severity, scope, visibility, actor snapshot, immutability trigger
