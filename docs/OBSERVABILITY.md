@@ -44,8 +44,8 @@ Every row marked "computable now" was actually run against the live
 demo/seed dataset (13 August 2026), not just checked for schema presence.
 
 > ⚠️ **That dataset no longer exists.** It was torn down on 2026-08-14 and every seed
-> script was deleted in `#120`. Production now holds one organisation and zero clock
-> events, so none of the figures below can be reproduced, and the recommendation later
+> script was deleted in `#120`. Production now holds **zero organisations, one auth
+> user and zero clock events** (read live, 31 August 2026), so none of the figures below can be reproduced, and the recommendation later
 > in this document to "re-run the six computable queries against the seed data" is not
 > executable. The _queries_ and the schema columns they rely on are still correct; only
 > the numbers are historical. Re-derive them against a real tenant before quoting any.
@@ -67,19 +67,31 @@ than at the metric definitions:
 Both are seed-data quality gaps, not query bugs or metric-design errors —
 the SQL is correct and would return a sane number against real usage, where
 a decision cannot be recorded before the request that prompted it. Worth
-fixing in `platform_seed.sql`/`demo_seed.sql` at some point — constrain each
+fixing in the seed scripts at some point — those files were deleted on
+19 August 2026, so this is a note for whoever writes the next ones — constrain each
 generated `reviewed_at`/`published_at` to be no earlier than the row it
 depends on, the same class of fix as the `support_case_reference_seq`
-collision documented in `supabase/seed/platform_seed.sql`'s own comments —
+collision that seed had —
 but not urgent: nobody is reading these numbers as real product metrics
 today, and the plan's own guidance is not to invent baselines yet
 regardless. Recorded here so the next person to run these queries against
 seed data doesn't mistake a seed-timestamp artifact for a broken metric —
 or worse, a broken product.
 
-The two that returned clean, plausible numbers: **attendance reliability**
-(3,506 clock events, 3,484 synced, 22 currently queued — a real, sane
-online/offline split) and **CSAT** (6 rated cases, average 4.33/5, matching
+> ⚠️ **Everything in this section is evidence from a dataset that no longer
+> exists, and it cannot be reproduced.** The demo dataset these queries ran
+> against was destroyed on 14 August 2026, and the seed scripts that built it
+> (`supabase/seed/*.sql`) were deleted on 19 August. Production today holds
+> **zero organisations and zero clock events**. The numbers below are kept
+> because the _shapes_ they revealed are still true — the independent-timestamp
+> bug, the `created_at`-minus-`event_at` proxy measuring seed generation rather
+> than sync latency — but do not cite them as current figures, and do not try
+> to re-run the queries expecting these results. Re-reading this section
+> against production is the first thing to do when a real tenant has history.
+
+The two that returned clean, plausible numbers **at the time**: **attendance
+reliability** (3,506 clock events, 3,484 synced, 22 currently queued — a real,
+sane online/offline split) and **CSAT** (6 rated cases, average 4.33/5, matching
 the seed's own planted values). The sync-latency proxy itself (`created_at`
 minus `event_at`) is still not a trustworthy number from seed data —
 bulk-inserted historical rows have a `created_at` reflecting insert time,

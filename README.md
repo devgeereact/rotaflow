@@ -184,6 +184,7 @@ same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
 | `npm run lint:fix`         | ESLint with `--fix`                                                            |
 | `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                             |
 | `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                           |
+| `npm run check:docs`       | Counts in prose against the tree, and `docs/SAAS.md`'s summary against its rows |
 
 Two more run against live state and so are not npm scripts:
 `npx playwright test` (40 screens, WCAG, light and dark) and `supabase test db`
@@ -204,7 +205,7 @@ rotaflow/
 ├── index.html            # app entry + font preconnect
 ├── vite.config.ts        # build + PWA/Workbox config
 ├── tailwind.config.ts    # design tokens (see docs/DESIGN.md)
-├── docs/                 # PRD, DESIGN, ARCHITECTURE, SCHEMA, RULES, HOOKS
+├── docs/                 # SAAS (the register), PRD, DESIGN, ARCHITECTURE, SCHEMA, RULES, HOOKS
 ├── public/               # manifest icons, offline.html, robots.txt
 ├── supabase/
 │   ├── migrations/       # SQL schema + RLS policies
@@ -233,6 +234,11 @@ Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - [`docs/SCHEMA.md`](docs/SCHEMA.md) — Postgres tables & RLS
 - [`docs/RULES.md`](docs/RULES.md) — coding standards
 - [`docs/HOOKS.md`](docs/HOOKS.md) — custom hook contracts
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deploy playbook, and the traps that have bitten
+- [`docs/DATA_LIFECYCLE.md`](docs/DATA_LIFECYCLE.md) — retention, erasure, residency
+- [`docs/SCREENS.md`](docs/SCREENS.md) — every screen, against its design reference
+- [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) — the success-metric taxonomy and what computes each
+- [`docs/QA-AUDIT-REPORT.md`](docs/QA-AUDIT-REPORT.md) — dated evidence of the last full audit
 
 ## License
 
