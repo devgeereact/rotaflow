@@ -497,9 +497,11 @@ describe('retryDeadLetteredWrite (CAP-016)', () => {
     mockedRecordClockEvent.mockResolvedValue({} as never);
     await retryDeadLetteredWrite(dead!.id);
 
-    const sent = mockedRecordClockEvent.mock.calls.at(-1)?.[0] as {
-      client_event_id?: string;
-    };
+    // Indexed rather than `.at(-1)`: the tsconfig target is ES2021, where
+    // `Array.prototype.at` does not exist. Raising the target for one test
+    // would be the tail wagging the dog.
+    const calls = mockedRecordClockEvent.mock.calls;
+    const sent = calls[calls.length - 1]?.[0] as { client_event_id?: string };
     expect(sent.client_event_id).toBe(keyBefore);
   });
 
