@@ -109,6 +109,7 @@ export function LeavePreviewPage(): JSX.Element {
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           tiles={{
+            entitlementSubLabel: 'includes 2 days carried over',
             entitlementLabel: '28 days',
             takenLabel: '17 days',
             remainingLabel: '11 days',

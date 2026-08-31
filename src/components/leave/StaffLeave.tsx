@@ -18,6 +18,12 @@ import type { LeaveStatus } from '@/lib/leaveRows';
 export interface StaffLeaveTiles {
   /** "28 days", or "Not set" when no `holiday_allowance` is on file. */
   entitlementLabel: string;
+  /**
+   * Why the entitlement is what it is, when it is not simply the allowance:
+   * days carried over, or a pro-rata year for a joiner (CAP-085). Null when
+   * there is nothing to explain.
+   */
+  entitlementSubLabel: string | null;
   takenLabel: string;
   /** "11 days", or "-" when entitlement is not set. */
   remainingLabel: string;
@@ -77,7 +83,17 @@ export function StaffLeave({
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Entitlement" value={tiles.entitlementLabel} />
+        <StatTile
+          label="Entitlement"
+          value={tiles.entitlementLabel}
+          hint={
+            tiles.entitlementSubLabel && (
+              <span className="text-content-muted dark:text-content-muted-dark">
+                {tiles.entitlementSubLabel}
+              </span>
+            )
+          }
+        />
         <StatTile label="Taken" value={tiles.takenLabel} />
         <StatTile
           label="Remaining"

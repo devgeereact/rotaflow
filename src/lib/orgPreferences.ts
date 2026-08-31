@@ -145,6 +145,10 @@ export interface SchedulingPolicies {
    * organisation left on the wrong one is rostered on a public holiday.
    */
   bankHolidayRegion: BankHolidayRegion;
+  /** Month the holiday year starts (CAP-085). 1 = January, 4 = April. */
+  leaveYearStartMonth: number;
+  /** Most days that may be carried into the next leave year. 0 = use it or lose it. */
+  leaveCarryOverMaxDays: number;
 }
 
 export const DEFAULT_POLICIES: SchedulingPolicies = {
@@ -160,6 +164,10 @@ export const DEFAULT_POLICIES: SchedulingPolicies = {
   // The default rather than a guess about the customer: most of the UK, and
   // the setting is one line away on Settings → Policies.
   bankHolidayRegion: 'england-and-wales',
+  // The calendar year with no carry-over: what the product did before it
+  // asked, so an organisation that never opens this screen sees no change.
+  leaveYearStartMonth: 1,
+  leaveCarryOverMaxDays: 0,
 };
 
 export function schedulingPolicies(settings: Json): SchedulingPolicies {
@@ -192,6 +200,16 @@ export function schedulingPolicies(settings: Json): SchedulingPolicies {
     bankHolidayRegion: isRegion(str(settings, 'bank_holiday_region'))
       ? (str(settings, 'bank_holiday_region') as BankHolidayRegion)
       : DEFAULT_POLICIES.bankHolidayRegion,
+    leaveYearStartMonth: num(
+      settings,
+      'leave_year_start_month',
+      DEFAULT_POLICIES.leaveYearStartMonth,
+    ),
+    leaveCarryOverMaxDays: num(
+      settings,
+      'leave_carry_over_max_days',
+      DEFAULT_POLICIES.leaveCarryOverMaxDays,
+    ),
   };
 }
 
@@ -212,6 +230,8 @@ export function policiesToSettings(p: SchedulingPolicies): Record<string, unknow
     swap_approval_required: p.swapApprovalRequired,
     auto_decline_clashing_leave: p.autoDeclineClashingLeave,
     bank_holiday_region: p.bankHolidayRegion,
+    leave_year_start_month: p.leaveYearStartMonth,
+    leave_carry_over_max_days: p.leaveCarryOverMaxDays,
   };
 }
 
