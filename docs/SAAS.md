@@ -188,8 +188,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-015 🟢 Replay idempotency — a key minted before the first attempt, a partial unique index, and
       a collision counted as synced rather than dead-lettered
       `supabase/migrations/0081_outbox_idempotency.sql` · BUG-046 closed #193 · 5 pgTAP assertions
-- [ ] CAP-016 🟡 Dead-letter recovery — surfaced and dismissable, but no retry path
-      `src/components/FailedWritesNotice.tsx` · P1
+- [x] CAP-016 🟢 Dead-letter recovery — surfaced, retryable and dismissable; the retry is safe because
+      the idempotency keys (`0081`) recognise a write that secretly landed
+      `src/services/syncQueue.ts` · `src/components/FailedWritesNotice.tsx` · 4 unit tests
 - [ ] CAP-017 🔴 QR clock-in — schema accepts `'qr'`; nothing generates a code
       `src/pages/app/ClockInPage.tsx` · P3
 - [x] CAP-018 🟢 Timesheets — week approval, amendment, CSV export
@@ -322,8 +323,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [ ] CAP-060 🟡 Legal pages — four of five routes render a placeholder shell; `/legal/trust` is
       real, because it states facts about the system rather than policy needing counsel
       `src/pages/legal/LegalNotice.tsx` · P2
-- [ ] CAP-061 🟠 Data-residency claim — `DATA_LIFECYCLE.md` says no personal data leaves the UK/EU. It does
-      `supabase/functions/ai-rota-assistant/index.ts` · BUG-056 · **P0**
+- [x] CAP-061 🟢 Data-residency claim — corrected when BUG-056 closed (#161) and verified again 2026-08-31:
+      `DATA_LIFECYCLE.md` §2 now names both US processors and says the old claim was wrong
+      `docs/DATA_LIFECYCLE.md` · BUG-056 closed #161 — this row was simply never flipped
 
 ### Integrations and API
 

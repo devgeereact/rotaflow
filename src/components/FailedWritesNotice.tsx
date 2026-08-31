@@ -1,4 +1,4 @@
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/Button';
 import type { DeadLetterRecord } from '@/lib/offlineOutbox';
@@ -26,6 +26,12 @@ function actionFailed(item: DeadLetterRecord): boolean {
 interface Props {
   items: DeadLetterRecord[];
   onDiscard: (id: string) => void | Promise<void>;
+  /**
+   * Try the write again (CAP-016). Optional: a caller that has no queue to
+   * flush into simply does not offer it, rather than being handed a button
+   * that does nothing.
+   */
+  onRetry?: (id: string) => void | Promise<void>;
   className?: string;
 }
 
@@ -55,6 +61,7 @@ interface Props {
 export function FailedWritesNotice({
   items,
   onDiscard,
+  onRetry,
   className,
 }: Props): JSX.Element | null {
   if (items.length === 0) return null;
@@ -81,6 +88,7 @@ export function FailedWritesNotice({
             </>
           }
           onDiscard={onDiscard}
+          onRetry={onRetry}
         />
       )}
       {unannounced.length > 0 && (
@@ -100,6 +108,7 @@ export function FailedWritesNotice({
             </>
           }
           onDiscard={onDiscard}
+          onRetry={onRetry}
         />
       )}
     </>
@@ -114,6 +123,7 @@ interface GroupProps extends Props {
 function FailedGroup({
   items,
   onDiscard,
+  onRetry,
   className,
   heading,
   body,
@@ -155,15 +165,32 @@ function FailedGroup({
                 {item.reason === 'exhausted' ? ' · could not reach the server' : ''}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void onDiscard(item.id)}
-              aria-label={`Dismiss failed ${KIND_LABELS[item.kind].toLowerCase()} from ${format(new Date(item.queuedAt), 'd MMM, HH:mm')}`}
-            >
-              <X size={14} aria-hidden="true" />
-              <span className="ml-1">Dismiss</span>
-            </Button>
+            {/* Retry first: for most of these the payload was always correct
+                and only the moment was wrong — a ward's wifi during handover,
+                a shift published a minute later. Dismiss stays as the way to
+                acknowledge one that genuinely cannot work. */}
+            <div className="flex shrink-0 items-center gap-1">
+              {onRetry && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void onRetry(item.id)}
+                  aria-label={`Try the ${KIND_LABELS[item.kind].toLowerCase()} from ${format(new Date(item.queuedAt), 'd MMM, HH:mm')} again`}
+                >
+                  <RotateCcw size={14} aria-hidden="true" />
+                  <span className="ml-1">Try again</span>
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void onDiscard(item.id)}
+                aria-label={`Dismiss failed ${KIND_LABELS[item.kind].toLowerCase()} from ${format(new Date(item.queuedAt), 'd MMM, HH:mm')}`}
+              >
+                <X size={14} aria-hidden="true" />
+                <span className="ml-1">Dismiss</span>
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
