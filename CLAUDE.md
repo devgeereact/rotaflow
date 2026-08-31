@@ -63,7 +63,10 @@ actually reads them.
 - Every domain table carries `org_id`, and every query is scoped to the active
   org. Never write a cross-tenant query from the client.
 - A new table enables RLS with membership-scoped policies (`is_org_member`,
-  `has_org_role`) **before** it is used. See `docs/SCHEMA.md` §5.
+  `has_org_role`) **before** it is used. See `docs/SCHEMA.md` §5. Since
+  2026-08-31 this is checked rather than trusted:
+  `supabase/tests/database/rls_invariants.test.sql` fails the build on a table
+  with no RLS, a readable table with no policy, or any grant to `anon`.
 - UI role checks (`usePermissions`) are cosmetic. **RLS is the guard, and so is
   the database function behind an RPC** — a control whose only enforcement is a
   disabled button is not a control. That sentence has been earned repeatedly:
