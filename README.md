@@ -79,12 +79,15 @@ In the Supabase SQL editor, run the migrations **in order**:
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_rotaflow.sql
 …
-supabase/migrations/0066_purge_qa_accounts.sql
+supabase/migrations/0090_entitlements_say_what_they_gate.sql
 ```
-**Run every file in `supabase/migrations/`, in numeric order** — there are 66, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 90, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
 whole ledger.
+
+Don't hand-count this list: the number above has been wrong twice, because a README
+is the last thing anyone updates. `ls supabase/migrations/*.sql | wc -l` is the answer.
 
 ### 4. Deploy the AI rota assistant (optional)
 The natural-language rota assistant runs as a Supabase Edge Function so its OpenRouter
@@ -161,8 +164,19 @@ same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
 | `npm run lint`         | ESLint (zero-warning policy)                     |
 | `npm run format`       | Prettier write (covers `docs/**/*.md` too)       |
 | `npm run format:check` | Prettier check — its own CI gate                 |
-| `npm test`             | Vitest, 636 unit tests                           |
+| `npm test`             | Vitest unit suite (`src/**` plus pure modules extracted out of Edge Functions) |
+| `npm run test:watch`   | The same suite, on watch                         |
 | `npm run test:coverage`| Vitest with coverage                             |
+| `npm run lint:fix`     | ESLint with `--fix`                              |
+| `npm run check:bundle` | Size budgets, and that no DEV preview page shipped |
+| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration |
+
+Two more run against live state and so are not npm scripts:
+`npx playwright test` (40 screens, WCAG, light and dark) and `supabase test db`
+(pgTAP — the only gate that can catch an RLS regression).
+
+The test count is deliberately not printed here. It was "636" for long enough to
+be wrong, and a number in a README that nothing checks is a number that drifts.
 
 ---
 

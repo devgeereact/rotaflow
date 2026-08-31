@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-30, after twenty-one pull requests landed (#178-#199) and took `main` to 86 migrations.
+Recounted 2026-08-31, after twenty-six pull requests landed (#178-#209) and took `main` to 90 migrations.
 
 **These counts are derived from the register, not maintained by hand.** Each is a straight tally of the 111 `CAP-` rows in §4 by their status glyph, so the table and the register cannot disagree. The previous version was hand-edited on every change and had drifted: its columns summed to 120 against 111 rows, and it counted deferred and unaudited items that are not capability rows at all. The Δ column went with it — a delta nobody could reproduce was worse than no delta.
 
