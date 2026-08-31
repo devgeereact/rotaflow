@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 99 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 100 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,43 +82,49 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 69    |
-| 🟡 Partial            | 14    |
+| 🟢 Complete           | 75    |
+| 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
-| 🔵 Hardening required | 1     |
+| 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
 | 🔴 Missing            | 21    |
 | ⚫ Deferred           | 2     |
-| ❓ Not audited        | 5     |
+| ❓ Not audited        | 4     |
 
-**Overall maturity: 7/10**, revised up from 6.5 on 2026-08-29 after five P0 defects closed
-(#162, #163, #165). It sat below the 7.5 recorded on 2026-08-20 not because anything regressed
-but because the audit was deeper.
+**Overall maturity: 7.5/10**, revised up from 7 on 2026-08-31. The half point is for three
+things that were structural rather than cosmetic: the notification queue now drains (it had
+delivered nothing for a month), rate limiting exists where there was none, and the
+multi-tenant isolation question the QA audit could not answer is now twenty pgTAP assertions
+that run on every push.
 
-What still holds it here: production has no backups, no charge has ever completed, and there is
-no rate limiting anywhere in the stack. What moved: the offline clock-in no longer reports
-success for writes that never reached Postgres, an unset `STRIPE_MODE` no longer bills real
-cards, and the notification path now honours the preferences it collects and can actually
-display a push.
+What still holds it below 8, and none of it is code:
 
-**One step outstanding, 2026-08-29.** `0069` is applied, `pg_net` 0.20.4 is installed, the
-cron job `rotaflow-notification-outbox` is scheduled, and two of its three Vault secrets are
-provisioned (`send_notification_url`, `supabase_anon_key` — neither is a credential; the anon
-key is already inlined into the browser bundle).
+- **Production has no backups and no PITR.** Verified live: `pitr_enabled: false`, zero
+  backups. It is a billing decision, and it is the single largest risk on this list — every
+  other item here is recoverable.
+- **No charge has ever completed.** Checkout, the portal and a signature-verified webhook all
+  ship and are deployed; nobody has put a card through one (❓-002).
+- **Nothing has been used on a real device.** The whole offline path, and push in particular,
+  is verified by tests and by nobody's phone (❓-004, CAP-023a).
 
-**`notification_function_secret` is not set**, and cannot be provisioned from here:
-`supabase secrets list` returns hashes, not values, so the running secret is unreadable by
-anyone who did not keep a copy. Until it exists the drain raises a warning and returns 0 each
-minute — the queue fills, nothing is lost, and nothing is delivered. Deliberately visible
-rather than silent. To finish it, either insert the existing value or rotate to a new one on
-both sides (`supabase secrets set` and `vault.create_secret`), never pasting it into a
-transcript.
+**The notification queue drains, 2026-08-31.** This section previously described a step that
+could not be finished: `notification_function_secret` had to be set identically in two places,
+neither of which can be read back, so whoever did not keep a copy could never reconcile them.
+`0091` removes the problem instead of restating it — the secret is generated inside Postgres
+with `gen_random_bytes`, lives in `vault` alone, and is checked by a verifier granted to
+`service_role`. Nothing has to know its value, so nothing can hold a stale one.
 
-**Deployed 2026-08-29.** `supabase/functions/` does not deploy on merge, so this is a separate
-manual step and worth recording when it happens: `send-notification` v19, `send-invite` v1,
-`create-checkout-session` v11 and `create-portal-session` v11 are live, and all three still
-return 401 unauthenticated. CAP-020, CAP-021 and CAP-037 are therefore in production, not just
-on `main`.
+**What is actually deployed, read from the project on 2026-08-31.** `supabase/functions/` does
+**not** deploy on merge — it is a separate manual step, and a merged function that nobody
+deployed is the most common way this register goes stale. Live versions: `ai-rota-assistant`
+v26, `send-notification` v25, `test-smtp` v19, `create-checkout-session` v15,
+`create-portal-session` v15, `stripe-webhook` v15, `send-invite` v5, `calendar-feed` v1.
+
+Two of the eight run with `verify_jwt: false`, both deliberately and both with their own
+boundary: `stripe-webhook` verifies a Stripe signature, and `calendar-feed` is fetched by
+calendar clients that cannot present a header, so its token is checked in
+`calendar_feed_shifts`, a function granted to `service_role` alone. The other six return 401
+unauthenticated.
 
 `STRIPE_MODE=live` was set on the project as part of that deploy. It had never existed — the old
 code read "unset" as live, so the secret's absence was invisible until #163 made it a refusal.
@@ -294,8 +300,10 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0075_narrow_anon_privileges.sql` · HARDEN-002 · P2
 - [ ] CAP-049 🔴 MFA — no `supabase.auth.mfa.*` call anywhere; `require_mfa` enforces nothing
       `src/pages/app/account/SecurityPage.tsx` · GAP-017 · P3
-- [ ] CAP-050 🟡 Sessions — current session only; no server-side registry, no per-device revoke
-      `src/pages/app/account/SessionsPage.tsx` · P3
+- [x] CAP-050 🟢 Sessions — `my_sessions()` lists every device on the account with its user agent,
+      IP and last use, and `revoke_my_other_sessions()` signs the rest out. The row's "no server-side
+      registry" was wrong: `auth.sessions` always had this and nothing read it
+      `supabase/migrations/0100_own_sessions.sql` · 10 pgTAP assertions
 - [x] CAP-051 🟢 URL scheme validation — both columns carry a database CHECK, so the browser is no longer
       the only thing between a `javascript:` link and an `<a href>`
       `supabase/migrations/0092_url_schemes_and_notification_retention.sql` · HARDEN-003 closed #213 · 7 pgTAP assertions
