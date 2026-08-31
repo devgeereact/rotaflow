@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 77    |
+| 🟢 Complete           | 78    |
 | 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 11    |
+| 🔴 Missing            | 10    |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -463,8 +463,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/pages/app/LeavePage.tsx`
 - [x] CAP-083 🟢 Open swap board — claim an untargeted swap, RLS-enforced
       `supabase/migrations/0044_swap_open_board.sql`
-- [ ] CAP-084 🔴 CSV import — no file input exists anywhere in the app
-      `src/lib/csv.ts` · GAP-022 · P3
+- [x] CAP-084 🟢 CSV import — Team → Import reads a spreadsheet, shows every row back with its
+      own problems, and creates the ones that are clean. Hand-written parser (quoted commas,
+      quoted newlines, CRLF, Excel's BOM) rather than a dependency; refuses an ambiguous date
+      rather than guessing the order, and catches a second run of the same file by email. No
+      logins created and nothing emailed — sixty invitations off a file somebody was still
+      checking is not recoverable
+      `src/lib/csvImport.ts` · `src/components/staff/ImportStaffModal.tsx` · 19 unit tests
 - [ ] CAP-085 🔴 Leave-year rules — calendar year hardcoded; no accrual, carry-over, pro-rata or half-days
       `src/lib/leaveInsights.ts` · P3
 - [ ] CAP-086 🔴 Pay rates and labour cost — no rate column anywhere
