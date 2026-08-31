@@ -174,7 +174,9 @@ featured/empty-state icons. Icon-only controls require `aria-label`.
 | Reduced motion    | Respect `prefers-reduced-motion`; disable transforms   |
 
 The `animate-fade-up` utility (in `tailwind.config.ts`) is the CSS-only entrance
-fallback when Framer Motion isn't warranted.
+the only animation mechanism this product uses. Framer Motion was a dependency
+until 2026-08-31 and was never imported by anything — every transition here is
+CSS.
 
 ## 5. Accessibility (frontline-critical)
 

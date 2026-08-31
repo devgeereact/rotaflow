@@ -56,7 +56,6 @@ is actually built** — the capability register is the honest, per-feature statu
 | Background jobs | `pg_cron` + `pg_net` in Postgres | Notification outbox drain, nightly retention, health probe. Inngest is fully retired (`0087`): no function, no key, no dispatch                  |
 | Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                                      |
 | Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                                  |
-| Motion          | Framer Motion                    | Micro-interactions & page transitions                                                                                                          |
 | AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                                              |
 | Hosting         | cPanel (static `dist/`)          | Low cost, no server runtime                                                                                                                    |
 
