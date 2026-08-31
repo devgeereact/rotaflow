@@ -14,6 +14,7 @@ import {
   type MyMembership,
 } from '@/services/orgService';
 import { getProfile } from '@/services/profileService';
+import type { Profile } from '@/types';
 import { getMyPlatformRole } from '@/services/platformRoleService';
 import { reportError } from '@/lib/sentry';
 import { ACTIVE_ORG_STORAGE_KEY } from '@/lib/session';
@@ -90,21 +91,45 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
     }
     setLoading(true);
     try {
-      const [rows, profile, role] = await Promise.all([
-        listMyMemberships(user.id),
-        getProfile(user.id),
-        // Deliberately cannot reject. `my_platform_role()` arrives in 0015,
-        // and until that migration is applied the RPC does not exist, a
-        // rejection here would land in the shared catch, set `loadFailed`,
-        // and blank the tenant session for every user in the product over a
-        // detail only the platform console needs. The role is additive UI
-        // granularity: failing to read it degrades to "no granular role",
-        // never to "your session failed".
-        getMyPlatformRole().catch((error: unknown) => {
-          reportError(error, { area: 'org:platformRole' });
-          return null;
-        }),
-      ]);
+      // One retry, and only for the FIRST load of a session.
+      //
+      // Found by `e2e/authenticated-loop.spec.ts`: seconds after signing up,
+      // this pair of queries can fail once, and a single failure was terminal
+      // — the brand-new customer's very first screen was "Couldn't load your
+      // organisations" with a Retry button, on an account that had just been
+      // created successfully. The read races the session being established,
+      // and PostgREST refusing a token that is a moment away from being valid
+      // is not a broken session.
+      //
+      // Bounded deliberately at one extra attempt after a short pause. A
+      // retry loop would turn a genuinely unreachable database into a
+      // spinner that never resolves, which is worse than the error card: the
+      // card at least says what happened and offers the same retry by hand.
+      const loadOnce = async (): Promise<
+        [MyMembership[], Profile | null, PlatformRole | null]
+      > =>
+        await Promise.all([
+          listMyMemberships(user.id),
+          getProfile(user.id),
+          // Deliberately cannot reject. `my_platform_role()` arrives in 0015,
+          // and until that migration is applied the RPC does not exist, a
+          // rejection here would land in the shared catch, set `loadFailed`,
+          // and blank the tenant session for every user in the product over a
+          // detail only the platform console needs. The role is additive UI
+          // granularity: failing to read it degrades to "no granular role",
+          // never to "your session failed".
+          getMyPlatformRole().catch((error: unknown) => {
+            reportError(error, { area: 'org:platformRole' });
+            return null;
+          }),
+        ]);
+
+      const [rows, profile, role] = await loadOnce().catch(async (error: unknown) => {
+        reportError(error, { area: 'org:refresh-retry' });
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        return await loadOnce();
+      });
+
       setMemberships(rows);
       setIsPlatformAdmin(profile?.is_platform_admin ?? false);
       setPlatformRole(role);
