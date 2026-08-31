@@ -80,10 +80,17 @@ comment on constraint documents_file_url_scheme on public.documents is
   'http(s) only. DocumentsModal checks the same thing and is not what enforces it (HARDEN-003).';
 
 -- ── 2. Notification retention ─────────────────────────────────────────
-insert into public.retention_policies (data_type, retain_months, note)
+-- `label` and `enforced` are NOT NULL with no useful default: `label` is what
+-- the GDPR screen renders, and `enforced` is what tells a reader whether the
+-- nightly job actually acts on this row. Setting `enforced` to false while
+-- shipping the branch that enforces it would be the drift this row exists to
+-- fix, so it is true.
+insert into public.retention_policies (data_type, label, retain_months, enforced, note)
 values (
   'notifications',
+  'Notification delivery log and outbox',
   12,
+  true,
   'Delivery attempts and the settled outbox queue. Twelve months, deliberately shorter than attendance (36) or rota history (84): those are records of work, this is telemetry about whether a message arrived. Long enough to settle "I was never told about that shift", not long enough to be an archive. Only settled rows are removed — a pending outbox row is work still owed.'
 )
 on conflict (data_type) do nothing;
