@@ -135,10 +135,13 @@
   # no longer calls is permission granted to whatever else might try — this is
   # the same clean-up as deleting the event key, one layer up.
   #
-  # ⚠️ This file is NOT what the live site serves. The server's copy is
-  # hand-maintained with the Cloudflare origin-lock block prepended, and a
-  # deploy only replaces it when `--with-htaccess <composed-file>` is passed
-  # (docs/DEPLOYMENT.md). The live CSP still allowed inn.gs when this landed.
+  # ⚠️ This file is NOT what the live site serves on its own. The server's copy
+  # is this file with the Cloudflare origin-lock block PREPENDED, and a deploy
+  # only replaces it when `--with-htaccess <composed-file>` is passed
+  # (docs/DEPLOYMENT.md). Deploying this file bare would drop that block and
+  # reopen the origin. The composed deploy of 2026-08-31 carried this change
+  # through: the live CSP no longer names inn.gs, and direct-to-origin still
+  # returns 403.
   Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://o4511713747271680.ingest.de.sentry.io https://ik.imagekit.io https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
 </IfModule>
 

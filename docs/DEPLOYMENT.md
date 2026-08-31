@@ -190,6 +190,40 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
   `import.meta.env` whether code reads it or not. **Retiring a service means
   removing its variable from `.env`, then checking the built bundle.**
 
+## Composing the live `.htaccess`
+
+`--with-htaccess` replaces the file that enforces the Cloudflare origin lock. Get it wrong
+and the site either goes dark or silently reopens direct-to-origin, so the procedure is
+written down rather than reconstructed each time. Done on 2026-08-31 to carry a CSP change
+through; it worked, and these are the steps that made it safe.
+
+1. **Back the live file up outside every docroot first.**
+   `ssh cpanel 'cp ~/rotaflow.space/.htaccess ~/private_backups/configs/rotaflow.space-htaccess.bak-<date>'`
+2. **Fetch it and diff it against the repo file minus the lock block.** They should differ
+   only where the repo has moved on. In the 2026-08-31 run the whole difference was three
+   things — the CSP entry being removed, two references to a document deleted weeks earlier,
+   and the new comment — which is what makes "prepend the lock to the current repo file" a
+   safe composition rather than a guess. **If the diff shows anything you cannot explain,
+   stop:** it means the live file carries a hand-edit nobody wrote down.
+3. **Compose as `lock + repo file`, and assert on the result before uploading.** Thirteen
+   properties were checked in that run: the lock is first, `CF-RAY` guard present,
+   `/.well-known/` exempted, the `[F,L]` refusal rule present, the SPA fallback intact,
+   exactly one CSP header, HSTS and nosniff still there, and the specific change actually
+   made. Cheap, and it is the only opportunity to catch a bad splice.
+4. **Dry-run.** The only change should be `.htaccess` itself, with no deletions.
+5. **Verify from outside afterwards**, all of it:
+
+   | Check | Expect |
+   | --- | --- |
+   | `/` and a deep route (`/app/dashboard`) | 200 — the second proves the SPA fallback survived |
+   | the hashed bundle and `/.well-known/security.txt` | 200 |
+   | `curl --resolve <domain>:443:185.61.152.45` | **403** — the lock is intact |
+   | the same, to `/.well-known/security.txt` | **200** — the ACME exemption survived, or renewal fails months later |
+   | response headers | CSP reflects the change; HSTS and `X-Content-Type-Options` still present |
+
+   The fourth row is the one that fails silently. A lock with no `/.well-known/` exemption
+   looks perfect until a certificate comes up for renewal.
+
 ## A deploy does not undo a leak
 
 Learned on 2026-08-31, deploying the removal of a retired credential (HARDEN-010).
