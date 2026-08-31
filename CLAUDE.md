@@ -95,17 +95,17 @@ actually reads them.
 
 Every one of these runs in CI and blocks a merge:
 
-| Gate                       | What it catches                                                                                             |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `npm run typecheck`        | implicit `any`, missing return types                                                                        |
-| `npm run lint`             | zero warnings tolerated (`--max-warnings 0`)                                                                |
-| `npm run format:check`     | a separate gate from lint; green tsc/eslint does not imply it                                               |
-| `npm test`                 | pure-logic unit suite over `src/lib`, `src/services`, and any pure module extracted out of an Edge Function |
-| `npm run check:bundle`     | size budgets, and that no DEV preview page shipped                                                          |
-| `npm run check:migrations` | destructive SQL without a `-- SAFETY(...)` declaration                                                      |
-| `npm run check:docs`       | counts written into prose that no longer match the tree                                                     |
-| `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                             |
-| `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                       |
+| Gate                       | What it catches                                                                                                                                                                   |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`        | implicit `any`, missing return types                                                                                                                                              |
+| `npm run lint`             | zero warnings tolerated (`--max-warnings 0`)                                                                                                                                      |
+| `npm run format:check`     | a separate gate from lint; green tsc/eslint does not imply it                                                                                                                     |
+| `npm test`                 | pure-logic unit suite over `src/lib`, `src/services`, any pure module extracted out of an Edge Function, and component tests that opt into jsdom with `@vitest-environment jsdom` |
+| `npm run check:bundle`     | size budgets, and that no DEV preview page shipped                                                                                                                                |
+| `npm run check:migrations` | destructive SQL without a `-- SAFETY(...)` declaration                                                                                                                            |
+| `npm run check:docs`       | counts written into prose that no longer match the tree                                                                                                                           |
+| `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                                                                                                   |
+| `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                                                                                             |
 
 Two checks run on a schedule rather than on a merge, because they read live
 state no pull request can change: `.github/workflows/backup.yml` (a nightly
