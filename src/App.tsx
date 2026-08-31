@@ -175,6 +175,10 @@ const AvailabilityPage = lazyPage(
 );
 const LeavePage = lazyPage('LeavePage', () => import('@/pages/app/LeavePage'));
 const SwapsPage = lazyPage('SwapsPage', () => import('@/pages/app/SwapsPage'));
+const OpenShiftsPage = lazyPage(
+  'OpenShiftsPage',
+  () => import('@/pages/app/OpenShiftsPage'),
+);
 const OvertimePage = lazyPage('OvertimePage', () => import('@/pages/app/OvertimePage'));
 const AnnouncementsPage = lazyPage(
   'AnnouncementsPage',
@@ -660,6 +664,7 @@ export function App(): JSX.Element {
                       <Route path="availability" element={<AvailabilityPage />} />
                       <Route path="leave" element={<LeavePage />} />
                       <Route path="swaps" element={<SwapsPage />} />
+                      <Route path="open-shifts" element={<OpenShiftsPage />} />
                       {/* Open to every member: a staff member raises their own
                       overtime here, and the page's Team toggle is what gates
                       the approval queue behind `canApprove`. */}

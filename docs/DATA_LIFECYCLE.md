@@ -229,7 +229,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 102 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 103 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
