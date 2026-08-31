@@ -114,6 +114,7 @@ TENANT SHELL, /app (requires membership, else redirects to /onboarding)
   /app/leave              leave requests + approvals
   /app/swaps              shift swaps + approvals
   /app/open-shifts        uncovered shifts anybody can take
+  /app/approvals          leave, swaps and overtime in one queue           [manager]
   /app/timesheets         hours from clock events, approvals, payroll export
   /app/announcements      communication centre
   /app/notifications      inbox (reached via the bell, not the sidebar)

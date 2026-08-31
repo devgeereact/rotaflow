@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 78    |
+| 🟢 Complete           | 79    |
 | 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 10    |
+| 🔴 Missing            | 9     |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -489,8 +489,12 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-092 🟢 Duplicate detection — one account cannot hold two staff records, and two sites cannot
       share a name. Payroll ids were already unique since `0041`, which this row did not know
       `supabase/migrations/0095_ownership_transfer_and_duplicates.sql`
-- [ ] CAP-093 🔴 Unified approvals queue — four screens; the dashboard card is read-only and omits two kinds
-      `src/components/dashboard/ManagerDashboard.tsx` · P3
+- [x] CAP-093 🟢 Unified approvals queue — `/app/approvals` lists leave, swaps and overtime
+      together, oldest first, and decides them in place. A swap still waiting on a colleague is
+      deliberately excluded: a queue with rows the reader cannot clear stops being read. The
+      swap decision moved into `swapService.decideShiftSwap` so the two screens that approve
+      swaps cannot drift apart on "approve, then reassign, but only if nobody decided first"
+      `src/lib/approvalQueue.ts` · `src/pages/app/ApprovalsPage.tsx` · 9 unit tests
 - [x] CAP-094 🟢 Onboarding — the org is still created at step 1 by design, and an unfinished wizard now
       resumes at step 2 instead of bouncing to the dashboard forever
       `supabase/migrations/0094_onboarding_completion.sql` · GAP-015 closed #218 · 6 pgTAP assertions

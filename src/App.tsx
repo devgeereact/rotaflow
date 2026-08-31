@@ -175,6 +175,10 @@ const AvailabilityPage = lazyPage(
 );
 const LeavePage = lazyPage('LeavePage', () => import('@/pages/app/LeavePage'));
 const SwapsPage = lazyPage('SwapsPage', () => import('@/pages/app/SwapsPage'));
+const ApprovalsPage = lazyPage(
+  'ApprovalsPage',
+  () => import('@/pages/app/ApprovalsPage'),
+);
 const OpenShiftsPage = lazyPage(
   'OpenShiftsPage',
   () => import('@/pages/app/OpenShiftsPage'),
@@ -672,6 +676,14 @@ export function App(): JSX.Element {
                       <Route path="announcements" element={<AnnouncementsPage />} />
                       <Route path="notifications" element={<NotificationsPage />} />
                       <Route path="help" element={<HelpPage />} />
+                      <Route
+                        path="approvals"
+                        element={
+                          <RequireRole allow={MANAGERIAL} area="approvals">
+                            <ApprovalsPage />
+                          </RequireRole>
+                        }
+                      />
                       <Route
                         path="reports"
                         element={

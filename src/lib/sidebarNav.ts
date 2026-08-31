@@ -1,5 +1,6 @@
 import {
   CalendarPlus,
+  CheckCheck,
   LayoutDashboard,
   CalendarDays,
   CalendarRange,
@@ -100,6 +101,9 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
   items.push({ label: 'Overtime', icon: TimerReset, to: '/app/overtime' });
 
   if (isManager) {
+    // Above Team, because it is the thing a manager opens first: the queue is
+    // the product's answer to "is anybody waiting on me".
+    items.push({ label: 'Approvals', icon: CheckCheck, to: '/app/approvals' });
     items.push({ label: 'Team', icon: Users, to: '/app/team' });
     items.push({ label: 'Locations', icon: MapPin, to: '/app/locations' });
   }

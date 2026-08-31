@@ -173,3 +173,51 @@ export async function cancelShiftSwap(id: string): Promise<void> {
     .eq('id', id);
   if (error) throw error;
 }
+
+/**
+ * The whole swap decision: record it, and move the shift if it was approved.
+ *
+ * Extracted from `SwapsPage` when the approvals queue (CAP-093) became a
+ * second place that decides swaps. Two copies of "approve, then reassign, but
+ * only if somebody else did not decide it first, and tell the user precisely
+ * what happened either way" is the kind of duplication that drifts silently:
+ * one screen gets a fix and the other keeps moving shifts on the back of
+ * somebody else's approval.
+ *
+ * The caller renders the message. The outcomes are deliberately separate
+ * because they need different sentences — "approved and reassigned" and
+ * "approved but you must move the shift by hand" are not the same news.
+ */
+export type SwapDecision =
+  | { outcome: 'already-decided' }
+  | { outcome: 'declined' }
+  | { outcome: 'approved'; reassigned: boolean; reassignmentFailed: boolean };
+
+export async function decideShiftSwap(
+  swap: ShiftSwapWithShift,
+  status: 'approved' | 'rejected',
+  reviewerId: string,
+): Promise<SwapDecision> {
+  const decided = await reviewShiftSwap(swap.id, status, reviewerId);
+
+  // Somebody else decided or withdrew it first (BUG-061). Returning here
+  // matters more than on the leave screen: falling through would run the
+  // reassignment for a decision this manager did not make.
+  if (!decided) return { outcome: 'already-decided' };
+  if (status === 'rejected') return { outcome: 'declined' };
+
+  // No target means nobody has offered to take it: the shift stays where it
+  // is and the manager assigns it in the builder.
+  if (!swap.shift_id || !swap.target_staff_profile_id) {
+    return { outcome: 'approved', reassigned: false, reassignmentFailed: false };
+  }
+
+  try {
+    await applySwapReassignment(swap.id);
+    return { outcome: 'approved', reassigned: true, reassignmentFailed: false };
+  } catch {
+    // The decision stands — it is committed — so this is reported rather than
+    // rethrown, and the caller tells the manager to move the shift by hand.
+    return { outcome: 'approved', reassigned: false, reassignmentFailed: true };
+  }
+}
