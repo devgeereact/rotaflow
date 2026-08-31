@@ -229,7 +229,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 110 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 111 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -279,9 +279,20 @@ actually completes, which is exactly how the original bug hid for two weeks.
 `objection` — as a case-managed workflow in `/admin/gdpr`, not an automated
 self-service flow. What each type actually does today:
 
-- **Erasure**, real, callable, and live-verified 2026-08-13 (previously only
-  read from source): `anonymize_staff_member` (migration `0011`), called
-  end-to-end as a real org owner against a real demo staff record. Before:
+- **Erasure**, real, callable, and live-verified 2026-08-13 — **and incomplete
+  from that day until 2026-08-31**, which is worth reading before trusting any
+  other verification in this file. `0053` added `staff_profiles.email` for
+  account linking two months after `0011` was written, and the erasure never
+  learned about it: the record left behind read "Deleted Member" with the
+  person's email address still on it. The 13 August test was honest and
+  passed; the column did not exist yet. `0111` clears it, revokes any live
+  calendar feed token (a URL in somebody's phone would otherwise keep serving
+  an erased person's shifts), and adds `erasure_retained_columns()` so the
+  pgTAP test now asserts over the whole column list rather than a fixed set of
+  fields — the next column added cannot survive an erasure the same way.
+  What the original verification showed: `anonymize_staff_member` (migration
+  `0011`), called end-to-end as a real org owner against a real demo staff
+  record. Before:
   a named person, a phone number, a payroll ID, 85 shifts, 1 emergency
   contact, 5 documents. After: `first_name`/`last_name` → "Deleted"/"Member",
   `phone`/`photo_url`/`payroll_id` → null, `active` → false, all 85 shifts
