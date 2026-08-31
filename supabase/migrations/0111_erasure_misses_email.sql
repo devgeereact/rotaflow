@@ -29,6 +29,15 @@
 -- somebody's phone would keep returning the shifts of a person the
 -- organisation had just been asked to erase.
 --
+-- ## Rebuilt from the LIVE function, not from `0011`
+--
+-- `0041` had already recreated this function to set
+-- `rotaflow.allow_payroll_id_change` for the one write that is allowed to
+-- clear a payroll id. A first draft of this migration rebuilt it from
+-- `0011`'s text instead and silently dropped that line, which would have
+-- made every erasure fail with a constraint error. `pg_get_functiondef` on
+-- production is what this is now based on.
+--
 -- ## What is deliberately KEPT
 --
 -- Pay rates, sites, shifts, clock events, leave, swaps and timesheets all
@@ -80,6 +89,17 @@ begin
      set revoked_at = timezone('utc', now())
    where staff_profile_id = p_staff_profile_id
      and revoked_at is null;
+
+  -- From 0041, and very nearly lost here: `staff_profiles_lock_payroll_id`
+  -- refuses to change a payroll id once set, and erasure is the one named
+  -- exception. Transaction-local, so it reverts at commit and never leaks
+  -- into another statement on this connection.
+  --
+  -- The first draft of this migration rebuilt the function from 0011's text
+  -- and dropped this line, which turned every erasure into a 23514. Caught by
+  -- pgTAP, which is the only gate that runs a real Postgres — the local SQL
+  -- parser this session uses cannot see a trigger.
+  perform set_config('rotaflow.allow_payroll_id_change', 'true', true);
 
   -- The identity itself. user_id is severed so this row can never be
   -- re-associated with a real login; active=false removes them from future
