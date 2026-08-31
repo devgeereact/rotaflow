@@ -395,7 +395,11 @@ confirmed live with real rows this session) — priority, assignment, first
 response and resolution timestamps are all measured, not invented. What
 routes an inbound email into a case is not built: the queue only contains
 what the app itself created, so a message to the contact mailbox today does
-not become a case automatically.
+not become a case automatically. That is now tracked as **GAP-035** rather
+than as a sentence in one document — the rest of the loop closed around it on
+2026-08-31, when a target with a clock (`0110`) and a customer-facing reply
+(GAP-012) both landed, and the one remaining hole deserved an id somebody
+could schedule.
 
 ## Open items, in priority order
 
