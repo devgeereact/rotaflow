@@ -294,3 +294,87 @@ jobs:
       - name: Stop local Supabase stack
         if: always()
         run: supabase stop
+
+  # ── Is anything actually watching production? ────────────────────────────
+  #
+  # `backup.yml` (nightly encrypted dump) and `auth-config.yml` (Supabase Auth
+  # settings against a baseline) are the two checks that read live state no pull
+  # request can change. On 2026-08-31 BOTH were found to have never succeeded —
+  # the repository held one secret, so there was no backup of production at all,
+  # and nothing was asserting the auth settings. Each had failed loudly and
+  # correctly on its first scheduled run, exactly as designed.
+  #
+  # It made no difference, and that is the thing this job fixes: **a scheduled
+  # workflow fails where nobody is standing.** It blocks no merge, marks no pull
+  # request red, and appears on no screen anybody opens. The gates above are seen
+  # whether or not you go looking for them; a cron gate is only ever seen on
+  # purpose, and "on purpose" did not happen for the twenty-four hours it took to
+  # notice. See docs/SAAS.md GAP-036.
+  #
+  # ## Why this warns instead of failing
+  #
+  # Deliberate, and against this repository's usual instinct — `check:docs` fails
+  # on an expiring `security.txt` precisely because a warning nobody must act on
+  # is how a date arrives unnoticed.
+  #
+  # The difference is who can act. That expiry is fixed by editing a file in the
+  # pull request that trips it. These two are fixed by minting credentials only
+  # the repository owner holds, and blocking every merge until somebody does that
+  # would stop all work on the project to protest a decision the person being
+  # stopped may not be able to make. A red X on every pull request, naming the
+  # secret and what is unprotected without it, puts the fact where it is read
+  # without holding the codebase hostage to it.
+  #
+  # Uses the built-in GITHUB_TOKEN. Adds no secret, which would be a poor joke
+  # in a job about missing ones.
+  scheduled-checks:
+    name: scheduled-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Report whether the scheduled gates are armed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          status=0
+          for wf in backup.yml auth-config.yml; do
+            # `|| true` on the API call: a transient GitHub failure must not be
+            # reported as "your backups are broken". No data is the one answer
+            # this job does not turn into an alarm.
+            runs=$(gh api "repos/$REPO/actions/workflows/$wf/runs?per_page=5"                      --jq '[.workflow_runs[] | {c: .conclusion, at: .created_at}]' 2>/dev/null || echo 'null')
+
+            if [ "$runs" = "null" ]; then
+              echo "::notice::Could not read $wf run history. Not treating that as a failure."
+              continue
+            fi
+
+            total=$(echo "$runs" | jq 'length')
+            ok=$(echo "$runs" | jq '[.[] | select(.c == "success")] | length')
+            last=$(echo "$runs" | jq -r '.[0].c // "never run"')
+
+            if [ "$total" = "0" ]; then
+              echo "::warning file=.github/workflows/$wf::$wf has never run. It is scheduled, so it will not run on this pull request either — check the Actions tab before trusting whatever it protects."
+              status=1
+            elif [ "$ok" = "0" ]; then
+              echo "::warning file=.github/workflows/$wf::$wf has NEVER succeeded (last run: $last). Its secrets are missing, so the thing it protects is unprotected. docs/SAAS.md GAP-036 lists which. This is a warning rather than a failure because only the repository owner can mint them."
+              status=1
+            elif [ "$last" != "success" ]; then
+              echo "::warning file=.github/workflows/$wf::$wf last run: $last. It has succeeded before, so this is a regression rather than a missing secret."
+              status=1
+            else
+              echo "  ok  $wf: last run succeeded"
+            fi
+          done
+
+          if [ "$status" = "0" ]; then
+            echo "Both scheduled gates are armed and green."
+          else
+            echo
+            echo "The warnings above are visible on this pull request ON PURPOSE."
+            echo "They describe production, not this branch, and nothing here can fix them."
+          fi
+
