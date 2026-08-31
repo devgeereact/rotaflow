@@ -318,10 +318,18 @@ self-service flow. What each type actually does today:
   are live credentials (`org_smtp_settings`, `calendar_feed_tokens`), one is a
   queue that empties in a minute, and four are platform plumbing.
   `npm run check:export` fails CI when a table with an `org_id` is in neither
-  list, so this cannot drift again. A **per-subject** package still does not exist:
-  `exportStaffData()` (`src/services/gdprService.ts`) covers eight datasets for one
-  staff member, but neither export includes the person's `auth.users` row, and
-  nothing assembles a subject-access package across organisations.
+  list, so this cannot drift again. A **per-subject** package covers one
+  organisation's employment record: `exportStaffData()`
+  (`src/services/gdprService.ts`) now returns **thirteen** datasets for one staff
+  member. It covered eight until 2026-08-31 and left out **timesheets**,
+  **overtime claims** and **pay rates** — so somebody in a dispute about their
+  hours or their money received an export of their shifts and their holidays,
+  and this document called that "eight datasets" as though eight were the whole.
+  One table is deliberately excluded and says so in the file: a calendar feed
+  token is a live credential, and emailing somebody a working URL to their own
+  rota would create the disclosure the export exists to answer for. Neither
+  export includes the person's `auth.users` row, and nothing assembles a
+  subject-access package across organisations.
 - **Rectification / restriction / objection**: tracked as cases with no
   automated action; each is a manual data change by whoever is assigned the
   request.
