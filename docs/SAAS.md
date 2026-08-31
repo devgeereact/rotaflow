@@ -82,8 +82,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 87    |
-| 🟡 Partial            | 9     |
+| 🟢 Complete           | 88    |
+| 🟡 Partial            | 8     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -558,9 +558,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-099 🟢 E2E coverage — 26 authenticated screens rendered and scanned in BOTH themes, plus a test
       that genuinely signs up and creates an organisation against a local Supabase stack
       `e2e/app-surface.spec.ts` · `e2e/authenticated-loop.spec.ts` · GAP-010 closed #222
-- [x] CAP-100 🟡 Component tests — jsdom is available per-file and the first suite exists, over the
-      component whose WORDING is load-bearing; the rest of the UI still has none
-      `src/components/FailedWritesNotice.test.tsx` · `vitest.config.ts` · 7 tests
+- [x] CAP-100 🟢 Component tests — three suites now, chosen by the same rule rather than by
+      coverage: the components whose WORDING is load-bearing. `FailedWritesNotice` (which
+      sentence a carer gets decides whether they think they are clocked in), `RepeatWeekModal`
+      (the number that decides how many hundreds of rows get written), and `LabourCostCard`
+      (a total that quietly prices somebody at zero is wrong in the direction that looks fine —
+      the warning is the whole safeguard). Still no `jest-dom`, deliberately
+      `src/components/**/*.test.tsx` · 20 tests across 3 files
 - [x] CAP-101 🟢 Bundle size gate — four budgets plus a hard "no DEV page ships" invariant,
       enforced in `verify` and printed on every run
       `scripts/check-bundle-size.mjs` · `bundle-budget.json` · P2
