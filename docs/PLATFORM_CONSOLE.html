@@ -332,7 +332,13 @@
     </div>
     <div class="envline">
       <span class="envbadge" id="envBadge">Production</span>
-      <span class="eyebrow" style="color:var(--muted)">eu-west-2</span>
+      <!-- eu-west-1, not eu-west-2. Corrected 2026-08-31 after reading the region
+           from the Supabase Management API. This file is the sole design reference
+           for the console, and /legal/trust publishes "eu-west-1 (Ireland)" to
+           customers as a data-residency statement, so a mockup naming a different
+           region is a header somebody could build that contradicts the privacy
+           notice. See src/lib/subprocessors.ts and src/lib/legalFacts.ts. -->
+      <span class="eyebrow" style="color:var(--muted)">eu-west-1</span>
     </div>
     <div class="rolepick">
       <label class="eyebrow" for="roleSel">Signed in as</label>

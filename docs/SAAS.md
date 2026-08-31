@@ -1197,3 +1197,22 @@ chunk fell from 151 KiB to 132 KiB gzipped as a side effect.
 two days getting contrast to zero. That is GAP-037, with a per-package reopening condition
 rather than a silent skip.
 
+**2026-08-31 (ninth pass — the two files nobody opens)**: `docs/ORGANISATION_WORKSPACE.html` and
+`docs/PLATFORM_CONSOLE.html` are 276 KB between them and are named as the sole reference for the
+Organisation section and the console. Neither had been read in this reconciliation, because they
+are mockups rather than prose — ~170 characters of text each, the rest script and style.
+
+One of them was wrong in a way that matters. **The console header read `eu-west-2`.** The
+project runs in `eu-west-1`, read from the Supabase Management API rather than from a document,
+and `/legal/trust` publishes "eu-west-1 (Ireland)" to customers as a **data-residency
+statement** — with `src/lib/subprocessors.ts` and `src/lib/legalFacts.ts` saying the same.
+
+A wrong region in a mockup is not a typo. It is the design reference somebody builds the console
+header from, and building it faithfully would have put a region on screen that contradicts the
+product's own privacy notice. Corrected, with the reason left in the file as an HTML comment so
+the next person does not "fix" it back.
+
+Checked at the same time and clean: every one of the 60 routes `docs/SCREENS.md` cites resolves
+in `App.tsx`, and every component it names exists — including `AuthCallbackPage`, which lives in
+`RouteAliases.tsx` rather than a file of its own, exactly as that document says.
+
