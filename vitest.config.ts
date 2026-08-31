@@ -22,8 +22,15 @@ export default defineConfig({
     alias: { '@': path.resolve(__dirname, './src') },
   },
   test: {
-    // Node, not jsdom. The outbox suite brings its own IndexedDB via
-    // fake-indexeddb, which is cheaper and more deterministic than a full DOM.
+    // Node by DEFAULT, not jsdom. Most of what is worth testing here is
+    // arithmetic and timezone logic in pure modules, and the outbox suite
+    // brings its own IndexedDB via fake-indexeddb — cheaper and more
+    // deterministic than a full DOM.
+    //
+    // A component test opts into jsdom per file with the docblock
+    // `@vitest-environment jsdom`. Per-file rather than globally, because
+    // making 700 pure tests construct a DOM they never touch would slow the
+    // whole suite for the sake of the handful that need one (CAP-100).
     environment: 'node',
     // `supabase/functions` is Deno and is excluded from typecheck and lint, so
     // CLAUDE.md's "no automated check stands in for reading those files" holds
@@ -31,7 +38,11 @@ export default defineConfig({
     // not have to hold for pure logic extracted out of one. `grounding.ts`
     // decides whether a manager is shown an invented date; that is worth a
     // test, and it imports nothing from Deno so it runs here unchanged.
-    include: ['src/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'supabase/functions/**/*.test.ts',
+    ],
 
     env: {
       // NOT the developer's zone, and NOT UTC either.

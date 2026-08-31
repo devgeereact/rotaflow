@@ -2,7 +2,7 @@
   "name": "rotaflow",
   "version": "1.0.0",
   "private": true,
-  "description": "Multi-tenant, offline-first staff rota scheduling \u2014 build and share rotas in minutes; clock in, swap shifts and manage leave from any device.",
+  "description": "Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.",
   "type": "module",
   "engines": {
     "node": ">=18.0.0"
@@ -43,6 +43,8 @@
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.62.1",
     "@sentry/vite-plugin": "^5.4.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.6",
     "@types/node": "^26.2.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -55,6 +57,7 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "fake-indexeddb": "^6.2.5",
     "globals": "^17.11.0",
+    "jsdom": "^27.4.0",
     "postcss": "^8.5.26",
     "prettier": "^3.4.2",
     "rollup-plugin-visualizer": "^7.1.1",

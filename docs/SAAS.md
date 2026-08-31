@@ -436,8 +436,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-099 🟢 E2E coverage — 26 authenticated screens rendered and scanned in BOTH themes, plus a test
       that genuinely signs up and creates an organisation against a local Supabase stack
       `e2e/app-surface.spec.ts` · `e2e/authenticated-loop.spec.ts` · GAP-010 closed #222
-- [ ] CAP-100 🔴 Component tests — node environment, `.ts` only, so none exist
-      `vitest.config.ts` · P2
+- [x] CAP-100 🟡 Component tests — jsdom is available per-file and the first suite exists, over the
+      component whose WORDING is load-bearing; the rest of the UI still has none
+      `src/components/FailedWritesNotice.test.tsx` · `vitest.config.ts` · 7 tests
 - [x] CAP-101 🟢 Bundle size gate — four budgets plus a hard "no DEV page ships" invariant,
       enforced in `verify` and printed on every run
       `scripts/check-bundle-size.mjs` · `bundle-budget.json` · P2
