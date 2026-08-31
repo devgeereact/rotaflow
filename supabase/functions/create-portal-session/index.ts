@@ -14,6 +14,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { reportEdgeError } from '../_shared/sentry.ts';
 import {
   getStripeClient,
   getStripeMode,
@@ -135,7 +136,7 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ url: portalSession.url });
   } catch (err) {
-    console.error('create-portal-session error:', err);
+    reportEdgeError(err, 'create-portal-session:unhandled');
     return jsonResponse({ error: 'Unexpected error creating portal session' }, 500);
   }
 });

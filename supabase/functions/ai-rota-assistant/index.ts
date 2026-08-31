@@ -38,6 +38,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { reportEdgeError } from '../_shared/sentry.ts';
 import { checkAnnouncementGrounding } from './grounding.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
@@ -589,7 +590,11 @@ Deno.serve(async (req: Request) => {
 
     if (!openRouterRes.ok) {
       const errText = await openRouterRes.text();
-      console.error('OpenRouter error', openRouterRes.status, errText);
+      reportEdgeError(
+        new Error(`OpenRouter ${openRouterRes.status}: ${errText.slice(0, 200)}`),
+        'ai-rota-assistant:openrouter',
+        { status: openRouterRes.status, model },
+      );
       return jsonResponse({ error: 'The AI assistant is temporarily unavailable' }, 502);
     }
 
@@ -846,7 +851,7 @@ Deno.serve(async (req: Request) => {
       suggestions: accepted,
     });
   } catch (err) {
-    console.error('ai-rota-assistant error', err);
+    reportEdgeError(err, 'ai-rota-assistant:unhandled');
     return jsonResponse({ error: 'Unexpected error generating suggestions' }, 500);
   }
 });

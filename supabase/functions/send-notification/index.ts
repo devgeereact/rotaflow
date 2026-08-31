@@ -109,6 +109,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 import { corsHeaders } from '../_shared/cors.ts';
+import { reportEdgeError } from '../_shared/sentry.ts';
 import { createSmtpTransport, resolveSmtpConfig } from '../_shared/smtp.ts';
 
 const ALLOW_HEADERS = 'x-notification-secret, content-type';
@@ -521,7 +522,10 @@ Deno.serve(async (req: Request) => {
         .from('notification_deliveries')
         .insert(deliveries);
       if (deliveryError) {
-        console.error('notification_deliveries insert failed:', deliveryError.message);
+        // The notification may well have been delivered; what failed is the
+        // record of it. Worth reporting: this table is the evidence for
+        // "were they told?".
+        reportEdgeError(deliveryError, 'send-notification:delivery-log');
       }
     }
 

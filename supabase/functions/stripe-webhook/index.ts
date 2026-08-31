@@ -44,6 +44,7 @@
 // customer.subscription.deleted, invoice.paid, invoice.payment_failed.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { reportEdgeError } from '../_shared/sentry.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import {
   getStripeClient,
@@ -461,7 +462,7 @@ Deno.serve(async (req: Request) => {
     // specifically for edge runtimes.
     event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
   } catch (err) {
-    console.error(`Stripe signature verification failed (${mode} mode):`, err);
+    reportEdgeError(err, 'stripe-webhook:signature', { mode });
     return jsonResponse({ error: 'Invalid signature' }, 400);
   }
 
@@ -509,7 +510,10 @@ Deno.serve(async (req: Request) => {
     }
     return jsonResponse({ received: true });
   } catch (err) {
-    console.error(`stripe-webhook handler error for ${event.type}:`, err);
+    // The one place money and subscription state change. A webhook that
+    // throws here is Stripe believing something happened that this database
+    // does not record.
+    reportEdgeError(err, 'stripe-webhook:handler', { eventType: event.type });
     // Non-200 so Stripe retries — this is a real failure, not a signature
     // problem, and retry is the correct behaviour for a transient DB error.
     return jsonResponse({ error: 'Handler error' }, 500);
