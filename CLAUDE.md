@@ -98,6 +98,13 @@ Every one of these runs in CI and blocks a merge:
 | `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                             |
 | `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                       |
 
+Two checks run on a schedule rather than on a merge, because they read live
+state no pull request can change: `.github/workflows/backup.yml` (a nightly
+encrypted dump) and `.github/workflows/auth-config.yml` (Supabase Auth settings
+against the baseline in `scripts/check-auth-config.mjs`). Both fail loudly when
+their secrets are missing, which is the point — a check that passes when it
+cannot see anything is worse than none, because it is believed.
+
 `supabase/functions/**` is Deno and is excluded from typecheck and lint — no
 automated check stands in for reading those files. The exception is a module
 with no Deno globals in it, which vitest can run unchanged: `ai-rota-assistant/
