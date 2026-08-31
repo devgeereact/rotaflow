@@ -2896,6 +2896,8 @@ export type Database = {
           csat: number | null;
           csat_comment: string | null;
           first_response_at: string | null;
+          first_response_due_at: string | null;
+          resolution_due_at: string | null;
           id: string;
           org_id: string | null;
           priority: string;
@@ -2915,6 +2917,8 @@ export type Database = {
           csat?: number | null;
           csat_comment?: string | null;
           first_response_at?: string | null;
+          first_response_due_at?: string | null;
+          resolution_due_at?: string | null;
           id?: string;
           org_id?: string | null;
           priority?: string;
@@ -2934,6 +2938,8 @@ export type Database = {
           csat?: number | null;
           csat_comment?: string | null;
           first_response_at?: string | null;
+          first_response_due_at?: string | null;
+          resolution_due_at?: string | null;
           id?: string;
           org_id?: string | null;
           priority?: string;
@@ -3394,6 +3400,16 @@ export type Database = {
       revoke_calendar_feed_token: {
         Args: { p_org: string };
         Returns: undefined;
+      };
+      support_sla_state: {
+        Args: { p_case: string };
+        /** Computed, not stored: "breached" depends on now() (0110). */
+        Returns: {
+          first_response_state: string;
+          resolution_state: string;
+          minutes_to_respond: number;
+          minutes_to_resolve: number;
+        }[];
       };
       repeat_rota_weeks: {
         Args: { p_rota: string; p_weeks: number };

@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 109 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 110 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,8 +82,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 85    |
-| 🟡 Partial            | 11    |
+| 🟢 Complete           | 86    |
+| 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -464,12 +464,14 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-079 🟢 Support CSAT — the requester rates a resolved case from `/app/help`; the RPC now
       refuses an out-of-range score in its own words rather than through the column CHECK
       `src/pages/app/HelpPage.tsx` · BUG-060 · P2
-- [ ] CAP-080 🟡 Support cases — the requester now sees their own cases and the non-internal
-      thread (BUG-060); still **no SLA mechanism**, and no email ingress
-      `src/pages/app/HelpPage.tsx` · GAP-012 · P2
-
-### Workforce domain
-
+- [x] CAP-080 🟢 Support cases — the requester sees their own cases and the non-internal thread
+      (BUG-060), and there is now a promise with a clock on it: targets per priority as rows,
+      a deadline computed from when the case ARRIVED, and met/due-soon/breached states. Two
+      decisions written down rather than assumed — the clock does **not** pause while waiting
+      on the customer (the standard alternative lets a case sit three weeks and still report as
+      within target), and escalating a late case recomputes from arrival, so a breach cannot be
+      escalated away. **Email ingress is a separate capability, not part of this row**
+      `supabase/migrations/0110_support_sla.sql` · GAP-012 · 9 pgTAP assertions
 - [x] CAP-081 🟢 Staff records — contract type, hours, skills, payroll id, documents, emergency contact
       `src/components/staff/StaffFormModal.tsx`
 - [x] CAP-082 🟢 Leave, overtime and swap request/approval flows
