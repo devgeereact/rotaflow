@@ -40,8 +40,11 @@ capability's status updates its row in the same PR.
   reaches the client), **Stripe** (billing: Checkout, Billing Portal and a
   signature-verified webhook, all three Edge Functions; secret and webhook
   secret never reach the client). Background work is `pg_cron` + `pg_net`
-  inside Postgres — the notification outbox drain, nightly retention and the
-  health probe. **Inngest is fully retired** (`0087`, completed 2026-08-31):
+  inside Postgres — **four** jobs, verified running on 2026-08-31: the
+  notification outbox drain (every minute), nightly retention (02:15), the
+  health probe (every 5 minutes) and scheduled alerts (`0093`, every 15
+  minutes, leave expiry and missed clock-in). This list said three until the
+  fourth was found by reading `cron.job` rather than the docs. **Inngest is fully retired** (`0087`, completed 2026-08-31):
   nothing dispatches to it, its Edge Function is gone from the repository and
   from the project, and its write-only key is out of `.env` and out of the
   bundle. Do not reintroduce a `VITE_*` variable for a service nothing calls —
