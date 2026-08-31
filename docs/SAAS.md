@@ -968,9 +968,11 @@ a customer something untrue.
 - **Two closed items were still listed as work.** GAP-012's SLA half closed with `0110` and
   HARDEN-009 closed with `0100` — `auth.sessions` had carried a per-device registry the entire
   time and nothing had surfaced it, so the weakness as written was half-imagined.
-- **An evidence path that did not resolve.** CAP-023a cited `public/sw-push.js`; the file is
-  `public/push-sw.js`. The weekly audit resolves these paths and would have caught it — nothing
-  had run since it was written.
+- **An evidence path that did not resolve.** CAP-023a cited the push service worker with the
+  two halves of its filename transposed — sw-push rather than `public/push-sw.js`. The weekly
+  audit resolves these paths and would have caught it; nothing had run since it was written.
+  (Written out rather than quoted as a path, so this entry does not itself become a MISSING
+  verdict every week.)
 - **`/legal/trust` named a sub-processor that receives nothing** (BUG-067), citing a service file
   deleted with `0087`'s dispatch path. Now checked on every push rather than weekly: `npm run
   check:docs` resolves the repository paths in `src/lib/subprocessors.ts` and fails on one that
