@@ -35,6 +35,10 @@ import {
   listRetentionPolicies,
   type RetentionPolicy,
 } from '@/services/platformFactsService';
+import {
+  getMyMfaStatus,
+  setPlatformMfaRequired,
+} from '@/services/platformSettingsService';
 import type { PlatformAdmin, PlatformRole, PlatformSettings, Profile } from '@/types';
 
 type Tab = 'general' | 'authentication' | 'retention' | 'administrators' | 'maintenance';
@@ -46,11 +50,15 @@ type Tab = 'general' | 'authentication' | 'retention' | 'administrators' | 'main
  * Branding, Security, Email, Storage and API were here and are gone. Each
  * rendered controls for settings this deployment does not store and could not
  * enforce: a colour compiled into the bundle by Tailwind, an MFA requirement
- * owned by Supabase Auth, upload limits for a file store that is not wired up.
+ * nothing checked, upload limits for a file store that is not wired up.
  * A switch that persists a value nothing reads is worse than an absent tab,
  * because somebody eventually believes it. The columns 0027 added for them
  * stay in the database, so the tabs can come back the day something enforces
  * them.
+ *
+ * **One has**: `require_mfa` is enforced by `is_platform_admin()` since
+ * `0102`, so its control is back — on the Authentication tab, beside the
+ * facts, rather than in a Security tab of its own.
  */
 const TABS = [
   { value: 'general', label: 'General' },
@@ -156,6 +164,57 @@ export function AdminSettingsPage(): JSX.Element {
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
+
+  /**
+   * The caller's own second-factor state (`0102`).
+   *
+   * Read server-side rather than from the token in this tab, so what the
+   * screen offers matches what the database would allow. Turning the
+   * requirement on from a session that has not done MFA is refused there, and
+   * a button that fails is worse than one that explains.
+   */
+  const [mfa, setMfa] = useState<{
+    hasVerifiedFactor: boolean;
+    sessionIsAal2: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const status = await getMyMfaStatus();
+        if (active) setMfa(status);
+      } catch (err) {
+        reportError(err, { area: 'admin:settings:mfa-status' });
+        if (active) setMfa(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  const toggleMfaRequired = useCallback(
+    async (required: boolean): Promise<void> => {
+      try {
+        await setPlatformMfaRequired(required);
+        showSuccess(
+          required
+            ? 'Platform administrators now need a second factor to reach this console.'
+            : 'The second-factor requirement is off.',
+        );
+        setReloadKey((k) => k + 1);
+      } catch (err) {
+        reportError(err, { area: 'admin:settings:mfa-toggle' });
+        showError(
+          required
+            ? 'Sign in with your second factor first. Requiring it from a session that has not used it would lock you out.'
+            : 'Could not change the requirement.',
+        );
+      }
+    },
+    [showError, showSuccess],
+  );
 
   const value = <K extends keyof PlatformSettings>(key: K): PlatformSettings[K] =>
     (draft[key] ?? settings?.[key]) as PlatformSettings[K];
@@ -491,6 +550,39 @@ export function AdminSettingsPage(): JSX.Element {
                 running with.
               </p>
             </Callout>
+            <Panel title="Second factor for this console" bodyClassName="p-4">
+              <SettingRow
+                label="Require a second factor of platform administrators"
+                hint={
+                  value('require_mfa')
+                    ? 'Enforced by is_platform_admin(): a console policy refuses a session that has not completed a second factor.'
+                    : 'Off. Administrators reach this console with a password alone.'
+                }
+                control={
+                  <Toggle
+                    checked={value('require_mfa')}
+                    // Turning it ON needs a session that has itself done MFA.
+                    // The database refuses otherwise; disabling the control
+                    // says so before the click rather than after.
+                    disabled={!value('require_mfa') && !(mfa?.sessionIsAal2 ?? false)}
+                    onChange={(next: boolean) => void toggleMfaRequired(next)}
+                    label="Require a second factor of platform administrators"
+                  />
+                }
+              />
+              {!value('require_mfa') && !(mfa?.sessionIsAal2 ?? false) && (
+                <p className="pt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
+                  {mfa?.hasVerifiedFactor
+                    ? 'You have a second factor but this session did not use it. Sign out and back in with your code, then turn this on.'
+                    : 'Set one up on your own account first (Account → Security). Requiring a second factor from a session that has not used one would lock you out of this console — the database refuses it for that reason.'}
+                </p>
+              )}
+              <p className="pt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
+                This column existed from `0027` with a default of on, and nothing checked
+                it until `0102`. It was set to off in that migration because off is what
+                was true: there were no enrolled factors at all.
+              </p>
+            </Panel>
             <Panel title="Actual configuration" flush>
               <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
                 <Capability

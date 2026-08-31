@@ -121,7 +121,7 @@ Do not manually insert database records via SQL/Supabase Studio unless the test 
 
 Avoid modifying application state via undocumented shortcuts, and do not bypass the UI simply because it's inconvenient. The primary test must realistically represent what a real customer can achieve. Database inspection is for verifying persistence and integrity _after_ the UI workflow, never for making a broken feature appear to pass.
 
-Never run this audit against production data. RotaFlow is a pre-launch multi-tenant SaaS — production currently holds one organisation and no attendance history — so treat production as precious anyway — see `docs/SCHEMA.md` for RLS/`org_id` isolation. All destructive/mutating testing happens inside a dedicated QA organisation created for this purpose, or against a local/staging Supabase project. If only production is reachable, stop and flag this before creating any test org, rather than assuming it's safe.
+Never run this audit against production data. RotaFlow is a pre-launch multi-tenant SaaS — production currently holds **zero organisations, one auth user and no attendance history** (read live, 31 August 2026) — so treat production as precious anyway — see `docs/SCHEMA.md` for RLS/`org_id` isolation. All destructive/mutating testing happens inside a dedicated QA organisation created for this purpose, or against a local/staging Supabase project. If only production is reachable, stop and flag this before creating any test org, rather than assuming it's safe.
 
 ---
 

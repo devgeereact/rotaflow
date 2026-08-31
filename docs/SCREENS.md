@@ -83,15 +83,15 @@ the pattern to follow when extending these.
 
 Same layout-route pattern as §3, at `/app/account`. Every role sees every tab. This is a person's own account.
 
-| Status | Design                 | Tab                | Reality                                                                                                                                                         |
-| ------ | ---------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅     | `ProfileSettings.png`  | Profile            | Name, contact, job title, department, and the notification matrix                                                                                               |
-| ✅     | `profileprefrence.png` | Preferences        | Theme and the preferences `app_settings` can actually hold. The reference's ~20 fields exceed the two-column table; the gap is stated on the screen             |
-| ✅     | `ProfileSecurity.png`  | Security           | Password change. MFA, backup codes and trusted devices are named as not built rather than shown as a "100% secure" ring over checks nothing performs            |
-| ✅     | ,                      | Connected Accounts | `/app/account/accounts`. Lists the Supabase identities on this login and links/unlinks the OAuth providers `env.ts` has configured. See `ConnectedAccountsPage` |
-| ✅     | ,                      | Sessions           | "Sign out everywhere" works. Supabase does not expose a session list to the client, and the screen says so instead of showing an empty device table             |
-| ✅     | ,                      | API Tokens         | Explains there is no public API to hold a token for, and why issuing long-lived JWTs would be a security incident rather than a feature. See `TokensPage`       |
-| ✅     | ,                      | Activity           | Reads `audit_logs` for this user                                                                                                                                |
+| Status | Design                 | Tab                | Reality                                                                                                                                                                                                                |
+| ------ | ---------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | `ProfileSettings.png`  | Profile            | Name, contact, job title, department, and the notification matrix                                                                                                                                                      |
+| ✅     | `profileprefrence.png` | Preferences        | Theme and the preferences `app_settings` can actually hold. The reference's ~20 fields exceed the two-column table; the gap is stated on the screen                                                                    |
+| ✅     | `ProfileSecurity.png`  | Security           | Password change, and TOTP two-factor enrolment since `0102`. Backup codes and trusted devices are still named as not built rather than shown as a "100% secure" ring over checks nothing performs                      |
+| ✅     | ,                      | Connected Accounts | `/app/account/accounts`. Lists the Supabase identities on this login and links/unlinks the OAuth providers `env.ts` has configured. See `ConnectedAccountsPage`                                                        |
+| ✅     | ,                      | Sessions           | Lists every device on the account with its user agent, IP and last use, and signs the others out (`my_sessions`, `0100`). It said Supabase exposed no session list; `auth.sessions` always had one and nothing read it |
+| ✅     | ,                      | API Tokens         | Explains there is no public API to hold a token for, and why issuing long-lived JWTs would be a security incident rather than a feature. See `TokensPage`                                                              |
+| ✅     | ,                      | Activity           | Reads `audit_logs` for this user                                                                                                                                                                                       |
 
 ## 5. Built with no design mockup
 

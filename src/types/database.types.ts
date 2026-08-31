@@ -3309,6 +3309,20 @@ export type Database = {
         Args: { p_org: string };
         Returns: undefined;
       };
+      my_mfa_status: {
+        Args: Record<PropertyKey, never>;
+        /** The caller's own second-factor state (0102). */
+        Returns: {
+          has_verified_factor: boolean;
+          factor_count: number;
+          session_is_aal2: boolean;
+        }[];
+      };
+      set_platform_mfa_required: {
+        Args: { p_required: boolean };
+        /** Refused unless the caller is holding an aal2 session (0102). */
+        Returns: boolean;
+      };
       my_sessions: {
         Args: Record<PropertyKey, never>;
         /** Where this account is signed in. No argument: no way to ask about anybody else (0100). */

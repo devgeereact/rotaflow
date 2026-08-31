@@ -50,3 +50,36 @@ export async function updatePlatformSettings(
   if (error) throw error;
   return data;
 }
+
+/**
+ * Turn the console's second-factor requirement on or off (CAP-049, `0102`).
+ *
+ * Not a plain `update`: turning it ON is refused by the database unless the
+ * caller is holding an `aal2` session at that moment. Requiring MFA from a
+ * session that has not done MFA is how an administrator locks themselves out
+ * of their own console, and it is a mistake the database can simply refuse to
+ * make. Turning it off has no such guard, deliberately.
+ */
+export async function setPlatformMfaRequired(required: boolean): Promise<boolean> {
+  const { data, error } = await supabase.rpc('set_platform_mfa_required', {
+    p_required: required,
+  });
+  if (error) throw error;
+  return data ?? required;
+}
+
+/** The caller's own second-factor state, read server-side (`0102`). */
+export async function getMyMfaStatus(): Promise<{
+  hasVerifiedFactor: boolean;
+  factorCount: number;
+  sessionIsAal2: boolean;
+}> {
+  const { data, error } = await supabase.rpc('my_mfa_status');
+  if (error) throw error;
+  const row = (data ?? [])[0];
+  return {
+    hasVerifiedFactor: row?.has_verified_factor ?? false,
+    factorCount: row?.factor_count ?? 0,
+    sessionIsAal2: row?.session_is_aal2 ?? false,
+  };
+}

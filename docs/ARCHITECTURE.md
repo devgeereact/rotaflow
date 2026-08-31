@@ -104,7 +104,8 @@ PUBLIC. Auth
 TENANT SHELL, /app (requires membership, else redirects to /onboarding)
   /app/dashboard          today's coverage, queues, activity
   /app/rota               rota builder. Drag-drop, AI auto-fill, publish   [manager]
-  /app/schedule           published schedule. Day/week/month/agenda + ICS
+  /app/schedule           published schedule. Day/week/month/agenda, an ICS
+                          download and a subscription feed (calendar-feed, §10)
   /app/clock              GPS clock in/out with an offline queue
   /app/team               staff directory                                   [manager]
   /app/team/:staffId      staff profile                                     [manager]
@@ -341,3 +342,47 @@ Secrets: `STRIPE_SECRET_KEY` (shared by all three), `STRIPE_WEBHOOK_SECRET`
 (webhook only, from the Stripe dashboard's endpoint config). After deploying
 the webhook, register its URL in the Stripe dashboard against the five events
 above.
+
+---
+
+## 10. Edge Functions — the whole list
+
+Sections 6 and 9 each describe one of these in the context of the feature it
+serves. This is the inventory, because the set has grown to eight and nothing
+else in the repository lists them in one place.
+
+**`supabase/functions/**` is the only server compute in the product, is Deno,
+and is excluded from `npm run typecheck` and `npm run lint`** (`eslint.config.js`).
+No automated check stands in for reading these by hand.
+
+**They do not deploy on merge.** Migrations do — the Supabase GitHub integration
+applies them, with a lag. Functions are a separate manual
+`supabase functions deploy <name>`. A merged function that nobody deployed is
+the most common way this repository's documentation goes stale, so the deployed
+version of each is recorded in `docs/SAAS.md` §2 with the date it was read.
+
+| Function                  | JWT verified | What it is                                                                                                                                        |
+| ------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ai-rota-assistant`       | yes          | OpenRouter, called with the caller's forwarded JWT so RLS scopes it (§9)                                                                          |
+| `send-notification`       | yes          | Drains `notification_outbox`; email via SMTP, web push via VAPID (§6)                                                                             |
+| `send-invite`             | yes          | The invitation email. Separate from the outbox: an invitee has no account                                                                         |
+| `create-checkout-session` | yes          | Stripe Checkout (§9c)                                                                                                                             |
+| `create-portal-session`   | yes          | Stripe Billing Portal (§9c)                                                                                                                       |
+| `stripe-webhook`          | **no**       | Verifies a Stripe signature instead — a webhook carries no JWT (§9c)                                                                              |
+| `calendar-feed`           | **no**       | A calendar client cannot present a header; the token in the URL is checked by `calendar_feed_shifts`, granted to `service_role` alone             |
+| `test-smtp`               | yes          | Sends one message through an organisation's own SMTP settings, so a wrong password fails on the settings screen rather than silently at send time |
+
+The two with `verify_jwt: false` are deliberate and each has its own boundary
+above. Neither is a gap: Supabase's gateway check would reject the only callers
+those two have.
+
+### The rule about which key they use
+
+A function acting on a user's behalf builds its Supabase client with the
+**caller's forwarded JWT**, so RLS scopes every query for free. `service_role`
+is for genuinely cross-tenant work — a billing webhook, a scheduled drain, a
+feed with no session — and is the exception.
+
+`ai-rota-assistant` is the worked example: the JWT for everything, and
+`service_role` for the single `audit_write` call that `authenticated` is
+deliberately not allowed to make.

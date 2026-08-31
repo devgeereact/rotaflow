@@ -1,5 +1,5 @@
 import { useCallback, useState, type ChangeEvent } from 'react';
-import { CheckCircle2, Lock, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
@@ -7,10 +7,10 @@ import { evaluatePassword } from '@/lib/password';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { TwoFactorSection } from '@/components/account/TwoFactorSection';
 
 /**
  * `/app/account/security`. Design/ProfileSecurity.png.
@@ -23,8 +23,8 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
  *
  * - **Password strength**. Supabase stores a hash. The browser cannot inspect
  *   it, so the only truthful statement is about a password being typed *now*.
- * - **Two-factor**. Supabase MFA is not enrolled anywhere in this app. A tick
- *   next to "Two-factor authentication" would be false.
+ * - **Two-factor**. Answerable since `0102` — `TwoFactorSection` reads the
+ *   real factor list. The other two are still not.
  * - **"No security issues found"**. Nothing scans for any.
  *
  * A 100% Secure ring that is really a static graphic is the worst possible
@@ -247,24 +247,7 @@ export function SecurityPage(): JSX.Element {
           </dl>
         </SettingsSection>
 
-        <Card className="bg-warning/5">
-          <div className="flex gap-3">
-            <ShieldAlert
-              size={18}
-              className="mt-0.5 shrink-0 text-warning"
-              aria-hidden="true"
-            />
-            <div className="text-sm text-content-muted dark:text-content-muted-dark">
-              <p className="font-medium text-content dark:text-content-dark">
-                Two-factor authentication is not available yet
-              </p>
-              <p className="mt-1">
-                RotaFlow does not support a second factor at sign-in. Your account is
-                protected by your password alone. Use one you do not reuse anywhere else.
-              </p>
-            </div>
-          </div>
-        </Card>
+        <TwoFactorSection />
       </div>
     </div>
   );
