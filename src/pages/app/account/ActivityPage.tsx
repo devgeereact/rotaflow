@@ -25,16 +25,31 @@ function formatTimestamp(iso: string): string {
  * activity".
  *
  * Reads the same `audit_logs` table as Settings → Audit, filtered to this
- * user. The important caveat is the same one, and it is stated on the screen:
- * only staff-record anonymisation is currently written to that table, so for
- * nearly everyone this is genuinely empty.
+ * user.
  *
- * There is a second reason it may be empty, and it is worth understanding
- * before treating a blank list as "you have done nothing": `audit_logs_select`
- * is an **owner-only** policy. A staff member or manager reading their own
- * activity is filtered out by RLS, not by an absence of events. The screen
- * does not try to distinguish these two cases, because it cannot. It says the
- * trail is incomplete either way rather than asserting a clean record.
+ * ## Two claims that used to be here and were both wrong
+ *
+ * This comment said only staff-record anonymisation was ever written, and
+ * that `audit_logs_select` is owner-only so a manager reading their own
+ * activity is filtered out by RLS. Neither survived being checked against the
+ * live policy (BUG-063, 2026-08-31):
+ *
+ *     is_platform_admin()
+ *     OR (visibility <> 'platform_only' AND org_id IS NOT NULL
+ *         AND (has_org_role(org_id, ARRAY['owner']) OR actor_user_id = auth.uid()))
+ *
+ * `actor_user_id = auth.uid()` is the deliberate widening `0016` made for
+ * exactly this screen — anybody can read their own actions. And `0016` writes
+ * events for memberships, organisations, rotas, invites and platform-admin
+ * changes, not just anonymisation.
+ *
+ * So an empty list here means what it says. The one thing it does NOT mean is
+ * that somebody did nothing: an action taken through a service-role path — a
+ * platform administrator acting on the org, a scheduled job — is recorded with
+ * no `actor_user_id` and `metadata.via = 'service_role'`, and therefore
+ * belongs to nobody's personal activity. That is correct, and it is why the
+ * empty state below points at the org-wide audit trail rather than claiming a
+ * clean record.
  */
 export function ActivityPage(): JSX.Element {
   const { user } = useSupabaseAuth();
@@ -88,7 +103,7 @@ export function ActivityPage(): JSX.Element {
           <EmptyState
             icon={History}
             title="Nothing recorded"
-            description="No audited actions are logged against your account in this organisation."
+            description="No audited actions are logged against your account in this organisation. Actions taken on your behalf by a platform administrator, or by a scheduled job, are recorded against the organisation rather than against you — an owner can see those in Settings → Audit."
           />
         ) : (
           <ul className="divide-y divide-divider dark:divide-divider-dark">
