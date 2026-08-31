@@ -41,6 +41,18 @@ export function sumApprovedLeaveDays(
       const start = Math.max(new Date(r.start_date).getTime(), windowStart);
       const end = Math.min(new Date(r.end_date).getTime(), windowLastDay);
       const days = Math.round((end - start) / 86_400_000) + 1;
-      return total + Math.max(0, days);
+      if (days <= 0) return total;
+
+      // Half days (CAP-085), but only at an end that is actually inside the
+      // window. A request clipped at the year boundary keeps the half day it
+      // still contains and drops the one that fell into the other year —
+      // otherwise a Christmas-to-New-Year booking loses half a day from both
+      // sides and the two years no longer sum to what was taken.
+      const startInside = new Date(r.start_date).getTime() >= windowStart;
+      const endInside = new Date(r.end_date).getTime() <= windowLastDay;
+      const half =
+        (r.starts_half && startInside ? 0.5 : 0) + (r.ends_half && endInside ? 0.5 : 0);
+
+      return total + Math.max(0.5, days - half);
     }, 0);
 }

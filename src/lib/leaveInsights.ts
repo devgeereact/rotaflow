@@ -236,7 +236,11 @@ export function computeStaffLeaveTiles(
   const pendingDays = roundDays(
     requests
       .filter((r) => r.status === 'pending')
-      .reduce((total, r) => total + leaveDayCount(r.start_date, r.end_date), 0),
+      .reduce(
+        (total, r) =>
+          total + leaveDayCount(r.start_date, r.end_date, r.starts_half, r.ends_half),
+        0,
+      ),
   );
 
   if (allowance == null) {

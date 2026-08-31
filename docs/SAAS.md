@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 108 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 109 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,8 +82,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 84    |
-| 🟡 Partial            | 12    |
+| 🟢 Complete           | 85    |
+| 🟡 Partial            | 11    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -483,15 +483,14 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       logins created and nothing emailed — sixty invitations off a file somebody was still
       checking is not recoverable
       `src/lib/csvImport.ts` · `src/components/staff/ImportStaffModal.tsx` · 19 unit tests
-- [x] CAP-085 🟡 Leave-year rules — the calendar-year hardcode is gone: the year start is a
-      policy, a joiner's allowance is pro-rated, and unused days carry over up to a cap. The
-      balance tile said "book before 31 Dec" to everybody, which was simply untrue for an
-      April year. **Half-days are still not built** — they need a column on `leave_requests`,
-      not arithmetic, so this stays 🟡 rather than being called done.
-      **Landed inside #245 rather than its own PR**: a `git add -A` for that branch's test fix
-      swept these files in. Nothing was lost and every gate ran on them, but the PR title says
-      pay rates and the diff says otherwise, so it is recorded here
-      `src/lib/leaveYear.ts` · 15 unit tests plus 3 through the tiles
+- [x] CAP-085 🟢 Leave-year rules — the calendar-year hardcode is gone (the year start is a
+      policy, a joiner is pro-rated, unused days carry over up to a cap), and **half days now
+      exist**: two booleans rather than a portion enum whose values would mean different things
+      at the two ends of a range. A request never costs zero — a single day booked as both a
+      late start and an early finish is still half a day, and a request worth nothing would
+      pass every entitlement check ever written. A range clipped at the year boundary keeps
+      only the half day that falls inside it, so the two years still sum to what was taken
+      `src/lib/leaveYear.ts` · `supabase/migrations/0109_half_day_leave.sql` · 7 pgTAP + 26 unit
 - [x] CAP-086 🟢 Pay rates and labour cost — `staff_pay_rates` with its own policies, because a
       rate on `staff_profiles` would publish everybody's pay to every colleague (that table is
       readable by any member). A history, not a value: a raise in April must not rewrite what

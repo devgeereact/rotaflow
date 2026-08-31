@@ -130,6 +130,8 @@ const LEAVE: LeaveRequest[] = [
     start_date: TODAY,
     end_date: TODAY,
     status: 'approved',
+    starts_half: false,
+    ends_half: false,
     reason: null,
     reviewed_by: null,
     reviewed_at: null,
