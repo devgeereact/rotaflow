@@ -82,9 +82,9 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 62    |
-| 🟡 Partial            | 16    |
-| 🟠 Defective          | 2     |
+| 🟢 Complete           | 64    |
+| 🟡 Partial            | 15    |
+| 🟠 Defective          | 1     |
 | 🔵 Hardening required | 1     |
 | ⚪ Surface only       | 1     |
 | 🔴 Missing            | 24    |
@@ -262,8 +262,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0090_entitlements_say_what_they_gate.sql` · BUG-064 closed #208 · 10 pgTAP assertions
 - [x] CAP-039 🟢 Plan-limit enforcement — seats and sites refused at the database, inclusive of the cap
       `supabase/migrations/0070_enforce_plan_limits.sql` · GAP-008 closed #176 · 8 pgTAP assertions
-- [ ] CAP-040 🟠 Price source of truth — prices duplicated between `plans` and marketing copy
-      `src/lib/marketing.ts` · BUG-053 · P2
+- [x] CAP-040 🟡 Price source of truth — still duplicated, because the marketing page is unauthenticated and
+      `plans` needs a session; a test now reads the migration and fails when the two disagree
+      `src/lib/marketing.test.ts` · BUG-053 closed #219 · 🟡 because the duplication remains, only checked
 - [ ] CAP-041 🟡 Subscription state — mirrored DB row, no grace-period column, no dunning window
       `src/services/subscriptionService.ts` · P2
 
@@ -409,8 +410,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/services/staffService.ts` · P3
 - [ ] CAP-093 🔴 Unified approvals queue — four screens; the dashboard card is read-only and omits two kinds
       `src/components/dashboard/ManagerDashboard.tsx` · P3
-- [ ] CAP-094 🟡 Onboarding — org created at step 1 by design, but there is no resume path afterwards
-      `src/pages/OnboardingPage.tsx` · GAP-015 · P2
+- [x] CAP-094 🟢 Onboarding — the org is still created at step 1 by design, and an unfinished wizard now
+      resumes at step 2 instead of bouncing to the dashboard forever
+      `supabase/migrations/0094_onboarding_completion.sql` · GAP-015 closed #218 · 6 pgTAP assertions
 
 ### Reliability and operations
 
@@ -435,8 +437,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `scripts/check-bundle-size.mjs` · `bundle-budget.json` · P2
 - [ ] CAP-102 🔴 Product analytics — no events, no `product_events` table
       `docs/OBSERVABILITY.md` · P3
-- [ ] CAP-103 🟡 Error tracking — Sentry in the client; **no edge function reports to it**
-      `src/lib/sentry.ts` · HARDEN-005 · P2
+- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all seven Edge Functions via
+      `_shared/sentry.ts`; the Stripe webhook no longer fails into a log nobody reads
+      `supabase/functions/_shared/sentry.ts` · HARDEN-005 closed #216 · deployed 2026-08-31
 - [x] CAP-104 🟢 Query shape — 16 composite indexes cover the predicates the app issues; the
       builder loads every location's week in two queries, not two per location
       `supabase/migrations/0072_hot_path_indexes.sql` · HARDEN-006 · P2
@@ -547,9 +550,15 @@ headers and source comments.
 | ~~BUG-063~~ | Own-activity screen is empty | Shows what the user did                     | 🟢 **Closed 2026-08-31 — and the diagnosis in this row was wrong.** It said the fix was "for the trigger bodies to record who acted". They already do: `audit_write` records `auth.uid()`, and production has 40 rows carrying a real actor to prove it. It also implied a widening was needed; `audit_logs_select` has read `... or actor_user_id = auth.uid()` since `0016`, verified against the live policy. What the 326 actorless rows actually are: 238 written through a service-role path and correctly labelled `metadata.via = 'service_role'`, and 88 written before that labelling existed. Neither belongs to anybody's personal activity, and neither can be backfilled — `audit_logs` is append-only by trigger, which is the point of it. **The real defect was on the screen**, which told users their activity was hidden by an "owner-only" policy and that only anonymisation was ever recorded. Both untrue; both corrected, along with an empty state that now points at the org-wide trail instead of implying a clean record.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ~~BUG-064~~ | Three ungated entitlements   | Each gated, or removed from the plan tables | 🟢 **Decided one at a time, 2026-08-31.** **`gps_clock_in` is not an entitlement** — every plan had it and the pricing page sells it as a Starter line, so a gate could never refuse anything; `0090` removes it from `plans.features`, which makes `org_has_feature` return false for it. That is deliberate: a name resolving to "false" is a better trap than one resolving to "true for everyone", because it fails visibly if somebody wires it up. **`beta_integrations` is retired** — "unreleased payroll and HR connectors", of which none exist; the only tenant-reachable integration is their own SMTP, and `0073` marked every platform connector `planned`. **`advanced_reporting` now gates the Reports screen**, which is the one of the three with a decision behind it — and the decision was already made on the pricing page: Starter's feature list has no reporting line, Professional's says "Reports across every site", and `plans.features` has agreed since `0030`. Nothing read it until now. **It is client-side, and the register says so rather than dressing it up:** every row on that screen is computed in the browser from the org's own `clock_events` and `staff_profiles`, which RLS grants them because the records are theirs. There is no server endpoint to refuse, and hiding a customer's own data from them would be a worse product. Packaging, not a control — unlike `seat_limit`/`location_limit` (`0070`, writes) and `ai_rota_assistant` (`0074`, spends money). |
 
-**Carried forward, still open** from the 2026-08-23 release audit, which had no home in the repo
-until this file: BUG-010, 011, 012, 013, 014, 015, 024, 029, 030, 031, 032, plus the `auth.users`
-half of GDPR erasure.
+**Carried forward, still open** from the 2026-08-23 release audit: BUG-010, 011, 012, 013, 014,
+015, 024, 029, 030, 031, 032, plus the `auth.users` half of GDPR erasure.
+
+These are **`docs/QA-AUDIT-REPORT.md`'s numbering, not this register's**, and they deliberately
+have no rows here — the two sequences collide (this file's BUG-010 would be a different defect
+from the audit's). An earlier version of this paragraph said they had "no home in the repo until
+this file", which read as a claim that they had been given rows. They have not. The audit report
+is a dated record of testing performed and remains the place they live; anything from it that
+warranted ongoing tracking was re-raised here under this register's own numbering.
 
 ## §7 Gap register
 
@@ -639,17 +648,35 @@ live domain.
 that merging never deploys them; a future edge-function fix needs `supabase functions deploy`
 naming it, or the register will claim something production does not have.
 
-**P1 — reliability and communications as a system.**
-Server-side notification dispatch · delivery outcomes persisted · preferences read at send time ·
-minimum cover enforced in `publish_rota` · rate limiting and an AI cost cap · ground the AI
-announcement output · amendment diff, then reason-for-change, then acknowledgement in that order
-— the latter two need the diff · invite emails · outbox idempotency and a retry path ·
-real-device UAT.
+**P1 — reliability and communications as a system. All closed as of 2026-08-31,
+with one exception.**
+~~Server-side notification dispatch~~ (GAP-026, #200) · ~~delivery outcomes persisted~~ ·
+~~preferences read at send time~~ · ~~minimum cover enforced in `publish_rota`~~ ·
+~~rate limiting and an AI cost cap~~ (GAP-009 #199, HARDEN-004 #204) · ~~ground the AI
+announcement output~~ (BUG-058, #202) · ~~amendment diff~~ (GAP-007, #185) · ~~invite emails~~ ·
+~~outbox idempotency and a retry path~~. Reason-for-change and acknowledgement follow the diff
+and are not yet built. **Real-device UAT remains open and cannot be closed from here** — it needs
+a phone, a person and a signal that drops.
+
+The queue itself was the last thing to work: it had delivered nothing since 29 August because a
+shared secret had to be set identically in two places that cannot be read back. `0091` generates
+it inside Postgres instead (#210).
 
 **P2 — entitlements, truthfulness, coverage.**
-Enforce seat and location limits at write time · one price
-source · optimistic concurrency on approvals · composite
-indexes and the builder N+1 · a real authenticated E2E session (GAP-010) · the DPA once counsel drafts it · label the audit actions.
+Closed 2026-08-31: ~~every entitlement gates something or stops being one~~ (BUG-064, #208) ·
+~~URL schemes constrained in the database~~ (HARDEN-003, #213) · ~~notification retention~~
+(GAP-027, #213) · ~~scheduled alerts for missed clock-ins and expiring documents~~ (GAP-013,
+#214) · ~~an abandoned onboarding wizard resumes~~ (GAP-015, #218) · ~~Edge Function errors
+reach Sentry~~ (HARDEN-005, #216) · ~~the pricing page cannot drift from the plans table~~
+(BUG-053, #219) · ~~colour contrast at zero in both themes~~ (GAP-030 #206, GAP-032 #207) ·
+~~the auth configuration is read and watched~~ (GAP-031, #209).
+
+Still open: optimistic concurrency on approvals · the builder N+1 · **a real authenticated E2E
+session** (GAP-010) — the half that needs a local Supabase stack in CI and a seeded organisation ·
+`shift_templates` still has no reader (BUG-051) · CAPTCHA (GAP-033) and leaked-password
+protection (GAP-034), both put to the owner on 2026-08-31 and deliberately deferred · a fallback
+model chosen for the AI (HARDEN-010 — the mechanism ships, unset) · the DPA once counsel drafts
+it · label the audit actions.
 
 **P3 — after product-market fit.** Everything in §7 marked P3, in the order the maturity ladder
 implies.
