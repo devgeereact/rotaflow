@@ -1114,3 +1114,29 @@ last seen 2026-08-20, with every run since succeeding. Recorded because **an `ac
 working job are different claims**, and this file has now been caught making the first while
 meaning the second twice in one day.
 
+**2026-08-31 (seventh pass — the dependency nothing imports)**: `framer-motion`, 5.6 MB, in
+`dependencies` since the project began and **imported by nothing**. Three places carried it
+forward as if it were in use:
+
+- `README.md`'s tech-stack table sold it to a reader as "Motion — micro-interactions and page
+  transitions". The product has neither, from that library.
+- `vite.config.ts` reserved it a `manualChunks` entry, `motion: ['framer-motion']` — a chunk
+  that could never be emitted, because nothing imports the thing it names.
+- `docs/DESIGN.md` offered CSS as "the fallback when Framer Motion isn't warranted", which
+  inverts what is actually true: CSS is the only animation mechanism here.
+
+The only accurate mention was a comment in `HomePage.tsx` explaining why a JS animation library
+is **not** used — an entrance animation that starts at `opacity: 0` leaves the most important
+copy on the site invisible to a slow phone, blocked JS, or a crawler, which is a bug this
+project has already had once and caught by screenshotting rather than by testing.
+
+Removed, along with all three claims. Verified with `rm -rf node_modules && npm ci` rather than
+`npm install`, because the two are not the same check — an install rewrites the lockfile and
+would hide exactly the breakage this could cause in CI.
+
+**This is the last of the "what is not needed" sweep**, and worth stating as a finding rather
+than a chore: a dependency is the one kind of dead weight that is invisible to every check this
+repository runs. It typechecks, it lints, it tree-shakes out of the bundle so no budget notices,
+and it costs 5.6 MB on every `npm ci` in every CI job. The only thing that finds it is asking
+which declared dependencies nothing imports.
+

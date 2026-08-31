@@ -233,7 +233,6 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
-          motion: ['framer-motion'],
           icons: ['lucide-react'],
           dates: ['date-fns', 'date-fns-tz'],
           // Only the rota builder uses drag-and-drop, so this rides along with

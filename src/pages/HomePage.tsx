@@ -28,8 +28,9 @@ export function HomePage(): JSX.Element {
     <MarketingLayout title={TAGLINE}>
       <section className="overflow-hidden pb-28 pt-16 md:pt-24">
         {/*
-          Entrance animation is the CSS `fade-up` keyframe, not framer-motion.
-          framer starts the element at `opacity: 0` and only reveals it once its
+          Entrance animation is the CSS `fade-up` keyframe, not a JS animation
+          library. A library like framer-motion starts the element at
+          `opacity: 0` and only reveals it once its
           animation runs, so anything that stops that, a slow parse on a phone,
           blocked JS, a crawler that does not execute it, or a headless render. Leaves the single most important block of copy on the site invisible.
           That is exactly what happened here, and it was caught by screenshotting
