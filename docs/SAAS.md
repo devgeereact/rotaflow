@@ -428,9 +428,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-096 🟢 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
       in the migration; verified to fire on all nine and stay silent on all ten written today
       `scripts/check-migration-safety.mjs` · GAP-002 closed #194
-- [ ] CAP-097 🟡 Branch protection — `verify`, `e2e` and `db-tests` are all required now; `enforce_admins`
-      stays off, which is the repository owner's call rather than a defect
-      `.github/workflows/ci.yml` · GAP-003 · **P0**
+- [x] CAP-097 🟡 Branch protection — `verify`, `e2e`, `db-tests` and now `e2e-authenticated` are required;
+      `enforce_admins` stays off, which is the repository owner's call rather than a defect
+      `.github/workflows/ci.yml` · GAP-003 · 🟡 only because of `enforce_admins`
 - [x] CAP-098 🟢 CI gates — typecheck, lint, format, the unit suite, build, SW assertion, bundle budget,
       migration safety, dependency audit. The test count is not quoted here: it was "636" and then "684",
       and a number nothing verifies is a number that drifts
