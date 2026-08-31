@@ -21,7 +21,8 @@
 > new organisation can be created again. This report's other findings
 > (BUG-002 onboarding-draft-lost-on-refresh, BUG-004 Platform Console
 > fabricated data) were **not** part of the P0 and remain open at last check —
-> see `docs/PRD.md`/`docs/LOOP.md` for current per-feature status. **No
+> see **`docs/SAAS.md`** for current per-feature status — it became the single plan of
+> record on 2026-08-29 and this line pointed at `docs/PRD.md`/`docs/LOOP.md` until 2026-08-31. **No
 > regression test exists yet** for the org-creation-by-a-zero-membership-user
 > path this report's own recommended fix (§16) called for — this bug can
 > recur silently. The rest of this report is a point-in-time snapshot from

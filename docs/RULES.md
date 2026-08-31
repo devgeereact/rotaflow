@@ -10,9 +10,10 @@ codebase will drift from, and several below had.
 - **Static-first on the origin.** The deployed artefact is a static `dist/`; the
   cPanel host runs no application code. No Node server, no SSR, no server
   middleware.
-- **Server logic is a Supabase Edge Function, or it does not exist.** Seven live
+- **Server logic is a Supabase Edge Function, or it does not exist.** Eight live
   in `supabase/functions/` (Deno, excluded from `npm run typecheck`/`lint` — review
-  them by hand). This is not an exception to the rule above; it is where the rule
+  them by hand). Don't trust that number: the deployed set and the checked-in set
+  are different lists, because functions **never deploy on merge**. This is not an exception to the rule above; it is where the rule
   sends you.
 - **Respect the folder map** in `docs/ARCHITECTURE.md`. No new top-level folders
   without updating that doc first.

@@ -162,9 +162,11 @@ export function isAlreadyApplied(error: unknown): boolean {
 /**
  * Attach an idempotency key to a payload that does not already carry one.
  *
- * `notify` is excluded: it posts to Inngest rather than inserting a row, so
- * there is no unique index to collide with and an unexpected column would just
- * ride along in the event body.
+ * `notify` is excluded: it posted an event rather than inserting a row, so
+ * there was no unique index to collide with and an unexpected column would
+ * just have ridden along in the event body. The handler is retired (see
+ * above) and drains away; the exclusion stays so an item queued by an older
+ * install is still recognised.
  *
  * A caller that mints its own key BEFORE its first online attempt — which
  * `ClockInPage` does — keeps it here, and that is the case that matters: a

@@ -184,5 +184,8 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
 - **Every key shipped to the browser must be write-only or RLS-guarded**
   (Supabase anon, ImageKit public). The `service_role` key, Stripe's secret and
   webhook secrets, the VAPID private key and all SMTP credentials are server-only and
-  never touch this static bundle. The Inngest write-only event key still ships and is
-  now unused — nothing has dispatched to Inngest since `0087`.
+  never touch this static bundle. The Inngest write-only event key is gone as of
+  2026-08-31 — it had gone on shipping, unused, for the four days after `0087`
+  deleted its last reader, because Vite inlines every `VITE_*` variable into
+  `import.meta.env` whether code reads it or not. **Retiring a service means
+  removing its variable from `.env`, then checking the built bundle.**

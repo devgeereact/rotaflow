@@ -1,10 +1,15 @@
 // send-notification. RotaFlow
 //
 // Creates in-app notification rows and delivers them by push and/or email.
-// Invoked by an Inngest function (per docs/ARCHITECTURE.md §6's documented
-// flow: client → useInngestDispatch → Inngest → this function), never
-// directly by a browser. There is no end user to hold an Authorization JWT
-// for a call that writes notifications for OTHER people.
+// Invoked by ONE caller: `drain_notification_outbox()`, the `pg_cron` job that
+// empties `notification_outbox` (`0069`, `0087`). Never directly by a browser.
+// There is no end user to hold an Authorization JWT for a call that writes
+// notifications for OTHER people.
+//
+// This header used to describe the flow "client → useInngestDispatch → Inngest
+// → this function". That path was deleted by `0087`/HARDEN-008 and the hook
+// with it, but the comment stayed and went on instructing whoever read it to
+// configure a shared secret on an Inngest function that no longer exists.
 //
 // notifications has no client insert policy (0002_rotaflow.sql: "inserts are
 // performed by Edge Functions (service role)") specifically so a browser
@@ -13,30 +18,33 @@
 // ai-rota-assistant does. There is no caller-scoped RLS path that could ever
 // satisfy this function's job.
 //
-// Auth: a shared secret header, not a user JWT (see above). Set
-// NOTIFICATION_FUNCTION_SECRET as a Supabase secret and configure the same
-// value on the Inngest function that calls this endpoint.
+// Auth: a shared secret header, not a user JWT (see above). NOTHING TO SET.
+// `0091` generates the secret inside Postgres and keeps it in `vault`; the
+// drain reads it there to send, and `verify_notification_secret()` compares it
+// there to check. There is no environment variable to configure and no second
+// copy to keep in step — which is the point, because there used to be, the two
+// disagreed, and the queue delivered nothing for a month while looking healthy.
 //
 // Email: an org's own SMTP account (org_smtp_settings, 0010) is preferred
 // when configured. See resolveSmtpConfig, falling back to the global
 // SMTP_* secrets below, and skipped entirely if neither exists.
 //
 // Deploy: `supabase functions deploy send-notification`.
-// Secrets: `supabase secrets set NOTIFICATION_FUNCTION_SECRET=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=...`
+// Secrets: `supabase secrets set VAPID_PRIVATE_KEY=... VAPID_SUBJECT=...`
 //   (SMTP_HOST/PORT/USER/PASS/FROM optional. Email is skipped without them,
 //   unless the recipient org has configured its own SMTP)
 //
-// VERIFICATION STATUS (2026-08-01, `docs/SAAS.md`)
+// VERIFICATION STATUS (auth probed 2026-08-01; version restated 2026-08-31)
 //
-// Deployed and ACTIVE (version 3, verify_jwt: true). Its AUTH is verified
+// Deployed and ACTIVE at **version 26**, verify_jwt: true. Its AUTH is verified
 // against the live project. Probed, not assumed:
 //   * no Authorization header        -> 401 UNAUTHORIZED_NO_AUTH_HEADER (platform gate)
 //   * valid anon JWT, no secret      -> 401 {"error":"Unauthorized"}   (this function)
 //   * valid anon JWT, wrong secret   -> 401 {"error":"Unauthorized"}   (this function)
 // So the shared-secret guard genuinely works, and holding the public anon key
-// is not enough to write into anyone's notification inbox. Every secret this
-// function reads (NOTIFICATION_FUNCTION_SECRET, VAPID_*, SMTP_*) is set on the
-// project.
+// is not enough to write into anyone's notification inbox. This block said
+// "version 3" for a month of deploys; a version number written by hand is a
+// number that rots, so read it from the project rather than from here.
 //
 // STILL UNVERIFIED: **delivery**. Nobody has watched a web-push notification
 // arrive on a device or an email land in a mailbox. Proving that needs an org
@@ -68,8 +76,8 @@
 // then ignored it.
 //
 // Both are now read here, on the send path, because this is the only place
-// that can honour them: the dispatch sites do not know the recipients'
-// preferences and the Inngest hop carries no session.
+// that can honour them: the dispatch sites are database triggers, which do not
+// know the recipients' preferences, and the outbox row carries no session.
 //
 // The two controls do different jobs, deliberately:
 //
@@ -101,9 +109,16 @@
 //
 // 0087 moved every dispatch into the database, so nothing legitimate used
 // that path any more; HARDEN-008 deleted it. The `inngest` function is
-// removed and undeployed, and the event key no longer ships. The only caller
-// left is the pg_cron outbox drain, which sends rows written by triggers —
-// a payload no client can author.
+// removed and undeployed. The only caller left is the pg_cron outbox drain,
+// which sends rows written by triggers — a payload no client can author.
+//
+// This block also claimed "the event key no longer ships", and that half was
+// wrong for two days. Deleting every reader of `VITE_INNGEST_EVENT_KEY` does
+// not stop Vite inlining it: `import.meta.env` is emitted as a whole object,
+// so the key sat in `dist/assets/index-*.js` on a public site until it was
+// removed from `.env` and `.env.example` on 2026-08-31. Deleting a code path
+// is not the same as deleting its credential, and only the built bundle can
+// tell you which one you did.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';

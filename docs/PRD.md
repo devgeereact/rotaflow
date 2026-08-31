@@ -124,7 +124,7 @@ role membership, never in the client alone.
 
 - **Static-first:** zero server runtime; dynamic behaviour is client-side or offloaded
   to Supabase (Auth/DB/RLS, Edge Functions, `pg_cron` + `pg_net`), ImageKit,
-  Sentry and Stripe. Inngest is retired as a dispatch path (`0087`).
+  Sentry and Stripe. Inngest is fully retired (`0087`) — no function, no key.
 - **Multi-tenant:** single Supabase project; `org_id` on every table; RLS tenant
   isolation is the last line of defence.
 - **Type-safe:** TypeScript strict, no implicit `any`.

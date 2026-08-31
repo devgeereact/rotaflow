@@ -101,16 +101,6 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
     optOut: 'Yes. Nothing is sent unless someone uploads an image.',
   },
   {
-    name: 'Inngest',
-    purpose: 'Dispatching background and scheduled work, such as notifications.',
-    personalData:
-      'The recipient user ids and the notification’s own title and body. No staff record is sent.',
-    region: 'Determined by the Inngest account; not independently verified here.',
-    outsideUkEu: false,
-    evidence: 'src/services/notificationDispatchService.ts',
-    optOut: null,
-  },
-  {
     name: 'Namecheap / cPanel hosting',
     purpose:
       'Serving the application itself — a static bundle — and the outbound mail for password resets and invitations.',
@@ -134,5 +124,19 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
   },
 ];
 
+/**
+ * Removed on 31 August 2026: **Inngest**. It was listed as dispatching
+ * notifications, citing `src/services/notificationDispatchService.ts` as its
+ * evidence — a file deleted when `0087` moved dispatch into Postgres triggers
+ * and a `pg_cron` drain. So a published procurement document named a processor
+ * that receives nothing, and proved it with a path that does not exist. That
+ * is the failure mode the header rule above exists to prevent, and it survived
+ * two weeks because nothing re-reads these paths.
+ *
+ * Errs in the customer's favour either way — over-declaring a processor is the
+ * safe direction — but a list a reviewer can falsify in one `ls` is worth less
+ * than one they cannot.
+ */
+
 /** The date the list above was last checked against the code, not last edited. */
-export const SUB_PROCESSORS_REVIEWED = '30 August 2026';
+export const SUB_PROCESSORS_REVIEWED = '31 August 2026';

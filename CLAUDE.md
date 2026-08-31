@@ -41,9 +41,11 @@ capability's status updates its row in the same PR.
   signature-verified webhook, all three Edge Functions; secret and webhook
   secret never reach the client). Background work is `pg_cron` + `pg_net`
   inside Postgres — the notification outbox drain, nightly retention and the
-  health probe. **Inngest is retired as a dispatch path** (`0087`): its
-  function is still deployed and its write-only key still ships in the bundle,
-  but nothing sends to it.
+  health probe. **Inngest is fully retired** (`0087`, completed 2026-08-31):
+  nothing dispatches to it, its Edge Function is gone from the repository and
+  from the project, and its write-only key is out of `.env` and out of the
+  bundle. Do not reintroduce a `VITE_*` variable for a service nothing calls —
+  Vite inlines every one of them whether code reads it or not.
 - **OpenRouter is the only AI provider.** Nothing in this project calls
   Anthropic, OpenAI or any other vendor directly. Two callers, both
   server-side: `supabase/functions/ai-rota-assistant` (product AI, keyed by

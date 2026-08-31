@@ -8,6 +8,7 @@ import {
   listMyCases,
   openSupportCase,
   rateCase,
+  replyToCase,
   type SupportCase,
   type SupportCaseMessage,
 } from '@/services/supportCaseService';
@@ -108,6 +109,10 @@ export function HelpPage(): JSX.Element {
       }
       setOpenCaseId(caseId);
       setThread([]);
+      // One draft, and only one case open at a time — so it has to be cleared
+      // on the switch. Carrying it across would offer a reply written about
+      // one case, pre-filled under another, one click from being sent there.
+      setReply('');
       setThreadLoading(true);
       // Internal notes are excluded by the RLS policy itself (0024), not by a
       // filter here — a client-side one is a single forgotten `.eq()` away
@@ -121,6 +126,40 @@ export function HelpPage(): JSX.Element {
         .finally(() => setThreadLoading(false));
     },
     [openCaseId, showError],
+  );
+
+  // GAP-012's remaining half. `reply_to_support_case` has been in the schema
+  // since 0024, granted to `authenticated`, and it already decides who may
+  // write: the requester or an owner of the case's organisation, and never an
+  // internal note. Only `/admin` ever called it, so a customer could read the
+  // thread and not answer it — support could ask a question the person it was
+  // addressed to had no way to answer, in the product. Nothing new is trusted
+  // to the client here; the guard was always in the function.
+  const [reply, setReply] = useState('');
+  const [replying, setReplying] = useState(false);
+
+  const handleReply = useCallback(
+    async (caseId: string): Promise<void> => {
+      const body = reply.trim();
+      if (!body) return;
+      setReplying(true);
+      try {
+        await replyToCase(caseId, body);
+        setReply('');
+        // Re-read rather than appending optimistically: the reply is stamped
+        // and named by the database, and a locally-built row would be the one
+        // message in the thread whose author and time this screen guessed.
+        setThread(await listCaseMessages(caseId));
+        // The case list carries the SLA state, which a reply can move.
+        setCasesReloadKey((k) => k + 1);
+      } catch (err) {
+        reportError(err, { area: 'help:reply-case' });
+        showError('Could not send that reply. Please try again.');
+      } finally {
+        setReplying(false);
+      }
+    },
+    [reply, showError],
   );
 
   const handleRate = useCallback(
@@ -348,8 +387,16 @@ export function HelpPage(): JSX.Element {
                               key={msg.id}
                               className="rounded-lg border border-surface-border p-3 dark:border-surface-border-dark"
                             >
+                              {/* `author_side` is `'customer' | 'platform'`
+                                  (0024's CHECK). This read `'agent'`, a value
+                                  the column cannot hold, so the branch never
+                                  fired: every support reply was labelled with
+                                  the support agent's own full name instead of
+                                  "Support" — a staff member's name shown to a
+                                  customer who never asked for it, and no
+                                  indication the reply came from us at all. */}
                               <span className="block text-xs font-medium text-content-muted dark:text-content-muted-dark">
-                                {msg.author_side === 'agent'
+                                {msg.author_side === 'platform'
                                   ? 'Support'
                                   : (msg.author_name ?? 'You')}
                                 {' · '}
@@ -361,6 +408,34 @@ export function HelpPage(): JSX.Element {
                             </li>
                           ))}
                         </ul>
+                      )}
+
+                      {/* Not on a closed case. `reply_to_support_case` would
+                          accept one, but a closed case is the one state where
+                          nobody is watching the queue, so a box here would
+                          take a message and quietly strand it. Resolved is
+                          different — a person can still say "this is not
+                          fixed", and that reply is exactly the signal support
+                          needs before the case closes for good. */}
+                      {row.status !== 'closed' && (
+                        <div className="mt-4 border-t border-surface-border pt-3 dark:border-surface-border-dark">
+                          <Label htmlFor={`reply-${row.id}`}>Reply to support</Label>
+                          <textarea
+                            id={`reply-${row.id}`}
+                            value={reply}
+                            onChange={(e) => setReply(e.target.value)}
+                            rows={3}
+                            className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+                          />
+                          <div className="mt-2 flex justify-end">
+                            <Button
+                              disabled={replying || !reply.trim()}
+                              onClick={() => void handleReply(row.id)}
+                            >
+                              {replying ? 'Sending…' : 'Send reply'}
+                            </Button>
+                          </div>
+                        </div>
                       )}
 
                       {/* Only on a resolved case, because `rate_support_case`
