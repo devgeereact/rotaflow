@@ -132,8 +132,16 @@ TENANT SHELL, /app (requires membership, else redirects to /onboarding)
   /legal/privacy · /legal/terms · /legal/cookies · /legal/accessibility
   /auth/callback          OAuth return
   /admin/*                platform console, 19 screens (RequirePlatformAdmin)
+                          `is_platform_admin()` requires an aal2 session when
+                          `platform_settings.require_mfa` is on (0102)
   *-preview               ~30 DEV-only design-loop routes, dropped from the build
 ```
+
+**A `[manager]` route is also reachable by a delegate.** Since `0106`,
+`has_org_role` returns true for somebody holding live cover — which means a
+temporary deputy sees the managerial routes without anybody editing their
+membership, and stops seeing them when the cover expires. Nothing in this
+table changes; the predicate underneath it does.
 
 `[manager]` = gated by `RequireRole` on the `<Route>`, rendering
 `PermissionDenied` (area, role held, role required, way back) rather than
