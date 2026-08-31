@@ -3258,6 +3258,15 @@ export type Database = {
         /** Promotes and demotes in one transaction; never leaves two owners (0095). */
         Returns: undefined;
       };
+      overtime_evidence: {
+        Args: { p_date: string; p_org: string; p_staff: string };
+        /** Evidence for judging a typed overtime claim, never a derivation (0097). */
+        Returns: {
+          scheduled_minutes: number;
+          worked_minutes: number;
+          unpaired_events: number;
+        }[];
+      };
       notification_delivery_configured: {
         Args: Record<PropertyKey, never>;
         /** True when the outbox drain has all three of its vault secrets (0091). */

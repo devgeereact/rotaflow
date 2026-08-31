@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 96 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 97 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -401,8 +401,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/lib/leaveInsights.ts` · P3
 - [ ] CAP-086 🔴 Pay rates and labour cost — no rate column anywhere
       `src/lib/reportsOverview.ts` · P3
-- [ ] CAP-087 🟡 Overtime — a self-declared number, not linked to worked hours
-      `src/services/overtimeService.ts` · P3
+- [x] CAP-087 🟢 Overtime — still a declared number, now shown beside what the clock recorded for that
+      person that day, so an approver judges it against something. Evidence, deliberately not derivation
+      `supabase/migrations/0097_overtime_evidence.sql` · 7 pgTAP assertions
 - [x] CAP-088 🟢 Document expiry — alerts a manager on a schedule, once per document per expiry date
       `supabase/migrations/0093_scheduled_alerts.sql` · GAP-013 closed #214
 - [ ] CAP-089 🔴 Multi-location workers — `staff_profiles` has no `location_id`

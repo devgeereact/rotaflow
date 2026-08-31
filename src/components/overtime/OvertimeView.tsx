@@ -51,6 +51,14 @@ export interface OvertimeViewProps {
   onApprove: (row: OvertimeRow) => Promise<void>;
   onDecline: (row: OvertimeRow) => Promise<void>;
   onWithdraw: (row: OvertimeRow) => Promise<void>;
+  /**
+   * What the clock recorded for a pending claim, keyed by row id (CAP-087).
+   *
+   * Absent for a row means "not looked up or not readable", NOT "nothing
+   * worked" — the two must not render the same, so a missing entry shows
+   * nothing rather than a zero.
+   */
+  evidence?: Record<string, string | undefined>;
 }
 
 /**
@@ -62,6 +70,7 @@ export interface OvertimeViewProps {
  */
 export function OvertimeView({
   canApprove,
+  evidence,
   tiles,
   rows,
   totalRowCount,
@@ -174,6 +183,17 @@ export function OvertimeView({
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-content dark:text-content-dark">
                         {row.hoursLabel}
+                        {/* The claim is a number somebody typed, and it goes
+                            to payroll. This is what the clock recorded on the
+                            same day, so an approver has something to judge it
+                            against — not a correction, and deliberately not a
+                            replacement: the day somebody stays late is the day
+                            they forget to clock out. */}
+                        {evidence?.[row.id] && (
+                          <p className="mt-0.5 text-xs font-normal text-content-muted dark:text-content-muted-dark">
+                            {evidence[row.id]}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-content-muted dark:text-content-muted-dark">
                         {row.note ?? '-'}

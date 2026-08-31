@@ -8,6 +8,7 @@ import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
 import {
   cancelOvertimeRequest,
   createOvertimeRequest,
+  getOvertimeEvidence,
   listMyOvertimeRequests,
   listOrgOvertimeRequests,
   reviewOvertimeRequest,
@@ -102,6 +103,18 @@ export function OvertimePage(): JSX.Element {
     return map;
   }, [staff, myProfile]);
 
+  /**
+   * What the clock recorded, per pending row (CAP-087).
+   *
+   * Only for an approver, and only for rows they can still act on: this is
+   * one query per row, and a decided claim is not being judged any more.
+   *
+   * Failures are silent and per-row. The evidence is context for a decision,
+   * not the decision — an approvals screen that broke because a supporting
+   * query failed would be a worse outcome than one without the extra line.
+   */
+  const [evidence, setEvidence] = useState<Record<string, string | undefined>>({});
+
   const rows = useMemo<OvertimeRow[]>(
     () => buildOvertimeRows({ requests, staffById, currentUserId: user?.id ?? null }),
     [requests, staffById, user],
@@ -157,6 +170,36 @@ export function OvertimePage(): JSX.Element {
     },
     [orgId, myProfile, showError, showSuccess],
   );
+
+  useEffect(() => {
+    if (!orgId || !canApprove) return;
+    const pendingRows = rows.filter((r) => r.status === 'pending');
+    if (pendingRows.length === 0) return;
+
+    let active = true;
+    void (async () => {
+      const entries = await Promise.all(
+        pendingRows.map(async (row) => {
+          const found = await getOvertimeEvidence(orgId, row.staffProfileId, row.date);
+          if (!found) return [row.id, undefined] as const;
+          const worked = formatOvertimeHours(found.workedMinutes / 60);
+          const scheduled = formatOvertimeHours(found.scheduledMinutes / 60);
+          // The unpaired case is named rather than folded into the number:
+          // "we do not know" and "they worked nothing" must not read alike.
+          const caveat = found.unpairedEvents > 0 ? ' · a clock-out is missing' : '';
+          return [
+            row.id,
+            `Clock: ${worked} worked / ${scheduled} rostered${caveat}`,
+          ] as const;
+        }),
+      );
+      if (!active) return;
+      setEvidence(Object.fromEntries(entries));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId, canApprove, rows]);
 
   const handleReview = useCallback(
     async (row: OvertimeRow, status: 'approved' | 'rejected'): Promise<void> => {
@@ -228,6 +271,7 @@ export function OvertimePage(): JSX.Element {
   return (
     <OvertimeView
       canApprove={canApprove}
+      evidence={evidence}
       tiles={tiles}
       rows={filteredRows}
       totalRowCount={rows.length}
