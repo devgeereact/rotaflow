@@ -4,6 +4,7 @@ import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import {
   Download,
   FileText,
+  Banknote,
   IdCard,
   Pencil,
   ShieldOff,
@@ -12,6 +13,7 @@ import {
   UserRoundX,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -38,6 +40,7 @@ import {
 import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModal';
 import { DocumentsModal } from '@/components/staff/DocumentsModal';
 import { ImportStaffModal } from '@/components/staff/ImportStaffModal';
+import { PayRateModal } from '@/components/staff/PayRateModal';
 import type { ImportPreview } from '@/lib/csvImport';
 import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
 import {
@@ -88,6 +91,7 @@ function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
 export function StaffPage(): JSX.Element {
   const { confirm } = useConfirm();
   const { orgId, orgName } = useOrg();
+  const { user } = useSupabaseAuth();
   const { canManageStaff, canManageOrg } = usePermissions();
   const navigate = useNavigate();
 
@@ -107,6 +111,7 @@ export function StaffPage(): JSX.Element {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [payRateFor, setPayRateFor] = useState<StaffProfile | null>(null);
   const [editingStaff, setEditingStaff] = useState<StaffProfile | null>(null);
   const [actionsFor, setActionsFor] = useState<StaffProfile | null>(null);
   const [emergencyContactsFor, setEmergencyContactsFor] = useState<StaffProfile | null>(
@@ -315,6 +320,12 @@ export function StaffPage(): JSX.Element {
         },
       },
       {
+        id: 'pay-rate',
+        label: 'Pay rate',
+        icon: Banknote,
+        onSelect: () => setPayRateFor(person),
+      },
+      {
         id: 'emergency',
         label: 'Emergency contacts',
         icon: Siren,
@@ -465,6 +476,17 @@ export function StaffPage(): JSX.Element {
         actions={actionsFor ? actionsFrom(actionsFor) : []}
         onClose={() => setActionsFor(null)}
       />
+
+      {orgId && payRateFor && user && (
+        <PayRateModal
+          open={Boolean(payRateFor)}
+          onClose={() => setPayRateFor(null)}
+          orgId={orgId}
+          staffProfileId={payRateFor.id}
+          staffName={`${payRateFor.first_name} ${payRateFor.last_name}`}
+          createdBy={user.id}
+        />
+      )}
 
       <ImportStaffModal
         open={importOpen}

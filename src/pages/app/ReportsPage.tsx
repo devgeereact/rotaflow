@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
 import { ReportsView } from '@/components/reports/ReportsView';
 import { ReportsAnalyticsCard } from '@/components/reports/ReportsAnalyticsCard';
+import { LabourCostCard } from '@/components/reports/LabourCostCard';
+import { getOrganisation } from '@/services/orgService';
+import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
 import {
   REPORT_CATALOGUE,
   REPORT_RANGES,
@@ -79,6 +82,36 @@ export function ReportsPage(): JSX.Element {
   useEffect(() => {
     setFavourites(orgId ? readFavourites(orgId) : []);
     setRuns(orgId ? readRuns(orgId) : []);
+  }, [orgId]);
+
+  /**
+   * The same window as the charts, as plain dates.
+   *
+   * `labour_cost` takes dates rather than instants because a shift belongs to
+   * the day it starts, and an ISO instant would put a 23:00 shift in the
+   * previous day for anybody east of London.
+   */
+  const costRange = useMemo(() => {
+    const { from, to } = resolveRange(rangeId, new Date());
+    return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+  }, [rangeId]);
+
+  // A paid break is paid time, and the organisation decides which it is.
+  const [paidBreaks, setPaidBreaks] = useState(DEFAULT_POLICIES.breaksArePaid);
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const org = await getOrganisation(orgId);
+        if (active) setPaidBreaks(schedulingPolicies(org.settings).breaksArePaid);
+      } catch (err) {
+        reportError(err, { area: 'reports:policies' });
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [orgId]);
 
   const rangeLabel =
@@ -324,7 +357,16 @@ export function ReportsPage(): JSX.Element {
   return (
     <ReportsView
       analytics={
-        <ReportsAnalyticsCard period={analyticsPeriod} rangeLabel={scopeLabel} />
+        <div className="space-y-4">
+          <ReportsAnalyticsCard period={analyticsPeriod} rangeLabel={scopeLabel} />
+          <LabourCostCard
+            orgId={orgId}
+            from={costRange.from}
+            to={costRange.to}
+            rangeLabel={rangeLabel}
+            paidBreaks={paidBreaks}
+          />
+        </div>
       }
       tabs={[
         { value: 'all', label: 'All Reports' },

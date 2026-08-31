@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 103 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 104 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 80    |
+| 🟢 Complete           | 81    |
 | 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 8     |
+| 🔴 Missing            | 7     |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -476,8 +476,12 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/lib/csvImport.ts` · `src/components/staff/ImportStaffModal.tsx` · 19 unit tests
 - [ ] CAP-085 🔴 Leave-year rules — calendar year hardcoded; no accrual, carry-over, pro-rata or half-days
       `src/lib/leaveInsights.ts` · P3
-- [ ] CAP-086 🔴 Pay rates and labour cost — no rate column anywhere
-      `src/lib/reportsOverview.ts` · P3
+- [x] CAP-086 🟢 Pay rates and labour cost — `staff_pay_rates` with its own policies, because a
+      rate on `staff_profiles` would publish everybody's pay to every colleague (that table is
+      readable by any member). A history, not a value: a raise in April must not rewrite what
+      March cost. `labour_cost()` returns money without handing out the rates it used, and
+      COUNTS the people it could not price rather than treating them as free
+      `supabase/migrations/0104_pay_rates.sql` · 11 pgTAP assertions
 - [x] CAP-087 🟢 Overtime — still a declared number, now shown beside what the clock recorded for that
       person that day, so an approver judges it against something. Evidence, deliberately not derivation
       `supabase/migrations/0097_overtime_evidence.sql` · 7 pgTAP assertions

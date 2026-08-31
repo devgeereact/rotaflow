@@ -2531,6 +2531,39 @@ export type Database = {
           },
         ];
       };
+      staff_pay_rates: {
+        Row: {
+          id: string;
+          org_id: string;
+          staff_profile_id: string;
+          hourly_rate_pence: number;
+          effective_from: string;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          staff_profile_id: string;
+          hourly_rate_pence: number;
+          effective_from: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          staff_profile_id?: string;
+          hourly_rate_pence?: number;
+          effective_from?: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       staff_profiles: {
         Row: {
           active: boolean;
@@ -3308,6 +3341,25 @@ export type Database = {
       revoke_calendar_feed_token: {
         Args: { p_org: string };
         Returns: undefined;
+      };
+      labour_cost: {
+        Args: { p_org: string; p_from: string; p_to: string; p_paid_breaks?: boolean };
+        /** Money without handing out the rates it used (0104). */
+        Returns: {
+          location_id: string | null;
+          location_name: string | null;
+          scheduled_minutes: number;
+          cost_pence: number;
+          unrated_staff: number;
+        }[];
+      };
+      current_pay_rates: {
+        Args: { p_org: string };
+        Returns: {
+          staff_profile_id: string;
+          hourly_rate_pence: number;
+          effective_from: string;
+        }[];
       };
       open_shifts: {
         Args: { p_org: string };
