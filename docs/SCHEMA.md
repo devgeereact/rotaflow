@@ -574,6 +574,39 @@ Caller must be an owner of the organisation or a platform admin, and must type
 the organisation's name exactly. `organisation_deletion_preview(org)` returns
 the row counts the confirmation dialog shows.
 
+**The cascade is the mechanism, so new tables are covered automatically — and
+that was verified rather than assumed on 2026-08-31.** `0063`'s header says
+the delete "cascades into 32 tables"; production now reports **37** foreign
+keys to `organisations` with `on delete cascade`, and the difference is
+exactly the five tenant tables added that day (`calendar_feed_tokens`,
+`staff_pay_rates`, `staff_locations`, `role_delegations`,
+`notification_templates`). The number in the migration header is immutable and
+now stale; this is where to read the current one.
+
+What that does NOT cover is a table whose foreign key is `on delete set null`
+rather than cascade: those rows SURVIVE the organisation, with `org_id` null.
+Three do, and the difference between them matters:
+
+| Table           | Survives with a null `org_id` because                                                                                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `audit_logs`    | Deliberate, and stated in `0063`: an audit trail a tenant deletion erases is not an audit trail. The organisation's NAME is copied onto each row so the history stays readable.                                                                                |
+| `gdpr_requests` | Almost certainly right and **not written down anywhere until now**: the evidence that an erasure or access request was handled has to outlive the tenant, or the one record proving compliance disappears with the customer who complained.                    |
+| `support_cases` | Same shape, weaker argument. A closed support history is useful and is not obviously ours to keep. Worth a decision rather than an inheritance — nobody chose this, it came from the column being nullable so a case could arrive before the tenant was known. |
+
+None of them is visible to a tenant afterwards: every policy on those tables
+goes through `is_org_member(org_id)`, which is false for null, so a surviving
+row is reachable only by a platform admin.
+
+The check is one query, and is worth running after adding any table:
+
+```sql
+select child.relname from pg_constraint c
+  join pg_class child on child.oid = c.conrelid
+  join pg_class parent on parent.oid = c.confrelid
+ where c.contype = 'f' and parent.relname = 'organisations'
+   and c.confdeltype <> 'c';
+```
+
 What survives, by design: `audit_logs`, `gdpr_requests` and `support_cases` all
 hold `org_id … on delete set null`, and audit rows carry an `org_name`
 snapshot. The `org.deleted` event is written _before_ the delete so it survives
