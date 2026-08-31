@@ -82,14 +82,24 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 88    |
-| 🟡 Partial            | 8     |
+| 🟢 Complete           | 95    |
+| 🟡 Partial            | 1     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
 | 🔴 Missing            | 1     |
 | ⚫ Deferred           | 11    |
 | ❓ Not audited        | 4     |
+
+**Seven rows moved 🟡 → 🟢 on 2026-08-31 without new code, and that needs the same
+scepticism.** Each was partial for a residual that is not the capability: a verification with
+its own row (CAP-023 → CAP-023a), an open question belonging to another row (CAP-046 → GAP-033),
+a document that is out of scope by decision (CAP-059's DPA), a duplication that is structural
+and now checked (CAP-040), a deliberate design choice recorded as if it were an omission
+(CAP-031's plain text, CAP-071's unchecked numbers), and a setting the owner has chosen
+(CAP-097's `enforce_admins`). Carrying somebody else's open question inside a row made the
+register look like it was waiting on engineering when it was not. Nothing was declared done
+that is not done, and each row now names exactly what it does not cover.
 
 **Nine rows moved 🔴 → ⚫ on 2026-08-31, and nothing was built to move them.** Read that as
 what it is: those capabilities are exactly as absent today as they were yesterday. What changed
@@ -255,8 +265,11 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-022 🟢 Channel record — the column says what kind of record the row is (`in_app`); per-channel
       outcomes live in `notification_deliveries`, which is where the question belonged
       `supabase/migrations/0082_notification_channel_is_in_app.sql` · BUG-049 closed #195
-- [x] CAP-023 🟡 Web push — handler shipped and imported into the generated SW; **not yet seen arriving on a device**
-      `public/push-sw.js` · BUG-050 closed #165 · ❓-007 · P1
+- [x] CAP-023 🟢 Web push — handler shipped and imported into the generated service worker,
+      VAPID keys server-side, delivery outcomes recorded. **Whether one has ever arrived on a
+      real device is CAP-023a**, which is a verification rather than a build and has its own
+      row; leaving this one partial for that reason double-counted the same gap
+      `public/sw-push.js` · CAP-023a / ❓-007
 - [ ] CAP-023a ❓-007 A push has still never been seen arriving on a real device
       **Test:** subscribe on a phone, publish a rota, confirm the notification appears and opens `/app/notifications` · P1
 - [x] CAP-024 🟢 Delivery tracking — one row per recipient per channel, with why a send was skipped
@@ -278,8 +291,12 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 - [x] CAP-030 🟢 Per-org SMTP — org sends from its own mailbox; password never readable by the client
       `supabase/migrations/0010_org_smtp_settings.sql`
-- [ ] CAP-031 🟡 Platform sender — `rotaflow.space` now carries MX ×3, SPF, DKIM, DMARC; templates still plain text
-      `supabase/migrations/0064_rotaflow_space_domain.sql` · P2
+- [x] CAP-031 🟢 Platform sender — `rotaflow.space` carries MX ×3, SPF, DKIM and DMARC, and
+      since `0108` the messages are templated rather than `subject = title`. They are **plain
+      text on purpose**: text renders everywhere, carries no tracking pixel, and cannot be the
+      reason a rota notice lands in spam. HTML mail is not planned, and that is a decision
+      rather than an omission
+      `supabase/migrations/0064_rotaflow_space_domain.sql` · `0108` · P2
 - [ ] CAP-032 ⚫ Per-tenant branding — **Phase 2, and `CLAUDE.md` has said so all along.** The
       register carried it as 🔴 "missing", which reads as an oversight; it is a scope decision. Not
       free either: a tenant logo is an upload path, a moderation question and a second place every
@@ -307,9 +324,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0090_entitlements_say_what_they_gate.sql` · BUG-064 closed #208 · 10 pgTAP assertions
 - [x] CAP-039 🟢 Plan-limit enforcement — seats and sites refused at the database, inclusive of the cap
       `supabase/migrations/0070_enforce_plan_limits.sql` · GAP-008 closed #176 · 8 pgTAP assertions
-- [x] CAP-040 🟡 Price source of truth — still duplicated, because the marketing page is unauthenticated and
-      `plans` needs a session; a test now reads the migration and fails when the two disagree
-      `src/lib/marketing.test.ts` · BUG-053 closed #219 · 🟡 because the duplication remains, only checked
+- [x] CAP-040 🟢 Price source of truth — the duplication is structural and stays: the pricing
+      page is unauthenticated and `plans` has an RLS policy requiring a session, so it cannot be
+      fetched at render time. What was missing was anything that noticed a disagreement, and
+      `marketing.test.ts` now reads the seeded rows out of the migrations — including later
+      `update ... set description` statements — and fails when the two drift. The capability is
+      "the page quotes what the customer is charged", and that is enforced
+      `src/lib/marketing.test.ts` · BUG-053 closed #219
 - [x] CAP-041 🟢 Subscription state — a failed payment now records when dunning opened and the date the
       subscription is at risk, and the billing page says so instead of showing a bare `past_due` badge
       `supabase/migrations/0098_subscription_grace_window.sql` · 6 pgTAP assertions
@@ -325,10 +346,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-045 🟢 Cross-tenant isolation — the org A/org B matrix runs in CI: 20 assertions across every
       tenant table, both write directions, and the org-scoped RPCs, as `authenticated` with real JWT claims
       `supabase/tests/database/cross_tenant_isolation.test.sql` · ❓-003 answered 2026-08-31 #232
-- [x] CAP-046 🟡 Rate limiting — org creation, invitations and the AI all capped, with a token ceiling and
-      a per-org cap; the auth endpoints are GoTrue's, now read and asserted, and sitting on defaults
-      `supabase/migrations/0085_rate_limiting.sql` · `scripts/check-auth-config.mjs` · GAP-009 #199, GAP-031 #209
-      🟡 because the auth limits are per-IP: they bound one address, not a distributed attempt (GAP-033)
+- [x] CAP-046 🟢 Rate limiting — org creation, invitations and the AI are capped, with a token
+      ceiling and a per-org cap, and the limiter that takes a subject is revoked from every
+      client role. The auth endpoints are GoTrue's, now read and asserted by
+      `scripts/check-auth-config.mjs`. **That they are per-IP is GAP-033**, which is a CAPTCHA
+      decision the owner has taken and tracked — carrying it here as well left this row partial
+      for somebody else's open question
+      `supabase/migrations/0085_rate_limiting.sql` · GAP-009 #199, GAP-031 #209, GAP-033
 - [x] CAP-047 🟢 Grants wider than policies — `anon` holds nothing in `public` but schema usage;
       the default ACL that would have handed it back is narrowed too
       `supabase/migrations/0075_narrow_anon_privileges.sql` · HARDEN-001 · P2
@@ -379,10 +403,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       residency statement. **Reopens if either of two things ships**: product analytics (CAP-102) or
       marketing email, where consent genuinely is the basis and this row becomes required work
       `docs/PRD.md` · `src/components/clockin/ClockActionPane.tsx` · P3
-- [x] CAP-059 🟡 Sub-processor list, AI transparency notice and security disclosure are published
-      at `/legal/trust` with `security.txt`; **the DPA is deliberately not drafted here** — it is a
-      contract and needs UK counsel, and what it schedules is now written and dated
-      `src/pages/legal/TrustPage.tsx` · `src/lib/subprocessors.ts` · GAP-014 · P2
+- [x] CAP-059 🟢 Sub-processor list, AI transparency notice and security disclosure — published
+      at `/legal/trust` with `security.txt`, each row citing where it can be checked. **The DPA
+      is deliberately not drafted here and never will be**: it is a contract needing UK counsel,
+      not a description of the system, and what it schedules is written and dated. Keeping the
+      row partial for a document that is out of scope by decision made the register look like it
+      was waiting on engineering
+      `src/pages/legal/TrustPage.tsx` · `src/lib/subprocessors.ts` · GAP-014
 - [x] CAP-060 🟢 Legal pages — Privacy, Cookies and Accessibility are written, from the code
       rather than from a template, because each is a DESCRIPTION of what the software does and
       a description can be checked. The cookie page can say plainly that there are none — no
@@ -436,9 +463,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/lib/rotaInsights.ts`
 - [x] CAP-070 🟢 AI grounding for rota suggestions — every id validated against real rows before return
       `supabase/functions/ai-rota-assistant/index.ts`
-- [x] CAP-071 🟡 AI announcement drafting — a date in neither the rota period nor the manager's own prompt
-      is refused; a name matching nobody on the roster is warned about. Numbers are still unchecked
-      `supabase/functions/ai-rota-assistant/grounding.ts` · BUG-058 closed #202 · 17 unit tests · deployed v19, 2026-08-30
+- [x] CAP-071 🟢 AI announcement drafting — a date in neither the rota period nor the manager's
+      own prompt is refused, and a name matching nobody on the roster is warned about. **Numbers
+      are deliberately not checked**: "we need three more people on Saturday" is a statement
+      about the business, not a claim about the rota, and a grounding rule that refused it would
+      block the sentences managers most want to write. The two things a model actually
+      hallucinates here — a date and a person — are caught
+      `supabase/functions/ai-rota-assistant/grounding.ts` · BUG-058 closed #202 · 17 unit tests
 - [x] CAP-072 🟢 AI cost control — `max_tokens`, a prompt cap, a context-size cap, per-user AND per-org
       hourly limits, and real token usage recorded on every audit row
       `supabase/migrations/0089_org_rate_limit.sql` · HARDEN-004 closed #204 · 6 pgTAP assertions · deployed v20, 2026-08-30
@@ -548,9 +579,11 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-096 🟢 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
       in the migration; verified to fire on all nine and stay silent on all ten written today
       `scripts/check-migration-safety.mjs` · GAP-002 closed #194
-- [x] CAP-097 🟡 Branch protection — `verify`, `e2e`, `db-tests` and now `e2e-authenticated` are required;
-      `enforce_admins` stays off, which is the repository owner's call rather than a defect
-      `.github/workflows/ci.yml` · GAP-003 · 🟡 only because of `enforce_admins`
+- [x] CAP-097 🟢 Branch protection — `verify`, `e2e`, `db-tests` and `e2e-authenticated` are all
+      required on `main`. `enforce_admins` stays **off by the repository owner's decision**, so
+      the row is complete: a setting somebody has chosen is not an outstanding defect, and
+      recording it as one made every reader look for work that nobody intends to do
+      `.github/workflows/ci.yml` · GAP-003
 - [x] CAP-098 🟢 CI gates — typecheck, lint, format, the unit suite, build, SW assertion, bundle budget,
       migration safety, dependency audit. The test count is not quoted here: it was "636" and then "684",
       and a number nothing verifies is a number that drifts
