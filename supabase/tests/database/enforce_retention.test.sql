@@ -34,13 +34,19 @@ select lives_ok(
 );
 
 -- ---------- 2. it returns a row per implemented policy ----------------
--- Four policies have branches (rota_history, attendance, leave,
--- support_cases). audit_log is skipped by `retain_months is not null` and
--- deleted_tenant by the explicit exclusion, so neither should appear.
+-- Five policies have branches: rota_history, attendance, leave,
+-- support_cases, and notifications (added with its branch in 0092 — a policy
+-- without one takes the `else` path and deletes nothing). audit_log is
+-- skipped by `retain_months is not null` and deleted_tenant by the explicit
+-- exclusion, so neither should appear.
+--
+-- This number is asserted rather than derived on purpose: adding a policy row
+-- and forgetting the branch is the exact mistake GAP-027 was about, and a
+-- test that counted whatever it found would have said nothing about it.
 select is(
   (select count(*)::int from public.enforce_retention(true)),
-  4,
-  'dry run returns one row for each of the four implemented policies'
+  5,
+  'dry run returns one row for each of the five implemented policies'
 );
 
 select is(
@@ -70,7 +76,7 @@ select ok(
 -- useless as a rehearsal.
 select is(
   (select count(*)::int from public.retention_policies),
-  6,
+  7,
   'a dry run mutates no policy rows'
 );
 
