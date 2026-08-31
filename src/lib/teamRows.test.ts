@@ -57,6 +57,8 @@ function mkLeave(overrides: Partial<LeaveRequest> = {}): LeaveRequest {
     org_id: 'org-1',
     staff_profile_id: 's1',
     type: 'sick',
+    starts_half: false,
+    ends_half: false,
     start_date: '2026-08-12',
     end_date: '2026-08-12',
     status: 'approved',

@@ -13,6 +13,8 @@ import type { LeaveRequest, StaffProfile } from '@/types';
 
 function mkRequest(overrides: Partial<LeaveRequest> = {}): LeaveRequest {
   return {
+    starts_half: false,
+    ends_half: false,
     id: 'r1',
     org_id: 'org-1',
     staff_profile_id: 's1',

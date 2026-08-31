@@ -1191,6 +1191,8 @@ export type Database = {
           reviewed_by: string | null;
           staff_profile_id: string;
           start_date: string;
+          starts_half: boolean;
+          ends_half: boolean;
           status: string;
           type: string;
           updated_at: string;
@@ -1221,6 +1223,8 @@ export type Database = {
           reviewed_by?: string | null;
           staff_profile_id?: string;
           start_date?: string;
+          starts_half?: boolean;
+          ends_half?: boolean;
           status?: string;
           type?: string;
           updated_at?: string;

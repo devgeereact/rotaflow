@@ -6,13 +6,17 @@ import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { LEAVE_TYPE_LABEL } from '@/lib/leaveStatus';
 import { bankHolidaysBetween, type BankHolidayRegion } from '@/lib/bankHolidays';
-import type { LeaveTypeKey } from '@/lib/leaveRows';
+import { formatLeaveDuration, leaveDayCount, type LeaveTypeKey } from '@/lib/leaveRows';
 
 export interface LeaveRequestDraft {
   type: LeaveTypeKey;
   startDate: string;
   endDate: string;
   reason: string;
+  /** The first day begins at midday, so it counts as half (CAP-085). */
+  startsHalf: boolean;
+  /** The last day ends at midday. */
+  endsHalf: boolean;
 }
 
 interface LeaveRequestModalProps {
@@ -41,6 +45,8 @@ export function LeaveRequestModal({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+  const [startsHalf, setStartsHalf] = useState(false);
+  const [endsHalf, setEndsHalf] = useState(false);
   // `min` on the End input only constrains typing/picking, and doesn't
   // re-validate if Start changes afterward to land after an already-chosen
   // End — there's no <form> here so the browser's own constraint validation
@@ -54,6 +60,8 @@ export function LeaveRequestModal({
   // Somebody booking the week around Christmas is usually asking for fewer
   // days than the calendar shows, and finding that out from their remaining
   // balance in March is the wrong moment.
+  const singleDay = Boolean(startDate) && startDate === endDate;
+
   const holidays =
     startDate && endDate && !reversedRange
       ? bankHolidaysBetween(startDate, endDate, bankHolidayRegion)
@@ -106,6 +114,60 @@ export function LeaveRequestModal({
           </p>
         )}
 
+        {/* One tick for a single day, two for a range. Asking somebody
+            booking a Friday afternoon to reason about "starts half" AND
+            "ends half" on the same date is how a half day gets booked as a
+            whole one. (CAP-085) */}
+        {startDate && endDate && !reversedRange && (
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-content dark:text-content-dark">
+              Half days
+            </legend>
+            {singleDay ? (
+              <label className="flex items-center gap-2 text-sm text-content dark:text-content-dark">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-surface-border"
+                  checked={startsHalf || endsHalf}
+                  onChange={(event) => {
+                    setStartsHalf(event.target.checked);
+                    setEndsHalf(event.target.checked);
+                  }}
+                />
+                Half a day
+              </label>
+            ) : (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-content dark:text-content-dark">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-surface-border"
+                    checked={startsHalf}
+                    onChange={(event) => setStartsHalf(event.target.checked)}
+                  />
+                  First day starts after lunch
+                </label>
+                <label className="flex items-center gap-2 text-sm text-content dark:text-content-dark">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-surface-border"
+                    checked={endsHalf}
+                    onChange={(event) => setEndsHalf(event.target.checked)}
+                  />
+                  Last day ends at lunch
+                </label>
+              </div>
+            )}
+            <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
+              This request costs{' '}
+              {formatLeaveDuration(
+                leaveDayCount(startDate, endDate, startsHalf, endsHalf),
+              )}
+              .
+            </p>
+          </fieldset>
+        )}
+
         {holidays.length > 0 && (
           <p className="text-xs text-content-muted dark:text-content-muted-dark">
             {holidays.length === 1
@@ -139,7 +201,9 @@ export function LeaveRequestModal({
           <Button
             size="sm"
             disabled={submitting || !startDate || !endDate || reversedRange}
-            onClick={() => onSubmit({ type, startDate, endDate, reason })}
+            onClick={() =>
+              onSubmit({ type, startDate, endDate, reason, startsHalf, endsHalf })
+            }
           >
             {submitting ? 'Submitting…' : 'Submit request'}
           </Button>

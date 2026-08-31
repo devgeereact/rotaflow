@@ -17,9 +17,12 @@ function request(
   start: string,
   end: string,
   status: LeaveRequest['status'] = 'approved',
+  halves: { startsHalf?: boolean; endsHalf?: boolean } = {},
 ): LeaveRequest {
   seq += 1;
   return {
+    starts_half: halves.startsHalf ?? false,
+    ends_half: halves.endsHalf ?? false,
     id: `leave-${seq}`,
     org_id: 'org-1',
     staff_profile_id: 'staff-1',
@@ -149,5 +152,52 @@ describe('sumApprovedLeaveDays', () => {
 
     expect(sumApprovedLeaveDays(straddling, YEAR_START, YEAR_END)).toBe(4);
     expect(sumApprovedLeaveDays(straddling, '2027-01-01', '2028-01-01')).toBe(3);
+  });
+});
+
+describe('sumApprovedLeaveDays, half days (CAP-085)', () => {
+  it('counts a half day as half', () => {
+    expect(
+      sumApprovedLeaveDays(
+        [request('2026-06-01', '2026-06-05', 'approved', { endsHalf: true })],
+        '2026-01-01',
+        '2027-01-01',
+      ),
+    ).toBe(4.5);
+  });
+
+  it('keeps only the half day that falls inside the window', () => {
+    // A Christmas-to-New-Year booking is clipped at the year boundary. If
+    // both halves were deducted from both years, the two years would no
+    // longer sum to what was actually taken.
+    const christmas = request('2026-12-28', '2027-01-03', 'approved', {
+      startsHalf: true,
+      endsHalf: true,
+    });
+
+    const inOldYear = sumApprovedLeaveDays([christmas], '2026-01-01', '2027-01-01');
+    const inNewYear = sumApprovedLeaveDays([christmas], '2027-01-01', '2028-01-01');
+
+    // 28-31 December is four days, less the half day it starts with.
+    expect(inOldYear).toBe(3.5);
+    // 1-3 January is three days, less the half day it ends with.
+    expect(inNewYear).toBe(2.5);
+    // And the two together are the whole request.
+    expect(inOldYear + inNewYear).toBe(6);
+  });
+
+  it('never counts a request as nothing', () => {
+    expect(
+      sumApprovedLeaveDays(
+        [
+          request('2026-06-01', '2026-06-01', 'approved', {
+            startsHalf: true,
+            endsHalf: true,
+          }),
+        ],
+        '2026-01-01',
+        '2027-01-01',
+      ),
+    ).toBe(0.5);
   });
 });

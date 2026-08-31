@@ -136,3 +136,40 @@ describe('formatRequestedAt', () => {
     );
   });
 });
+
+describe('leaveDayCount, half days (CAP-085)', () => {
+  it('takes half off the first day', () => {
+    expect(leaveDayCount('2026-09-07', '2026-09-11', true, false)).toBe(4.5);
+  });
+
+  it('takes half off the last day', () => {
+    expect(leaveDayCount('2026-09-07', '2026-09-11', false, true)).toBe(4.5);
+  });
+
+  it('takes half off both', () => {
+    expect(leaveDayCount('2026-09-07', '2026-09-11', true, true)).toBe(4);
+  });
+
+  it('never costs nothing', () => {
+    // A single day booked as both a late start and an early finish is still
+    // half a day off. A request costing zero would pass every entitlement
+    // check ever written.
+    expect(leaveDayCount('2026-09-07', '2026-09-07', true, true)).toBe(0.5);
+  });
+
+  it('is unchanged when neither flag is set', () => {
+    expect(leaveDayCount('2026-09-07', '2026-09-11')).toBe(5);
+  });
+});
+
+describe('formatLeaveDuration, half days', () => {
+  it('spells out half a day', () => {
+    // "0.5 days" in a column of whole numbers reads like a rounding error.
+    expect(formatLeaveDuration(0.5)).toBe('half a day');
+  });
+
+  it('leaves the rest alone', () => {
+    expect(formatLeaveDuration(1)).toBe('1 day');
+    expect(formatLeaveDuration(2.5)).toBe('2.5 days');
+  });
+});

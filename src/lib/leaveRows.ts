@@ -58,14 +58,30 @@ function parseDay(iso: string): Date {
  * pattern to exclude someone's off-days against, and a precise-looking wrong
  * number is worse than a coarse right one.
  */
-export function leaveDayCount(startIso: string, endIso: string): number {
+export function leaveDayCount(
+  startIso: string,
+  endIso: string,
+  startsHalf = false,
+  endsHalf = false,
+): number {
   const start = parseDay(startIso).getTime();
   const end = parseDay(endIso).getTime();
-  return Math.max(1, Math.round((end - start) / 86_400_000) + 1);
+  const whole = Math.max(1, Math.round((end - start) / 86_400_000) + 1);
+
+  // Never zero (CAP-085). A single day booked as both a late start and an
+  // early finish is still half a day off — and a request costing zero days
+  // would pass every entitlement check ever written.
+  return Math.max(0.5, whole - (startsHalf ? 0.5 : 0) - (endsHalf ? 0.5 : 0));
 }
 
-/** "3 days" / "1 day". The reference's Duration column. */
+/**
+ * "3 days" / "1 day" / "half a day" / "2.5 days".
+ *
+ * Half a day is spelled out rather than written "0.5 days", which reads
+ * like a rounding error in a column of whole numbers.
+ */
 export function formatLeaveDuration(days: number): string {
+  if (days === 0.5) return 'half a day';
   return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 

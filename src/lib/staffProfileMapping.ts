@@ -65,7 +65,12 @@ function toLeaveRow(request: LeaveRequest): ProfileLeaveRow {
     id: request.id,
     type: leaveTypeKey(request.type),
     dateLabel: formatLeaveRange(request.start_date, request.end_date),
-    days: leaveDayCount(request.start_date, request.end_date),
+    days: leaveDayCount(
+      request.start_date,
+      request.end_date,
+      request.starts_half,
+      request.ends_half,
+    ),
     status: request.status as ProfileLeaveRow['status'],
   };
 }

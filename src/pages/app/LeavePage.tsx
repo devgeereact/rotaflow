@@ -199,7 +199,12 @@ export function LeavePage(): JSX.Element {
           photoUrl: person?.photo_url ?? null,
           type: leaveTypeKey(request.type),
           dateLabel: formatLeaveRange(request.start_date, request.end_date),
-          durationDays: leaveDayCount(request.start_date, request.end_date),
+          durationDays: leaveDayCount(
+            request.start_date,
+            request.end_date,
+            request.starts_half,
+            request.ends_half,
+          ),
           status: request.status as LeaveStatus,
           statusNote: statusNoteFor(request, user?.id ?? null),
           requestedLabel: formatRequestedAt(request.created_at, now),
@@ -299,6 +304,8 @@ export function LeavePage(): JSX.Element {
           type: draft.type,
           start_date: draft.startDate,
           end_date: draft.endDate,
+          starts_half: draft.startsHalf,
+          ends_half: draft.endsHalf,
           reason: draft.reason.trim() || null,
         };
 
