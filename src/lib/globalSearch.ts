@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   CalendarPlus,
+  CheckCheck,
   BarChart3,
   CalendarDays,
   CalendarRange,
@@ -113,6 +114,13 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/swaps',
     group: 'Scheduling',
     icon: Repeat2,
+  },
+  {
+    label: 'Approvals',
+    keywords: 'approve decline pending queue waiting requests decisions',
+    to: '/app/approvals',
+    group: 'Scheduling',
+    icon: CheckCheck,
   },
   {
     label: 'Open shifts',

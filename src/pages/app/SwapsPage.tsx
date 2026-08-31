@@ -13,13 +13,12 @@ import { listShiftsForPeriod } from '@/services/shiftService';
 import { listLocations } from '@/services/locationService';
 import { getOrganisation } from '@/services/orgService';
 import {
-  applySwapReassignment,
+  decideShiftSwap,
   cancelShiftSwap,
   claimShiftSwap,
   listOrgShiftSwaps,
   requestShiftSwap,
   respondToShiftSwap,
-  reviewShiftSwap,
   type ShiftSwapWithShift,
 } from '@/services/swapService';
 import { reportError } from '@/lib/sentry';
@@ -268,38 +267,34 @@ export function SwapsPage(): JSX.Element {
       if (!user || !orgId) return;
       try {
         const swap = swaps.find((s) => s.id === row.id);
-        const decided = await reviewShiftSwap(row.id, status, user.id);
-        if (!decided) {
-          // Someone else decided or withdrew it first (BUG-061). Returning here
-          // matters more than on the leave screen: falling through would run
-          // `applySwapReassignment` for a decision this manager did not make,
-          // moving a shift on the back of someone else's approval — or of a
-          // cancellation.
-          setReloadKey((k) => k + 1);
+        if (!swap) return;
+
+        // The decision itself lives in the service, because the approvals
+        // queue decides swaps too and two copies of "approve, then reassign,
+        // but only if nobody else decided first" drift apart silently.
+        const decision = await decideShiftSwap(swap, status, user.id);
+        setReloadKey((k) => k + 1);
+
+        if (decision.outcome === 'already-decided') {
           showError(
             'This swap has already been decided or withdrawn. Reloading so you can see where it stands.',
           );
           return;
         }
-
-        if (status === 'approved' && swap?.shift_id && swap.target_staff_profile_id) {
-          try {
-            await applySwapReassignment(row.id);
-          } catch (err) {
-            reportError(err, { area: 'swaps:reassign-shift' });
-            showError(
-              'The swap was approved but the shift could not be reassigned. Open the week in the Rota Builder, amend it, and move the shift by hand.',
-            );
-          }
+        if (decision.outcome === 'declined') {
+          showSuccess('Swap declined.');
+          return;
         }
-
-        setReloadKey((k) => k + 1);
+        if (decision.reassignmentFailed) {
+          showError(
+            'The swap was approved but the shift could not be reassigned. Open the week in the Rota Builder, amend it, and move the shift by hand.',
+          );
+          return;
+        }
         showSuccess(
-          status === 'approved'
-            ? swap?.target_staff_profile_id
-              ? 'Swap approved and the shift reassigned.'
-              : 'Swap approved. Assign the shift to someone in the Rota Builder.'
-            : 'Swap declined.',
+          decision.reassigned
+            ? 'Swap approved and the shift reassigned.'
+            : 'Swap approved. Assign the shift to someone in the Rota Builder.',
         );
 
         // The requester is told by `shift_swaps_enqueue_reviewed` (0087),
