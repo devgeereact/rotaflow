@@ -191,21 +191,27 @@ select throws_ok(
 -- `perform is(...)` inside a DO block runs the assertion and throws the line
 -- away, so the plan would come up short and the failure would look like a
 -- missing test rather than a swallowed one.
+-- The CTE has to be at the TOP LEVEL of the statement. Postgres refuses a
+-- data-modifying CTE inside a scalar subquery ("must be at the top level"),
+-- so the assertion goes in the CTE's SELECT rather than the CTE going in the
+-- assertion's argument.
+with attempted as (
+  update public.staff_profiles set first_name = 'Tampered'
+   where org_id = 'aaaa0000-0000-0000-0000-00000000000a'
+   returning 1
+)
 select is(
-  (with attempted as (
-     update public.staff_profiles set first_name = 'Tampered'
-      where org_id = 'aaaa0000-0000-0000-0000-00000000000a'
-      returning 1)
-   select count(*)::int from attempted),
+  (select count(*)::int from attempted),
   0,
   'B''s update of A''s staff matches no rows rather than succeeding');
 
+with attempted as (
+  delete from public.shifts
+   where org_id = 'aaaa0000-0000-0000-0000-00000000000a'
+   returning 1
+)
 select is(
-  (with attempted as (
-     delete from public.shifts
-      where org_id = 'aaaa0000-0000-0000-0000-00000000000a'
-      returning 1)
-   select count(*)::int from attempted),
+  (select count(*)::int from attempted),
   0,
   'and B''s delete of A''s shifts removes nothing');
 
