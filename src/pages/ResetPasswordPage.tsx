@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
 import { authErrorMessage } from '@/lib/authErrors';
+import { PASSWORD_MIN_LENGTH } from '@/lib/password';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -108,7 +109,7 @@ export function ResetPasswordPage(): JSX.Element {
               autoComplete="new-password"
               value={password}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
+              placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
             />
 
             <Label htmlFor="confirm-password">Confirm password</Label>
@@ -124,7 +125,11 @@ export function ResetPasswordPage(): JSX.Element {
 
             <Button
               className="w-full"
-              disabled={busy || password.length < 8 || confirm.length < 8}
+              disabled={
+                busy ||
+                password.length < PASSWORD_MIN_LENGTH ||
+                confirm.length < PASSWORD_MIN_LENGTH
+              }
               onClick={() => void handleUpdate()}
             >
               {busy ? 'Saving…' : 'Update password'}

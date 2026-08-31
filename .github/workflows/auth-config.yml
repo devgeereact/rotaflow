@@ -1,0 +1,54 @@
+name: auth-config
+
+# Weekly check that the Supabase Auth configuration still matches what
+# docs/SAAS.md records (GAP-031).
+#
+# ## Why this is scheduled rather than a merge gate
+#
+# It reads a live project over the network, and it needs a personal access
+# token that no pull request from a fork could use. Wiring that into `verify`
+# would make every contributor's build depend on a secret and an external
+# service being up, to check something no pull request can change — the auth
+# config lives in Supabase's dashboard, not in this repository.
+#
+# What it catches is the thing that has no other detector: somebody opening
+# the dashboard and changing a setting. Nothing in this repository would
+# otherwise notice, and the register would keep asserting a posture that had
+# stopped being true.
+#
+# ## Setup, which is not done yet
+#
+# One repository secret, and the job fails loudly until it exists:
+#
+#   SUPABASE_ACCESS_TOKEN   a personal access token from
+#                           https://supabase.com/dashboard/account/tokens
+#
+# The token can read and WRITE every project in the account, so it is worth
+# noting what this workflow does with it: one GET, and no PATCH. Nothing here
+# changes a setting — a drift is reported for a person to decide about.
+
+on:
+  schedule:
+    # 07:10 UTC on Mondays, before the plan-drift audit, so a config change
+    # made over the weekend is on the board at the start of the week.
+    - cron: '10 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: auth config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Check the auth configuration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node scripts/check-auth-config.mjs
