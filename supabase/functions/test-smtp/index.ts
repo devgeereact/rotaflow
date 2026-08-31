@@ -21,6 +21,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { reportEdgeError } from '../_shared/sentry.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 // Set per-request at the top of the `Deno.serve` handler below. See
@@ -139,7 +140,7 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ ok: true, sentTo: profile.email });
   } catch (error) {
-    console.error('test-smtp error', error);
+    reportEdgeError(error, 'test-smtp:unhandled');
     return jsonResponse({ error: 'Unexpected error testing SMTP settings' }, 500);
   }
 });

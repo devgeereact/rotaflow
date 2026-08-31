@@ -39,6 +39,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { reportEdgeError } from '../_shared/sentry.ts';
 import { createSmtpTransport, resolveSmtpConfig } from '../_shared/smtp.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
@@ -176,7 +177,9 @@ Deno.serve(async (req: Request) => {
     } catch (mailError) {
       // Never surface the SMTP error verbatim: an owner-supplied server can put
       // anything in it. The precise reason goes to the function log.
-      console.error('send-invite: SMTP send failed', mailError);
+      // An invite that is created and never delivered looks like a working
+      // invite to whoever sent it, so this one is reported rather than logged.
+      reportEdgeError(mailError, 'send-invite:smtp');
       return jsonResponse(
         { error: 'The invite could not be emailed. Share the link yourself.', sent: false },
         502,
@@ -185,7 +188,7 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ sent: true, email: invite.email });
   } catch (err) {
-    console.error('send-invite error:', err);
+    reportEdgeError(err, 'send-invite:unhandled');
     return jsonResponse({ error: 'Unexpected error sending the invite' }, 500);
   }
 });
