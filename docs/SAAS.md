@@ -87,19 +87,21 @@ precisely because they cannot be, and "it works" throughout this document means
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 3     |
-| ⚫ Deferred           | 10    |
+| 🔴 Missing            | 2     |
+| ⚫ Deferred           | 11    |
 | ❓ Not audited        | 4     |
 
-**Eight rows moved 🔴 → ⚫ on 2026-08-31, and nothing was built to move them.** Read that as
+**Nine rows moved 🔴 → ⚫ on 2026-08-31, and nothing was built to move them.** Read that as
 what it is: those capabilities are exactly as absent today as they were yesterday. What changed
 is that each now carries the decision and the reason instead of sitting in a list that implies
 somebody will get to it. Five were already Phase 2 in `CLAUDE.md` (SSO/SCIM, public API,
 outbound webhooks, payroll, per-tenant branding) and the register simply had not been told;
-three are decisions taken here — QR clock-in (a shared credential replacing a geofenced one),
-predictive insight (no data to fit), and consent capture (the wrong lawful basis for employment
-data). Every one names the condition that reopens it. The 🔴 count falling from 21 to 13 is
-bookkeeping, not progress.
+four are decisions taken here — QR clock-in (a shared credential replacing a geofenced one),
+predictive insight (no data to fit), consent capture (the wrong lawful basis for employment
+data), and product analytics (`docs/OBSERVABILITY.md` already argues that seven of eleven
+metrics are a query away, and that a generic event system built first is the premature-dashboard
+mistake). Every one names the condition that reopens it. The 🔴 count falling is bookkeeping,
+not progress; what moved it the rest of the way was fourteen features shipping.
 
 One of them was not only bookkeeping: CAP-068 had read "marketing copy only" for two days while
 the copy stayed on a public page selling SSO on a £790/month plan. `0101` and `marketing.ts`
@@ -553,7 +555,16 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-101 🟢 Bundle size gate — four budgets plus a hard "no DEV page ships" invariant,
       enforced in `verify` and printed on every run
       `scripts/check-bundle-size.mjs` · `bundle-budget.json` · P2
-- [ ] CAP-102 🔴 Product analytics — no events, no `product_events` table
+- [ ] CAP-102 ⚫ Product analytics — **deferred, 2026-08-31, on this project's own recorded
+      reasoning rather than on effort.** `docs/OBSERVABILITY.md` §"What this means for Phase 3"
+      says seven of eleven metrics are a query away from real, and that building a generic
+      event system before checking which already have their data is "exactly the premature
+      dashboard mistake". Production holds zero organisations, so a `product_events` table
+      would collect nothing and be designed against nobody's behaviour. It would also reopen
+      CAP-058: analytics is one of the two things for which consent genuinely is the lawful
+      basis. **Reopens with the first design partner**, and the four events that will actually
+      need capture are already named in OBSERVABILITY — rota-session starts, schedule views,
+      an explicit AI-suggestion outcome, and Web Vitals
       `docs/OBSERVABILITY.md` · P3
 - [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all seven Edge Functions via
       `_shared/sentry.ts`; the Stripe webhook no longer fails into a log nobody reads
