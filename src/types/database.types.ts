@@ -3309,6 +3309,23 @@ export type Database = {
         Args: { p_org: string };
         Returns: undefined;
       };
+      my_sessions: {
+        Args: Record<PropertyKey, never>;
+        /** Where this account is signed in. No argument: no way to ask about anybody else (0100). */
+        Returns: {
+          session_id: string;
+          created_at: string;
+          refreshed_at: string | null;
+          user_agent: string | null;
+          ip: string | null;
+          is_current: boolean;
+        }[];
+      };
+      revoke_my_other_sessions: {
+        Args: Record<PropertyKey, never>;
+        /** How many sessions were ended. */
+        Returns: number;
+      };
       notification_delivery_configured: {
         Args: Record<PropertyKey, never>;
         /** True when the outbox drain has all three of its vault secrets (0091). */
