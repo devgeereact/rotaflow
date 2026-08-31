@@ -3319,6 +3319,11 @@ export type Database = {
         Args: { p_announcement: string };
         Returns: number;
       };
+      notification_delivery_configured: {
+        Args: Record<PropertyKey, never>;
+        /** True when the outbox drain has all three of its vault secrets (0091). */
+        Returns: boolean;
+      };
       remind_announcement_unread: {
         Args: { p_announcement_id: string };
         /** How many people the reminder will actually reach (0087). */

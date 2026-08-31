@@ -13,16 +13,9 @@ vi.mock('@/services/clockService', () => ({
 }));
 vi.mock('@/services/leaveService', () => ({ createLeaveRequest: vi.fn() }));
 vi.mock('@/services/swapService', () => ({ requestShiftSwap: vi.fn() }));
-vi.mock('@/services/notificationDispatchService', async (importOriginal) => ({
-  // The error class is a plain object with no Supabase import, so it is kept
-  // real; only the network call is mocked.
-  ...(await importOriginal<object>()),
-  postInngestEvent: vi.fn(),
-}));
 vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 
 import { recordClockEvent } from '@/services/clockService';
-import { InngestDispatchError } from '@/services/notificationDispatchService';
 import {
   MAX_ATTEMPTS,
   classifyFailure,
@@ -392,7 +385,9 @@ describe('idempotency (BUG-046)', () => {
     );
   });
 
-  it('leaves a notify payload alone — it posts to Inngest, not a table', async () => {
+  it('leaves a notify payload alone — it is not a table write', async () => {
+    // `notify` is retired (HARDEN-008) and nothing enqueues it any more, but an
+    // older install may still hold one, so the shape must keep round-tripping.
     await enqueueWrite('notify', { name: 'leave/reviewed', data: {} });
     const [item] = await listQueuedWrites();
     expect(item?.payload).toEqual({ name: 'leave/reviewed', data: {} });
@@ -442,21 +437,26 @@ describe('enqueueWrite', () => {
   });
 });
 
-describe('classifyFailure, for a notification dispatch (BUG-047)', () => {
-  it('retries a 5xx — Inngest being down is not our payload being wrong', () => {
-    expect(classifyFailure(new InngestDispatchError('down', 503))).toBe('transient');
+describe('classifyFailure, on an HTTP status', () => {
+  // `classifyFailure` duck-types on `.status` rather than on any error class,
+  // which is why deleting `InngestDispatchError` with the Inngest path
+  // (HARDEN-008) costs these tests nothing: the rule under test is "which
+  // status codes deserve another attempt", and it still applies to every
+  // Supabase and fetch failure the outbox sees.
+  const httpError = (message: string, status: number): Error & { status: number } =>
+    Object.assign(new Error(message), { status });
+
+  it('retries a 5xx — the far end being down is not our payload being wrong', () => {
+    expect(classifyFailure(httpError('down', 503))).toBe('transient');
   });
 
   it('retries a dropped or blocked request', () => {
-    // A content blocker eating `inn.gs` rejects as a TypeError with no status,
-    // which is indistinguishable from a dropped connection — and both deserve
-    // another attempt.
+    // A content blocker rejects as a TypeError with no status, which is
+    // indistinguishable from a dropped connection — both deserve another go.
     expect(classifyFailure(new TypeError('Failed to fetch'))).toBe('transient');
   });
 
   it('does not retry a rejected payload', () => {
-    expect(classifyFailure(new InngestDispatchError('bad request', 400))).toBe(
-      'permanent',
-    );
+    expect(classifyFailure(httpError('bad request', 400))).toBe('permanent');
   });
 });

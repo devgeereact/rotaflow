@@ -171,7 +171,7 @@ async function checkRealtime(): Promise<HealthCheck> {
  * UI can say "configured" rather than implying a live probe happened, a key
  * being present proves the app will try, not that the far end is up.
  */
-function configuredServices(): HealthCheck[] {
+function configuredServices(deliveryConfigured: boolean): HealthCheck[] {
   const entry = (
     name: string,
     present: boolean,
@@ -197,11 +197,16 @@ function configuredServices(): HealthCheck[] {
       'DSN configured. Client errors are reported.',
       'No DSN. Client errors are not reported anywhere.',
     ),
+    // Was "Background workflows (Inngest)", reporting on a key that stopped
+    // meaning anything when 0087 moved dispatch into the database. Background
+    // work is pg_cron inside Postgres now, and whether it can actually deliver
+    // is a question about the outbox's secrets, which the database answers
+    // itself (0091).
     entry(
-      'Background workflows (Inngest)',
-      Boolean(env.inngestEventKey),
-      'Event key present. Queued and scheduled jobs are dispatched.',
-      'No event key. Scheduled and queued jobs are not dispatched.',
+      'Notification delivery',
+      deliveryConfigured,
+      'The outbox drain has every secret it needs. Queued notifications are dispatched.',
+      'A secret the outbox drain needs is missing. Notifications queue and are never sent.',
     ),
     entry(
       'Push notifications',
@@ -224,5 +229,15 @@ function configuredServices(): HealthCheck[] {
  */
 export async function runHealthChecks(): Promise<HealthCheck[]> {
   const live = await Promise.all([checkDatabase(), checkAuth(), checkRealtime()]);
-  return [...live, ...configuredServices()];
+
+  // Whether notifications can actually be delivered is a question only the
+  // database can answer: the outbox drain's secrets live in `vault`, and
+  // `notification_delivery_configured()` reports on them without returning
+  // any of them (0091). Failing to read it is reported as not configured —
+  // the same direction every other check here fails.
+  const { data: deliveryConfigured } = await supabase.rpc(
+    'notification_delivery_configured',
+  );
+
+  return [...live, ...configuredServices(deliveryConfigured === true)];
 }

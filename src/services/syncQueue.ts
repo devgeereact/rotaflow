@@ -13,10 +13,6 @@ import {
 import { recordClockEvent } from '@/services/clockService';
 import { createLeaveRequest } from '@/services/leaveService';
 import { requestShiftSwap } from '@/services/swapService';
-import {
-  postInngestEvent,
-  type InngestEventPayload,
-} from '@/services/notificationDispatchService';
 import { reportError } from '@/lib/sentry';
 import type { ClockEventInsert, LeaveRequestInsert, ShiftSwapInsert } from '@/types';
 
@@ -43,16 +39,17 @@ const REPLAYERS: {
   leave: (payload) =>
     createLeaveRequest(payload as LeaveRequestInsert).then(() => undefined),
   swap: (payload) => requestShiftSwap(payload as ShiftSwapInsert).then(() => undefined),
-  // Not a Supabase write, and NOTHING ENQUEUES THIS ANY MORE. Every dispatch
-  // moved server-side in 0087 (GAP-026), so a notification is now written to
-  // `notification_outbox` by the same transaction as the event that owes it,
-  // and cannot fail after the fact.
+  // Retired (HARDEN-008). Nothing enqueues this: every dispatch moved into
+  // the database in 0087, and the Inngest endpoint this used to post to is
+  // deleted.
   //
-  // The replayer stays because the outbox lives in each user's IndexedDB: an
-  // install that queued a `notify` item before that release still holds it,
-  // and would otherwise carry an item nothing can drain. Delete this once
-  // no client that could have written one is plausibly still installed.
-  notify: (payload) => postInngestEvent(payload as InngestEventPayload),
+  // It resolves instead of throwing, so a `notify` item queued by an older
+  // install DRAINS AWAY on the next reconnect rather than retrying five times
+  // against a host that no longer exists and then sitting in the dead-letter
+  // list as an error the user can do nothing about. The work is not lost —
+  // it is no longer owed, because the event that owed it now enqueues its own
+  // notification server-side.
+  notify: () => Promise.resolve(),
 };
 
 /**
