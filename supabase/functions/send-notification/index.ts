@@ -483,16 +483,60 @@ Deno.serve(async (req: Request) => {
 
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, email')
+          .select('id, email, full_name')
           .in('id', reachableUserIds);
 
+        // CAP-033. The organisation's own wording, falling back to the
+        // platform default. A NULL result means no template at all, and the
+        // send below keeps the subject-equals-title behaviour this function
+        // has always had — the notification path was silently dead for a
+        // month (0091), and nicer wording is not worth a change that could
+        // fail closed.
+        const { data: orgRow } = await supabase
+          .from('organisations')
+          .select('name')
+          .eq('id', orgId)
+          .maybeSingle();
+
         for (const profile of profiles ?? []) {
+          let subject = title;
+          let text = body.body ?? title;
+
+          try {
+            const { data: rendered } = await supabase.rpc('render_notification', {
+              p_org: orgId,
+              p_key: type,
+              p_channel: 'email',
+              p_vars: {
+                org_name: orgRow?.name ?? 'RotaFlow',
+                staff_name: profile.full_name ?? 'there',
+                title,
+                body: body.body ?? '',
+                // A blank line before the detail, or nothing at all. Doing
+                // this in the template would need a conditional, and a
+                // template language is an injection surface for the sake of
+                // formatting.
+                body_line: body.body ? `\n\n${body.body}` : '',
+                app_url: Deno.env.get('APP_URL') ?? 'https://rotaflow.space',
+              },
+            });
+            const row = (rendered ?? [])[0];
+            if (row?.subject) {
+              subject = row.subject;
+              text = row.body;
+            }
+          } catch (_templateError) {
+            // Deliberately swallowed. A template lookup failing must never
+            // stop a notification going out; the untemplated version above
+            // is exactly what this function sent yesterday.
+          }
+
           try {
             await transport.sendMail({
               from: smtpConfig.from,
               to: profile.email,
-              subject: title,
-              text: body.body ?? title,
+              subject,
+              text,
             });
             results.email.sent++;
             record(profile.id, 'email', 'sent');

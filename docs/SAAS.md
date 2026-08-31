@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 107 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 108 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -83,11 +83,11 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 84    |
-| 🟡 Partial            | 11    |
+| 🟡 Partial            | 12    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 2     |
+| 🔴 Missing            | 1     |
 | ⚫ Deferred           | 11    |
 | ❓ Not audited        | 4     |
 
@@ -285,11 +285,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       free either: a tenant logo is an upload path, a moderation question and a second place every
       email template has to be correct
       `src/types/database.types.ts` · GAP-016 · P3
-- [ ] CAP-033 🔴 Email templates — no `notification_templates` table; body is `title` plus optional text
-      `supabase/functions/send-notification/index.ts` · P3
-
-### Billing and entitlements
-
+- [x] CAP-033 🟡 Email templates — `notification_templates` with a platform default per event
+      and an organisation's own wording overriding it, substituted in TWO passes so a value
+      containing `{{…}}` cannot rewrite the email around it. In the database rather than the
+      Edge Function on purpose: functions do not deploy on merge, so copy living in one is copy
+      nobody can fix. **🟡 until the function is deployed and a real email has been read** —
+      absence of a template keeps today's exact behaviour, so merging alone changes nothing
+      `supabase/migrations/0108_notification_templates.sql` · 10 pgTAP assertions
 - [x] CAP-034 🟢 Stripe Checkout, Billing Portal, signature-verified webhook
       `supabase/functions/stripe-webhook/index.ts`
 - [x] CAP-035 🟢 Dual test/live credentials coexisting
