@@ -190,6 +190,23 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
   `import.meta.env` whether code reads it or not. **Retiring a service means
   removing its variable from `.env`, then checking the built bundle.**
 
+## The live release tag is the deployed commit, not `main`
+
+`vite.config.ts` bakes the git SHA into the bundle as `__SENTRY_RELEASE__`, so every error
+carries the commit it shipped from. Two consequences that look like bugs and are not:
+
+- **A docs-only commit changes the bundle hash.** `index-*.js` is content-hashed and the SHA
+  is content, so merging a change that touches no code still produces a different filename.
+  Do not read a hash difference between `dist/` and the live site as "the code is stale" —
+  check whether `git diff --stat <live-sha>..HEAD -- src/ public/ index.html vite.config.ts`
+  is empty first.
+- **The live tag lagging `main` is correct, not drift.** It names what was deployed, which
+  is the only thing an error report can honestly be attributed to. A live tag equal to
+  `main` when `main` was never deployed would be the actual lie.
+
+Verify what is live rather than inferring it: fetch the `index-*.js` the live HTML
+references and grep it for the short SHA.
+
 ## Composing the live `.htaccess`
 
 `--with-htaccess` replaces the file that enforces the Cloudflare origin lock. Get it wrong
