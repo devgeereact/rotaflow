@@ -1,3 +1,4 @@
+import type { BankHolidayRegion } from '@/lib/bankHolidays';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
@@ -41,6 +42,8 @@ export interface ManagerLeaveProps {
   offline: boolean;
   onApprove: (row: LeaveDisplayRow) => Promise<void>;
   onDecline: (row: LeaveDisplayRow, reason: string) => Promise<void>;
+  /** Passed through to the request dialog: a manager books leave too. */
+  bankHolidayRegion: BankHolidayRegion;
 }
 
 /**
@@ -62,6 +65,7 @@ export function ManagerLeave({
   offline,
   onApprove,
   onDecline,
+  bankHolidayRegion,
 }: ManagerLeaveProps): JSX.Element {
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
@@ -159,6 +163,7 @@ export function ManagerLeave({
         open={requestOpen}
         onClose={() => setRequestOpen(false)}
         submitting={requestSubmitting}
+        bankHolidayRegion={bankHolidayRegion}
         offline={offline}
         onSubmit={(draft) => {
           setRequestSubmitting(true);

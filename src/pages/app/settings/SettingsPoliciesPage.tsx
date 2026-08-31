@@ -1,3 +1,4 @@
+import { REGION_LABELS, type BankHolidayRegion } from '@/lib/bankHolidays';
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,6 +15,7 @@ import {
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Toggle } from '@/components/ui/Toggle';
@@ -228,6 +230,37 @@ export function SettingsPoliciesPage(): JSX.Element {
             disabled={!canEdit}
             onChange={(next) => setPolicies((prev) => ({ ...prev, breaksArePaid: next }))}
           />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Bank holidays"
+        description="Which nation's public holidays this organisation observes."
+      >
+        <div className="max-w-xs">
+          <Label htmlFor="policy-bank-holidays">Bank holiday calendar</Label>
+          <Select
+            id="policy-bank-holidays"
+            value={policies.bankHolidayRegion}
+            disabled={!canEdit}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+              setPolicies((prev) => ({
+                ...prev,
+                bankHolidayRegion: event.target.value as BankHolidayRegion,
+              }))
+            }
+          >
+            {(Object.keys(REGION_LABELS) as BankHolidayRegion[]).map((region) => (
+              <option key={region} value={region}>
+                {REGION_LABELS[region]}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
+            Not cosmetic: Scotland has no Easter Monday and takes the first Monday in
+            August rather than the last, and Northern Ireland adds two of its own. Leave
+            requests name the bank holidays they cover.
+          </p>
         </div>
       </SettingsSection>
 

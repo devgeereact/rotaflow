@@ -117,6 +117,7 @@ export function LeavePreviewPage(): JSX.Element {
           }}
           onRequestLeave={async () => {}}
           offline={false}
+          bankHolidayRegion="england-and-wales"
           onWithdraw={async () => {}}
         />
       ) : (
@@ -139,6 +140,7 @@ export function LeavePreviewPage(): JSX.Element {
           onRequestLeave={async () => {}}
           offline={false}
           onApprove={async () => {}}
+          bankHolidayRegion="england-and-wales"
           onDecline={async () => {}}
         />
       )}

@@ -1,3 +1,4 @@
+import type { BankHolidayRegion } from '@/lib/bankHolidays';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
@@ -35,6 +36,8 @@ export interface StaffLeaveProps {
   onRequestLeave: (draft: LeaveRequestDraft) => Promise<void>;
   offline: boolean;
   onWithdraw: (row: LeaveDisplayRow) => Promise<void>;
+  /** Passed through to the request dialog, which names the bank holidays in range. */
+  bankHolidayRegion: BankHolidayRegion;
 }
 
 /**
@@ -54,6 +57,7 @@ export function StaffLeave({
   onRequestLeave,
   offline,
   onWithdraw,
+  bankHolidayRegion,
 }: StaffLeaveProps): JSX.Element {
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
@@ -136,6 +140,7 @@ export function StaffLeave({
         onClose={() => setRequestOpen(false)}
         submitting={requestSubmitting}
         offline={offline}
+        bankHolidayRegion={bankHolidayRegion}
         onSubmit={(draft) => {
           setRequestSubmitting(true);
           void onRequestLeave(draft).finally(() => {

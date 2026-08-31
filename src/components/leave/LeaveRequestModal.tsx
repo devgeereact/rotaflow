@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { LEAVE_TYPE_LABEL } from '@/lib/leaveStatus';
+import { bankHolidaysBetween, type BankHolidayRegion } from '@/lib/bankHolidays';
 import type { LeaveTypeKey } from '@/lib/leaveRows';
 
 export interface LeaveRequestDraft {
@@ -21,6 +22,8 @@ interface LeaveRequestModalProps {
   submitting: boolean;
   /** Shown under the actions when the device is offline. The write is queued. */
   offline: boolean;
+  /** Which nation's bank holidays this organisation observes (CAP-009). */
+  bankHolidayRegion: BankHolidayRegion;
 }
 
 const TYPES: LeaveTypeKey[] = ['annual', 'sick', 'personal', 'carer', 'other'];
@@ -32,6 +35,7 @@ export function LeaveRequestModal({
   onSubmit,
   submitting,
   offline,
+  bankHolidayRegion,
 }: LeaveRequestModalProps): JSX.Element | null {
   const [type, setType] = useState<LeaveTypeKey>('annual');
   const [startDate, setStartDate] = useState('');
@@ -45,6 +49,15 @@ export function LeaveRequestModal({
   // rotaInsights' leaveCovers never matched, so the person was never flagged
   // as on leave — approved leave that blocked nothing and cost no allowance.
   const reversedRange = Boolean(startDate && endDate && endDate < startDate);
+
+  // Named before the request is sent, not after it is approved (CAP-009).
+  // Somebody booking the week around Christmas is usually asking for fewer
+  // days than the calendar shows, and finding that out from their remaining
+  // balance in March is the wrong moment.
+  const holidays =
+    startDate && endDate && !reversedRange
+      ? bankHolidaysBetween(startDate, endDate, bankHolidayRegion)
+      : [];
 
   return (
     <Modal open={open} onClose={onClose} title="Request leave">
@@ -90,6 +103,15 @@ export function LeaveRequestModal({
           <p className="text-xs text-danger">
             The end date is before the start date. Pick an end date on or after the start
             date.
+          </p>
+        )}
+
+        {holidays.length > 0 && (
+          <p className="text-xs text-content-muted dark:text-content-muted-dark">
+            {holidays.length === 1
+              ? `${holidays[0]?.name} (${new Date(`${holidays[0]?.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}) falls in this range.`
+              : `${holidays.length} bank holidays fall in this range: ${holidays.map((h) => h.name).join(', ')}.`}{' '}
+            Your organisation decides whether those come out of your allowance.
           </p>
         )}
 
