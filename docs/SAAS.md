@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 97 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 98 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -267,8 +267,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-040 🟡 Price source of truth — still duplicated, because the marketing page is unauthenticated and
       `plans` needs a session; a test now reads the migration and fails when the two disagree
       `src/lib/marketing.test.ts` · BUG-053 closed #219 · 🟡 because the duplication remains, only checked
-- [ ] CAP-041 🟡 Subscription state — mirrored DB row, no grace-period column, no dunning window
-      `src/services/subscriptionService.ts` · P2
+- [x] CAP-041 🟢 Subscription state — a failed payment now records when dunning opened and the date the
+      subscription is at risk, and the billing page says so instead of showing a bare `past_due` badge
+      `supabase/migrations/0098_subscription_grace_window.sql` · 6 pgTAP assertions
 
 ### Security
 

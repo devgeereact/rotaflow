@@ -168,6 +168,31 @@ export function SettingsBillingPage(): JSX.Element {
           </Badge>
         </div>
 
+        {/* A past-due badge on its own is an alarm with no action (CAP-041).
+            `grace_until` is the date the subscription is actually at risk, and
+            it comes from the row rather than being computed here — the
+            database derives it from the status so the two cannot disagree.
+
+            It says "at risk", not "will be cancelled": Stripe's dunning
+            decides that, and this system does not take the payments. */}
+        {status === 'past_due' && subscription?.grace_until && (
+          <p
+            className="mt-4 rounded-xl bg-warning-wash px-4 py-3 text-sm text-content dark:bg-warning-wash-dark dark:text-content-dark"
+            role="status"
+          >
+            A payment has failed. Your card will be retried, and the subscription is at
+            risk from{' '}
+            <strong>
+              {new Date(subscription.grace_until).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </strong>
+            . Updating your card in the billing portal resolves it immediately.
+          </p>
+        )}
+
         <ul className="mt-6 space-y-2.5 border-t border-divider pt-5 text-sm dark:border-divider-dark">
           <li className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-content dark:text-content-dark">
