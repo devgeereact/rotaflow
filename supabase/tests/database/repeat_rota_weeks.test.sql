@@ -126,6 +126,13 @@ select is(
 -- ── what it will not write over ───────────────────────────────────────
 
 reset role;
+-- The claims have to go too, not just the role. `rotas_guard_status_change`
+-- (0061) refuses a rota born published for anybody with an `auth.uid()`, and
+-- resetting the ROLE leaves the JWT claims set from the statement above — so
+-- the guard still fires. Earlier tests avoided this only by inserting their
+-- published rotas before any claims existed.
+select set_config('request.jwt.claims', '', true);
+
 insert into public.rotas (id, org_id, location_id, name, period_start, period_end, status, created_by) values
   ('f1300000-0000-0000-0000-000000000009', 'f1000000-0000-0000-0000-000000000001',
    'f1100000-0000-0000-0000-000000000001', 'Already published',
