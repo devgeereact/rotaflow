@@ -238,3 +238,24 @@ export async function completeOnboarding(orgId: string): Promise<void> {
   const { error } = await supabase.rpc('complete_onboarding', { p_org: orgId });
   if (error) throw error;
 }
+
+/**
+ * Hand the organisation to another active member (CAP-091, `0095`).
+ *
+ * Both halves happen in one transaction. Doing it by hand needs
+ * promote-then-demote — `memberships_keep_one_owner` (0047) correctly refuses
+ * the other order — which leaves two owners in between, and stays that way if
+ * the second step is forgotten. An owner is the only role that can delete the
+ * organisation or transfer it again, so that half-finished state is a
+ * permissions decision nobody made.
+ *
+ * The outgoing owner becomes a manager. Losing your own access as a side
+ * effect of handing over would be a surprise.
+ */
+export async function transferOwnership(orgId: string, toUserId: string): Promise<void> {
+  const { error } = await supabase.rpc('transfer_ownership', {
+    p_org: orgId,
+    p_to_user: toUserId,
+  });
+  if (error) throw error;
+}

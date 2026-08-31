@@ -5,9 +5,12 @@ import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
 import {
   getOrganisation,
+  listOrgMemberRoles,
   mergeOrgSettings,
+  transferOwnership,
   updateOrganisation,
 } from '@/services/orgService';
+import { listActiveStaff } from '@/services/staffService';
 import {
   deleteOrganisation,
   exportOrganisationData,
@@ -70,6 +73,13 @@ export function SettingsOrganisationPage(): JSX.Element {
   const [name, setName] = useState('');
   const [fields, setFields] = useState(() => orgProfileFields(null));
   const [siteCount, setSiteCount] = useState<number | null>(null);
+
+  // Ownership transfer (CAP-091). Candidates are active members other than
+  // the current owner, named from their staff record where one exists — a
+  // dropdown of raw user ids would be unusable.
+  const [candidates, setCandidates] = useState<{ userId: string; label: string }[]>([]);
+  const [transferTo, setTransferTo] = useState('');
+  const [transferring, setTransferring] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -78,6 +88,64 @@ export function SettingsOrganisationPage(): JSX.Element {
   );
 
   const canEdit = role === 'owner';
+
+  // Who this organisation could be handed to. Owner-only, and non-fatal: a
+  // failed load leaves the section saying there is nobody to transfer to,
+  // which is true from the screen's point of view and better than an error
+  // on a page whose main job is editing the organisation's name.
+  useEffect(() => {
+    if (!orgId || !canEdit) return;
+    let active = true;
+    void (async () => {
+      try {
+        const [roles, staff] = await Promise.all([
+          listOrgMemberRoles(orgId),
+          listActiveStaff(orgId).catch(() => []),
+        ]);
+        if (!active) return;
+        const nameFor = new Map(
+          staff
+            .filter((sp) => sp.user_id)
+            .map((sp) => [sp.user_id as string, `${sp.first_name} ${sp.last_name}`]),
+        );
+        setCandidates(
+          [...roles.entries()]
+            .filter(([, r]) => r !== 'owner')
+            .map(([userId, r]) => ({
+              userId,
+              label: `${nameFor.get(userId) ?? 'Member'} — ${r}`,
+            }))
+            .sort((x, y) => x.label.localeCompare(y.label)),
+        );
+      } catch (err) {
+        reportError(err, { area: 'settings-organisation:transfer-candidates' });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId, canEdit, reloadKey]);
+
+  const handleTransfer = useCallback(async (): Promise<void> => {
+    if (!orgId || !transferTo) return;
+    setTransferring(true);
+    try {
+      await transferOwnership(orgId, transferTo);
+      // The caller is a manager from this moment, so the whole page's
+      // permissions change under them. Refreshing the org context is what
+      // makes the UI agree with the database rather than showing owner-only
+      // controls that will now be refused.
+      void refresh();
+      setTransferTo('');
+      setReloadKey((k) => k + 1);
+      showSuccess('Ownership transferred. You are now a manager in this organisation.');
+    } catch (err) {
+      reportError(err, { area: 'settings-organisation:transfer' });
+      showError('Could not transfer ownership. Please try again.');
+    } finally {
+      setTransferring(false);
+    }
+  }, [orgId, transferTo, refresh, showSuccess, showError]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -463,6 +531,55 @@ export function SettingsOrganisationPage(): JSX.Element {
         >
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
             Sites, departments and cost centres are managed in Locations.
+          </p>
+        </SettingsSection>
+      )}
+
+      {/* CAP-091. Doing this by hand needs promote-then-demote — 0047 refuses
+          the other order — which leaves two owners in between, and stays that
+          way if the second step is forgotten. Both halves happen in one
+          transaction here. */}
+      {canEdit && (
+        <SettingsSection
+          title="Transfer ownership"
+          description="Hand this organisation to another member. You stay on as a manager."
+        >
+          {candidates.length === 0 ? (
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              There is nobody to transfer to yet. Invite a colleague first — ownership can
+              only pass to someone who is already a member.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[16rem] flex-1">
+                <Label htmlFor="transfer-owner">New owner</Label>
+                <Select
+                  id="transfer-owner"
+                  value={transferTo}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                    setTransferTo(e.target.value)
+                  }
+                >
+                  <option value="">Choose a member…</option>
+                  {candidates.map((c) => (
+                    <option key={c.userId} value={c.userId}>
+                      {c.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => void handleTransfer()}
+                disabled={!transferTo || transferring}
+              >
+                {transferring ? 'Transferring…' : 'Transfer ownership'}
+              </Button>
+            </div>
+          )}
+          <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
+            An owner is the only role that can change the plan, delete the organisation,
+            or transfer it again. You will not be able to undo this yourself.
           </p>
         </SettingsSection>
       )}
