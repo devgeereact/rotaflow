@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Every tenant table is in the organisation export, or excluded on purpose.
+ * Every tenant table is in the organisation export, and every table keyed on
+ * a person is in the subject-access export — or excluded on purpose.
  *
  * ## Why this exists
  *
@@ -37,9 +38,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 
 const MIGRATIONS = 'supabase/migrations';
 const SERVICE = 'src/services/orgLifecycleService.ts';
+const SUBJECT_SERVICE = 'src/services/gdprService.ts';
 
-/** Tables created by a migration whose definition carries an `org_id`. */
-function tenantTables() {
+/** Tables created by a migration whose definition carries a given column. */
+function tablesWithColumn(column) {
   const found = new Set();
 
   for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
@@ -48,9 +50,9 @@ function tenantTables() {
 
     for (const match of sql.matchAll(create)) {
       const [, name, body] = match;
-      // `org_id` as a column of its own, not a mention in a comment or a
+      // The column declared on this table, not a mention in a comment or a
       // foreign key on some other table's column.
-      if (/^\s*org_id\s+uuid/m.test(body)) found.add(name);
+      if (new RegExp(`^\\s*${column}\\s+uuid`, 'm').test(body)) found.add(name);
     }
 
     // Migrations are read in order, so a table dropped later is not a tenant
@@ -89,8 +91,33 @@ function declaredTables() {
   };
 }
 
-const tenant = tenantTables();
+const tenant = tablesWithColumn('org_id');
 const { exported, excluded } = declaredTables();
+
+// The subject-access export, keyed on the person rather than the tenant.
+// Both sets are DECLARED in the service rather than inferred from its call
+// sites: `availability` is fetched through another service's helper, so
+// inferring from `.from('…')` in that file would have reported it missing —
+// a false finding, which is worse than no gate.
+const personal = tablesWithColumn('staff_profile_id');
+const subjectSource = readFileSync(SUBJECT_SERVICE, 'utf8');
+const subjectExported = new Set(
+  [
+    ...subjectSource
+      .slice(
+        subjectSource.indexOf('SUBJECT_EXPORT_TABLES = ['),
+        subjectSource.indexOf('] as const;'),
+      )
+      .matchAll(/'(\w+)'/g),
+  ].map((m) => m[1]),
+);
+const subjectExcluded = new Set(
+  [
+    ...subjectSource
+      .slice(subjectSource.indexOf('SUBJECT_EXPORT_EXCLUDED: readonly'))
+      .matchAll(/table:\s*'(\w+)'/g),
+  ].map((m) => m[1]),
+);
 
 if (tenant.size === 0 || exported.size === 0) {
   console.error(
@@ -124,13 +151,25 @@ for (const table of [...exported].filter((t) => !tenant.has(t))) {
   failed = true;
 }
 
+for (const table of [...personal].sort()) {
+  if (!subjectExported.has(table) && !subjectExcluded.has(table)) {
+    console.error(
+      `::error file=${SUBJECT_SERVICE}::${table} is keyed on staff_profile_id and is in neither exportStaffData nor SUBJECT_EXPORT_EXCLUDED. A subject-access request would not return it.`,
+    );
+    failed = true;
+  }
+}
+
 if (failed) {
   console.error(
-    '\n`/legal/privacy` tells customers they can export everything the product holds for them. That sentence is only true while this passes.',
+    '\n`/legal/privacy` tells customers they can export everything the product holds for them, and a subject-access request has to be answerable. Those sentences are only true while this passes.',
   );
   process.exit(1);
 }
 
 console.log(
   `✅ All ${tenant.size} tenant tables accounted for: ${exported.size} exported, ${excluded.size} excluded with a reason.`,
+);
+console.log(
+  `✅ All ${personal.size} person-keyed tables accounted for in the subject-access export.`,
 );

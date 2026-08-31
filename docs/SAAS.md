@@ -82,7 +82,7 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 96    |
+| 🟢 Complete           | 97    |
 | 🟡 Partial            | 0     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
@@ -390,6 +390,14 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       test asserts over the COLUMN LIST — the next column added cannot survive an erasure the
       way this one did
       `supabase/migrations/0111_erasure_misses_email.sql` · 7 pgTAP assertions
+- [x] CAP-052a 🟢 Subject-access export — **it covered eight datasets and missed the three a
+      worker would ask for first.** Timesheets, overtime claims and pay rates were all absent,
+      so somebody in a dispute about their hours or their money got their shifts and their
+      holidays. Thirteen now, with the calendar feed token excluded and the reason printed in
+      the file — it is a live credential, and emailing somebody a working URL to their rota
+      would create the disclosure the export exists to answer for. `npm run check:export`
+      covers both exports, so neither can drift again
+      `src/services/gdprService.ts` · `scripts/check-export-coverage.mjs`
 - [x] CAP-053 🟢 Organisation export and delete, with a pgTAP test — and the export was
       **materially incomplete until 2026-08-31**: 19 tables against 40 carrying an `org_id`,
       missing the organisation's invoices, staff inboxes, minimum-cover rules, integration
