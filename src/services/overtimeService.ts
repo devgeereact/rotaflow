@@ -102,3 +102,50 @@ export async function cancelOvertimeRequest(id: string): Promise<boolean> {
   if (error) throw error;
   return data !== null;
 }
+
+export interface OvertimeEvidence {
+  /** Paid minutes the person was rostered for that day, net of breaks. */
+  scheduledMinutes: number;
+  /** Minutes between paired clock in/out events on that day. */
+  workedMinutes: number;
+  /** `in` events with no `out` after them — the forgotten clock-out. */
+  unpairedEvents: number;
+}
+
+/**
+ * What the clock recorded against what was scheduled, for one person on one
+ * day (CAP-087, `0097`).
+ *
+ * `overtime_requests.hours` is a number somebody types, and until now nothing
+ * compared it to anything — while the row goes to payroll.
+ *
+ * This deliberately does NOT replace the typed number. Clock data is least
+ * complete exactly when overtime happens: the carer who stays late to cover an
+ * incident is the one most likely to forget to clock out. A derived figure
+ * would be the authoritative-looking wrong answer. What an approver gets is
+ * something to judge against, including the freedom to approve a claim the
+ * clock does not support — which is a real and legitimate case.
+ *
+ * Returns null if the evidence cannot be read. The claim is still reviewable;
+ * an approval screen that breaks because a supporting query failed would be a
+ * worse outcome than one without the extra context.
+ */
+export async function getOvertimeEvidence(
+  orgId: string,
+  staffProfileId: string,
+  date: string,
+): Promise<OvertimeEvidence | null> {
+  const { data, error } = await supabase
+    .rpc('overtime_evidence', {
+      p_org: orgId,
+      p_staff: staffProfileId,
+      p_date: date,
+    })
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    scheduledMinutes: data.scheduled_minutes ?? 0,
+    workedMinutes: data.worked_minutes ?? 0,
+    unpairedEvents: data.unpaired_events ?? 0,
+  };
+}
