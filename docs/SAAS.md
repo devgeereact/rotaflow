@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 110 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 111 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -379,8 +379,17 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 ### Compliance
 
-- [x] CAP-052 🟢 GDPR anonymisation — live-tested end to end
-      `supabase/migrations/0011_gdpr_anonymize.sql`
+- [x] CAP-052 🟢 GDPR anonymisation — **and it was leaving the email address behind until
+      2026-08-31.** `0011` clears the name, phone, photo, payroll id and login link; `0053`
+      added `staff_profiles.email` two months later for account linking and nothing went back,
+      so the record read "Deleted Member" with the person's email still on it — the strongest
+      identifier of the lot, and usually the very thing an erasure request is made from. This
+      row said "live-tested end to end", and it was: the test ran before the column existed.
+      `0111` clears it, revokes any live calendar feed (a URL in somebody's phone would keep
+      serving an erased person's shifts), and adds `erasure_retained_columns()` so the pgTAP
+      test asserts over the COLUMN LIST — the next column added cannot survive an erasure the
+      way this one did
+      `supabase/migrations/0111_erasure_misses_email.sql` · 7 pgTAP assertions
 - [x] CAP-053 🟢 Organisation export and delete, with a pgTAP test — and the export was
       **materially incomplete until 2026-08-31**: 19 tables against 40 carrying an `org_id`,
       missing the organisation's invoices, staff inboxes, minimum-cover rules, integration
