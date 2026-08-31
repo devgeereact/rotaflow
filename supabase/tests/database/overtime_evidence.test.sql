@@ -53,35 +53,44 @@ insert into public.staff_profiles (id, org_id, first_name, last_name) values
   ('d0200000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
    'Ada', 'Overtime');
 
+-- Dates are RELATIVE, and that is not cosmetic. `0068` silently rewrites
+-- `event_at` when it is in the future or more than 72 hours old — the guard
+-- that stops a device with a wrong clock backdating attendance. Fixed 2027
+-- dates were rewritten to now() and every worked-minutes assertion read zero
+-- while the scheduled ones passed, which is a confusing way to be told the
+-- fixture is wrong.
+--
+-- `yesterday` and `two days ago` sit inside the window. Times are built in
+-- Europe/London so the day boundary is the one the function uses, whatever
+-- the runner's zone or the season.
+--
 -- A scheduled 09:00-17:00 with a 30-minute break: 450 minutes of paid time.
--- Fixed winter dates, so British Summer Time cannot shift the day boundary
--- under the test.
 insert into public.shifts
   (id, org_id, location_id, staff_profile_id, starts_at, ends_at, break_minutes, status)
 values
   ('d0300000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
    'd0100000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   timestamptz '2027-01-12 09:00+00', timestamptz '2027-01-12 17:00+00', 30, 'assigned'),
+   ((current_date - 1) + time '09:00') at time zone 'Europe/London', ((current_date - 1) + time '17:00') at time zone 'Europe/London', 30, 'assigned'),
   -- Cancelled, and on the same day: it must not count as scheduled time.
   ('d0300000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001',
    'd0100000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   timestamptz '2027-01-12 18:00+00', timestamptz '2027-01-12 22:00+00', 0, 'cancelled');
+   ((current_date - 1) + time '18:00') at time zone 'Europe/London', ((current_date - 1) + time '22:00') at time zone 'Europe/London', 0, 'cancelled');
 
 -- Worked 08:45-17:30 (525 minutes), then came back 18:30-19:30 (60).
 insert into public.clock_events (org_id, staff_profile_id, type, event_at) values
   ('d0000000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   'in',  timestamptz '2027-01-12 08:45+00'),
+   'in',  ((current_date - 1) + time '08:45') at time zone 'Europe/London'),
   ('d0000000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   'out', timestamptz '2027-01-12 17:30+00'),
+   'out', ((current_date - 1) + time '17:30') at time zone 'Europe/London'),
   ('d0000000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   'in',  timestamptz '2027-01-12 18:30+00'),
+   'in',  ((current_date - 1) + time '18:30') at time zone 'Europe/London'),
   ('d0000000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   'out', timestamptz '2027-01-12 19:30+00'),
-  -- A different day entirely.
+   'out', ((current_date - 1) + time '19:30') at time zone 'Europe/London'),
+  -- A different day entirely (two days ago).
   ('d0000000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   'in',  timestamptz '2027-01-13 09:00+00'),
+   'in',  ((current_date - 2) + time '09:00') at time zone 'Europe/London'),
   ('d0000000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   'out', timestamptz '2027-01-13 17:00+00');
+   'out', ((current_date - 2) + time '17:00') at time zone 'Europe/London');
 
 set local role authenticated;
 select set_config(
@@ -92,7 +101,7 @@ select set_config(
 select is(
   (select worked_minutes from public.overtime_evidence(
      'd0000000-0000-0000-0000-000000000001',
-     'd0200000-0000-0000-0000-000000000001', date '2027-01-12')),
+     'd0200000-0000-0000-0000-000000000001', (current_date - 1))),
   585,
   'both pairs are counted — 525 plus 60, not just the first'
 );
@@ -100,7 +109,7 @@ select is(
 select is(
   (select scheduled_minutes from public.overtime_evidence(
      'd0000000-0000-0000-0000-000000000001',
-     'd0200000-0000-0000-0000-000000000001', date '2027-01-12')),
+     'd0200000-0000-0000-0000-000000000001', (current_date - 1))),
   450,
   'scheduled time is net of the break, and the cancelled shift is not scheduled'
 );
@@ -108,7 +117,7 @@ select is(
 select is(
   (select unpaired_events from public.overtime_evidence(
      'd0000000-0000-0000-0000-000000000001',
-     'd0200000-0000-0000-0000-000000000001', date '2027-01-12')),
+     'd0200000-0000-0000-0000-000000000001', (current_date - 1))),
   0,
   'nothing is unpaired on a tidy day'
 );
@@ -116,17 +125,17 @@ select is(
 select is(
   (select worked_minutes from public.overtime_evidence(
      'd0000000-0000-0000-0000-000000000001',
-     'd0200000-0000-0000-0000-000000000001', date '2027-01-13')),
+     'd0200000-0000-0000-0000-000000000001', (current_date - 2))),
   480,
   'another day is counted on its own, with no leakage from the day before'
 );
 
 reset role;
 
--- The forgotten clock-out, on its own day.
+-- The forgotten clock-out, on its own day (today, so nothing follows it).
 insert into public.clock_events (org_id, staff_profile_id, type, event_at) values
   ('d0000000-0000-0000-0000-000000000001', 'd0200000-0000-0000-0000-000000000001',
-   'in', timestamptz '2027-01-14 09:00+00');
+   'in', (current_date + time '09:00') at time zone 'Europe/London');
 
 set local role authenticated;
 select set_config(
@@ -137,7 +146,7 @@ select set_config(
 select is(
   (select worked_minutes from public.overtime_evidence(
      'd0000000-0000-0000-0000-000000000001',
-     'd0200000-0000-0000-0000-000000000001', date '2027-01-14')),
+     'd0200000-0000-0000-0000-000000000001', current_date)),
   0,
   'an unpaired in contributes no minutes rather than running to midnight'
 );
@@ -145,7 +154,7 @@ select is(
 select is(
   (select unpaired_events from public.overtime_evidence(
      'd0000000-0000-0000-0000-000000000001',
-     'd0200000-0000-0000-0000-000000000001', date '2027-01-14')),
+     'd0200000-0000-0000-0000-000000000001', current_date)),
   1,
   'and it is REPORTED — "worked nothing" and "we do not know" are different answers'
 );
@@ -158,7 +167,7 @@ select set_config(
 select throws_ok(
   $$select * from public.overtime_evidence(
       'd0000000-0000-0000-0000-000000000001',
-      'd0200000-0000-0000-0000-000000000001', date '2027-01-12')$$,
+      'd0200000-0000-0000-0000-000000000001', (current_date - 1))$$,
   '42501',
   'Not permitted',
   'somebody outside the organisation cannot read one of its people''s attendance'
