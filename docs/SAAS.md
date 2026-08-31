@@ -82,13 +82,13 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 65    |
+| 🟢 Complete           | 69    |
 | 🟡 Partial            | 14    |
-| 🟠 Defective          | 1     |
+| 🟠 Defective          | 0     |
 | 🔵 Hardening required | 1     |
-| ⚪ Surface only       | 1     |
-| 🔴 Missing            | 24    |
-| ⚫ Deferred           | 1     |
+| ⚪ Surface only       | 0     |
+| 🔴 Missing            | 21    |
+| ⚫ Deferred           | 2     |
 | ❓ Not audited        | 5     |
 
 **Overall maturity: 7/10**, revised up from 6.5 on 2026-08-29 after five P0 defects closed
@@ -678,6 +678,11 @@ reach Sentry~~ (HARDEN-005, #216) · ~~the pricing page cannot drift from the pl
 (BUG-053, #219) · ~~colour contrast at zero in both themes~~ (GAP-030 #206, GAP-032 #207) ·
 ~~the auth configuration is read and watched~~ (GAP-031, #209) · ~~a test that actually signs in~~
 (GAP-010, #222).
+
+Also closed 2026-08-31: ~~ownership transfer and duplicate records~~ (CAP-091, CAP-092, #226) ·
+~~a dead-lettered write can be retried~~ (CAP-016, #228) · ~~`shift_templates` removed rather than
+built~~ (BUG-051, #229) · ~~the first component tests~~ (CAP-100, #230) · ~~a transient first load
+no longer greets a new customer with an error card~~ (#227, found by the E2E test added in #222).
 
 Still open: optimistic concurrency on approvals · the builder N+1 ·
 CAPTCHA (GAP-033) and leaked-password
