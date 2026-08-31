@@ -51,7 +51,8 @@ Find:
 - Accessibility problems
 - Data persistence problems
 - Data integrity problems
-- Integration problems (Supabase, ImageKit, Sentry, Inngest, OpenRouter)
+- Integration problems (Supabase, ImageKit, Sentry, Stripe, OpenRouter — **not**
+  Inngest, fully retired by `0087`; background work is `pg_cron` inside Postgres)
 - Offline problems
 - Recovery problems
 - Performance problems
