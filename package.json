@@ -2,7 +2,7 @@
   "name": "rotaflow",
   "version": "1.0.0",
   "private": true,
-  "description": "Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.",
+  "description": "Multi-tenant, offline-first staff rota scheduling \u2014 build and share rotas in minutes; clock in, swap shifts and manage leave from any device.",
   "type": "module",
   "engines": {
     "node": ">=18.0.0"
@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check:bundle": "node scripts/check-bundle-size.mjs",
-    "check:migrations": "node scripts/check-migration-safety.mjs"
+    "check:migrations": "node scripts/check-migration-safety.mjs",
+    "check:docs": "node scripts/check-doc-counts.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

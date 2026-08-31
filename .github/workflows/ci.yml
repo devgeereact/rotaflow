@@ -120,6 +120,14 @@ jobs:
       - name: Migration safety
         run: npm run check:migrations
 
+      # Counts written into prose, checked against the tree. The README told a
+      # newcomer to run "0001 through 0066 — there are 66" when there were 91,
+      # and quoted a test count that had been wrong twice. Most of those
+      # numbers were deleted rather than corrected; the few worth stating are
+      # verified here instead of trusted.
+      - name: Documented counts
+        run: npm run check:docs
+
       # High/critical only: low/moderate in a 700-package tree is mostly
       # transitive dev-tooling noise that would make this gate cry wolf and
       # get ignored. `audit-level=high` still fails the build the day
