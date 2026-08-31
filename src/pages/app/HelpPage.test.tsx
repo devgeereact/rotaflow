@@ -135,6 +135,31 @@ describe('HelpPage — the requester’s view of their own case', () => {
     expect(screen.getByLabelText('Reply to support')).toBeTruthy();
   });
 
+  it('clears the draft when a different case is opened', async () => {
+    listMyCases.mockResolvedValue([
+      supportCase(),
+      supportCase({
+        id: 'case-2',
+        reference: 'SC-0002',
+        subject: 'Cannot add a location',
+      }),
+    ]);
+    listCaseMessages.mockResolvedValue([]);
+
+    await openTheCase();
+    fireEvent.change(screen.getByLabelText('Reply to support'), {
+      target: { value: 'About the rota.' },
+    });
+
+    fireEvent.click(screen.getByText('Cannot add a location'));
+    await waitFor(() => expect(listCaseMessages).toHaveBeenCalledWith('case-2'));
+
+    // One draft and one open case, so the switch has to clear it — otherwise a
+    // reply written about one case sits pre-filled under another, one click
+    // from being sent there.
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Reply to support').value).toBe('');
+  });
+
   it('offers no reply box on a closed case, where nobody is watching the queue', async () => {
     listMyCases.mockResolvedValue([
       supportCase({ status: 'closed', resolved_at: '2026-08-30T10:00:00.000Z' }),

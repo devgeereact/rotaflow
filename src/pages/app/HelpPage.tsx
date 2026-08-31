@@ -109,6 +109,10 @@ export function HelpPage(): JSX.Element {
       }
       setOpenCaseId(caseId);
       setThread([]);
+      // One draft, and only one case open at a time — so it has to be cleared
+      // on the switch. Carrying it across would offer a reply written about
+      // one case, pre-filled under another, one click from being sent there.
+      setReply('');
       setThreadLoading(true);
       // Internal notes are excluded by the RLS policy itself (0024), not by a
       // filter here — a client-side one is a single forgotten `.eq()` away
