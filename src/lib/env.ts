@@ -16,7 +16,6 @@ interface AppEnv {
   imagekitUrlEndpoint: string;
   imagekitPublicKey: string;
   sentryDsn: string;
-  inngestEventKey: string;
   /**
    * Which OAuth providers to offer on the sign-in screen.
    *
@@ -76,7 +75,6 @@ export const env: AppEnv = {
   imagekitUrlEndpoint: read('VITE_IMAGEKIT_URL_ENDPOINT'),
   imagekitPublicKey: read('VITE_IMAGEKIT_PUBLIC_KEY'),
   sentryDsn: read('VITE_SENTRY_DSN'),
-  inngestEventKey: read('VITE_INNGEST_EVENT_KEY'),
   oauthProviders: readOAuthProviders(),
   vapidPublicKey: read('VITE_VAPID_PUBLIC_KEY'),
   isProd: import.meta.env.PROD,

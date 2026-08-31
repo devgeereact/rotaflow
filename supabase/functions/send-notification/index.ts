@@ -87,19 +87,23 @@
 // settings blob reads as all-channels-on. Muting a rota publication because a
 // jsonb field was the wrong shape would be a worse failure than sending it.
 //
-// RECIPIENT SCOPING (added 2026-08-10, security audit)
+// RECIPIENT SCOPING (added 2026-08-10; residual closed 2026-08-31)
 //
-// The shared secret proves the CALLER is this project's own Inngest function,
-// not that the caller was RIGHT to name these particular orgId/userIds — the
-// Inngest function forwards event.data verbatim (supabase/functions/inngest),
-// and VITE_INNGEST_EVENT_KEY is a public, Vite-inlined value by design. So
-// this function, not that one, is the only place left to check that every
-// userId is actually a member of orgId before anything is written or sent.
-// This closes cross-tenant impersonation (org A's event naming org B's users)
-// but NOT same-tenant abuse (a member of org A naming other members of org A
-// with a fabricated type/title) — that needs the caller's own identity and
-// role forwarded through the dispatch chain, a bigger change than this pass.
-// Known residual limitation, not a silent claim of full closure.
+// The membership filter below still runs, and should: it is defence in depth,
+// and it costs one query.
+//
+// What it used to be load-bearing for is gone. There was a client-reachable
+// path into this function — the browser posted an event to Inngest with a
+// public, Vite-inlined event key, and `supabase/functions/inngest` forwarded
+// event.data verbatim. That closed cross-tenant impersonation but not
+// same-tenant abuse: any member could name their own colleagues with a
+// fabricated type and title, and be indistinguishable from management.
+//
+// 0087 moved every dispatch into the database, so nothing legitimate used
+// that path any more; HARDEN-008 deleted it. The `inngest` function is
+// removed and undeployed, and the event key no longer ships. The only caller
+// left is the pg_cron outbox drain, which sends rows written by triggers —
+// a payload no client can author.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -266,19 +270,17 @@ Deno.serve(async (req: Request) => {
     );
     if (vaultError) console.error('verify_notification_secret failed', vaultError);
 
-    // The env var still counts, because functions do not deploy on merge: a
-    // project running the new migration against the old function, or the
-    // reverse, has to keep working. Once every deployment is past 0091 this
-    // fallback can go, and `NOTIFICATION_FUNCTION_SECRET` with it.
-    const envSecret = Deno.env.get('NOTIFICATION_FUNCTION_SECRET');
-    const envOk = Boolean(envSecret) && presented === envSecret;
-
-    if (vaultError && !envSecret) {
+    // `vault` is the ONLY source now. The `NOTIFICATION_FUNCTION_SECRET`
+    // environment variable was accepted for one release, so a deployment
+    // sitting between 0091 and this function could not break; that window is
+    // closed (0091 applied and v20 deployed on 2026-08-31, both verified), and
+    // leaving it would keep a second copy of a credential alive for nothing.
+    if (vaultError) {
       // Cannot tell either way. Refusing is the only safe answer, and 503
       // rather than 401 because this is our fault, not the caller's.
       return jsonResponse({ error: 'Notification delivery is not configured yet' }, 503);
     }
-    if (vaultOk !== true && !envOk) {
+    if (vaultOk !== true) {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 

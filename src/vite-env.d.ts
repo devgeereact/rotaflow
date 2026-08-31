@@ -14,7 +14,6 @@ interface ImportMetaEnv {
   readonly VITE_IMAGEKIT_URL_ENDPOINT: string;
   readonly VITE_IMAGEKIT_PUBLIC_KEY: string;
   readonly VITE_SENTRY_DSN: string;
-  readonly VITE_INNGEST_EVENT_KEY: string;
   readonly VITE_ENABLE_OAUTH: string;
   readonly VITE_VAPID_PUBLIC_KEY: string;
 }
