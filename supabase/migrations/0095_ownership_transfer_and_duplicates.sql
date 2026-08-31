@@ -106,6 +106,49 @@ begin
 end;
 $$;
 
+-- `log_audit_event` validates its action against a fixed list, and refuses
+-- anything else with 22023. That is the right design — an audit trail whose
+-- vocabulary any caller can invent is not a vocabulary — but it means a new
+-- event type has to be added here as well as to `src/lib/auditActions.ts`.
+-- Adding only the label, as the first version of this change did, produces a
+-- function that raises on its own audit call.
+create or replace function public.log_audit_event(
+  p_org         uuid,
+  p_action      text,
+  p_entity_type text default null,
+  p_entity_id   uuid default null,
+  p_metadata    jsonb default '{}'::jsonb
+) returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated' using errcode = '28000';
+  end if;
+
+  if p_action not in (
+      'gdpr.export','gdpr.export_denied',
+      'report.exported','timesheet.exported','staff.exported',
+      'timesheet.amended','leave.reviewed',
+      -- New in 0095.
+      'org.ownership_transferred') then
+    raise exception 'Unknown audit action: %', p_action using errcode = '22023';
+  end if;
+
+  if p_org is null then
+    raise exception 'An organisation is required for this event'
+      using errcode = '22023';
+  end if;
+
+  if not public.is_org_member(p_org) then
+    raise exception 'Cannot write audit events for another organisation'
+      using errcode = '42501';
+  end if;
+
+  perform public.audit_write(
+    p_org, p_action, p_entity_type, p_entity_id,
+    coalesce(p_metadata, '{}'::jsonb), 'info', 'org');
+end;
+$$;
+
 comment on function public.transfer_ownership(uuid, uuid) is
   'Hands an organisation to another active member, promoting and demoting in one transaction. The outgoing owner becomes a manager rather than losing access. Owner only.';
 

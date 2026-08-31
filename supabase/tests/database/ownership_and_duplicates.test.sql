@@ -51,8 +51,11 @@ from (values
 ) as v(id, email);
 
 insert into public.organisations (id, name, slug, created_by, plan) values
+  -- Enterprise, so neither the seat nor the site limit (0070) fires before
+  -- the constraint under test. On `starter` the second location is refused
+  -- for being the second SITE, which is correct and not what this asserts.
   ('c9000000-0000-0000-0000-000000000001', 'Org Transfer', 'org-transfer',
-   'c9111111-1111-1111-1111-111111111111', 'starter'),
+   'c9111111-1111-1111-1111-111111111111', 'enterprise'),
   ('c9000000-0000-0000-0000-000000000002', 'Org Second', 'org-second',
    'c9111111-1111-1111-1111-111111111111', 'starter');
 
