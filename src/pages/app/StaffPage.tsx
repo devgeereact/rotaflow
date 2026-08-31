@@ -20,6 +20,8 @@ import { useConfirm } from '@/hooks/useConfirm';
 import {
   createStaffProfile,
   createStaffProfiles,
+  listStaffLocations,
+  setStaffLocations as saveStaffLocations,
   deactivateStaffProfile,
   listStaff,
   reactivateStaffProfile,
@@ -101,6 +103,11 @@ export function StaffPage(): JSX.Element {
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
   const [shiftsThisWeek, setShiftsThisWeek] = useState<Shift[]>([]);
   const [documentsExpiring, setDocumentsExpiring] = useState(0);
+  // Empty until loaded, which reads as "nothing recorded" and falls back to
+  // each person's department — the behaviour this screen had before CAP-089.
+  const [staffLocations, setStaffLocations] = useState<Map<string, string[]>>(
+    () => new Map(),
+  );
   const [invitesOutstanding, setInvitesOutstanding] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +144,7 @@ export function StaffPage(): JSX.Element {
         shiftRows,
         expiringDocs,
         invites,
+        siteAssignments,
       ] = await Promise.all([
         listStaff(orgId, { includeInactive: true }),
         listDepartments(orgId),
@@ -145,6 +153,7 @@ export function StaffPage(): JSX.Element {
         listShiftsForPeriod({ orgId, fromIso, toIso }),
         listExpiringDocuments(orgId, in30Days),
         listPendingInvites(orgId),
+        listStaffLocations(orgId),
       ]);
       setStaff(staffRows);
       setDepartments(deptRows);
@@ -153,6 +162,7 @@ export function StaffPage(): JSX.Element {
       setShiftsThisWeek(shiftRows);
       setDocumentsExpiring(expiringDocs.length);
       setInvitesOutstanding(invites.length);
+      setStaffLocations(siteAssignments);
     } catch (err) {
       reportError(err, { area: 'staff:load' });
       setError('Could not load the staff directory.');
@@ -190,8 +200,15 @@ export function StaffPage(): JSX.Element {
   );
 
   const context = useMemo(
-    () => ({ departments, locations, shiftsThisWeek, onShiftToday, absentToday }),
-    [departments, locations, shiftsThisWeek, onShiftToday, absentToday],
+    () => ({
+      departments,
+      locations,
+      shiftsThisWeek,
+      onShiftToday,
+      absentToday,
+      staffLocations,
+    }),
+    [departments, locations, shiftsThisWeek, onShiftToday, absentToday, staffLocations],
   );
 
   const allRows = useMemo(() => buildTeamRows(staff, context), [staff, context]);
@@ -230,22 +247,34 @@ export function StaffPage(): JSX.Element {
         staff.find((s) => s.id === row.id)?.department_id !== departmentId
       )
         return false;
-      if (locationId) {
-        const person = staff.find((s) => s.id === row.id);
-        const dept = departments.find((d) => d.id === person?.department_id);
-        if (dept?.location_id !== locationId) return false;
-      }
+      // Every site the person works, not just the one their department
+      // happens to live at (CAP-089). `row.locationIds` already carries the
+      // department fallback for anybody with nothing recorded.
+      if (locationId && !row.locationIds.includes(locationId)) return false;
       return true;
     });
-  }, [allRows, search, departmentId, locationId, staff, departments]);
+  }, [allRows, search, departmentId, locationId, staff]);
 
   const handleSubmit = async (values: StaffFormValues): Promise<void> => {
     if (!orgId) return;
     if (editingStaff) {
       const updated = await updateStaffProfile(editingStaff.id, toInsert(orgId, values));
+      // Sites are their own table (CAP-089), so this is a second write. It
+      // runs after the profile so a failure here leaves the person correct
+      // and their sites unrecorded, which falls back to their department —
+      // the safe direction.
+      await saveStaffLocations(orgId, editingStaff.id, values.locationIds);
       setStaff((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      setStaffLocations((prev) => {
+        const next = new Map(prev);
+        next.set(updated.id, values.locationIds);
+        return next;
+      });
     } else {
       const created = await createStaffProfile(toInsert(orgId, values));
+      if (values.locationIds.length > 0) {
+        await saveStaffLocations(orgId, created.id, values.locationIds);
+      }
       setStaff((prev) => [...prev, created]);
     }
   };
@@ -501,6 +530,10 @@ export function StaffPage(): JSX.Element {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
         departments={departments}
+        locations={locations}
+        initialLocationIds={
+          editingStaff ? (staffLocations.get(editingStaff.id) ?? []) : []
+        }
         initial={editingStaff}
       />
 

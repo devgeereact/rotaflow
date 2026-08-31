@@ -17,6 +17,8 @@ export interface TeamRow {
   jobTitle: string | null;
   department: string;
   location: string;
+  /** Every site this person works, for filtering. `location` is the label. */
+  locationIds: string[];
   contractHoursLabel: string;
   rosteredHoursLabel: string;
   todayStatus: TeamTodayStatus;
@@ -79,15 +81,45 @@ export interface TeamRowContext {
   shiftsThisWeek: Shift[];
   onShiftToday: Set<string>;
   absentToday: Set<string>;
+  /**
+   * Sites each person works, where any have been recorded (CAP-089).
+   *
+   * Optional, and absence means "nothing recorded" rather than "works
+   * nowhere": everyone without an entry falls back to their department's
+   * site, which is what this file did for its whole life.
+   */
+  staffLocations?: Map<string, string[]>;
 }
 
-function locationNameFor(
-  profile: StaffProfile,
-  { departments, locations }: Pick<TeamRowContext, 'departments' | 'locations'>,
-): string {
-  const department = departments.find((d) => d.id === profile.department_id);
-  const location = locations.find((l) => l.id === department?.location_id);
-  return location?.name ?? '-';
+/**
+ * The sites a person works.
+ *
+ * Explicit assignments win outright. Falling back to the department only when
+ * there are none is deliberate: once somebody has been given sites, adding
+ * their department's on top would grant one nobody assigned, and the whole
+ * point of the feature is that the two can differ.
+ */
+function locationIdsFor(profile: StaffProfile, context: TeamRowContext): string[] {
+  const explicit = context.staffLocations?.get(profile.id);
+  if (explicit && explicit.length > 0) return explicit;
+
+  const department = context.departments.find((d) => d.id === profile.department_id);
+  return department?.location_id ? [department.location_id] : [];
+}
+
+function locationNameFor(profile: StaffProfile, context: TeamRowContext): string {
+  const ids = locationIdsFor(profile, context);
+  const names = ids
+    .map((id) => context.locations.find((l) => l.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+
+  if (names.length === 0) return '-';
+  if (names.length === 1) return names[0] ?? '-';
+  // Two sites are worth naming; five are a column nobody can read. The
+  // filter still matches all of them either way.
+  return names.length === 2
+    ? names.join(' and ')
+    : `${names[0]} and ${names.length - 1} more`;
 }
 
 export function buildTeamRows(staff: StaffProfile[], context: TeamRowContext): TeamRow[] {
@@ -107,6 +139,7 @@ export function buildTeamRows(staff: StaffProfile[], context: TeamRowContext): T
       department:
         context.departments.find((d) => d.id === profile.department_id)?.name ?? '-',
       location: locationNameFor(profile, context),
+      locationIds: locationIdsFor(profile, context),
       contractHoursLabel: hoursLabel(profile.weekly_hours),
       rosteredHoursLabel: `${rostered.toFixed(1)}h`,
       todayStatus: status,

@@ -2531,6 +2531,27 @@ export type Database = {
           },
         ];
       };
+      staff_locations: {
+        Row: {
+          staff_profile_id: string;
+          location_id: string;
+          org_id: string;
+          created_at: string;
+        };
+        Insert: {
+          staff_profile_id: string;
+          location_id: string;
+          org_id: string;
+          created_at?: string;
+        };
+        Update: {
+          staff_profile_id?: string;
+          location_id?: string;
+          org_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       staff_pay_rates: {
         Row: {
           id: string;

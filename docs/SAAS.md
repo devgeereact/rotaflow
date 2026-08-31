@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 104 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 105 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 81    |
+| 🟢 Complete           | 82    |
 | 🟡 Partial            | 11    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 6     |
+| 🔴 Missing            | 5     |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -494,8 +494,14 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0097_overtime_evidence.sql` · 7 pgTAP assertions
 - [x] CAP-088 🟢 Document expiry — alerts a manager on a schedule, once per document per expiry date
       `supabase/migrations/0093_scheduled_alerts.sql` · GAP-013 closed #214
-- [ ] CAP-089 🔴 Multi-location workers — `staff_profiles` has no `location_id`
-      `supabase/migrations/0002_rotaflow.sql` · P3
+- [x] CAP-089 🟢 Multi-location workers — **and the row's proposed fix would have been wrong.**
+      It said `staff_profiles` has no `location_id`; adding one cannot express a person who
+      works two sites, which is the thing being asked for. The real shape: a site is inherited
+      from the DEPARTMENT, so everybody has exactly one by construction. `staff_locations` is a
+      set, with a trigger refusing a row whose org disagrees with either parent. Nothing
+      recorded still falls back to the department, so an organisation that ignores it sees no
+      change — and it never refuses an assignment, only answers "who can cover here"
+      `supabase/migrations/0105_staff_locations.sql` · 9 pgTAP assertions
 - [ ] CAP-090 🔴 Delegation — "Deputy Manager" is a display label, not a mechanism
       `src/lib/orgPreferences.ts` · P3
 - [x] CAP-091 🟢 Ownership transfer — one transaction, promoting and demoting together, from the

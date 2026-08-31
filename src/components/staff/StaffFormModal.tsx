@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
-import type { Department, StaffProfile } from '@/types';
+import type { Department, Location, StaffProfile } from '@/types';
 
 const CONTRACT_TYPES = [
   { value: 'full_time', label: 'Full-time' },
@@ -26,6 +26,14 @@ export interface StaffFormValues {
   startDate: string;
   phone: string;
   email: string;
+  /**
+   * Sites this person works (CAP-089).
+   *
+   * An empty list means "nothing recorded", not "works nowhere": every read
+   * falls back to their department's site, which is what the product did
+   * before this existed.
+   */
+  locationIds: string[];
 }
 
 interface StaffFormModalProps {
@@ -33,10 +41,16 @@ interface StaffFormModalProps {
   onClose: () => void;
   onSubmit: (values: StaffFormValues) => Promise<void>;
   departments: Department[];
+  locations: Location[];
+  /** Sites already recorded for the person being edited. */
+  initialLocationIds?: readonly string[];
   initial?: StaffProfile | null;
 }
 
-function toFormValues(staff?: StaffProfile | null): StaffFormValues {
+function toFormValues(
+  staff?: StaffProfile | null,
+  locationIds: readonly string[] = [],
+): StaffFormValues {
   return {
     firstName: staff?.first_name ?? '',
     lastName: staff?.last_name ?? '',
@@ -50,6 +64,7 @@ function toFormValues(staff?: StaffProfile | null): StaffFormValues {
     startDate: staff?.start_date ?? '',
     phone: staff?.phone ?? '',
     email: staff?.email ?? '',
+    locationIds: [...locationIds],
   };
 }
 
@@ -59,17 +74,28 @@ export function StaffFormModal({
   onSubmit,
   departments,
   initial,
+  locations,
+  initialLocationIds = [],
 }: StaffFormModalProps): JSX.Element {
-  const [values, setValues] = useState<StaffFormValues>(toFormValues(initial));
+  const [values, setValues] = useState<StaffFormValues>(
+    toFormValues(initial, initialLocationIds),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Joined into a string so a caller passing a fresh array on every render
+  // does not reset the form under the user's hands mid-edit. The values are
+  // ids, so the string is a faithful identity for the set.
+  const initialLocationKey = initialLocationIds.join(',');
+
   useEffect(() => {
     if (open) {
-      setValues(toFormValues(initial));
+      setValues(
+        toFormValues(initial, initialLocationKey ? initialLocationKey.split(',') : []),
+      );
       setError(null);
     }
-  }, [open, initial]);
+  }, [open, initial, initialLocationKey]);
 
   const handleSubmit = async (): Promise<void> => {
     if (!values.firstName.trim() || !values.lastName.trim()) return;
@@ -182,6 +208,39 @@ export function StaffFormModal({
         </div>
 
         <div>
+          <fieldset className="mb-5">
+            <legend className="mb-2 text-sm font-medium text-content dark:text-content-dark">
+              Sites they work
+            </legend>
+            <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
+              Leave every box clear to use their department&rsquo;s site. Ticking any
+              replaces that — it is how somebody covers two wards.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {locations.map((location) => (
+                <label
+                  key={location.id}
+                  className="flex items-center gap-2 text-sm text-content dark:text-content-dark"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-surface-border"
+                    checked={values.locationIds.includes(location.id)}
+                    onChange={(event) =>
+                      setValues((v) => ({
+                        ...v,
+                        locationIds: event.target.checked
+                          ? [...v.locationIds, location.id]
+                          : v.locationIds.filter((id) => id !== location.id),
+                      }))
+                    }
+                  />
+                  {location.name}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <Label htmlFor="staff-skills">Skills</Label>
           <Input
             id="staff-skills"
