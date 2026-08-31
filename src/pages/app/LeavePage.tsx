@@ -16,8 +16,11 @@ import {
   listOrgLeaveRequests,
   reviewLeaveRequest,
 } from '@/services/leaveService';
+import { getOrganisation } from '@/services/orgService';
 import { logAuditEvent } from '@/services/auditService';
 import { reportError } from '@/lib/sentry';
+import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
+import type { BankHolidayRegion } from '@/lib/bankHolidays';
 import { todayIso } from '@/lib/schedulePeriod';
 import {
   computeAwaitingDecision,
@@ -96,6 +99,9 @@ export function LeavePage(): JSX.Element {
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  const [bankHolidayRegion, setBankHolidayRegion] = useState<BankHolidayRegion>(
+    DEFAULT_POLICIES.bankHolidayRegion,
+  );
   const [search, setSearch] = useState('');
   // Lands on Pending by default so a reviewer sees what needs a decision
   // first, not buried in a list of settled requests with nothing to do.
@@ -114,15 +120,18 @@ export function LeavePage(): JSX.Element {
     setLoadFailed(false);
     void (async () => {
       try {
-        const [mine, staffRows, departmentRows] = await Promise.all([
+        const [mine, staffRows, departmentRows, org] = await Promise.all([
           getMyStaffProfile(orgId, user.id),
           canApprove ? listActiveStaff(orgId) : Promise.resolve<StaffProfile[]>([]),
           listDepartments(orgId),
+          getOrganisation(orgId),
         ]);
         if (!active) return;
         setMyProfile(mine);
         setStaff(staffRows);
         setDepartments(departmentRows);
+        // Which nation's bank holidays to name in the request form (CAP-009).
+        setBankHolidayRegion(schedulingPolicies(org.settings).bankHolidayRegion);
 
         const rows = canApprove
           ? await listOrgLeaveRequests(orgId)
@@ -389,6 +398,7 @@ export function LeavePage(): JSX.Element {
           onRequestLeave={handleRequest}
           offline={!online}
           onApprove={handleApprove}
+          bankHolidayRegion={bankHolidayRegion}
           onDecline={handleDecline}
         />
       ) : (
@@ -403,6 +413,7 @@ export function LeavePage(): JSX.Element {
           onRequestLeave={handleRequest}
           offline={!online}
           onWithdraw={handleWithdraw}
+          bankHolidayRegion={bankHolidayRegion}
         />
       )}
     </>

@@ -1,3 +1,4 @@
+import { REGION_LABELS, type BankHolidayRegion } from '@/lib/bankHolidays';
 import type { Organisation } from '@/types';
 
 /**
@@ -136,6 +137,14 @@ export interface SchedulingPolicies {
   swapApprovalRequired: boolean;
   /** Whether leave that would drop a day under minimum cover auto-declines rather than just warning. */
   autoDeclineClashingLeave: boolean;
+  /**
+   * Which nation's bank holidays apply (CAP-009).
+   *
+   * Not cosmetic. Scotland has no Easter Monday and takes the first Monday in
+   * August rather than the last; Northern Ireland adds two of its own. An
+   * organisation left on the wrong one is rostered on a public holiday.
+   */
+  bankHolidayRegion: BankHolidayRegion;
 }
 
 export const DEFAULT_POLICIES: SchedulingPolicies = {
@@ -148,6 +157,9 @@ export const DEFAULT_POLICIES: SchedulingPolicies = {
   publishLeadDays: 14,
   swapApprovalRequired: true,
   autoDeclineClashingLeave: false,
+  // The default rather than a guess about the customer: most of the UK, and
+  // the setting is one line away on Settings → Policies.
+  bankHolidayRegion: 'england-and-wales',
 };
 
 export function schedulingPolicies(settings: Json): SchedulingPolicies {
@@ -177,7 +189,15 @@ export function schedulingPolicies(settings: Json): SchedulingPolicies {
       'auto_decline_clashing_leave',
       DEFAULT_POLICIES.autoDeclineClashingLeave,
     ),
+    bankHolidayRegion: isRegion(str(settings, 'bank_holiday_region'))
+      ? (str(settings, 'bank_holiday_region') as BankHolidayRegion)
+      : DEFAULT_POLICIES.bankHolidayRegion,
   };
+}
+
+/** A stored value that is not one of the three falls back rather than throwing. */
+function isRegion(value: string): value is BankHolidayRegion {
+  return value in REGION_LABELS;
 }
 
 export function policiesToSettings(p: SchedulingPolicies): Record<string, unknown> {
@@ -191,6 +211,7 @@ export function policiesToSettings(p: SchedulingPolicies): Record<string, unknow
     publish_lead_days: p.publishLeadDays,
     swap_approval_required: p.swapApprovalRequired,
     auto_decline_clashing_leave: p.autoDeclineClashingLeave,
+    bank_holiday_region: p.bankHolidayRegion,
   };
 }
 

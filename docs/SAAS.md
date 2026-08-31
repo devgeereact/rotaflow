@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 79    |
+| 🟢 Complete           | 80    |
 | 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 9     |
+| 🔴 Missing            | 8     |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -191,8 +191,12 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/lib/rotaInsights.ts`
 - [x] CAP-008 🟢 Overnight shifts and DST — absolute-instant arithmetic, fall-back day tested
       `src/lib/schedulePeriod.ts`
-- [ ] CAP-009 🔴 Bank holidays — no table, no calendar, no holiday-aware logic anywhere
-      P3
+- [x] CAP-009 🟢 Bank holidays — computed, not seeded: every rule is deterministic, so it never
+      runs out in the December before the year everybody is planning. Three nations, because
+      Scotland has no Easter Monday and takes the first Monday in August rather than the last.
+      Set on Settings → Policies; a leave request names the bank holidays its range covers,
+      before it is sent. One-off royal holidays cannot be derived and have a named place to go
+      `src/lib/bankHolidays.ts` · 15 unit tests
 - [x] CAP-010 🟢 Open-shift board — `/app/open-shifts` lists published, unclaimed, future shifts
       and `claim_open_shift()` takes one. The UPDATE re-checks "still open" in its WHERE, so two
       people tapping at once cannot both win. A shift clashing with the reader's own roster is
