@@ -91,8 +91,12 @@ test.describe('the authenticated loop', () => {
     // Step 2 means step 1 wrote a real row AND the owner membership came back
     // through RLS. This is the assertion the whole test exists for: it is the
     // step QA-AUDIT-REPORT found a new customer could not get past.
+    //
+    // Matched exactly, and on the step's own h2. The left panel carries an h1
+    // reading "Tell us about your organisation", so a loose regex resolves to
+    // two elements and fails strict mode — with the product working perfectly.
     await expect(
-      page.getByRole('heading', { name: /about your organisation/i }),
+      page.getByRole('heading', { name: 'About your organisation', exact: true }),
     ).toBeVisible({ timeout: 60_000 });
 
     expect(errors, 'uncaught errors during signup and org creation').toEqual([]);
