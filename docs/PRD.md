@@ -61,7 +61,9 @@ role membership, never in the client alone.
 2. **Staff management**. Profiles (photo, job title, department, skills, contract
    type, working hours, holiday allowance, emergency contact, documents, payroll ID).
 3. **Rota builder**. Weekly/fortnightly/monthly grid, drag-and-drop, shift templates,
-   copy-previous-week, colour coding, conflict
+   copy-previous-week, **repeat a week forward up to 26 weeks** in one transaction
+   (`0107`, arithmetic done in the site's timezone so a 07:00 shift is still 07:00
+   after the clocks change), colour coding, conflict
    detection (double-booking, availability, leave, max hours, min rest).
 4. **Shift types & templates**. Reusable, org-defined (Morning, Late, Night, Split,
    Weekend, On-Call, Bank, Training, etc.).
@@ -73,23 +75,39 @@ role membership, never in the client alone.
 6. **Availability**. Staff submit available/unavailable/preferred/recurring; managers
    schedule around it.
 7. **Leave**. Request, approve/reject, entitlement tracking, calendar conflicts.
+   The holiday **year is a policy** rather than the calendar year, a joiner is
+   pro-rated, unused days carry over up to a cap, and **half days** are bookable at
+   either end of a range (`0109`). UK **bank holidays** are computed rather than
+   seeded, per nation, and named in the request form before it is sent.
 8. **Shift swaps**. Staff request → colleague → manager approval → rota updates.
+   An **open shift** anybody can take is now visible to staff (`/app/open-shifts`,
+   `0103`) — the `'open'` status existed from `0002` with no staff-facing surface —
+   and everything waiting on a manager is in one queue at `/app/approvals`.
 9. **GPS clock in/out**. GPS + manual (QR is deferred; the schema accepts `'qr'` but nothing generates a code), timesheets, hours dashboard.
 10. **Notifications**. Web Push + email (SMTP) for assignments, changes, approvals,
     reminders, announcements.
 11. **Announcements / communication centre**. Org/department/location broadcasts.
-12. **Reports & exports**. Hours, absence, holiday, overtime; CSV payroll export (no Excel writer in the dependency tree);
-    per-employee/department/location rota export.
+12. **Reports & exports**. Hours, absence, holiday, overtime; **rostered labour cost**
+    per site, from a pay-rate history so a raise does not rewrite what last quarter
+    cost (`0104`); CSV payroll export (no Excel writer in the dependency tree);
+    per-employee/department/location rota export; **CSV import** of a staff list.
 13. **Offline + background sync**. View rota, clock in/out, request leave, read
     announcements offline; reconcile on reconnect.
-14. **GDPR essentials**. Audit logging, data export and anonymisation. **No consent capture exists** — nothing records or stores a consent decision.
+14. **GDPR essentials**. Audit logging, data export and anonymisation. **No consent
+    capture exists** — nothing records or stores a consent decision, and that is a
+    decision rather than an omission: consent is the wrong lawful basis for
+    employment data, and a checkbox would create a right to withdraw that an
+    employer cannot honour (`docs/SAAS.md` CAP-058). The organisation export covers
+    33 tables and names the seven it deliberately leaves out.
 
 ### Phase 2. Intelligence, enterprise & billing
 
 - AI scheduling / auto-fill, demand forecasting, burnout detection, natural-language
   scheduling ("schedule three nurses for nights next weekend").
 - Payroll integrations (Sage, Xero, QuickBooks, BrightPay, Staffology).
-- Advanced analytics (labour cost, utilisation, coverage gaps).
+- Advanced analytics (utilisation, coverage gaps). **Labour cost shipped early**
+  (`0104`) — it needed a rate table, not a forecast, and a rota approved without a
+  cost is approved against the wrong question.
 - Documents with expiry **automation** — expiry is already stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`); what is missing is a scheduled reminder. (DBS, Right to Work, visas, certificates).
 - SSO, custom per-tenant branding, open API, advanced compliance.
 - **Subscription billing**. Stripe Checkout + Billing Portal shipped `0050`

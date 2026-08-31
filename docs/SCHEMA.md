@@ -219,6 +219,44 @@ cascading from it) is deliberately **not** on this schedule — a different and 
 dangerous operation than ageing out old shifts, left manual until someone decides who
 may trigger it.
 
+### 4.9 What 2026-08-31 added (`0099`–`0110`)
+
+Twelve migrations in one day, six of them new tables. Recorded here rather
+than left to `docs/SAAS.md`, because this file is what a session is told to
+read before touching the schema, and a reference that stops at `0098` is a
+reference that will be trusted and be wrong.
+
+| Table                    | Key columns                                                                                              | Purpose and the decision inside it                                                                                                                                                                                                                                                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `calendar_feed_tokens`   | `token` PK, `org_id`, `staff_profile_id`, `last_used_at?`, `revoked_at?` (`0099`)                        | A subscribable ICS feed. The token **is** the credential — a calendar client cannot present a header — so it reads one person's shifts and nothing else, and a partial unique index enforces one live token per person. `calendar_feed_shifts()` is granted to `service_role` alone.                                                    |
+| `staff_pay_rates`        | `org_id`, `staff_profile_id`, `hourly_rate_pence`, `effective_from`, unique per `(staff, date)` (`0104`) | **Not a column on `staff_profiles`**: that table's select policy is `is_org_member`, so a rate there would publish everybody's pay to every colleague. A history rather than a value, because overwriting a rate rewrites what last quarter cost. `labour_cost()` returns money without handing out the rates it used.                  |
+| `staff_locations`        | `(staff_profile_id, location_id)` PK, `org_id` (`0105`)                                                  | Somebody who works more than one site. A site used to be inherited from the department, so everybody had exactly one by construction. Nothing recorded falls back to the department; explicit sites stop that fallback, so it cannot grant a site nobody assigned. A trigger refuses a row whose `org_id` disagrees with either parent. |
+| `role_delegations`       | `org_id`, `from_user_id`, `to_user_id`, `starts_at`, `ends_at`, `revoked_at?` (`0106`)                   | Cover while somebody is away. **Enforced inside `has_org_role`**, so every managerial policy honours it at once. Confers `manager` and never `owner`, and cannot be chained: `delegate_role` reads the caller's own membership rather than `has_org_role`, which now returns true for a delegate.                                       |
+| `notification_templates` | `org_id?` (null = platform default), `key`, `channel`, `subject`, `body` (`0108`)                        | What a notification says. A row rather than code, because Edge Functions do not deploy on merge. `render_notification()` substitutes `{{placeholders}}` in **two passes**, so a value containing `{{…}}` cannot rewrite the message around it.                                                                                          |
+| `support_sla_targets`    | `priority` PK, `first_response_minutes`, `resolution_minutes` (`0110`)                                   | What support promises. Rows rather than constants, so the promise changes without a deploy and is readable by anybody it is made to.                                                                                                                                                                                                    |
+
+Columns added to existing tables:
+
+| Table               | Columns                                               | Why                                                                                                                                                                                         |
+| ------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subscriptions`     | `past_due_since`, `grace_until` (`0098`)              | A failed payment now has a date somebody can act on. Set by trigger, and a **second** failed payment does not restart the clock — otherwise a weekly retry is never at risk.                |
+| `leave_requests`    | `starts_half`, `ends_half` (`0109`)                   | Half days. Two booleans rather than a portion enum whose values mean different things at the two ends of a range. `leave_days()` never returns zero.                                        |
+| `support_cases`     | `first_response_due_at`, `resolution_due_at` (`0110`) | Computed from when the case ARRIVED, so escalating a late case cannot reset its clock and make a breach disappear.                                                                          |
+| `platform_settings` | `require_mfa` now **enforced** (`0102`)               | It existed from `0027`, defaulted true, and was checked by nothing. `is_platform_admin()` now requires an `aal2` session when it is on; `0102` set it false because that was what was true. |
+
+New functions worth knowing before writing a query: `my_sessions()` /
+`revoke_my_other_sessions()` (`0100`), `my_mfa_status()` /
+`set_platform_mfa_required()` (`0102`), `open_shifts()` / `claim_open_shift()`
+(`0103`), `labour_cost()` / `current_pay_rates()` (`0104`),
+`staff_at_location()` (`0105`), `delegate_role()` / `revoke_delegation()`
+(`0106`), `repeat_rota_weeks()` (`0107`), `render_notification()` (`0108`),
+`leave_days()` (`0109`), `support_sla_state()` (`0110`).
+
+**Two predicates changed behaviour**, which matters more than any new table:
+`is_platform_admin()` gained an MFA condition (`0102`) and `has_org_role()`
+gained delegation (`0106`). Every policy in this schema calls one of those, so
+both changes are schema-wide by design — see §5.
+
 ## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions
