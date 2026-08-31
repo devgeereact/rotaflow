@@ -357,8 +357,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       for somebody else's open question
       `supabase/migrations/0085_rate_limiting.sql` · GAP-009 #199, GAP-031 #209, GAP-033
 - [x] CAP-047 🟢 Grants wider than policies — `anon` holds nothing in `public` but schema usage;
-      the default ACL that would have handed it back is narrowed too
-      `supabase/migrations/0075_narrow_anon_privileges.sql` · HARDEN-001 · P2
+      the default ACL that would have handed it back is narrowed too. **Now asserted rather than
+      remembered (2026-08-31):** four pgTAP assertions check that every table in `public` has RLS
+      enabled, that every table `authenticated` can read has a policy, and that neither `anon` nor
+      `PUBLIC` holds a table privilege. `CLAUDE.md` has stated the first of those as a rule since
+      the merge and nothing enforced it — a table added without RLS is not an error, it is every
+      tenant reading every other tenant's rows in silence
+      `supabase/migrations/0075_narrow_anon_privileges.sql` · `supabase/tests/database/rls_invariants.test.sql` · HARDEN-001
 - [x] CAP-048 🟢 Predicate execute grants — `PUBLIC` and `anon` execute revoked on every callable
       function except `preview_invite`; trigger functions left, with the reason recorded
       `supabase/migrations/0075_narrow_anon_privileges.sql` · HARDEN-002 · P2
