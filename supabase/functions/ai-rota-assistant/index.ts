@@ -27,10 +27,13 @@
 // material for `docs/SAAS.md`'s invalid-suggestion
 // rate, not yet aggregated into a dashboard anywhere.
 //
-// MODEL FALLBACK: none. `OPENROUTER_MODEL` (default `openai/gpt-4o-mini`) is
-// a single model with no automatic second choice on failure — a failed call
-// returns 502 "temporarily unavailable" to the manager. Explicit, not
-// silently absent: still open work under §8.6.
+// MODEL FALLBACK: available, off by default. `OPENROUTER_MODEL` (default
+// `openai/gpt-4o-mini`) is the primary. Setting `OPENROUTER_FALLBACK_MODEL`
+// makes the call pass both to OpenRouter's `models` array with
+// `route: 'fallback'`, so a provider outage or a deprecated model routes to
+// the second inside the same request rather than returning 502. Unset, the
+// behaviour is exactly as before — which model to fall back to has a bill
+// attached and is the owner's choice, not this file's (HARDEN-010).
 //
 // Deploy: `supabase functions deploy ai-rota-assistant`.
 // Secret: `supabase secrets set OPENROUTER_API_KEY=...`.
@@ -560,6 +563,29 @@ Deno.serve(async (req: Request) => {
     const userPrompt = `Context:\n${serialisedContext}\n\nManager's request: "${prompt}"`;
 
     const model = Deno.env.get('OPENROUTER_MODEL') || 'openai/gpt-4o-mini';
+
+    // ---- One model, or two (docs/SAAS.md HARDEN-010) --------------------
+    //
+    // There was no fallback at all: an OpenRouter outage, a rate limit at the
+    // provider, or a model being deprecated out from under us was a 502 to the
+    // manager with nothing behind it. The file header said so and left it open.
+    //
+    // OpenRouter takes a `models` ARRAY and routes to the next entry when the
+    // first fails, which is better than retrying here — it happens inside one
+    // request, so it costs no extra round trip and cannot double-charge for a
+    // call that actually succeeded.
+    //
+    // Unset by default, and that is deliberate rather than unfinished. Which
+    // model to fall back to is a cost and quality decision with a real bill
+    // attached, and picking one on the owner's behalf is exactly the sort of
+    // choice this project keeps writing down instead of assuming. With it
+    // unset the behaviour is identical to before; setting
+    // `OPENROUTER_FALLBACK_MODEL` is the whole configuration.
+    const fallbackModel = Deno.env.get('OPENROUTER_FALLBACK_MODEL');
+    const routing =
+      fallbackModel && fallbackModel !== model
+        ? { models: [model, fallbackModel], route: 'fallback' }
+        : {};
     const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -570,6 +596,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model,
+        ...routing,
         temperature: task === 'announcement' ? 0.5 : 0.3,
         // A ceiling on what one call can cost (docs/SAAS.md GAP-009,
         // HARDEN-004). There was none, so a single request could generate
