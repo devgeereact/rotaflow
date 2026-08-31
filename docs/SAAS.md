@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 105 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 106 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 82    |
+| 🟢 Complete           | 83    |
 | 🟡 Partial            | 11    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 5     |
+| 🔴 Missing            | 4     |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -502,8 +502,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       recorded still falls back to the department, so an organisation that ignores it sees no
       change — and it never refuses an assignment, only answers "who can cover here"
       `supabase/migrations/0105_staff_locations.sql` · 9 pgTAP assertions
-- [ ] CAP-090 🔴 Delegation — "Deputy Manager" is a display label, not a mechanism
-      `src/lib/orgPreferences.ts` · P3
+- [x] CAP-090 🟢 Delegation — cover that expires by time rather than by somebody remembering
+      to undo a promotion. Enforced inside `has_org_role`, so every managerial policy honours
+      it at once. **It confers `manager` and never `owner`**: an owner going away for a
+      fortnight is not a reason to hand somebody the ability to delete the organisation or
+      change billing, and the screen says so. It cannot be chained — `delegate_role` reads the
+      caller's own membership, not `has_org_role`, which now returns true for a delegate
+      `supabase/migrations/0106_role_delegation.sql` · 10 pgTAP assertions
 - [x] CAP-091 🟢 Ownership transfer — one transaction, promoting and demoting together, from the
       owner-only settings page; the outgoing owner stays on as a manager
       `supabase/migrations/0095_ownership_transfer_and_duplicates.sql` · 10 pgTAP assertions

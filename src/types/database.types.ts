@@ -2531,6 +2531,34 @@ export type Database = {
           },
         ];
       };
+      role_delegations: {
+        Row: {
+          id: string;
+          org_id: string;
+          from_user_id: string;
+          to_user_id: string;
+          starts_at: string;
+          ends_at: string;
+          note: string | null;
+          revoked_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          from_user_id: string;
+          to_user_id: string;
+          starts_at?: string;
+          ends_at: string;
+          note?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          revoked_at?: string | null;
+        };
+        Relationships: [];
+      };
       staff_locations: {
         Row: {
           staff_profile_id: string;
@@ -3362,6 +3390,19 @@ export type Database = {
       revoke_calendar_feed_token: {
         Args: { p_org: string };
         Returns: undefined;
+      };
+      delegate_role: {
+        Args: { p_org: string; p_to: string; p_until: string; p_note?: string | null };
+        /** The new delegation's id. Refused for a delegate — no chaining (0106). */
+        Returns: string;
+      };
+      revoke_delegation: {
+        Args: { p_id: string };
+        Returns: undefined;
+      };
+      staff_at_location: {
+        Args: { p_location: string };
+        Returns: { staff_profile_id: string }[];
       };
       labour_cost: {
         Args: { p_org: string; p_from: string; p_to: string; p_paid_breaks?: boolean };
