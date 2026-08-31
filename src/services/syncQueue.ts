@@ -203,6 +203,51 @@ export async function discardDeadLetteredWrite(id: string): Promise<void> {
   await deadLetterRemove(id);
 }
 
+/**
+ * Put a dead-lettered write back in the queue and try it again (CAP-016).
+ *
+ * Until now the only thing a person could do with a failed write was
+ * acknowledge it. That is the right FLOOR — a silent loss is the worst
+ * outcome — but it leaves the common case unserved: the write failed for a
+ * reason that has since gone away. A clock-in refused while a shift had not
+ * been published yet, a leave request made against a location that was being
+ * renamed, five attempts spent on a ward's wifi during a handover. In every
+ * one of those the payload is still correct and the only thing wrong was the
+ * moment.
+ *
+ * Retrying is safe because of the idempotency keys (0081): a write that
+ * actually did land the first time is recognised by `isAlreadyApplied` and
+ * marked synced rather than inserted twice. Without those this would be an
+ * invitation to double-clock somebody, which is why the retry button is
+ * arriving after them and not before.
+ *
+ * The attempt counter resets. The five attempts already spent were against a
+ * condition the person has decided has changed, and carrying them over would
+ * mean a retry that gets one try — which is not a retry.
+ */
+export async function retryDeadLetteredWrite(id: string): Promise<FlushResult> {
+  const items = await deadLetterList();
+  const item = items.find((record) => record.id === id);
+  if (!item) return { synced: 0, failed: 0, deadLettered: 0 };
+
+  // Requeue FIRST, then remove. The other order can lose the write entirely if
+  // the tab closes between the two — and losing it is the one outcome this
+  // whole subsystem exists to prevent.
+  await outboxAdd({
+    id: crypto.randomUUID(),
+    kind: item.kind,
+    // The payload keeps its existing idempotency key: that is what makes a
+    // retry of something that secretly succeeded a no-op rather than a
+    // duplicate.
+    payload: item.payload,
+    queuedAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await deadLetterRemove(id);
+
+  return flushQueuedWrites();
+}
+
 export interface FlushResult {
   synced: number;
   /** Still queued, will be retried on the next reconnect. */

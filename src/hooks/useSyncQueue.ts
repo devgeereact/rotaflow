@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
   discardDeadLetteredWrite,
+  retryDeadLetteredWrite,
   enqueueWrite,
   flushQueuedWrites,
   listDeadLetteredWrites,
@@ -26,6 +27,8 @@ export interface UseSyncQueue {
   flush: () => Promise<FlushResult>;
   /** Acknowledge a failed write and remove it from the review list. */
   discard: (id: string) => Promise<void>;
+  /** Put a dead-lettered write back in the queue and try it again (CAP-016). */
+  retry: (id: string) => Promise<void>;
   syncing: boolean;
 }
 
@@ -106,5 +109,17 @@ export function useSyncQueue(): UseSyncQueue {
     [refresh],
   );
 
-  return { pending, deadLettered, enqueue, flush, discard, syncing };
+  // Safe to repeat because of the idempotency keys (0081): a write that did
+  // land the first time is recognised and marked synced rather than inserted
+  // twice. Without those, a retry button would be a way to double-clock
+  // somebody.
+  const retry = useCallback(
+    async (id: string): Promise<void> => {
+      await retryDeadLetteredWrite(id);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  return { pending, deadLettered, enqueue, flush, discard, retry, syncing };
 }

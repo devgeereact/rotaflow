@@ -85,7 +85,7 @@ export function LeavePage(): JSX.Element {
   const { canApprove } = usePermissions();
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
-  const { enqueue, deadLettered, discard } = useSyncQueue();
+  const { enqueue, deadLettered, discard, retry } = useSyncQueue();
   const { showError, showSuccess } = useToast();
 
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
@@ -370,7 +370,12 @@ export function LeavePage(): JSX.Element {
     <>
       {/* P0-1's dead-letter surface: a leave request that can never sync has
           to be visible here, not just in the outbox. */}
-      <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mb-6" />
+      <FailedWritesNotice
+        items={deadLettered}
+        onDiscard={discard}
+        onRetry={retry}
+        className="mb-6"
+      />
 
       {canApprove ? (
         <ManagerLeave

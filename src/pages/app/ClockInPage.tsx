@@ -122,7 +122,7 @@ export function ClockInPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const online = useOnlineStatus();
   const geo = useGeolocation();
-  const { enqueue, deadLettered, discard, pending } = useSyncQueue();
+  const { enqueue, deadLettered, discard, retry, pending } = useSyncQueue();
   const { showError, showSuccess } = useToast();
   const navigate = useNavigate();
 
@@ -493,7 +493,12 @@ export function ClockInPage(): JSX.Element {
           must not look alike. The banner above is reassuring on purpose. Those
           events will send. This one has to correct a belief: the person tapped
           Clock in, saw it succeed, and is not clocked in. */}
-      <FailedWritesNotice items={deadLettered} onDiscard={discard} className="mt-6" />
+      <FailedWritesNotice
+        items={deadLettered}
+        onDiscard={discard}
+        onRetry={retry}
+        className="mt-6"
+      />
     </>
   );
 

@@ -23,6 +23,7 @@ import {
   enqueueWrite,
   flushQueuedWrites,
   listDeadLetteredWrites,
+  retryDeadLetteredWrite,
   listQueuedWrites,
 } from '@/services/syncQueue';
 
@@ -458,5 +459,70 @@ describe('classifyFailure, on an HTTP status', () => {
 
   it('does not retry a rejected payload', () => {
     expect(classifyFailure(httpError('bad request', 400))).toBe('permanent');
+  });
+});
+
+describe('retryDeadLetteredWrite (CAP-016)', () => {
+  it('delivers a write whose reason for failing has gone away', async () => {
+    // The common case, and the one the dismiss-only notice could not serve:
+    // the payload was always correct and only the moment was wrong — a ward's
+    // wifi during handover, a shift published a minute later.
+    await enqueueWrite('clock', { seq: 1 });
+    mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
+    await flushQueuedWrites();
+
+    const [dead] = await listDeadLetteredWrites();
+    expect(dead).toBeDefined();
+
+    mockedRecordClockEvent.mockResolvedValue({} as never);
+    const result = await retryDeadLetteredWrite(dead!.id);
+
+    expect(result.synced).toBe(1);
+    expect(await listDeadLetteredWrites()).toHaveLength(0);
+    expect(await listQueuedWrites()).toHaveLength(0);
+  });
+
+  it('keeps the idempotency key, so a retry of something that did land is not a double', async () => {
+    // This is why the button arrives AFTER 0081 and not before. Without the
+    // key surviving the requeue, "try again" on a clock-in that secretly
+    // succeeded would be a way to clock somebody in twice.
+    await enqueueWrite('clock', { type: 'in' });
+    mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
+    await flushQueuedWrites();
+
+    const [dead] = await listDeadLetteredWrites();
+    const keyBefore = (dead!.payload as { client_event_id?: string }).client_event_id;
+    expect(keyBefore).toBeTruthy();
+
+    mockedRecordClockEvent.mockResolvedValue({} as never);
+    await retryDeadLetteredWrite(dead!.id);
+
+    const sent = mockedRecordClockEvent.mock.calls.at(-1)?.[0] as {
+      client_event_id?: string;
+    };
+    expect(sent.client_event_id).toBe(keyBefore);
+  });
+
+  it('puts it back in the dead-letter list if it fails again', async () => {
+    // A retry is not a promise. What it must not do is lose the write on the
+    // way through — requeue happens before the removal for exactly that
+    // reason.
+    await enqueueWrite('clock', { seq: 9 });
+    mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
+    await flushQueuedWrites();
+
+    const [dead] = await listDeadLetteredWrites();
+    const result = await retryDeadLetteredWrite(dead!.id);
+
+    expect(result.deadLettered).toBe(1);
+    expect(await listDeadLetteredWrites()).toHaveLength(1);
+  });
+
+  it('does nothing for an id that is not there', async () => {
+    expect(await retryDeadLetteredWrite('no-such-id')).toEqual({
+      synced: 0,
+      failed: 0,
+      deadLettered: 0,
+    });
   });
 });
