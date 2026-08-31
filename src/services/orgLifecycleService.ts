@@ -79,7 +79,6 @@ const EXPORTED_TABLES = [
   'departments',
   'staff_profiles',
   'shift_types',
-  'shift_templates',
   'rotas',
   'shifts',
   'availability',
