@@ -174,6 +174,19 @@ mistaken for a running job:
 | Platform audit log                | Indefinite                  | **Yes** — a dedicated trigger rejects every `UPDATE`/`DELETE` (§5); enforced by the database, not a scheduled job                                                                                                                                               |
 | Deleted-tenant data               | 1 month grace, then erasure | **Partly.** An owner can delete their organisation on demand (`0063`, `delete_organisation`, pgTAP-tested), which cascades immediately. What is _not_ enforced is the one-month grace window or any scheduled purge — deletion is a deliberate act, not a timer |
 
+**Nothing added on 2026-08-31 needs a row here, and that is a decision rather
+than an oversight.** Six tables arrived that day. `staff_locations`,
+`notification_templates` and `support_sla_targets` are configuration, not
+history — ageing them out would delete a setting somebody is still using.
+`role_delegations` and `calendar_feed_tokens` are small and their revoked rows
+are the evidence that cover ended or a feed was rotated, which is the thing
+somebody would ask about. **`staff_pay_rates` is the one worth arguing over**:
+it is financial history, HMRC expects payroll records kept for years, and
+deleting a rate makes every past labour-cost figure unreproducible — so it is
+kept, and if a policy is ever wanted it should be a long one, set deliberately.
+The rate rides along with the anonymised staff record after an erasure, where
+it identifies nobody.
+
 ### 3a. Incident, 7–20 August 2026: the job existed and never once completed
 
 _Resolved — see §3b. Kept because the failure mode is worth remembering, not
