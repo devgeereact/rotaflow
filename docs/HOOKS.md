@@ -64,9 +64,14 @@ in the same transaction as the event that owes it — rota publication (0069),
 leave and swap decisions and announcements (0087) — and drained by pg_cron.
 
 Nothing in the app dispatches a notification any more, so there is no hook to
-call. `postInngestEvent` survives in `src/services/notificationDispatchService.ts`
-for one reason: an install that queued a `notify` item in its IndexedDB outbox
-before this change still holds it, and the replayer needs somewhere to send it.
+call, and there is no longer a service behind it either:
+`src/services/notificationDispatchService.ts` is deleted. This section said it
+survived to carry `postInngestEvent` for old queued items; the replay path it
+described lives in `src/services/syncQueue.ts` instead, where the `notify`
+handler resolves without sending. An item queued by an older install therefore
+**drains away** on the next reconnect rather than retrying against a host that
+is gone and then sitting in the dead-letter list — the work is not lost, it is
+no longer owed, because whatever owed it now enqueues its own row.
 
 See `docs/SAAS.md` GAP-026 for why browser-initiated dispatch was lossy.
 

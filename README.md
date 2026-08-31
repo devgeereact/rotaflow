@@ -13,8 +13,10 @@ Security.
 
 ## What it does
 
-- **Rota builder** — weekly/fortnightly/monthly drag-and-drop grid, shift templates,
-  copy-previous-week, conflict detection, colour coding.
+- **Rota builder** — weekly/fortnightly/monthly drag-and-drop grid, reusable shift types
+  (name, colour, default times), copy-previous-week and repeat-forward, conflict
+  detection, colour coding. _(`shift_templates` was a table nothing read; `0096` removed
+  it rather than building a reader — `shift_types` already did the job.)_
 - **Staff app** — installable, offline-first rota view with an ICS calendar download.
 - **Availability, leave & overtime** — staff submit, managers approve.
 - **Shift swaps** — request → colleague → manager approval → rota updates.
@@ -51,7 +53,7 @@ is actually built** — the capability register is the honest, per-feature statu
 | Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                                 |
 | AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                                           |
 | Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                                     |
-| Background jobs | `pg_cron` + `pg_net` in Postgres | Notification outbox drain, nightly retention, health probe. Inngest is retired as a dispatch path (`0087`) — its key still ships and is unused |
+| Background jobs | `pg_cron` + `pg_net` in Postgres | Notification outbox drain, nightly retention, health probe. Inngest is fully retired (`0087`): no function, no key, no dispatch                  |
 | Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                                      |
 | Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                                  |
 | Motion          | Framer Motion                    | Micro-interactions & page transitions                                                                                                          |
@@ -85,7 +87,7 @@ In the Supabase SQL editor, run the migrations **in order**:
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_rotaflow.sql
 …
-supabase/migrations/0099_calendar_feed_tokens.sql
+supabase/migrations/0111_erasure_misses_email.sql   # whatever the last one is today
 ```
 
 **Run every file in `supabase/migrations/`, in numeric order** — there are 111, and they
@@ -129,7 +131,7 @@ npm run dev        # http://localhost:5042  (strictPort — fails loudly if take
 npm run typecheck
 npm run lint
 npm run format:check   # a separate CI gate — green tsc + eslint does not imply this passes
-npm test               # 636 unit tests, pinned to Europe/London
+npm test               # unit suite, pinned to Europe/London (the count is whatever vitest prints — it was written down here as 636 while it was 701)
 npm run build          # emits ./dist
 npm run preview        # smoke-test the production bundle
 ```

@@ -25,9 +25,15 @@
 until `0087`: the browser posted an event, Inngest called an Edge Function, and
 anything that failed after the write had already committed was simply lost. Every
 notification is now enqueued by the database in the same transaction as the event
-that owes it and drained by `pg_cron` (`0069`, `0083`, `0087`). The `inngest`
-Edge Function still exists and is deployed, but nothing in the app dispatches to
-it. See `docs/SAAS.md` GAP-026.
+that owes it and drained by `pg_cron` (`0069`, `0083`, `0087`). Nothing of it is
+left: the `inngest` Edge Function is gone from this repository **and** from the
+project — the eight functions deployed on 2026-08-31 are `ai-rota-assistant`,
+`send-notification`, `test-smtp`, `create-checkout-session`,
+`create-portal-session`, `stripe-webhook`, `send-invite` and `calendar-feed` —
+and the event key was removed from `.env`/`.env.example` the same day. This
+paragraph said "still exists and is deployed" until it was read against the
+project; a function list is one API call away and was worth not guessing at.
+See `docs/SAAS.md` GAP-026.
 
 The static bundle talks to each managed service directly over HTTPS. cPanel only
 serves files. It never runs application logic.
@@ -244,8 +250,12 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 ## 8. Security posture
 
 - Only browser-safe keys ship: Supabase **anon** (RLS-guarded) and ImageKit
-  **public**. The Inngest write-only event key is still built into the bundle and
-  is now unused — nothing dispatches to Inngest since `0087`.
+  **public**. The Inngest write-only event key shipped alongside them, unused,
+  from `0087` until 2026-08-31, when it was deleted from `.env`. Deleting its
+  last reader in code was not enough — Vite emits `import.meta.env` as a whole
+  object, so every `VITE_*` variable is inlined whether anything reads it or
+  not. **A key is out of the bundle when `grep` says so, not when the code that
+  used it is gone.**
 - `service_role`, Stripe's secret and webhook secrets, the VAPID private key, SMTP
   credentials, `OPENROUTER_API_KEY` and DB credentials never touch the client. They
   are Supabase Edge Function secrets, and the notification shared secret is not even

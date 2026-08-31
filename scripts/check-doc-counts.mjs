@@ -22,9 +22,40 @@
  * fails; a person decides.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
 const migrations = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).length;
+
+/**
+ * The sub-processor list's evidence paths, resolved against the tree.
+ *
+ * `src/lib/subprocessors.ts` states, in its own header, that every row must
+ * cite something a reviewer can check, "because a customer will rely on it".
+ * On 2026-08-31 one row did not: Inngest was published at `/legal/trust` as
+ * receiving recipient ids and notification bodies, citing a service file that
+ * had been deleted two weeks earlier along with the dispatch path itself
+ * (BUG-067). The claim was wrong in the customer's favour, which is exactly
+ * why nobody looked.
+ *
+ * This is the cheapest possible guard and deliberately not more: it pulls the
+ * path-shaped TOKENS out of each `evidence` string and resolves those. A row
+ * citing an environment variable or a Cloudflare setting is not something a
+ * script can check, and pretending otherwise would be a gate that passes
+ * because it cannot see anything. Several rows cite both at once — "src/lib/
+ * sentry.ts, VITE_SENTRY_DSN" — so the string is scanned rather than tested
+ * whole, or the useful half would be thrown away with the uncheckable half.
+ */
+const REPO_PATH = /\b(?:src|supabase|scripts|public|docs|e2e)\/[A-Za-z0-9_./-]*[A-Za-z0-9_/-]/gu;
+
+function subProcessorEvidence() {
+  const file = 'src/lib/subprocessors.ts';
+  const contents = readFileSync(file, 'utf8');
+  const cited = [...contents.matchAll(/evidence:\s*\n?\s*'([^']+)'/gu)].map((m) => m[1]);
+  const missing = cited
+    .flatMap((e) => e.match(REPO_PATH) ?? [])
+    .filter((path) => !existsSync(path));
+  return { file, cited: cited.length, missing };
+}
 
 /**
  * The register's own status table, counted from the register's own rows.
@@ -125,6 +156,27 @@ let failed = false;
   }
 
   if (!failed) console.log(`  ok  ${file}: ${total} capability rows match the summary table`);
+}
+
+{
+  const { file, cited, missing } = subProcessorEvidence();
+  if (cited === 0) {
+    console.error(
+      `::error file=${file}::No evidence strings matched. The shape of SUB_PROCESSORS changed, ` +
+        `and this check silently stopped checking — which is worse than not having it.`,
+    );
+    failed = true;
+  }
+  for (const path of missing) {
+    console.error(
+      `::error file=${file}::A sub-processor cites ${path}, which does not exist. ` +
+        `That row is published at /legal/trust; either fix the citation or remove the processor.`,
+    );
+    failed = true;
+  }
+  if (!missing.length && cited > 0) {
+    console.log(`  ok  ${file}: ${cited} sub-processors, every repo-path citation resolves`);
+  }
 }
 
 for (const check of CHECKS) {

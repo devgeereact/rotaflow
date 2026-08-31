@@ -101,12 +101,12 @@ Same layout-route pattern as §3, at `/app/account`. Every role sees every tab. 
 | ------ | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅     | Team management. Issue/revoke invites          | Settings → Permissions (`/app/settings/permissions`). The _directory_ is a separate screen, `/app/team`                                                                                                                                                                     |
 | ✅     | Overtime. Raise, withdraw, approve             | `/app/overtime` → `OvertimePage` / `OvertimeView`. Open to every role; the page's Team toggle is what gates the approval queue behind `canApprove`                                                                                                                          |
-| ✅     | Help & support                                 | `/app/help` → `HelpPage`. FAQ plus "Contact support", which calls `openSupportCase` (0024) and lands in the platform console's queue (§11)                                                                                                                                  |
+| ✅     | Help & support                                 | `/app/help` → `HelpPage`. FAQ, "Contact support" (`openSupportCase`, 0024) landing in the platform console's queue (§11), and "Your requests": the requester's own cases, the non-internal thread, a **reply** into it on any case that is not closed (`reply_to_support_case`, GAP-012) and a 1-5 rating once resolved |
 | ✅     | Notifications inbox. Read, push opt-in         | `/app/notifications`                                                                                                                                                                                                                                                        |
 | ✅     | Account settings                               | `/app/account/*` (see §4)                                                                                                                                                                                                                                                   |
 | ✅     | Forgot / reset password                        | `/forgot-password`, `/reset-password`                                                                                                                                                                                                                                       |
 | ✅     | Accept invite. Public, pre-signup              | `/invite/:token`                                                                                                                                                                                                                                                            |
-| ✅     | Legal. Privacy, Terms, Cookies, Accessibility  | `/legal/privacy`, `/legal/cookies` and `/legal/accessibility` are written from the code and checkable against it (CAP-060, 2026-08-31); `/legal/terms` is still the placeholder shell, because a contract cannot be derived from a codebase. All linked from `PublicFooter` |
+| ✅     | Legal. Privacy, Terms, Cookies, Accessibility, Trust | **Five routes, not four.** `/legal/privacy`, `/legal/cookies` and `/legal/accessibility` are written from the code and checkable against it (CAP-060, 2026-08-31); `/legal/trust` publishes the sub-processor list, the AI transparency notice and the security disclosure policy from `src/lib/subprocessors.ts`, and `npm run check:docs` now resolves each row's cited path (BUG-067); `/legal/terms` is still the placeholder shell, because a contract cannot be derived from a codebase. All linked from `PublicFooter` |
 | ✅     | OAuth / magic-link return                      | `/auth/callback` → `AuthCallbackPage` (`src/components/RouteAliases.tsx`)                                                                                                                                                                                                   |
 | ✅     | Permission denied. Role, requirement, way back | rendered by `RequireRole` on a gated route                                                                                                                                                                                                                                  |
 | ✅     | 404                                            | `*`                                                                                                                                                                                                                                                                         |
@@ -159,8 +159,8 @@ reached via the bell.
 
 | Status | Item                                          | Note                                                                                                                                                                                                 |
 | ------ | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ❌     | Shift templates                               | `shift_templates` table exists; nothing reads it, client or server. The one genuinely inert table left (§8)                                                                                          |
-| ❌     | Staff self-service for own contacts/documents | Owner/manager-only today, via `/app/team/:staffId`, which `RequireRole` gates to managers. Nothing on `/app/account/*` edits emergency contacts or documents                                         |
+| ⚫     | Shift templates                               | **Removed rather than built, `0096`.** The table was created in `0002` and never read; a reader would have largely duplicated `shift_types`, which already carries name, colour and default times. Deleting the row was the decision, not the deferral (BUG-051) |
+| ❌     | Staff self-service for own contacts/documents | Narrower than it reads: `0042` lets a staff member update their own `phone` and `photo_url`, and a trigger holds everything else to owner/manager. Emergency contacts and documents are still read and written only from `/app/team/:staffId` (`RequireRole`, manager-gated); no `/app/account/*` screen touches either |
 | ❌     | Document / avatar upload                      | `documents.file_url` and `photo_url` are pasted links. ImageKit is wired for _delivery_ only (`src/lib/imagekit.ts` builds transformed URLs from a path already in storage); nothing signs an upload |
 | ❌     | Email change                                  | Needs Supabase's confirmation round-trip on both addresses. `supabase.auth.updateUser` is called for passwords only                                                                                  |
 | ❌     | QR clock-in                                   | GPS + manual only. `clock_events` records `gps \| qr \| manual`, but nothing generates a per-location code, and there is no PIN in the schema either. See `ClockActionPane`                          |
@@ -174,15 +174,15 @@ Two long-standing ❌ rows here have been closed and moved:
 
 ## 8. Tables with no UI
 
-**`shift_templates`. That is the whole list** for the _UI_. Verified by grepping `src/` and
-`supabase/` for `from('<table>')`: no screen reads or writes it, and its generated row
-type in `src/types/database.types.ts` is otherwise unused. One server-side reader does
-exist — `orgLifecycleService.ts` includes it in the organisation export, and `0063`
-deletes it with the tenant — so "no reader anywhere" is no longer true. It remains
-empty structure someone deliberately left.
+**The list is empty.** It held one entry, `shift_templates`, and `0096` dropped the table
+on 2026-08-31 rather than building the reader it had been waiting for since `0002` —
+`shift_types` already carries the name, colour and default times a template would have,
+so the reader would mostly have duplicated it (BUG-051). Nothing is left in `public` that
+no screen reaches.
 
-This section used to name four tables. The other three grew UI and are listed
-here so nobody re-derives the old claim from a stale memory:
+Do not re-derive this from a memory of the old text: the section named four tables at one
+point, three grew UI, and the fourth was deleted. All four are listed here so the stale
+version cannot be reconstructed:
 
 - **`audit_logs`** is read by `auditService` (Settings → Audit, My Profile →
   Activity, and the Leave and Timesheets screens) and, in the console, by
@@ -299,6 +299,19 @@ independently.
 The same rule governs feature claims: nothing goes in `PRODUCT_BENEFITS` that is
 not built, checked against this document first.
 
+## Deleted from `docs/design/`
+
+`screenshoots/` — 21 screenshots, 14 MB, referenced by nothing in this repository and
+deleted on 2026-08-31. They were captures of the **demo dataset**, which was torn down on
+2026-08-14, on **`rota.gakinz.com`**, which was retired on 2026-08-29, and they included
+the owner's own browser chrome and bookmark bar. A design reference this document cites by
+name earns its place; a screenshot of data that no longer exists on a host that no longer
+exists does not, least of all in a public repository.
+
+**They remain in git history.** Deleting a file from the working tree does not unpublish
+it — treat anything ever committed here as public, and do not read this row as a
+remediation.
+
 ## Counts
 
 35 screen mockups in `docs/design/`: **35 ✅ built · 0 🟡 partial · 0 ❌ not built.**
@@ -306,8 +319,8 @@ not built, checked against this document first.
 Plus, with no mockup file of their own:
 
 - **11 rows in §5** — team management, overtime, help, notifications inbox,
-  account settings, forgot/reset password, accept invite, the four legal pages,
-  the OAuth callback, permission denied, 404.
+  account settings, forgot/reset password, accept invite, the legal pages (five
+  routes, in one row), the OAuth callback, permission denied, 404.
 - **18 platform-console screens in §11** (`/admin/*`), referenced by
   `docs/PLATFORM_CONSOLE.html`.
 - **6 designed tabs** specified by the §3/§4 tab bars — Permissions, Roles,

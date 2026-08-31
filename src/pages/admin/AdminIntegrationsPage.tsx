@@ -24,7 +24,7 @@ import type { Organisation, OrgSmtpSettingsSafe } from '@/types';
  * ## Two different kinds of integration, kept apart
  *
  * **Platform services** are build-time configuration: Sentry, ImageKit,
- * Inngest, push keys. They are the same entries `/admin/platform-health`
+ * push keys. They are the same entries `/admin/platform-health`
  * reports as "configured", read from the same source, and they answer "will
  * this deployment try to use the service". They do **not** prove the far end is
  * up. Nothing here probes it, and a green tick that means "a key is present"

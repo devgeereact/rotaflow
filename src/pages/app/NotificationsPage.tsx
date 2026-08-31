@@ -30,7 +30,7 @@ import type { Notification } from '@/types';
 
 /**
  * `notifications.type` is free text (no check constraint, docs/SCHEMA.md §3),
- * written by whichever Inngest function dispatched the row, so this can never
+ * written by whichever database trigger enqueued the row, so this can never
  * be exhaustive. It covers the values `send-notification`'s callers use today,
  * keyed to the same icons the sidebar already uses
  * for the equivalent screen (Umbrella=Leave, Repeat2=Swaps, etc.), and falls
@@ -55,10 +55,11 @@ const DEFAULT_TYPE_META = {
 
 /**
  * `/app/notifications`. Read + mark-read against the real `notifications`
- * table. Will be genuinely empty on a fresh deploy: nothing writes into it
- * until send-notification is deployed and its Inngest routing is configured
- * (both manual, out-of-repo steps. See that function's header comment).
- * This screen is correct and ready for whenever that lands.
+ * table. Genuinely empty until something happens that owes a notification:
+ * rows are written by `send-notification`, which the `pg_cron` outbox drain
+ * calls (`0069`, `0087`, `0091`). No manual routing step stands between a
+ * published rota and this screen any more — the Inngest configuration this
+ * comment used to name was deleted by `0087`.
  */
 export function NotificationsPage(): JSX.Element {
   const { user } = useSupabaseAuth();
