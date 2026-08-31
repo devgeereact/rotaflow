@@ -40,8 +40,22 @@ name: backup
 #     | psql "$TARGET_DB_URL"
 #
 # Restore into a SCRATCH project first and look at it. A backup nobody has
-# restored is a belief, not a backup — GAP-001 tracks that separately as the
-# test restore that has never been performed.
+# restored is a belief, not a backup.
+#
+# ## The rehearsal job below is what makes it more than a belief
+#
+# `verify-restore` takes the dump this run just produced, decrypts it, and
+# restores it into a throwaway PostgreSQL in the runner — then asserts that
+# what came back is a database rather than a file: the tables exist, the row
+# counts are reported, and the critical ones are present.
+#
+# It does NOT replace a human restoring into a real Supabase project and
+# looking at the app against it. A logical dump restored into stock Postgres
+# proves the DATA survived; it cannot prove that auth, storage and RLS come
+# back, because those are Supabase's and are not in this dump. ❓-005 stays
+# open until somebody does the real thing. What this closes is the failure
+# where the nightly job produces an encrypted file for months and the first
+# person to open it discovers it never contained anything.
 
 on:
   schedule:
@@ -126,3 +140,102 @@ jobs:
           path: '*.sql.gz.gpg'
           retention-days: 90
           if-no-files-found: error
+
+  # ── Does the thing we just wrote actually restore? ─────────────────────
+  #
+  # Skipped automatically when `dump` fails, which includes the
+  # secrets-missing case — one red job for one problem, rather than two.
+  verify-restore:
+    name: verify-restore
+    needs: dump
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: rehearsal
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Fetch the dump this run produced
+        uses: actions/download-artifact@v7
+        with:
+          name: rotaflow-db-backup
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Decrypt and restore
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          PGPASSWORD: rehearsal
+        run: |
+          set -euo pipefail
+          file=$(ls rotaflow-*.sql.gz.gpg | head -1)
+          echo "Restoring $file"
+
+          # Roles and extensions belong to Supabase and are not in this dump,
+          # so a plain restore into stock PostgreSQL WILL log errors about
+          # `supabase_admin`, `auth`, `storage` and similar. That is expected
+          # rather than a failure, which is why ON_ERROR_STOP is off — the
+          # test is what came back, asserted below, not whether every
+          # statement applied. Silence here would be the misleading answer.
+          gpg --decrypt --batch --quiet --passphrase "$PASSPHRASE" "$file" \
+            | gunzip \
+            | psql -h localhost -U postgres -d postgres > restore.log 2> restore.err || true
+
+          echo "--- last 20 lines of stderr (roles and extensions are expected) ---"
+          tail -20 restore.err || true
+
+      - name: Assert a database came back, not a file
+        env:
+          PGPASSWORD: rehearsal
+        run: |
+          set -euo pipefail
+          q() { psql -h localhost -U postgres -d postgres -tAc "$1"; }
+
+          tables=$(q "select count(*) from information_schema.tables where table_schema='public'")
+          echo "public tables restored: $tables"
+
+          # The schema is 50+ tables. A handful means the restore fell over
+          # early and the file is not what it claims to be.
+          if [ "$tables" -lt 40 ]; then
+            echo "::error::Only $tables tables restored. This backup would not bring the product back."
+            exit 1
+          fi
+
+          # The four whose loss would be unrecoverable rather than annoying:
+          # who the customers are, what they are working, what they were paid
+          # for, and the record of who did what.
+          for t in organisations shifts clock_events audit_logs; do
+            exists=$(q "select to_regclass('public.$t') is not null")
+            if [ "$exists" != "t" ]; then
+              echo "::error::$t is missing from the restored database."
+              exit 1
+            fi
+            echo "  $t: $(q "select count(*) from public.$t") rows"
+          done
+
+          # Reported rather than asserted. Production is pre-launch and
+          # legitimately near-empty, so a row-count threshold here would fail
+          # every night for a reason that is not a backup problem — and would
+          # be quietly deleted by whoever got tired of it.
+          echo "Restore rehearsal passed. This proves the DATA survives a"
+          echo "round trip; auth, storage and RLS are Supabase's and are not"
+          echo "in this dump. See docs/SAAS.md ❓-005."

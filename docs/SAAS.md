@@ -633,7 +633,14 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/services/reviewConcurrency.test.ts` · BUG-061 · P2
 - [ ] CAP-106 ❓-004 Real-device offline UAT has never been performed
       **Test:** sign up → publish → no-signal clock-in → reconnect → correction, on real hardware · P1
-- [ ] CAP-107 ❓-005 No restore has ever been performed from a backup
+- [ ] CAP-107 ❓-005 No restore has ever been performed from a backup by a person — **but the
+      nightly job now rehearses one.** `verify-restore` decrypts the dump it just took, restores
+      it into a throwaway PostgreSQL and asserts a database came back rather than a file: 40+
+      tables, and `organisations`, `shifts`, `clock_events` and `audit_logs` all present with
+      their row counts printed. That closes the failure where the job writes an encrypted file
+      for months and the first person to open it finds it never contained anything. It does NOT
+      close this row: a logical dump into stock Postgres proves the DATA survives, and auth,
+      storage and RLS are Supabase's and are not in the dump
       **Test:** restore a snapshot into a scratch project and diff the row counts · **P0**
 - [x] CAP-108 🟢 `pg_cron` retention job — verified scheduled on production as `rotaflow-retention @ 15 2 * * *`
       `supabase/migrations/0029_retention_enforcement.sql` · ❓-006 answered 2026-08-29
