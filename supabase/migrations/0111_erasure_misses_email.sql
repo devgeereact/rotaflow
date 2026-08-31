@@ -130,7 +130,10 @@ returns table (column_name text, reason text)
 language sql
 immutable
 as $$
-  values
+  -- `select * from (values …) as t(…)` rather than a bare `VALUES … AS t(…)`:
+  -- the alias is only valid in a FROM clause, and a top-level VALUES with one
+  -- is a syntax error that the local SQL parser accepted and Postgres did not.
+  select * from (values
     ('id',                'The row''s own key. Meaningless without the fields around it.'),
     ('org_id',            'Which organisation the anonymous record belongs to.'),
     ('department_id',     'Where the work happened, not who did it.'),
@@ -143,7 +146,7 @@ as $$
     ('active',            'Set false BY the erasure.'),
     ('created_at',        'When the record was made.'),
     ('updated_at',        'When it last changed.')
-  as t(column_name, reason);
+  ) as t(column_name, reason);
 $$;
 
 comment on function public.erasure_retained_columns() is
