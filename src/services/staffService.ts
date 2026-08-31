@@ -100,3 +100,30 @@ export async function deactivateStaffProfile(id: string): Promise<StaffProfile> 
 export async function reactivateStaffProfile(id: string): Promise<StaffProfile> {
   return updateStaffProfile(id, { active: true });
 }
+
+/**
+ * Create several staff records in one round trip (CAP-084).
+ *
+ * One `insert` with an array rather than a loop of single inserts: sixty
+ * round trips on a hotel wifi is a minute of a progress bar, and a loop that
+ * fails on row 41 leaves the customer with a half-imported team and no way to
+ * tell which half.
+ *
+ * It is NOT one transaction — PostgREST does not offer one — so the seat
+ * limit (`0070`) can still refuse the batch partway. That is why the caller
+ * reports how many landed rather than "done", and why the preview screen
+ * shows the seat count before anything is sent.
+ */
+export async function createStaffProfiles(
+  rows: readonly StaffProfileInsert[],
+): Promise<StaffProfile[]> {
+  if (rows.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('staff_profiles')
+    .insert(rows as StaffProfileInsert[])
+    .select('*');
+
+  if (error) throw error;
+  return data ?? [];
+}

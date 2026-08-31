@@ -1,4 +1,4 @@
-import { Download, Plus } from 'lucide-react';
+import { Download, FileUp, Plus } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Button } from '@/components/ui/Button';
 import { Callout } from '@/components/ui/Callout';
@@ -27,6 +27,8 @@ export interface TeamDirectoryViewProps {
   onOpenActions: (row: TeamRow) => void;
   onExport: () => void;
   onAddStaff?: () => void;
+  /** Manager-only, like adding one person. Absent means the button is not shown. */
+  onImportStaff?: () => void;
 }
 
 /**
@@ -54,6 +56,7 @@ export function TeamDirectoryView({
   onOpenActions,
   onExport,
   onAddStaff,
+  onImportStaff,
 }: TeamDirectoryViewProps): JSX.Element {
   return (
     <div>
@@ -66,6 +69,12 @@ export function TeamDirectoryView({
               <Download size={14} aria-hidden="true" className="mr-1.5" />
               Export
             </Button>
+            {onImportStaff && (
+              <Button variant="secondary" onClick={onImportStaff}>
+                <FileUp size={14} aria-hidden="true" className="mr-1.5" />
+                Import
+              </Button>
+            )}
             {onAddStaff && (
               <Button onClick={onAddStaff}>
                 <Plus size={16} aria-hidden="true" className="mr-1.5" />

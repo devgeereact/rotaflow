@@ -17,6 +17,7 @@ import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
 import {
   createStaffProfile,
+  createStaffProfiles,
   deactivateStaffProfile,
   listStaff,
   reactivateStaffProfile,
@@ -36,6 +37,8 @@ import {
 } from '@/components/staff/StaffActionsModal';
 import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModal';
 import { DocumentsModal } from '@/components/staff/DocumentsModal';
+import { ImportStaffModal } from '@/components/staff/ImportStaffModal';
+import type { ImportPreview } from '@/lib/csvImport';
 import { StaffFormModal, type StaffFormValues } from '@/components/staff/StaffFormModal';
 import {
   buildTeamRows,
@@ -103,6 +106,7 @@ export function StaffPage(): JSX.Element {
   const [departmentId, setDepartmentId] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffProfile | null>(null);
   const [actionsFor, setActionsFor] = useState<StaffProfile | null>(null);
   const [emergencyContactsFor, setEmergencyContactsFor] = useState<StaffProfile | null>(
@@ -363,6 +367,45 @@ export function StaffPage(): JSX.Element {
     setActionsFor(staff.find((person) => person.id === row.id) ?? null);
   };
 
+  /**
+   * Import a checked spreadsheet (CAP-084).
+   *
+   * Only the rows with no problems are sent. The skipped ones stay on screen
+   * in the modal, which is the point of the preview — an import that quietly
+   * took 57 of 60 people and said "done" is how a shift goes uncovered.
+   *
+   * The department is matched by name, case-insensitively, because that is
+   * what the spreadsheet has. An unmatched name imports the person with no
+   * department rather than refusing them: a department is a filter, not an
+   * identity.
+   */
+  const handleImport = async (preview: ImportPreview): Promise<number> => {
+    if (!orgId) return 0;
+
+    const byName = new Map(departments.map((d) => [d.name.toLowerCase(), d.id]));
+    const rows: StaffProfileInsert[] = preview.rows
+      .filter((row) => row.problems.length === 0)
+      .map((row) => ({
+        org_id: orgId,
+        first_name: row.values.firstName,
+        last_name: row.values.lastName,
+        email: row.values.email,
+        job_title: row.values.jobTitle,
+        department_id: row.values.department
+          ? (byName.get(row.values.department.toLowerCase()) ?? null)
+          : null,
+        contract_type: row.values.contractType,
+        weekly_hours: row.values.weeklyHours,
+        payroll_id: row.values.payrollId,
+        start_date: row.values.startDate,
+        phone: row.values.phone,
+      }));
+
+    const created = await createStaffProfiles(rows);
+    await load();
+    return created.length;
+  };
+
   const handleExport = (): void => {
     downloadCsv(`rotaflow-team-${todayIso}`, filtered, [
       { label: 'Name', value: (r) => `${r.firstName} ${r.lastName}` },
@@ -412,6 +455,7 @@ export function StaffPage(): JSX.Element {
                 }
               : undefined
           }
+          onImportStaff={canManageStaff ? () => setImportOpen(true) : undefined}
         />
       )}
 
@@ -420,6 +464,14 @@ export function StaffPage(): JSX.Element {
         staffName={actionsFor ? `${actionsFor.first_name} ${actionsFor.last_name}` : ''}
         actions={actionsFor ? actionsFrom(actionsFor) : []}
         onClose={() => setActionsFor(null)}
+      />
+
+      <ImportStaffModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        existingEmails={staff.map((s) => s.email).filter((e): e is string => Boolean(e))}
+        departments={departments}
+        onImport={handleImport}
       />
 
       <StaffFormModal
