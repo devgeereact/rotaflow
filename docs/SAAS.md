@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 106 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 107 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 83    |
+| 🟢 Complete           | 84    |
 | 🟡 Partial            | 11    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 4     |
+| 🔴 Missing            | 3     |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -185,8 +185,13 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-005 ⚫ Shift templates — removed rather than built. A pre-filled placement is a different
       feature from a shift type, and should be designed as one if it is ever wanted
       `supabase/migrations/0096_drop_shift_templates.sql` · BUG-051 closed #229
-- [ ] CAP-006 🔴 Recurring shifts / repeating patterns — only copy-previous-week and single duplicate exist
-      `src/pages/app/RotaBuilderPage.tsx` · P3
+- [x] CAP-006 🟢 Repeating a week — `repeat_rota_weeks()` copies a week forward up to 26 weeks
+      in one transaction, rather than twelve rounds of copy-navigate-paste and several hundred
+      round trips that can each fail alone. The arithmetic is done in the SITE'S timezone: in
+      UTC a 07:00 shift becomes 08:00 after the last Sunday in March, and nobody notices until
+      somebody turns up late. It never writes over a published week or a draft already holding
+      work, and reports how many it left alone
+      `supabase/migrations/0107_repeat_rota_weeks.sql` · 9 pgTAP assertions
 - [x] CAP-007 🟢 Conflict detection — leave, overlap, declared unavailability as hard blockers
       `src/lib/rotaInsights.ts`
 - [x] CAP-008 🟢 Overnight shifts and DST — absolute-instant arithmetic, fall-back day tested

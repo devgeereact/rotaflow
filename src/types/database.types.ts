@@ -3391,6 +3391,15 @@ export type Database = {
         Args: { p_org: string };
         Returns: undefined;
       };
+      repeat_rota_weeks: {
+        Args: { p_rota: string; p_weeks: number };
+        /** Weeks made, shifts made, and weeks deliberately left alone (0107). */
+        Returns: {
+          weeks_created: number;
+          shifts_created: number;
+          weeks_skipped: number;
+        }[];
+      };
       delegate_role: {
         Args: { p_org: string; p_to: string; p_until: string; p_note?: string | null };
         /** The new delegation's id. Refused for a delegate — no chaining (0106). */

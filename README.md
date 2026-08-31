@@ -88,7 +88,7 @@ supabase/migrations/0002_rotaflow.sql
 supabase/migrations/0099_calendar_feed_tokens.sql
 ```
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 106, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 107, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
 whole ledger.

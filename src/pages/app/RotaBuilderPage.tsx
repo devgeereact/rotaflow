@@ -46,6 +46,7 @@ import {
   getOrCreateRotaForPeriod,
   pickRotaToOpen,
   publishRota,
+  repeatRotaWeeks,
   rotaRefusalMessage,
   resolveRotasForLocations,
   unpublishRota,
@@ -57,6 +58,7 @@ import {
   updateShift,
 } from '@/services/shiftService';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
+import { RepeatWeekModal } from '@/components/rota/RepeatWeekModal';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import {
@@ -215,6 +217,7 @@ export function RotaBuilderPage(): JSX.Element {
   const [orgDataLoading, setOrgDataLoading] = useState(true);
   const [orgDataFailed, setOrgDataFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [repeatOpen, setRepeatOpen] = useState(false);
   // Bumped when the week's rotas change identity rather than content —
   // starting or discarding an amendment swaps in a different rota whose
   // shifts are copies with their own ids, so the week has to be refetched
@@ -1271,6 +1274,50 @@ export function RotaBuilderPage(): JSX.Element {
    * Fetches that week's rotas rather than reusing whatever is in state, since
    * only the visible week is ever loaded.
    */
+  /**
+   * Repeat this week forward (CAP-006, `0107`).
+   *
+   * One call per draft rota in scope, and the whole of each is one
+   * transaction in the database. Doing it here with the paste machinery
+   * would be twelve rota creations and several hundred round trips, any of
+   * which can fail on its own and leave a quarter half-built with no record
+   * of where it stopped.
+   */
+  const handleRepeatWeek = useCallback(
+    (weeks: number): void => {
+      setBusyAction('repeat');
+      void (async () => {
+        try {
+          let created = 0;
+          let skipped = 0;
+          for (const rota of draftRotasInScope) {
+            const result = await repeatRotaWeeks(rota.id, weeks);
+            created += result.shiftsCreated;
+            skipped += result.weeksSkipped;
+          }
+          setRepeatOpen(false);
+          showSuccess(
+            skipped === 0
+              ? `${created} ${created === 1 ? 'shift' : 'shifts'} copied into the next ${weeks} ${weeks === 1 ? 'week' : 'weeks'}.`
+              : // Named rather than glossed over: a manager told "done" who
+                // later finds a gap has been misled by this screen.
+                `${created} shifts copied. ${skipped} ${skipped === 1 ? 'week was' : 'weeks were'} left alone — already published, or already being worked on.`,
+          );
+        } catch (err) {
+          reportError(err, { area: 'rota:repeat-week' });
+          showError(
+            rotaRefusalMessage(err) ??
+              'That week could not be repeated. Please try again.',
+          );
+        } finally {
+          setBusyAction(null);
+          setReloadKey((k) => k + 1);
+        }
+      })();
+    },
+    [draftRotasInScope, showError, showSuccess],
+  );
+
   const handleCopyPreviousWeek = useCallback((): void => {
     if (!orgId) return;
     setBusyAction('previous-week');
@@ -1752,6 +1799,22 @@ export function RotaBuilderPage(): JSX.Element {
               disabled={busyAction === 'previous-week'}
             >
               {busyAction === 'previous-week' ? 'Copying…' : 'Copy last week'}
+            </Button>
+            {/* CAP-006. Beside Copy last week because they are the same
+                thought pointed in opposite directions, and a manager who has
+                just built a week is standing right here. */}
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setRepeatOpen(true)}
+              disabled={busyAction === 'repeat' || draftRotasInScope.length === 0}
+              title={
+                draftRotasInScope.length === 0
+                  ? 'Repeat works from a draft week'
+                  : undefined
+              }
+            >
+              {busyAction === 'repeat' ? 'Repeating…' : 'Repeat forward'}
             </Button>
             {/* Shown but disabled rather than hidden while the entitlement is
                 unknown or absent: a button that disappears once the features
@@ -2443,6 +2506,13 @@ export function RotaBuilderPage(): JSX.Element {
           onSelectShift={setSelectedShiftId}
         />
       )}
+
+      <RepeatWeekModal
+        open={repeatOpen}
+        onClose={() => setRepeatOpen(false)}
+        onConfirm={handleRepeatWeek}
+        busy={busyAction === 'repeat'}
+      />
     </DndContext>
   );
 }
