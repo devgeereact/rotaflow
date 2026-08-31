@@ -102,7 +102,8 @@ role membership, never in the client alone.
 ## 6. Non-functional requirements
 
 - **Static-first:** zero server runtime; dynamic behaviour is client-side or offloaded
-  to Supabase (Auth/DB/RLS, Edge Functions, `pg_cron`), ImageKit, Sentry, Inngest.
+  to Supabase (Auth/DB/RLS, Edge Functions, `pg_cron` + `pg_net`), ImageKit,
+  Sentry and Stripe. Inngest is retired as a dispatch path (`0087`).
 - **Multi-tenant:** single Supabase project; `org_id` on every table; RLS tenant
   isolation is the last line of defence.
 - **Type-safe:** TypeScript strict, no implicit `any`.

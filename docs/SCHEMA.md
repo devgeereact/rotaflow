@@ -332,7 +332,9 @@ and only `is_org_member()` governs access, same as every other tenant table.
 - **`set_updated_at()`**: keeps `updated_at` accurate on every table.
 - **Conflict/summary logic** (rota conflict detection, timesheet rollups): computed in
   the client for V1; heavier/scheduled jobs move to **Supabase Edge Functions +
-  `pg_cron`** and are dispatched via **Inngest** (never on cPanel).
+  `pg_cron`** (never on cPanel). Inngest was the dispatch path until `0087` and
+  is no longer used: notifications are enqueued by triggers and drained by
+  `pg_cron` + `pg_net`.
 - **`set_org_status(org, status, reason?)`** (`0017`, `security definer`): the only
   write path that can move an `organisations.status` into `suspended`/`archived`.
   Gated to a platform owner/admin's own JWT — **except** `auth.uid() is null`

@@ -11,15 +11,23 @@
        │               │               │               │
        ▼               ▼               ▼               ▼
 ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────────────┐
-│  Supabase  │  │  ImageKit  │  │   Sentry   │  │   Inngest (ingest) │
-│ Auth + DB  │  │  media CDN │  │ monitoring │  │  event dispatch    │
-│  + RLS     │  │ transforms │  │            │  │                    │
+│  Supabase  │  │  ImageKit  │  │   Sentry   │  │      Stripe        │
+│ Auth + DB  │  │  media CDN │  │ monitoring │  │ Checkout · Portal  │
+│  + RLS     │  │ transforms │  │            │  │ signed webhook     │
 └─────┬──────┘  └────────────┘  └────────────┘  └─────────┬──────────┘
       │                                                    │
       ▼                                                    ▼
- PostgreSQL  ·  Edge Functions                  Inngest invokes a Supabase
- (row-level security)                           Edge Function (NOT cPanel)
+ PostgreSQL  ·  Edge Functions                  A signature-verified
+ (row-level security)  ·  pg_cron               Edge Function (NOT cPanel)
 ```
+
+**Inngest is no longer in this picture.** It was the notification dispatch path
+until `0087`: the browser posted an event, Inngest called an Edge Function, and
+anything that failed after the write had already committed was simply lost. Every
+notification is now enqueued by the database in the same transaction as the event
+that owes it and drained by `pg_cron` (`0069`, `0083`, `0087`). The `inngest`
+Edge Function still exists and is deployed, but nothing in the app dispatches to
+it. See `docs/SAAS.md` GAP-026.
 
 The static bundle talks to each managed service directly over HTTPS. cPanel only
 serves files. It never runs application logic.
@@ -224,9 +232,13 @@ artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 
 ## 8. Security posture
 
-- Only browser-safe keys ship: Supabase **anon** (RLS-guarded), ImageKit **public**,
-  Inngest **write-only event** key.
-- `service_role`, Inngest **signing** key, and DB credentials never touch the client.
+- Only browser-safe keys ship: Supabase **anon** (RLS-guarded) and ImageKit
+  **public**. The Inngest write-only event key is still built into the bundle and
+  is now unused — nothing dispatches to Inngest since `0087`.
+- `service_role`, Stripe's secret and webhook secrets, the VAPID private key, SMTP
+  credentials, `OPENROUTER_API_KEY` and DB credentials never touch the client. They
+  are Supabase Edge Function secrets, and the notification shared secret is not even
+  that: it is generated inside Postgres and lives only in `vault` (`0091`).
 - `.htaccess` adds HTTPS redirect + `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`.
 
