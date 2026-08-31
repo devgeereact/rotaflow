@@ -181,3 +181,38 @@ export async function openSupportCase(input: {
   if (error) throw error;
   return data;
 }
+
+export type SlaState = 'met' | 'on_track' | 'due_soon' | 'breached';
+
+export interface SlaStatus {
+  firstResponse: SlaState;
+  resolution: SlaState;
+  minutesToRespond: number;
+  minutesToResolve: number;
+}
+
+/**
+ * Whether a case met, is about to miss, or has missed its promise
+ * (CAP-080, `0110`).
+ *
+ * Computed rather than stored: "breached" depends on the current time, and a
+ * stored value would be wrong between writes.
+ *
+ * The clock does NOT pause while waiting on the customer. That is the
+ * measure the customer actually experiences, and it is the one that cannot
+ * be gamed — the standard alternative lets a case sit for three weeks and
+ * still report as within target.
+ */
+export async function getSlaStatus(caseId: string): Promise<SlaStatus | null> {
+  const { data, error } = await supabase.rpc('support_sla_state', { p_case: caseId });
+  if (error) throw error;
+
+  const row = (data ?? [])[0];
+  if (!row) return null;
+  return {
+    firstResponse: row.first_response_state as SlaState,
+    resolution: row.resolution_state as SlaState,
+    minutesToRespond: row.minutes_to_respond,
+    minutesToResolve: row.minutes_to_resolve,
+  };
+}

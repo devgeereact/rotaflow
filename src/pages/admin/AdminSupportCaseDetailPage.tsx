@@ -15,6 +15,8 @@ import {
   setCaseStatus,
   type SupportCase,
   type SupportCaseMessage,
+  getSlaStatus,
+  type SlaStatus,
 } from '@/services/supportCaseService';
 import { listAllOrganisations, listAllProfiles } from '@/services/platformService';
 import { listPlatformAdmins } from '@/services/platformRoleService';
@@ -39,6 +41,26 @@ const STATUS_LABEL: Record<CaseStatus, string> = {
   on_hold: 'On hold',
   resolved: 'Resolved',
   closed: 'Closed',
+};
+
+/**
+ * How a case is doing against what was promised (CAP-080).
+ *
+ * `met` is deliberately quiet — a met target is the expected case, and a
+ * green badge on every row would drown the two that are not.
+ */
+const SLA_TONE: Record<string, BadgeTone> = {
+  met: 'neutral',
+  on_track: 'neutral',
+  due_soon: 'warning',
+  breached: 'danger',
+};
+
+const SLA_LABEL: Record<string, string> = {
+  met: 'Answered in time',
+  on_track: 'Within target',
+  due_soon: 'Reply due soon',
+  breached: 'Past its target',
 };
 
 const PRIORITY_TONE: Record<string, BadgeTone> = {
@@ -142,6 +164,26 @@ export function AdminSupportCaseDetailPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load, reloadKey]);
+
+  // Separate from `load` on purpose: the SLA state is derived from the
+  // current time, so a failure to read it must never stop the case itself
+  // rendering. A missing badge is a smaller loss than a missing case.
+  const [sla, setSla] = useState<SlaStatus | null>(null);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const status = await getSlaStatus(caseId);
+        if (active) setSla(status);
+      } catch (err) {
+        reportError(err, { area: 'admin:support-sla' });
+        if (active) setSla(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [caseId, reloadKey]);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
@@ -252,6 +294,14 @@ export function AdminSupportCaseDetailPage(): JSX.Element {
             {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
           </Badge>
           <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
+          {/* The promise, beside the priority that set it (CAP-080). A queue
+              where every case looks equally urgent is a queue worked in
+              arrival order, which is the thing an SLA exists to prevent. */}
+          {sla && (
+            <Badge tone={SLA_TONE[sla.firstResponse]} dot>
+              {SLA_LABEL[sla.firstResponse]}
+            </Badge>
+          )}
         </>
       }
     >
