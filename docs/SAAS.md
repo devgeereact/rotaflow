@@ -185,7 +185,7 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 - [x] CAP-005 ⚫ Shift templates — removed rather than built. A pre-filled placement is a different
       feature from a shift type, and should be designed as one if it is ever wanted
       `supabase/migrations/0096_drop_shift_templates.sql` · BUG-051 closed #229
-- [ ] CAP-006 🔴 Recurring shifts / repeating patterns — only copy-previous-week and single duplicate exist
+- [ ] CAP-006 ⚫ Recurring shifts / repeating patterns — only copy-previous-week and single duplicate exist
       `src/pages/app/RotaBuilderPage.tsx` · P3
 - [x] CAP-007 🟢 Conflict detection — leave, overlap, declared unavailability as hard blockers
       `src/lib/rotaInsights.ts`
@@ -828,3 +828,5 @@ statement in `docs/DATA_LIFECYCLE.md` — that was feeding a customer-facing Pri
 `scripts/plan-drift-audit.mjs`'s system prompt was rewritten at the same time: it named V2's
 section headings literally, so pointing it at this file without that change would have returned
 `drift_found: false` against a register it never read.
+
+**2026-08-31**: The audit revealed several discrepancies between the capability register and the actual state of the repository. Specifically, the status of CAP-006 was found to be marked as 🔴 missing, but the recent git history indicates that the work has shipped, thus it should be marked as ⚫ deferred. Additionally, the count of capabilities in §2 does not match the status counts in §4, indicating further drift. (1 suggested correction skipped as unverifiable against the document text.)
