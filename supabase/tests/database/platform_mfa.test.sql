@@ -104,6 +104,16 @@ select ok(
 
 update public.platform_settings set require_mfa = false;
 
+-- Explicitly the owner, at aal1. The helper above left the claims set to
+-- whoever it was last asked about, and a test that depends on the leftovers of
+-- the one before it fails for the wrong reason — which is how this was first
+-- written, and it reported the platform-owner refusal instead.
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', 'c1111111-1111-1111-1111-111111111111',
+                    'role', 'authenticated', 'aal', 'aal1')::text,
+  true);
+
 select throws_ok(
   $$ select public.set_platform_mfa_required(true) $$,
   '42501',

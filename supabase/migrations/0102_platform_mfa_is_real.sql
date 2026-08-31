@@ -170,10 +170,14 @@ grant execute on function public.set_platform_mfa_required(boolean) to authentic
 
 -- ── the honest current value ──────────────────────────────────────────
 --
--- SAFETY(update): one boolean on a one-row settings table, and it is the
--- change that keeps the only platform administrator able to reach the
--- console. Its previous value was `true` and enforced by nothing; leaving it
--- there while switching enforcement on would lock the console on merge.
+-- SAFETY(update_without_where): `platform_settings` is a singleton — `0018`
+-- seeds one row with a boolean primary key, so "every row" is that row, and a
+-- WHERE clause here would be decoration. The change is the one that keeps the
+-- only platform administrator able to reach the console: the flag's previous
+-- value was `true` and enforced by nothing, and leaving it there while
+-- switching enforcement on would lock the console the moment this applies.
+-- The previous value is recorded in this file's header, so it can be put back
+-- by hand without consulting anything else.
 update public.platform_settings set require_mfa = false;
 
 comment on column public.platform_settings.require_mfa is
