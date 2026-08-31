@@ -42,20 +42,16 @@ interface UseSupabaseAuth {
 export function useSupabaseAuth(): UseSupabaseAuth;
 ```
 
-## 4. `useOptimizedImage`
+## 4. `useOptimizedImage` — REMOVED (2026-08-31)
 
-`src/hooks/useOptimizedImage.ts`
-Builds a transformed ImageKit URL (real-time resize + auto format/quality).
+Deleted. It memoised `buildImageKitUrl` and **nothing ever called it** — every
+caller that needs a transformed ImageKit URL uses `src/lib/imagekit.ts`
+directly, which is a pure string builder and needs no React layer to be cheap.
+A documented "approved hook contract" that no component consumes reads as a
+rule about how images must be loaded, when it was only an unused wrapper.
 
-```ts
-interface ImageTransform {
-  width?: number;
-  height?: number;
-  quality?: number; // 1-100, default 80
-  crop?: 'maintain_ratio' | 'force' | 'at_max';
-}
-export function useOptimizedImage(path: string, t?: ImageTransform): string;
-```
+`src/lib/imagekit.ts` and its `ImageTransform` type are unchanged and are the
+supported way to build one.
 
 ## 5. `useInngestDispatch` — REMOVED (0087)
 
