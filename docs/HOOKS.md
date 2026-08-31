@@ -3,6 +3,15 @@
 Contracts for every reusable hook in `src/hooks`. Signatures here are the source
 of truth. Implementations must match.
 
+**Two sections describe hooks that no longer exist**, marked `— REMOVED` with the
+date and the reason: `useInngestDispatch` (§5, deleted by `0087`) and
+`useOptimizedImage` (§4, deleted 2026-08-31 because nothing imported it). They are
+kept deliberately. A hook that was documented as an approved contract and then
+vanished invites someone to reintroduce it, and the useful thing to record is not
+its signature but why it went. Do not read them as stale entries, and do not
+delete them to make this file line up with a directory listing — the check that
+matters is that every file in `src/hooks` has a section, which it does.
+
 ## 1. `usePWAInstall`
 
 `src/hooks/usePWAInstall.ts`
