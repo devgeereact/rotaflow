@@ -103,6 +103,7 @@ Every one of these runs in CI and blocks a merge:
 | `npm test`                 | pure-logic unit suite over `src/lib`, `src/services`, and any pure module extracted out of an Edge Function |
 | `npm run check:bundle`     | size budgets, and that no DEV preview page shipped                                                          |
 | `npm run check:migrations` | destructive SQL without a `-- SAFETY(...)` declaration                                                      |
+| `npm run check:docs`       | counts written into prose that no longer match the tree                                                     |
 | `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                             |
 | `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                       |
 

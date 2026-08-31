@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 91 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 94 migrations.
 
 ### What production actually holds, 2026-08-31
 
