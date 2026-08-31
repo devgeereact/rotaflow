@@ -1017,3 +1017,31 @@ GAP-033 and GAP-034 were put to the owner and declined, GAP-035 needs an inbound
 every ❓ needs a live environment: a restore, a card, a phone. That is a more useful thing for
 this section to say than a longer list.
 
+**2026-08-31 (fourth pass — what is not needed, checked rather than assumed)**: The earlier
+passes deleted the obvious things: a folder of unreferenced screenshots, and local scratch. A
+proper sweep found a second kind, and it was larger.
+
+**Twelve modules in `src/`, 1,364 lines, that nothing imports.** Verified by resolving every
+non-entrypoint module against every import in `src/` and `e2e/`, including string and dynamic
+references, not by reading. The largest was `ShiftInspectorPanel.tsx` at 534 lines; the rest
+were a marketing grid, an industry strip, a coverage ring, a table paginator, a popover, two
+staff cards, a timesheets quick-actions card, a rota action rail, an availability matrix and a
+hook.
+
+**Two of them were edited on 2026-08-30 by the dark-mode contrast sweep** (#207) — a11y work
+carefully applied to components nobody renders. That is the cost of dead code stated precisely:
+not bundle size, which tree-shaking already handled, but that it is indistinguishable from live
+code to every person and every tool that touches the repository afterwards.
+
+`useOptimizedImage` is the one worth naming separately, because it was **documented as an
+approved hook contract in `docs/HOOKS.md`** while no component called it. A contract nobody
+consumes reads as a rule about how images must be loaded; it was a 15-line memo around
+`buildImageKitUrl`, which every real caller uses directly. `src/lib/imagekit.ts` is unchanged.
+
+The decision is `0096`'s, applied one layer up: **remove rather than keep speculative
+structure.** Building readers for things nothing reads is how `shift_templates` sat inert for
+two months. Everything deleted here is in git history if a use ever appears.
+
+Nothing else is unreferenced. Every file in `docs/design/` is cited by a document, every file
+in `public/` is referenced by the app or the build, and the module scan now returns empty.
+
