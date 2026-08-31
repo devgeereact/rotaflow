@@ -574,8 +574,15 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 ### Reliability and operations
 
-- [ ] CAP-095 🔴 Production backups — `pitr_enabled: false`, empty backup list
-      `docs/DATA_LIFECYCLE.md` · GAP-001 · **P0**
+- [ ] CAP-095 🔴 Production backups — **the mechanism is built and running; two secrets are
+      missing, and only the owner can add them.** `pitr_enabled: false` and an empty backup list
+      on the Supabase side (a paid feature), and `.github/workflows/backup.yml` runs nightly and
+      fails in seven seconds with `Missing secret(s): SUPABASE_DB_URL BACKUP_PASSPHRASE` — last
+      at 08:53 on 2026-08-31. That failure is deliberate and correct: a backup job that skipped
+      quietly would be worse than none. Nothing an agent can close — one is a database
+      credential — and it is the last 🔴 in this register and the largest single risk in the
+      product, because every other item here is recoverable
+      `.github/workflows/backup.yml` · GAP-001 · **P0, owner only**
 - [x] CAP-096 🟢 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
       in the migration; verified to fire on all nine and stay silent on all ten written today
       `scripts/check-migration-safety.mjs` · GAP-002 closed #194
