@@ -119,6 +119,17 @@ against the baseline in `scripts/check-auth-config.mjs`). Both fail loudly when
 their secrets are missing, which is the point — a check that passes when it
 cannot see anything is worse than none, because it is believed.
 
+⚠️ **Both are failing right now, and have never succeeded** (GAP-036, verified
+2026-08-31). The repository holds one secret, `OPENROUTER_API_KEY`; `backup.yml`
+needs `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE`, `auth-config.yml` needs
+`SUPABASE_ACCESS_TOKEN`. So there is **no backup of production**, and nothing is
+watching the Auth settings. Failing loudly was not enough: **a scheduled
+workflow fails where nobody is standing.** It blocks no merge, marks no pull
+request red, and appears on no screen anyone opens — unlike the gates in the
+table above, which are seen whether or not you go looking. Before trusting
+either of these, check the Actions tab:
+`gh run list --workflow=backup.yml --limit 3`.
+
 `supabase/functions/**` is Deno and is excluded from typecheck and lint — no
 automated check stands in for reading those files. The exception is a module
 with no Deno globals in it, which vitest can run unchanged: `ai-rota-assistant/
