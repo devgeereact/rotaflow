@@ -1197,3 +1197,44 @@ chunk fell from 151 KiB to 132 KiB gzipped as a side effect.
 two days getting contrast to zero. That is GAP-037, with a per-package reopening condition
 rather than a silent skip.
 
+**2026-08-31 (ninth pass — the two files nobody opens)**: `docs/ORGANISATION_WORKSPACE.html` and
+`docs/PLATFORM_CONSOLE.html` are 276 KB between them and are named as the sole reference for the
+Organisation section and the console. Neither had been read in this reconciliation, because they
+are mockups rather than prose — ~170 characters of text each, the rest script and style.
+
+One of them was wrong in a way that matters. **The console header read `eu-west-2`.** The
+project runs in `eu-west-1`, read from the Supabase Management API rather than from a document,
+and `/legal/trust` publishes "eu-west-1 (Ireland)" to customers as a **data-residency
+statement** — with `src/lib/subprocessors.ts` and `src/lib/legalFacts.ts` saying the same.
+
+A wrong region in a mockup is not a typo. It is the design reference somebody builds the console
+header from, and building it faithfully would have put a region on screen that contradicts the
+product's own privacy notice. Corrected, with the reason left in the file as an HTML comment so
+the next person does not "fix" it back.
+
+Checked at the same time and clean: every one of the 60 routes `docs/SCREENS.md` cites resolves
+in `App.tsx`, and every component it names exists — including `AuthCallbackPage`, which lives in
+`RouteAliases.tsx` rather than a file of its own, exactly as that document says.
+
+**2026-08-31 (tenth pass — the remaining documents, each checked against something)**: With the
+mockups read, the files that had only been skimmed were audited against a source rather than
+against themselves. All four hold up, and recording that is the point: a reconciliation that only
+reports defects gives no way to tell "checked and correct" from "not checked".
+
+- **`docs/SCREENS.md`** — all **60** routes it cites resolve in `App.tsx`, and every component it
+  names exists, including `AuthCallbackPage`, which lives in `RouteAliases.tsx` rather than a file
+  of its own, exactly as the document says.
+- **`docs/OBSERVABILITY.md`** — all **15** columns it names as computing the "Computable now"
+  metrics exist in the live database. Its four "needs new capture" rows are still true; nothing
+  records a schedule view, and no Web Vitals collection exists.
+- **`docs/BRAND.md`** — the approved tagline matches `src/lib/brand.ts` byte for byte,
+  `BrandMark` is real and used in 12 files, and the evidence boundary holds: `TRACTION` and
+  `TESTIMONIALS` are still empty arrays.
+- **`docs/HOOKS.md`** — every file in `src/hooks` has a section. Two sections describe hooks that
+  no longer exist, and a note now says so at the top, because this pass flagged them as stale
+  before recognising them as deliberate tombstones. A document whose own convention trips its own
+  audit is one edit away from somebody deleting the explanation to make a listing line up.
+
+That is every file in `docs/` checked against the repository, the live database, the served site,
+the Actions tab or the Supabase catalogue — whichever could actually falsify it.
+
