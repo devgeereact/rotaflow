@@ -2598,6 +2598,8 @@ export type Database = {
           created_at: string;
           currency: string;
           current_period_end: string | null;
+          grace_until: string | null;
+          past_due_since: string | null;
           id: string;
           org_id: string;
           plan: string;
@@ -2616,6 +2618,8 @@ export type Database = {
           created_at?: string;
           currency?: string;
           current_period_end?: string | null;
+          grace_until?: string | null;
+          past_due_since?: string | null;
           id?: string;
           org_id: string;
           plan?: string;
@@ -2634,6 +2638,8 @@ export type Database = {
           created_at?: string;
           currency?: string;
           current_period_end?: string | null;
+          grace_until?: string | null;
+          past_due_since?: string | null;
           id?: string;
           org_id?: string;
           plan?: string;

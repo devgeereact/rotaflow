@@ -396,6 +396,11 @@ async function handleInvoicePaymentFailed(
     if (error) throw new Error(`invoices insert (past_due) failed: ${error.message}`);
   }
 
+  // `past_due_since` and `grace_until` are NOT set here. A trigger derives
+  // them from `status` (0098), so a replayed event, a support tool or a
+  // manual correction cannot leave the three disagreeing — and a second
+  // failed payment inside one dunning run cannot restart the clock, which
+  // would make the deadline permanently a fortnight away.
   const { error: subError } = await supabase
     .from('subscriptions')
     .update({ status: 'past_due' })
