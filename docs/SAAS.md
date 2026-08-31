@@ -32,6 +32,10 @@ model runs, and appends to the Drift Audit Log at the bottom. A row whose eviden
 disappears is flagged automatically. Keep citations to one path per row so the audit stays
 focused.
 
+**Read §2a before §7.** The gap register is long and reads like an engineering queue. Most of
+it is downstream of one fact — production has no tenant — and the three cheapest things that
+would move it are not code.
+
 ## §1 Status vocabulary
 
 | Mark | Meaning                                                                       |
@@ -164,6 +168,39 @@ The product is further along than its own documentation claimed in one direction
 another. The scheduling core, the rota lifecycle, tenant isolation and the audit trail are
 genuinely strong. The layers around them — delivery, entitlement, abuse control, and the
 truthfulness of what the UI tells a user — are where the work is.
+
+## §2a Why the ❓ rows are all still open, and what would actually shift them
+
+Measured on production, 2026-08-31:
+
+```
+orgs 0 · users 1 · staff 0 · rotas 0 · clock_events 0
+subscriptions 0 · notifications 0 · outbox sent 0 · push_subscriptions 1
+```
+
+**The seven ❓ rows are not seven problems. They are one, seen from seven angles: nobody has
+ever used this product.** The outbox drain has run 2,590 times with zero failures and sent
+nothing, because nothing has ever been enqueued, because there are no organisations. A test can
+prove a mechanism works; it cannot produce the tenant that every remaining question needs.
+
+That matters for how this register is read. Scanning §7 gives an impression of a long engineering
+queue. Most of it is downstream of one absence, and three of the cheapest actions available are
+not engineering at all:
+
+| Action | Cost | Closes or unblocks |
+| --- | --- | --- |
+| **Create one real organisation and run a week of rota through it** | nothing, and nobody's permission | ❓-001, ❓-003, ❓-004, ❓-006, ❓-007 — and gives GAP-001's backup something worth protecting |
+| **Set `SUPABASE_DB_URL` + `BACKUP_PASSPHRASE`** | five minutes, free | the backup half of GAP-036. The workflow is already written |
+| **Set `STRIPE_TEST_SECRET_KEY`** | free | ❓-002 and ladder stage 3 — without it not even a **test** card can go through Checkout, so the whole billing path is unproven for want of a secret rather than for want of money |
+
+Set against that, the items that read as urgent are correctly parked: you do not buy
+point-in-time recovery for an empty database (GAP-001), choose a support-email vendor before
+there is anyone to support (GAP-035), publish a status page to nobody (GAP-024), or migrate to
+React 19 for currency alone (GAP-037).
+
+**The engineering is in better shape than the product's evidence.** That is the honest summary
+of this file, and it is not a statement about code quality — it is a statement about the fact
+that nothing here has been used in anger, and that no amount of further building changes it.
 
 ## §3 Maturity ladder
 
