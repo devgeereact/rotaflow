@@ -3327,6 +3327,11 @@ export type Database = {
         /** When setup was first finished; idempotent, so a second call keeps it (0094). */
         Returns: string;
       };
+      transfer_ownership: {
+        Args: { p_org: string; p_to_user: string };
+        /** Promotes and demotes in one transaction; never leaves two owners (0095). */
+        Returns: undefined;
+      };
       notification_delivery_configured: {
         Args: Record<PropertyKey, never>;
         /** True when the outbox drain has all three of its vault secrets (0091). */

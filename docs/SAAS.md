@@ -404,10 +404,12 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `supabase/migrations/0002_rotaflow.sql` · P3
 - [ ] CAP-090 🔴 Delegation — "Deputy Manager" is a display label, not a mechanism
       `src/lib/orgPreferences.ts` · P3
-- [ ] CAP-091 🔴 Ownership transfer — only a manual role swap, guarded by a last-owner trigger
-      `supabase/migrations/0047_membership_keep_one_owner.sql` · P3
-- [ ] CAP-092 🔴 Duplicate detection — no check on staff or locations
-      `src/services/staffService.ts` · P3
+- [x] CAP-091 🟢 Ownership transfer — one transaction, promoting and demoting together, from the
+      owner-only settings page; the outgoing owner stays on as a manager
+      `supabase/migrations/0095_ownership_transfer_and_duplicates.sql` · 10 pgTAP assertions
+- [x] CAP-092 🟢 Duplicate detection — one account cannot hold two staff records, and two sites cannot
+      share a name. Payroll ids were already unique since `0041`, which this row did not know
+      `supabase/migrations/0095_ownership_transfer_and_duplicates.sql`
 - [ ] CAP-093 🔴 Unified approvals queue — four screens; the dashboard card is read-only and omits two kinds
       `src/components/dashboard/ManagerDashboard.tsx` · P3
 - [x] CAP-094 🟢 Onboarding — the org is still created at step 1 by design, and an unfinished wizard now
