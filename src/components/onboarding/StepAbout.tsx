@@ -43,7 +43,13 @@ export interface AboutValues {
 interface StepAboutProps {
   values: AboutValues;
   onChange: (patch: Partial<AboutValues>) => void;
-  onBack: () => void;
+  /**
+   * Omitted when the wizard was RESUMED at this step (GAP-015): there is no
+   * step 1 to go back to — the organisation it creates already exists — and a
+   * Back button that re-opens a create form is an invitation to make a
+   * duplicate.
+   */
+  onBack?: () => void;
   onContinue: () => void;
   onSaveAndExit: () => void;
   submitting: boolean;
@@ -93,10 +99,16 @@ export function StepAbout({
       subtitle="This helps us configure RotaFlow for your workspace."
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
-          <Button variant="secondary" onClick={onBack} disabled={submitting}>
-            <ArrowLeft size={16} aria-hidden="true" className="mr-1.5" />
-            Back
-          </Button>
+          {onBack ? (
+            <Button variant="secondary" onClick={onBack} disabled={submitting}>
+              <ArrowLeft size={16} aria-hidden="true" className="mr-1.5" />
+              Back
+            </Button>
+          ) : (
+            // Keeps the row's space-between layout: without a first child the
+            // Continue group jumps to the left edge.
+            <span />
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={onSaveAndExit} disabled={submitting}>
               Save and exit

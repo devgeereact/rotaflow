@@ -24,6 +24,8 @@ import {
   createOrganisation,
   mergeOrgSettings,
   updateOrganisation,
+  completeOnboarding,
+  isOnboardingComplete,
 } from '@/services/orgService';
 import { createLocation } from '@/services/locationService';
 import { createInvite, sendInviteEmail } from '@/services/inviteService';
@@ -324,6 +326,8 @@ export function OnboardingPage(): JSX.Element {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationCount, setLocationCount] = useState(0);
+  /** True when this visit picked up an unfinished wizard rather than starting one. */
+  const [resuming, setResuming] = useState(false);
 
   const [createValues, setCreateValues] = useState<CreateOrgValues>({
     name: '',
@@ -344,13 +348,44 @@ export function OnboardingPage(): JSX.Element {
   const [plan, setPlan] = useState<PlanOption['value']>('professional');
   const [period, setPeriod] = useState<BillingPeriod>('monthly');
 
-  // Someone who already belongs to an org has no business here, unless this
-  // wizard is the thing that just created it.
+  // Someone who already belongs to an org has no business here — UNLESS their
+  // setup was never finished (GAP-015).
+  //
+  // This bounce used to be unconditional, and it was a trap. The organisation
+  // is created at the end of step 1, so from that moment on the person is a
+  // member and this redirect fires. Steps 2-4 — locations, invitations, plan —
+  // became unreachable the moment step 1 succeeded, permanently. Somebody who
+  // closed the tab to go and find their site addresses came back to a
+  // workspace with no locations and no route to the screen that adds them.
+  //
+  // `onboarding_completed_at` (0094) is what distinguishes "finished" from
+  // "got one step in". It fails safe: an unreadable answer counts as
+  // finished, because dropping an established owner into a wizard they
+  // completed weeks ago is the worse mistake.
   useEffect(() => {
-    if (!loading && memberships.length > 0 && orgId === null) {
-      void navigate('/app/dashboard', { replace: true });
-    }
-  }, [loading, memberships, orgId, navigate]);
+    if (loading || orgId !== null) return;
+    const owned = memberships.find((m) => m.role === 'owner') ?? memberships[0];
+    if (!owned) return;
+
+    let active = true;
+    void (async () => {
+      const done = await isOnboardingComplete(owned.orgId);
+      if (!active) return;
+      if (done) {
+        void navigate('/app/dashboard', { replace: true });
+        return;
+      }
+      // Resume. Step 2 is where an abandoned wizard always stops, because
+      // step 1 is what created the org in the first place.
+      setResuming(true);
+      setOrgId(owned.orgId);
+      switchOrg(owned.orgId);
+      setStep(2);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [loading, memberships, orgId, navigate, switchOrg]);
 
   // Restore step 1's draft once, as soon as we know who's typing — a refresh
   // mid-form (e.g. while troubleshooting a "could not create" error, BUG-002
@@ -595,8 +630,17 @@ export function OnboardingPage(): JSX.Element {
   );
 
   const finish = useCallback((): void => {
+    // Stamp it before leaving, or the next visit resumes a wizard that was
+    // finished. Deliberately not awaited and deliberately not blocking: the
+    // person has done everything asked of them, and a failed stamp costs them
+    // one avoidable trip through a wizard rather than their work.
+    if (orgId) {
+      void completeOnboarding(orgId).catch((err: unknown) => {
+        reportError(err, { area: 'onboarding:complete' });
+      });
+    }
     void navigate('/app/dashboard', { replace: true });
-  }, [navigate]);
+  }, [navigate, orgId]);
 
   if (loading) return <SplashScreen />;
 
@@ -646,11 +690,21 @@ export function OnboardingPage(): JSX.Element {
         />
       )}
 
+      {/* Somebody dropped back into step 2 with no explanation would think the
+          wizard had restarted and their organisation had been lost. It has
+          not: it was created at step 1 and is waiting. Saying so is the
+          difference between a resume and a bug (GAP-015). */}
+      {step === 2 && resuming && (
+        <p className="mb-4 rounded-xl bg-info-wash px-4 py-3 text-sm text-content dark:bg-info-wash-dark dark:text-content-dark">
+          Your organisation is already set up and safe. Picking up where you left off —
+          you can save and exit at any point, and come back to this.
+        </p>
+      )}
       {step === 2 && (
         <StepAbout
           values={aboutValues}
           onChange={(patch) => setAboutValues((v) => ({ ...v, ...patch }))}
-          onBack={() => setStep(1)}
+          onBack={resuming ? undefined : () => setStep(1)}
           onContinue={() => void handleAbout('continue')}
           onSaveAndExit={() => void handleAbout('exit')}
           submitting={submitting}

@@ -1549,6 +1549,7 @@ export type Database = {
           is_demo: boolean;
           last_activity_at: string | null;
           name: string;
+          onboarding_completed_at: string | null;
           plan: string;
           settings: Json;
           slug: string;
@@ -1570,6 +1571,7 @@ export type Database = {
           is_demo?: boolean;
           last_activity_at?: string | null;
           name: string;
+          onboarding_completed_at?: string | null;
           plan?: string;
           settings?: Json;
           slug: string;
@@ -1591,6 +1593,7 @@ export type Database = {
           is_demo?: boolean;
           last_activity_at?: string | null;
           name?: string;
+          onboarding_completed_at?: string | null;
           plan?: string;
           settings?: Json;
           slug?: string;
@@ -3318,6 +3321,11 @@ export type Database = {
       publish_platform_announcement: {
         Args: { p_announcement: string };
         Returns: number;
+      };
+      complete_onboarding: {
+        Args: { p_org: string };
+        /** When setup was first finished; idempotent, so a second call keeps it (0094). */
+        Returns: string;
       };
       notification_delivery_configured: {
         Args: Record<PropertyKey, never>;
