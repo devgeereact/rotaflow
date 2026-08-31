@@ -85,10 +85,10 @@ In the Supabase SQL editor, run the migrations **in order**:
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_rotaflow.sql
 …
-supabase/migrations/0098_subscription_grace_window.sql
+supabase/migrations/0099_calendar_feed_tokens.sql
 ```
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 98, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 99, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
 whole ledger.

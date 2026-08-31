@@ -367,6 +367,33 @@ export type Database = {
           },
         ];
       };
+      calendar_feed_tokens: {
+        Row: {
+          created_at: string;
+          last_used_at: string | null;
+          org_id: string;
+          revoked_at: string | null;
+          staff_profile_id: string;
+          token: string;
+        };
+        Insert: {
+          created_at?: string;
+          last_used_at?: string | null;
+          org_id: string;
+          revoked_at?: string | null;
+          staff_profile_id: string;
+          token?: string;
+        };
+        Update: {
+          created_at?: string;
+          last_used_at?: string | null;
+          org_id?: string;
+          revoked_at?: string | null;
+          staff_profile_id?: string;
+          token?: string;
+        };
+        Relationships: [];
+      };
       clock_events: {
         Row: {
           client_event_id: string | null;
@@ -3272,6 +3299,15 @@ export type Database = {
           worked_minutes: number;
           unpaired_events: number;
         }[];
+      };
+      issue_calendar_feed_token: {
+        Args: { p_org: string };
+        /** A fresh feed token, revoking any live one in the same transaction (0099). */
+        Returns: string;
+      };
+      revoke_calendar_feed_token: {
+        Args: { p_org: string };
+        Returns: undefined;
       };
       notification_delivery_configured: {
         Args: Record<PropertyKey, never>;

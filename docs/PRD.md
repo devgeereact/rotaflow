@@ -66,7 +66,10 @@ role membership, never in the client alone.
 4. **Shift types & templates**. Reusable, org-defined (Morning, Late, Night, Split,
    Weekend, On-Call, Bank, Training, etc.).
 5. **Staff mobile rota view**. Installable PWA, offline-first, calendar month/week/day
-   views, ICS calendar **file download** (no subscription feed — a static PWA cannot serve one).
+   views, ICS calendar **file download** and a **subscription feed** — a per-person
+   tokenised URL served by an Edge Function (`0099`). The old note here said a
+   subscription was impossible because "a static PWA cannot serve one", which was
+   true of the PWA and forgot the Edge Functions the rest of the product runs on.
 6. **Availability**. Staff submit available/unavailable/preferred/recurring; managers
    schedule around it.
 7. **Leave**. Request, approve/reject, entitlement tracking, calendar conflicts.

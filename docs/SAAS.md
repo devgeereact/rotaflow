@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 98 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 99 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -334,8 +334,9 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
 
 - [x] CAP-062 🟢 CSV export — reports, timesheets, staff, and seven console screens
       `src/lib/csv.ts`
-- [ ] CAP-063 🟡 Calendar — ICS file download only; no subscription feed, though the PRD claims one
-      `src/lib/ics.ts` · P3
+- [x] CAP-063 🟢 Calendar — a real subscription feed, not just a file: a per-person tokenised ICS URL a
+      calendar re-reads, so an amended rota reaches the phone. The download stays for "send me this week"
+      `supabase/functions/calendar-feed/index.ts` · `supabase/migrations/0099_calendar_feed_tokens.sql` · 8 pgTAP assertions
 - [x] CAP-064 🟢 Connector catalogue — every connector is `planned` and `available = false`, so the
       console states it and `connect_integration` refuses one
       `supabase/migrations/0073_connectors_are_planned.sql` · BUG-057 · P2
