@@ -1,6 +1,14 @@
 import { LegalNotice } from '@/pages/legal/LegalNotice';
 
-/** `/legal/terms`. See `LegalNotice` for why this is a placeholder. */
+/**
+ * `/legal/terms`.
+ *
+ * The one legal route still using the placeholder shell, and correctly. The
+ * other three describe what the software does and were written from the
+ * code (CAP-060); a contract says what we owe a customer when something goes
+ * wrong, which cannot be derived from a codebase. Inventing it would be
+ * worse than saying it is not written.
+ */
 export function TermsPage(): JSX.Element {
   return (
     <LegalNotice

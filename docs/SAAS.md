@@ -82,8 +82,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 86    |
-| 🟡 Partial            | 10    |
+| 🟢 Complete           | 87    |
+| 🟡 Partial            | 9     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -383,9 +383,15 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       at `/legal/trust` with `security.txt`; **the DPA is deliberately not drafted here** — it is a
       contract and needs UK counsel, and what it schedules is now written and dated
       `src/pages/legal/TrustPage.tsx` · `src/lib/subprocessors.ts` · GAP-014 · P2
-- [ ] CAP-060 🟡 Legal pages — four of five routes render a placeholder shell; `/legal/trust` is
-      real, because it states facts about the system rather than policy needing counsel
-      `src/pages/legal/LegalNotice.tsx` · P2
+- [x] CAP-060 🟢 Legal pages — Privacy, Cookies and Accessibility are written, from the code
+      rather than from a template, because each is a DESCRIPTION of what the software does and
+      a description can be checked. The cookie page can say plainly that there are none — no
+      cookies, no analytics, no third-party script — and list every browser key with where it is
+      set. Accessibility says what the gate covers AND that an automated scan finds a minority
+      of real problems, rather than claiming an audit nobody has done. **Terms still uses the
+      placeholder shell, and should**: a contract says what we owe a customer when something
+      goes wrong, which cannot be derived from a codebase
+      `src/lib/legalFacts.ts` · `src/pages/legal/` · P2
 - [x] CAP-061 🟢 Data-residency claim — corrected when BUG-056 closed (#161) and verified again 2026-08-31:
       `DATA_LIFECYCLE.md` §2 now names both US processors and says the old claim was wrong
       `docs/DATA_LIFECYCLE.md` · BUG-056 closed #161 — this row was simply never flipped
