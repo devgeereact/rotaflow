@@ -54,7 +54,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 102 migrations.
+Recounted 2026-08-31, after twenty-eight pull requests landed (#178-#210) and took `main` to 103 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -82,12 +82,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 76    |
+| 🟢 Complete           | 77    |
 | 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 12    |
+| 🔴 Missing            | 11    |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -193,11 +193,12 @@ Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
       `src/lib/schedulePeriod.ts`
 - [ ] CAP-009 🔴 Bank holidays — no table, no calendar, no holiday-aware logic anywhere
       P3
-- [ ] CAP-010 🔴 Open-shift board for staff — `shifts.status='open'` has no staff-facing surface
-      `src/lib/rotaGrid.ts` · P3
-
-### Attendance
-
+- [x] CAP-010 🟢 Open-shift board — `/app/open-shifts` lists published, unclaimed, future shifts
+      and `claim_open_shift()` takes one. The UPDATE re-checks "still open" in its WHERE, so two
+      people tapping at once cannot both win. A shift clashing with the reader's own roster is
+      shown and flagged rather than filtered — a board that silently hides rows leaves somebody
+      staring at "nothing to cover" while a colleague sees four
+      `supabase/migrations/0103_open_shift_claims.sql` · 11 pgTAP assertions
 - [x] CAP-011 🟢 Clock in/out — GPS and manual, offline outbox, geofence recorded
       `src/pages/app/ClockInPage.tsx`
 - [x] CAP-012 🟢 Offline clock-in honesty — a queued write is labelled "Saved on this device, not sent yet"

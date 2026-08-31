@@ -3309,6 +3309,25 @@ export type Database = {
         Args: { p_org: string };
         Returns: undefined;
       };
+      open_shifts: {
+        Args: { p_org: string };
+        /** Published, unclaimed, future shifts, flagged for clashes (0103). */
+        Returns: {
+          shift_id: string;
+          starts_at: string;
+          ends_at: string;
+          break_minutes: number;
+          notes: string | null;
+          shift_type: string | null;
+          location_name: string | null;
+          clashes_with_mine: boolean;
+        }[];
+      };
+      claim_open_shift: {
+        Args: { p_shift: string };
+        /** The shift id. Raises 40001 if somebody else took it first (0103). */
+        Returns: string;
+      };
       my_mfa_status: {
         Args: Record<PropertyKey, never>;
         /** The caller's own second-factor state (0102). */

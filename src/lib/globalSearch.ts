@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  CalendarPlus,
   BarChart3,
   CalendarDays,
   CalendarRange,
@@ -112,6 +113,13 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/swaps',
     group: 'Scheduling',
     icon: Repeat2,
+  },
+  {
+    label: 'Open shifts',
+    keywords: 'open uncovered unassigned gap cover claim take spare available',
+    to: '/app/open-shifts',
+    group: 'Scheduling',
+    icon: CalendarPlus,
   },
   {
     label: 'Overtime',

@@ -1,4 +1,5 @@
 import {
+  CalendarPlus,
   LayoutDashboard,
   CalendarDays,
   CalendarRange,
@@ -90,6 +91,9 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
   items.push({ label: 'Availability', icon: Clock3, to: '/app/availability' });
   items.push({ label: 'Leave', icon: Umbrella, to: '/app/leave', badge: 'leave' });
   items.push({ label: 'Shift Swaps', icon: Repeat2, to: '/app/swaps', badge: 'swaps' });
+  // Everybody, manager included. A manager who works shifts covers gaps too,
+  // and the board is empty for anyone with nothing to take.
+  items.push({ label: 'Open Shifts', icon: CalendarPlus, to: '/app/open-shifts' });
   // §2 lists "Request overtime" among what a staff member can do, so this
   // sits outside the managerial block. The page's own Team toggle is what
   // gates the approval queue.
