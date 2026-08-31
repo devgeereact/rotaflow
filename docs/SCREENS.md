@@ -174,11 +174,27 @@ Two long-standing ❌ rows here have been closed and moved:
 
 ## 8. Tables with no UI
 
-**The list is empty.** It held one entry, `shift_templates`, and `0096` dropped the table
-on 2026-08-31 rather than building the reader it had been waiting for since `0002` —
-`shift_types` already carries the name, colour and default times a template would have,
-so the reader would mostly have duplicated it (BUG-051). Nothing is left in `public` that
-no screen reaches.
+**`platform_health_probes` and `rate_limit_events`. Both correctly so.**
+
+`shift_templates`, the entry this section existed for, is gone: `0096` dropped it on
+2026-08-31 rather than building the reader it had been waiting for since `0002`, because
+`shift_types` already carries the name, colour and default times a template would have
+(BUG-051).
+
+The two that remain are a different thing, and it is worth saying why rather than
+striking the section. They hold **RLS enabled, zero policies, and grants to
+`service_role` alone** — `platform_health_probes` matches a `pg_net` reply back to the
+probe that asked for it (`0076`), and `rate_limit_events` is the shared limiter's ledger
+of who attempted what and when (`0085`). A screen reading either would be a defect, not a
+feature: the second is an audit trail of failed attempts keyed by user id and IP, and
+exposing it would tell one tenant about another.
+
+**They were missing from this section, and from `docs/SCHEMA.md`, until 2026-08-31** —
+along with the `integration_connector_stats` view. The method recorded below is why: it
+greps `src/` and `supabase/` for `from('<table>')`, which finds every table a *client*
+touches and is blind by construction to one no client role can reach. A tool that can only
+see what is reachable will always report the unreachable as absent. Both are now in
+`docs/SCHEMA.md` §4.8 with their grants written down.
 
 Do not re-derive this from a memory of the old text: the section named four tables at one
 point, three grew UI, and the fourth was deleted. All four are listed here so the stale
