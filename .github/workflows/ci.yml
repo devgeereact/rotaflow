@@ -196,10 +196,19 @@ jobs:
   # scoping a query, or about a write landing. This signs up, creates an
   # organisation, and checks the tenant bootstrap actually completed.
   #
-  # Deliberately its own job and NOT added to branch protection yet. It starts
-  # a Docker stack and drives a browser against it, which is the flakiest
-  # shape of test in this repository — it should earn a place as a required
-  # check by being reliable for a while first, not by being declared one.
+  # REQUIRED on `main` since 2026-08-31. It was deliberately not required when
+  # added: it starts a Docker stack and drives a browser against it, which is
+  # the flakiest shape of test here, and it should earn the place rather than
+  # be declared into it.
+  #
+  # It earned it. Twelve consecutive green runs, and the one failure in that
+  # stretch was a genuine defect it found — a transient first load showing a
+  # brand-new customer an error card (#227) — not a flake. It is also the only
+  # test that proves a customer can sign up at all, which is the exact failure
+  # `docs/QA-AUDIT-REPORT.md` recorded and nothing else in CI could catch.
+  #
+  # If it does start flaking, take it out of the required list rather than
+  # weakening its assertions.
   e2e-authenticated:
     name: e2e-authenticated
     runs-on: ubuntu-latest
