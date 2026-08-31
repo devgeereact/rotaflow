@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { DelegationSection } from '@/components/settings/DelegationSection';
 import { TeamInviteManager } from '@/components/settings/TeamInviteManager';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
 
@@ -233,6 +234,18 @@ export function SettingsPermissionsPage(): JSX.Element {
           </ul>
         )}
       </SettingsSection>
+
+      {orgId && (
+        <DelegationSection
+          orgId={orgId}
+          members={members.map((m) => ({ userId: m.userId, name: m.name }))}
+          // A real owner or manager only. `useOrg().role` is the membership
+          // role, so a delegate reads as `staff` here — which is right:
+          // a delegate cannot delegate onwards, and the database refuses it
+          // whatever this button does.
+          canDelegate={role === 'owner' || role === 'manager'}
+        />
+      )}
 
       <SettingsSection title="Invitations">
         <TeamInviteManager />
