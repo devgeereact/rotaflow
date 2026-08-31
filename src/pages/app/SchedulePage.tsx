@@ -18,6 +18,11 @@ import {
 import { resolvePeriod, todayIso } from '@/lib/schedulePeriod';
 import { isWeekPublished } from '@/lib/rotaRollup';
 import { downloadIcs } from '@/lib/ics';
+import {
+  calendarFeedUrl,
+  getMyCalendarFeedToken,
+  issueMyCalendarFeedToken,
+} from '@/services/calendarFeedService';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -47,7 +52,7 @@ export function SchedulePage(): JSX.Element {
   const { orgId } = useOrg();
   const { canBuildRota } = usePermissions();
   const { user } = useSupabaseAuth();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const isManager = canBuildRota;
 
   const [loading, setLoading] = useState(true);
@@ -168,6 +173,30 @@ export function SchedulePage(): JSX.Element {
     onChange: () => void load(),
   });
 
+  /**
+   * Hand over the subscription URL (CAP-063).
+   *
+   * Issuing is idempotent from the person's point of view — `0099` revokes
+   * any live token and creates a new one in the same transaction — so this
+   * reads first and only issues when there is nothing. Pressing it twice
+   * should not silently break the subscription already on their phone.
+   */
+  const handleSubscribe = useCallback(async (): Promise<void> => {
+    if (!orgId) return;
+    try {
+      const existing = await getMyCalendarFeedToken(orgId);
+      const token = existing ?? (await issueMyCalendarFeedToken(orgId));
+      const url = calendarFeedUrl(token);
+      await navigator.clipboard.writeText(url);
+      showSuccess(
+        'Calendar link copied. Add it in your calendar app as a subscription — it updates itself when the rota changes.',
+      );
+    } catch (err) {
+      reportError(err, { area: 'schedule:subscribe' });
+      showError('Could not create a calendar link. Please try again.');
+    }
+  }, [orgId, showSuccess, showError]);
+
   const handleAddToCalendar = useCallback((): void => {
     if (myShifts.length === 0) {
       showError('There are no published shifts this week to add.');
@@ -219,6 +248,7 @@ export function SchedulePage(): JSX.Element {
       shiftTypes={shiftTypes}
       fallbackTimezone={locations[0]?.timezone ?? DEFAULT_TZ}
       onAddToCalendar={handleAddToCalendar}
+      onSubscribe={() => void handleSubscribe()}
     />
   );
 }

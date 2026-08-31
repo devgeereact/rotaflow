@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { CalendarPlus, Repeat2 } from 'lucide-react';
+import { CalendarClock, CalendarPlus, Repeat2 } from 'lucide-react';
 import { fromIsoInTimezone } from '@/lib/rotaGrid';
 import { shiftNetMinutes } from '@/lib/rotaInsights';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
@@ -23,6 +23,12 @@ export interface StaffScheduleProps {
   /** Used for a shift whose own location cannot be resolved. */
   fallbackTimezone: string;
   onAddToCalendar: () => void;
+  /**
+   * Subscribe rather than download (CAP-063). Optional: a person with no
+   * staff record in this organisation has no shifts to subscribe to, and the
+   * button is absent rather than present and failing.
+   */
+  onSubscribe?: () => void;
 }
 
 interface DayShift {
@@ -107,6 +113,7 @@ export function StaffSchedule({
   shiftTypes,
   fallbackTimezone,
   onAddToCalendar,
+  onSubscribe,
 }: StaffScheduleProps): JSX.Element {
   const days = buildDays(weekDates, shifts, locations, shiftTypes, fallbackTimezone);
 
@@ -121,10 +128,20 @@ export function StaffSchedule({
               <Repeat2 size={15} aria-hidden="true" />
               Offer a swap
             </Link>
+            {/* Download and subscribe are both here on purpose. A file is
+                right for "send me this week"; it is wrong as a standing
+                arrangement, because an amended rota leaves the phone showing
+                last week's shifts with a reminder attached. */}
             <Button variant="secondary" onClick={onAddToCalendar}>
               <CalendarPlus size={16} aria-hidden="true" />
-              Add to calendar
+              Download this week
             </Button>
+            {onSubscribe && (
+              <Button variant="secondary" onClick={onSubscribe}>
+                <CalendarClock size={16} aria-hidden="true" />
+                Subscribe
+              </Button>
+            )}
           </>
         }
       />
