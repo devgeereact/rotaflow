@@ -89,7 +89,7 @@ supabase/migrations/0002_rotaflow.sql
 supabase/migrations/0111_erasure_misses_email.sql   # whatever the last one is today
 ```
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 114, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 115, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
 whole ledger.

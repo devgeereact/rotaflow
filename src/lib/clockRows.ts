@@ -508,6 +508,34 @@ export function buildThisWeekRows(
  * Being online is not the same claim as having sent anything, so the two are
  * reported separately rather than collapsed into one word.
  */
+/**
+ * The server's own words, when it has better ones than "please try again".
+ *
+ * `clock_events_guard_sequence` (0115) refuses a second clock-in inside five
+ * minutes of an open one, with SQLSTATE `CLK01`. That is a permanent failure
+ * — `classifyFailure` correctly does not retry it — and the screen's generic
+ * catch would tell the person to do the one thing that cannot work. Worse, it
+ * would say the action failed when what actually happened is that it had
+ * already succeeded moments earlier.
+ *
+ * Only codes this app defines are trusted to reach a person. A raw Postgres
+ * message is written for whoever reads the log, not for somebody standing at
+ * a door with thirty seconds before their shift.
+ */
+const CLOCK_GUARD_CODES = new Set(['CLK01']);
+
+export function clockErrorMessage(err: unknown, fallback: string): string {
+  if (typeof err !== 'object' || err === null) return fallback;
+  const { code, message, hint } = err as {
+    code?: unknown;
+    message?: unknown;
+    hint?: unknown;
+  };
+  if (typeof code !== 'string' || !CLOCK_GUARD_CODES.has(code)) return fallback;
+  if (typeof message !== 'string' || message.length === 0) return fallback;
+  return typeof hint === 'string' && hint.length > 0 ? `${message} ${hint}` : message;
+}
+
 export function syncStatusLabel(online: boolean, pendingCount: number): string {
   if (pendingCount > 0) {
     return online

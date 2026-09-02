@@ -30,6 +30,7 @@ import {
   buildRecentActivity,
   buildThisWeekRows,
   buildWeeklySummary,
+  clockErrorMessage,
   clockStage,
   clockWindow,
   manualFallbackFor,
@@ -384,7 +385,14 @@ export function ClockInPage(): JSX.Element {
         }
       } catch (err) {
         reportError(err, { area: 'clock:submit' });
-        showError(`Could not ${ACTION_LABEL[type].toLowerCase()}. Please try again.`);
+        // 0115's guard has better words than "please try again", which for an
+        // already-open session is advice to repeat the thing that just failed.
+        showError(
+          clockErrorMessage(
+            err,
+            `Could not ${ACTION_LABEL[type].toLowerCase()}. Please try again.`,
+          ),
+        );
       } finally {
         setSubmitting(false);
       }

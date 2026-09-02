@@ -7,6 +7,7 @@ import {
   buildRecentActivity,
   buildThisWeekRows,
   buildWeeklySummary,
+  clockErrorMessage,
   clockStage,
   clockWindow,
   manualFallbackFor,
@@ -499,5 +500,37 @@ describe('syncStatusLabel', () => {
         expect(syncStatusLabel(online, pending)).not.toBe('Synced');
       }
     }
+  });
+});
+
+describe('clockErrorMessage', () => {
+  it("uses the guard's own message and hint, because 'try again' is wrong advice here", () => {
+    expect(
+      clockErrorMessage(
+        {
+          code: 'CLK01',
+          message: 'You are already clocked in.',
+          hint: 'If this is a second shift, clock out of the first one first.',
+        },
+        'fallback',
+      ),
+    ).toBe(
+      'You are already clocked in. If this is a second shift, clock out of the first one first.',
+    );
+  });
+
+  it('falls back for any code this app did not define — a raw Postgres message is for a log, not a doorway', () => {
+    expect(
+      clockErrorMessage({ code: '23505', message: 'duplicate key value' }, 'fallback'),
+    ).toBe('fallback');
+    expect(clockErrorMessage(new Error('network'), 'fallback')).toBe('fallback');
+    expect(clockErrorMessage(null, 'fallback')).toBe('fallback');
+    expect(clockErrorMessage('CLK01', 'fallback')).toBe('fallback');
+  });
+
+  it('falls back when the code is right but the message is empty', () => {
+    expect(clockErrorMessage({ code: 'CLK01', message: '' }, 'fallback')).toBe(
+      'fallback',
+    );
   });
 });
