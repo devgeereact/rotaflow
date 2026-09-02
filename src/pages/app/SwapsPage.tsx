@@ -22,6 +22,8 @@ import {
   type ShiftSwapWithShift,
 } from '@/services/swapService';
 import { reportError } from '@/lib/sentry';
+import { sendOrQueue } from '@/lib/queuedWrite';
+import { classifyFailure } from '@/services/syncQueue';
 import { toSwapRow } from '@/lib/swapMapping';
 import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
 import { Button } from '@/components/ui/Button';
@@ -205,14 +207,25 @@ export function SwapsPage(): JSX.Element {
           requested_by: myProfile.id,
           target_staff_profile_id: draft.targetId || null,
           note: draft.note.trim() || null,
+          // Minted before the attempt, as clock-in does (BUG-046): a lost
+          // response replays a row that already exists, and 0081's unique
+          // index only recognises it as already-applied if the key was on
+          // the first attempt.
+          client_event_id: crypto.randomUUID(),
         };
-        if (!online) {
-          await enqueue('swap', input);
+
+        const outcome = await sendOrQueue({
+          online,
+          send: () => requestShiftSwap(input),
+          queue: () => enqueue('swap', input),
+          isTransient: (err) => classifyFailure(err) === 'transient',
+        });
+
+        if (outcome.status === 'queued') {
           showSuccess(
             'Swap request saved offline. It will sync when you’re back online.',
           );
         } else {
-          await requestShiftSwap(input);
           showSuccess('Swap request submitted.');
           setReloadKey((k) => k + 1);
         }

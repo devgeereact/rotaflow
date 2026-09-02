@@ -19,6 +19,8 @@ import {
 import { getOrganisation } from '@/services/orgService';
 import { logAuditEvent } from '@/services/auditService';
 import { reportError } from '@/lib/sentry';
+import { sendOrQueue } from '@/lib/queuedWrite';
+import { classifyFailure } from '@/services/syncQueue';
 import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
 import type { BankHolidayRegion } from '@/lib/bankHolidays';
 import {
@@ -307,16 +309,28 @@ export function LeavePage(): JSX.Element {
           starts_half: draft.startsHalf,
           ends_half: draft.endsHalf,
           reason: draft.reason.trim() || null,
+          // Minted here, before the attempt, for the same reason clock-in
+          // does it (BUG-046): if the insert reaches Postgres and only the
+          // RESPONSE is lost, the retry below replays a row that already
+          // exists. Carrying the key on the first attempt means the replay
+          // collides with 0081's unique index and is counted as already
+          // applied, rather than booking the same week off twice.
+          client_event_id: crypto.randomUUID(),
         };
 
-        if (!online) {
-          await enqueue('leave', input);
+        const outcome = await sendOrQueue({
+          online,
+          send: () => createLeaveRequest(input),
+          queue: () => enqueue('leave', input),
+          isTransient: (err) => classifyFailure(err) === 'transient',
+        });
+
+        if (outcome.status === 'queued') {
           showSuccess(
             'Leave request saved offline. It will sync when you’re back online.',
           );
         } else {
-          const created = await createLeaveRequest(input);
-          setRequests((prev) => [created, ...prev]);
+          setRequests((prev) => [outcome.row, ...prev]);
           showSuccess('Leave request submitted.');
         }
       } catch (err) {
@@ -388,7 +402,15 @@ export function LeavePage(): JSX.Element {
   const handleWithdraw = useCallback(
     async (row: LeaveDisplayRow): Promise<void> => {
       try {
-        await cancelLeaveRequest(row.id);
+        const cancelled = await cancelLeaveRequest(row.id);
+        if (!cancelled) {
+          // A manager decided it between the screen rendering and the tap.
+          // Withdraw is only offered on a pending row, so this is a race
+          // rather than a refusal, and the honest answer is what actually
+          // happened to the request rather than "could not cancel".
+          showError('That request was already decided. Refresh to see the outcome.');
+          return;
+        }
         setRequests((prev) =>
           prev.map((r) => (r.id === row.id ? { ...r, status: 'cancelled' } : r)),
         );
