@@ -33,6 +33,14 @@ export default tseslint.config(
       'node_modules',
       'postcss.config.js',
       'supabase/functions', // Deno runtime (npm:/jsr: specifiers) — not tsc/ESLint compatible
+      // Written by `supabase start`, which two of the four required gates
+      // run. The CLI drops a Deno entrypoint under `.temp/start-secrets/`
+      // that is in no tsconfig, so the very next `npm run lint` fails with
+      // two parser errors about a file nobody wrote — and `--max-warnings 0`
+      // makes that a red build. Same class as the `coverage` entry above.
+      // CI never saw it because the `verify` job does not start the stack.
+      'supabase/.temp',
+      'supabase/.branches',
     ],
   },
 
