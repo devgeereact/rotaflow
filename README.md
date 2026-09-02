@@ -43,21 +43,21 @@ is actually built** — the capability register is the honest, per-feature statu
 
 ## Tech stack
 
-| Layer           | Choice                           | Why                                                                                                                                            |
-| --------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework       | React 18 + Vite 6                | Fast HMR, tiny hashed bundles                                                                                                                  |
-| Language        | TypeScript (strict)              | Safety enforced in CI                                                                                                                          |
-| Styling         | Tailwind CSS (NativeWind-ready)  | Utility-first, portable to Expo later                                                                                                          |
-| PWA             | `vite-plugin-pwa` (Workbox)      | Precached app shell + runtime caching                                                                                                          |
-| Auth + DB       | Supabase (PostgreSQL + RLS)      | Managed Postgres, row-level security                                                                                                           |
-| Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                                 |
-| AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                                           |
-| Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                                     |
-| Background jobs | `pg_cron` + `pg_net` in Postgres | Notification outbox drain, nightly retention, health probe. Inngest is fully retired (`0087`): no function, no key, no dispatch                  |
-| Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                                      |
-| Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                                  |
-| AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                                              |
-| Hosting         | cPanel (static `dist/`)          | Low cost, no server runtime                                                                                                                    |
+| Layer           | Choice                           | Why                                                                                                                             |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Framework       | React 18 + Vite 6                | Fast HMR, tiny hashed bundles                                                                                                   |
+| Language        | TypeScript (strict)              | Safety enforced in CI                                                                                                           |
+| Styling         | Tailwind CSS (NativeWind-ready)  | Utility-first, portable to Expo later                                                                                           |
+| PWA             | `vite-plugin-pwa` (Workbox)      | Precached app shell + runtime caching                                                                                           |
+| Auth + DB       | Supabase (PostgreSQL + RLS)      | Managed Postgres, row-level security                                                                                            |
+| Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                  |
+| AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                            |
+| Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                      |
+| Background jobs | `pg_cron` + `pg_net` in Postgres | Notification outbox drain, nightly retention, health probe. Inngest is fully retired (`0087`): no function, no key, no dispatch |
+| Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                       |
+| Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                   |
+| AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                               |
+| Hosting         | cPanel (static `dist/`)          | Low cost, no server runtime                                                                                                     |
 
 ---
 
@@ -89,7 +89,7 @@ supabase/migrations/0002_rotaflow.sql
 supabase/migrations/0111_erasure_misses_email.sql   # whatever the last one is today
 ```
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 112, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 113, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
 whole ledger.
@@ -170,22 +170,22 @@ same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
 
 ## Available scripts
 
-| Script                     | Does                                                                           |
-| -------------------------- | ------------------------------------------------------------------------------ |
-| `npm run dev`              | Start Vite dev server with HMR                                                 |
-| `npm run build`            | Type-check, then build the static PWA to `dist/`                               |
-| `npm run preview`          | Serve the production build locally                                             |
-| `npm run typecheck`        | `tsc --noEmit` strict check                                                    |
-| `npm run lint`             | ESLint (zero-warning policy)                                                   |
-| `npm run format`           | Prettier write (covers `docs/**/*.md` too)                                     |
-| `npm run format:check`     | Prettier check — its own CI gate                                               |
-| `npm test`                 | Vitest unit suite (`src/**` plus pure modules extracted out of Edge Functions) |
-| `npm run test:watch`       | The same suite, on watch                                                       |
-| `npm run test:coverage`    | Vitest with coverage                                                           |
-| `npm run lint:fix`         | ESLint with `--fix`                                                            |
-| `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                             |
-| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                           |
-| `npm run check:docs`       | Counts in prose against the tree, and `docs/SAAS.md`'s summary against its rows |
+| Script                     | Does                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| `npm run dev`              | Start Vite dev server with HMR                                                        |
+| `npm run build`            | Type-check, then build the static PWA to `dist/`                                      |
+| `npm run preview`          | Serve the production build locally                                                    |
+| `npm run typecheck`        | `tsc --noEmit` strict check                                                           |
+| `npm run lint`             | ESLint (zero-warning policy)                                                          |
+| `npm run format`           | Prettier write (covers `docs/**/*.md` too)                                            |
+| `npm run format:check`     | Prettier check — its own CI gate                                                      |
+| `npm test`                 | Vitest unit suite (`src/**` plus pure modules extracted out of Edge Functions)        |
+| `npm run test:watch`       | The same suite, on watch                                                              |
+| `npm run test:coverage`    | Vitest with coverage                                                                  |
+| `npm run lint:fix`         | ESLint with `--fix`                                                                   |
+| `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                                    |
+| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                                  |
+| `npm run check:docs`       | Counts in prose against the tree, and `docs/SAAS.md`'s summary against its rows       |
 | `npm run check:export`     | Every table with an `org_id` is in the organisation export, or excluded with a reason |
 
 Two more run against live state and so are not npm scripts:

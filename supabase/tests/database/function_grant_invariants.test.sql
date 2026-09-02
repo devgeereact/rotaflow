@@ -46,7 +46,7 @@
 -- =====================================================================
 
 begin;
-select plan(3);
+select plan(5);
 
 select is(
   (select coalesce(string_agg(p.oid::regprocedure::text, ', ' order by p.oid::regprocedure::text), '')
@@ -103,6 +103,56 @@ select is(
 select ok(
   has_function_privilege('anon', 'public.preview_invite(text)', 'EXECUTE'),
   'preview_invite is still reachable by anon, which the invite screen needs'
+);
+
+-- ── the other direction: closed to anon is not the only way to be wrong ──
+--
+-- `0075` closed the `anon` hole by revoking EXECUTE `from public, anon`.
+-- PUBLIC was also the only path by which `authenticated` held EXECUTE on
+-- the four helpers every RLS policy calls, so the same statement quietly
+-- shut signed-in users out of every table in the schema. It was invisible
+-- on production, which carries a `pg_default_acl` entry granting
+-- `authenticated` at creation time, and invisible in CI, whose image
+-- carried the same one. On an image without it — the one restoring from
+-- this migration history would use — 172 of the 364 assertions in this
+-- suite could not reach a table at all.
+--
+-- So the invariant has two halves, and only one of them was written down.
+-- This is the other: the roles that are supposed to hold EXECUTE must
+-- actually hold it. See `0113`.
+select is(
+  (select coalesce(string_agg(fn, ', ' order by fn), '')
+     from unnest(array[
+       'public.is_org_member(uuid)',
+       'public.has_org_role(uuid,text[])',
+       'public.my_staff_profile_id(uuid)',
+       'public.is_platform_admin()'
+     ]) as fn
+    where not has_function_privilege('authenticated', fn, 'EXECUTE')),
+  '',
+  'authenticated can execute every helper the RLS policies call'
+);
+
+-- And the nine server-only functions stay shut to a browser. Four other
+-- files assert this one function at a time, in the context of the feature
+-- each protects; stating the whole set once means a tenth added later is
+-- a decision somebody makes rather than a default nobody sees.
+select is(
+  (select coalesce(string_agg(fn, ', ' order by fn), '')
+     from unnest(array[
+       'public.announcement_audience(uuid)',
+       'public.audit_write(uuid,text,text,uuid,jsonb,text,text)',
+       'public.calendar_feed_shifts(uuid)',
+       'public.consume_rate_limit(text,text,integer,interval)',
+       'public.dispatch_notification_outbox()',
+       'public.enforce_retention(boolean)',
+       'public.enqueue_scheduled_alerts()',
+       'public.probe_platform_health()',
+       'public.verify_notification_secret(text)'
+     ]) as fn
+    where has_function_privilege('authenticated', fn, 'EXECUTE')),
+  '',
+  'and cannot execute any of the nine that only the server may call'
 );
 
 select * from finish();
