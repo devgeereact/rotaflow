@@ -66,8 +66,8 @@ Alongside those, a fourth finding is the most consequential and the least visibl
 **a database rebuilt from this repository's own migrations does not work.** Production
 is fine and always was, for a reason that is not in the repository.
 
-Twelve of the twenty findings are fixed, tested, and open as pull requests. The other
-eight are recorded with their diagnosis, and each says plainly whether it is unfixed by
+Thirteen of the twenty-two findings are fixed, tested, and open as pull requests. The
+other nine are recorded with their diagnosis, and each says plainly whether it is unfixed by
 decision or unverifiable from here.
 
 **The release decision is not driven by any of that.** It is driven by the fact that
@@ -227,6 +227,16 @@ when it was already false, so a transient failure the other side of that check s
 first attempt, so a lost response replayed as a **second booking of the same week off**.
 **VERIFIED** by reading both paths; fixed, and all three now share one tested helper.
 
+**P1-7 · Enter did not submit any of the four auth screens** _(GAP-045 — FIXED, #287)_
+None of `/login`, `/signup`, `/forgot-password` or `/reset-password` contained a `<form>`
+element — no `<form>`, no `onSubmit`, no `type="submit"`, no key handler in any of the four.
+Every submit was an `onClick` on a `<Button>`, so filling in an email and a password and
+pressing Enter did nothing at all, on the most-used screen in the product. The keyboard is
+how anybody signing in on a laptop finishes, and how a password manager finishes for them.
+**VERIFIED** by grep; fixed. `Button` also now defaults to `type="button"`, because the
+moment those screens gained forms, the magic-link button and the show-password toggle were
+sitting inside one.
+
 **P1-6 · Stripe ships a live publishable key while no charge has ever completed**
 _(open — owner)_
 The production bundle carries `pk_live_…`. `docs/SAAS.md` records `STRIPE_TEST_SECRET_KEY`
@@ -266,6 +276,17 @@ symptom anybody would report. **VERIFIED** by reading `UpdatePrompt`; fixed.
 A withdraw issued while a manager was approving overwrote the approval, leaving a row
 that is `cancelled` and carries a `reviewed_by`. The manager never learned the leave they
 granted had gone. **VERIFIED** by code; fixed.
+
+**P2-9 · Every public CTA is a `<button>` inside an `<a>`** _(open)_
+23 occurrences of `<Link to=…><Button…>` across the marketing pages, the public nav and the
+final CTA band. `<a>` is interactive content and its content model forbids interactive
+descendants, so this is invalid HTML and — the part that is felt — **every primary call to
+action on the site is two tab stops**. axe does not fire on it: `nested-interactive` checks
+roles that require presentational children, and `link` is not one, which is why the sweep is
+green. **VERIFIED** by reading all 23 call sites; **UNVERIFIED** in a browser. Not fixed:
+correcting it properly means teaching `Button` to render as a link, and changing the shared
+button component across 23 call sites at the end of an audit is how an accessibility fix
+becomes a visual regression. A contained half-day with a screenshot pass behind it.
 
 **P2-6 · The server notification outbox has no idempotency key** _(open)_
 `dispatch_notification_outbox` marks a row `sent` at post time and reconciles afterwards
@@ -429,7 +450,7 @@ timeout and a five-minute TTL, and both tenant-scoped caches are purged on sign-
 
 ## 8. The fix process, start to finish
 
-Twelve findings closed across seven pull requests, stacked in the order they must merge.
+Thirteen findings closed across eight pull requests, stacked in the order they must merge.
 Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
 
 ### #279 — `fix(db): grant EXECUTE in the migration history, not from the image`
@@ -541,6 +562,19 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   unrelated to the code. 845 unit tests, 76 e2e.
 - **Result.** Fixed and verified.
 
+### #287 — `fix(auth): Enter did not submit any of the four auth screens`
+
+- **Problem.** Enter did nothing on `/login`, `/signup`, `/forgot-password` or
+  `/reset-password`.
+- **Root cause.** No `<form>` element on any of them; every submit was an `onClick`.
+- **Solution.** A real `<form onSubmit>` on each, `noValidate` because the messages are ours
+  and are wired to the fields. `Button` defaults to `type="button"`, since the magic-link
+  button and the show-password toggle now sit inside the sign-in form and the HTML default
+  would have made either of them sign the person in.
+- **Test.** 4 e2e assertions, structural rather than behavioural on purpose — a behavioural
+  test would submit real credentials against whatever project the run points at. 80 e2e.
+- **Result.** Fixed and verified.
+
 ### #285 also carries — `docs: three contradictions in the register`
 
 Feature flags, required checks, and a duplicated `HARDEN-010`. Corrected.
@@ -562,7 +596,7 @@ Run against the top of the stack, after every change:
 | `npm run check:migrations` | pass                                           |
 | `npm run check:docs`       | pass                                           |
 | `npm run check:export`     | pass                                           |
-| `npx playwright test`      | **76 passed**, 1 skipped (was 60)              |
+| `npx playwright test`      | **80 passed**, 1 skipped (was 60)              |
 | `supabase test db`         | **43 files, 379 assertions, PASS**             |
 
 Every pass-1 test that produced a finding was re-run afterwards: the draft rota now returns
@@ -596,7 +630,7 @@ No regression was found in the manager paths: `rota_revisions`, `minimum_cover`,
 - Legal review of the placeholder Terms, and of cookie consent.
 
 **Process note.** The stacked pull requests must merge in order: #279 → #280 → #281 → #282
-→ #283 → #284 → #285. CodeRabbit skipped the six stacked ones, because it does not review a
+→ #283 → #284 → #285 → #286 → #287. CodeRabbit skipped the eight stacked ones, because it does not review a
 PR whose base is not `main`; each retargets to `main` automatically as its parent merges, and
 should be given a review pass then.
 
