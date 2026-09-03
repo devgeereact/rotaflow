@@ -13,6 +13,19 @@
  * Neither is keyed by user, so neither can be left for the next session.
  */
 
+/**
+ * What this deliberately does NOT touch: the IndexedDB outbox
+ * (`lib/offlineOutbox.ts`). It holds writes that have not reached the server
+ * — a clock-in somebody made on a ward with no signal — and clearing it on
+ * sign-out would destroy the one copy that exists, which is the single
+ * outcome the whole queue was built to prevent. Signing out is not a
+ * statement that you did not clock in.
+ *
+ * The shared-device problem it raises is answered by ownership instead: every
+ * record carries the id of the user who queued it, and `services/syncQueue.ts`
+ * replays and displays only theirs. See `belongsTo` there.
+ */
+
 /** Runtime cache names. Must match `workbox.runtimeCaching` in vite.config.ts. */
 const TENANT_CACHE_NAMES = ['supabase-api', 'imagekit-media'] as const;
 

@@ -16,6 +16,7 @@ vi.mock('@/services/swapService', () => ({ requestShiftSwap: vi.fn() }));
 vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 
 import { recordClockEvent } from '@/services/clockService';
+import { outboxAdd } from '@/lib/offlineOutbox';
 import {
   MAX_ATTEMPTS,
   classifyFailure,
@@ -67,6 +68,14 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
+
+/**
+ * The outbox is per-origin, not per-account, so every operation is scoped to
+ * the signed-in user. One constant stands in for that session throughout;
+ * the ownership tests at the end use a second one.
+ */
+const USER = 'user-a';
+const OTHER_USER = 'user-b';
 
 describe('classifyFailure', () => {
   it('treats a dropped connection as transient', () => {
@@ -127,13 +136,13 @@ describe('classifyFailure', () => {
 describe('flushQueuedWrites. The happy path', () => {
   it('replays and removes every queued write', async () => {
     mockedRecordClockEvent.mockResolvedValue({} as never);
-    await enqueueWrite('clock', { type: 'in' });
-    await enqueueWrite('clock', { type: 'out' });
+    await enqueueWrite('clock', { type: 'in' }, USER);
+    await enqueueWrite('clock', { type: 'out' }, USER);
 
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result).toEqual({ synced: 2, failed: 0, deadLettered: 0 });
-    expect(await listQueuedWrites()).toHaveLength(0);
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
   });
 
   it('replays oldest first', async () => {
@@ -143,13 +152,13 @@ describe('flushQueuedWrites. The happy path', () => {
       return Promise.resolve({} as never);
     });
 
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     await new Promise((r) => setTimeout(r, 2));
-    await enqueueWrite('clock', { seq: 2 });
+    await enqueueWrite('clock', { seq: 2 }, USER);
     await new Promise((r) => setTimeout(r, 2));
-    await enqueueWrite('clock', { seq: 3 });
+    await enqueueWrite('clock', { seq: 3 }, USER);
 
-    await flushQueuedWrites();
+    await flushQueuedWrites(USER);
 
     // `objectContaining`, because `enqueueWrite` now stamps an idempotency key
     // onto every DB-bound payload (BUG-046). Order is what this test is about.
@@ -166,7 +175,11 @@ describe('flushQueuedWrites. The happy path', () => {
   });
 
   it('does nothing with an empty queue', async () => {
-    expect(await flushQueuedWrites()).toEqual({ synced: 0, failed: 0, deadLettered: 0 });
+    expect(await flushQueuedWrites(USER)).toEqual({
+      synced: 0,
+      failed: 0,
+      deadLettered: 0,
+    });
     expect(mockedRecordClockEvent).not.toHaveBeenCalled();
   });
 });
@@ -179,11 +192,11 @@ describe('flushQueuedWrites, a permanent rejection must not block the queue', ()
     // place, so this 42501 blocked items 2 and 3 on this reconnect and on
     // every reconnect after it, forever, in silence. The carer's later
     // clock-ins never reached the database and their timesheet was wrong.
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     await new Promise((r) => setTimeout(r, 2));
-    await enqueueWrite('clock', { seq: 2 });
+    await enqueueWrite('clock', { seq: 2 }, USER);
     await new Promise((r) => setTimeout(r, 2));
-    await enqueueWrite('clock', { seq: 3 });
+    await enqueueWrite('clock', { seq: 3 }, USER);
 
     mockedRecordClockEvent.mockImplementation((payload) => {
       if ((payload as unknown as { seq: number }).seq === 1) {
@@ -192,13 +205,13 @@ describe('flushQueuedWrites, a permanent rejection must not block the queue', ()
       return Promise.resolve({} as never);
     });
 
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result.synced).toBe(2);
     expect(result.deadLettered).toBe(1);
-    expect(await listQueuedWrites()).toHaveLength(0);
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
 
-    const dead = await listDeadLetteredWrites();
+    const dead = await listDeadLetteredWrites(USER);
     expect(dead).toHaveLength(1);
     expect(first(dead).payload).toEqual(expect.objectContaining({ seq: 1 }));
     expect(first(dead).reason).toBe('permanent');
@@ -206,12 +219,12 @@ describe('flushQueuedWrites, a permanent rejection must not block the queue', ()
 
   it('never deletes the rejected write. It is kept for the user', async () => {
     // Losing it silently would be no better than the deadlock it replaced.
-    await enqueueWrite('clock', { shiftId: 'deleted-shift' });
+    await enqueueWrite('clock', { shiftId: 'deleted-shift' }, USER);
     mockedRecordClockEvent.mockRejectedValue(postgrestError('23503'));
 
-    await flushQueuedWrites();
+    await flushQueuedWrites(USER);
 
-    const dead = await listDeadLetteredWrites();
+    const dead = await listDeadLetteredWrites(USER);
     expect(dead).toHaveLength(1);
     expect(first(dead).payload).toEqual(
       expect.objectContaining({ shiftId: 'deleted-shift' }),
@@ -222,7 +235,7 @@ describe('flushQueuedWrites, a permanent rejection must not block the queue', ()
 
   it('drains a queue where several writes are individually rejected', async () => {
     for (const seq of [1, 2, 3, 4]) {
-      await enqueueWrite('clock', { seq });
+      await enqueueWrite('clock', { seq }, USER);
       await new Promise((r) => setTimeout(r, 2));
     }
     mockedRecordClockEvent.mockImplementation((payload) => {
@@ -231,88 +244,88 @@ describe('flushQueuedWrites, a permanent rejection must not block the queue', ()
       return Promise.resolve({} as never);
     });
 
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result.synced).toBe(2);
     expect(result.deadLettered).toBe(2);
-    expect(await listQueuedWrites()).toHaveLength(0);
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
   });
 
   it('leaves the queue empty and stable across repeated flushes', async () => {
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
 
-    await flushQueuedWrites();
-    const second = await flushQueuedWrites();
+    await flushQueuedWrites(USER);
+    const second = await flushQueuedWrites(USER);
 
     // The old code would have retried the same doomed item here, forever.
     expect(second).toEqual({ synced: 0, failed: 0, deadLettered: 0 });
-    expect(await listDeadLetteredWrites()).toHaveLength(1);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(1);
   });
 });
 
 describe('flushQueuedWrites, a transient failure is retried, then bounded', () => {
   it('keeps the write queued and stops the flush', async () => {
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     await new Promise((r) => setTimeout(r, 2));
-    await enqueueWrite('clock', { seq: 2 });
+    await enqueueWrite('clock', { seq: 2 }, USER);
 
     mockedRecordClockEvent.mockRejectedValue(networkError());
 
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result).toEqual({ synced: 0, failed: 1, deadLettered: 0 });
     // Both still queued: stopping early is correct when the network dropped.
-    expect(await listQueuedWrites()).toHaveLength(2);
+    expect(await listQueuedWrites(USER)).toHaveLength(2);
     // Only one attempt was burned, not one per item.
     expect(mockedRecordClockEvent).toHaveBeenCalledTimes(1);
   });
 
   it('counts attempts across reconnects', async () => {
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     mockedRecordClockEvent.mockRejectedValue(networkError());
 
-    await flushQueuedWrites();
-    expect(first(await listQueuedWrites()).attempts).toBe(1);
+    await flushQueuedWrites(USER);
+    expect(first(await listQueuedWrites(USER)).attempts).toBe(1);
 
-    await flushQueuedWrites();
-    expect(first(await listQueuedWrites()).attempts).toBe(2);
+    await flushQueuedWrites(USER);
+    expect(first(await listQueuedWrites(USER)).attempts).toBe(2);
   });
 
   it('delivers the write once the network returns', async () => {
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
 
     mockedRecordClockEvent.mockRejectedValueOnce(networkError());
-    await flushQueuedWrites();
-    expect(await listQueuedWrites()).toHaveLength(1);
+    await flushQueuedWrites(USER);
+    expect(await listQueuedWrites(USER)).toHaveLength(1);
 
     mockedRecordClockEvent.mockResolvedValue({} as never);
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result.synced).toBe(1);
-    expect(await listQueuedWrites()).toHaveLength(0);
-    expect(await listDeadLetteredWrites()).toHaveLength(0);
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(0);
   });
 
   it('dead-letters after MAX_ATTEMPTS rather than retrying forever', async () => {
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     mockedRecordClockEvent.mockRejectedValue(new Error('unclassifiable'));
 
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      await flushQueuedWrites();
+      await flushQueuedWrites(USER);
     }
 
-    expect(await listQueuedWrites()).toHaveLength(0);
-    const dead = await listDeadLetteredWrites();
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
+    const dead = await listDeadLetteredWrites(USER);
     expect(dead).toHaveLength(1);
     expect(first(dead).reason).toBe('exhausted');
     expect(first(dead).attempts).toBe(MAX_ATTEMPTS);
   });
 
   it('does not let an exhausted item strand the ones behind it', async () => {
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     await new Promise((r) => setTimeout(r, 2));
-    await enqueueWrite('clock', { seq: 2 });
+    await enqueueWrite('clock', { seq: 2 }, USER);
 
     mockedRecordClockEvent.mockImplementation((payload) => {
       if ((payload as unknown as { seq: number }).seq === 1) {
@@ -322,42 +335,42 @@ describe('flushQueuedWrites, a transient failure is retried, then bounded', () =
     });
 
     // Burn item 1's attempts.
-    for (let i = 0; i < MAX_ATTEMPTS; i++) await flushQueuedWrites();
+    for (let i = 0; i < MAX_ATTEMPTS; i++) await flushQueuedWrites(USER);
 
     // Item 2 was blocked while item 1 retried. Correct, that is the transient
     // policy, but once item 1 is set aside the next flush must deliver it.
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result.synced).toBe(1);
-    expect(await listQueuedWrites()).toHaveLength(0);
-    expect(await listDeadLetteredWrites()).toHaveLength(1);
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(1);
   });
 });
 
 describe('dead letters', () => {
   it('survive until explicitly discarded', async () => {
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
-    await flushQueuedWrites();
+    await flushQueuedWrites(USER);
 
-    const dead = first(await listDeadLetteredWrites());
+    const dead = first(await listDeadLetteredWrites(USER));
     expect(dead).toBeDefined();
 
-    await flushQueuedWrites();
-    expect(await listDeadLetteredWrites()).toHaveLength(1);
+    await flushQueuedWrites(USER);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(1);
 
     await discardDeadLetteredWrite(dead.id);
-    expect(await listDeadLetteredWrites()).toHaveLength(0);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(0);
   });
 
   it('keep enough context to re-enter the write by hand', async () => {
-    await enqueueWrite('clock', { type: 'in', event_at: '2026-06-15T09:00:00Z' });
+    await enqueueWrite('clock', { type: 'in', event_at: '2026-06-15T09:00:00Z' }, USER);
     mockedRecordClockEvent.mockRejectedValue(
       postgrestError('42501', 'permission denied'),
     );
-    await flushQueuedWrites();
+    await flushQueuedWrites(USER);
 
-    const dead = first(await listDeadLetteredWrites());
+    const dead = first(await listDeadLetteredWrites(USER));
     expect(dead.kind).toBe('clock');
     expect(dead.payload).toEqual(
       expect.objectContaining({ type: 'in', event_at: '2026-06-15T09:00:00Z' }),
@@ -369,8 +382,8 @@ describe('dead letters', () => {
 
 describe('idempotency (BUG-046)', () => {
   it('stamps a key on a DB-bound payload so a replay can collide instead of duplicating', async () => {
-    await enqueueWrite('leave', { start_date: '2026-06-15' });
-    const [item] = await listQueuedWrites();
+    await enqueueWrite('leave', { start_date: '2026-06-15' }, USER);
+    const [item] = await listQueuedWrites(USER);
     const payload = item?.payload as { client_event_id?: unknown };
     expect(typeof payload.client_event_id).toBe('string');
   });
@@ -379,8 +392,12 @@ describe('idempotency (BUG-046)', () => {
     // The case that matters: ClockInPage generates the key BEFORE trying the
     // network, so a write whose response was lost is already in Postgres under
     // it. Overwriting here would reopen exactly the hole this closes.
-    await enqueueWrite('clock', { type: 'in', client_event_id: 'minted-by-caller' });
-    const [item] = await listQueuedWrites();
+    await enqueueWrite(
+      'clock',
+      { type: 'in', client_event_id: 'minted-by-caller' },
+      USER,
+    );
+    const [item] = await listQueuedWrites(USER);
     expect((item?.payload as { client_event_id?: unknown }).client_event_id).toBe(
       'minted-by-caller',
     );
@@ -389,15 +406,15 @@ describe('idempotency (BUG-046)', () => {
   it('leaves a notify payload alone — it is not a table write', async () => {
     // `notify` is retired (HARDEN-008) and nothing enqueues it any more, but an
     // older install may still hold one, so the shape must keep round-tripping.
-    await enqueueWrite('notify', { name: 'leave/reviewed', data: {} });
-    const [item] = await listQueuedWrites();
+    await enqueueWrite('notify', { name: 'leave/reviewed', data: {} }, USER);
+    const [item] = await listQueuedWrites(USER);
     expect(item?.payload).toEqual({ name: 'leave/reviewed', data: {} });
   });
 
   it('treats "already applied" as synced, not as a dead letter', async () => {
     // 23505 classifies as permanent, so without this the person would be told a
     // clock-in failed that is sitting in their timesheet.
-    await enqueueWrite('clock', { type: 'in' });
+    await enqueueWrite('clock', { type: 'in' }, USER);
     mockedRecordClockEvent.mockRejectedValue(
       postgrestError(
         '23505',
@@ -405,16 +422,16 @@ describe('idempotency (BUG-046)', () => {
       ),
     );
 
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result.synced).toBe(1);
     expect(result.deadLettered).toBe(0);
-    expect(await listQueuedWrites()).toHaveLength(0);
-    expect(await listDeadLetteredWrites()).toHaveLength(0);
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(0);
   });
 
   it('still dead-letters a unique violation from a different constraint', async () => {
-    await enqueueWrite('clock', { type: 'in' });
+    await enqueueWrite('clock', { type: 'in' }, USER);
     mockedRecordClockEvent.mockRejectedValue(
       postgrestError(
         '23505',
@@ -422,7 +439,7 @@ describe('idempotency (BUG-046)', () => {
       ),
     );
 
-    const result = await flushQueuedWrites();
+    const result = await flushQueuedWrites(USER);
 
     expect(result.synced).toBe(0);
     expect(result.deadLettered).toBe(1);
@@ -431,8 +448,8 @@ describe('idempotency (BUG-046)', () => {
 
 describe('enqueueWrite', () => {
   it('starts a write at zero attempts', async () => {
-    await enqueueWrite('leave', { start_date: '2026-06-15' });
-    const item = first(await listQueuedWrites());
+    await enqueueWrite('leave', { start_date: '2026-06-15' }, USER);
+    const item = first(await listQueuedWrites(USER));
     expect(item.attempts).toBe(0);
     expect(item.kind).toBe('leave');
   });
@@ -467,35 +484,35 @@ describe('retryDeadLetteredWrite (CAP-016)', () => {
     // The common case, and the one the dismiss-only notice could not serve:
     // the payload was always correct and only the moment was wrong — a ward's
     // wifi during handover, a shift published a minute later.
-    await enqueueWrite('clock', { seq: 1 });
+    await enqueueWrite('clock', { seq: 1 }, USER);
     mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
-    await flushQueuedWrites();
+    await flushQueuedWrites(USER);
 
-    const [dead] = await listDeadLetteredWrites();
+    const [dead] = await listDeadLetteredWrites(USER);
     expect(dead).toBeDefined();
 
     mockedRecordClockEvent.mockResolvedValue({} as never);
-    const result = await retryDeadLetteredWrite(dead!.id);
+    const result = await retryDeadLetteredWrite(dead!.id, USER);
 
     expect(result.synced).toBe(1);
-    expect(await listDeadLetteredWrites()).toHaveLength(0);
-    expect(await listQueuedWrites()).toHaveLength(0);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(0);
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
   });
 
   it('keeps the idempotency key, so a retry of something that did land is not a double', async () => {
     // This is why the button arrives AFTER 0081 and not before. Without the
     // key surviving the requeue, "try again" on a clock-in that secretly
     // succeeded would be a way to clock somebody in twice.
-    await enqueueWrite('clock', { type: 'in' });
+    await enqueueWrite('clock', { type: 'in' }, USER);
     mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
-    await flushQueuedWrites();
+    await flushQueuedWrites(USER);
 
-    const [dead] = await listDeadLetteredWrites();
+    const [dead] = await listDeadLetteredWrites(USER);
     const keyBefore = (dead!.payload as { client_event_id?: string }).client_event_id;
     expect(keyBefore).toBeTruthy();
 
     mockedRecordClockEvent.mockResolvedValue({} as never);
-    await retryDeadLetteredWrite(dead!.id);
+    await retryDeadLetteredWrite(dead!.id, USER);
 
     // Indexed rather than `.at(-1)`: the tsconfig target is ES2021, where
     // `Array.prototype.at` does not exist. Raising the target for one test
@@ -509,22 +526,94 @@ describe('retryDeadLetteredWrite (CAP-016)', () => {
     // A retry is not a promise. What it must not do is lose the write on the
     // way through — requeue happens before the removal for exactly that
     // reason.
-    await enqueueWrite('clock', { seq: 9 });
+    await enqueueWrite('clock', { seq: 9 }, USER);
     mockedRecordClockEvent.mockRejectedValue(postgrestError('42501'));
-    await flushQueuedWrites();
+    await flushQueuedWrites(USER);
 
-    const [dead] = await listDeadLetteredWrites();
-    const result = await retryDeadLetteredWrite(dead!.id);
+    const [dead] = await listDeadLetteredWrites(USER);
+    const result = await retryDeadLetteredWrite(dead!.id, USER);
 
     expect(result.deadLettered).toBe(1);
-    expect(await listDeadLetteredWrites()).toHaveLength(1);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(1);
   });
 
   it('does nothing for an id that is not there', async () => {
-    expect(await retryDeadLetteredWrite('no-such-id')).toEqual({
+    expect(await retryDeadLetteredWrite('no-such-id', USER)).toEqual({
       synced: 0,
       failed: 0,
       deadLettered: 0,
     });
+  });
+});
+
+/**
+ * The outbox is stored per ORIGIN, not per account, so it outlives a
+ * sign-out. On a shared device — a ward tablet, a warehouse terminal, the
+ * site office PC, which is most of RotaFlow's market — that is the difference
+ * between a queue and a hazard.
+ *
+ * The asymmetry is what makes it serious. RLS lets a manager insert a clock
+ * event for anybody in their organisation (0037), so a manager signing in on
+ * that tablet would successfully land a colleague's queued clock-in on their
+ * behalf, hours late. A staff member signing in on the same tablet would fail
+ * that check, the failure classifies as permanent, and the colleague's
+ * clock-in would be DESTROYED — with a notice on the new person's screen
+ * saying "1 action didn't save" about an action they never took.
+ */
+describe('ownership (GAP-042)', () => {
+  it("does not replay another user's queued write", async () => {
+    mockedRecordClockEvent.mockResolvedValue({} as never);
+    await enqueueWrite('clock', { type: 'in' }, OTHER_USER);
+
+    const result = await flushQueuedWrites(USER);
+
+    expect(result).toEqual({ synced: 0, failed: 0, deadLettered: 0 });
+    expect(recordClockEvent).not.toHaveBeenCalled();
+    // Still there, untouched, for its owner to flush when they sign back in.
+    expect(await listQueuedWrites(OTHER_USER)).toHaveLength(1);
+  });
+
+  it("does not show another user's queued write or dead letter", async () => {
+    mockedRecordClockEvent.mockResolvedValue({} as never);
+    await enqueueWrite('clock', { type: 'in' }, OTHER_USER);
+    mockedRecordClockEvent.mockRejectedValueOnce({ code: '42501' });
+    await enqueueWrite('clock', { type: 'out' }, OTHER_USER);
+    await flushQueuedWrites(OTHER_USER);
+
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(0);
+    expect(await listDeadLetteredWrites(OTHER_USER)).not.toHaveLength(0);
+  });
+
+  it("will not retry another user's dead letter", async () => {
+    mockedRecordClockEvent.mockRejectedValue({ code: '42501' });
+    await enqueueWrite('clock', { type: 'in' }, OTHER_USER);
+    await flushQueuedWrites(OTHER_USER);
+    const [dead] = await listDeadLetteredWrites(OTHER_USER);
+
+    expect(await retryDeadLetteredWrite(dead!.id, USER)).toEqual({
+      synced: 0,
+      failed: 0,
+      deadLettered: 0,
+    });
+    expect(await listDeadLetteredWrites(OTHER_USER)).toHaveLength(1);
+  });
+
+  // A row queued before this field existed. Stranding a clock-in forever is
+  // worse than replaying one, and there is no second copy of it anywhere.
+  it('claims a legacy record with no owner rather than stranding it', async () => {
+    mockedRecordClockEvent.mockResolvedValue({} as never);
+    await outboxAdd({
+      id: 'legacy-1',
+      kind: 'clock',
+      payload: { type: 'in' },
+      queuedAt: new Date().toISOString(),
+      attempts: 0,
+    });
+
+    const result = await flushQueuedWrites(USER);
+
+    expect(result.synced).toBe(1);
+    expect(recordClockEvent).toHaveBeenCalledOnce();
   });
 });

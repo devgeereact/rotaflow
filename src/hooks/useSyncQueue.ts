@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import {
   discardDeadLetteredWrite,
   retryDeadLetteredWrite,
@@ -44,6 +45,12 @@ export interface UseSyncQueue {
  */
 export function useSyncQueue(): UseSyncQueue {
   const online = useOnlineStatus();
+  // The outbox is per-origin, not per-account, and survives a sign-out. Every
+  // operation below is scoped to the signed-in user so a shared device never
+  // replays, or shows, somebody else's writes. See `belongsTo` in
+  // services/syncQueue.ts for what that prevents.
+  const { user } = useSupabaseAuth();
+  const userId = user?.id ?? null;
   const [pending, setPending] = useState<QueuedItem[]>([]);
   const [deadLettered, setDeadLettered] = useState<DeadLetterRecord[]>([]);
   const [syncing, setSyncing] = useState(false);
@@ -52,35 +59,40 @@ export function useSyncQueue(): UseSyncQueue {
   const flushing = useRef(false);
 
   const refresh = useCallback(async (): Promise<void> => {
+    if (!userId) {
+      setPending([]);
+      setDeadLettered([]);
+      return;
+    }
     try {
       const [queued, dead] = await Promise.all([
-        listQueuedWrites(),
-        listDeadLetteredWrites(),
+        listQueuedWrites(userId),
+        listDeadLetteredWrites(userId),
       ]);
       setPending(queued);
       setDeadLettered(dead);
     } catch (err) {
       reportError(err, { area: 'syncQueue:list' });
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   const flush = useCallback(async (): Promise<FlushResult> => {
-    if (flushing.current) return { synced: 0, failed: 0, deadLettered: 0 };
+    if (!userId || flushing.current) return { synced: 0, failed: 0, deadLettered: 0 };
     flushing.current = true;
     setSyncing(true);
     try {
-      const result = await flushQueuedWrites();
+      const result = await flushQueuedWrites(userId);
       await refresh();
       return result;
     } finally {
       setSyncing(false);
       flushing.current = false;
     }
-  }, [refresh]);
+  }, [refresh, userId]);
 
   // Auto-flush on reconnect. Not on mount while online: a cold boot with
   // nothing queued would otherwise open an IndexedDB transaction for no
@@ -95,10 +107,14 @@ export function useSyncQueue(): UseSyncQueue {
 
   const enqueue = useCallback(
     async (kind: OutboxKind, payload: unknown): Promise<void> => {
-      await enqueueWrite(kind, payload);
+      // No session, nothing to attribute the write to. Every caller is inside
+      // ProtectedRoute, so this is unreachable in practice; queueing an
+      // unowned write would be worse than refusing one.
+      if (!userId) throw new Error('Cannot queue a write without a signed-in user');
+      await enqueueWrite(kind, payload, userId);
       await refresh();
     },
-    [refresh],
+    [refresh, userId],
   );
 
   const discard = useCallback(
@@ -115,10 +131,11 @@ export function useSyncQueue(): UseSyncQueue {
   // somebody.
   const retry = useCallback(
     async (id: string): Promise<void> => {
-      await retryDeadLetteredWrite(id);
+      if (!userId) return;
+      await retryDeadLetteredWrite(id, userId);
       await refresh();
     },
-    [refresh],
+    [refresh, userId],
   );
 
   return { pending, deadLettered, enqueue, flush, discard, retry, syncing };
