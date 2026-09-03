@@ -31,7 +31,7 @@ const WORKFLOW = [
   {
     step: 'Publish',
     title: 'Release it when it is ready, not before',
-    body: 'A rota stays a draft while you move it around. Publishing shows exactly what is about to change. The date range, how many shifts, how many still open, and any unresolved conflicts, and then notifies the team.',
+    body: 'A rota stays a draft while you move it around. Publishing shows exactly what is about to change — the date range, how many shifts, how many still open, and any unresolved conflicts — and then notifies the team.',
     points: [
       'Draft and published are genuinely separate states',
       'Staff only ever see what has been published',

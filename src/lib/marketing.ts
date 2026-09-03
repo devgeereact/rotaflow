@@ -318,7 +318,7 @@ export const WHY_ROTAFLOW: readonly Reason[] = [
   },
   {
     title: 'Maintain compliance',
-    body: 'Rest periods, contracted hours, qualification expiry and an auditable attendance record. Visible before they become a problem.',
+    body: 'Rest periods, contracted hours, qualification expiry and an auditable attendance record, visible before any of them becomes a problem.',
   },
   {
     title: 'Increase workforce visibility',

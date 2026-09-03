@@ -77,8 +77,8 @@ export function TestimonialBand(): JSX.Element {
         </h2>
         <p className="mt-3 text-content-muted dark:text-content-muted-dark">
           RotaFlow is pre-launch, so there are no customer quotes here yet. These are the
-          commitments the product is built on. Each one checkable, not a claim about how
-          many people use it.
+          commitments the product is built on. Each one is checkable, not a claim about
+          how many people use it.
         </p>
       </div>
 
