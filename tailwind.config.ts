@@ -81,7 +81,6 @@ const config: Config = {
           // already 6.44:1 on the darkest ground) but still gets the token, so
           // the rule has no exception for somebody to apply wrongly.
           'ink-dark': '#769AE9',
-
         },
         // Vivid marketing blue + navy ink ramp, sampled from
         // docs/design/splash-screen.png (and matching signin/dashboard renders).
@@ -302,9 +301,11 @@ const config: Config = {
         },
       },
       fontFamily: {
-        // "Inter Variable" per docs/DESIGN.md — loaded as the full variable
-        // weight range (100..900) from Google Fonts; the family name Google
-        // serves it under is still "Inter".
+        // "Inter Variable" per docs/DESIGN.md — the full variable weight range
+        // (100..900). Self-hosted from /fonts since 2026-09-03 (see
+        // public/fonts/README.md); the family name is still "Inter", which is
+        // what Google served it under too, so nothing here changed with the
+        // move.
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],

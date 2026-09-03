@@ -3,6 +3,79 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Self-hosted webfonts. See public/fonts/README.md.
+   *
+   * These were loaded from fonts.googleapis.com until 2026-09-03, which made
+   * /legal/cookies untrue: it says in bold that "no third-party script runs on
+   * this site", while every page was sending each visitor's IP address and
+   * User-Agent to Google before they had interacted with anything, and Google
+   * appears nowhere in the sub-processor list. The claim was worth keeping, so
+   * the fonts moved instead of the sentence.
+   *
+   * Both families are variable, so one file per subset covers every weight in
+   * docs/DESIGN.md. The unicode-range values are Google's own, copied from the
+   * stylesheet it served: they are what lets a browser skip the latin-ext file
+   * for text that does not need it, which is most of this site's.
+   *
+   * `swap` rather than `block`: the fallback stack renders immediately and the
+   * webfont replaces it, so a slow font never leaves somebody looking at a
+   * blank rota.
+   */
+  /* Inter — latin */
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/fonts/inter-latin.woff2') format('woff2');
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+      U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+      U+FFFD;
+  }
+
+  /* Inter — latin-ext */
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/fonts/inter-latin-ext.woff2') format('woff2');
+    unicode-range:
+      U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+      U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+      U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  /* JetBrains Mono — latin */
+  @font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 100 800;
+    font-display: swap;
+    src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+      U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+      U+FFFD;
+  }
+
+  /* JetBrains Mono — latin-ext */
+  @font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 100 800;
+    font-display: swap;
+    src: url('/fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
+    unicode-range:
+      U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+      U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+      U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+}
+
+@layer base {
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;

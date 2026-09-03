@@ -189,7 +189,15 @@ export default defineConfig({
         // precaching 60KiB of it spends 8% of the precache budget to make a
         // scraper's job marginally faster while it is offline, which it never
         // is. Measured: 678KiB -> 739KiB of a 760KiB budget when it was in.
-        globIgnores: ['og-image.png'],
+        globIgnores: [
+          'og-image.png',
+          // The four self-hosted webfonts, 176KiB, which would take 23% of the
+          // precache budget. They were never precached while Google served them
+          // — a cross-origin URL cannot be — and `font-display: swap` means a
+          // cold offline start renders in the fallback stack rather than waiting.
+          // The runtime rule below caches them on first use instead.
+          'fonts/*.woff2',
+        ],
         // SPA navigations resolve to the precached index.html.
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
@@ -218,10 +226,16 @@ export default defineConfig({
             },
           },
           {
-            // Google Fonts stylesheets + files.
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'google-fonts' },
+            // The self-hosted webfonts (public/fonts/). Same-origin since
+            // 2026-09-03, and excluded from the precache above, so this rule is
+            // what actually serves them on every visit after the first.
+            urlPattern: ({ url }) => url.pathname.startsWith('/fonts/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'rotaflow-fonts',
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
           },
         ],
       },

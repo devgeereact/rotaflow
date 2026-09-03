@@ -208,7 +208,7 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 - **Runtime caching:**
   - ImageKit → `CacheFirst` (30-day, 200 entries).
   - Supabase REST → `NetworkFirst` (5s timeout, 5-min fallback).
-  - Google Fonts → `StaleWhileRevalidate`.
+  - Self-hosted webfonts (`/fonts/`) → `CacheFirst`, excluded from the precache. They were Google Fonts on `StaleWhileRevalidate` until 2026-09-03; see `public/fonts/README.md`.
 - **Updates:** `registerType: 'prompt'` + `skipWaiting: false`. A new SW waits;
   the app shows a "Reload to update" prompt so users are never interrupted.
 - `public/offline.html` is precached but **never served**. It is in `includeAssets`
