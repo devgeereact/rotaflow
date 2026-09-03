@@ -22,6 +22,12 @@ const PUBLIC_PAGES = [
   { path: '/legal/cookies', heading: /cookie/i },
   { path: '/legal/accessibility', heading: /accessibility/i },
   { path: '/legal/trust', heading: /trust and sub-processors/i },
+  // Added 2026-09-02 by the full audit. Both were public, both were outside
+  // every sweep, and neither set a title: the password-reset tab read
+  // "RotaFlow — Scheduling certainty for every shift", and the 404 rendered
+  // with no nav and no way out.
+  { path: '/forgot-password', heading: /reset|forgot|password/i },
+  { path: '/this-page-does-not-exist', heading: /doesn.t exist/i },
 ];
 
 /**
@@ -109,3 +115,58 @@ for (const path of [
     ).toEqual([]);
   });
 }
+
+/**
+ * Metadata is invisible on screen, which is why it was absent for months: one
+ * title and one description served all sixteen public pages, and there was no
+ * canonical, no Open Graph and no Twitter card anywhere in the repository.
+ * Nothing on a rendered page would have looked wrong.
+ */
+test.describe('page metadata', () => {
+  for (const { path } of PUBLIC_PAGES) {
+    test(`${path} has its own title, description and canonical`, async ({ page }) => {
+      await page.goto(path);
+
+      await expect(page).toHaveTitle(/RotaFlow/);
+
+      // Polling matchers throughout, not one-shot getAttribute: index.html
+      // ships site-level defaults and `usePageMetadata` replaces them in an
+      // effect after mount, so reading once races the first paint and fails
+      // on whichever pages happen to lose that race.
+      const canonicalPath = path === '/' ? '/' : path;
+      await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        // Absolute, and pointing at THIS page rather than the homepage — a
+        // site-wide canonical to `/` tells Google the other fifteen pages are
+        // duplicates of it.
+        new RegExp('^https?://[^/]+' + canonicalPath.replace(/\//g, '\\/') + '$'),
+      );
+
+      await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
+        'content',
+        /.{20,}/,
+      );
+      await expect(page.locator('head meta[property="og:image"]')).toHaveAttribute(
+        'content',
+        /og-image\.png/,
+      );
+    });
+  }
+
+  test('two pages do not share one title', async ({ page }) => {
+    await page.goto('/pricing');
+    const pricing = await page.title();
+    await page.goto('/about');
+    expect(await page.title()).not.toBe(pricing);
+  });
+
+  test('the 404 asks not to be indexed, because the server answers it 200', async ({
+    page,
+  }) => {
+    await page.goto('/this-page-does-not-exist');
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+      'content',
+      /noindex/,
+    );
+  });
+});

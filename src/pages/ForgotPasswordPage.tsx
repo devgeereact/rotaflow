@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { reportError } from '@/lib/sentry';
 import { appUrlFor } from '@/lib/appOrigin';
 import { isValidEmail } from '@/lib/email';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -18,6 +19,10 @@ import { EmailSuggestion } from '@/components/auth/EmailSuggestion';
  * form into an account-enumeration oracle for a system holding staff records.
  */
 export function ForgotPasswordPage(): JSX.Element {
+  // Title, description and canonical from `publicRoutes.ts`. Neither of these
+  // two set any until 2026-09-02: the tab read the homepage's headline.
+  usePageMetadata();
+
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);

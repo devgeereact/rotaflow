@@ -354,6 +354,32 @@ export function useConsoleRefresh(): ConsoleRefreshValue;
 export function useRegisterConsoleRefresh(fn: () => void): void; // for screens
 ```
 
+### 18. `usePageMetadata`
+
+`src/hooks/usePageMetadata.ts`
+Everything a browser tab, a search result and a link preview show, for one
+public route. Reads the path from the router and looks it up in
+`src/lib/publicRoutes.ts`, so a page cannot forget its own description the way
+a prop can be forgotten.
+
+Before it, `MarketingLayout` set `document.title` and nothing else: one
+`<meta description>` served all sixteen public pages, there was no
+`<link rel="canonical">`, no Open Graph and no Twitter card anywhere in the
+repository, and the four auth routes and the 404 set no title at all.
+
+```ts
+interface PageMetadata {
+  title?: string; // overrides the route's own
+  description?: string; // overrides the route's own
+  noindex?: boolean; // the 404 only — the SPA fallback answers it 200
+}
+export function usePageMetadata(overrides?: PageMetadata): void;
+```
+
+Callers: `MarketingLayout`, `AuthSplitLayout`, `ForgotPasswordPage`,
+`ResetPasswordPage`. Only the title is restored on unmount; the tags are
+overwritten by whichever route mounts next.
+
 ## Conventions
 
 - Every hook is fully typed with an explicit return interface.

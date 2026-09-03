@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
 import { teamWorkspaceTabs } from '@/lib/workspaceTabs';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
+import { PUBLIC_ROUTES } from '@/lib/publicRoutes';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
 import { footerNavItemsForRole, navItemsForRole } from '@/lib/sidebarNav';
 import {
@@ -393,5 +394,66 @@ describe('navigation targets', () => {
     for (const target of ['/', '/signup', '/login', '/contact', '/resources']) {
       expect(isRoutable(target)).toBe(true);
     }
+  });
+});
+
+/**
+ * The sitemap is generated from `PUBLIC_ROUTES` at build time
+ * (`vite.config.ts`), so a path in that list with no `<Route>` behind it does
+ * not fail quietly — it is published to Google as a URL that renders the 404
+ * page. Same class as the settings-tab bug above, with a worse audience.
+ */
+describe('public route metadata', () => {
+  it.each(PUBLIC_ROUTES.map((route) => [route.path] as const))(
+    'public route %s has a route in App.tsx',
+    (path) => {
+      expect(isRoutable(path)).toBe(true);
+    },
+  );
+
+  it('every public marketing nav target carries metadata', () => {
+    const described = new Set(PUBLIC_ROUTES.map((route) => route.path));
+    for (const item of MARKETING_NAV) {
+      expect(described.has(item.to)).toBe(true);
+    }
+  });
+
+  it('every internal public footer link carries metadata', () => {
+    const described = new Set(PUBLIC_ROUTES.map((route) => route.path));
+    const internal = FOOTER_COLUMNS.flatMap((column) => column.links)
+      .map((link) => link.to)
+      // The footer also points into the app and out to mail; neither belongs
+      // in a sitemap, and neither is reachable logged out.
+      .filter(
+        (to) => to.startsWith('/') && !to.startsWith('/app') && !to.startsWith('/admin'),
+      );
+
+    for (const to of internal) {
+      expect(described.has(to)).toBe(true);
+    }
+  });
+
+  it('describes each page exactly once, with a description short enough to survive a search result', () => {
+    const paths = PUBLIC_ROUTES.map((route) => route.path);
+    expect(new Set(paths).size).toBe(paths.length);
+
+    for (const route of PUBLIC_ROUTES) {
+      expect(route.path.startsWith('/')).toBe(true);
+      expect(route.title.length).toBeGreaterThan(0);
+      // Google truncates around 160 characters. A description cut mid-word is
+      // worse than a shorter one that ends where the author meant it to.
+      expect(route.description.length).toBeLessThanOrEqual(160);
+      expect(route.description.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('lists something in the sitemap, and keeps the auth utilities out of it', () => {
+    const inSitemap = PUBLIC_ROUTES.filter((route) => route.sitemap).map(
+      (route) => route.path,
+    );
+    expect(inSitemap.length).toBeGreaterThan(10);
+    expect(inSitemap).toContain('/');
+    expect(inSitemap).not.toContain('/reset-password');
+    expect(inSitemap).not.toContain('/forgot-password');
   });
 });

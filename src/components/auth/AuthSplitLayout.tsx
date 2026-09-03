@@ -4,6 +4,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
 import { LanguagePill } from '@/components/ui/LanguagePill';
 import { SplashWaves } from '@/components/SplashWaves';
 import { AuthTrustStrip } from '@/components/auth/AuthTrustStrip';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 export interface AuthFeature {
   icon: LucideIcon;
@@ -38,6 +39,12 @@ export function AuthSplitLayout({
   features,
   children,
 }: AuthSplitLayoutProps): JSX.Element {
+  // Title, description and canonical come from `publicRoutes.ts` keyed on the
+  // path. Until 2026-09-02 none of the four auth routes set any: a
+  // password-reset page's tab read "RotaFlow — Scheduling certainty for every
+  // shift", which is the wrong answer to "which of my tabs was that".
+  usePageMetadata();
+
   return (
     <div className="relative flex min-h-screen bg-background dark:bg-background-dark">
       <div className="relative hidden w-[46%] shrink-0 overflow-hidden lg:block">

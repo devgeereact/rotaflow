@@ -1,12 +1,14 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import checker from 'vite-plugin-checker';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import pkg from './package.json';
+import { PUBLIC_ROUTES } from './src/lib/publicRoutes';
 
 // The Sentry *release* identifier, distinct from `__APP_VERSION__` below:
 // `pkg.version` has been "1.0.0" since the project's first commit and isn't
@@ -24,6 +26,67 @@ function resolveSentryRelease(): string {
   }
 }
 const sentryRelease = resolveSentryRelease();
+
+/**
+ * The origin the sitemap advertises.
+ *
+ * Not `appOrigin()`: that is deliberately the browser's own origin, which does
+ * not exist at build time. `VITE_APP_URL` when a `.env` is present, and the
+ * production domain otherwise — CI builds with no `.env` at all (ci.yml:"Build
+ * (no .env)"), and a sitemap listing `http://localhost:5042` would be worse
+ * than none.
+ */
+const SITE_ORIGIN = (process.env['VITE_APP_URL'] ?? 'https://rotaflow.space').replace(
+  /\/$/,
+  '',
+);
+
+/**
+ * Writes `dist/sitemap.xml` from `src/lib/publicRoutes.ts`.
+ *
+ * There was no sitemap at all until 2026-09-02, and `robots.txt` still carried
+ * the scaffold's commented-out `https://yourdomain.com/sitemap.xml`. Requesting
+ * `/sitemap.xml` returned **200 with index.html**, because the SPA fallback
+ * answers anything that is not a real file — the exact failure
+ * `docs/DEPLOYMENT.md` warns about twice, where a 200 is taken as evidence a
+ * file deployed.
+ *
+ * Generated rather than committed so it cannot fall behind the route table:
+ * `navigationTargets.test.ts` already fails the build if a listed path has no
+ * `<Route>`, and this plugin fails it if the list is empty.
+ */
+function sitemap(): PluginOption {
+  return {
+    name: 'rotaflow-sitemap',
+    apply: 'build' as const,
+    closeBundle() {
+      const pages = PUBLIC_ROUTES.filter((route) => route.sitemap);
+      if (pages.length === 0) {
+        throw new Error(
+          'Refusing to write an empty sitemap.xml — PUBLIC_ROUTES is empty',
+        );
+      }
+
+      const lastmod = new Date().toISOString().slice(0, 10);
+      const body = pages
+        .map((route) => {
+          const loc = `${SITE_ORIGIN}${route.path === '/' ? '/' : route.path}`;
+          const priority =
+            route.priority === undefined
+              ? ''
+              : `\n    <priority>${route.priority.toFixed(1)}</priority>`;
+          return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>${priority}\n  </url>`;
+        })
+        .join('\n');
+
+      writeFileSync(
+        path.resolve(__dirname, 'dist/sitemap.xml'),
+        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`,
+        'utf8',
+      );
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -67,6 +130,8 @@ export default defineConfig({
   plugins: [
     react(),
 
+    sitemap(),
+
     VitePWA({
       // 'generateSW' lets Workbox build the service worker for us.
       strategies: 'generateSW',
@@ -109,6 +174,12 @@ export default defineConfig({
         importScripts: ['/push-sw.js'],
         // Precache the shell so the SPA boots with no network.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // The link-preview card is read by Slack, WhatsApp and search crawlers
+        // fetching it directly. No screen in the app ever renders it, so
+        // precaching 60KiB of it spends 8% of the precache budget to make a
+        // scraper's job marginally faster while it is offline, which it never
+        // is. Measured: 678KiB -> 739KiB of a 760KiB budget when it was in.
+        globIgnores: ['og-image.png'],
         // SPA navigations resolve to the precached index.html.
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,

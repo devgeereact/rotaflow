@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/useToast';
 import { reportError } from '@/lib/sentry';
 import { authErrorMessage } from '@/lib/authErrors';
 import { PASSWORD_MIN_LENGTH } from '@/lib/password';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -20,6 +21,10 @@ import { Label } from '@/components/ui/Label';
  * the user the link is stale rather than showing a form that cannot submit.
  */
 export function ResetPasswordPage(): JSX.Element {
+  // Title, description and canonical from `publicRoutes.ts`. Neither of these
+  // two set any until 2026-09-02: the tab read the homepage's headline.
+  usePageMetadata();
+
   const navigate = useNavigate();
   const { showSuccess } = useToast();
 
