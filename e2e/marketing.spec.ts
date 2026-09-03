@@ -159,9 +159,17 @@ test.describe('page metadata', () => {
   }
 
   test('two pages do not share one title', async ({ page }) => {
+    // Polled, not read once. `usePageMetadata` sets the title in an effect
+    // after mount, so a bare `page.title()` can catch index.html's static one
+    // on both pages and report them as identical -- which is exactly the bug
+    // this test exists to catch, reported for the wrong reason. It failed
+    // that way in CI before this line was polled.
     await page.goto('/pricing');
+    await expect(page).toHaveTitle(/Pricing/);
     const pricing = await page.title();
+
     await page.goto('/about');
+    await expect(page).toHaveTitle(/About/);
     expect(await page.title()).not.toBe(pricing);
   });
 
