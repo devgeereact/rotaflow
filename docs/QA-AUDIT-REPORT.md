@@ -66,8 +66,9 @@ Alongside those, a fourth finding is the most consequential and the least visibl
 **a database rebuilt from this repository's own migrations does not work.** Production
 is fine and always was, for a reason that is not in the repository.
 
-Eight of the findings are fixed, tested and open as pull requests. The rest are
-recorded below with their diagnosis.
+Twelve of the twenty findings are fixed, tested, and open as pull requests. The other
+eight are recorded with their diagnosis, and each says plainly whether it is unfixed by
+decision or unverifiable from here.
 
 **The release decision is not driven by any of that.** It is driven by the fact that
 **production has no backups and has never been restored**, which no amount of code
@@ -428,8 +429,8 @@ timeout and a five-minute TTL, and both tenant-scoped caches are purged on sign-
 
 ## 8. The fix process, start to finish
 
-Eight changes, seven pull requests, stacked in the order they must merge. Every one is
-green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
+Twelve findings closed across seven pull requests, stacked in the order they must merge.
+Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
 
 ### #279 — `fix(db): grant EXECUTE in the migration history, not from the image`
 
