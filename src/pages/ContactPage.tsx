@@ -74,6 +74,20 @@ type Errors = Partial<Record<keyof Fields, string>>;
  */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * The order the fields appear in, so a failed submit can move focus to the
+ * first invalid ONE — the first in the form, not the first the object happens
+ * to enumerate. Also the id prefix each one is rendered with.
+ */
+const FIELD_ORDER = ['name', 'email', 'organisation', 'message'] as const;
+
+const FIELD_IDS: Record<(typeof FIELD_ORDER)[number], string> = {
+  name: 'contact-name',
+  email: 'contact-email',
+  organisation: 'contact-org',
+  message: 'contact-message',
+};
+
 function validate(fields: Fields): Errors {
   const errors: Errors = {};
   if (!fields.name.trim()) errors.name = 'Enter your name.';
@@ -122,8 +136,20 @@ export function ContactPage(): JSX.Element {
     const found = validate(fields);
     setErrors(found);
     if (Object.keys(found).length > 0) {
-      const firstInvalid = document.querySelector<HTMLElement>('[aria-invalid="true"]');
-      firstInvalid?.focus();
+      // Focus the first invalid field, chosen from the validation result
+      // rather than from the DOM.
+      //
+      // This used to be `document.querySelector('[aria-invalid="true"]')` in
+      // this same handler, which cannot work: `setErrors` is batched, so on the
+      // first failed submit nothing carries `aria-invalid` yet and the query
+      // returns null — focus never moved, and somebody using a keyboard or a
+      // screen reader was told there were errors and left where they stood. On
+      // later submits it found the PREVIOUS render's first invalid field, which
+      // is worse than not moving.
+      const firstInvalid = FIELD_ORDER.find((key) => found[key] !== undefined);
+      if (firstInvalid) {
+        document.getElementById(FIELD_IDS[firstInvalid])?.focus();
+      }
       return;
     }
     window.location.href = composeMailto(fields);
