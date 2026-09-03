@@ -133,13 +133,18 @@ test.describe('page metadata', () => {
       // ships site-level defaults and `usePageMetadata` replaces them in an
       // effect after mount, so reading once races the first paint and fails
       // on whichever pages happen to lose that race.
-      const canonicalPath = path === '/' ? '/' : path;
+      // Absolute, and pointing at THIS page rather than the homepage — a
+      // site-wide canonical to `/` tells Google the other fifteen pages are
+      // duplicates of it.
+      //
+      // Resolved against the page's own URL rather than assembled into a
+      // regex: building a pattern by string-escaping a path is the mistake
+      // CodeQL's js/incomplete-sanitization exists to catch, and it caught
+      // the first version of this line.
+      const expectedCanonical = new URL(path === '/' ? '/' : path, page.url()).toString();
       await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
         'href',
-        // Absolute, and pointing at THIS page rather than the homepage — a
-        // site-wide canonical to `/` tells Google the other fifteen pages are
-        // duplicates of it.
-        new RegExp('^https?://[^/]+' + canonicalPath.replace(/\//g, '\\/') + '$'),
+        expectedCanonical,
       );
 
       await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
