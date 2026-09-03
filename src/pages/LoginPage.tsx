@@ -124,60 +124,81 @@ export function LoginPage(): JSX.Element {
           Sign in to your RotaFlow account
         </p>
 
-        <div className="mb-6">
-          <Label htmlFor="login-email">Email address</Label>
-          <Input
-            id="login-email"
-            type="email"
-            icon={Mail}
-            autoComplete="email"
-            value={email}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-          />
-          <EmailSuggestion email={email} onAccept={setEmail} />
-        </div>
+        {/*
+          A real <form>, so Enter submits.
 
-        <div className="mb-2">
-          <Label htmlFor="login-password">Password</Label>
-          <Input
-            id="login-password"
-            type={showPassword ? 'text' : 'password'}
-            icon={Lock}
-            autoComplete="current-password"
-            value={password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            endAdornment={
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="grid h-7 w-7 place-items-center rounded-md text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            }
-          />
-        </div>
+          Until 2026-09-02 none of the four auth screens had one: every submit
+          was an onClick, so typing a password and pressing Enter did nothing
+          at all on the most-used screen in the product. The keyboard path is
+          not a nicety here — it is how anybody signing in on a laptop expects
+          to finish, and how a password manager finishes for them.
 
-        <p className="mb-6 text-right text-sm">
-          <Link
-            to="/forgot-password"
-            className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
-          >
-            Forgot password?
-          </Link>
-        </p>
-
-        <Button
-          className="w-full bg-brand hover:bg-brand/90 dark:bg-brand"
-          size="lg"
-          disabled={!canSubmit}
-          onClick={() => void signInWithPassword()}
+          `noValidate` because the messages below are ours and are wired to
+          the fields; the browser's own bubbles would compete with them.
+        */}
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!canSubmit) return;
+            void signInWithPassword();
+          }}
         >
-          {busy ? 'Signing in…' : 'Sign in'}
-        </Button>
+          <div className="mb-6">
+            <Label htmlFor="login-email">Email address</Label>
+            <Input
+              id="login-email"
+              type="email"
+              icon={Mail}
+              autoComplete="email"
+              value={email}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+            />
+            <EmailSuggestion email={email} onAccept={setEmail} />
+          </div>
+
+          <div className="mb-2">
+            <Label htmlFor="login-password">Password</Label>
+            <Input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              icon={Lock}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              endAdornment={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="grid h-7 w-7 place-items-center rounded-md text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
+            />
+          </div>
+
+          <p className="mb-6 text-right text-sm">
+            <Link
+              to="/forgot-password"
+              className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+            >
+              Forgot password?
+            </Link>
+          </p>
+
+          <Button
+            type="submit"
+            className="w-full bg-brand hover:bg-brand/90 dark:bg-brand"
+            size="lg"
+            disabled={!canSubmit}
+          >
+            {busy ? 'Signing in…' : 'Sign in'}
+          </Button>
+        </form>
 
         {env.oauthProviders.length > 0 && (
           <>

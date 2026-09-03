@@ -173,90 +173,103 @@ export function SignupPage(): JSX.Element {
             : 'Get started with your RotaFlow account'}
         </p>
 
-        <div className="mb-5 grid grid-cols-2 gap-6">
-          <div>
-            <Label htmlFor="signup-first-name">First name</Label>
-            <Input
-              id="signup-first-name"
-              icon={User}
-              autoComplete="given-name"
-              value={firstName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setFirstName(e.target.value)
-              }
-              placeholder="Enter your first name"
-            />
-          </div>
-          <div>
-            <Label htmlFor="signup-last-name">Last name</Label>
-            <Input
-              id="signup-last-name"
-              icon={User}
-              autoComplete="family-name"
-              value={lastName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
-              placeholder="Enter your last name"
-            />
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <Label htmlFor="signup-email">Work email address</Label>
-          <Input
-            id="signup-email"
-            type="email"
-            icon={Mail}
-            autoComplete="email"
-            value={email}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-            placeholder="Enter your work email"
-            // An invite is bound to one address in the database; letting it be
-            // edited here would only produce a confusing rejection at redemption.
-            readOnly={emailLocked}
-          />
-          {!emailLocked && <EmailSuggestion email={email} onAccept={setEmail} />}
-          {emailLocked && (
-            <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
-              This invitation can only be accepted with this address.
-            </p>
-          )}
-        </div>
-
-        <div className="mb-6">
-          <Label htmlFor="signup-password">Password</Label>
-          <Input
-            id="signup-password"
-            type={showPassword ? 'text' : 'password'}
-            icon={Lock}
-            autoComplete="new-password"
-            value={password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-            placeholder="Create a strong password"
-            endAdornment={
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="grid h-7 w-7 place-items-center rounded-md text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            }
-          />
-          <div className="mt-3">
-            <PasswordRequirements requirements={requirements} />
-          </div>
-        </div>
-
-        <Button
-          className="w-full bg-brand hover:bg-brand/90 dark:bg-brand"
-          size="lg"
-          disabled={!canSubmit}
-          title={blockingReason ?? undefined}
-          onClick={() => void handleSignUp()}
+        {/* A real <form>, so Enter submits — see LoginPage for why none of
+            these four screens had one until 2026-09-02. */}
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!canSubmit) return;
+            void handleSignUp();
+          }}
         >
-          {busy ? 'Creating account…' : 'Create account'}
-        </Button>
+          <div className="mb-5 grid grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="signup-first-name">First name</Label>
+              <Input
+                id="signup-first-name"
+                icon={User}
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setFirstName(e.target.value)
+                }
+                placeholder="Enter your first name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="signup-last-name">Last name</Label>
+              <Input
+                id="signup-last-name"
+                icon={User}
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setLastName(e.target.value)
+                }
+                placeholder="Enter your last name"
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <Label htmlFor="signup-email">Work email address</Label>
+            <Input
+              id="signup-email"
+              type="email"
+              icon={Mail}
+              autoComplete="email"
+              value={email}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              placeholder="Enter your work email"
+              // An invite is bound to one address in the database; letting it be
+              // edited here would only produce a confusing rejection at redemption.
+              readOnly={emailLocked}
+            />
+            {!emailLocked && <EmailSuggestion email={email} onAccept={setEmail} />}
+            {emailLocked && (
+              <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
+                This invitation can only be accepted with this address.
+              </p>
+            )}
+          </div>
+
+          <div className="mb-6">
+            <Label htmlFor="signup-password">Password</Label>
+            <Input
+              id="signup-password"
+              type={showPassword ? 'text' : 'password'}
+              icon={Lock}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              placeholder="Create a strong password"
+              endAdornment={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="grid h-7 w-7 place-items-center rounded-md text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
+            />
+            <div className="mt-3">
+              <PasswordRequirements requirements={requirements} />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full bg-brand hover:bg-brand/90 dark:bg-brand"
+            size="lg"
+            disabled={!canSubmit}
+            title={blockingReason ?? undefined}
+          >
+            {busy ? 'Creating account…' : 'Create account'}
+          </Button>
+        </form>
 
         {/* Naming what is outstanding, rather than leaving a dead button.
             The password rules above are a checklist someone reads once and
