@@ -1,5 +1,19 @@
+# RotaFlow — https://rotaflow.space
+#
+# The whole site is public and indexable. The application behind /app and
+# /admin needs a session, so a crawler that follows a link there is answered
+# by the sign-in page rather than by anybody's rota; they are listed below so
+# that is a stated rule rather than an accident of authentication.
 User-agent: *
 Allow: /
+Disallow: /app/
+Disallow: /admin/
+Disallow: /onboarding
+Disallow: /invite/
+Disallow: /reset-password
 
-# Update with your deployed domain:
-# Sitemap: https://yourdomain.com/sitemap.xml
+# Generated at build time from src/lib/publicRoutes.ts — see the `sitemap`
+# plugin in vite.config.ts. Until 2026-09-02 this line was commented out and
+# still said `https://yourdomain.com`, and /sitemap.xml answered 200 with
+# index.html because the SPA fallback serves anything that is not a real file.
+Sitemap: https://rotaflow.space/sitemap.xml

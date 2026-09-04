@@ -1,30 +1,37 @@
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { PublicNav } from '@/components/marketing/PublicNav';
 import { PublicFooter } from '@/components/marketing/PublicFooter';
-import { BRAND } from '@/lib/brand';
+import { usePageMetadata } from '@/hooks/usePageMetadata';
 
 interface MarketingLayoutProps {
-  /** Sets `document.title`. Every marketing route is separately linkable and shareable. */
+  /**
+   * The page's own title. Every marketing route is separately linkable and
+   * shareable. The description, canonical URL and social tags come from
+   * `src/lib/publicRoutes.ts` keyed on the path, so they cannot be forgotten
+   * per page the way a prop can.
+   */
   title: string;
+  /** Ask crawlers not to index this page. The 404 is the only caller. */
+  noindex?: boolean;
   children: ReactNode;
 }
 
 /**
  * Nav + content + footer for every public marketing route.
  *
- * The title effect lives here rather than in each page because seven routes
+ * The metadata lives here rather than in each page because seven routes
  * sharing one `<title>` is exactly the sort of thing that survives review: it
  * is invisible on screen and only shows up in a browser tab, a bookmark or a
- * shared link.
+ * shared link. Since 2026-09-02 that is `usePageMetadata`, which also writes
+ * the description, the canonical URL and the Open Graph and Twitter tags —
+ * none of which existed anywhere in this repository before then.
  */
-export function MarketingLayout({ title, children }: MarketingLayoutProps): JSX.Element {
-  useEffect(() => {
-    const previous = document.title;
-    document.title = `${title} · ${BRAND.name}`;
-    return () => {
-      document.title = previous;
-    };
-  }, [title]);
+export function MarketingLayout({
+  title,
+  noindex,
+  children,
+}: MarketingLayoutProps): JSX.Element {
+  usePageMetadata({ title, noindex });
 
   return (
     <div className="flex min-h-screen flex-col bg-background dark:bg-background-dark">

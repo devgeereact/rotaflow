@@ -7,6 +7,43 @@
     <meta name="theme-color" content="#3B6FE0" />
     <meta name="description" content="UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops." />
 
+    <!--
+      Site-level defaults. `usePageMetadata` overwrites the title, description,
+      canonical and the og:/twitter: pairs per route once React has mounted,
+      which every search crawler that matters will see.
+
+      These are not redundant with that. Slack, WhatsApp and iMessage build a
+      link preview from the RAW HTML and never run the script, so before this
+      block a link to rotaflow.space pasted into any of them rendered as a grey
+      rectangle with a hostname under it. They now get the real card — the
+      site's, rather than the specific page's, which is the honest limit of a
+      static SPA that is not pre-rendered.
+    -->
+    <link rel="canonical" href="https://rotaflow.space/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RotaFlow" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:url" content="https://rotaflow.space/" />
+    <meta property="og:title" content="RotaFlow — Scheduling certainty for every shift" />
+    <meta
+      property="og:description"
+      content="UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops."
+    />
+    <meta property="og:image" content="https://rotaflow.space/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="RotaFlow — scheduling certainty for every shift"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RotaFlow — Scheduling certainty for every shift" />
+    <meta
+      name="twitter:description"
+      content="UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops."
+    />
+    <meta name="twitter:image" content="https://rotaflow.space/og-image.png" />
+
     <!-- iOS PWA support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
