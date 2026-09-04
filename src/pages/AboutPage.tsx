@@ -18,7 +18,7 @@ import { FinalCta } from '@/components/marketing/FinalCta';
 const PRINCIPLES = [
   {
     title: 'A wrong number is worse than no number',
-    body: 'Timesheets drive pay. Where clock events are ambiguous, a missing clock-out, an unclosed break, RotaFlow shows the reading the evidence supports and flags it for a human, rather than quietly guessing and presenting the guess as a fact.',
+    body: 'Timesheets drive pay. Where clock events are ambiguous — a missing clock-out, an unclosed break — RotaFlow shows the reading the evidence supports and flags it for a human, rather than quietly guessing and presenting the guess as a fact.',
   },
   {
     title: 'It has to work with no signal',
@@ -26,7 +26,7 @@ const PRINCIPLES = [
   },
   {
     title: 'Tenants are separated by the database',
-    body: 'Every organisation’s data is isolated by row-level security in Postgres, not by a filter in application code. It is the boundary that holds even when application code has a bug, which eventually it will.',
+    body: 'Every organisation’s data is isolated by row-level security in Postgres, not by a filter in application code. It is the boundary that holds even when application code has a bug, which it eventually will.',
   },
   {
     title: 'Say what is not built',

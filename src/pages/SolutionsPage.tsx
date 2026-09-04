@@ -111,7 +111,7 @@ export function SolutionsPage(): JSX.Element {
 
           <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-content-muted dark:text-content-muted-dark">
             Working in a sector that is not listed? If your team works shifts, RotaFlow
-            almost certainly fits,{' '}
+            almost certainly fits —{' '}
             <Link
               to="/contact"
               className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
