@@ -93,22 +93,138 @@ supabase test db       BLOCKED      needs Docker
 
 ---
 
+---
+
+## Run of 4 September 2026, second — production-readiness pass
+
+The run above was taken on branch `chore/gee-os-adoption` before this pass and
+is left standing as the record of that moment. This run is taken after the
+deploy of `9ae1a54`, from a real browser against **the live origin**, so several
+lines that could only be `NOT TESTED` before now have observed behaviour behind
+them.
+
+Only the lines whose status or evidence changed are restated. Everything not
+listed here keeps the status recorded above, and the reason it kept it.
+
+| #   | Gate                                         | Was        | Now        | Evidence                                                                                                                                                                                                                                                                                                                                                       |
+| --- | -------------------------------------------- | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2   | Network failure produces intentional behaviour | PARTIAL  | PARTIAL    | still partial, but no longer unexercised: Playwright with `context.setOffline(true)` against the deployed build loaded `/` and `/pricing` from the service worker with real content. The queued-write path is still only unit-tested                                                                                                                            |
+| 3   | Offline behaviour matches the specification  | PARTIAL    | PARTIAL    | unchanged in substance. The read story is still the five-minute cache `docs/OFFLINE-SPEC.md` describes; GAP-049 stands                                                                                                                                                                                                                                        |
+| 6   | New versions update without trapping users   | PARTIAL    | PARTIAL    | `UpdatePrompt` now has four unit assertions covering announce, apply and dismiss. No test installs a second worker, so the update path itself is still unproved in a browser — GAP-054                                                                                                                                                                          |
+| 13  | Start URL, scope, deep links, refreshed routes | PARTIAL  | **PASS**   | verified live: `/`, `/pricing` and the deep route `/app/dashboard` all 200 through Cloudflare, and `/sitemap.xml`, `/robots.txt` and `/.well-known/security.txt` return `application/xml` and `text/plain` **while a service worker is controlling the page** — the `navigateFallbackDenylist` added in this pass                                                |
+| 18  | Database policies and permissions verified   | BLOCKED    | **PASS**   | still `BLOCKED` locally — Docker was never started — but CI's `db-tests` job ran the full pgTAP suite on this branch: **387 assertions across 44 files, all passing**, including `rls_invariants.test.sql` and the eight new `platform_write_roles.test.sql` assertions. A gate that can only run in CI is not the same as a gate nobody ran |
+| 20  | Mobile layout on supported sizes             | NOT TESTED | **PASS**   | Playwright at 320, 360, 375, 390, 414, 768, 1024, 1280, 1440 and 1920 px across all 14 public routes: **zero horizontal overflow**, measured as `documentElement.scrollWidth > clientWidth` rather than by eye. Touch targets checked separately at 375 px: 18 targets under 24×24, **all 18 meeting the WCAG 2.2 2.5.8 spacing exception** (nearest target ≥ 24 px centre-to-centre) |
+| 21  | Desktop layout on supported sizes            | PARTIAL    | **PASS**   | same run, the 1024–1920 px half                                                                                                                                                                                                                                                                                                                                |
+| 22  | Accessibility checked with recorded evidence | PARTIAL    | PARTIAL    | 80 Playwright assertions pass including axe scans of 14 public pages and 26 authenticated screens, at **0 contrast violations in both light and dark**. Improved in this pass: the update toast was the one global banner with no `role`, so it entered the DOM silently; it is now `role="status" aria-live="polite"` with a labelled dismiss. Still partial because GAP-030's status-palette debt is open and no manual screen-reader pass has been done |
+| 24  | No critical console or runtime errors        | NOT TESTED | **PASS**   | a real Chromium session against `https://rotaflow.space` across `/`, `/features`, `/pricing`, `/legal/cookies`, `/login`, `/signup`: **zero** `console.error` and zero `pageerror`. The only third-party origin contacted across all six is Sentry's EU ingest — no `fonts.googleapis.com`, which is what makes the cookie notice true in production rather than only on `main` |
+| 25  | No exposed secrets                           | PASS       | **PASS**   | strengthened, and it needed to be. The bundle carried `VITE_STRIPE_PUBLISHABLE_KEY: "pk_live_…"`, a variable no source file reads, because `src/lib/env.ts` used a dynamic `import.meta.env[key]` and Vite therefore inlined the whole env object. Keys are named statically now, and `check:bundle` fails on any undeclared `VITE_*` in `dist/`. Verified on the deployed build: exactly nine names, no `pk_live_`. The key is publishable, so this is a configuration defect rather than a disclosure — but the mechanism would have admitted a secret just as readily |
+| 26  | No critical security findings open           | PARTIAL    | PARTIAL    | `0116` closes the platform-write escapes: `delete_organisation`, `connect_integration` and `set_org_integration_status` authorised on role-blind `is_platform_admin()`. **Verified — CI's `db-tests` job ran the eight new pgTAP assertions and they pass**, 387 assertions across 44 files. Still partial for two reasons, both stated rather than rounded off: the migration is **not merged**, so production still holds the old guards, and the *read* half is open as GAP-053 |
+| 29  | Rollback documented and feasible             | **FAIL**   | PARTIAL    | `docs/DEPLOYMENT.md` now has a rollback section: build the previous commit, `--keep` the server-owned subtrees, and do **not** ship `.htaccess` unless that is what is being rolled back. It states what a rollback cannot do — the edge keeps the superseded chunk for a year, an already-updated client needs another prompt, and **a migration does not roll back at all**. Not `PASS`: it has been reasoned and the deploy half exercised, but no rollback has been performed |
+| 30  | Production environment verified directly     | NOT TESTED | **PASS**   | verified after this deploy, from outside: ten paths return their real content types; direct-to-origin at `185.61.152.45` returns **403** while `/.well-known/security.txt` returns **200** through the ACME exemption; CSP, HSTS, nosniff, frame-options, referrer and permissions policies all present, with the CSP now carrying **no Google Fonts origin**; and the deployed commit confirmed **by content** — `9ae1a54` found inside the `index-*.js` the live HTML references, not inferred from a filename |
+
+### Local gate evidence, 4 September 2026 (second run)
+
+```text
+npm run typecheck         PASS
+npm run lint              PASS   (--max-warnings 0)
+npm run format:check      PASS
+npm test                  PASS   849 tests, 48 files (4 new: UpdatePrompt)
+npm run build             PASS   166 precache entries, 2,009 KiB
+npm run check:bundle      PASS   precache 682/760 KiB gzip, entry 134.2/175 KiB
+npm run check:migrations  PASS   1 new migration, no undeclared destructive statements
+npm run check:export      PASS   40 tenant tables accounted for
+npm run check:docs        PASS   113 capability rows, migration count 116
+npx playwright test       PASS   80 passed, 1 skipped (the authenticated loop needs Docker)
+supabase test db          BLOCKED locally, PASS in CI — see below
+```
+
+**`supabase test db` could not run on this machine** (Docker was never started),
+so `0116` was first checked with libpg-query — real PostgreSQL grammar, which
+proves syntax and nothing about behaviour. CI has Docker, and its `db-tests` job
+is where the assertions actually executed:
+
+```text
+db-tests            PASS   387 assertions, 44 files (up from 379)
+e2e                 PASS
+e2e-authenticated   PASS   a real sign-up → create-org → dashboard loop
+verify              PASS
+CodeQL              PASS
+```
+
+The first `db-tests` run **failed**, and it is worth recording why rather than
+only that it now passes. The fixture selected a connector `where available`, and
+`0073` set `available = false` on all eight seeded connectors — so 0 of 8
+assertions ran. The guard was correct; the fixture was not. What that exposed:
+`connect_integration` refuses every call on availability grounds *before*
+reaching the role check, and `set_org_integration_status` has no row to act on,
+so both are latent. **`delete_organisation` is not**, and it is the one that
+destroys a tenant.
+
 ## Release decision
 
+### Superseded — the decision of the first run, 4 September 2026
+
 **NOT READY** for a release that claims offline support or a recoverable
-production environment.
+production environment. Two lines carried it: no backup of production (28) and
+no documented rollback (29). Kept because a decision that quietly disappears
+when it becomes inconvenient is worth less than one that stays visible.
 
-Two lines carry that on their own. There is **no backup of production** (28) and
-**no documented rollback** (29), which together mean a bad deploy or a bad
-migration has no defined way back. Neither is a code defect and neither is
-new. What is new is that they are now counted against a release decision instead
-of sitting in a gap list.
+### Current — after the production-readiness pass, 4 September 2026
 
-The offline claims are the second problem, and a cheaper one. The queue is good
-work and the gate says so. The reading story is a five-minute cache that the UI
-describes as "your cached rota". Either narrow the copy or build the cache the
-copy implies; `docs/OFFLINE-SPEC.md` sets out both options.
+**NOT READY FOR PRODUCTION.**
+
+Not "ready with minor fixes". The pass closed real defects and the deployed site
+is materially better than the one standing this morning, but the decision turns
+on one line, and it is the same line as before.
+
+**There is no backup of production, and no restore has ever been performed.**
+`.github/workflows/backup.yml` has never succeeded — the repository holds one
+secret and the workflow needs two more. On the Supabase side `pitr_enabled` is
+false with an empty backup list. That is gate 28, GAP-001, CAP-095 and ❓-005,
+and every one of them is outside what anybody but the account owner can do.
+
+The reason that single line decides it is worth stating plainly, because it is
+easy to read "no backups" as a hygiene item. RotaFlow holds staff personal data
+— names, contact details, emergency contacts, DBS and right-to-work documents,
+and optional health fields. `delete_organisation` removes a tenant and
+everything in it, and this pass found it authorised by a role-blind check.
+Migrations apply to production on merge. Any one of those, on a bad day,
+produces data loss with no defined way back. A product can ship without
+structured data or an offline read cache; it should not hold other people's
+employment records with nothing to restore from.
+
+Second, thinner but real: `0116` is **verified and not merged**. Its eight pgTAP
+assertions pass in CI, so the guard is exercised — but production still runs the
+old ones, because a merge applies the migration immediately and that is a
+decision for the owner, not for the pass that wrote it.
+
+What this pass did change, and what the evidence supports:
+
+- Production runs the current `main` again, having been eight commits and four
+  days behind. Verified by the commit SHA found **inside** the served bundle.
+- No third-party origin is contacted from the public site except Sentry, so the
+  cookie notice is now true where it is published, not only on `main`.
+- The bundle no longer carries an environment variable the application does not
+  read, and CI now fails if one reappears.
+- Zero console errors, zero axe contrast violations, zero horizontal overflow
+  across ten viewport widths, and every undersized touch target meets the
+  WCAG 2.2 spacing exception.
+
+### What would change the decision
+
+In order, and only the first is blocking:
+
+1. **Add `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE`** to the repository secrets,
+   let `backup.yml` succeed once, then **restore that dump into a scratch
+   project and open the application against it.** A backup nobody has restored
+   is a belief. Add `SUPABASE_ACCESS_TOKEN` at the same time so `auth-config.yml`
+   starts watching the Auth settings.
+2. **Merge `0116`.** Its assertions pass in CI, so the remaining step is the
+   merge itself — which applies it to production immediately, and is therefore
+   the owner's call rather than an agent's. Until it lands,
+   `delete_organisation` in production accepts any of the four platform roles.
+3. Then re-run this file. It is the gate for **deploying**, and it is meant to be
+   re-dated at that point rather than read from a snapshot — including this one.
 
 Nothing here blocks continued development, and the ordinary CI gates remain the
-gate for merging. This is the gate for **deploying**, and it should be re-run
-and re-dated at that point rather than read from this snapshot.
+gate for merging.

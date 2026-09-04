@@ -238,12 +238,31 @@ moment those screens gained forms, the magic-link button and the show-password t
 sitting inside one.
 
 **P1-6 · Stripe ships a live publishable key while no charge has ever completed**
-_(open — owner)_
-The production bundle carries `pk_live_…`. `docs/SAAS.md` records `STRIPE_TEST_SECRET_KEY`
+_(the disclosure half FIXED 2026-09-04; the commercial half still open — owner)_
+The production bundle carried `pk_live_…`. `docs/SAAS.md` records `STRIPE_TEST_SECRET_KEY`
 as absent and CAP-036 as ❓. A live client key with a test secret is a checkout that
 cannot work; live with live is real money from a pre-launch product whose terms page is a
 placeholder. **VERIFIED** in the bundle; the server-side key mode **cannot be read from
 here**.
+
+**The root cause was not configuration, which is what this finding assumed.** No source
+file reads `VITE_STRIPE_PUBLISHABLE_KEY`, and `.env.example:130` records it as deliberately
+not a variable — yet it was in the bundle. `src/lib/env.ts` read `import.meta.env[key]`, a
+dynamic index. Vite replaces `import.meta.env.NAME` by matching that exact text, so a
+dynamic lookup cannot be matched and it emits the entire env object instead: **every**
+`VITE_*` in whoever's `.env` ran the build shipped, read or not. Removing the line from
+`.env` would have fixed this instance and left the mechanism, which is exactly what
+happened with the Inngest key a week earlier (HARDEN-011, then HARDEN-013).
+
+Fixed 2026-09-04: the keys are named statically, and `scripts/check-bundle-size.mjs` now
+fails the build on any `VITE_*` in `dist/` that `src/lib/env.ts` does not declare. Verified
+on the deployed build — exactly nine names, no `pk_live_`. That gate immediately found a
+second, smaller thing: the admin console labelled its single sign-on capability
+`VITE_OAUTH_PROVIDERS`, a variable that does not exist; it reads `VITE_ENABLE_OAUTH`.
+
+Still open, and still the owner's: the key is *publishable*, so nothing was disclosed that
+was not meant to be public — but a live client key on a product that has never completed a
+charge is a commercial decision, not a code one. CAP-036 stays ❓.
 
 ### P2 — medium
 
@@ -331,10 +350,23 @@ Supabase's advisor reports seven `function_search_path_mutable` warnings. All se
 apply — the advisor does not distinguish. **VERIFIED** against the live catalogue. Worth
 tidying, not worth a migration on its own.
 
-**P3-3 · The deployed build is behind `main`** _(open)_
-The live bundle reports `release: "6496966"`; `main` is at `b3e274a`, three commits ahead.
+**P3-3 · The deployed build is behind `main`** _(FIXED 2026-09-04 — and it was worse than
+this row said)_
+The live bundle reported `release: "6496966"`; `main` was at `b3e274a`, three commits ahead.
 Docs-only commits, but the Sentry release tag is the deployed commit, so error grouping
 points at a build that is not the tip. **VERIFIED** in the bundle.
+
+By 4 September the gap was **eight commits and four days**, and it had stopped being a
+tagging inconvenience. The live origin was serving 31 August's build, which meant: no
+sitemap and no canonicals (#284), no install or update prompt (#285), no per-user offline
+outbox (#283), no Enter-key submit on the four auth screens (#287), no focus management on
+a failed submit (#288), and — the one that mattered most — a `<link>` to
+`fonts.googleapis.com` in the served HTML while `/legal/cookies` said in bold that no
+third-party script runs on this site. Every fix existed, was tested and was doing nothing.
+
+Deployed 2026-09-04 at `9ae1a54`, verified by finding the SHA **inside** the served
+`index-*.js` rather than inferring it from a filename, and by a live browser session across
+six routes contacting no third-party origin except Sentry.
 
 **P3-4 · No cookie consent mechanism** _(open, likely correct)_
 There is no banner, and no advertising or analytics cookie to consent to — the app stores

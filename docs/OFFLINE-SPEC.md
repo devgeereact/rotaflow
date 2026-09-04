@@ -110,7 +110,18 @@ list is audited by `src/lib/legalFacts.ts`.
    `includeAssets` (`vite.config.ts:77`) and nothing else references it:
    `navigateFallback` is `index.html`, and no route, handler or `.htaccess` rule
    mentions it. `docs/ARCHITECTURE.md` calls it a "last-resort static fallback",
-   which is what it was meant to be, not what it is.
+   which is what it was meant to be, not what it is. **Given a register row on
+   2026-09-04 as GAP-051**, having been described here since this specification
+   was written and tracked nowhere — which is how a known defect becomes a
+   forgotten one.
+
+   Related, and fixed in the same pass: `navigateFallback` had no
+   `navigateFallbackDenylist`, so once the service worker controlled the page
+   *every* navigation resolved to the app shell — `/sitemap.xml`, `/robots.txt`
+   and `/.well-known/security.txt` included. `.htaccess` guards that at the
+   Apache layer and the service worker never sees `.htaccess`. Verified against
+   the deployed build with a live service worker: those three now return
+   `application/xml` and `text/plain`.
 3. **A cold offline load of the clock screen shows a failure state** even though
    its write path would have worked (`src/pages/app/ClockInPage.tsx:189-192`).
    The one screen most likely to be opened without signal is the one that reports

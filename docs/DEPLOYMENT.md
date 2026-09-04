@@ -267,3 +267,94 @@ So the checks after a deploy that exists to *remove* something must be:
 The general rule: shipping a new artefact hides the old one from new visitors. It does not
 retract it. Anything secret that was ever in a built bundle is compromised, and the only
 action that changes that is revoking it at the service that issued it.
+
+## Rolling back
+
+`docs/PWA-RELEASE-GATES.md` recorded gate 29 ("Rollback documented and feasible") as **FAIL**
+until 2026-09-04, on the accurate grounds that this file described how to deploy and nowhere
+described how to undo one. This is that section. It has been reasoned through against the
+constraints below, and the mechanical part has been exercised — a deploy from a named commit —
+but **a rollback has never been performed under pressure**, so treat the timings as estimates.
+
+### The frontend rolls back. The database does not.
+
+These are two different systems with two different answers, and conflating them is the way a
+rollback makes things worse:
+
+- **`dist/` is disposable.** It is rebuilt from a commit, so rolling back is "build an older
+  commit and ship it". There is no state in it.
+- **A migration is not.** Migrations apply to production on merge, through the Supabase GitHub
+  integration. There is no down-migration in this repository and no backup to restore from
+  (GAP-001: `pitr_enabled` is false and the backup list is empty). A schema change that turns
+  out to be wrong is corrected by a *new forward migration*, written deliberately, not by
+  reverting the old one. Reverting the file in git changes nothing in production — the
+  migration is already applied and will not be re-run.
+
+So: **if a release contains both a migration and frontend code, rolling the frontend back leaves
+the new schema in place.** Check that the older bundle still works against the newer schema
+before shipping it. Usually it does, because migrations here are additive; when it does not, the
+answer is to fix forward.
+
+### Rolling the frontend back
+
+```bash
+# 1. What is actually live? Do not assume it is the previous commit on main.
+curl -s https://rotaflow.space/ | grep -o 'assets/index-[^"]*\.js'
+ssh cpanel 'ls -la ~/rotaflow.space/assets/ | head'
+
+# 2. Build the commit you want to return to, in a clean tree.
+git worktree add ../rotaflow-rollback <good-sha>
+cd ../rotaflow-rollback && cp ~/WebstormProjects/rotaflow/.env .   # a fresh tree has no .env
+npm ci && npm run build && npm run check:bundle
+
+# 3. Dry run first. It prints every change and every deletion.
+cpanel-deploy dist rotaflow.space \
+  --keep .well-known/pki-validation \
+  --keep .well-known/acme-challenge \
+  --keep cgi-bin
+
+# 4. Then --go, and verify as after any deploy.
+```
+
+`npm ci`, not `npm install`: `install` rewrites the lockfile, so it does not prove the older
+commit's dependency tree still resolves.
+
+### What `--keep` is protecting, and why omitting it is the real risk
+
+The docroot is not only this app's output. `--keep` names the subtrees that exist on the server
+and in no build, so rsync's `--delete` does not remove them: the ACME challenge directories
+(deleting one mid-renewal fails the renewal), and `cgi-bin`. `cpanel-deploy` aborts rather than
+deleting a top-level path absent from the local directory, which is the backstop — but the
+backstop aborts the whole deploy, so name them and the rollback proceeds.
+
+**Do not pass `--with-htaccess` during a rollback unless the `.htaccess` is what you are rolling
+back.** The live file is the repo file with the Cloudflare origin-lock block prepended; shipping
+the repo file alone silently reopens the origin to direct requests. Leaving `.htaccess` out of
+the deploy entirely is the safe default, and it is the default.
+
+### What a rollback does not fix
+
+- **The edge keeps the bad build reachable.** Hashed assets are `immutable` for a year, so the
+  chunk you just rolled back stays fetchable at its own URL from Cloudflare's cache. See "A
+  deploy does not undo a leak" above. If the reason for the rollback was an exposed credential,
+  the rollback is not the remedy — **revoking it at the issuer is.**
+- **Service workers do not roll back on their own schedule.** `skipWaiting` is false and
+  `registerType` is `prompt`, so a client that already installed the bad build keeps running it
+  until the person accepts an update. Rolling back produces a *new* `sw.js`, which those clients
+  will offer as an update — so recovery for an already-updated client is one more prompt, not
+  instant. `UpdatePrompt` polls hourly, so an app left open recovers within the hour.
+- **`index.html`, `sw.js` and `manifest.webmanifest` are `no-store`**, so the entry point itself
+  does flip immediately. That is what makes the rollback take effect for new visitors at all.
+
+### Verifying a rollback
+
+Identical to verifying a deploy, plus one: confirm the served bundle carries the *intended* SHA,
+by content rather than by status code.
+
+```bash
+LIVE=$(curl -s https://rotaflow.space/ | grep -o 'assets/index-[^"]*\.js')
+curl -s "https://rotaflow.space/$LIVE" | grep -o '<short-sha>' | head -1
+```
+
+`vite.config.ts` bakes the git SHA in as `__SENTRY_RELEASE__`, so this is a direct answer rather
+than an inference from a filename.
