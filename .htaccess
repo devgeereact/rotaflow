@@ -129,6 +129,19 @@
   # openrouter.ai is deliberately absent — the AI key never reaches the browser;
   # only the ai-rota-assistant Edge Function talks to it.
   #
+  # fonts.googleapis.com and fonts.gstatic.com were removed on 2026-09-03,
+  # from style-src, font-src AND connect-src. The webfonts are served from this
+  # origin now (public/fonts/, src/index.css), which was a privacy fix rather
+  # than a performance one: /legal/cookies says in bold that no third-party
+  # script runs on this site, and every page was sending each visitor's IP and
+  # User-Agent to Google before they had interacted with anything. Same
+  # reasoning as inn.gs below — an entry for a host the app no longer contacts
+  # is permission granted to whatever else might try to reach it.
+  #
+  # The connect-src half mattered as much as the others: the service worker's
+  # fetch of a font is governed by connect-src, not font-src, which is why both
+  # origins appeared twice. Self-hosting makes 'self' cover it.
+  #
   # inn.gs was removed on 2026-08-31. It was allowed so the browser could post
   # events to Inngest; `0087` moved every dispatch into the database and nothing
   # has connected to that host since. A connect-src entry for a service the app
@@ -142,7 +155,7 @@
   # reopen the origin. The composed deploy of 2026-08-31 carried this change
   # through: the live CSP no longer names inn.gs, and direct-to-origin still
   # returns 403.
-  Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://o4511713747271680.ingest.de.sentry.io https://ik.imagekit.io https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://o4511713747271680.ingest.de.sentry.io https://ik.imagekit.io; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
 </IfModule>
 
 # ---- Pretty error handling ------------------------------------

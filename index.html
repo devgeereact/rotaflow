@@ -3,9 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#3B6FE0" />
-    <meta name="description" content="UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops." />
+    <meta
+      name="description"
+      content="UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops."
+    />
 
     <!--
       Site-level defaults. `usePageMetadata` overwrites the title, description,
@@ -37,7 +43,10 @@
       content="RotaFlow — scheduling certainty for every shift"
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="RotaFlow — Scheduling certainty for every shift" />
+    <meta
+      name="twitter:title"
+      content="RotaFlow — Scheduling certainty for every shift"
+    />
     <meta
       name="twitter:description"
       content="UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops."
@@ -49,14 +58,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="apple-touch-icon" href="/icons/pwa-192.png" />
 
-    <!-- Preconnect to offloaded services for faster first paint -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Inter Variable (full weight range) + JetBrains Mono — docs/DESIGN.md §2 -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
+    <!--
+      Inter Variable + JetBrains Mono (docs/DESIGN.md §2) are self-hosted, from
+      /fonts/, declared in src/index.css. They came from fonts.googleapis.com
+      until 2026-09-03; see public/fonts/README.md for why they moved.
+
+      The two <link rel="preconnect"> hints that stood here went with them:
+      there is no third-party origin left to warm up.
+    -->
 
     <title>RotaFlow — Scheduling certainty for every shift</title>
   </head>
