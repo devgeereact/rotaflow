@@ -11,10 +11,10 @@
  * reviewer can check each claim without taking anyone's word for it.
  *
  * It is deliberately NOT a DPA. A DPA is a binding contract and drafting one
- * is legal advice — `LegalNotice` already says the published policies need UK
- * counsel and must not be drafted in this repo. What a DPA needs in order to
- * be signed, though, is exactly this: an accurate, dated list of who the
- * sub-processors are. So this is the part that can honestly be built now.
+ * is legal advice — `/legal/terms` carries the same warning about its own
+ * commercial clauses. What a DPA needs in order to be signed, though, is
+ * exactly this: an accurate, dated list of who the sub-processors are. So this
+ * is the part that can honestly be built now.
  *
  * ## The rule for editing it
  *
@@ -85,11 +85,12 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
     name: 'Sentry',
     purpose: 'Error monitoring, so a crash is noticed without a customer reporting it.',
     personalData:
-      'Whatever appears in an error: the signed-in user’s id, the page they were on, and the technical detail of the failure.',
+      'What appears in an error: the stack trace, the path of the page it happened on, and the steps that led there. Console output is dropped and web addresses have their query strings removed before anything is sent, because a Supabase request carries its filter values — an email address, a staff id — in the query. The browser is never told who you are: `Sentry.setUser` is not called anywhere.',
     region: 'European Union — the EU ingest region, fixed when the account was created.',
     outsideUkEu: false,
     evidence: 'src/lib/sentry.ts, VITE_SENTRY_DSN',
-    optOut: null,
+    optOut:
+      'Yes. Nothing is sent unless you turn on crash reporting, which is off until you do, and you can turn it off again from the Cookie Notice. Until 4 September 2026 this row was wrong in both directions: it claimed a user id that was never sent, and it did not mention the session replay and performance tracing that were.',
   },
   {
     name: 'ImageKit',
@@ -116,7 +117,24 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
     purpose: 'DNS, TLS and the proxy in front of the site.',
     personalData:
       'Connection metadata for anyone visiting: IP address, request headers, and the pages requested.',
-    region: 'Global edge network.',
+    region:
+      'Global edge network. A request is normally served by the nearest location, which for a UK or EU visitor is in the UK or the EU, but the network is worldwide and the routing is not ours to control.',
+    // Stays false, with the reasoning written down because the row used to
+    // look self-contradictory: `false` beside a region reading "global edge
+    // network".
+    //
+    // This flag means "personal data leaves the UK/EU to reach it". A proxied
+    // request is served by the location nearest the visitor, so for the UK and
+    // EU visitors this product has, it does not. What is true is that
+    // Cloudflare is a US company operating a worldwide network, which raises a
+    // transfer question this repository is not qualified to answer — so the
+    // region field says so plainly, /legal/trust repeats it, and the Privacy
+    // Notice lists it as needing a solicitor. Flagging it `true` instead would
+    // put it in the "outside the UK and EU" list beside Stripe and OpenRouter,
+    // where the page says both are in the United States and neither receives
+    // anything unless you use the feature it powers. Cloudflare is neither.
+    // A wrong grouping reads as more precise than an honest sentence, and is
+    // worth less.
     outsideUkEu: false,
     evidence:
       'Cloudflare zone configuration; every request reaches the origin through it.',
@@ -139,4 +157,4 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
  */
 
 /** The date the list above was last checked against the code, not last edited. */
-export const SUB_PROCESSORS_REVIEWED = '31 August 2026';
+export const SUB_PROCESSORS_REVIEWED = '4 September 2026';

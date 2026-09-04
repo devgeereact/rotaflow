@@ -180,8 +180,8 @@ export function StepChoosePlan({
             <strong className="text-content dark:text-content-dark">
               All plans include:
             </strong>{' '}
-            Unlimited shifts &bull; Mobile app &bull; Real-time sync &bull; Secure &amp;
-            GDPR compliant
+            Unlimited shifts &bull; Mobile app &bull; Real-time sync &bull; Data held in
+            the EU
           </p>
         </div>
 

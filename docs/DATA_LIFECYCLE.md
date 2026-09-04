@@ -388,6 +388,81 @@ build one on:
   incident. This is squarely `docs/SAAS.md`'s P0 incident-response item, which needs
   a person named, not more code.
 
+## 6a. The browser, and what it is allowed to keep
+
+Added 2026-09-04, because this file described every store the product has
+except the one every visitor carries.
+
+### What was wrong
+
+`/legal/cookies` published, and `/legal/privacy` repeated, that there was "no
+analytics, no tracking, and no third-party script on this site". At the same
+time `src/lib/sentry.ts` configured `browserTracingIntegration()` at
+`tracesSampleRate: 0.2` and `replayIntegration()` at
+`replaysOnErrorSampleRate: 1.0`, started from `src/main.tsx` before the first
+render, on every route — including the two pages making the claim. A traced URL
+carries organisation and staff ids in its path. A replay is a masked recording
+of a session, buffered and uploaded when an error occurs.
+
+Nobody had been asked, and the sub-processor row for Sentry described it as
+error monitoring receiving "the signed-in user's id" — which was wrong in the
+other direction too, since `Sentry.setUser` is never called.
+
+This is worth stating as a class rather than an incident: **the claim and the
+code lived in different files and nothing compared them.** `subprocessors.ts`
+already had a rule for exactly this — every row cites the file that proves it —
+and the storage list did not.
+
+### What it is now
+
+| Category      | What it covers                                                                                     | Switchable |
+| ------------- | -------------------------------------------------------------------------------------------------- | ---------- |
+| `necessary`   | Supabase session, `rotaflow:activeOrgId`, the onboarding draft, the offline outbox, the consent record itself | No         |
+| `preferences` | `pwa-theme`, `rotaflow.sidebar.collapsed`, `rotaflow:report-favourites:*`, `rotaflow:report-runs:*`, `rotaflow:installPromptSnoozedUntil` | Yes, default off |
+| `diagnostics` | Sentry crash reporting. No replay, no tracing, console breadcrumbs dropped, query strings stripped from both the breadcrumb URLs and `event.request.url` | Yes, default off |
+
+The decision lives in `localStorage` under `rotaflow:consent` as
+`{version, decidedAt, preferences, diagnostics}` — the minimum evidence, no
+identifier of any kind. `CONSENT_VERSION` re-asks when the categories change.
+
+**Two entries were missing from the published storage list entirely** and were
+added at the same time: the onboarding draft (`sessionStorage`, holds an
+organisation name and a site postal address) and the install-prompt snooze.
+
+### Where the gate actually is
+
+In the write path — `isAllowed()` in `src/lib/consent.ts`, called at each of
+the four preference writes and before `Sentry.init` — not in the banner. A
+banner that merely covers the page stops nothing, and a visitor who ignores it
+must still be left untouched. Every failure mode reads as "not decided, nothing
+allowed": absent record, corrupt JSON, an older version, or a `localStorage`
+that throws.
+
+### How to check it is still true
+
+The unit and e2e suites cover the logic and the interface, but neither can see
+what leaves the browser, because Sentry only runs when `import.meta.env.PROD`
+is true and the Playwright suite runs against `npm run dev`. The check that
+matters is a production build with a DSN pointing at a host that cannot
+resolve, served by `vite preview`, watching the network:
+
+```
+VITE_SENTRY_DSN='https://<key>@consent-probe.invalid/1' npm run build
+npm run preview
+```
+
+Then, in a browser with site data cleared: throw an error before answering, and
+after rejecting — no request to that host in either case. Accept, throw again —
+one request, whose envelope contains no `replay_event`, no
+`"type":"transaction"`, no console breadcrumb, and no query string.
+
+**That last one is why this paragraph exists.** Breadcrumb scrubbing was in
+place, the unit tests passed, and a real envelope still carried the full query
+string, because Sentry fills `event.request.url` from `window.location.href`
+and never routes it through `beforeBreadcrumb`. A test that asserts a hook was
+configured proves nothing about what is transmitted. Verified 2026-09-04:
+9 checks, 9 passing.
+
 ## 7. Support escalation
 
 `public.support_cases` and `/admin/support` are real (migration `0024`,

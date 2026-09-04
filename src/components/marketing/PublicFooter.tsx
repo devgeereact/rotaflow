@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { FOOTER_COLUMNS, TAGLINE } from '@/lib/marketing';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { useConsent } from '@/context/ConsentContext';
 
 /**
  * Site footer.
@@ -13,15 +14,18 @@ import { BrandMark } from '@/components/ui/BrandMark';
  * `navigationTargets.test.ts` asserts every link in `FOOTER_COLUMNS` resolves
  * so this cannot quietly rot back into pointing at 404s.
  *
- * Legal links now point at real routes under `/legal/*`, not stubs: each one
- * renders a page that states plainly it is a placeholder pending UK-counsel
- * review, with a direct way to ask a question in the meantime (see
- * `LegalNotice`). That was the bar the previous version of this comment set —
- * no link to a page that does not exist — and it is met without waiting on
- * final legal text, which is tracked separately in
- * `docs/SAAS.md`.
+ * Legal links point at real routes under `/legal/*`, not stubs. Four of the
+ * five are written from the code and cite it; Terms is a published draft that
+ * says so at the top and still needs UK counsel.
+ *
+ * "Cookie preferences" is a button rather than a link, deliberately. It has no
+ * route, so it is kept out of `FOOTER_COLUMNS` — `navigationTargets.test.ts`
+ * asserts every entry there resolves to a real `<Route>`, and weakening that
+ * test to admit one non-route would cost more than the special case does.
  */
 export function PublicFooter(): JSX.Element {
+  const { reopen } = useConsent();
+
   return (
     <footer className="border-t border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
       <div className="mx-auto max-w-6xl px-6 py-14">
@@ -55,6 +59,17 @@ export function PublicFooter(): JSX.Element {
                     </Link>
                   </li>
                 ))}
+                {heading === 'Legal' && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={reopen}
+                      className="rounded text-left text-sm text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                    >
+                      Cookie preferences
+                    </button>
+                  </li>
+                )}
               </ul>
             </nav>
           ))}

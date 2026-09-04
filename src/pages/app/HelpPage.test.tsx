@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const listMyCases = vi.fn();
@@ -74,7 +75,15 @@ const supportCase = (over: Record<string, unknown> = {}): Record<string, unknown
 });
 
 async function openTheCase(): Promise<void> {
-  render(<HelpPage />);
+  // Wrapped since the page gained a "Your data" card linking to /legal/*, which
+  // is what makes those notices reachable from behind the sign-in wall at all.
+  // <Link> needs a router context; nothing here navigates, so the in-memory one
+  // is enough.
+  render(
+    <MemoryRouter>
+      <HelpPage />
+    </MemoryRouter>,
+  );
   const row = await screen.findByText('Rota will not publish');
   fireEvent.click(row);
   await waitFor(() => expect(listCaseMessages).toHaveBeenCalledWith('case-1'));

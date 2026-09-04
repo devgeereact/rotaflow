@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Callout } from '@/components/ui/Callout';
 import { Label } from '@/components/ui/Label';
 import {
   createEmergencyContact,
@@ -156,6 +157,22 @@ export function EmergencyContactsModal({
             ))}
           </ul>
         )}
+
+        {/* The medical notes field was already labelled as special-category
+            data, which is more than most products manage. What was missing is
+            the other half: everything on this form is about somebody who is
+            not a user here, never visited the site, and has rights over it
+            anyway. UK GDPR Article 14 covers information obtained from
+            somebody other than the person it is about, and the product has no
+            way of its own to tell them — so the person entering it is told
+            instead, at the moment they enter it. */}
+        <Callout tone="info" title="These details are about somebody else">
+          <p>
+            Whoever you name here has the same rights over this information as you have
+            over yours, and no way to find out we hold it unless you tell them. Ask them
+            first, and enter only what would be needed in an emergency.
+          </p>
+        </Callout>
 
         <div className="space-y-3 rounded-xl border border-surface-border p-3 dark:border-surface-border-dark">
           <div className="grid grid-cols-2 gap-3">

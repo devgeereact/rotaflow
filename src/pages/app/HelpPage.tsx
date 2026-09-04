@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Info, MessageSquarePlus, ShieldCheck, Star } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -64,6 +65,30 @@ const STATUS_LABEL: Record<string, string> = {
  * `support_cases`/`open_support_case`), which already existed for the
  * platform console's queue but had no requester-facing door into it.
  */
+/** The legal pages, with a line each on what they answer. */
+const LEGAL_LINKS = [
+  {
+    to: '/legal/privacy',
+    label: 'Privacy Notice',
+    note: 'what is held about you, for how long, and how to ask for it or have it removed',
+  },
+  {
+    to: '/legal/cookies',
+    label: 'Cookie Notice',
+    note: 'everything kept on this device, and how to change what you agreed to',
+  },
+  {
+    to: '/legal/trust',
+    label: 'Trust and sub-processors',
+    note: 'who else processes it, and what leaves the UK and EU',
+  },
+  {
+    to: '/legal/accessibility',
+    label: 'Accessibility',
+    note: 'what has been tested, what has not, and how to report a barrier',
+  },
+] as const;
+
 export function HelpPage(): JSX.Element {
   const { orgId, orgName } = useOrg();
   const { user } = useSupabaseAuth();
@@ -493,6 +518,36 @@ export function HelpPage(): JSX.Element {
           </ul>
         </Card>
       )}
+
+      {/* Until now nothing behind the sign-in wall linked to /legal/* at all.
+          Every one of those pages is reachable from the marketing footer,
+          which a signed-in member of staff has no reason to visit and no
+          route back to — so the people the notice is actually about were the
+          only people who could not read it. */}
+      <Card className="mt-4">
+        <h2 className="font-semibold text-content dark:text-content-dark">Your data</h2>
+        <p className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
+          Your employer decides what is held about you and why, so a question about your
+          own record goes to them first. What the software does with it, who else
+          processes it and how long it is kept is set out here.
+        </p>
+        <ul className="mt-3 space-y-2 text-sm">
+          {LEGAL_LINKS.map(({ to, label, note }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+              >
+                {label}
+              </Link>
+              <span className="text-content-muted dark:text-content-muted-dark">
+                {' '}
+                — {note}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Card>
 
       <Modal
         open={contactOpen}

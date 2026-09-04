@@ -132,7 +132,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     path: '/legal/accessibility',
     title: 'Accessibility',
     description:
-      'RotaFlow is built to WCAG 2 AA and tested on every public page in CI. What that covers, what it does not yet, and how to report a barrier.',
+      'RotaFlow aims at WCAG 2.1 AA. Every public page is contrast-scanned in CI. What that covers, what a scan cannot, and how to report a barrier.',
     sitemap: true,
     priority: 0.3,
   },

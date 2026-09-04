@@ -185,9 +185,17 @@ export function ClockActionPane({
         </button>
       ) : null}
 
-      <p className="mt-4 flex items-center gap-1.5 text-xs text-content-muted dark:text-content-muted-dark">
-        <ShieldCheck size={14} aria-hidden="true" />
-        {locationNote ?? 'Your location will be recorded for accuracy'}
+      {/* The only just-in-time notice the product had, and it said less than
+          it needed to. "Recorded for accuracy" does not tell somebody that
+          coordinates are stored, who can see them, or for how long — and this
+          is the screen where a person is being asked for their physical
+          location, which is the most intrusive thing the product collects. */}
+      <p className="mt-4 flex items-start gap-1.5 text-xs text-content-muted dark:text-content-muted-dark">
+        <ShieldCheck size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
+        <span>
+          {locationNote ??
+            'Clocking in by GPS records your coordinates and how accurate the reading was, visible to your managers and kept for three years. Your browser asks first, and clocking in manually instead is always available.'}
+        </span>
       </p>
 
       {children}

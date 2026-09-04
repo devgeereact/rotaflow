@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isAllowed } from '@/lib/consent';
 import { useOrg } from '@/hooks/useOrg';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useNavBadgeCounts } from '@/hooks/useNavBadgeCounts';
@@ -115,7 +116,10 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
   const toggleCollapsed = (): void => {
     setCollapsed((prev) => {
       const next = !prev;
-      window.localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
+      // Remembered only with consent; the collapse itself always works.
+      if (isAllowed('preferences')) {
+        window.localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
+      }
       return next;
     });
   };
