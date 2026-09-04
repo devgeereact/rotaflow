@@ -142,6 +142,11 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'offline.html', 'icons/*.png'],
 
       manifest: {
+        // A stable identity for the installed app, independent of `start_url`.
+        // Without it the browser derives identity from `start_url`, so
+        // changing that later would register as a DIFFERENT app: the existing
+        // install keeps running the old one and the user gets a second icon.
+        id: '/',
         name: 'RotaFlow',
         short_name: 'RotaFlow',
         description:
@@ -149,6 +154,11 @@ export default defineConfig({
         theme_color: '#3B6FE0',
         background_color: '#FFFFFF',
         display: 'standalone',
+        // `display` is a single value and old browsers ignore anything they do
+        // not know. `display_override` is the ordered list: take the tab-strip
+        // treatment where it exists, else standalone, else a plain browser tab
+        // rather than a blank screen.
+        display_override: ['standalone', 'minimal-ui', 'browser'],
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
