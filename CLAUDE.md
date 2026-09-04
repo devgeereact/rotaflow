@@ -26,6 +26,75 @@ capability's row there before assuming a feature exists — several documents in
 repo have claimed features that do not, and vice versa. Any PR that changes a
 capability's status updates its row in the same PR.
 
+## Also in `docs/`, when the task touches it
+
+| Need                                    | File                                                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Is this screen built, partial or absent  | `docs/SCREENS.md` — every design mapped against the real route table in `src/App.tsx`         |
+| Does the built screen match its design   | `docs/LOOP.md` — the `/loop` design-match prompt, driven against `localhost:5042`             |
+| The design references themselves         | `docs/design/*.png` — 1920-wide designs exported at ~87%; measure the scale before resizing type |
+| Organisation section reference           | `docs/ORGANISATION_WORKSPACE.html` — the sole reference for the Organisation workspace         |
+| Platform (Super Admin) console reference | `docs/PLATFORM_CONSOLE.html`                                                                  |
+| Positioning, tone, naming                | `docs/BRAND.md`                                                                               |
+| Retention, erasure, GDPR, subprocessors  | `docs/DATA_LIFECYCLE.md` — technical record, not the published Privacy Notice                 |
+| Metrics and the event taxonomy           | `docs/OBSERVABILITY.md` — what computes each success metric, and whether that data exists yet  |
+| How a full QA audit is run               | `docs/Working-Agent.md` — the spec behind the `rotaflow-qa-auditor` agent                     |
+| What the last full audit found           | `docs/QA-AUDIT-REPORT.md` — a dated snapshot (14 Aug 2026), not current state; `docs/SAAS.md` is |
+| What actually works without a network    | `docs/OFFLINE-SPEC.md` — per feature, and it is narrower than "offline-first" implies          |
+| Release evidence before a deploy         | `docs/PWA-RELEASE-GATES.md` — recorded statuses, not a checklist to tick from memory           |
+
+`docs/DESIGN_EXPLORATION.md` is a **rejected** proposal kept as a record of the
+decision. `docs/DESIGN.md` is the enforced source of truth; do not implement from
+the exploration.
+
+There is also a `docs/ACCOUNTS.md`. It is **gitignored on purpose** — it holds a
+real, live production credential and this repository is public. Never cite it,
+copy from it, or add it to a tracked file.
+
+## How work is routed here
+
+This project adopted **GEE OS** on 4 September 2026. `PROJECT.yml` at the root is
+the adoption and the routing contract; `docs/GEE-OS.md` explains what it changes,
+what it deliberately leaves out, and how it settles the fact that four different
+systems installed on this machine all describe how to sequence work.
+
+Three things from it apply to every task, and they are the whole of what an agent
+needs to hold in mind:
+
+- **Default mode is Existing Application.** Improve a live system without losing
+  behaviour that already works. Prefer the focused repair to the rewrite.
+- **Write the task contract before changing anything**: outcome, scope, authority,
+  evidence. Authority does not widen because the task turned out to be hard, and
+  being asked to review or diagnose is not being asked to edit.
+- **`NOT TESTED` is a valid result and the required one** when a check was not
+  run. A completion report that omits what was not verified will be read as
+  though everything was.
+
+`PROJECT.yml` also records the MCP position: reads are permitted, every mutation
+is authorised per task, and no session applies a migration to production —
+migrations reach it by merging a PR, which is a slower path on purpose.
+
+## Commands
+
+| Task                | Command                                                                                                                                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dev server          | `npm run dev` — port **5042**, `strictPort`. The port is duplicated into `playwright.config.ts`, the Supabase redirect allowlist and the Edge Function CORS list, so changing it is never a one-file edit                       |
+| Build               | `npm run build` (`tsc --noEmit`, then `vite build`). It must succeed with **no `.env`** — CI has none, and a missing `VITE_*` var has to degrade, not throw                                                                     |
+| One test file       | `npx vitest run src/lib/hours.test.ts`                                                                                                                                                                                       |
+| One test by name    | `npx vitest run -t 'overnight'`                                                                                                                                                                                              |
+| Watch tests         | `npm run test:watch`                                                                                                                                                                                                         |
+| One e2e spec        | `npx playwright test e2e/marketing.spec.ts` — Playwright starts `npm run dev` itself, against dev (not `dist/`) because the `-preview` routes it uses are `import.meta.env.DEV`-only                                           |
+| Lint one path       | `npx eslint src/pages/Rota.tsx`                                                                                                                                                                                              |
+| pgTAP               | `supabase start && supabase test db && supabase stop` — **needs Docker**. Without it this gate cannot run locally at all, so an RLS regression reaches CI unseen                                                               |
+
+**Two timezones, deliberately.** `vitest.config.ts` pins `TZ=Europe/London` (DST
+exists, and a day-arithmetic bug on a clock-change date is invisible in UTC);
+`.github/workflows/ci.yml` pins `TZ=UTC` for the build. Neither zone covers the
+other's bug class — do not "unify" them. CI runs **Node 20**, so anything that
+constructs a Supabase client at module scope dies on the missing native
+`WebSocket`; keep pure logic in `src/lib`, not `src/services`, and unit tests
+never import a service.
+
 ## Hard constraints
 
 - **Static build only.** Output is `dist/`, deployed by rsync over SSH with
@@ -112,8 +181,16 @@ Every one of these runs in CI and blocks a merge:
 | `npm run check:bundle`     | size budgets, and that no DEV preview page shipped                                                                                                                                |
 | `npm run check:migrations` | destructive SQL without a `-- SAFETY(...)` declaration                                                                                                                            |
 | `npm run check:docs`       | counts written into prose that no longer match the tree                                                                                                                           |
+| `npm run check:export`     | a tenant table added to the schema but left out of the organisation data export                                                                                                   |
 | `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                                                                                                   |
 | `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                                                                                             |
+
+`ci.yml` runs these as **four** jobs, not one: `verify` (everything up to
+`check:export`, plus `npm audit --audit-level=high`), `e2e`, `e2e-authenticated`
+(boots a local Supabase stack and signs a real user up), and `db-tests` (the
+pgTAP run). The last two need Docker and the Supabase CLI, so a green local
+`verify` is a partial signal — a merge can still go red on a job you cannot run
+here.
 
 Two checks run on a schedule rather than on a merge, because they read live
 state no pull request can change: `.github/workflows/backup.yml` (a nightly

@@ -1,0 +1,72 @@
+# GEE OS project contract.
+#
+# GEE OS (~/.agents/gee-os) is an agent-neutral working system: a constitution,
+# a set of modes, ordered workflows and an evidence standard shared by Claude
+# Code, Codex and anything else that reads AGENTS.md. Adoption is always
+# explicit, and this file is the adoption. Without it, GEE OS does nothing here
+# even though the package is installed on this machine.
+#
+# What this file is for: routing. It tells an agent which single mode to load,
+# which workflow applies, and which parts of GEE OS to ignore, so that a large
+# capability does not become a large context on every task.
+#
+# What this file is NOT: a second source of truth. Every project fact lives in
+# docs/SAAS.md and the reference documents it links. Nothing below restates a
+# rule that CLAUDE.md or docs/RULES.md already carries. See docs/GEE-OS.md for
+# the adoption record, the conflicts it resolves and the parts deliberately
+# left out.
+
+project:
+  name: 'RotaFlow'
+  type: 'pwa'
+  # maintenance, not build: the product ships, the register tracks gaps, and
+  # the expensive mistakes here are regressions rather than missing features.
+  lifecycle: 'maintenance'
+  # production, not medium. One live Supabase project, migrations that apply on
+  # merge, and no backup to fall back on. Risk is a property of the blast
+  # radius, not of how careful the current task feels.
+  risk: 'production'
+
+defaults:
+  mode: 'EXISTING-APPLICATION'
+  workflows:
+    # Ordered procedures, loaded per task and never all at once.
+    - 'CHANGE-SAFETY' # any change to behaviour that already works
+    - 'RELEASE-GATE' # before a build is deployed to rotaflow.space
+  specialists:
+    # Named so an agent reaches for what exists instead of inventing a process.
+    - 'rotaflow-qa-auditor' # .claude/agents/testing — owns full QA runs
+    - 'gstack:/review' # focused code review
+    - 'gstack:/investigate' # uncertain failures
+
+exclusions:
+  # Excluded explicitly, because misrouting is likelier than omission. An agent
+  # that has to decide whether BOOK mode applies has already lost the time.
+  - 'modes: BOOK, FICTION, NONFICTION, ACADEMIC, LEARNING, EDITING'
+  - 'workflows: NEW-PROJECT-BOOTSTRAP, NEW-APPLICATION, BOOK-CREATION'
+  - 'workflows: PROJECT-RECOVERY' # the codebase is coherent; recovery is not the frame
+  - 'templates/new-project' # would create a sixth plan of record; see docs/GEE-OS.md
+  - 'systems/website' # this is an application with a marketing surface, not a website
+  - 'audits/WEBSITE-LAUNCH' # superseded by the PWA gate
+
+sources_of_truth:
+  # One fact, one home. Where two files could answer a question, the winner is
+  # named here so an agent does not average them.
+  plan_of_record: 'docs/SAAS.md'
+  agent_directives: 'CLAUDE.md' # AGENTS.md is a pointer to it, deliberately
+  coding_standards: 'docs/RULES.md'
+  architecture: 'docs/ARCHITECTURE.md'
+  data_and_rls: 'docs/SCHEMA.md'
+  offline_behaviour: 'docs/OFFLINE-SPEC.md'
+  release_evidence: 'docs/PWA-RELEASE-GATES.md'
+  deployment: 'docs/DEPLOYMENT.md'
+  retention_and_gdpr: 'docs/DATA_LIFECYCLE.md'
+
+mcp_profile:
+  # MCP tools supply live evidence. They do not widen authority: availability is
+  # not permission, and a read that is routine does not make the matching write
+  # routine. See ~/.agents/gee-os/mcp/MCP-SAFETY.md.
+  reads: 'permitted — supabase (list_tables, execute_sql SELECT, get_advisors, query_logs), sentry, context7'
+  mutations: 'each one separately authorised by the owner, per task, naming the object'
+  never: 'supabase apply_migration against production from a session; migrations land through a merged PR'
+  environment_check: 'confirm the project ref before any read that could touch a second project'

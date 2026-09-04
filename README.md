@@ -241,6 +241,9 @@ Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - [`docs/SCREENS.md`](docs/SCREENS.md) — every screen, against its design reference
 - [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) — the success-metric taxonomy and what computes each
 - [`docs/QA-AUDIT-REPORT.md`](docs/QA-AUDIT-REPORT.md) — dated evidence of the last full audit
+- [`docs/OFFLINE-SPEC.md`](docs/OFFLINE-SPEC.md) — what actually works without a network, feature by feature
+- [`docs/PWA-RELEASE-GATES.md`](docs/PWA-RELEASE-GATES.md) — the release gate, with recorded statuses and a release decision
+- [`docs/GEE-OS.md`](docs/GEE-OS.md) — how agent work is routed here; `PROJECT.yml` is the contract
 
 ## License
 

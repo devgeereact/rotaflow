@@ -190,9 +190,12 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 - **UI/theme state:** `ThemeProvider` (Context), **light by default** (see
   `docs/DESIGN.md` §1; a deliberate brand choice, not `prefers-color-scheme`),
   with a user override persisted to `localStorage`.
-- **Offline write queue:** clock-ins, leave requests and swap responses made offline are
+- **Offline write queue:** clock-ins, leave requests and swap _requests_ made offline are
   written to an IndexedDB outbox (`services/syncQueue`), replayed on reconnect via
-  `useOnlineStatus`. Reads use the SW's `NetworkFirst` Supabase cache.
+  `useOnlineStatus`. Swap and leave _responses_ are review actions and are not queued —
+  this line said "swap responses" until 4 September 2026, which no code supported.
+  Reads use the SW's `NetworkFirst` Supabase cache, which is 50 entries for 5 minutes
+  and guarantees nothing in particular; `docs/OFFLINE-SPEC.md` classifies every feature.
 - **Local component state:** `useState`/`useReducer`. The rota builder's drag-drop
   working copy is local until published (no global store needed for V1).
 
@@ -208,7 +211,11 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
   - Google Fonts → `StaleWhileRevalidate`.
 - **Updates:** `registerType: 'prompt'` + `skipWaiting: false`. A new SW waits;
   the app shows a "Reload to update" prompt so users are never interrupted.
-- `public/offline.html` ships as a last-resort static fallback.
+- `public/offline.html` is precached but **never served**. It is in `includeAssets`
+  and nothing references it: `navigateFallback` is `index.html`, and no route,
+  handler or `.htaccess` rule points at it. It was meant to be a last-resort static
+  fallback; today it is an entry in the precache manifest and nothing else. Either
+  wire it to a `navigateFallbackDenylist` case or drop it.
 
 ## 6. Data flow example (publish a rota → notify staff)
 
