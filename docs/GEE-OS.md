@@ -1,9 +1,9 @@
 # GEE OS in this repository
 
-RotaFlow adopts GEE OS as of 4 September 2026. `PROJECT.yml` at the repository
-root is the adoption; this file is the record of what that means here, what it
-deliberately leaves out, and which conflicts had to be settled before it could
-be switched on.
+RotaFlow adopts GEE OS as of 4 September 2026. `.agent/PROJECT.yml` is the
+adoption; this file is the record of what that means here, what it deliberately
+leaves out, and which conflicts had to be settled before it could be switched
+on.
 
 GEE OS lives at `~/.agents/gee-os` on the owner's machine and is not vendored
 into this repository. It is a shared working system rather than a library:
@@ -126,24 +126,73 @@ because a report with no "not verified" section is read as though everything was
 ## Conflicts settled at adoption
 
 **1. `AGENTS.md` versus `CLAUDE.md`.** The GEE template makes `AGENTS.md` the
-shared project contract and `CLAUDE.md` a thin adapter. This repository does the
-opposite, and did it on purpose: until 30 August 2026 `AGENTS.md` held a near
-duplicate of the same rules, the two drifted, and `AGENTS.md` was still calling
-shipped billing "Phase 2". The inversion stands. `CLAUDE.md` is canonical because
-the harness loads it whether or not anybody remembers to, `AGENTS.md` points at
-it, and `PROJECT.yml` records which is which so no agent has to guess.
+shared project contract and `CLAUDE.md` a thin adapter. This repository had gone
+the other way, and for a good reason: until 30 August 2026 `AGENTS.md` held a
+near duplicate of the project rules, the two drifted, and `AGENTS.md` was still
+calling shipped billing "Phase 2" long after it shipped.
+
+Both halves are now true at once, which is what the second harness forced.
+`AGENTS.md` is the **entry point** every agent reads first, in the shape GEE OS
+asks for: read order, the rules that hold regardless of harness, and the
+harness mapping table. It holds **no project facts**, so there is nothing in it
+to drift. `CLAUDE.md` stays canonical for the facts, because the Claude Code
+harness loads it whether or not anybody remembers to. The duplication that
+caused the original problem was of _content_, not of _file_, and this
+arrangement removes the content while keeping the entry point where every
+harness looks for it.
 
 **2. Four routers, one task.** GSD, gstack, the superpowers skills and GEE OS all
 describe how to sequence work, and three of them are installed here. The rule
 from `registry/CONFLICTS.md` applies: the primary routed skill owns the task and
 the others answer bounded questions. In this repository GEE OS routes, and the
-gstack skills named in `PROJECT.yml` are specialists it calls, not alternatives
+gstack skills named in `.agent/PROJECT.yml` are specialists it calls, not alternatives
 to it. A user asking for `/review` or `/qa` by name has routed the task
 themselves, which outranks this file.
 
 **3. Audit mode does not authorise fixes.** Worth stating separately because the
 habit here has been to find and fix in one motion. Where that is wanted, the task
 contract says so explicitly.
+
+## The files, and what each is for
+
+| File                              | Role                                                                           | Tracked |
+| --------------------------------- | ------------------------------------------------------------------------------ | ------- |
+| `AGENTS.md`                       | Entry point for every harness. Read order and harness-neutral rules. No facts. | yes     |
+| `CLAUDE.md`                       | The project directives. Canonical for every project fact.                      | yes     |
+| `CODEX.md`                        | Codex mapping: where things are, and what differs from Claude Code.            | yes     |
+| `.agent/PROJECT.yml`              | The adoption and routing contract: mode, workflows, exclusions, MCP position.  | yes     |
+| `.agent/CURRENT-TASK.template.md` | The task contract to copy at the start of work.                                | yes     |
+| `.agent/CURRENT-TASK.md`          | This task's contract. **Gitignored** — it must not outlive its task.           | no      |
+| `.claude/agents/gee-os.md`        | The router as a Claude Code subagent.                                          | yes     |
+| `docs/GEE-OS.md`                  | This file: the adoption record.                                                | yes     |
+
+## Working with Codex as well as Claude Code
+
+Nothing in the adoption is harness-specific, and that was a constraint on the
+design rather than a happy accident. The gates are npm scripts. The register is a
+file. The guardrails are enforced by RLS, by the function behind each RPC and by
+CI, none of which knows or cares which agent wrote the code. The task contract is
+a document either harness can read and write.
+
+What actually differs is small enough to list:
+
+- **Subagents.** `.claude/agents/` is Claude Code's mechanism. Codex cannot
+  dispatch one, but both agent definitions there are plain Markdown whose content
+  is a procedure: `gee-os.md` is the loop, and `rotaflow-qa-auditor.md` defers
+  entirely to `docs/Working-Agent.md`. Codex follows them by reading them.
+- **Skills.** The gstack specialists named in `.agent/PROJECT.yml` are
+  Claude-side. Where one is unavailable, do the work directly and record in the
+  report that the specialist was not used, rather than quietly skipping the step
+  it would have performed.
+- **MCP.** `.codex/config.toml` is gitignored because it holds a machine-specific
+  endpoint, so a fresh clone gives Codex no MCP configuration at all. Nothing
+  here depends on that. The MCP position in `.agent/PROJECT.yml` is about
+  authority, not availability, and it applies to whatever happens to be
+  connected.
+
+If a rule appears to apply to only one harness, it is either a mapping, which
+belongs in `CLAUDE.md` or `CODEX.md`, or a mistake, which belongs in a pull
+request.
 
 ## Deliberately not adopted
 
@@ -159,6 +208,12 @@ contract says so explicitly.
   gaps.
 - **`systems/website/`** and the website launch audit: superseded here by the PWA
   gate, which covers the marketing surface as part of the same build.
+- **`KNOWN-ISSUES.md`**, which the Standard profile lists: `docs/SAAS.md` §7 is
+  already that file, with 39 gap rows and a priority column. A second issue list
+  would be a second place to forget to update.
+- **`CHANGELOG.md`**, same profile: nothing would maintain it. The register
+  records what changed and why, and `git log` records the rest. A changelog
+  nobody writes is worse than none, because it reads as though it is current.
 - **Copying source prompts into the repository.** GEE OS keeps its originals for
   traceability. They stay there.
 

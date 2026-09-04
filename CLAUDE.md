@@ -53,13 +53,21 @@ copy from it, or add it to a tracked file.
 
 ## How work is routed here
 
-This project adopted **GEE OS** on 4 September 2026. `PROJECT.yml` at the root is
-the adoption and the routing contract; `docs/GEE-OS.md` explains what it changes,
+This project adopted **GEE OS** on 4 September 2026. `.agent/PROJECT.yml` is the
+adoption and the routing contract; `docs/GEE-OS.md` explains what it changes,
 what it deliberately leaves out, and how it settles the fact that four different
 systems installed on this machine all describe how to sequence work.
 
-Three things from it apply to every task, and they are the whole of what an agent
-needs to hold in mind:
+**The entry point is `AGENTS.md`, not this file.** That is deliberate: it is the
+one document every harness reads, and it routes to this one for the facts. Claude
+Code loads `CLAUDE.md` automatically, Codex is pointed here by `CODEX.md`, and
+neither holds a rule the other does not. Before starting work that changes
+anything, copy `.agent/CURRENT-TASK.template.md` to `.agent/CURRENT-TASK.md` and
+fill it in; that file is gitignored, because a contract that outlives its task is
+just stale documentation.
+
+Three things apply to every task, and they are the whole of what an agent needs
+to hold in mind:
 
 - **Default mode is Existing Application.** Improve a live system without losing
   behaviour that already works. Prefer the focused repair to the rewrite.
@@ -70,7 +78,7 @@ needs to hold in mind:
   run. A completion report that omits what was not verified will be read as
   though everything was.
 
-`PROJECT.yml` also records the MCP position: reads are permitted, every mutation
+`.agent/PROJECT.yml` also records the MCP position: reads are permitted, every mutation
 is authorised per task, and no session applies a migration to production —
 migrations reach it by merging a PR, which is a slower path on purpose.
 
@@ -239,23 +247,15 @@ register exists to catch.
   scopes queries — not the `service_role` key. `supabase/functions/**` is Deno
   and excluded from `npm run typecheck`/`lint`; review it by hand.
 
-# gstack
+# Tooling that is not part of this repository
 
-Installed at `~/.claude/skills/gstack`. Run `~/.claude/skills/gstack/setup` after
-cloning it if the skills aren't registered yet.
+The gstack skills, GSD commands and the GEE OS package are installed on the
+owner's machine, not here, and their inventories are described in the machine's
+own `~/.claude/CLAUDE.md`. This file used to carry a copy of the gstack skill
+list, which had already fallen ten skills behind the real one — a list nobody
+here can maintain is a list that lies, and this repository is public, so the
+copy also published a machine layout for no benefit.
 
-## Web browsing
-
-Use the `/browse` skill from gstack for **all** web browsing. Never use the
-`mcp__claude-in-chrome__*` tools.
-
-## Available skills
-
-`/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`,
-`/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`,
-`/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`,
-`/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`,
-`/setup-gbrain`, `/retro`, `/investigate`, `/document-release`,
-`/document-generate`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`,
-`/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`,
-`/gstack-upgrade`, `/learn`.
+What the project genuinely depends on is recorded where it is enforced:
+`.agent/PROJECT.yml` names the specialists it routes to, and `CODEX.md` says
+what to do when one of them is not available in the harness you are running.

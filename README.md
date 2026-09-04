@@ -203,7 +203,10 @@ be wrong, and a number in a README that nothing checks is a number that drifts.
 rotaflow/
 ├── .env.example          # required env vars (copy to .env)
 ├── .htaccess             # cPanel: HTTPS, SPA routing, caching
-├── AGENTS.md / CLAUDE.md # AI agent context
+├── AGENTS.md             # agent entry point, every harness — start here
+├── CLAUDE.md             # the project directives (canonical for project facts)
+├── CODEX.md              # Codex mapping; what differs from Claude Code
+├── .agent/               # GEE OS routing contract + the task-contract template
 ├── index.html            # app entry + font preconnect
 ├── vite.config.ts        # build + PWA/Workbox config
 ├── tailwind.config.ts    # design tokens (see docs/DESIGN.md)
@@ -243,7 +246,7 @@ Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - [`docs/QA-AUDIT-REPORT.md`](docs/QA-AUDIT-REPORT.md) — dated evidence of the last full audit
 - [`docs/OFFLINE-SPEC.md`](docs/OFFLINE-SPEC.md) — what actually works without a network, feature by feature
 - [`docs/PWA-RELEASE-GATES.md`](docs/PWA-RELEASE-GATES.md) — the release gate, with recorded statuses and a release decision
-- [`docs/GEE-OS.md`](docs/GEE-OS.md) — how agent work is routed here; `PROJECT.yml` is the contract
+- [`docs/GEE-OS.md`](docs/GEE-OS.md) — how agent work is routed here; `.agent/PROJECT.yml` is the contract
 
 ## License
 

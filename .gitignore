@@ -55,6 +55,12 @@ docs/design/.loop/
 .claude/*.local.md
 supabase/.temp/
 
+# The task contract for whatever is being worked on right now. Deliberately not
+# tracked: it records one task's scope, authority and evidence, and a contract
+# that outlives its task becomes stale documentation that somebody later reads
+# as current. The template beside it IS tracked.
+.agent/CURRENT-TASK.md
+
 # Vitest coverage output
 coverage/
 
