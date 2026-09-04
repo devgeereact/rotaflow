@@ -177,6 +177,24 @@ export function AcceptInvitePage(): JSX.Element {
               {error}
             </p>
           )}
+          {/* The one screen where the controller/processor split is not an
+              abstraction. Somebody joining an employer's workspace is about to
+              have their shifts, their clock-in locations and their leave
+              recorded by that employer, and the person to ask about any of it
+              is the employer, not us. Saying so here is worth more than saying
+              it on a page they will not visit. */}
+          <p className="mt-6 text-sm text-content-muted dark:text-content-muted-dark">
+            Joining adds you to {preview.orgName}, who decide what is held about you and
+            why. Questions about your own information go to them first. What the software
+            does with it is set out in the{' '}
+            <Link
+              to="/legal/privacy"
+              className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+            >
+              Privacy Notice
+            </Link>
+            .
+          </p>
         </>
       )}
     </>,

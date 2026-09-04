@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Toggle } from '@/components/ui/Toggle';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { useConsent } from '@/context/ConsentContext';
 
 /**
  * `/app/account/preferences`. Design/profileprefrence.png.
@@ -27,6 +28,7 @@ import { SettingsSection } from '@/components/settings/SettingsSection';
 export function PreferencesPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const { theme, setTheme } = useTheme();
+  const { allows, record, reopen } = useConsent();
   const { showError, showSuccess } = useToast();
   const push = useWebPush();
 
@@ -98,7 +100,11 @@ export function PreferencesPage(): JSX.Element {
     <div className="max-w-3xl space-y-6">
       <SettingsSection
         title="Appearance"
-        description="RotaFlow remembers this on every device you sign in on."
+        description={
+          allows('preferences')
+            ? 'Remembered on this device.'
+            : 'Applied now, but not remembered — you declined preference storage.'
+        }
       >
         <div className="flex flex-wrap gap-3">
           <Button
@@ -182,6 +188,28 @@ export function PreferencesPage(): JSX.Element {
             </Button>
           </div>
         )}
+      </SettingsSection>
+
+      {/* The reopen route that is not in the marketing footer. Somebody signed
+          in and working a shift has no reason to visit /legal/cookies to
+          change their mind, and consent that can only be withdrawn somewhere
+          you would not think to look is not really withdrawable. */}
+      <SettingsSection
+        title="Privacy on this device"
+        description="What this browser is allowed to keep, and what it may send."
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm text-content-muted dark:text-content-muted-dark">
+            {record === null
+              ? 'You have not answered yet, so nothing optional is stored or sent.'
+              : `Interface preferences are ${
+                  record.preferences ? 'remembered' : 'not remembered'
+                } and crash reports are ${record.diagnostics ? 'sent' : 'not sent'}. Signing in and working offline need storage that cannot be switched off.`}
+          </p>
+          <Button variant="secondary" onClick={reopen}>
+            Change what is kept
+          </Button>
+        </div>
       </SettingsSection>
     </div>
   );

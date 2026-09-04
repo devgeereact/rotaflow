@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
 import { OrgProvider } from '@/context/OrgContext';
+import { ConsentProvider } from '@/context/ConsentContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RequireRole } from '@/components/RequireRole';
 import { RequirePlatformAdmin } from '@/components/RequirePlatformAdmin';
@@ -15,6 +16,8 @@ import { AppShell } from '@/components/layout/AppShell';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { ConsentBanner } from '@/components/consent/ConsentBanner';
+import { ConsentPreferences } from '@/components/consent/ConsentPreferences';
 import { SplashScreen } from '@/components/SplashScreen';
 import { AppBootScreen } from '@/components/AppBootScreen';
 import { HomePage } from '@/pages/HomePage';
@@ -392,37 +395,44 @@ export function App(): JSX.Element {
           <AuthProvider>
             <OrgProvider>
               <BrowserRouter>
-                {/* Covers the lazy PUBLIC routes (signup, onboarding, invite,
+                {/* Inside the router because the banner and the footer control
+                  that reopens it both link to /legal/*, and above Routes so a
+                  decision is shared by the public pages and the signed-in app. */}
+                <ConsentProvider>
+                  {/* Covers the lazy PUBLIC routes (signup, onboarding, invite,
                   password reset). /app/* has its own boundary inside AppShell
                   so the chrome survives navigation. See there. */}
-                <Suspense fallback={<RouteFallback />}>
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    {/* Public marketing site. Every one of these is linked from
+                  <Suspense fallback={<RouteFallback />}>
+                    <Routes>
+                      <Route path="/" element={<HomePage />} />
+                      {/* Public marketing site. Every one of these is linked from
                       PublicNav or PublicFooter, and navigationTargets.test.ts
                       asserts each link resolves to a Route declared here. The
                       nav and the route table cannot drift apart silently. */}
-                    <Route path="/features" element={<FeaturesPage />} />
-                    <Route path="/solutions" element={<SolutionsPage />} />
-                    <Route path="/pricing" element={<PricingPage />} />
-                    <Route path="/resources" element={<ResourcesPage />} />
-                    <Route path="/about" element={<AboutPage />} />
-                    <Route path="/contact" element={<ContactPage />} />
-                    <Route path="/legal/privacy" element={<PrivacyPage />} />
-                    <Route path="/legal/terms" element={<TermsPage />} />
-                    <Route path="/legal/cookies" element={<CookiesPage />} />
-                    <Route path="/legal/accessibility" element={<AccessibilityPage />} />
-                    <Route path="/legal/trust" element={<TrustPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/signup" element={<SignupPage />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
-                    <Route path="/splash" element={<SplashScreen />} />
-                    {/* Where an OAuth provider or magic link may return. See
+                      <Route path="/features" element={<FeaturesPage />} />
+                      <Route path="/solutions" element={<SolutionsPage />} />
+                      <Route path="/pricing" element={<PricingPage />} />
+                      <Route path="/resources" element={<ResourcesPage />} />
+                      <Route path="/about" element={<AboutPage />} />
+                      <Route path="/contact" element={<ContactPage />} />
+                      <Route path="/legal/privacy" element={<PrivacyPage />} />
+                      <Route path="/legal/terms" element={<TermsPage />} />
+                      <Route path="/legal/cookies" element={<CookiesPage />} />
+                      <Route
+                        path="/legal/accessibility"
+                        element={<AccessibilityPage />}
+                      />
+                      <Route path="/legal/trust" element={<TrustPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/signup" element={<SignupPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="/reset-password" element={<ResetPasswordPage />} />
+                      <Route path="/splash" element={<SplashScreen />} />
+                      {/* Where an OAuth provider or magic link may return. See
                       RouteAliases for why this exists when sign-in already
                       redirects straight to the dashboard. */}
-                    <Route path="/auth/callback" element={<AuthCallbackPage />} />
-                    {/* ---------------------------------------------------------
+                      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+                      {/* ---------------------------------------------------------
                     Design-loop preview routes. DEV ONLY.
 
                     Every screen below lives behind auth in the real product and
@@ -444,159 +454,171 @@ export function App(): JSX.Element {
                     The loop is unaffected. It drives the dev server, where DEV
                     is true. Keep new preview routes inside this block.
                     --------------------------------------------------------- */}
-                    {import.meta.env.DEV && (
-                      <>
-                        {/* The real screen only ever renders inline from
+                      {import.meta.env.DEV && (
+                        <>
+                          {/* The real screen only ever renders inline from
                         ProtectedRoute/AppShell while auth or org membership is
                         resolving. Fixed props reproduce the "setting up
                         organisation" mid-boot state in docs/design/appboot.png. */}
-                        <Route
-                          path="/appboot"
-                          element={<AppBootScreen authResolved orgResolved={false} />}
-                        />
-                        {/* /onboarding writes real rows. ?step=1|2|5 reproduces the
+                          <Route
+                            path="/appboot"
+                            element={<AppBootScreen authResolved orgResolved={false} />}
+                          />
+                          {/* /onboarding writes real rows. ?step=1|2|5 reproduces the
                         reference-designed steps against mock local state. */}
-                        <Route
-                          path="/onboarding-preview"
-                          element={<OnboardingPreviewPage />}
-                        />
-                        {/* docs/design/Workforce-Dashboard.png's numbers. */}
-                        <Route
-                          path="/dashboard-preview"
-                          element={<DashboardPreviewPage />}
-                        />
-                        {/* Mirrors RotaBuilderPage's render tree against mock data. */}
-                        <Route
-                          path="/rota-builder-preview"
-                          element={<RotaBuilderPreviewPage />}
-                        />
-                        {/* Renders the real ManagerSchedule/StaffSchedule; ?role=staff switches branch. */}
-                        <Route
-                          path="/schedule-preview"
-                          element={<SchedulePreviewPage />}
-                        />
-                        {/* docs/design/Timesheets-Dashboard.png's numbers. */}
-                        <Route
-                          path="/timesheets-preview"
-                          element={<TimesheetsPreviewPage />}
-                        />
-                        {/* docs/design/clockin.png. */}
-                        <Route path="/clockin-preview" element={<ClockInPreviewPage />} />
-                        {/* The whole platform console against fixtures, with the
+                          <Route
+                            path="/onboarding-preview"
+                            element={<OnboardingPreviewPage />}
+                          />
+                          {/* docs/design/Workforce-Dashboard.png's numbers. */}
+                          <Route
+                            path="/dashboard-preview"
+                            element={<DashboardPreviewPage />}
+                          />
+                          {/* Mirrors RotaBuilderPage's render tree against mock data. */}
+                          <Route
+                            path="/rota-builder-preview"
+                            element={<RotaBuilderPreviewPage />}
+                          />
+                          {/* Renders the real ManagerSchedule/StaffSchedule; ?role=staff switches branch. */}
+                          <Route
+                            path="/schedule-preview"
+                            element={<SchedulePreviewPage />}
+                          />
+                          {/* docs/design/Timesheets-Dashboard.png's numbers. */}
+                          <Route
+                            path="/timesheets-preview"
+                            element={<TimesheetsPreviewPage />}
+                          />
+                          {/* docs/design/clockin.png. */}
+                          <Route
+                            path="/clockin-preview"
+                            element={<ClockInPreviewPage />}
+                          />
+                          {/* The whole platform console against fixtures, with the
                         real shell and the real page components. The only way to
                         look at `/admin/*` without a seeded platform-admin
                         session. See `AdminPreviewHarness`. */}
-                        <Route path="/admin-preview" element={<AdminPreviewHarness />}>
-                          <Route index element={<AdminOverviewPage />} />
+                          <Route path="/admin-preview" element={<AdminPreviewHarness />}>
+                            <Route index element={<AdminOverviewPage />} />
+                            <Route
+                              path="organisations"
+                              element={<AdminOrganisationsPage />}
+                            />
+                            <Route
+                              path="organisations/:organisationId"
+                              element={<AdminOrganisationDetailPage />}
+                            />
+                            <Route path="users" element={<AdminUsersPage />} />
+                            <Route
+                              path="users/:userId"
+                              element={<AdminUserDetailPage />}
+                            />
+                            <Route
+                              path="subscriptions"
+                              element={<AdminSubscriptionsPage />}
+                            />
+                            <Route path="billing" element={<AdminBillingPage />} />
+                            <Route path="support" element={<AdminSupportPage />} />
+                            <Route
+                              path="support/:caseId"
+                              element={<AdminSupportCaseDetailPage />}
+                            />
+                            <Route
+                              path="support-access"
+                              element={<AdminSupportAccessPage />}
+                            />
+                            <Route
+                              path="platform-health"
+                              element={<AdminPlatformHealthPage />}
+                            />
+                            <Route path="incidents" element={<AdminIncidentsPage />} />
+                            <Route
+                              path="integrations"
+                              element={<AdminIntegrationsPage />}
+                            />
+                            <Route
+                              path="notifications"
+                              element={<AdminNotificationsPage />}
+                            />
+                            <Route path="audit" element={<AdminAuditPage />} />
+                            <Route
+                              path="feature-flags"
+                              element={<AdminFeatureFlagsPage />}
+                            />
+                            <Route path="gdpr" element={<AdminGdprPage />} />
+                            <Route path="settings" element={<AdminSettingsPage />} />
+                          </Route>
+                          {/* docs/design/staff.png and docs/design/Staff-Profile.png. */}
+                          <Route path="/staff-preview" element={<StaffPreviewPage />} />
                           <Route
-                            path="organisations"
-                            element={<AdminOrganisationsPage />}
+                            path="/staff-preview/:staffId"
+                            element={<StaffProfilePreviewPage />}
                           />
-                          <Route
-                            path="organisations/:organisationId"
-                            element={<AdminOrganisationDetailPage />}
-                          />
-                          <Route path="users" element={<AdminUsersPage />} />
-                          <Route path="users/:userId" element={<AdminUserDetailPage />} />
-                          <Route
-                            path="subscriptions"
-                            element={<AdminSubscriptionsPage />}
-                          />
-                          <Route path="billing" element={<AdminBillingPage />} />
-                          <Route path="support" element={<AdminSupportPage />} />
-                          <Route
-                            path="support/:caseId"
-                            element={<AdminSupportCaseDetailPage />}
-                          />
-                          <Route
-                            path="support-access"
-                            element={<AdminSupportAccessPage />}
-                          />
-                          <Route
-                            path="platform-health"
-                            element={<AdminPlatformHealthPage />}
-                          />
-                          <Route path="incidents" element={<AdminIncidentsPage />} />
-                          <Route
-                            path="integrations"
-                            element={<AdminIntegrationsPage />}
-                          />
-                          <Route
-                            path="notifications"
-                            element={<AdminNotificationsPage />}
-                          />
-                          <Route path="audit" element={<AdminAuditPage />} />
-                          <Route
-                            path="feature-flags"
-                            element={<AdminFeatureFlagsPage />}
-                          />
-                          <Route path="gdpr" element={<AdminGdprPage />} />
-                          <Route path="settings" element={<AdminSettingsPage />} />
-                        </Route>
-                        {/* docs/design/staff.png and docs/design/Staff-Profile.png. */}
-                        <Route path="/staff-preview" element={<StaffPreviewPage />} />
-                        <Route
-                          path="/staff-preview/:staffId"
-                          element={<StaffProfilePreviewPage />}
-                        />
-                        {/* docs/design/Locations-Management.png and
+                          {/* docs/design/Locations-Management.png and
                         docs/design/Location-department.png, merged into one
                         tabbed workspace. ?tab=departments opens the second. */}
-                        <Route
-                          path="/locations-preview"
-                          element={<LocationsPreviewPage />}
-                        />
-                        <Route
-                          path="/locations-preview/departments"
-                          element={<LocationsPreviewPage />}
-                        />
-                        {/* docs/design/Announcements-Dashboard.png's rows and metrics. */}
-                        <Route
-                          path="/announcements-preview"
-                          element={<AnnouncementsPreviewPage />}
-                        />
-                        {/* docs/design/Reports-Dashboard.png's catalogue and figures. */}
-                        <Route path="/reports-preview" element={<ReportsPreviewPage />} />
-                        {/* The whole organisation workspace shell (rail, org
+                          <Route
+                            path="/locations-preview"
+                            element={<LocationsPreviewPage />}
+                          />
+                          <Route
+                            path="/locations-preview/departments"
+                            element={<LocationsPreviewPage />}
+                          />
+                          {/* docs/design/Announcements-Dashboard.png's rows and metrics. */}
+                          <Route
+                            path="/announcements-preview"
+                            element={<AnnouncementsPreviewPage />}
+                          />
+                          {/* docs/design/Reports-Dashboard.png's catalogue and figures. */}
+                          <Route
+                            path="/reports-preview"
+                            element={<ReportsPreviewPage />}
+                          />
+                          {/* The whole organisation workspace shell (rail, org
                         switcher, topbar, mobile tab bar) against a stubbed
                         OrgContext, with the real *PreviewPage components
                         routed inside it. See AppShellPreviewPage.
                         ?role=owner|manager|staff switches the stubbed role. */}
-                        <Route path="/app-preview/*" element={<AppShellPreviewPage />} />
-                        {/* The real DashboardPage, hooks and service calls
+                          <Route
+                            path="/app-preview/*"
+                            element={<AppShellPreviewPage />}
+                          />
+                          {/* The real DashboardPage, hooks and service calls
                         included, against a fetch-intercepted Supabase client
                         with realistic edge-case fixtures (null settings, a
                         null holiday_allowance, an orphaned leave request, a
                         null department_id). See DashboardLivePreviewPage. */}
-                        <Route
-                          path="/dashboard-live-preview"
-                          element={<DashboardLivePreviewPage />}
-                        />
-                      </>
-                    )}
-                    {/* Public on purpose: an invitee has no account yet, and
+                          <Route
+                            path="/dashboard-live-preview"
+                            element={<DashboardLivePreviewPage />}
+                          />
+                        </>
+                      )}
+                      {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
-                    <Route path="/invite/:token" element={<AcceptInvitePage />} />
-                    <Route
-                      path="/onboarding"
-                      element={
-                        <ProtectedRoute>
-                          <OnboardingPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/app"
-                      element={
-                        <ProtectedRoute>
-                          <AppShell />
-                        </ProtectedRoute>
-                      }
-                    >
-                      <Route index element={<Navigate to="dashboard" replace />} />
-                      <Route path="dashboard" element={<DashboardPage />} />
-                      {/* Manager-only areas.
+                      <Route path="/invite/:token" element={<AcceptInvitePage />} />
+                      <Route
+                        path="/onboarding"
+                        element={
+                          <ProtectedRoute>
+                            <OnboardingPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/app"
+                        element={
+                          <ProtectedRoute>
+                            <AppShell />
+                          </ProtectedRoute>
+                        }
+                      >
+                        <Route index element={<Navigate to="dashboard" replace />} />
+                        <Route path="dashboard" element={<DashboardPage />} />
+                        {/* Manager-only areas.
 
                         The gate used to live inside whichever page remembered
                         it, as a one-line card, worded differently each time, and the staff directory, staff profiles and locations
@@ -606,247 +628,262 @@ export function App(): JSX.Element {
                         a new page cannot forget. RLS is still the real
                         boundary; this only turns a wrong turn into an
                         explanation. See `RequireRole`. */}
-                      {/* NEW_STRUCTURE §10/§34: the workforce directory lives
+                        {/* NEW_STRUCTURE §10/§34: the workforce directory lives
                       at /app/team, and the sidebar entry is "Team". It was
                       built at /app/staff, so that spelling now redirects here
                       rather than the other way round. Every bookmark and
                       every link already sent to staff still resolves. */}
-                      <Route
-                        path="team"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="the team directory">
-                            <StaffPage />
-                          </RequireRole>
-                        }
-                      />
-                      <Route
-                        path="team/:staffId"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="staff profiles">
-                            <StaffProfilePage />
-                          </RequireRole>
-                        }
-                      />
-                      <Route path="staff" element={<Navigate to="/app/team" replace />} />
-                      <Route path="staff/:staffId" element={<StaffMemberRedirect />} />
-                      <Route
-                        path="locations"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="locations">
-                            <LocationsPage />
-                          </RequireRole>
-                        }
-                      />
-                      {/* SCREENS.locations folded department and staffing-
+                        <Route
+                          path="team"
+                          element={
+                            <RequireRole allow={MANAGERIAL} area="the team directory">
+                              <StaffPage />
+                            </RequireRole>
+                          }
+                        />
+                        <Route
+                          path="team/:staffId"
+                          element={
+                            <RequireRole allow={MANAGERIAL} area="staff profiles">
+                              <StaffProfilePage />
+                            </RequireRole>
+                          }
+                        />
+                        <Route
+                          path="staff"
+                          element={<Navigate to="/app/team" replace />}
+                        />
+                        <Route path="staff/:staffId" element={<StaffMemberRedirect />} />
+                        <Route
+                          path="locations"
+                          element={
+                            <RequireRole allow={MANAGERIAL} area="locations">
+                              <LocationsPage />
+                            </RequireRole>
+                          }
+                        />
+                        {/* SCREENS.locations folded department and staffing-
                       minimum management into per-card dialogs on the one
                       screen (LocationsPage), rather than a second tab or a
                       per-site detail route. Both old URLs still resolve. */}
-                      <Route
-                        path="locations/departments"
-                        element={<Navigate to="/app/locations" replace />}
-                      />
-                      <Route
-                        path="locations/:locationId"
-                        element={<Navigate to="/app/locations" replace />}
-                      />
-                      <Route
-                        path="rota"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="the rota builder">
-                            <RotaBuilderPage />
-                          </RequireRole>
-                        }
-                      />
-                      <Route path="schedule" element={<SchedulePage />} />
-                      <Route path="clock" element={<ClockInPage />} />
-                      {/* The spec's spelling. See RouteAliases. */}
-                      <Route
-                        path="clock-in"
-                        element={<Navigate to="/app/clock" replace />}
-                      />
-                      <Route path="timesheets" element={<TimesheetsPage />} />
-                      <Route path="availability" element={<AvailabilityPage />} />
-                      <Route path="leave" element={<LeavePage />} />
-                      <Route path="swaps" element={<SwapsPage />} />
-                      <Route path="open-shifts" element={<OpenShiftsPage />} />
-                      {/* Open to every member: a staff member raises their own
+                        <Route
+                          path="locations/departments"
+                          element={<Navigate to="/app/locations" replace />}
+                        />
+                        <Route
+                          path="locations/:locationId"
+                          element={<Navigate to="/app/locations" replace />}
+                        />
+                        <Route
+                          path="rota"
+                          element={
+                            <RequireRole allow={MANAGERIAL} area="the rota builder">
+                              <RotaBuilderPage />
+                            </RequireRole>
+                          }
+                        />
+                        <Route path="schedule" element={<SchedulePage />} />
+                        <Route path="clock" element={<ClockInPage />} />
+                        {/* The spec's spelling. See RouteAliases. */}
+                        <Route
+                          path="clock-in"
+                          element={<Navigate to="/app/clock" replace />}
+                        />
+                        <Route path="timesheets" element={<TimesheetsPage />} />
+                        <Route path="availability" element={<AvailabilityPage />} />
+                        <Route path="leave" element={<LeavePage />} />
+                        <Route path="swaps" element={<SwapsPage />} />
+                        <Route path="open-shifts" element={<OpenShiftsPage />} />
+                        {/* Open to every member: a staff member raises their own
                       overtime here, and the page's Team toggle is what gates
                       the approval queue behind `canApprove`. */}
-                      <Route path="overtime" element={<OvertimePage />} />
-                      <Route path="announcements" element={<AnnouncementsPage />} />
-                      <Route path="notifications" element={<NotificationsPage />} />
-                      <Route path="help" element={<HelpPage />} />
-                      <Route
-                        path="approvals"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="approvals">
-                            <ApprovalsPage />
-                          </RequireRole>
-                        }
-                      />
-                      <Route
-                        path="reports"
-                        element={
-                          <RequireRole allow={MANAGERIAL} area="reports">
-                            <ReportsPage />
-                          </RequireRole>
-                        }
-                      />
-                      {/* Integrations moved under Settings, as the design shows. */}
-                      <Route
-                        path="integrations"
-                        element={<Navigate to="/app/settings/integrations" replace />}
-                      />
-                      <Route path="settings" element={<SettingsLayout />}>
-                        <Route index element={<Navigate to="organisation" replace />} />
+                        <Route path="overtime" element={<OvertimePage />} />
+                        <Route path="announcements" element={<AnnouncementsPage />} />
+                        <Route path="notifications" element={<NotificationsPage />} />
+                        <Route path="help" element={<HelpPage />} />
                         <Route
-                          path="organisation"
-                          element={<SettingsOrganisationPage />}
+                          path="approvals"
+                          element={
+                            <RequireRole allow={MANAGERIAL} area="approvals">
+                              <ApprovalsPage />
+                            </RequireRole>
+                          }
                         />
-                        <Route path="permissions" element={<SettingsPermissionsPage />} />
-                        <Route path="roles" element={<SettingsRolesPage />} />
-                        <Route path="policies" element={<SettingsPoliciesPage />} />
                         <Route
-                          path="notifications"
-                          element={<SettingsNotificationsPage />}
+                          path="reports"
+                          element={
+                            <RequireRole allow={MANAGERIAL} area="reports">
+                              <ReportsPage />
+                            </RequireRole>
+                          }
                         />
+                        {/* Integrations moved under Settings, as the design shows. */}
                         <Route
                           path="integrations"
-                          element={<SettingsIntegrationsPage />}
+                          element={<Navigate to="/app/settings/integrations" replace />}
                         />
-                        <Route path="billing" element={<SettingsBillingPage />} />
-                        <Route path="audit" element={<SettingsAuditPage />} />
-                      </Route>
-                      <Route path="account" element={<ProfileLayout />}>
-                        <Route index element={<Navigate to="profile" replace />} />
-                        <Route path="profile" element={<ProfilePage />} />
-                        <Route path="preferences" element={<PreferencesPage />} />
-                        <Route path="security" element={<SecurityPage />} />
-                        <Route path="accounts" element={<ConnectedAccountsPage />} />
-                        <Route path="sessions" element={<SessionsPage />} />
-                        <Route path="tokens" element={<TokensPage />} />
-                        <Route path="activity" element={<ActivityPage />} />
-                      </Route>
-                      {/* The spec calls this area "My Profile" at
+                        <Route path="settings" element={<SettingsLayout />}>
+                          <Route index element={<Navigate to="organisation" replace />} />
+                          <Route
+                            path="organisation"
+                            element={<SettingsOrganisationPage />}
+                          />
+                          <Route
+                            path="permissions"
+                            element={<SettingsPermissionsPage />}
+                          />
+                          <Route path="roles" element={<SettingsRolesPage />} />
+                          <Route path="policies" element={<SettingsPoliciesPage />} />
+                          <Route
+                            path="notifications"
+                            element={<SettingsNotificationsPage />}
+                          />
+                          <Route
+                            path="integrations"
+                            element={<SettingsIntegrationsPage />}
+                          />
+                          <Route path="billing" element={<SettingsBillingPage />} />
+                          <Route path="audit" element={<SettingsAuditPage />} />
+                        </Route>
+                        <Route path="account" element={<ProfileLayout />}>
+                          <Route index element={<Navigate to="profile" replace />} />
+                          <Route path="profile" element={<ProfilePage />} />
+                          <Route path="preferences" element={<PreferencesPage />} />
+                          <Route path="security" element={<SecurityPage />} />
+                          <Route path="accounts" element={<ConnectedAccountsPage />} />
+                          <Route path="sessions" element={<SessionsPage />} />
+                          <Route path="tokens" element={<TokensPage />} />
+                          <Route path="activity" element={<ActivityPage />} />
+                        </Route>
+                        {/* The spec calls this area "My Profile" at
                         /app/profile/*. See RouteAliases. */}
-                      <Route path="profile/*" element={<ProfileRedirect />} />
-                    </Route>
+                        <Route path="profile/*" element={<ProfileRedirect />} />
+                      </Route>
 
-                    {/* Platform administration (NEW_STRUCTURE §34). Outside
+                      {/* Platform administration (NEW_STRUCTURE §34). Outside
                     `/app` deliberately: this area sits above organisations, and
                     it is gated on `profiles.is_platform_admin` rather than on a
                     membership role, §2 is explicit that Super Admin is not one.
                     `ProtectedRoute` still applies, so an anonymous visitor is
                     sent to sign in rather than told the area exists. */}
-                    <Route
-                      path="/admin"
-                      element={
-                        <ProtectedRoute>
-                          <RequirePlatformAdmin>
-                            <AdminShell />
-                          </RequirePlatformAdmin>
-                        </ProtectedRoute>
-                      }
-                    >
-                      <Route index element={<AdminOverviewPage />} />
-                      <Route path="organisations" element={<AdminOrganisationsPage />} />
                       <Route
-                        path="organisations/:organisationId"
-                        element={<AdminOrganisationDetailPage />}
-                      />
-                      <Route path="users" element={<AdminUsersPage />} />
-                      <Route path="users/:userId" element={<AdminUserDetailPage />} />
-                      <Route
-                        path="subscriptions"
+                        path="/admin"
                         element={
-                          <RequirePlatformRole
-                            allow={PLATFORM_BILLING_ROLES}
-                            area="Subscriptions"
-                          >
-                            <AdminSubscriptionsPage />
-                          </RequirePlatformRole>
+                          <ProtectedRoute>
+                            <RequirePlatformAdmin>
+                              <AdminShell />
+                            </RequirePlatformAdmin>
+                          </ProtectedRoute>
                         }
-                      />
-                      <Route
-                        path="settings"
-                        element={
-                          <RequirePlatformRole
-                            allow={PLATFORM_CONFIG_ROLES}
-                            area="Platform settings"
-                          >
-                            <AdminSettingsPage />
-                          </RequirePlatformRole>
-                        }
-                      />
-                      {/* Billing and feature flags are narrower than the area
+                      >
+                        <Route index element={<AdminOverviewPage />} />
+                        <Route
+                          path="organisations"
+                          element={<AdminOrganisationsPage />}
+                        />
+                        <Route
+                          path="organisations/:organisationId"
+                          element={<AdminOrganisationDetailPage />}
+                        />
+                        <Route path="users" element={<AdminUsersPage />} />
+                        <Route path="users/:userId" element={<AdminUserDetailPage />} />
+                        <Route
+                          path="subscriptions"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_BILLING_ROLES}
+                              area="Subscriptions"
+                            >
+                              <AdminSubscriptionsPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                        <Route
+                          path="settings"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_CONFIG_ROLES}
+                              area="Platform settings"
+                            >
+                              <AdminSettingsPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                        {/* Billing and feature flags are narrower than the area
                       itself: `adminNavForRole` hides them from a support
                       administrator, and §34 is explicit that restricted routes
                       "must not rely only on hidden navigation". So the route
                       gates too, a hidden link that still renders when typed is
                       not a permission, it is a decoration. The role lists mirror
                       the `has_platform_role(...)` predicates in the migrations. */}
-                      <Route
-                        path="billing"
-                        element={
-                          <RequirePlatformRole
-                            allow={PLATFORM_BILLING_ROLES}
-                            area="Platform billing"
-                          >
-                            <AdminBillingPage />
-                          </RequirePlatformRole>
-                        }
-                      />
-                      <Route path="support" element={<AdminSupportPage />} />
-                      <Route
-                        path="support/:caseId"
-                        element={<AdminSupportCaseDetailPage />}
-                      />
-                      <Route path="support-access" element={<AdminSupportAccessPage />} />
-                      <Route path="audit" element={<AdminAuditPage />} />
-                      <Route
-                        path="platform-health"
-                        element={<AdminPlatformHealthPage />}
-                      />
-                      <Route path="incidents" element={<AdminIncidentsPage />} />
-                      <Route path="integrations" element={<AdminIntegrationsPage />} />
-                      {/* Config roles only: this reads every tenant's delivery
+                        <Route
+                          path="billing"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_BILLING_ROLES}
+                              area="Platform billing"
+                            >
+                              <AdminBillingPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                        <Route path="support" element={<AdminSupportPage />} />
+                        <Route
+                          path="support/:caseId"
+                          element={<AdminSupportCaseDetailPage />}
+                        />
+                        <Route
+                          path="support-access"
+                          element={<AdminSupportAccessPage />}
+                        />
+                        <Route path="audit" element={<AdminAuditPage />} />
+                        <Route
+                          path="platform-health"
+                          element={<AdminPlatformHealthPage />}
+                        />
+                        <Route path="incidents" element={<AdminIncidentsPage />} />
+                        <Route path="integrations" element={<AdminIntegrationsPage />} />
+                        {/* Config roles only: this reads every tenant's delivery
                       record, which is a cross-tenant view of who was told what.
                       The nav hides it for support and finance, and so does the
                       route, a hidden link that renders when typed is not a
                       permission. */}
-                      <Route
-                        path="notifications"
-                        element={
-                          <RequirePlatformRole
-                            allow={PLATFORM_CONFIG_ROLES}
-                            area="Platform notifications"
-                          >
-                            <AdminNotificationsPage />
-                          </RequirePlatformRole>
-                        }
-                      />
-                      <Route path="gdpr" element={<AdminGdprPage />} />
-                      <Route
-                        path="feature-flags"
-                        element={
-                          <RequirePlatformRole
-                            allow={PLATFORM_CONFIG_ROLES}
-                            area="Feature flags"
-                          >
-                            <AdminFeatureFlagsPage />
-                          </RequirePlatformRole>
-                        }
-                      />
-                    </Route>
+                        <Route
+                          path="notifications"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_CONFIG_ROLES}
+                              area="Platform notifications"
+                            >
+                              <AdminNotificationsPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                        <Route path="gdpr" element={<AdminGdprPage />} />
+                        <Route
+                          path="feature-flags"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_CONFIG_ROLES}
+                              area="Feature flags"
+                            >
+                              <AdminFeatureFlagsPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                      </Route>
 
-                    <Route path="*" element={<NotFoundPage />} />
-                  </Routes>
-                </Suspense>
+                      <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                  </Suspense>
 
-                {/* Global PWA affordances */}
-                <UpdatePrompt />
-                <InstallPrompt />
-                <OfflineBanner />
+                  {/* Global PWA affordances */}
+                  <UpdatePrompt />
+                  <InstallPrompt />
+                  <OfflineBanner />
+                  <ConsentBanner />
+                  <ConsentPreferences />
+                </ConsentProvider>
               </BrowserRouter>
             </OrgProvider>
           </AuthProvider>

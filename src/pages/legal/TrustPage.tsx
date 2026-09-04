@@ -14,7 +14,7 @@ import { SUB_PROCESSORS, SUB_PROCESSORS_REVIEWED } from '@/lib/subprocessors';
  * GAP-014 asked for four things. Three of them are statements of fact about
  * how the system works, so they can be written truthfully from the code and
  * are here. The fourth, a Data Processing Agreement, is a binding contract:
- * drafting one is legal advice, `LegalNotice` says the published policies need
+ * drafting one is legal advice, the Terms draft says its commercial clauses need
  * UK counsel and must not be drafted in this repo, and that applies here too.
  *
  * That is not a cop-out about the hard part. A DPA's substance is its
@@ -67,6 +67,16 @@ export function TrustPage(): JSX.Element {
             <strong>{crossBorder.map((p) => p.name.split(',')[0]).join(' and ')}</strong>.
             Neither receives anything unless you use the feature it powers — the AI
             assistant, or a paid subscription. Both are listed in full below.
+          </p>
+          <p className="mb-4 leading-relaxed text-content dark:text-content-dark">
+            One thing does not fit that count and is easier to say than to leave implied.{' '}
+            <strong>Cloudflare</strong> sits in front of every request, so it sees the IP
+            address and the pages requested of everyone who visits, whether or not they
+            sign in. A request is normally served by the location nearest the visitor,
+            which for a UK or EU visitor is in the UK or the EU — but it is a worldwide
+            network run by a United States company, and whether that counts as a transfer
+            in its own right has not been assessed by anybody qualified to say. It is
+            recorded as an open question rather than answered here.
           </p>
           <p className="leading-relaxed text-content-muted dark:text-content-muted-dark">
             We would rather say this plainly than describe ourselves as EU-only and bury

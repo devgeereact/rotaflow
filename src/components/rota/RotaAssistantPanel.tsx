@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   CircleAlert,
@@ -577,6 +578,21 @@ export function RotaAssistantPanel({
               <Wand2 size={16} aria-hidden="true" className="mr-1.5" />
               {generating ? 'Thinking…' : 'Generate suggestions'}
             </Button>
+
+            {/* The only place in the product where staff data leaves the UK
+                and EU on a manager's click, and the click did not say so. The
+                Trust page declares it, but a procurement document read once is
+                not the same as knowing at the moment you press the button. */}
+            <p className="text-xs text-content-muted dark:text-content-muted-dark">
+              Generating sends staff names, job titles, skills, contracted hours and the{' '}
+              <em>dates</em> of approved leave to our AI provider in the United States.
+              The <em>type</em> of leave is deliberately never sent, so an absence cannot
+              be read as sickness. The other two tabs make no network call at all.{' '}
+              <Link to="/legal/trust" className="underline underline-offset-2">
+                What this means
+              </Link>
+              .
+            </p>
 
             {error && (
               <p

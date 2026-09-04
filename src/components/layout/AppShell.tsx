@@ -88,7 +88,14 @@ export function AppShell(): JSX.Element {
         <SupportAccessBanner />
         {/* `pb-20` on mobile clears the fixed tab bar; without it the last row
             of every table sits underneath it and cannot be reached. */}
-        <main className="flex-1 overflow-y-auto px-6 pb-20 pt-8 md:px-10 md:pb-8">
+        <main
+          // `pb-20`/`md:pb-8` as before, plus room for the consent banner. The
+          // shell is `h-[100dvh] overflow-hidden` and `main` is what scrolls, so
+          // the `body` padding in index.css never applies here — a signed-in
+          // person who has not answered yet would have the banner sitting on
+          // their last table row.
+          className="flex-1 overflow-y-auto px-6 pt-8 pb-[calc(5rem+var(--consent-inset,0px))] md:px-10 md:pb-[calc(2rem+var(--consent-inset,0px))]"
+        >
           {/* Scoped to the content region on purpose. A Suspense boundary
               higher up would unmount the sidebar and header while a lazy route
               chunk loads, so every in-app navigation would flash the chrome. */}

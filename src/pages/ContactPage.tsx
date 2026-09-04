@@ -342,6 +342,26 @@ export function ContactPage(): JSX.Element {
                 <Button type="submit" size="lg" className="mt-7 w-full sm:w-auto">
                   Send message
                 </Button>
+
+                {/* A just-in-time notice, and an unusually easy one to write:
+                    this form is a mailto handoff, so there is genuinely no
+                    server row behind it. Saying that is better for the reader
+                    than a generic "we value your privacy" line, and it is the
+                    kind of claim somebody can check by watching their own
+                    network tab. */}
+                <p className="mt-4 text-sm text-content-muted dark:text-content-muted-dark">
+                  This opens a message in your own email program — nothing you type here
+                  is stored on our servers, and nothing is sent until you send it
+                  yourself. Once it arrives it is an email in a mailbox, handled as
+                  described in the{' '}
+                  <Link
+                    to="/legal/privacy"
+                    className="font-medium text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
+                  >
+                    Privacy Notice
+                  </Link>
+                  .
+                </p>
               </form>
             )}
           </Card>

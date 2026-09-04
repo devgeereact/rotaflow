@@ -1,4 +1,5 @@
 import type { ReportCategory, ReportFormat } from '@/lib/reportRows';
+import { isAllowed } from '@/lib/consent';
 
 /**
  * Per-browser reporting preferences: which reports the user starred, and a log
@@ -40,6 +41,10 @@ function read<T>(key: string, fallback: T): T {
 }
 
 function write(key: string, value: unknown): void {
+  // Starring a report and listing what this browser exported are conveniences,
+  // not part of running an export. Without consent they are simply not kept,
+  // and every reader here already degrades to "never run".
+  if (!isAllowed('preferences')) return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {

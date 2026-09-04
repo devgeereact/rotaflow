@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { isInstallSnoozed, isInstallSurface, snoozeInstall } from '@/lib/installPrompt';
+import { isAllowed } from '@/lib/consent';
 import { Button } from '@/components/ui/Button';
 
 /**
@@ -47,7 +48,12 @@ export function InstallPrompt(): JSX.Element | null {
         <button
           type="button"
           onClick={() => {
-            snoozeInstall();
+            // Dismissing always works. Remembering it for thirty days is the
+            // part that writes to the device, so it waits for consent; without
+            // it the dismissal lasts for this session, which is still a
+            // dismissal. Gated here rather than inside snoozeInstall so that
+            // function stays pure and store-injectable for its own tests.
+            if (isAllowed('preferences')) snoozeInstall();
             setSnoozed(true);
           }}
           className="rounded-lg p-2 text-content-muted hover:bg-surface-subtle hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark"

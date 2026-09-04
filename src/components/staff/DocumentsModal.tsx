@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { Callout } from '@/components/ui/Callout';
 import {
   createDocument,
   deleteDocument,
@@ -159,6 +160,29 @@ export function DocumentsModal({
             ))}
           </ul>
         )}
+
+        {/* Two things a person adding an HR document needs to know before they
+            add one, and neither was said.
+
+            The type is a free text box whose own placeholder suggests DBS and
+            right-to-work, so criminal-record and immigration information lands
+            here by design rather than by accident. And this field is a link,
+            not an upload: erasure removes the row and cannot touch the file at
+            the other end of it, because nothing in this product manages that
+            store. That is a real limit and it belongs where somebody is about
+            to rely on it. */}
+        <Callout tone="warning" title="Before you add a document">
+          <p>
+            This is a link, not an upload. Deleting the entry, or anonymising the person,
+            removes the record here and cannot remove the file it points at — that stays
+            wherever you put it until you delete it there too.
+          </p>
+          <p>
+            Keep the type and name factual and add only what the role requires.
+            Right-to-work and DBS detail is sensitive, and it is easier not to hold it
+            than to defend holding it.
+          </p>
+        </Callout>
 
         <div className="space-y-3 rounded-xl border border-surface-border p-3 dark:border-surface-border-dark">
           <div className="grid grid-cols-2 gap-3">

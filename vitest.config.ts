@@ -34,6 +34,11 @@ export default defineConfig({
       ),
     },
   },
+  // `__SENTRY_RELEASE__` is a build-time define (vite.config.ts) declared as a
+  // global in src/vite-env.d.ts, so it typechecks everywhere but exists only
+  // under Vite. src/lib/sentry.test.ts asserts what the Sentry options do NOT
+  // contain — no session replay, no tracing — and cannot build them without it.
+  define: { __SENTRY_RELEASE__: JSON.stringify('test') },
   test: {
     // Node by DEFAULT, not jsdom. Most of what is worth testing here is
     // arithmetic and timezone logic in pure modules, and the outbox suite

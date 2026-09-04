@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { ThemeMode } from '@/types';
+import { isAllowed } from '@/lib/consent';
 
 interface ThemeContextValue {
   theme: ThemeMode;
@@ -38,7 +39,11 @@ export function ThemeProvider({ children }: { children: ReactNode }): JSX.Elemen
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle('dark', theme === 'dark');
-    window.localStorage.setItem(STORAGE_KEY, theme);
+    // The theme always applies; only remembering it needs agreement. Somebody
+    // who declined still gets dark mode, it just lasts until they close the tab.
+    if (isAllowed('preferences')) {
+      window.localStorage.setItem(STORAGE_KEY, theme);
+    }
   }, [theme]);
 
   const setTheme = useCallback((mode: ThemeMode) => setThemeState(mode), []);

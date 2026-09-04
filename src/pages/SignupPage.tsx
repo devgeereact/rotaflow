@@ -322,6 +322,33 @@ export function SignupPage(): JSX.Element {
           </p>
         )}
 
+        {/* Article 13 wants somebody told what happens to their information at
+            the point they hand it over, and this form asked for a name, an
+            email address and a password with no link to either document.
+
+            Links, not a tick box. A box would record a consent that is not the
+            lawful basis for any of this — the account exists to perform a
+            contract — and manufacturing a consent record makes the position
+            worse, not better. The Terms are still a draft and this says so
+            rather than asking anyone to agree to one. */}
+        <p className="mt-6 text-center text-sm text-content-muted dark:text-content-muted-dark">
+          Creating an account means we hold your name and email address. The{' '}
+          <Link
+            to="/legal/privacy"
+            className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+          >
+            Privacy Notice
+          </Link>{' '}
+          says what happens to it and how to get it removed. The{' '}
+          <Link
+            to="/legal/terms"
+            className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+          >
+            Terms of Service
+          </Link>{' '}
+          are still a draft, and you are not being asked to agree to them.
+        </p>
+
         <p className="mt-6 text-center text-sm text-ink-muted dark:text-content-muted-dark">
           Already have an account?{' '}
           <Link

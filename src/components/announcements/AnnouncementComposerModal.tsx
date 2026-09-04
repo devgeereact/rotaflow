@@ -170,6 +170,13 @@ export function AnnouncementComposerModal({
                 {drafting ? 'Drafting…' : 'Draft'}
               </Button>
             </div>
+            {/* Same transfer as the rota assistant, same reason for saying so
+                here: the Trust page declares it, but this is the click that
+                performs it. */}
+            <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
+              Drafting sends your wording and the rota context to our AI provider in the
+              United States. A person still writes and sends the announcement.
+            </p>
             {/* The block stays visible on a plan without the assistant rather
                 than disappearing: an owner cannot ask for something they have
                 never seen. Only the helper line changes. */}

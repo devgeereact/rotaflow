@@ -1,28 +1,33 @@
 import { Link } from 'react-router-dom';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
 import { FactList } from '@/components/legal/FactList';
+import { NoticeSections } from '@/components/legal/NoticeSections';
 import { Card } from '@/components/ui/Card';
+import { Callout } from '@/components/ui/Callout';
 import { CONTACT_EMAIL } from '@/lib/marketing';
 import { LEGAL_FACTS_REVIEWED, PRIVACY_FACTS } from '@/lib/legalFacts';
+import {
+  PRIVACY_NOTICE_DRAFTED,
+  PRIVACY_NOTICE_OUTSTANDING,
+  PRIVACY_NOTICE_SECTIONS,
+} from '@/lib/privacyNotice';
 
 /**
  * `/legal/privacy` (CAP-060).
  *
- * This was a placeholder saying the real notice was being drafted. That is
- * honest on day one and misleading by month three — and everything below is
- * a DESCRIPTION of what the software does, not a policy commitment, so it
- * did not need counsel to be written truthfully.
+ * Two documents on one page, in the order a reader needs them.
  *
- * Each answer is checkable against the system: residency against
- * `docs/DATA_LIFECYCLE.md` and `src/lib/subprocessors.ts`, retention against
- * the `retention_policies` table the nightly job reads, export and erasure
- * against the functions that perform them.
+ * First the six summary facts, which are what somebody actually wants: who the
+ * data is about, who decides, where it goes, is it sold, how long, can it be
+ * removed. They were the whole page until 4 September 2026 and they were true,
+ * but they are a summary and not a notice.
  *
- * What is still NOT here is anything that would be a promise rather than a
- * description — a stated lawful basis for each purpose, a retention
- * commitment to a customer, a complaints procedure. Those belong in a
- * customer contract and to counsel, and the page says so rather than
- * inventing them.
+ * Then the notice itself, from `src/lib/privacyNotice.ts`. It is a draft, it
+ * says so at the top, and the sections that cannot be settled from the code
+ * carry their own warning in place rather than being quietly omitted. Omitting
+ * them would produce a document that reads as finished — which is the failure
+ * this page has already had once, when the summary described "no tracking"
+ * while the app was running session replay.
  */
 export function PrivacyPage(): JSX.Element {
   return (
@@ -34,17 +39,39 @@ export function PrivacyPage(): JSX.Element {
       />
 
       <section className="mx-auto max-w-3xl space-y-8 px-6 py-16">
+        <Callout tone="warning" title="This notice is a draft, not a published policy">
+          <p>
+            It was written on {PRIVACY_NOTICE_DRAFTED} from the code, and every
+            description in it can be checked against the file named beneath it. What it
+            does not have is a solicitor’s eye: {PRIVACY_NOTICE_OUTSTANDING.length}{' '}
+            sections below are marked as needing either a decision from us or qualified
+            legal advice, and they are marked where they sit rather than in a footnote.
+            Nothing here is legal advice.
+          </p>
+        </Callout>
+
         <Card className="bg-surface-muted dark:bg-surface-muted-dark">
           <p className="leading-relaxed text-content dark:text-content-dark">
-            This page describes how the software behaves, checked against the code on{' '}
-            {LEGAL_FACTS_REVIEWED}. It is not a contract and not legal advice. If you are
-            an employer evaluating RotaFlow, the processing terms you would sign are a
-            separate document and are being prepared with UK counsel — ask and we will
-            send what exists today rather than pointing you at a page.
+            The short version first, checked against the code on {LEGAL_FACTS_REVIEWED}.
+            If you are an employer evaluating RotaFlow, the processing terms you would
+            sign are a separate document that does not exist yet — ask and we will send
+            what does rather than pointing you at a page.
           </p>
         </Card>
 
         <FactList facts={PRIVACY_FACTS} />
+
+        <div className="border-t border-surface-border pt-10 dark:border-surface-border-dark">
+          <h2 className="font-display text-2xl font-bold text-content dark:text-content-dark">
+            The full notice
+          </h2>
+          <p className="mt-2 leading-relaxed text-content-muted dark:text-content-muted-dark">
+            Longer, and more specific. Each section names where in the software its claims
+            can be verified.
+          </p>
+        </div>
+
+        <NoticeSections sections={PRIVACY_NOTICE_SECTIONS} />
 
         <Card>
           <h2 className="font-semibold text-content dark:text-content-dark">
