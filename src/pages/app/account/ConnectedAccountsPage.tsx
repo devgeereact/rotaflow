@@ -45,7 +45,7 @@ function formatWhen(iso: string | undefined): string | null {
  * ## Why the list of offerable providers is short
  *
  * §21 names Google, Microsoft and Apple. What can actually be offered is
- * whatever `VITE_OAUTH_PROVIDERS` declares. The same list the sign-in screen
+ * whatever `VITE_ENABLE_OAUTH` declares. The same list the sign-in screen
  * reads, and for the same reason (`lib/env.ts`): rendering a button for a
  * provider that is disabled in the Supabase dashboard is a dead end for the
  * user. `OAuthProvider` is `google | github` today, so Microsoft and Apple are

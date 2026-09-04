@@ -125,6 +125,33 @@ const previewChunks = files.filter((f) => /preview/i.test(relative(DIST, f)));
 const previewPrecached = precachedUrls.filter((u) => /preview/i.test(u));
 const previewInSw = /PreviewPage/.test(sw);
 
+// ── the second hard invariant: only declared env vars reach the bundle ─
+// Vite inlines `import.meta.env.NAME` by matching that exact text, so a
+// dynamic lookup (`import.meta.env[key]`) makes it emit the entire env object
+// and every `VITE_*` in the builder's `.env` ships — read or not. That is how
+// a live Stripe publishable key reached production on 2026-08-31 while
+// appearing in no source file. src/lib/env.ts now names its keys statically;
+// this is the gate that keeps it that way, because the failure is invisible
+// in review and the bundle is the only place it shows.
+const DECLARED_ENV_KEYS = [
+  'VITE_APP_NAME',
+  'VITE_APP_URL',
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_ANON_KEY',
+  'VITE_IMAGEKIT_URL_ENDPOINT',
+  'VITE_IMAGEKIT_PUBLIC_KEY',
+  'VITE_SENTRY_DSN',
+  'VITE_ENABLE_OAUTH',
+  'VITE_VAPID_PUBLIC_KEY',
+];
+const undeclaredEnvKeys = new Set();
+for (const file of shipped) {
+  const text = readFileSync(file, 'utf8');
+  for (const match of text.matchAll(/VITE_[A-Z0-9_]+/g)) {
+    if (!DECLARED_ENV_KEYS.includes(match[0])) undeclaredEnvKeys.add(match[0]);
+  }
+}
+
 const measurements = [
   {
     key: 'precacheGzipKiB',
@@ -195,6 +222,17 @@ if (previewChunks.length > 0 || previewPrecached.length > 0 || previewInSw) {
       'Define preview routes with `devPage`, not `lazyPage` — gating the route is ' +
       'not enough, because the `import()` still runs at module scope and Rollup ' +
       'emits a chunk. See src/App.tsx.',
+  );
+  failed = true;
+}
+
+if (undeclaredEnvKeys.size > 0) {
+  fail(
+    `${undeclaredEnvKeys.size} environment variable(s) reached the bundle that ` +
+      `src/lib/env.ts does not declare: ${[...undeclaredEnvKeys].sort().join(', ')}. ` +
+      'Every VITE_* in the bundle is public — every visitor downloads it. Either add ' +
+      'the key to RAW in src/lib/env.ts and to DECLARED_ENV_KEYS here, or remove the ' +
+      'line from .env and rebuild. Deleting the code that reads a key is not enough.',
   );
   failed = true;
 }

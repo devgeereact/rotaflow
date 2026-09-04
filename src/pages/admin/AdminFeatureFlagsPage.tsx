@@ -204,7 +204,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
   const capabilities: Capability[] = [
     {
       name: 'Single sign-on',
-      key: 'VITE_OAUTH_PROVIDERS',
+      key: 'VITE_ENABLE_OAUTH',
       enabled: env.oauthProviders.length > 0,
       detail:
         env.oauthProviders.length > 0

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { registerSW } from 'virtual:pwa-register';
 import { Button } from '@/components/ui/Button';
 import { reportError } from '@/lib/sentry';
@@ -23,12 +24,23 @@ import { reportError } from '@/lib/sentry';
  * silently loses offline support and its update path at the same time, and the
  * only symptom is that neither ever works — which nobody reports, because
  * nothing appears to be wrong.
+ *
+ * ## And why it can be dismissed
+ *
+ * Reloading discards whatever is in an unsaved form, and this toast can appear
+ * in the middle of building a rota. Until 2026-09-04 the only ways out were to
+ * reload or to navigate away, and it carried no `role`, so a screen-reader user
+ * was never told it was there at all (WCAG 2.2 AA 4.1.3). Dismissing hides it
+ * for this session only: the hourly poll keeps running and the waiting worker
+ * stays waiting, so the next reload still lands on the new build. "Not now" is
+ * not "never".
  */
 
 /** One hour. Long enough to be free, short enough to catch a same-day deploy. */
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 export function UpdatePrompt(): JSX.Element | null {
   const [needRefresh, setNeedRefresh] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [update, setUpdate] = useState<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -55,16 +67,30 @@ export function UpdatePrompt(): JSX.Element | null {
     };
   }, []);
 
-  if (!needRefresh) return null;
+  if (!needRefresh || dismissed) return null;
 
   return (
-    <div className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-md animate-fade-up motion-reduce:animate-none items-center justify-between gap-4 rounded-2xl border border-surface-border bg-surface p-4 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark">
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-md animate-fade-up motion-reduce:animate-none items-center justify-between gap-4 rounded-2xl border border-surface-border bg-surface p-4 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
+    >
       <p className="text-sm text-content dark:text-content-dark">
         A new version is available.
       </p>
-      <Button size="sm" onClick={() => void update?.()}>
-        Reload
-      </Button>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button size="sm" onClick={() => void update?.()}>
+          Reload
+        </Button>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="rounded-lg p-2 text-content-muted hover:bg-surface-subtle hover:text-content dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark"
+          aria-label="Dismiss the update notice"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
 }

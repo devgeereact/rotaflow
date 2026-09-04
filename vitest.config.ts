@@ -19,7 +19,20 @@ import path from 'node:path';
  */
 export default defineConfig({
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      // `virtual:pwa-register` only exists while VitePWA is loaded, and VitePWA
+      // is deliberately absent here (see above). Without this alias, importing
+      // any component that registers the service worker fails to resolve
+      // rather than failing an assertion — which would mean the update prompt
+      // could never be tested, and it is the one component that competes with
+      // a user's unsaved work. The stub is a real module so `vi.mock` in a test
+      // has something to replace.
+      'virtual:pwa-register': path.resolve(
+        __dirname,
+        './src/test/stubs/pwa-register.ts',
+      ),
+    },
   },
   test: {
     // Node by DEFAULT, not jsdom. Most of what is worth testing here is

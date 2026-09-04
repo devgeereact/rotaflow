@@ -200,6 +200,27 @@ export default defineConfig({
         ],
         // SPA navigations resolve to the precached index.html.
         navigateFallback: 'index.html',
+        // …except for the paths that are real files rather than app routes.
+        //
+        // Without this, once the service worker controls the page, every
+        // navigation resolves to the app shell — so a visitor who opens
+        // /sitemap.xml or /.well-known/security.txt gets the RotaFlow homepage
+        // with a 200, and the file behind it becomes unreachable. That is the
+        // same defect the server-side rewrite already guards against
+        // (`.htaccess`, which excludes assets/ and icons/), and the same defect
+        // #284 fixed for the sitemap at the Apache layer — fixed there and
+        // reintroduced here, because the service worker never sees .htaccess.
+        //
+        // Crawlers do not run service workers, so this is about people and
+        // installed clients, not about indexing.
+        navigateFallbackDenylist: [
+          /^\/sitemap\.xml$/,
+          /^\/robots\.txt$/,
+          /^\/\.well-known\//,
+          /^\/assets\//,
+          /^\/icons\//,
+          /^\/fonts\//,
+        ],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: false, // wait for user to accept the update
