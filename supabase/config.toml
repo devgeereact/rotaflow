@@ -1,0 +1,22 @@
+# =====================================================================
+# Supabase CLI configuration — local development and CI only.
+#
+# This file did not exist until 2026-09-02, and its absence is how
+# GAP-038 stayed invisible. Without it the CLI picks whatever Postgres
+# image its current version defaults to, so `db-tests` and
+# `e2e-authenticated` — two of the four required gates — were asserting
+# against a database that could change under them on any Tuesday, with
+# no diff to review. They passed on 31 August and, on the image the CLI
+# pulled two days later, 172 of the 364 pgTAP assertions could not run.
+#
+# Nothing here touches the hosted project. `supabase link` is not used by
+# this repository, and no workflow passes `--linked`.
+# =====================================================================
+
+project_id = "rotaflow"
+
+[db]
+# The hosted project runs PostgreSQL 17. Pinning the major version keeps
+# the local and CI databases on the same one, so a gate that goes red
+# does so because a migration changed, not because an image did.
+major_version = 17

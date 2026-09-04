@@ -54,6 +54,9 @@ docs/design/.loop/
 .claude/settings.local.json
 .claude/*.local.md
 supabase/.temp/
+# Written by `supabase start` when config.toml names a project id. Local
+# scratch, not configuration — it records which branch the CLI last used.
+supabase/.branches/
 
 # The task contract for whatever is being worked on right now. Deliberately not
 # tracked: it records one task's scope, authority and evidence, and a contract
