@@ -125,6 +125,8 @@ export function ResetPasswordPage(): JSX.Element {
               <Label htmlFor="new-password">New password</Label>
               <Input
                 id="new-password"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'reset-error' : undefined}
                 className="mb-4"
                 type="password"
                 autoComplete="new-password"
@@ -138,6 +140,8 @@ export function ResetPasswordPage(): JSX.Element {
               <Label htmlFor="confirm-password">Confirm password</Label>
               <Input
                 id="confirm-password"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'reset-error' : undefined}
                 className="mb-5"
                 type="password"
                 autoComplete="new-password"
@@ -161,8 +165,12 @@ export function ResetPasswordPage(): JSX.Element {
               </Button>
             </form>
 
+            {/* Associated with both password fields: the error is almost always
+                about the pair (too short, or they do not match), and an
+                unassociated paragraph at the bottom of a card is announced
+                once and then unreachable. */}
             {error && (
-              <p className="mt-4 text-sm text-danger" role="alert">
+              <p id="reset-error" className="mt-4 text-sm text-danger" role="alert">
                 {error}
               </p>
             )}

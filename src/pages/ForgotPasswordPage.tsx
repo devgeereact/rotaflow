@@ -89,6 +89,12 @@ export function ForgotPasswordPage(): JSX.Element {
                   id="forgot-email"
                   type="email"
                   autoComplete="email"
+                  // The error below is the only thing that explains a refused
+                  // submit, and it sat at the bottom of the card as an
+                  // unassociated paragraph: announced once, and then
+                  // unreachable from the field it is about.
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'forgot-error' : undefined}
                   value={email}
                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
                     setEmail(e.target.value)
@@ -104,7 +110,7 @@ export function ForgotPasswordPage(): JSX.Element {
             </form>
 
             {error && (
-              <p className="mt-4 text-sm text-danger" role="alert">
+              <p id="forgot-error" className="mt-4 text-sm text-danger" role="alert">
                 {error}
               </p>
             )}
