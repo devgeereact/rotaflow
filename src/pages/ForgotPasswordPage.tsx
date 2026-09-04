@@ -73,26 +73,35 @@ export function ForgotPasswordPage(): JSX.Element {
               Enter your email and we&rsquo;ll send you a link to set a new password.
             </p>
 
-            <Label htmlFor="forgot-email">Email</Label>
-            <div className="mb-5">
-              <Input
-                id="forgot-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-              <EmailSuggestion email={email} onAccept={setEmail} />
-            </div>
-
-            <Button
-              className="w-full"
-              disabled={busy || !email.trim()}
-              onClick={() => void handleSend()}
+            {/* A real <form>, so Enter submits — see LoginPage for why none of
+                these four screens had one until 2026-09-02. */}
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (busy || !email.trim()) return;
+                void handleSend();
+              }}
             >
-              {busy ? 'Sending…' : 'Send reset link'}
-            </Button>
+              <Label htmlFor="forgot-email">Email</Label>
+              <div className="mb-5">
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setEmail(e.target.value)
+                  }
+                  placeholder="you@example.com"
+                />
+                <EmailSuggestion email={email} onAccept={setEmail} />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={busy || !email.trim()}>
+                {busy ? 'Sending…' : 'Send reset link'}
+              </Button>
+            </form>
 
             {error && (
               <p className="mt-4 text-sm text-danger" role="alert">

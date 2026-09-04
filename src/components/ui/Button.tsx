@@ -49,9 +49,19 @@ const SIZES: Record<Size, string> = {
 
 /** Design-system button. Meets the 44px touch-target minimum at md/lg. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', className, ...props }, ref) => (
+  // `type` defaults to 'button', not the HTML default of 'submit'.
+  //
+  // A <button> with no type inside a <form> submits it. That is the classic
+  // way a Cancel button becomes a second Save, and it was a live hazard here
+  // the moment the auth screens gained real <form> elements: the magic-link
+  // button and the show-password toggle sit inside the same form as Sign in.
+  // Every existing caller inside a form already states its own type, so this
+  // default changes nothing that works today and removes a trap from
+  // everything written next. A submit button says `type="submit"` out loud.
+  ({ variant = 'primary', size = 'md', type = 'button', className, ...props }, ref) => (
     <button
       ref={ref}
+      type={type}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-xl font-semibold',
         'transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02]',

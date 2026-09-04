@@ -106,39 +106,60 @@ export function ResetPasswordPage(): JSX.Element {
               Choose a new password for your account.
             </p>
 
-            <Label htmlFor="new-password">New password</Label>
-            <Input
-              id="new-password"
-              className="mb-4"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-              placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
-            />
-
-            <Label htmlFor="confirm-password">Confirm password</Label>
-            <Input
-              id="confirm-password"
-              className="mb-5"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)}
-              placeholder="Repeat the password"
-            />
-
-            <Button
-              className="w-full"
-              disabled={
-                busy ||
-                password.length < PASSWORD_MIN_LENGTH ||
-                confirm.length < PASSWORD_MIN_LENGTH
-              }
-              onClick={() => void handleUpdate()}
+            {/* A real <form>, so Enter submits — see LoginPage for why none of
+                these four screens had one until 2026-09-02. */}
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (
+                  busy ||
+                  password.length < PASSWORD_MIN_LENGTH ||
+                  confirm.length < PASSWORD_MIN_LENGTH
+                ) {
+                  return;
+                }
+                void handleUpdate();
+              }}
             >
-              {busy ? 'Saving…' : 'Update password'}
-            </Button>
+              <Label htmlFor="new-password">New password</Label>
+              <Input
+                id="new-password"
+                className="mb-4"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setPassword(e.target.value)
+                }
+                placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
+              />
+
+              <Label htmlFor="confirm-password">Confirm password</Label>
+              <Input
+                id="confirm-password"
+                className="mb-5"
+                type="password"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setConfirm(e.target.value)
+                }
+                placeholder="Repeat the password"
+              />
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={
+                  busy ||
+                  password.length < PASSWORD_MIN_LENGTH ||
+                  confirm.length < PASSWORD_MIN_LENGTH
+                }
+              >
+                {busy ? 'Saving…' : 'Update password'}
+              </Button>
+            </form>
 
             {error && (
               <p className="mt-4 text-sm text-danger" role="alert">

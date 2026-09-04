@@ -183,3 +183,40 @@ test.describe('page metadata', () => {
     );
   });
 });
+
+/**
+ * The auth screens are the only ones a person reaches with a password manager
+ * open and both hands on the keyboard. Until 2026-09-02 not one of the four
+ * had a `<form>` element: every submit was an `onClick`, so filling in a
+ * password and pressing Enter did nothing at all.
+ *
+ * Asserted structurally rather than by signing in, deliberately. A behavioural
+ * test would have to submit real credentials against whatever Supabase project
+ * the run is pointed at, and "does Enter submit" is a question about the
+ * markup, which cannot drift from the answer.
+ */
+test.describe('auth screens submit from the keyboard', () => {
+  for (const path of ['/login', '/signup', '/forgot-password']) {
+    test(`${path} has a form with a submit button in it`, async ({ page }) => {
+      await page.goto(path);
+
+      const form = page.locator('form');
+      await expect(form.first()).toBeAttached();
+      // Inside the form, not merely on the page: a submit button outside it
+      // is exactly the arrangement that looks right and does not submit.
+      await expect(form.locator('button[type="submit"]').first()).toBeAttached();
+    });
+  }
+
+  test('the other buttons on the sign-in form do not submit it', async ({ page }) => {
+    await page.goto('/login');
+    // Show-password and magic-link sit inside the same form as Sign in. With
+    // the HTML default of type="submit" either would sign the person in, or
+    // try to, when they only wanted to see what they had typed.
+    const nonSubmit = page.locator('form button:not([type="submit"])');
+    expect(await nonSubmit.count()).toBeGreaterThan(0);
+    for (const button of await nonSubmit.all()) {
+      await expect(button).toHaveAttribute('type', 'button');
+    }
+  });
+});
