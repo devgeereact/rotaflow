@@ -23,6 +23,7 @@ import {
 import { checkGeofence } from '@/lib/geo';
 import { pairClockEvents } from '@/lib/hours';
 import { reportError } from '@/lib/sentry';
+import { sendOrQueue } from '@/lib/queuedWrite';
 import {
   CLOCK_IN_WINDOW_MINUTES,
   buildAttendance,
@@ -353,35 +354,29 @@ export function ClockInPage(): JSX.Element {
           );
         };
 
-        if (!online) {
-          await queueOffline();
-          return;
-        }
+        // `navigator.onLine` can say true on a captive portal or an
+        // associated-but-dead wifi — routine on a ward — so a request that
+        // fails the way a dropped one does is queued rather than shown as an
+        // error. A refusal is rethrown: it did not happen, and saying so is
+        // the useful answer. Leave and swaps share this via `sendOrQueue`.
+        const outcome = await sendOrQueue({
+          online,
+          send: () => recordClockEvent(input),
+          queue: queueOffline,
+          isTransient: (err) => classifyFailure(err) === 'transient',
+        });
 
-        try {
-          const created = await recordClockEvent(input);
+        if (outcome.status === 'sent') {
           setData((current) => ({
             ...current,
-            latest: created,
-            events: [...current.events, created],
+            latest: outcome.row,
+            events: [...current.events, outcome.row],
           }));
           showSuccess(
             geofenceNote
               ? `${ACTION_LABEL[type]} recorded, ${geofenceNote}.`
               : `${ACTION_LABEL[type]} recorded.`,
           );
-        } catch (err) {
-          // `navigator.onLine` said we had a connection, but the request
-          // still failed the way a dropped one does (captive portal,
-          // associated-but-dead wifi — routine on a ward). Queue it rather
-          // than just showing an error: the header's own documented design
-          // is that a genuinely failed network write queues instead of being
-          // lost, and until now only the `!online` branch above did that.
-          if (classifyFailure(err) === 'transient') {
-            await queueOffline();
-            return;
-          }
-          throw err;
         }
       } catch (err) {
         reportError(err, { area: 'clock:submit' });

@@ -92,11 +92,27 @@ export async function reviewLeaveRequest(
   return data;
 }
 
-/** Staff withdrawing their own still-pending request. */
-export async function cancelLeaveRequest(id: string): Promise<void> {
-  const { error } = await supabase
+/**
+ * Staff withdrawing their own still-pending request.
+ *
+ * Returns null when it was already decided by the time this landed — the
+ * same compare-and-set as `reviewLeaveRequest` above, and for the mirror
+ * image of the same race. Without the predicate a withdraw issued while a
+ * manager was approving would overwrite the approval, leaving a row that is
+ * `cancelled` and carries a `reviewed_by`, and the manager would never learn
+ * the leave they granted had gone.
+ *
+ * Guarding on `pending` refuses nothing the UI offers: `LeaveRowsTable:145`
+ * renders Withdraw only on a pending row.
+ */
+export async function cancelLeaveRequest(id: string): Promise<LeaveRequest | null> {
+  const { data, error } = await supabase
     .from('leave_requests')
     .update({ status: 'cancelled' })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('*')
+    .maybeSingle();
   if (error) throw error;
+  return data;
 }
