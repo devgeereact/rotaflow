@@ -755,20 +755,20 @@ The go-live decisions list (6 August, since deleted) posed twelve decisions only
 Half were taken and the file never said so. Reconciled here against the code so the
 resolved ones are not re-litigated.
 
-| #   | Decision                                                                 | Status                                                                                                                                          |
-| --- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Platform staff can read every tenant; a support session does not gate it | ✅ **Resolved** — `0028` redefines `is_org_member`/`has_org_role` onto `has_support_access`, so a time-boxed session is now the actual RLS gate |
-| 2   | Demo data attached to real organisations                                 | 🟡 Dataset torn down 2026-08-14; seed scripts deleted in `#120`. `is_demo` survives as an unread column                                         |
-| 3   | Feature flags control nothing                                            | ✅ **Resolved** — `my_feature_access` returns them and the AI gate honours one (CAP-076). This row still read "🔴 Still true" against a capability marked 🟢; corrected 2026-09-02                                                                                                                     |
-| 4   | No payment provider                                                      | ✅ **Resolved** — Stripe shipped (`0050`, `0058`). Open sub-item: no charge has completed (CAP-036)                                             |
-| 5   | Retention is a published policy nothing enforces                         | ✅ **Resolved** — nightly since 2026-08-21 (`0029`, fixed by `0057`)                                                                            |
-| 6   | Three RPCs callable from nowhere                                         | ✅ Resolved 2026-08-30. All three now have callers — `rate_support_case` was the last, from `/app/help` (CAP-079)                               |
-| 7   | Health and uptime figures are seeded, not measured                       | 🟡 Now written — but only when an admin opens the page (CAP-078)                                                                                |
-| 8   | Eleven console screens show demonstration figures                        | ✅ Resolved 2026-08-30. `adminOverviewDemo.ts` is deleted; every console figure is measured or reads "Not sampled" (CAP-077)                    |
-| 9   | An orphan `incident_events` table in production                          | ✅ **Resolved** — dropped by `0028`                                                                                                             |
-| 10  | Public repo, `main` unprotected                                          | 🟡 Four checks are now required — `verify`, `e2e`, `db-tests` and `e2e-authenticated` (GAP-003 closed 2026-08-30, CAP-097). `enforce_admins` remains off by the owner's decision. This row still said the last two were not required; corrected 2026-09-02                                                    |
-| 11  | Support cases have no way in                                             | 🟡 `/app/help` opens one; no email ingress and no customer-facing thread (CAP-080)                                                              |
-| 12  | The public status page                                                   | ⚫ Correctly deferred (GAP-024)                                                                                                                 |
+| #   | Decision                                                                 | Status                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Platform staff can read every tenant; a support session does not gate it | ✅ **Resolved** — `0028` redefines `is_org_member`/`has_org_role` onto `has_support_access`, so a time-boxed session is now the actual RLS gate                                                                                                            |
+| 2   | Demo data attached to real organisations                                 | 🟡 Dataset torn down 2026-08-14; seed scripts deleted in `#120`. `is_demo` survives as an unread column                                                                                                                                                    |
+| 3   | Feature flags control nothing                                            | ✅ **Resolved** — `my_feature_access` returns them and the AI gate honours one (CAP-076). This row still read "🔴 Still true" against a capability marked 🟢; corrected 2026-09-02                                                                         |
+| 4   | No payment provider                                                      | ✅ **Resolved** — Stripe shipped (`0050`, `0058`). Open sub-item: no charge has completed (CAP-036)                                                                                                                                                        |
+| 5   | Retention is a published policy nothing enforces                         | ✅ **Resolved** — nightly since 2026-08-21 (`0029`, fixed by `0057`)                                                                                                                                                                                       |
+| 6   | Three RPCs callable from nowhere                                         | ✅ Resolved 2026-08-30. All three now have callers — `rate_support_case` was the last, from `/app/help` (CAP-079)                                                                                                                                          |
+| 7   | Health and uptime figures are seeded, not measured                       | 🟡 Now written — but only when an admin opens the page (CAP-078)                                                                                                                                                                                           |
+| 8   | Eleven console screens show demonstration figures                        | ✅ Resolved 2026-08-30. `adminOverviewDemo.ts` is deleted; every console figure is measured or reads "Not sampled" (CAP-077)                                                                                                                               |
+| 9   | An orphan `incident_events` table in production                          | ✅ **Resolved** — dropped by `0028`                                                                                                                                                                                                                        |
+| 10  | Public repo, `main` unprotected                                          | 🟡 Four checks are now required — `verify`, `e2e`, `db-tests` and `e2e-authenticated` (GAP-003 closed 2026-08-30, CAP-097). `enforce_admins` remains off by the owner's decision. This row still said the last two were not required; corrected 2026-09-02 |
+| 11  | Support cases have no way in                                             | 🟡 `/app/help` opens one; no email ingress and no customer-facing thread (CAP-080)                                                                                                                                                                         |
+| 12  | The public status page                                                   | ⚫ Correctly deferred (GAP-024)                                                                                                                                                                                                                            |
 
 **Settled, recorded so it is not re-opened:** every write to the platform tables goes through
 a `SECURITY DEFINER` function with table grants revoked, so reference numbers, resolution
@@ -835,8 +835,10 @@ These are **`docs/QA-AUDIT-REPORT.md`'s numbering, not this register's**, and th
 have no rows here — the two sequences collide (this file's BUG-010 would be a different defect
 from the audit's). An earlier version of this paragraph said they had "no home in the repo until
 this file", which read as a claim that they had been given rows. They have not. The audit report
-is a dated record of testing performed and remains the place they live; anything from it that
-warranted ongoing tracking was re-raised here under this register's own numbering.
+is a dated record of testing performed and remains the place they live — it was rewritten on
+2026-09-02 by the website and PWA audit, which kept the 2026-08-14 document whole as its
+Appendix A precisely so this pointer stays true; anything from it that warranted ongoing
+tracking was re-raised here under this register's own numbering.
 
 ## §7 Gap register
 
