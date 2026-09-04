@@ -47,6 +47,19 @@ export interface OutboxRecord {
   attempts: number;
   /** Message from the most recent failure, for the review UI. */
   lastError?: string;
+  /**
+   * Who queued it. IndexedDB is per-origin, not per-account, so on a shared
+   * device — a ward tablet, a warehouse terminal, the site office PC, which is
+   * most of RotaFlow's market — this store outlives the session that wrote to
+   * it. Without an owner, the next person to sign in flushes somebody else's
+   * writes under their own token and is shown somebody else's failures.
+   *
+   * Absent on rows written before this field existed. Those are treated as
+   * belonging to whoever is signed in: the alternative is stranding a queued
+   * clock-in forever, and losing a write is the one outcome this subsystem
+   * exists to prevent. See `belongsTo` in `services/syncQueue.ts`.
+   */
+  userId?: string;
 }
 
 export interface DeadLetterRecord extends OutboxRecord {

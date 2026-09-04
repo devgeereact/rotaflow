@@ -182,22 +182,58 @@ function withIdempotencyKey(kind: OutboxKind, payload: unknown): unknown {
   return { ...record, client_event_id: crypto.randomUUID() };
 }
 
-export async function enqueueWrite(kind: OutboxKind, payload: unknown): Promise<void> {
+/**
+ * Whose write is this?
+ *
+ * IndexedDB is scoped to the origin, not to the account, so the outbox
+ * outlives a sign-out. On a shared device — a ward tablet, a warehouse
+ * terminal, the site office PC, which is most of RotaFlow's market — that
+ * means the next person to sign in would otherwise flush the previous
+ * person's queued writes under their own token, and be shown their failures.
+ *
+ * The failure is not theoretical and not symmetrical. RLS lets a manager
+ * insert a clock event for anybody in their organisation (0037), so a
+ * manager signing in on a ward tablet would successfully land a staff
+ * member's queued clock-in on their behalf, hours late, with no record that
+ * it was replayed by somebody else. A staff member signing in on the same
+ * tablet would fail that same RLS check, the failure would be classified
+ * permanent, and the colleague's clock-in would be DEAD-LETTERED — destroyed
+ * — with a notice on the new person's screen saying "1 action didn't save"
+ * about an action they never took, while the person who did take it still
+ * believes they are clocked in.
+ *
+ * A record with no `userId` was queued before this field existed. It is
+ * claimable by whoever is signed in, deliberately: stranding a clock-in
+ * forever is worse than replaying one, and there is no second copy to fall
+ * back on.
+ */
+function belongsTo(record: OutboxRecord, userId: string): boolean {
+  return record.userId === undefined || record.userId === userId;
+}
+
+export async function enqueueWrite(
+  kind: OutboxKind,
+  payload: unknown,
+  userId: string,
+): Promise<void> {
   await outboxAdd({
     id: crypto.randomUUID(),
     kind,
     payload: withIdempotencyKey(kind, payload),
     queuedAt: new Date().toISOString(),
     attempts: 0,
+    userId,
   });
 }
 
-export async function listQueuedWrites(): Promise<OutboxRecord[]> {
-  return outboxList();
+export async function listQueuedWrites(userId: string): Promise<OutboxRecord[]> {
+  return (await outboxList()).filter((record) => belongsTo(record, userId));
 }
 
-export async function listDeadLetteredWrites(): Promise<DeadLetterRecord[]> {
-  return deadLetterList();
+export async function listDeadLetteredWrites(
+  userId: string,
+): Promise<DeadLetterRecord[]> {
+  return (await deadLetterList()).filter((record) => belongsTo(record, userId));
 }
 
 /** Discard a write the user has acknowledged. Only ever from an explicit action. */
@@ -227,8 +263,11 @@ export async function discardDeadLetteredWrite(id: string): Promise<void> {
  * condition the person has decided has changed, and carrying them over would
  * mean a retry that gets one try — which is not a retry.
  */
-export async function retryDeadLetteredWrite(id: string): Promise<FlushResult> {
-  const items = await deadLetterList();
+export async function retryDeadLetteredWrite(
+  id: string,
+  userId: string,
+): Promise<FlushResult> {
+  const items = await listDeadLetteredWrites(userId);
   const item = items.find((record) => record.id === id);
   if (!item) return { synced: 0, failed: 0, deadLettered: 0 };
 
@@ -244,10 +283,11 @@ export async function retryDeadLetteredWrite(id: string): Promise<FlushResult> {
     payload: item.payload,
     queuedAt: new Date().toISOString(),
     attempts: 0,
+    userId,
   });
   await deadLetterRemove(id);
 
-  return flushQueuedWrites();
+  return flushQueuedWrites(userId);
 }
 
 export interface FlushResult {
@@ -285,8 +325,8 @@ export interface FlushResult {
  * Nothing is ever deleted on failure. A dead-lettered write is kept so the user
  * can see what did not go through and re-enter it.
  */
-export async function flushQueuedWrites(): Promise<FlushResult> {
-  const items = await outboxList();
+export async function flushQueuedWrites(userId: string): Promise<FlushResult> {
+  const items = await listQueuedWrites(userId);
   let synced = 0;
   let failed = 0;
   let deadLettered = 0;
