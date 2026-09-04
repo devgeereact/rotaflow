@@ -73,6 +73,22 @@ values ('62626262-6262-6262-6262-626262626262', 'platform_finance'),
        ('63636363-6363-6363-6363-636363636363', 'platform_support'),
        ('64646464-6464-6464-6464-646464646464', 'platform_admin');
 
+-- A connector this test can actually connect.
+--
+-- `0073` set `available = false` on all eight seeded connectors, because none
+-- of them exists — no Edge Function talks to Sage or Xero. So in a current
+-- database `connect_integration` refuses *every* call on availability grounds
+-- before the role check is reached, and a fixture selecting from the seed gets
+-- NULL. That is worth knowing (it means the connect/disconnect half of
+-- HARDEN-012 is not a reachable path today, and `delete_organisation` is), but
+-- it must not be what this test measures: a guard that passes because the
+-- function is unreachable would keep passing after somebody makes a connector
+-- available. So the fixture supplies its own.
+insert into public.integration_connectors (key, name, category, description, status, available)
+values ('test_connector', 'Test Connector', 'payroll',
+        'Fixture only. Never seeded, never shipped.', 'operational', true);
+
+-- Everything from here runs as an ordinary signed-in user.
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -90,9 +106,7 @@ select set_config(
 
 -- A connected integration to try to disconnect. Made by the tenant's own
 -- owner, which is the ordinary path.
-select public.connect_integration(
-  current_setting('test.org')::uuid,
-  (select key from public.integration_connectors where available limit 1));
+select public.connect_integration(current_setting('test.org')::uuid, 'test_connector');
 
 -- ---------- helper: become one of the fixture accounts -----------------
 create or replace function pg_temp.become(p_user uuid) returns void
@@ -116,7 +130,7 @@ select throws_ok(
 select throws_ok(
   $$ select public.connect_integration(
        current_setting('test.org')::uuid,
-       (select key from public.integration_connectors where available limit 1)) $$,
+       'test_connector') $$,
   '42501',
   null,
   'platform_finance cannot connect an integration for a tenant'
@@ -134,8 +148,7 @@ select throws_ok(
 select throws_ok(
   $$ select public.set_org_integration_status(
        current_setting('test.org')::uuid,
-       (select connector_key from public.org_integrations
-         where org_id = current_setting('test.org')::uuid limit 1),
+       'test_connector',
        'disconnected') $$,
   '42501',
   null,
@@ -148,8 +161,7 @@ select pg_temp.become('64646464-6464-6464-6464-646464646464');
 select lives_ok(
   $$ select public.set_org_integration_status(
        current_setting('test.org')::uuid,
-       (select connector_key from public.org_integrations
-         where org_id = current_setting('test.org')::uuid limit 1),
+       'test_connector',
        'disconnected') $$,
   'platform_admin can still change a tenant''s integration'
 );
@@ -157,7 +169,7 @@ select lives_ok(
 select lives_ok(
   $$ select public.connect_integration(
        current_setting('test.org')::uuid,
-       (select key from public.integration_connectors where available limit 1)) $$,
+       'test_connector') $$,
   'platform_admin can still connect a tenant''s integration'
 );
 
@@ -167,7 +179,7 @@ select pg_temp.become('61616161-6161-6161-6161-616161616161');
 select lives_ok(
   $$ select public.connect_integration(
        current_setting('test.org')::uuid,
-       (select key from public.integration_connectors where available limit 1)) $$,
+       'test_connector') $$,
   'the organisation owner can still connect an integration'
 );
 

@@ -19,6 +19,15 @@
 --                                  customer's behalf.
 --   * set_org_integration_status — disconnects one.
 --
+-- One of the three is worse than the other two, and it is worth being precise
+-- rather than alarming about it. `0073` set `available = false` on all eight
+-- seeded connectors, so `connect_integration` currently refuses every call on
+-- availability grounds before the role check is reached — and with no
+-- `org_integrations` row ever created, `set_org_integration_status` has nothing
+-- to act on either. Those two are latent: wrong, and unreachable until somebody
+-- makes a connector available. **`delete_organisation` is not latent.** It is
+-- reachable today by any of the four platform roles.
+--
 -- Support staff keep every read they had, and the tenant's own owner is
 -- unaffected. What changes is that a finance- or support-role platform account
 -- can no longer delete somebody's organisation or rewire their integrations.
