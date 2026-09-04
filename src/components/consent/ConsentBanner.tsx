@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { useConsent } from '@/context/ConsentContext';
@@ -25,19 +25,55 @@ import { useConsent } from '@/context/ConsentContext';
  * user should not have to tab through a whole page to find the question. It
  * is a labelled region rather than a dialog, so the page behind it stays
  * reachable and Escape has nothing to trap.
+ *
+ * **It reserves its own space.** "Does not block the page" was true of focus
+ * and false of pointers: being `fixed bottom-0`, it sat on top of whatever
+ * happened to be at the foot of the viewport, and on the onboarding step that
+ * was the Continue button. CI caught it — Playwright reported this element
+ * `intercepts pointer events` and retried the click 231 times — and no amount
+ * of testing the banner itself would have, because the defect is in what the
+ * banner covers. So it measures itself into `--consent-inset` and the two
+ * scrolling containers pad by it: nothing is ever underneath it.
  */
 export function ConsentBanner(): JSX.Element | null {
   const { needsDecision, acceptAll, rejectAll, openPanel } = useConsent();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const bannerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (needsDecision) headingRef.current?.focus();
+  }, [needsDecision]);
+
+  // Publish the height so `body` and the app shell's scroll area can pad by
+  // it. Layout effect and a ResizeObserver rather than a fixed number: this
+  // banner wraps to three lines on a narrow screen and one on a wide one, and
+  // a hardcoded inset would be wrong on most of them.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const node = bannerRef.current;
+    if (!needsDecision || node === null) {
+      root.style.removeProperty('--consent-inset');
+      return undefined;
+    }
+
+    const publish = (): void => {
+      root.style.setProperty('--consent-inset', `${node.offsetHeight}px`);
+    };
+    publish();
+
+    const observer = new ResizeObserver(publish);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--consent-inset');
+    };
   }, [needsDecision]);
 
   if (!needsDecision) return null;
 
   return (
     <section
+      ref={bannerRef}
       aria-labelledby="consent-heading"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-surface-border bg-surface p-4 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark sm:p-6"
     >

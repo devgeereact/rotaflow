@@ -247,6 +247,41 @@ test.describe('consent banner', () => {
     expect(overflows).toBe(false);
   });
 
+  test('does not cover the bottom of the page it sits on', async ({ page }) => {
+    // The regression. This banner is `fixed bottom-0`, and "does not block the
+    // page" was true of focus and false of pointers: CI failed the
+    // authenticated signup because the banner intercepted the click on the
+    // onboarding Continue button, which happened to sit at the foot of the
+    // viewport. Every test above clicks the banner or something near the top,
+    // so none of them could have seen it.
+    await firstVisit(page, '/pricing');
+    await expect(banner(page)).toBeVisible();
+
+    const last = page.getByRole('button', { name: 'Cookie preferences' });
+    await last.scrollIntoViewIfNeeded();
+
+    // `trial: true` performs every actionability check, including the
+    // hit-target test that failed in CI, without firing the click.
+    await last.click({ trial: true, timeout: 5_000 });
+  });
+
+  test('reserves its own height, and gives it back once answered', async ({ page }) => {
+    await firstVisit(page);
+
+    const withBanner = await page.evaluate(
+      () => getComputedStyle(document.body).paddingBottom,
+    );
+    expect(parseFloat(withBanner)).toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: 'Reject all' }).click();
+    await expect(banner(page)).toBeHidden();
+
+    const afterwards = await page.evaluate(
+      () => getComputedStyle(document.body).paddingBottom,
+    );
+    expect(parseFloat(afterwards)).toBe(0);
+  });
+
   test('does not block the page it sits on', async ({ page }) => {
     await firstVisit(page, '/legal/cookies');
     await expect(banner(page)).toBeVisible();

@@ -87,6 +87,19 @@
     transition:
       background-color 150ms ease-in-out,
       color 150ms ease-in-out;
+
+    /*
+     * Room for the consent banner, which is `fixed bottom-0` and would
+     * otherwise sit on top of whatever is at the foot of the page.
+     *
+     * It is not cosmetic. CI failed on the onboarding step with Playwright
+     * reporting the banner `intercepts pointer events` over the Continue
+     * button and retrying the click 231 times before giving up — a real
+     * visitor would simply have found the button dead. `ConsentBanner`
+     * measures itself into `--consent-inset` and clears it once the question
+     * is answered, so this is 0px for everyone who has decided.
+     */
+    padding-bottom: var(--consent-inset, 0px);
   }
 
   /* Respect user motion preferences globally. */

@@ -47,7 +47,7 @@ route to `/legal/*` from inside the app at all.
 | Documents created | Privacy Notice (draft), Terms of Service (draft), this report, the data map |
 | Documents corrected | Cookie Notice, Trust page, sub-processor register |
 | Code changed | 29 files |
-| Tests added | 32 (13 unit on Sentry, 19 unit on consent) + 16 e2e |
+| Tests added | 32 (13 unit on Sentry, 19 unit on consent) + 18 e2e |
 | Owner decisions outstanding | 9 |
 | Legal questions outstanding | 11 |
 
@@ -197,6 +197,27 @@ would ride in on. Fixed with `beforeSend`, re-probed, 9/9.
 
 That is the finding worth carrying forward: **a test that asserts a hook was
 configured proves nothing about what is transmitted.**
+
+### And the same lesson again, from the other direction
+
+The first push of this work failed CI on `e2e-authenticated` — the one job that
+cannot run on this machine, because it needs Docker. The banner is
+`fixed bottom-0`, and on the onboarding step the Continue button sits at the
+foot of the viewport, so the banner **intercepted the click**: Playwright
+retried 231 times and gave up. A real visitor would have found the button
+simply dead.
+
+Sixteen consent tests passed while that was true. Every one of them clicked the
+banner itself or something near the top of a page, so none could see it — the
+defect is not in the banner, it is in what the banner covers. "Does not block
+the page" had been written into the component's own doc comment and was true of
+focus and false of pointers.
+
+Fixed by having the banner measure itself into a `--consent-inset` custom
+property that `body` and the app shell's scroll area pad by, so nothing is ever
+underneath it and the space is given back the moment the question is answered.
+Two regression tests added, and **both were confirmed to fail with the fix
+reverted** — a regression test nobody has watched fail is a guess.
 
 ---
 
