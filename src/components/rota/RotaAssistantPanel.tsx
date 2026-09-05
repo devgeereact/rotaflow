@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { computeShiftIsoRange, formatDayLabel } from '@/lib/rotaGrid';
 import {
   computeRotaInsights,
+  staffDateBlockReason,
   suggestCoverForShift,
   summariseInsights,
   type CoverCandidate,
@@ -297,6 +298,12 @@ export function RotaAssistantPanel({
 
   const handleApply = async (): Promise<void> => {
     if (suggestions.length === 0 || !applyTarget) return;
+    if (contextLoading || contextFailed) {
+      setError(
+        'Leave and availability could not be verified. Refresh the assistant before applying suggestions.',
+      );
+      return;
+    }
     setApplying(true);
     setError(null);
     try {
@@ -309,6 +316,10 @@ export function RotaAssistantPanel({
       let skipped = 0;
 
       for (const s of suggestions) {
+        if (staffDateBlockReason(s.staffProfileId, s.date, leave, availability)) {
+          skipped += 1;
+          continue;
+        }
         const { startsAt, endsAt } = computeShiftIsoRange(
           s.date,
           s.startTime,
@@ -346,7 +357,7 @@ export function RotaAssistantPanel({
 
       if (accepted.length === 0) {
         setError(
-          'Every suggestion clashed with a shift already on the rota. Nothing was added.',
+          'Every suggestion conflicted with the current rota, approved leave or availability. Nothing was added.',
         );
         return;
       }
@@ -356,7 +367,7 @@ export function RotaAssistantPanel({
         // Reuses the panel's status line: the apply succeeded, but a manager
         // needs to know it did not do everything the preview showed.
         setError(
-          `${accepted.length} added. ${skipped} skipped. Those people were already rostered at the same time.`,
+          `${accepted.length} added. ${skipped} skipped because the current rota, approved leave or availability had changed.`,
         );
       }
       onPreview([]);

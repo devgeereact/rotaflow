@@ -75,7 +75,7 @@
 
   # NEVER cache the service worker, manifest, or the HTML entrypoint,
   # otherwise users get stuck on stale app versions.
-  <FilesMatch "(sw\.js|service-worker\.js|workbox-.*\.js|manifest\.webmanifest|index\.html)$">
+  <FilesMatch "(sw\.js|service-worker\.js|push-sw\.js|workbox-.*\.js|manifest\.webmanifest|index\.html)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires 0

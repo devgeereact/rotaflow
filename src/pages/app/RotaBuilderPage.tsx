@@ -123,8 +123,6 @@ const DEFAULT_TZ = 'Europe/London';
  * "Day" is safe because it is only a *display scope*: the same week's rota
  * stays loaded and editable, and the grid renders one of its columns.
  */
-const VIEW_TABS = ['Week', 'Fortnight'] as const;
-
 /**
  * One shift on the clipboard, stored relative to its week rather than on an
  * absolute date. `dayOffset` is 0-6 from that week's Monday, so pasting into
@@ -1765,33 +1763,6 @@ export function RotaBuilderPage(): JSX.Element {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div
-              role="group"
-              aria-label="View"
-              className="flex rounded-xl border border-surface-border p-1 dark:border-surface-border-dark"
-            >
-              {VIEW_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  aria-pressed={tab === 'Week'}
-                  onClick={() =>
-                    tab === 'Fortnight' &&
-                    showSuccess(
-                      'Fortnight and month views use the same grid at lower density.',
-                    )
-                  }
-                  className={cn(
-                    'rounded-lg px-3 py-1.5 text-sm font-medium',
-                    tab === 'Week'
-                      ? 'bg-primary text-white'
-                      : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
             <Button
               size="sm"
               variant="secondary"

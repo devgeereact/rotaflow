@@ -51,11 +51,7 @@ import {
 import { StepChoosePlan } from '@/components/onboarding/StepChoosePlan';
 import { StepComplete } from '@/components/onboarding/StepComplete';
 import { TeamIllustration } from '@/components/onboarding/TeamIllustration';
-import {
-  PLANS,
-  type BillingPeriod,
-  type PlanOption,
-} from '@/components/onboarding/constants';
+import { PLANS, type PlanOption } from '@/components/onboarding/constants';
 
 interface StepCopy {
   headline: string;
@@ -81,8 +77,8 @@ function stepCopy(step: number): StepCopy {
         features: [
           {
             icon: Building2,
-            title: 'Built for your industry',
-            body: 'Get tools and best practices that match your field.',
+            title: 'Built for shift-based teams',
+            body: 'Use the same scheduling tools across care, hospitality and other shift work.',
           },
           {
             icon: Globe2,
@@ -91,13 +87,13 @@ function stepCopy(step: number): StepCopy {
           },
           {
             icon: Settings2,
-            title: 'Tailored to you',
-            body: "We'll customise features and workflows to fit your needs.",
+            title: 'Your working preferences',
+            body: 'Choose the time zone and working week used by your rota.',
           },
           {
             icon: ShieldCheck,
-            title: 'Compliant by default',
-            body: 'Stay aligned with local laws and regulations from day one.',
+            title: 'Tenant-isolated data',
+            body: 'Organisation records are separated by database access policies.',
           },
         ],
       };
@@ -346,7 +342,6 @@ export function OnboardingPage(): JSX.Element {
   const [staged, setStaged] = useState<StagedInvite[]>([]);
   const [invitesCreated, setInvitesCreated] = useState(false);
   const [plan, setPlan] = useState<PlanOption['value']>('professional');
-  const [period, setPeriod] = useState<BillingPeriod>('monthly');
 
   // Someone who already belongs to an org has no business here — UNLESS their
   // setup was never finished (GAP-015).
@@ -440,7 +435,7 @@ export function OnboardingPage(): JSX.Element {
     {
       number: 4,
       title: 'Choose a plan',
-      subtitle: plan ? `${plan} · ${period}` : 'Select the right plan for you',
+      subtitle: plan ? `${plan} · monthly` : 'Select the right plan for you',
     },
     { number: 5, title: 'All done!', subtitle: "You're ready to go" },
   ];
@@ -605,7 +600,7 @@ export function OnboardingPage(): JSX.Element {
     setError(null);
     try {
       await updateOrganisation(orgId, { plan });
-      await mergeOrgSettings(orgId, { billing_period: period });
+      await mergeOrgSettings(orgId, { billing_period: 'monthly' });
       await refresh();
       setStep(5);
     } catch (err) {
@@ -614,7 +609,7 @@ export function OnboardingPage(): JSX.Element {
     } finally {
       setSubmitting(false);
     }
-  }, [orgId, plan, period, refresh]);
+  }, [orgId, plan, refresh]);
 
   const copyLink = useCallback(
     async (url: string): Promise<void> => {
@@ -728,9 +723,7 @@ export function OnboardingPage(): JSX.Element {
       {step === 4 && (
         <StepChoosePlan
           plan={plan}
-          period={period}
           onSelect={setPlan}
-          onPeriod={setPeriod}
           onBack={() => setStep(3)}
           onContinue={() => void handlePlan()}
           submitting={submitting}

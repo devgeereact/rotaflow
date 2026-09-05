@@ -40,12 +40,12 @@ const FEATURES: BootFeature[] = [
   {
     icon: Users,
     title: 'Happy Teams',
-    body: 'Empower your team and improve satisfaction',
+    body: 'Keep schedules, leave and swaps in one place',
   },
   {
     icon: ShieldCheck,
-    title: 'Compliant & Secure',
-    body: 'Stay compliant with confidence',
+    title: 'Role-based Access',
+    body: 'Separate staff, manager and owner permissions',
   },
   {
     icon: BarChart3,
@@ -146,7 +146,7 @@ export function AppBootScreen({
           <p className="text-lg text-content-muted dark:text-content-muted-dark">
             {online
               ? "We're getting everything ready for you. This will only take a few moments."
-              : "You're offline. RotaFlow will use what it has cached."}
+              : "You're offline. The app shell will open, but some workspace data may be unavailable."}
           </p>
         </div>
 

@@ -1,8 +1,8 @@
 import { Lock, ShieldCheck } from 'lucide-react';
 
 const CLAIMS = [
-  { icon: Lock, label: 'Secure & encrypted' },
-  { icon: ShieldCheck, label: 'GDPR compliant' },
+  { icon: Lock, label: 'Encrypted in transit' },
+  { icon: ShieldCheck, label: 'Tenant-isolated access' },
 ];
 
 /**
@@ -10,8 +10,8 @@ const CLAIMS = [
  * docs/design/signin.png). The reference's third badge, "99.9% uptime", is
  * dropped, an SLA figure nobody has committed to is exactly the kind of
  * unverified claim HomePage.tsx already avoids for this pre-launch product.
- * "Secure & encrypted" and "GDPR compliant" describe the actual architecture
- * (RLS-scoped multi-tenancy, EU-region infra) so they stay.
+ * The remaining labels name implemented controls rather than claiming legal
+ * compliance or an undefined blanket of security.
  */
 export function AuthTrustStrip(): JSX.Element {
   return (

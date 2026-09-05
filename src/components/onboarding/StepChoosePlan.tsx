@@ -2,33 +2,20 @@ import { ArrowLeft, ArrowRight, Check, Crown, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { StepCard } from '@/components/onboarding/StepCard';
-import {
-  PLANS,
-  type BillingPeriod,
-  type PlanOption,
-} from '@/components/onboarding/constants';
+import { PLANS, type PlanOption } from '@/components/onboarding/constants';
 
 interface StepChoosePlanProps {
   plan: PlanOption['value'];
-  period: BillingPeriod;
   onSelect: (plan: PlanOption['value']) => void;
-  onPeriod: (period: BillingPeriod) => void;
   onBack: () => void;
   onContinue: () => void;
   submitting: boolean;
   error: string | null;
 }
 
-/** Yearly is billed as ten months. The "save 2 months" offer in the design. */
-function priceFor(monthly: number, period: BillingPeriod): number {
-  return period === 'yearly' ? Math.round((monthly * 10) / 12) : monthly;
-}
-
 export function StepChoosePlan({
   plan,
-  period,
   onSelect,
-  onPeriod,
   onBack,
   onContinue,
   submitting,
@@ -55,39 +42,6 @@ export function StepChoosePlan({
       }
     >
       <div className="space-y-6">
-        <div
-          role="group"
-          aria-label="Billing period"
-          className="mx-auto flex w-full max-w-md rounded-2xl border border-surface-border p-1.5 dark:border-surface-border-dark"
-        >
-          {(['monthly', 'yearly'] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onPeriod(p)}
-              aria-pressed={period === p}
-              className={cn(
-                'flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors',
-                period === p
-                  ? 'bg-primary text-white'
-                  : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
-              )}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <span className="capitalize">{p}</span>
-                {p === 'yearly' && (
-                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-[0.65rem] font-semibold text-success">
-                    Best value
-                  </span>
-                )}
-              </span>
-              <span className="block text-xs font-normal opacity-80">
-                {p === 'monthly' ? 'Pay monthly' : 'Save 2 months'}
-              </span>
-            </button>
-          ))}
-        </div>
-
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {PLANS.map((option) => {
             const selected = plan !== null && option.value === plan;
@@ -123,7 +77,7 @@ export function StepChoosePlan({
                   </p>
                 ) : (
                   <p className="font-display text-3xl font-bold text-content dark:text-content-dark">
-                    £{priceFor(option.monthly, period)}
+                    £{option.monthly}
                   </p>
                 )}
                 <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
@@ -180,8 +134,8 @@ export function StepChoosePlan({
             <strong className="text-content dark:text-content-dark">
               All plans include:
             </strong>{' '}
-            Unlimited shifts &bull; Mobile app &bull; Real-time sync &bull; Secure &amp;
-            GDPR compliant
+            Unlimited shifts &bull; Installable web app &bull; Real-time sync &bull;
+            Tenant-isolated access
           </p>
         </div>
 

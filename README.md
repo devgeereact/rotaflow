@@ -6,7 +6,8 @@
 
 A **multi-tenant, offline-first workforce scheduling PWA**. Organisations build and
 communicate staff rotas in minutes; staff view shifts, clock in, request leave and swap
-shifts from any device — online or offline. Runs as a static bundle on **cheap static
+shifts from any device. The shell and three write queues work offline; most workspace
+data needs a connection. Runs as a static bundle on **cheap static
 hosting** (Namecheap cPanel / Stellar Plus) with all heavy lifting offloaded to Supabase
 and other managed services. Tenants share one database, isolated by `org_id` + Row Level
 Security.
@@ -17,7 +18,8 @@ Security.
   (name, colour, default times), copy-previous-week and repeat-forward, conflict
   detection, colour coding. _(`shift_templates` was a table nothing read; `0096` removed
   it rather than building a reader — `shift_types` already did the job.)_
-- **Staff app** — installable, offline-first rota view with an ICS calendar download.
+- **Staff app** — installable rota view with an ICS calendar download; clock, leave and
+  swap writes can queue offline.
 - **Availability, leave & overtime** — staff submit, managers approve.
 - **Shift swaps** — request → colleague → manager approval → rota updates.
 - **GPS clock in/out** — GPS + manual, timesheets, hours dashboard. (QR is deferred.)
