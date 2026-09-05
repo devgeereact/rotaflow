@@ -195,10 +195,11 @@ Every one of these runs in CI and blocks a merge:
 
 `ci.yml` runs these as **five** jobs, not one: `verify` (everything up to
 `check:export`, plus `npm audit --audit-level=high`), `e2e`, `e2e-authenticated`
-(boots a local Supabase stack and signs a real user up), and `db-tests` (the
-pgTAP run). The last two need Docker and the Supabase CLI, so a green local
-`verify` is a partial signal — a merge can still go red on a job you cannot run
-here.
+(boots a local Supabase stack and signs a real user up), `db-tests` (the pgTAP
+run) and `scheduled-checks` (which reads whether `backup.yml` and
+`auth-config.yml` have ever succeeded and annotates the pull request). The two
+Supabase jobs need Docker and the Supabase CLI, so a green local `verify` is a
+partial signal — a merge can still go red on a job you cannot run here.
 
 Two checks run on a schedule rather than on a merge, because they read live
 state no pull request can change: `.github/workflows/backup.yml` (a nightly
