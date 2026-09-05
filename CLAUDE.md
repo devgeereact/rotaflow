@@ -193,7 +193,7 @@ Every one of these runs in CI and blocks a merge:
 | `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                                                                                                   |
 | `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                                                                                             |
 
-`ci.yml` runs these as **four** jobs, not one: `verify` (everything up to
+`ci.yml` runs these as **five** jobs, not one: `verify` (everything up to
 `check:export`, plus `npm audit --audit-level=high`), `e2e`, `e2e-authenticated`
 (boots a local Supabase stack and signs a real user up), and `db-tests` (the
 pgTAP run). The last two need Docker and the Supabase CLI, so a green local

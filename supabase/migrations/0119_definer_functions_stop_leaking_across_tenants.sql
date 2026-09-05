@@ -1,0 +1,67 @@
+-- =====================================================================
+-- 0119_definer_functions_stop_leaking_across_tenants.sql — revoke EXECUTE
+-- from two SECURITY DEFINER functions that check no membership and that
+-- no signed-in user calls (docs/SAAS.md GAP-066)
+--
+-- ## The exposure
+--
+-- A SECURITY DEFINER function runs as its owner and RLS does not apply to
+-- it, so it must check membership itself. Two do not, and both were
+-- executable by `authenticated`. Verified against production 2026-09-05:
+--
+--   proname                  prosecdef  auth_exec  contains a membership check
+--   rota_amendment_changes   t          t          f
+--   render_notification      t          t          f
+--
+--   * `rota_amendment_changes` (`0083`) filters on `r.id = p_rota_id`
+--     alone. Any signed-in user holding a rota UUID from **another
+--     tenant** gets that organisation's staff `user_id`s, shift dates and
+--     labels including site names.
+--   * `render_notification` (`0108`) selects
+--     `where t.org_id = p_org or t.org_id is null` with no membership
+--     check, so any tenant can read another's customised notification
+--     wording, straight past `notification_templates_select` (`0108:74`).
+--
+-- Both are gated only by the caller not knowing a UUID. That is not an
+-- authorisation boundary: ids travel in URLs, exports, screenshots and
+-- support tickets, and this product's whole promise is that one
+-- organisation cannot read another's.
+--
+-- ## Why revoke rather than add a guard
+--
+-- Neither needs the grant.
+--
+--   * `rota_amendment_changes` has **no caller at all** — not in `src/`,
+--     not in `supabase/functions/`. The grant was restated by `0113` as
+--     part of making the function-grant contract explicit, which is the
+--     right instinct applied to a function that should have had none.
+--   * `render_notification` is called once, by `send-notification`
+--     (`index.ts:521`), on a client built with `SUPABASE_SERVICE_ROLE_KEY`
+--     (`index.ts:258-262`). `service_role` keeps its EXECUTE, so that path
+--     is untouched.
+--
+-- Adding an `is_org_member` guard would mean reproducing 77 lines of
+-- security-sensitive body to change one line, and would leave a callable
+-- path whose predicate has to stay right. Taking away a privilege nothing
+-- uses leaves no path to get wrong. If either is given a client caller
+-- later, it needs the grant back **and** a membership check written at the
+-- top, in the same change.
+--
+-- `overtime_evidence` was reported alongside these two and is deliberately
+-- left alone: it does check `is_org_member`, it is called from the browser
+-- (`overtimeService.ts:139`), and its weakness is narrower — `p_staff` is
+-- unvalidated, so a staff member can read a colleague's worked minutes
+-- that `clock_events_select` restricts to owners and managers. That is a
+-- within-tenant over-exposure needing a body change and a product decision
+-- about what a colleague may see, so it is recorded rather than patched
+-- here.
+--
+-- SAFETY(revoke): EXECUTE is removed from `authenticated` only, on two
+-- functions with no authenticated caller. `service_role` and `postgres`
+-- are unaffected, so `send-notification` keeps working. No data is
+-- touched. `function_grant_invariants.test.sql` and
+-- `definer_functions_check_membership.test.sql` both cover the result.
+-- =====================================================================
+
+revoke execute on function public.rota_amendment_changes(uuid) from authenticated;
+revoke execute on function public.render_notification(uuid, text, jsonb, text) from authenticated;

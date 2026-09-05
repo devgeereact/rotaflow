@@ -260,7 +260,7 @@ on the deployed build — exactly nine names, no `pk_live_`. That gate immediate
 second, smaller thing: the admin console labelled its single sign-on capability
 `VITE_OAUTH_PROVIDERS`, a variable that does not exist; it reads `VITE_ENABLE_OAUTH`.
 
-Still open, and still the owner's: the key is *publishable*, so nothing was disclosed that
+Still open, and still the owner's: the key is _publishable_, so nothing was disclosed that
 was not meant to be public — but a live client key on a product that has never completed a
 charge is a commercial decision, not a code one. CAP-036 stays ❓.
 
@@ -440,8 +440,9 @@ card rather than a per-page one, and fixing that properly means pre-rendering.
 **Performance — NEEDS ATTENTION.** Four budgets enforced on every build with 10–23%
 headroom, code-split, fonts preconnected, images through ImageKit. **Never tested against a
 realistic data volume:** production holds zero rows, and the standard's large-organisation
-test (hundreds of staff, thousands of shifts) has not been run. The seed for it exists
-(`supabase/seed/sunnyvale_seed.sql`, 248 staff) and has never been executed.
+test (hundreds of staff, thousands of shifts) has not been run. The seed written for it
+was deleted in #120 (`0a92d68`) and `supabase/seed/` no longer exists, so the large-volume
+test now needs a generator before it needs a run.
 
 ---
 

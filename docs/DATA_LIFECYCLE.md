@@ -242,7 +242,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 116 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 119 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -415,10 +415,10 @@ and the storage list did not.
 
 ### What it is now
 
-| Category      | What it covers                                                                                     | Switchable |
-| ------------- | -------------------------------------------------------------------------------------------------- | ---------- |
-| `necessary`   | Supabase session, `rotaflow:activeOrgId`, the onboarding draft, the offline outbox, the consent record itself | No         |
-| `preferences` | `pwa-theme`, `rotaflow.sidebar.collapsed`, `rotaflow:report-favourites:*`, `rotaflow:report-runs:*`, `rotaflow:installPromptSnoozedUntil` | Yes, default off |
+| Category      | What it covers                                                                                                                                           | Switchable       |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `necessary`   | Supabase session, `rotaflow:activeOrgId`, the onboarding draft, the offline outbox, the consent record itself                                            | No               |
+| `preferences` | `pwa-theme`, `rotaflow.sidebar.collapsed`, `rotaflow:report-favourites:*`, `rotaflow:report-runs:*`, `rotaflow:installPromptSnoozedUntil`                | Yes, default off |
 | `diagnostics` | Sentry crash reporting. No replay, no tracing, console breadcrumbs dropped, query strings stripped from both the breadcrumb URLs and `event.request.url` | Yes, default off |
 
 The decision lives in `localStorage` under `rotaflow:consent` as

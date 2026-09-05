@@ -1,0 +1,110 @@
+-- =====================================================================
+-- 0117_column_grants_follow_the_columns.sql — extend two column-level
+-- UPDATE grants to the columns added after they were written
+-- (docs/SAAS.md GAP-061, BUG-066)
+--
+-- ## The bug, stated plainly
+--
+-- A brand-new customer cannot finish signing up. Step 1 of `/onboarding`
+-- creates the organisation through `create_organisation`, a SECURITY
+-- DEFINER function, so it works. Step 2 saves industry, country and
+-- timezone with a plain PostgREST PATCH, and that returns:
+--
+--   403 PATCH /rest/v1/organisations?id=eq.<org>
+--   {"code":"42501","message":"permission denied for table organisations",
+--    "hint":"GRANT UPDATE ON public.organisations TO authenticated;"}
+--
+-- The screen shows "Could not save those details. Please try again."
+-- (`OnboardingPage.tsx:557`), and pressing Continue again does the same
+-- thing forever. `SettingsOrganisationPage.tsx:194-200` fails the same
+-- way, so there is no second route to those fields either.
+--
+-- Measured 2026-09-04 by signing a real user up against a local stack
+-- built from this migration history, and confirmed on **production**
+-- with `has_column_privilege`, which answers `false` there too for all
+-- five columns. This is not a local-only defect. It is the most likely
+-- reason the production database has held zero organisations since it
+-- was created.
+--
+-- ## The actual cause, which is not what the error says
+--
+-- `0017_organisation_status.sql:56-57` deliberately replaced the table
+-- grant with a column list:
+--
+--   revoke update on public.organisations from authenticated;
+--   grant update (name, slug, plan, settings) on public.organisations
+--     to authenticated;
+--
+-- That was right, and its header says why: `status`, `suspended_at` and
+-- `suspended_reason` are how the platform console suspends a tenant, so
+-- an owner must not be able to lift their own suspension. It even warns
+-- that "anything omitted here fails with 42501 at the screen that writes
+-- it, so this list is checked against `orgService.ts`, not guessed."
+--
+-- Then `0023` added `industry`, `country` and `timezone` and a later
+-- migration added `contact_email` and `contact_phone`. The client was
+-- taught to write all five. The grant was never extended. A column added
+-- after a column-level grant is not covered by it, and nothing in the
+-- schema says so out loud.
+--
+-- PostgreSQL's error makes this worse rather than better: it reports
+-- "permission denied for **table** organisations" and hints
+-- `GRANT UPDATE ON public.organisations TO authenticated`. Running that
+-- hint would fix the symptom and hand every owner `status` and
+-- `suspended_at` — undoing `0017` and the control it exists for. So the
+-- grant below stays column-scoped, and names only the five that are
+-- missing.
+--
+-- ## The second, narrower one
+--
+-- `0010_org_smtp_settings.sql:62-66` has the same shape:
+--
+--   update (smtp_host, smtp_port, smtp_user, smtp_pass, from_email, from_name)
+--
+-- `verified_at` is in the SELECT list but not the UPDATE list, and
+-- `updateOrgSmtpFields` (`smtpSettingsService.ts:73-81`) always writes
+-- `verified_at: null` — deliberately, because any connection-affecting
+-- edit invalidates a prior successful test. So editing an SMTP host
+-- 403s. Only `test-smtp` may set a timestamp there; clearing it is the
+-- client's job and needs the grant.
+--
+-- ## Why three gates missed it
+--
+--   * `rls_invariants.test.sql` asserts RLS is on and a policy exists.
+--     Both are true — `organisations_update` is exactly right,
+--     `has_org_role(id, ARRAY['owner'])` on both sides. A policy filters
+--     rows a role may already touch; it cannot grant the privilege.
+--   * `function_grant_invariants.test.sql` guards EXECUTE, added by
+--     `0113` for this same failure one layer down. Nobody wrote the
+--     column half.
+--   * `e2e/authenticated-loop.spec.ts` signs a real user up and asserts
+--     step 2 is on screen. The 403 happens on the click after that.
+--
+-- `supabase/tests/database/table_grant_invariants.test.sql` now asserts
+-- the column list against the columns `src/` writes, so the next column
+-- added to a guarded table fails the build instead of a customer.
+--
+-- Forward-only and additive. No object is dropped, altered or revoked;
+-- no existing grant is narrowed.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- organisations — the five columns added after `0017` drew its list.
+-- Everything `0017` withheld stays withheld: `status`, `suspended_at`,
+-- `suspended_reason`, `support_access_allowed`, `is_demo`,
+-- `onboarding_completed_at`, `created_by`, `last_activity_at`.
+-- ---------------------------------------------------------------------
+grant update (
+  industry,
+  country,
+  timezone,
+  contact_email,
+  contact_phone
+) on public.organisations to authenticated;
+
+-- ---------------------------------------------------------------------
+-- org_smtp_settings — clearing `verified_at`, and nothing else new.
+-- `smtp_pass` stays absent from the SELECT grant (`0010`): writing a
+-- password is not reading one back.
+-- ---------------------------------------------------------------------
+grant update (verified_at) on public.org_smtp_settings to authenticated;

@@ -20,6 +20,7 @@ import {
 } from '@/lib/availabilityRows';
 import { todayIso } from '@/lib/schedulePeriod';
 import { reportError } from '@/lib/sentry';
+import { NoStaffProfileNotice } from '@/components/staff/NoStaffProfileNotice';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AvailabilityView } from '@/components/availability/AvailabilityView';
@@ -211,14 +212,7 @@ export function AvailabilityPage(): JSX.Element {
   }
 
   if (!myProfile) {
-    return (
-      <Card>
-        <p className="text-content-muted dark:text-content-muted-dark">
-          You don&rsquo;t have a staff profile in this organisation, so there is no
-          pattern to set. Ask your manager to add you to the staff directory.
-        </p>
-      </Card>
-    );
+    return <NoStaffProfileNotice activity="set a pattern" />;
   }
 
   return (

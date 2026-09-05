@@ -103,7 +103,28 @@ export function DataTable<Row, Key extends string = string>({
   };
 
   return (
-    <div className={cn('overflow-x-auto', className)}>
+    // Focusable, named and announced as a region: WCAG 2.2 Level A, 2.1.1
+    // Keyboard (docs/SAAS.md GAP-070). A pointer user drags a horizontally
+    // scrolling table sideways; a keyboard user has no way to scroll a plain
+    // `div` at all, so on a narrow viewport every column past the fold was
+    // simply unreadable — including Thursday and Friday on the rota grid,
+    // which is `min-w-[860px]`.
+    //
+    // `tabIndex={0}` is what makes the arrow keys work. `role="region"` plus
+    // the caption as its accessible name is what stops that new tab stop
+    // being an unlabelled mystery to a screen-reader user, and is the pairing
+    // the technique (SCR34 / ARIA a11y practices) actually calls for.
+    <div
+      className={cn('overflow-x-auto', className)}
+      // A scrollable region is the documented exception to the rule below: it
+      // is not interactive, and it must still be reachable, which is why that
+      // rule's own `roles` option lists `region`. Removing this would satisfy
+      // the linter by restoring the barrier.
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
+      role="region"
+      aria-label={caption}
+    >
       <table className="w-full table-fixed border-collapse">
         <caption className="sr-only">{caption}</caption>
         <colgroup>

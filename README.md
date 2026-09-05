@@ -53,7 +53,7 @@ is actually built** — the capability register is the honest, per-feature statu
 | Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                  |
 | AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                            |
 | Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                      |
-| Background jobs | `pg_cron` + `pg_net` in Postgres | Notification outbox drain, nightly retention, health probe. Inngest is fully retired (`0087`): no function, no key, no dispatch |
+| Background jobs | `pg_cron` + `pg_net` in Postgres | Four jobs: notification outbox drain (every minute), nightly retention (02:15), health probe (every 5 minutes) and scheduled alerts (`0093`, every 15 minutes). Inngest is fully retired (`0087`): no function, no key, no dispatch |
 | Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                       |
 | Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                   |
 | AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                               |
@@ -65,10 +65,11 @@ is actually built** — the capability register is the honest, per-feature statu
 
 ### 1. Prerequisites
 
-- Node.js **>= 18**
+- Node.js **>= 20**
 - npm (or pnpm)
-- [Supabase CLI](https://supabase.com/docs/guides/cli) — only needed to deploy the
-  `ai-rota-assistant` Edge Function (step 4); everything else works without it
+- [Supabase CLI](https://supabase.com/docs/guides/cli) — needed to deploy any of the
+  eight Edge Functions, to run `supabase db push`, and to run the `db-tests` and
+  `e2e-authenticated` gates locally (both need Docker as well)
 
 ### 2. Install & configure
 
@@ -89,7 +90,7 @@ supabase/migrations/0002_rotaflow.sql
 supabase/migrations/0111_erasure_misses_email.sql   # whatever the last one is today
 ```
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 116, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 119, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
 whole ledger.

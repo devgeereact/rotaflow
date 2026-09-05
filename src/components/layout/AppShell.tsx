@@ -9,6 +9,7 @@ import { MobileTabBar } from '@/components/layout/MobileTabBar';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { SkipLink } from '@/components/layout/SkipLink';
 
 /**
  * Tenant shell for every /app/* route: gates on org membership and renders the
@@ -77,6 +78,7 @@ export function AppShell(): JSX.Element {
      * `dvh` tracks the visible height as the browser chrome moves.
      */
     <div className="flex h-[100dvh] overflow-hidden bg-background dark:bg-background-dark">
+      <SkipLink />
       {/* Drawer state lives here rather than inside Sidebar so the mobile tab
           bar's `More` opens the same drawer. Two components owning one panel
           is the alternative, and it desyncs the moment either can close it. */}
@@ -89,6 +91,8 @@ export function AppShell(): JSX.Element {
         {/* `pb-20` on mobile clears the fixed tab bar; without it the last row
             of every table sits underneath it and cannot be reached. */}
         <main
+          id="main-content"
+          tabIndex={-1}
           // `pb-20`/`md:pb-8` as before, plus room for the consent banner. The
           // shell is `h-[100dvh] overflow-hidden` and `main` is what scrolls, so
           // the `body` padding in index.css never applies here — a signed-in

@@ -19,6 +19,7 @@ import {
 import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
+import { SkipLink } from '@/components/layout/SkipLink';
 
 const LINK_BASE =
   'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[0.84rem] font-medium transition-colors';
@@ -105,6 +106,7 @@ function ConsoleIdentity(): JSX.Element {
   const badge = environmentBadge();
   return (
     <div className="px-2">
+      <SkipLink />
       <div className="flex items-center gap-2.5 pb-3">
         <BrandMark label={null} className="h-[30px] w-[30px]" />
         <div>
@@ -393,7 +395,11 @@ export function AdminShell(): JSX.Element {
             </div>
           </div>
 
-          <main className="w-full max-w-[1440px] p-4 lg:p-6">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="w-full max-w-[1440px] p-4 lg:p-6"
+          >
             <Outlet />
           </main>
         </div>

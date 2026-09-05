@@ -47,7 +47,18 @@ export interface StoredItem {
  * Everything RotaFlow puts in a browser.
  *
  * There are **no cookies**, no analytics and no advertising. Everything below
- * is `localStorage`, `sessionStorage` or IndexedDB on this device.
+ * is `localStorage`, `sessionStorage`, IndexedDB or Cache Storage on this
+ * device.
+ *
+ * Cache Storage was added to this list on 5 September 2026 and is the reason
+ * the sentence above names four stores rather than three. The four buckets the
+ * service worker writes were undeclared, while the page built from this list
+ * said it showed everything kept on the device. Two of them, `supabase-api`
+ * and `imagekit-media`, hold more personal data than anything else here: rows
+ * of an organisation's rota and staff, and staff photographs. They were missed
+ * because the service worker is generated from `vite.config.ts`, so a sweep of
+ * storage writes in `src/` cannot see it. When you check this list, read
+ * `vite.config.ts` too.
  *
  * Two entries were missing from this list until 4 September 2026 — the
  * onboarding draft, which holds an organisation name and a site postal
@@ -127,6 +138,45 @@ export const STORED_ITEMS: readonly StoredItem[] = [
     category: 'preferences',
     source: 'src/lib/installPrompt.ts',
   },
+  // The three Cache Storage buckets below were missing from this list until
+  // 5 September 2026. The rule in the header is that the list is verified by
+  // reading every storage write in `src/`, and these are written by the
+  // service worker, which is generated from `vite.config.ts` and so sits
+  // outside that sweep. They are also the two entries holding the most
+  // personal data of anything on the device, which is the wrong pair to have
+  // left undeclared under a heading that says "everything".
+  {
+    key: 'Cache Storage: rotaflow-precache',
+    purpose:
+      'The app itself: its code, styles and icons, so it opens with no signal. This is what makes RotaFlow usable on a ward or a site with no reception.',
+    lifetime: 'Replaced when a new version is installed.',
+    category: 'necessary',
+    source: 'vite.config.ts (workbox globPatterns)',
+  },
+  {
+    key: 'Cache Storage: supabase-api',
+    purpose:
+      'The most recent answers to up to 50 data requests, so a screen you have already opened can still show something when the network drops. It can therefore hold rota and staff information for your organisation.',
+    lifetime: 'Five minutes, and signing out on this device clears it.',
+    category: 'necessary',
+    source: 'vite.config.ts (runtimeCaching), cleared by src/lib/session.ts',
+  },
+  {
+    key: 'Cache Storage: imagekit-media',
+    purpose:
+      'Images the app has displayed, which includes staff profile photographs, so they do not download again on every visit.',
+    lifetime: 'Thirty days, and signing out on this device clears it.',
+    category: 'necessary',
+    source: 'vite.config.ts (runtimeCaching), cleared by src/lib/session.ts',
+  },
+  {
+    key: 'Cache Storage: rotaflow-fonts',
+    purpose:
+      'The four typeface files the interface uses. Self-hosted since 3 September 2026, so no request goes to a font service.',
+    lifetime: 'One year.',
+    category: 'necessary',
+    source: 'vite.config.ts (runtimeCaching)',
+  },
 ];
 
 /**
@@ -171,7 +221,7 @@ export const PRIVACY_FACTS: readonly DataFact[] = [
   {
     question: 'Where is it held?',
     answer:
-      'The database is in the EU (Supabase, eu-west-1). Two things leave that region and both are named on the Trust page: billing identity goes to Stripe (US) when an organisation subscribes, and — only when a manager uses the AI assistant — first names, job titles, skills and contracted hours go to OpenRouter (US) for that request. Nothing else does.',
+      'The database is in the EU (Supabase, eu-west-1). Two things leave that region and both are named on the Trust page: billing identity goes to Stripe (US) when an organisation subscribes, and, only when a manager uses the AI assistant, the week being drafted goes to OpenRouter (US) for that one request. That is staff first and last names, job titles, skills, weekly hours and contract type, together with the organisation name, its site names, the shifts already on the rota and the dates of approved leave. Leave type is deliberately never sent, so an absence cannot be read as sickness. Nothing else leaves the region.',
   },
   {
     question: 'Is any of it sold, or used for advertising?',
