@@ -55,10 +55,10 @@ const CHIP_TIME = {
 } as const;
 
 const AGENDA = [
-  { day: 'Mon 11', time: '07:00-15:00', role: 'Early · Floor 2', chip: CHIP.early },
-  { day: 'Tue 12', time: '07:00-15:00', role: 'Early · Floor 2', chip: CHIP.early },
-  { day: 'Thu 14', time: '14:00-22:00', role: 'Late · Floor 1', chip: CHIP.late },
-  { day: 'Sat 16', time: '22:00-06:00', role: 'Night · Floor 1', chip: CHIP.night },
+  { day: 'Mon 11', time: '07:00–15:00', role: 'Early · Floor 2', chip: CHIP.early },
+  { day: 'Tue 12', time: '07:00–15:00', role: 'Early · Floor 2', chip: CHIP.early },
+  { day: 'Thu 14', time: '14:00–22:00', role: 'Late · Floor 1', chip: CHIP.late },
+  { day: 'Sat 16', time: '22:00–06:00', role: 'Night · Floor 1', chip: CHIP.night },
 ];
 
 export function ProductPreview(): JSX.Element {

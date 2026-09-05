@@ -188,7 +188,9 @@ export function DepartmentManager({
           <Plus size={16} />
         </button>
       </div>
-      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+      {error && (
+        <p className="mt-2 text-xs text-danger-ink dark:text-danger-ink-dark">{error}</p>
+      )}
     </div>
   );
 }

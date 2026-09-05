@@ -149,3 +149,57 @@ export function segmentsNeedingReview(segments: WorkedSegment[]): WorkedSegment[
 export function formatHours(minutes: number): string {
   return (minutes / 60).toFixed(1);
 }
+
+/**
+ * How far either side of a reporting window the event stream must be read for
+ * the segments inside it to be complete.
+ *
+ * RF-08. A clock query bounded exactly by the window returns an `out` whose
+ * `in` fell before it, and `pairClockEvents` — correctly — ignores an `out`
+ * with no `in`. So a night shift that started at 23:00 contributed nothing to
+ * the day it ended on. Worse in the other direction: the window that *did*
+ * contain the 23:00 `in` did not contain the 07:00 `out`, so the segment was
+ * closed against `now` instead, and a report run days later paid that person
+ * for the intervening days with no review flag on it at all.
+ *
+ * Twenty-four hours. A worked segment longer than that is already a data
+ * error the review flags exist to surface, and widening the margin further
+ * costs a proportionally larger read on every report for no additional
+ * correctness.
+ */
+export const BOUNDARY_CONTEXT_HOURS = 24;
+
+/** `iso` shifted by `hours`, positive or negative. */
+export function shiftIso(iso: string, hours: number): string {
+  return new Date(new Date(iso).getTime() + hours * 3_600_000).toISOString();
+}
+
+/**
+ * The segments a reporting period owns, from a stream read with boundary
+ * context either side.
+ *
+ * A segment belongs to the period its clock-in falls in. That is the rule the
+ * rest of the product already applies — `listShiftsForPeriod` filters on
+ * `starts_at` for the same reason, and `getTimesheetReportRows` dates a row by
+ * `segment.clockIn` — and it is the ordinary payroll convention for a night
+ * shift: the whole of a 23:00-to-07:00 shift is Monday's, not six minutes of
+ * Monday and the rest of Tuesday's.
+ *
+ * Stated as a rule rather than left implicit because the alternative —
+ * allocating by overlap, clipping each segment at the boundary — is equally
+ * defensible and produces different pay. Adjacent periods must agree on one of
+ * them or the same hour is either paid twice or not at all. This is the one
+ * the code already had; changing it is a payroll decision, not a refactor.
+ */
+export function segmentsStartingWithin(
+  segments: WorkedSegment[],
+  fromIso: string,
+  toIso: string,
+): WorkedSegment[] {
+  const from = new Date(fromIso).getTime();
+  const to = new Date(toIso).getTime();
+  return segments.filter((segment) => {
+    const startedAt = new Date(segment.clockIn.event_at).getTime();
+    return startedAt >= from && startedAt < to;
+  });
+}

@@ -105,6 +105,8 @@ export function getWebhookSecret(mode: StripeMode): string | undefined {
 }
 
 /** The `plans` column holding the Price ID for this mode. */
-export function priceColumn(mode: StripeMode): 'stripe_price_id' | 'stripe_test_price_id' {
+export function priceColumn(
+  mode: StripeMode,
+): 'stripe_price_id' | 'stripe_test_price_id' {
   return mode === 'test' ? 'stripe_test_price_id' : 'stripe_price_id';
 }

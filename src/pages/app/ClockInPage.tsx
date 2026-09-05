@@ -480,7 +480,7 @@ export function ClockInPage(): JSX.Element {
   const notices = (
     <>
       {!online && (
-        <div className="mt-6 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+        <div className="mt-6 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-ink dark:text-warning-ink-dark">
           <WifiOff size={16} aria-hidden="true" />
           You&rsquo;re offline. Clock actions are saved on this device and will sync
           automatically once you&rsquo;re back online.

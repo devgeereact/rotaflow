@@ -108,7 +108,7 @@ export function LeaveRequestModal({
         </div>
 
         {reversedRange && (
-          <p className="text-xs text-danger">
+          <p className="text-xs text-danger-ink dark:text-danger-ink-dark">
             The end date is before the start date. Pick an end date on or after the start
             date.
           </p>

@@ -145,12 +145,45 @@ interface QueuedItem {
 }
 interface UseSyncQueue {
   pending: QueuedItem[];
+  /** Writes that will never send themselves. These need a human. */
+  deadLettered: DeadLetterRecord[];
   enqueue: (kind: QueuedItem['kind'], payload: unknown) => Promise<void>;
-  flush: () => Promise<{ synced: number; failed: number }>;
+  flush: () => Promise<{ synced: number; failed: number; deadLettered: number }>;
+  discard: (id: string) => Promise<void>;
+  retry: (id: string) => Promise<void>;
   syncing: boolean;
 }
 export function useSyncQueue(): UseSyncQueue;
 ```
+
+**When it flushes on its own**, which changed on 2026-09-05 (BUG-077):
+
+1. on reconnect, an offline-to-online transition while mounted;
+2. **on mount, when it is already online and the queue is not empty**;
+3. on `visibilitychange` back to visible.
+
+Only the first of those existed before, and it is the one that fires least
+often. The `online` event only reaches a mounted listener, so the ordinary
+case — clock in on a ward with no signal, close the app, walk somewhere with
+signal, open it again — flushed nothing at all: the event happened while the
+app was closed. The pending list was loaded and rendered, so the person could
+*see* their clock-in sitting there, and nothing sent it.
+
+**Mount it once at app scope, not per screen.** `OfflineQueueDrain` does this
+inside `AppShell`, so replay is a property of being signed in rather than of
+which page is open — the hook used to live only on the clock, leave and swap
+screens, and navigating away was enough to strand a write. Feature screens
+still call it for `enqueue` and the failed-writes list; the duplicate flush is
+harmless, guarded within a tab by an in-flight ref and across tabs by a Web
+Lock (`rotaflow:sync-queue`). Without that lock two tabs reconnecting together
+each burn an attempt on every transient failure, and a queue that should
+survive five retries dies in two.
+
+**It never clears the outbox on sign-out.** That is `lib/session.ts`'s
+deliberate omission: the queue holds the only copy of work that has not
+reached the server, and signing out is not a statement that you did not clock
+in. Ownership answers the shared-device problem instead — every record carries
+the id of the user who queued it.
 
 ### 9. `useGeolocation`
 

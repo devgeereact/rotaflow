@@ -313,11 +313,37 @@ const config: Config = {
       fontSize: {
         // Custom type scale from docs/DESIGN.md §2 (size/line-height).
         'page-title': ['2rem', { lineHeight: '2.5rem' }], // 32/40
+        // The same role at phone width. 32/40 is a desktop measure: on a
+        // 390px canvas a two-word title plus a pair of action buttons cannot
+        // share a line, and the title block is what loses, so "Team" rendered
+        // as "Tea". Shrinking the type is not the fix for the overflow (the
+        // header stacks below `sm` for that), but 32px is oversized for the
+        // column it now owns. 24/32 is the same semibold weight and the same
+        // tracking, one step down the existing scale.
+        //
+        // Applied as `text-page-title-mobile sm:text-page-title` by the two
+        // header components, never by a page.
+        'page-title-mobile': ['1.5rem', { lineHeight: '2rem' }], // 24/32
         'section-heading': ['1.5rem', { lineHeight: '2rem' }], // 24/32
         'card-heading': ['1rem', { lineHeight: '1.5rem' }], // 16/24
         // Splash/marketing lockup only — 120/120, tight tracking, measured off
         // docs/design/splash-screen.png. Not part of the product type scale.
         wordmark: ['7.375rem', { lineHeight: '1', letterSpacing: '-0.026em' }],
+      },
+      transitionDuration: {
+        // Centralised motion durations (docs/DESIGN.md §4). Before these, a
+        // duration was a number typed at the call site — `duration-150` on
+        // Button, `duration-200` on a menu, nothing at all on a dialog — so
+        // "how fast does this product move" had no answer and no way to
+        // change.
+        //
+        // Four values, named for what they are attached to rather than for
+        // their length, so a new control picks the role and inherits the
+        // number:
+        press: '100ms', // a button's own press/hover transform
+        control: '140ms', // hover/focus colour on any control, row or link
+        overlay: '180ms', // a menu, popover, dropdown or dialog appearing
+        entrance: '300ms', // the existing `animate-fade-up` page entrance
       },
       spacing: {
         // 266px — the splash logo mark at its reference size; sits between

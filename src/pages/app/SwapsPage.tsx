@@ -285,7 +285,10 @@ export function SwapsPage(): JSX.Element {
         // The decision itself lives in the service, because the approvals
         // queue decides swaps too and two copies of "approve, then reassign,
         // but only if nobody else decided first" drift apart silently.
-        const decision = await decideShiftSwap(swap, status, user.id);
+        // The reviewer is `auth.uid()` inside the RPC (0123), not a
+        // browser-supplied id, so `user` is only still read here to keep the
+        // screen from acting while the session is resolving.
+        const decision = await decideShiftSwap(swap, status);
         setReloadKey((k) => k + 1);
 
         if (decision.outcome === 'already-decided') {
@@ -294,14 +297,15 @@ export function SwapsPage(): JSX.Element {
           );
           return;
         }
-        if (decision.outcome === 'declined') {
-          showSuccess('Swap declined.');
+        if (decision.outcome === 'refused') {
+          // Nothing was written. Since 0123 the decision and the
+          // reassignment commit together, so there is no half-done state to
+          // ask the manager to tidy up by hand.
+          showError(decision.reason);
           return;
         }
-        if (decision.reassignmentFailed) {
-          showError(
-            'The swap was approved but the shift could not be reassigned. Open the week in the Rota Builder, amend it, and move the shift by hand.',
-          );
+        if (decision.outcome === 'declined') {
+          showSuccess('Swap declined.');
           return;
         }
         showSuccess(

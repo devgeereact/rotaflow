@@ -48,7 +48,7 @@ export const DEMO_PROFILE: StaffProfileData = {
     {
       id: 'shift-27',
       dateLabel: 'Today, 27 May',
-      timeLabel: '07:00-15:00',
+      timeLabel: '07:00–15:00',
       typeName: 'Morning Shift',
       typeTone: 'morning',
       locationName: 'Sunshine Care Home',
@@ -58,7 +58,7 @@ export const DEMO_PROFILE: StaffProfileData = {
     {
       id: 'shift-29',
       dateLabel: 'Thu, 29 May',
-      timeLabel: '07:00-15:00',
+      timeLabel: '07:00–15:00',
       typeName: 'Morning Shift',
       typeTone: 'morning',
       locationName: 'Sunshine Care Home',
@@ -68,7 +68,7 @@ export const DEMO_PROFILE: StaffProfileData = {
     {
       id: 'shift-01',
       dateLabel: 'Sun, 1 June',
-      timeLabel: '15:00-23:00',
+      timeLabel: '15:00–23:00',
       typeName: 'Evening Shift',
       typeTone: 'evening',
       locationName: 'Sunshine Care Home',

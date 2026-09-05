@@ -17,6 +17,7 @@ import { pairClockEvents, totalWorkedMinutes } from '@/lib/hours';
 import type { WorkedSegment } from '@/lib/hours';
 import type { GeolocationStatus } from '@/hooks/useGeolocation';
 import type { ClockEvent, Shift } from '@/types';
+import { formatTimeRange } from '@/lib/timeRange';
 
 /**
  * How early a shift's clock-in window opens, in minutes. The reference's
@@ -44,7 +45,7 @@ export interface CurrentShiftInfo {
   roleName: string | null;
   /** `null` where the shift has no shift_type. The field is dropped. */
   shiftTypeName: string | null;
-  /** "12:30-13:00", or `null` for a shift with no unpaid break. */
+  /** "12:30–13:00", or `null` for a shift with no unpaid break. */
   breakRange: string | null;
   /** Rendered muted next to the break range, e.g. "(30 min)". */
   breakDuration: string | null;
@@ -251,7 +252,9 @@ export function clockWindow(shift: Shift | null, now: Date): ClockWindow {
 }
 
 function timeRange(from: Date, to: Date): string {
-  return `${format(from, 'HH:mm')}-${format(to, 'HH:mm')}`;
+  // `@/lib/timeRange` owns the separator and the overnight marker, so a night
+  // shift here reads the same as it does on the rota grid.
+  return formatTimeRange(format(from, 'HH:mm'), format(to, 'HH:mm'));
 }
 
 /** `shifts.location_id` is nullable, and an unknown id must never be printed. */

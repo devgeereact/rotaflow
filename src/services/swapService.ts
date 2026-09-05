@@ -177,47 +177,74 @@ export async function cancelShiftSwap(id: string): Promise<void> {
 /**
  * The whole swap decision: record it, and move the shift if it was approved.
  *
- * Extracted from `SwapsPage` when the approvals queue (CAP-093) became a
- * second place that decides swaps. Two copies of "approve, then reassign, but
- * only if somebody else did not decide it first, and tell the user precisely
- * what happened either way" is the kind of duplication that drifts silently:
- * one screen gets a fix and the other keeps moving shifts on the back of
- * somebody else's approval.
+ * One RPC, and therefore one transaction. Until 0123 this was two round
+ * trips — PATCH the swap to 'approved', then call `apply_swap_reassignment`
+ * — and anything that went wrong between them left the swap approved with
+ * the shift still on the original person. The notification trigger fires on
+ * the status change, so the requester was told their swap went through for a
+ * shift that had not moved. The screen asked the manager to move it by hand,
+ * which is a recovery procedure rather than correctness: nothing made them,
+ * and nothing noticed if they did not (RF-02).
  *
- * The caller renders the message. The outcomes are deliberately separate
- * because they need different sentences — "approved and reassigned" and
- * "approved but you must move the shift by hand" are not the same news.
+ * `decide_shift_swap` now does the lock, the authorisation, the decision,
+ * the reassignment and the audit together. A failure at any step rolls the
+ * approval and its outbox row back with it, so 'approved' and 'reassigned'
+ * can no longer disagree. It also refuses to move a shift the requester no
+ * longer holds or one on an archived rota, and marks the swap spent so a
+ * replay cannot reach past a later legitimate transfer (RF-03).
+ *
+ * The caller renders the message. The outcomes stay separate because they
+ * need different sentences, and `refused` is new: it means nothing changed
+ * and there is a specific reason to show, rather than the old
+ * "approved but you must move the shift by hand".
  */
 export type SwapDecision =
-  | { outcome: 'already-decided' }
+  | { outcome: 'already-decided'; reassigned: boolean }
   | { outcome: 'declined' }
-  | { outcome: 'approved'; reassigned: boolean; reassignmentFailed: boolean };
+  | { outcome: 'approved'; reassigned: boolean }
+  | { outcome: 'refused'; reason: string };
+
+/**
+ * Guard failures the database raises when it declines to move a shift.
+ * These are outcomes to explain, not faults to report to Sentry: the
+ * decision did not happen and the manager needs to know why. Everything
+ * else — a policy denial, a dropped connection — still throws.
+ */
+const SWAP_REFUSAL_CODES: Record<string, string> = {
+  SWAP4: 'That shift no longer exists, so the swap was not approved.',
+  SWAP5:
+    'That shift is on an archived rota, which is history and is never edited. Raise the swap against the current version. Nothing was changed.',
+  SWAP6:
+    'That shift is no longer assigned to the person who offered it — somebody else has taken it since. Nothing was changed.',
+  SWAP8:
+    'The person taking that shift is no longer an active member of this organisation. Nothing was changed.',
+  SWAP9: 'That swap has already moved its shift. Nothing was changed.',
+};
+
+interface DecideSwapRpcResult {
+  outcome: 'already-decided' | 'declined' | 'approved';
+  reassigned?: boolean;
+}
 
 export async function decideShiftSwap(
   swap: ShiftSwapWithShift,
   status: 'approved' | 'rejected',
-  reviewerId: string,
 ): Promise<SwapDecision> {
-  const decided = await reviewShiftSwap(swap.id, status, reviewerId);
+  const { data, error } = await supabase.rpc('decide_shift_swap', {
+    p_swap_id: swap.id,
+    p_status: status,
+  });
 
-  // Somebody else decided or withdrew it first (BUG-061). Returning here
-  // matters more than on the leave screen: falling through would run the
-  // reassignment for a decision this manager did not make.
-  if (!decided) return { outcome: 'already-decided' };
-  if (status === 'rejected') return { outcome: 'declined' };
-
-  // No target means nobody has offered to take it: the shift stays where it
-  // is and the manager assigns it in the builder.
-  if (!swap.shift_id || !swap.target_staff_profile_id) {
-    return { outcome: 'approved', reassigned: false, reassignmentFailed: false };
+  if (error) {
+    const refusal = SWAP_REFUSAL_CODES[error.code ?? ''];
+    if (refusal) return { outcome: 'refused', reason: refusal };
+    throw error;
   }
 
-  try {
-    await applySwapReassignment(swap.id);
-    return { outcome: 'approved', reassigned: true, reassignmentFailed: false };
-  } catch {
-    // The decision stands — it is committed — so this is reported rather than
-    // rethrown, and the caller tells the manager to move the shift by hand.
-    return { outcome: 'approved', reassigned: false, reassignmentFailed: true };
+  const result = data as unknown as DecideSwapRpcResult;
+  if (result.outcome === 'declined') return { outcome: 'declined' };
+  if (result.outcome === 'already-decided') {
+    return { outcome: 'already-decided', reassigned: Boolean(result.reassigned) };
   }
+  return { outcome: 'approved', reassigned: Boolean(result.reassigned) };
 }

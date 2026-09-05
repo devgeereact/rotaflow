@@ -45,13 +45,24 @@ export interface TimesheetApproval {
 }
 
 /**
- * Approve a period for several people at once.
+ * Approve a period for several people at once, in one transaction.
  *
- * There is no unique constraint on (org, staff, period). See
- * `0002_rotaflow.sql`, so this cannot be a plain `upsert`. It reads what
- * already exists for the period and splits the work into one update per known
- * row and a single insert for the rest, which also keeps a re-approval
- * idempotent instead of accumulating duplicate sign-offs for the same week.
+ * RF-07. This used to read the rows that already existed, insert the ones
+ * that did not and update the ones that did — a read-then-write with nothing
+ * holding it together. Two managers approving the same week both read "no row
+ * yet" and both inserted, and the table had no unique key to stop them: the
+ * audit reproduced two `approved` rows for one person and one week, saying 480
+ * and 420 minutes, with no error raised. Whichever `listTimesheets` returned
+ * first was the one payroll saw.
+ *
+ * The inserts also went in one statement and the updates in a loop of separate
+ * ones, so a failure part way through a twenty-person batch signed some people
+ * off and not others, and the manager was shown a single error with no way to
+ * tell which was which.
+ *
+ * `approve_timesheets` (0124) does the whole batch inside one statement,
+ * under the unique key that migration adds, and records the approver and a
+ * version count. A failure on person seventeen rolls back the first sixteen.
  */
 export async function approveTimesheets(
   orgId: string,
@@ -61,50 +72,17 @@ export async function approveTimesheets(
 ): Promise<Timesheet[]> {
   if (approvals.length === 0) return [];
 
-  const existing = await listTimesheets(orgId, periodStart, periodEnd);
-  const existingByStaff = new Map(existing.map((row) => [row.staff_profile_id, row]));
-
-  const toInsert = approvals.filter((a) => !existingByStaff.has(a.staffProfileId));
-  const toUpdate = approvals.filter((a) => existingByStaff.has(a.staffProfileId));
-
-  const results: Timesheet[] = [];
-
-  if (toInsert.length > 0) {
-    const { data, error } = await supabase
-      .from('timesheets')
-      .insert(
-        toInsert.map((a) => ({
-          org_id: orgId,
-          staff_profile_id: a.staffProfileId,
-          period_start: periodStart,
-          period_end: periodEnd,
-          total_minutes: a.totalMinutes,
-          status: 'approved' as const,
-        })),
-      )
-      .select('*');
-    if (error) throw error;
-    results.push(...(data ?? []));
-  }
-
-  for (const approval of toUpdate) {
-    const row = existingByStaff.get(approval.staffProfileId);
-    if (!row) continue;
-    const { data, error } = await supabase
-      .from('timesheets')
-      .update({
-        status: 'approved',
-        total_minutes: approval.totalMinutes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', row.id)
-      .select('*')
-      .single();
-    if (error) throw error;
-    results.push(data);
-  }
-
-  return results;
+  const { data, error } = await supabase.rpc('approve_timesheets', {
+    p_org: orgId,
+    p_period_start: periodStart,
+    p_period_end: periodEnd,
+    p_approvals: approvals.map((a) => ({
+      staff_profile_id: a.staffProfileId,
+      total_minutes: a.totalMinutes,
+    })),
+  });
+  if (error) throw error;
+  return data ?? [];
 }
 
 /**

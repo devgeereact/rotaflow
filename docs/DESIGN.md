@@ -10,6 +10,14 @@
 > proposal that was **not** adopted. It is linked here so it stops being an
 > orphan nobody can place: read it as a record of a decision taken, not as a
 > direction to follow. This document stays the enforced one.
+>
+> An external design review dated 2026-09-05 proposed the mobile page-title
+> size, the named motion durations, the responsive header contract and the
+> state vocabulary now in §4, §7 and §8. Those are **adopted and written down
+> here**, which is the point: a review document that keeps its own copy of the
+> rules becomes a second source of truth and then drifts. There is one canonical
+> design guide in this repository and it is this file, paired with
+> `tailwind.config.ts`.
 
 ## 1. Aesthetic direction
 
@@ -164,19 +172,49 @@ featured/empty-state icons. Icon-only controls require `aria-label`.
 
 ## 4. Motion
 
-| Interaction       | Spec                                                   |
-| ----------------- | ------------------------------------------------------ |
-| Hover (buttons)   | `scale: 1.02`, `duration: 0.15s`, `easeInOut`          |
-| Tap               | `scale: 0.98`                                          |
-| Shift drag/drop   | snap with a short spring; ghost preview while dragging |
-| Page/section in   | `opacity 0→1`, `y 10→0`, `duration 0.3s`, `ease-out`   |
-| Sync/save confirm | brief, non-blocking success cue                        |
-| Reduced motion    | Respect `prefers-reduced-motion`; disable transforms   |
+**Durations are named, not typed.** `tailwind.config.ts` carries four, and a new
+control picks the role rather than a number:
 
-The `animate-fade-up` utility (in `tailwind.config.ts`) is the CSS-only entrance
-the only animation mechanism this product uses. Framer Motion was a dependency
-until 2026-08-31 and was never imported by anything — every transition here is
-CSS.
+| Token               | Value | For                                                  |
+| ------------------- | ----- | ---------------------------------------------------- |
+| `duration-press`    | 100ms | a button's own press/hover transform                 |
+| `duration-control`  | 140ms | hover/focus colour on any control, row, link or tile |
+| `duration-overlay`  | 180ms | a menu, popover, dropdown or dialog appearing        |
+| `duration-entrance` | 300ms | the `animate-fade-up` entrance                       |
+
+| Interaction       | Spec                                                          |
+| ----------------- | ------------------------------------------------------------- |
+| Hover (buttons)   | `scale: 1.02`, `duration-control`, `easeInOut`                |
+| Tap               | `scale: 0.98`                                                 |
+| Shift drag/drop   | ghost preview while dragging; stable drop target              |
+| Page/section in   | `animate-fade-up` — an _entrance_, never replayed on refetch  |
+| Sync/save confirm | brief, non-blocking, and only after the write actually landed |
+| Reduced motion    | see below — durations **and** transforms                      |
+
+**Never `transition-all`.** Name the properties that change. There are none in
+the tree today and the count should stay at zero: `transition-all` animates
+`height`, `width` and `top` as a side effect and produces the layout jitter that
+reads as a rendering bug.
+
+`Button` exports `CONTROL_MOTION`, the shared property list plus its
+reduced-motion handling. Use it on a new control rather than composing a
+transition by hand.
+
+**Reduced motion is two separate jobs.** `src/index.css` collapses every
+_duration_ to ~0 under `prefers-reduced-motion`, which is necessary and not
+sufficient: a `scale(1.02)` with no transition still scales, instantly. The
+transform has to be removed as well, with
+`motion-reduce:hover:scale-100 motion-reduce:active:scale-100` (or
+`motion-reduce:transform-none`), and every entrance carries
+`motion-reduce:animate-none`. `e2e/responsive-and-motion.spec.ts` asserts both
+halves by measuring the rendered box, and asserts the transform is still there
+when motion _is_ allowed — otherwise the test would pass equally well if the
+effect had simply been deleted.
+
+Do not animate table rows, animate counters, or replay a page entrance after a
+filter or a refetch. Preserve scroll, focus, filters and selection through a
+save. `animate-fade-up` is the only animation mechanism in the product; Framer
+Motion was a dependency until 2026-08-31 and was never imported by anything.
 
 ## 5. Accessibility (frontline-critical)
 
@@ -187,20 +225,60 @@ CSS.
   violations — more than light mode carried. Both were cleared on 2026-08-30
   (`docs/SAAS.md` GAP-030, GAP-032).
 - **A status colour becomes text through its ink pair:
-  `text-{tone}-ink dark:text-{tone}-ink-dark`.** Both halves, every time. The
+  `text-{tone}-ink dark:text-{tone}-ink-dark`.** Both halves, every time. This
+  covers a form error, a menu item, a chip's label and a link — anywhere the
+  colour is on _words_. It does not cover an icon, which is not text.
+
+  The axe gate reads 0 in both themes and that is not the same as the rule being
+  kept: the gate scans what it can _open_, and 68 uses of a bare fill token as
+  text survived inside dialogs, onboarding steps and error branches that no
+  scan reaches. They were swept on 2026-09-05. When you add a modal, check its
+  error text by hand; nothing automated will. The
   `DEFAULT` is a FILL — it runs 2.02–4.29:1 as small text on white and 3.15–4.47:1
   on a dark surface, so neither `text-warning` nor `dark:text-warning` is a text
   colour. And an `-ink` with no dark pairing is worse than none: the light ink
   carries into dark mode at 2.5:1, so fixing one theme breaks the other.
+
 - **Muted grey does not go on a tinted panel.** `content-muted` is designed against
   white and lands 4.23–4.49:1 on the washes — under the line, and a hundredth under
   is under. Use `text-content` there; the semibold heading above it is what carries
   the hierarchy.
-- Interactive targets ≥ **44×44px**. Staff use this one-handed on phones.
+- Interactive targets ≥ **44×44px**. Staff use this one-handed on phones. This is
+  a stronger product rule than WCAG 2.2 AA's 24px minimum, which has exceptions
+  this product does not want to rely on. Icon-only controls use
+  `ui/IconButton` (44×44 by default); its `sm` size is 36px and is for a control
+  inside a dense table row only, never for a page or dialog action.
+- **A horizontally scrolling area must be reachable and must say it scrolls.**
+  `overflow-x-auto` on a bare `div` is draggable with a pointer and completely
+  unreachable with a keyboard, and it gives no sign that anything is off screen.
+  Use `ui/ScrollRegion`: a labelled `role="region"` with `tabIndex={0}`, plus an
+  edge fade and a line naming the gesture, both shown only while the content
+  actually overflows. `ui/DataTable` carries the same treatment internally.
+- **A dialog has exactly one control called Close.** The backdrop is a pointer
+  affordance, `aria-hidden` and not focusable; Escape and the Close button are
+  the accessible ways out. A dialog also locks background scrolling, takes its
+  accessible name from the rendered heading via `aria-labelledby`, and returns
+  focus to whatever opened it.
 - Every focusable element shows a ring: `focus-visible:ring-2 focus-visible:ring-primary`.
 - Images require `alt`; icon-only buttons require `aria-label`.
 - Never convey shift/leave/clock state by colour alone. Pair with icon + text.
-- Rota grid is keyboard-navigable; drag-drop has a keyboard/assistive alternative.
+- **Every drag has a keyboard equivalent that addresses the same thing the drag
+  does.** On the rota grid that is `M` on a focused shift, then the arrow keys
+  to choose a person and a day, `Enter` to commit and `Escape` to cancel — the
+  landing cell is ringed, the target is announced through a polite live region,
+  and focus returns to the chip after the move.
+
+  dnd-kit's `KeyboardSensor` was registered and was worse than nothing: it
+  translates by a fixed pixel step that addresses no particular cell, and its
+  Enter/Space activation fired alongside the chip's own click, so pressing
+  Enter both opened the editor and started an unaimable drag. A sensor that
+  technically responds to a key is not a keyboard alternative. Both paths
+  commit through one `moveShiftTo`, so they cannot disagree about clash
+  checking or timezones.
+
+- **Announce a shortcut in two places or it does not exist**: `aria-keyshortcuts`
+  on the control for assistive technology, and a line of visible text for
+  everyone else.
 
 ## 6. Component conventions
 
@@ -211,9 +289,37 @@ CSS.
 - Buttons: **primary** = solid `bg-primary` fill, white text. **secondary** =
   `bg-surface` + `border-surface-border`, `text-content` (a bordered neutral
   button. This is what earlier drafts of this doc called "ghost"). **ghost** =
-  transparent, `text-primary`, no border. Text-only affordance.
+  transparent, `text-primary-ink dark:text-primary-ink-dark`, no border — the
+  ink pair, both halves, because on a `ghost` control the colour _is_ the label
+  and `text-primary` measures 4.08:1. Also **success**, **warning**, **danger**,
+  **danger-outline**, and **clock** — the attendance CTA, the one place the
+  `clock` green is a button fill, kept as a variant so the exception stays
+  countable instead of being hand-rolled on each screen.
+- **Extend the existing components; do not add a second UI library.** A new
+  abstraction needs two real consumers before it exists.
 - Density matters: the rota builder is information-dense by design; keep chrome
   quiet so the schedule itself is the focus.
+
+### The shared primitives, and what each one owns
+
+| Component                | Owns                                                                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `ui/HeaderBar`           | The title/action row and the responsive stack. `PageHeader` and `WorkspaceHeader` both use it                                |
+| `ui/Button`              | Every variant, size, loading and disabled treatment, focus ring, and `CONTROL_MOTION`                                        |
+| `ui/IconButton`          | An icon-only control with a real 44×44 hit area and a required `label`                                                       |
+| `ui/Field`               | Label, hint, inline error, required and disabled-reason — with `aria-describedby` and `aria-invalid` wired, in a fixed order |
+| `ui/Modal`               | Focus trap and return, scroll lock, `aria-labelledby`, an unsaved-changes guard                                              |
+| `ui/ScrollRegion`        | A labelled, keyboard-reachable horizontal scroller with a measured overflow cue                                              |
+| `ui/MobileDisclosure`    | A `<details>` on a phone, a plain section on a desktop                                                                       |
+| `ui/EmptyState`          | The four empty situations, with the caller choosing which                                                                    |
+| `ui/StatTile`            | A metric tile, `compact` for the phone-tightened variant                                                                     |
+| `rota/PublicationStatus` | Rota state as a neutral chip, separately from what blocks publication                                                        |
+| `ui/PreviewCanvas`       | Standalone page padding for a `*PreviewPage`, suppressed inside `AppShell`                                                   |
+
+A **field's order is fixed**: label, control, hint, error. The hint stays
+visible when an error appears — "must be at least 8 characters" is what explains
+"Password is too short".
+
 - **Sidebar nav, active item:** solid fill, `bg-primary text-primary-fg`, per
   `docs/ORGANISATION_WORKSPACE.html`'s `.nav a[aria-current="page"]`
   (2026-08-06), the organisation workspace shell reference. Superseded the
@@ -223,7 +329,140 @@ CSS.
   `LINK_ACTIVE` is the single source of truth; don't reintroduce a different
   active-state treatment there without updating this note.
 
-## 7. Reference assets
+## 7. Layout and responsive behaviour
+
+**A page is: title and one-line purpose; one dominant action with restrained
+secondary ones; optional tabs; a search/filter toolbar; the working content;
+then contextual help or history.** In that order.
+
+### The header contract
+
+`ui/PageHeader` and `layout/WorkspaceHeader` both render `ui/HeaderBar`, which
+owns the title/action row. They stay separate components — one carries an entity
+avatar and a meta row, the other a route-backed tab bar — but neither sets its
+own spacing or title type any more, which is how they drifted apart before.
+
+Below `sm` (640px) the title block takes the full width and the actions stack
+beneath it. Above it they share a line, actions pinned right and `shrink-0`.
+
+This is a **breakpoint, not a `flex-wrap`**, and that distinction is the whole
+bug. The title block used to be `min-w-0 flex-1`, so it could shrink to nothing
+and the flex line therefore never overflowed: whether a header wrapped depended
+on how wide its buttons happened to be. The same Team header wrapped inside
+`AppShell` and did not on a preview page with less padding, and the title
+rendered as `Tea`.
+
+`primaryAction` is a separate slot from `actions`. It renders **first on phones**
+and last on desktop, so the one thing the page is for is under a thumb without
+scrolling past Export and Import.
+
+### Widths and spacing
+
+- 4px grid. Page padding 16px on a phone, 24px on a tablet, 32px on a desktop —
+  which is what `AppShell` already supplies, so a page adds none of its own.
+- 24px between major sections, 16px inside a group. Data-dense cells may use
+  8–12px deliberately.
+- Cards: 24px desktop, 16px mobile. `Panel flush` for a full-bleed table so its
+  padding is not doubled.
+- Ordinary content pages cap at about 1,280px. The rota grid and comparison
+  tables use the available workspace width; do not force a data grid into a
+  marketing container.
+
+### Grid items need `min-w-0`
+
+A CSS grid item defaults to `min-width: auto`, so it refuses to shrink below its
+widest cell and pushes the whole row past the page instead. Every horizontal
+overflow found in this pass — the clock-in hero, the dashboard tiles — was this.
+Put `min-w-0` on a grid or flex child that contains text.
+
+### Pinned columns in a data grid
+
+The rota grid pins its date row to the top and its staff-name column to the
+left. Three things have to be true together or it silently does nothing:
+
+1. **The grid needs its own bounded viewport.** `position: sticky` resolves
+   against the nearest scrollport. Without a `max-h` on the `ScrollRegion`, that
+   scrollport is the page, and a `sticky top-0` header pins to the top of the
+   window and floats over the toolbar instead.
+2. **The pinned cell needs an opaque background.** A transparent sticky cell
+   pins correctly and lets the content slide visibly underneath it.
+3. **It has to cover the grid gap.** A `gap-*` leaves a transparent channel
+   beside the pinned cell that content scrolls through. `-mr-1.5 pr-1.5` widens
+   the painted area without moving the text; the right border then lands in
+   that channel and is the only thing telling a reader the column is pinned.
+
+`ROTA_STICKY_STAFF_COL` in `rota/RotaGridRow.tsx` carries all three, and the
+header, the rows and the totals footer share it so the three bands cannot drift
+out of alignment.
+
+### Tables on a phone
+
+Seven columns do not fit 390px. Either draw labelled person/record rows instead
+(`TeamRowsTable` is the worked example: the row below `md`, the table above it),
+or keep the table inside a `ScrollRegion` so the overflow is visible and
+reachable. Do not clip a table and hope.
+
+### A dense toolbar has three levels
+
+Page identity; then period and publication state; then the optional filters.
+Filters collapse behind one chip when the column is too narrow for the row —
+`MobileDisclosure` takes a `breakpoint` (`md`, `lg` or `xl`) and an `inline`
+variant for exactly this. The chip **always carries the applied count**: a
+filter you cannot see and cannot count is a filter you forget you applied, and
+then the grid is lying to you about the week.
+
+`xl` is the right breakpoint for content inside the workspace column rather
+than the viewport — the rail takes 256px, so a 1,280px window is a ~950px
+column.
+
+### Secondary content
+
+`ui/MobileDisclosure` collapses a section behind a `<details>` summary on a
+phone and renders it plainly on a desktop. For genuinely useful context that is
+not what the screen is for: the clock-in screen's weekly summary, attendance
+trend, activity log and help links, which between them put `Clock In Now`
+1,370px down a 390px page.
+
+Never put an offline notice, a failed-write notice, or an error behind a
+disclosure.
+
+## 8. State language
+
+One vocabulary, so "saved", "published" and "delivered" stay three different
+claims:
+
+| State                | Wording                                                          |
+| -------------------- | ---------------------------------------------------------------- |
+| Editing              | Unsaved changes                                                  |
+| Request active       | Saving…                                                          |
+| Durable save         | Changes saved                                                    |
+| Offline queue        | Saved on this device. Waiting to sync.                           |
+| Failed replay        | Clock-in has not synced. Retry.                                  |
+| Draft                | Draft · not visible to staff                                     |
+| Publication blocked  | 2 issues block publication · Review issues                       |
+| Published            | Published · staff can view this version                          |
+| Invite made, no mail | Invitation created. Email could not be sent. Copy link or retry. |
+| No search results    | No staff match these filters · Clear filters                     |
+
+**Draft is neutral.** Red is for something that is actually blocking. The rota
+builder drew "Draft, not visible to staff" as a red panel with the blocking
+count as its body, so the normal condition of a week under construction and two
+real conflicts wore the same colour. `rota/PublicationStatus` splits them: a
+quiet status chip that is always present, and a red block that appears only when
+something blocks, carrying the count and a link to it.
+
+**Never show a success state before the backend result exists.** A toast is not
+a record: anything that failed or is queued must remain visible on the screen
+after the toast has gone.
+
+**An empty list has at least four different meanings** — no records yet, no
+results for this query, no permission, and failed to load — and they have
+different next actions. `ui/EmptyState` takes the copy and the action; the
+caller decides which case it is. "Nobody matches these filters" was being shown
+to brand-new organisations that had never added anybody and had no filter
+applied.
+
+## 9. Reference assets
 
 `docs/design/` holds the source references. Treat them as read-only design intent,
 not files to edit:

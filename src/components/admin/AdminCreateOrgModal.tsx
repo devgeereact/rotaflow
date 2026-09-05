@@ -181,7 +181,9 @@ export function AdminCreateOrgModal({
         <div>
           <Label htmlFor="create-org-plan">Plan</Label>
           {plansFailed ? (
-            <p className="text-sm text-danger">Could not load the plan list.</p>
+            <p className="text-sm text-danger-ink dark:text-danger-ink-dark">
+              Could not load the plan list.
+            </p>
           ) : (
             <Select
               id="create-org-plan"
@@ -230,7 +232,7 @@ export function AdminCreateOrgModal({
         </div>
 
         {formError && (
-          <p className="text-sm text-danger" role="alert">
+          <p className="text-sm text-danger-ink dark:text-danger-ink-dark" role="alert">
             {formError}
           </p>
         )}

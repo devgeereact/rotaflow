@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -72,8 +71,12 @@ import {
 } from '@/lib/rotaGrid';
 import { findClashingShift, ShiftClashError } from '@/lib/shiftConflicts';
 import { computeRotaInsights } from '@/lib/rotaInsights';
+import { PublicationStatus } from '@/components/rota/PublicationStatus';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
+
+/** Anchor for the "Review issues" link in `PublicationStatus`. */
+const CONFLICTS_PANEL_ID = 'rota-conflicts';
 import { Button } from '@/components/ui/Button';
-import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
@@ -89,6 +92,7 @@ import {
 } from '@/components/rota/AssignShiftModal';
 import { ShiftTypeManagerModal } from '@/components/rota/ShiftTypeManagerModal';
 import { RotaAssistantPanel } from '@/components/rota/RotaAssistantPanel';
+import { MobileDisclosure } from '@/components/ui/MobileDisclosure';
 import type {
   Availability,
   Department,
@@ -520,12 +524,24 @@ export function RotaBuilderPage(): JSX.Element {
     [staff],
   );
 
+  /**
+   * Everything currently narrowing the grid, for the collapsed filter chip.
+   * A count is the whole point of collapsing: a filter you cannot see and
+   * cannot count is a filter you forget you applied.
+   */
   const extraFilterCount =
     (assignmentFilter !== 'all' ? 1 : 0) +
     (statusFilter !== 'all' ? 1 : 0) +
     (problemsOnly ? 1 : 0) +
     (hideEmptyStaff ? 1 : 0) +
     (jobTitleFilter ? 1 : 0);
+
+  /** `extraFilterCount` plus the three selects that live on the toolbar itself. */
+  const appliedFilterCount =
+    extraFilterCount +
+    (locationFilter !== 'all' ? 1 : 0) +
+    (departmentFilter !== 'all' ? 1 : 0) +
+    (shiftTypeFilter !== 'all' ? 1 : 0);
 
   const clearExtraFilters = (): void => {
     setJobTitleFilter('');
@@ -789,9 +805,85 @@ export function RotaBuilderPage(): JSX.Element {
     [locationById, staffById],
   );
 
+  // Pointer only, deliberately.
+  //
+  // `KeyboardSensor` was registered here and was worse than nothing: it
+  // translates a chip by a fixed pixel step that addresses no particular cell,
+  // and its Enter/Space activation fired alongside the chip's own click, so
+  // pressing Enter on a shift both opened the editor and started a drag that
+  // could not be aimed. The keyboard path is `RotaGrid`'s own M-then-arrows
+  // move, which works in rows and dates rather than pixels and commits through
+  // the same `moveShiftTo` the drag does.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor),
+  );
+
+  /**
+   * Move one shift to a person/date/location. The single definition of what a
+   * move is, called by the pointer drag and by the grid's keyboard move.
+   *
+   * It was inline in `handleDragEnd`, which meant the keyboard path would have
+   * had to re-implement the timezone conversion, the 24-hour-shift guard and
+   * the double-booking refusal — three things it is easy to get subtly
+   * different and impossible to notice from a screenshot.
+   */
+  const moveShiftTo = useCallback(
+    (
+      shift: Shift,
+      target: { staffProfileId: string | null; date: string; locationId: string },
+    ): void => {
+      if (!guardEditable()) return;
+      const location = locationById.get(target.locationId);
+      if (!location) return;
+
+      const { time: startTime } = fromIsoInTimezone(shift.starts_at, location.timezone);
+      const { time: endTime } = fromIsoInTimezone(shift.ends_at, location.timezone);
+      let startsAt: string;
+      let endsAt: string;
+      try {
+        // A genuine 24h shift (e.g. a sleep-in/on-call shift) reads back with
+        // an identical start and end time, which computeShiftIsoRange rejects
+        // as ambiguous (0h vs 24h) — synchronously, so uncaught it would crash
+        // the handler entirely rather than leave the shift where it was.
+        ({ startsAt, endsAt } = computeShiftIsoRange(
+          target.date,
+          startTime,
+          endTime,
+          location.timezone,
+        ));
+      } catch (err) {
+        reportError(err, { area: 'rota:move' });
+        showError('Could not move that shift. It has been left where it was.');
+        return;
+      }
+
+      // Moving a shift onto someone already working that window is the same
+      // double-booking as creating one there, so it is refused the same way.
+      const moveClash = findClashingShift(
+        { staffProfileId: target.staffProfileId, startsAt, endsAt },
+        shiftsRef.current,
+        { ignoreShiftId: shift.id },
+      );
+      if (moveClash) {
+        showError(`Not moved, ${describeClash(moveClash)}`);
+        return;
+      }
+
+      void updateShift(shift.id, {
+        staff_profile_id: target.staffProfileId,
+        starts_at: startsAt,
+        ends_at: endsAt,
+      })
+        .then((updated) => {
+          setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+          setLastSavedAt(new Date());
+        })
+        .catch((err) => {
+          reportError(err, { area: 'rota:move' });
+          showError('Could not move that shift. It has been left where it was.');
+        });
+    },
+    [guardEditable, locationById, showError, describeClash],
   );
 
   const handleDragEnd = useCallback(
@@ -834,57 +926,13 @@ export function RotaBuilderPage(): JSX.Element {
       }
 
       if (activeId.startsWith('shift:')) {
-        const shiftId = activeId.slice('shift:'.length);
-        const shift = shifts.find((s) => s.id === shiftId);
+        const shift = shifts.find((s) => s.id === activeId.slice('shift:'.length));
         if (!shift) return;
-        const { time: startTime } = fromIsoInTimezone(shift.starts_at, location.timezone);
-        const { time: endTime } = fromIsoInTimezone(shift.ends_at, location.timezone);
-        let startsAt: string;
-        let endsAt: string;
-        try {
-          // A genuine 24h shift (e.g. a sleep-in/on-call shift) reads back
-          // with an identical start and end time, which computeShiftIsoRange
-          // rejects as ambiguous (0h vs 24h) — synchronously, so uncaught it
-          // would crash the drag handler entirely rather than leave the shift
-          // where it was.
-          ({ startsAt, endsAt } = computeShiftIsoRange(
-            cellDate,
-            startTime,
-            endTime,
-            location.timezone,
-          ));
-        } catch (err) {
-          reportError(err, { area: 'rota:drag-reassign' });
-          showError('Could not move that shift. It has been left where it was.');
-          return;
-        }
-
-        // Dragging a shift onto someone who is already working that window is
-        // the same double-booking as creating one there, so it is refused the
-        // same way. The shift stays where it was.
-        const moveClash = findClashingShift(
-          { staffProfileId: cellStaffProfileId ?? null, startsAt, endsAt },
-          shiftsRef.current,
-          { ignoreShiftId: shiftId },
-        );
-        if (moveClash) {
-          showError(`Not moved, ${describeClash(moveClash)}`);
-          return;
-        }
-
-        void updateShift(shiftId, {
-          staff_profile_id: cellStaffProfileId ?? null,
-          starts_at: startsAt,
-          ends_at: endsAt,
-        })
-          .then((updated) => {
-            setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
-            setLastSavedAt(new Date());
-          })
-          .catch((err) => {
-            reportError(err, { area: 'rota:drag-reassign' });
-            showError('Could not move that shift. It has been left where it was.');
-          });
+        moveShiftTo(shift, {
+          staffProfileId: cellStaffProfileId ?? null,
+          date: cellDate,
+          locationId: cellLocationId,
+        });
       }
     },
     [
@@ -895,6 +943,7 @@ export function RotaBuilderPage(): JSX.Element {
       showError,
       describeClash,
       guardEditable,
+      moveShiftTo,
     ],
   );
 
@@ -1906,93 +1955,100 @@ export function RotaBuilderPage(): JSX.Element {
           </div>
         </div>
 
-        {/* ---- Publish status ---- */}
-        {publishError ? (
-          <Callout tone="danger" title="Can't publish yet" className="mb-4">
-            {publishError}
-          </Callout>
-        ) : readOnly ? (
-          <Callout tone="success" title="Published" className="mb-4">
-            Staff can see this week, and it is locked while they are working to it. Choose
-            Amend rota to change it — staff keep seeing this version until you publish the
-            amendment.
-          </Callout>
-        ) : isAmending && criticalWarnings.length === 0 ? (
-          <Callout tone="info" title="Amendment in progress" className="mb-4">
-            Staff still see the published version of this week. Publish the amendment to
-            replace it, or discard it to leave the published week as it is.
-          </Callout>
-        ) : criticalWarnings.length > 0 ? (
-          <Callout
-            tone="danger"
-            title={isAmending ? 'Amendment blocked' : 'Draft, not visible to staff'}
-            className="mb-4"
-          >
-            {criticalWarnings.length} critical{' '}
-            {criticalWarnings.length === 1 ? 'issue blocks' : 'issues block'} publication.
-            See the Warnings tab.
-            {isAmending ? ' Staff continue to see the published version meanwhile.' : ''}
-          </Callout>
-        ) : rotasInScope.length > 0 ? (
-          <Callout tone="info" title="Draft, not visible to staff" className="mb-4">
-            No blocking issues. Ready to publish.
-          </Callout>
-        ) : null}
+        {/* ---- Publication state, and separately, what is blocking it ----
+            Being a draft is not an error. It used to be drawn as one: a red
+            panel headed "Draft, not visible to staff" whose body happened to
+            carry the blocking-issue count, so the normal condition of a rota
+            under construction and two genuine conflicts wore the same colour.
+            `PublicationStatus` splits them. */}
+        <PublicationStatus
+          state={
+            readOnly
+              ? 'published'
+              : isAmending
+                ? 'amending'
+                : rotasInScope.length > 0
+                  ? 'draft'
+                  : 'empty'
+          }
+          criticalCount={criticalWarnings.length}
+          advisoryCount={warnings.length - criticalWarnings.length}
+          publishError={publishError}
+          issuesAnchorId={CONFLICTS_PANEL_ID}
+        />
 
-        {/* ---- Filters row ---- */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Select
-            aria-label="Filter by location"
-            className="w-auto py-2"
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
+        {/* ---- Filters row ----
+            Three levels, per the design guide: page identity above, period and
+            publication above that, and this — the optional controls. Below
+            `xl` the workspace column is under ~950px and these four controls
+            plus Auto-assign and Actions took two rows before the grid, so the
+            filters collapse behind one chip that keeps the applied count
+            visible. Everything stays reachable; nothing is hidden without
+            being counted. */}
+        <div className="mb-4 flex flex-wrap items-start gap-3">
+          <MobileDisclosure
+            breakpoint="xl"
+            variant="inline"
+            title="Filters"
+            hint={appliedFilterCount > 0 ? String(appliedFilterCount) : undefined}
+            defaultOpen={appliedFilterCount > 0}
+            className="min-w-0"
           >
-            <option value="all">All Locations</option>
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            aria-label="Filter by department"
-            className="w-auto py-2"
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-          >
-            <option value="all">All Departments</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            aria-label="Filter by shift type"
-            className="w-auto py-2"
-            value={shiftTypeFilter}
-            onChange={(e) => setShiftTypeFilter(e.target.value)}
-          >
-            <option value="all">All Shift Types</option>
-            {shiftTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </Select>
-          <button
-            type="button"
-            onClick={() => setMoreFiltersOpen(true)}
-            className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
-          >
-            More filters
-            {extraFilterCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-fg">
-                {extraFilterCount}
-              </span>
-            )}
-            <ChevronDown size={14} aria-hidden="true" />
-          </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                aria-label="Filter by location"
+                className="w-auto py-2"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+              >
+                <option value="all">All Locations</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                aria-label="Filter by department"
+                className="w-auto py-2"
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+              >
+                <option value="all">All Departments</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                aria-label="Filter by shift type"
+                className="w-auto py-2"
+                value={shiftTypeFilter}
+                onChange={(e) => setShiftTypeFilter(e.target.value)}
+              >
+                <option value="all">All Shift Types</option>
+                {shiftTypes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+              <button
+                type="button"
+                onClick={() => setMoreFiltersOpen(true)}
+                className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+              >
+                More filters
+                {extraFilterCount > 0 && (
+                  <span className="ml-0.5 rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-fg">
+                    {extraFilterCount}
+                  </span>
+                )}
+                <ChevronDown size={14} aria-hidden="true" />
+              </button>
+            </div>
+          </MobileDisclosure>
 
           {/* Every other per-shift/per-week action the reference doesn't
               model (it has no shift-type management, no clipboard, no
@@ -2127,7 +2183,17 @@ export function RotaBuilderPage(): JSX.Element {
                 see its full team.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              /* A bare `overflow-x-auto` is draggable with a pointer and
+                 completely unreachable with a keyboard, and on a laptop the
+                 grid is `min-w-[860px]` so Thursday and Friday are off screen
+                 with nothing saying so. */
+              /* `max-h` is what makes the sticky date row mean anything: a
+                 sticky element resolves against its nearest scrollport, and
+                 without a height here that scrollport is the whole page, so
+                 the header would pin to the top of the window and float over
+                 the toolbar. A local viewport also keeps the scroll where the
+                 grid is, which is what the design guide asks for. */
+              <ScrollRegion label="Rota grid" viewportClassName="max-h-[70vh]">
                 <RotaGrid
                   dates={dates}
                   groups={groups}
@@ -2153,9 +2219,10 @@ export function RotaBuilderPage(): JSX.Element {
                   }}
                   // A published week's chips lose their × — the database
                   // refuses the delete, so offering it would be a lie.
+                  onMoveShift={readOnly ? undefined : moveShiftTo}
                   onDeleteShift={readOnly ? undefined : handleDeleteShiftFromChip}
                 />
-              </div>
+              </ScrollRegion>
             )}
           </Card>
         )}
@@ -2169,7 +2236,10 @@ export function RotaBuilderPage(): JSX.Element {
         </div>
 
         <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
-          <Card className="p-5">
+          {/* `tabIndex={-1}` so the "Review issues" link above moves focus
+              here as well as scrolling, which is the half of an in-page jump
+              that keyboard and screen-reader users actually need. */}
+          <Card id={CONFLICTS_PANEL_ID} tabIndex={-1} className="p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="font-semibold text-content dark:text-content-dark">
                 Conflicts
@@ -2185,7 +2255,7 @@ export function RotaBuilderPage(): JSX.Element {
                   </span>
                 )}
                 {warnings.length > criticalWarnings.length && (
-                  <span className="rounded-full bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning">
+                  <span className="rounded-full bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning-ink dark:text-warning-ink-dark">
                     {warnings.length - criticalWarnings.length} advisory
                   </span>
                 )}

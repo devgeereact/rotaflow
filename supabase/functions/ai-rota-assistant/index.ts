@@ -100,7 +100,9 @@ function zonedMinutes(iso: string, timeZone: string): number {
       .map((p) => [p.type, p.value]),
   ) as Record<string, string>;
   return (
-    Math.floor(Date.parse(`${parts.year}-${parts.month}-${parts.day}T00:00:00Z`) / 60_000) +
+    Math.floor(
+      Date.parse(`${parts.year}-${parts.month}-${parts.day}T00:00:00Z`) / 60_000,
+    ) +
     Number(parts.hour) * 60 +
     Number(parts.minute)
   );
@@ -861,7 +863,9 @@ Deno.serve(async (req: Request) => {
       notes.push(`${droppedOutOfPeriod} dropped for falling outside the period.`);
     }
     if (droppedUnknown > 0) {
-      notes.push(`${droppedUnknown} dropped for naming staff or times that do not exist.`);
+      notes.push(
+        `${droppedUnknown} dropped for naming staff or times that do not exist.`,
+      );
     }
 
     const modelSummary = typeof parsed.summary === 'string' ? parsed.summary : '';
@@ -885,7 +889,8 @@ Deno.serve(async (req: Request) => {
       retimed,
     });
     return jsonResponse({
-      summary: notes.length > 0 ? `${modelSummary} ${notes.join(' ')}`.trim() : modelSummary,
+      summary:
+        notes.length > 0 ? `${modelSummary} ${notes.join(' ')}`.trim() : modelSummary,
       suggestions: accepted,
     });
   } catch (err) {

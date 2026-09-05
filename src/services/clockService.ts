@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { fetchAllPages } from '@/lib/pagination';
+import { BOUNDARY_CONTEXT_HOURS, shiftIso } from '@/lib/hours';
 import { touchOrgActivity } from '@/services/activityService';
 import type { ClockEvent, ClockEventInsert, ClockEventUpdate } from '@/types';
 
@@ -63,7 +65,25 @@ export async function updateClockEvent(
   return data;
 }
 
-export interface ClockEventRange {
+/**
+ * Whether to read the events either side of the window as well.
+ *
+ * RF-08. A stream bounded exactly by the reporting window cannot be paired
+ * correctly at its edges: the `out` of a night shift is inside the window and
+ * its `in` is not, so `pairClockEvents` drops it; and the window that held
+ * that `in` had no `out`, so the segment was closed against `now` and paid to
+ * the moment the report was run.
+ *
+ * Callers that want *the events in this window* — a live dashboard count, the
+ * schedule strip — leave this off and get exactly that. Callers computing
+ * hours turn it on and then keep the segments the period owns, with
+ * `segmentsStartingWithin`.
+ */
+export interface BoundaryContext {
+  withBoundaryContext?: boolean;
+}
+
+export interface ClockEventRange extends BoundaryContext {
   staffProfileId: string;
   /** Inclusive ISO instant. */
   fromIso: string;
@@ -71,22 +91,40 @@ export interface ClockEventRange {
   toIso: string;
 }
 
+/** The instants to actually query, widened when boundary context was asked for. */
+function windowFor(range: {
+  fromIso: string;
+  toIso: string;
+  withBoundaryContext?: boolean;
+}): [string, string] {
+  if (!range.withBoundaryContext) return [range.fromIso, range.toIso];
+  return [
+    shiftIso(range.fromIso, -BOUNDARY_CONTEXT_HOURS),
+    shiftIso(range.toIso, BOUNDARY_CONTEXT_HOURS),
+  ];
+}
+
 /** One person's events in a window, oldest first. Pairs into in/out shifts for hours totals. */
 export async function listClockEventsForStaff(
   range: ClockEventRange,
 ): Promise<ClockEvent[]> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .select('*')
-    .eq('staff_profile_id', range.staffProfileId)
-    .gte('event_at', range.fromIso)
-    .lt('event_at', range.toIso)
-    .order('event_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const [fromIso, toIso] = windowFor(range);
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from('clock_events')
+      .select('*')
+      .eq('staff_profile_id', range.staffProfileId)
+      .gte('event_at', fromIso)
+      .lt('event_at', toIso)
+      .order('event_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 
-export interface OrgClockEventRange {
+export interface OrgClockEventRange extends BoundaryContext {
   orgId: string;
   fromIso: string;
   toIso: string;
@@ -96,13 +134,21 @@ export interface OrgClockEventRange {
 export async function listClockEventsForOrg(
   range: OrgClockEventRange,
 ): Promise<ClockEvent[]> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .select('*')
-    .eq('org_id', range.orgId)
-    .gte('event_at', range.fromIso)
-    .lt('event_at', range.toIso)
-    .order('event_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const [fromIso, toIso] = windowFor(range);
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from('clock_events')
+      .select('*')
+      .eq('org_id', range.orgId)
+      .gte('event_at', fromIso)
+      .lt('event_at', toIso)
+      // Ascending, then reversed below. Paging a descending order is the same
+      // work; ordering by the same key in both places is what keeps the pages
+      // from overlapping, and `id` is the tie-breaker that makes it total.
+      .order('event_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  }).then((rows) => rows.reverse());
 }

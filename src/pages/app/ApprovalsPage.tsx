@@ -148,15 +148,15 @@ export function ApprovalsPage(): JSX.Element {
           if (!swap) return;
           // Shared with `SwapsPage`: approving a swap also moves the shift,
           // and two copies of that would drift.
-          const decision = await decideShiftSwap(swap, status, user.id);
+          const decision = await decideShiftSwap(swap, status);
           if (decision.outcome === 'already-decided') {
             showError('That swap has already been decided. Reloading.');
+          } else if (decision.outcome === 'refused') {
+            // The decision and the reassignment commit together since 0123,
+            // so a refusal means nothing changed at all.
+            showError(decision.reason);
           } else if (decision.outcome === 'declined') {
             showSuccess('Swap declined.');
-          } else if (decision.reassignmentFailed) {
-            showError(
-              'The swap was approved but the shift could not be reassigned. Move it by hand in the Rota Builder.',
-            );
           } else {
             showSuccess(
               decision.reassigned

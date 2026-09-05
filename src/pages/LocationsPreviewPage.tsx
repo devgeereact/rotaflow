@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LocationsView } from '@/components/locations/LocationsView';
 import type { LocationRow } from '@/lib/locationsDirectory';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const ROWS: LocationRow[] = [
   {
@@ -48,7 +49,7 @@ export function LocationsPreviewPage(): JSX.Element {
   const [rows] = useState(ROWS);
 
   return (
-    <div className="min-h-screen bg-background px-5 py-6 dark:bg-background-dark">
+    <PreviewCanvas standaloneClassName="min-h-screen bg-background px-5 py-6 dark:bg-background-dark">
       <LocationsView
         rows={rows}
         loading={false}
@@ -58,6 +59,6 @@ export function LocationsPreviewPage(): JSX.Element {
         onOpenDepartments={() => {}}
         onOpenMinimumCover={() => {}}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

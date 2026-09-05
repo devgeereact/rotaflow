@@ -667,7 +667,7 @@ export function AdminSettingsPage(): JSX.Element {
                 value={value('maintenance_message') ?? ''}
                 disabled={!canManagePlatformConfig}
                 onChange={(v) => setDraft((d) => ({ ...d, maintenance_message: v }))}
-                hint="e.g. Scheduled maintenance on Sunday 02:00-04:00 UTC."
+                hint="e.g. Scheduled maintenance on Sunday 02:00–04:00 UTC."
               />
             </div>
             <Callout tone="warning" className="mt-4">

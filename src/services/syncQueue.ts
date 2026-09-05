@@ -325,7 +325,38 @@ export interface FlushResult {
  * Nothing is ever deleted on failure. A dead-lettered write is kept so the user
  * can see what did not go through and re-enter it.
  */
+/**
+ * Cross-tab guard. The hook's `flushing` ref only covers one document, so two
+ * open tabs reconnecting together both start draining the same IndexedDB
+ * store. Nothing is written twice — the idempotency keys (0081) catch that —
+ * but both tabs burn an attempt on every transient failure, so a queue that
+ * should survive five retries dies in two or three, and the difference lands
+ * as a dead-lettered clock-in.
+ *
+ * Web Locks is not available in every context this can run in (an old Safari,
+ * a test environment). Where it is missing the flush proceeds unguarded, which
+ * is exactly the behaviour that shipped before, rather than refusing to send
+ * somebody's work because a browser API is absent.
+ */
+async function withQueueLock<T>(run: () => Promise<T>, fallback: T): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks) return run();
+  return (
+    (await locks.request('rotaflow:sync-queue', { ifAvailable: true }, async (lock) =>
+      lock ? await run() : fallback,
+    )) ?? fallback
+  );
+}
+
 export async function flushQueuedWrites(userId: string): Promise<FlushResult> {
+  return withQueueLock(() => drainQueuedWrites(userId), {
+    synced: 0,
+    failed: 0,
+    deadLettered: 0,
+  });
+}
+
+async function drainQueuedWrites(userId: string): Promise<FlushResult> {
   const items = await listQueuedWrites(userId);
   let synced = 0;
   let failed = 0;

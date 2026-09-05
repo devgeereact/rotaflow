@@ -6,7 +6,7 @@ import { listShiftsForPeriod } from '@/services/shiftService';
 import { listStaff } from '@/services/staffService';
 import { listLocations, listDepartments } from '@/services/locationService';
 import { listShiftTypes } from '@/services/shiftTypeService';
-import { pairClockEvents } from '@/lib/hours';
+import { pairClockEvents, segmentsStartingWithin } from '@/lib/hours';
 
 export interface ReportPeriod {
   orgId: string;
@@ -58,8 +58,12 @@ export interface TimesheetReportRow {
 export async function getTimesheetReportRows(
   period: ReportPeriod,
 ): Promise<TimesheetReportRow[]> {
+  // Boundary context, then keep the segments this period owns. RF-08: the
+  // bounded read dropped a night shift's `out` at one edge and closed its `in`
+  // against `now` at the other, so the same shift was both missing from the
+  // day it ended and enormous on the day it started.
   const [events, staff] = await Promise.all([
-    listClockEventsForOrg(period),
+    listClockEventsForOrg({ ...period, withBoundaryContext: true }),
     listStaff(period.orgId, { includeInactive: true }),
   ]);
   const staffById = new Map(staff.map((s) => [s.id, s]));
@@ -74,7 +78,11 @@ export async function getTimesheetReportRows(
 
   const rows: TimesheetReportRow[] = [];
   for (const [staffId, staffEvents] of grouped) {
-    const segments = pairClockEvents(staffEvents);
+    const segments = segmentsStartingWithin(
+      pairClockEvents(staffEvents),
+      period.fromIso,
+      period.toIso,
+    );
     for (const segment of segments) {
       rows.push({
         staffName: staffName(staffById.get(staffId)),

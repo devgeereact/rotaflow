@@ -16,6 +16,7 @@ import { listConnectorStats, type ConnectorStats } from '@/services/integrationS
 import { reportError } from '@/lib/sentry';
 import type { HealthCheck } from '@/lib/platformHealth';
 import type { Organisation, OrgSmtpSettingsSafe } from '@/types';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 /**
  * `/admin/integrations`. What this deployment is wired to, and which tenants
@@ -198,7 +199,7 @@ export function AdminIntegrationsPage(): JSX.Element {
           </TileGrid>
 
           <Panel title="Connector status" flush>
-            <div className="overflow-x-auto">
+            <ScrollRegion label="Integrations">
               <table className="w-full table-fixed border-collapse text-sm">
                 <caption className="sr-only">
                   Connector status across every tenant
@@ -328,7 +329,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                   )}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           </Panel>
 
           <Panel title="Platform services. Real" flush>
@@ -403,7 +404,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                       {org ? (
                         <Link
                           to={`/admin/organisations/${org.id}`}
-                          className="text-sm font-medium text-content hover:text-primary dark:text-primary-ink-dark dark:text-content-dark"
+                          className="text-sm font-medium text-content hover:text-primary-ink dark:text-primary-ink-dark dark:text-content-dark"
                         >
                           {org.name}
                         </Link>

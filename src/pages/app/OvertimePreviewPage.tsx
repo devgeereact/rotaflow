@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { OvertimeView } from '@/components/overtime/OvertimeView';
 import type { OvertimeRow, OvertimeStatus } from '@/lib/overtimeRows';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const ROWS: OvertimeRow[] = [
   {
@@ -80,7 +81,7 @@ export function OvertimePreviewPage(): JSX.Element {
     : baseRows;
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       <OvertimeView
         canApprove={canApprove}
         viewerStaffId="staff-1"
@@ -111,6 +112,6 @@ export function OvertimePreviewPage(): JSX.Element {
         onDecline={async () => {}}
         onWithdraw={async () => {}}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

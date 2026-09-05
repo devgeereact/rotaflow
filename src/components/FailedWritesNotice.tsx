@@ -143,7 +143,9 @@ function FailedGroup({
           aria-hidden="true"
         />
         <div>
-          <h2 className="text-sm font-semibold text-danger">{heading}</h2>
+          <h2 className="text-sm font-semibold text-danger-ink dark:text-danger-ink-dark">
+            {heading}
+          </h2>
           <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
             {body}
           </p>

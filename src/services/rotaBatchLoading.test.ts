@@ -30,6 +30,7 @@ vi.mock('@/lib/supabase', () => {
       filters: [],
     };
     const rows = (): unknown[] => (table === 'rotas' ? rotaRows : shiftRows);
+    let page: [number, number] | null = null;
     const builder = {
       select() {
         queries.push(record);
@@ -52,10 +53,20 @@ vi.mock('@/lib/supabase', () => {
       order() {
         return builder;
       },
+      // Since RF-09 the shift reads are paginated, so the fake has to slice
+      // the way PostgREST does. Returning every row for any range would make
+      // `fetchAllPages` loop forever once the fixture grew past a page.
+      range(from: number, to: number) {
+        record.filters.push(['range', [from, to]]);
+        page = [from, to];
+        return builder;
+      },
       then(
         resolve: (value: { data: unknown[]; error: null }) => unknown,
       ): Promise<unknown> {
-        return Promise.resolve(resolve({ data: rows(), error: null }));
+        const all = rows();
+        const data = page ? all.slice(page[0], page[1] + 1) : all;
+        return Promise.resolve(resolve({ data, error: null }));
       },
     };
     return builder;

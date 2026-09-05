@@ -158,7 +158,11 @@ export function ContactPage(): JSX.Element {
 
   const fieldError = (key: keyof Fields): JSX.Element | null =>
     errors[key] ? (
-      <p id={`${key}-error`} role="alert" className="mt-1.5 text-sm text-danger">
+      <p
+        id={`${key}-error`}
+        role="alert"
+        className="mt-1.5 text-sm text-danger-ink dark:text-danger-ink-dark"
+      >
         {errors[key]}
       </p>
     ) : null;

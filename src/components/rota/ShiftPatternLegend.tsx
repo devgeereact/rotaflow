@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import type { ShiftType } from '@/types';
+import { formatTimeRange } from '@/lib/timeRange';
 
 interface ShiftPatternLegendProps {
   shiftTypes: ShiftType[];
@@ -12,8 +13,25 @@ interface ShiftPatternLegendProps {
 }
 
 /** '07:00:00' → '07:00'. Shift-type times come back from Postgres as `time`. */
-function hhmm(value: string | null): string {
-  return value ? value.slice(0, 5) : '--:--';
+function hhmm(value: string): string {
+  return value.slice(0, 5);
+}
+
+/**
+ * The pattern's default times, or `null` where the org has not set them.
+ *
+ * This used to print `--:--, --:--`. A placeholder in place of a time is worse
+ * than no time: it reads as a value that failed to load rather than as a
+ * pattern with no default, and the legend's job is the colour key and the
+ * count either way. It also wrote the two times comma-separated, which reads
+ * as two separate times rather than a span (`@/lib/timeRange`).
+ */
+function patternRange(type: {
+  default_start: string | null;
+  default_end: string | null;
+}): string | null {
+  if (!type.default_start || !type.default_end) return null;
+  return formatTimeRange(hhmm(type.default_start), hhmm(type.default_end));
 }
 
 /**
@@ -70,7 +88,7 @@ export function ShiftPatternLegend({
             type="button"
             onClick={() => onSelect(active ? 'all' : type.id)}
             aria-pressed={active}
-            title={`${type.name} · ${hhmm(type.default_start)}, ${hhmm(type.default_end)}`}
+            title={[type.name, patternRange(type)].filter(Boolean).join(' · ')}
             className={cn(
               'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
               active
@@ -93,9 +111,11 @@ export function ShiftPatternLegend({
                 active (`text-primary-ink dark:text-primary-ink-dark` on `bg-primary/10`), and opacity
                 on top of an inherited colour is the exact bug this whole
                 pass has been fixing elsewhere. */}
-            <span className="font-mono text-[0.65rem]">
-              {hhmm(type.default_start)}, {hhmm(type.default_end)}
-            </span>
+            {patternRange(type) && (
+              <span className="font-mono text-[0.65rem] tabular-nums">
+                {patternRange(type)}
+              </span>
+            )}
             <span className="tabular-nums">({count})</span>
           </button>
         );

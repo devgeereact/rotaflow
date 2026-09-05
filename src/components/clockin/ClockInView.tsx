@@ -10,6 +10,8 @@ import { RecentActivityCard } from '@/components/clockin/RecentActivityCard';
 import { WeeklySummaryCard } from '@/components/clockin/WeeklySummaryCard';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { MobileDisclosure } from '@/components/ui/MobileDisclosure';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import type { HelpLink } from '@/components/clockin/NeedHelpCard';
 import type {
   AttendanceSummary,
@@ -143,25 +145,28 @@ export function ClockInView({
         subtitle="Attendance is captured with your location and works offline. An entry made without signal queues on the device and syncs when you're back."
       />
 
+      {/* Offline and failed-write notices stay directly under the title: they
+          are the reason an action may not have done what it looked like it
+          did, and they must not be behind a disclosure. */}
       {notices}
 
-      <div className="mt-6">
-        <ClockPolicyBanner
-          title={policy.title}
-          body={policy.body}
-          onViewPolicy={policy.onViewPolicy}
-        />
-      </div>
-
+      {/* The clock action first.
+          ------------------------------------------------------------------
+          On a 390px screen this block used to open with a policy banner and
+          a full shift card, which put `Clock In Now` 1,370px down the page —
+          three phone screens past the fold, on the one screen whose entire
+          purpose is a single button. The DOM order is now action, then shift
+          detail; `order` restores the reference's shift-left/action-right
+          arrangement from `md` up, where both fit side by side anyway. */}
       <div className="mt-5 grid gap-5 lg:grid-cols-12">
-        <div className="lg:col-span-7">
+        <div className="min-w-0 lg:col-span-7">
           {/* 7/5 split, not 50/50. The reference gives Current Shift ~55% so
-              "09:00-17:00" and the location rows each stay on one line. */}
+              "09:00–17:00" and the location rows each stay on one line. */}
           <div className="grid h-full divide-y divide-surface-border overflow-hidden rounded-xl border border-surface-border bg-surface shadow-sm dark:divide-surface-border-dark dark:border-surface-border-dark dark:bg-surface-dark md:grid-cols-12 md:divide-x md:divide-y-0">
-            <div className="md:col-span-7">
+            <div className="order-2 min-w-0 md:order-1 md:col-span-7">
               <CurrentShiftPane shift={shift} onViewReminder={onViewReminder} />
             </div>
-            <div className="md:col-span-5">
+            <div className="order-1 min-w-0 md:order-2 md:col-span-5">
               <ClockActionPane
                 stage={stage}
                 clockTime={clockTime}
@@ -180,7 +185,7 @@ export function ClockInView({
           </div>
         </div>
 
-        <div className="flex flex-col gap-5 lg:col-span-5">
+        <div className="flex min-w-0 flex-col gap-5 lg:col-span-5">
           <Card className="p-0">
             <div className="border-b border-surface-border px-5 py-4 dark:border-surface-border-dark">
               <h2 className="font-semibold text-content dark:text-content-dark">Today</h2>
@@ -234,86 +239,114 @@ export function ClockInView({
             </dl>
           </Card>
 
-          <Card className="flex-1 p-0">
-            <div className="flex items-center justify-between gap-3 border-b border-surface-border px-5 py-4 dark:border-surface-border-dark">
-              <h2 className="font-semibold text-content dark:text-content-dark">
-                This week
-              </h2>
-              {onViewTimesheet && (
-                <Button size="sm" variant="secondary" onClick={onViewTimesheet}>
-                  Timesheet
-                </Button>
-              )}
-            </div>
-            {thisWeekRows.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-content-muted dark:text-content-muted-dark">
-                No shifts scheduled this week.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-                      <th className="px-5 py-2.5">Day</th>
-                      <th className="px-3 py-2.5">Planned</th>
-                      <th className="px-3 py-2.5">Actual</th>
-                      <th className="px-5 py-2.5 text-right">Paid</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface-border dark:divide-surface-border-dark">
-                    {thisWeekRows.map((row) => (
-                      <tr key={row.id}>
-                        <td className="px-5 py-2.5 text-content dark:text-content-dark">
-                          {row.dateLabel}
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-xs text-content-muted dark:text-content-muted-dark">
-                          {row.plannedLabel}
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-xs text-content-muted dark:text-content-muted-dark">
-                          {row.actualLabel}
-                        </td>
-                        <td className="px-5 py-2.5 text-right font-mono text-xs text-content dark:text-content-dark">
-                          {row.paidLabel}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <MobileDisclosure
+            title="This week"
+            hint={thisWeekRows.length === 0 ? 'No shifts' : `${thisWeekRows.length} days`}
+            className="flex-1"
+          >
+            <Card className="h-full p-0">
+              <div className="flex items-center justify-between gap-3 border-b border-surface-border px-5 py-4 dark:border-surface-border-dark">
+                <h2 className="font-semibold text-content dark:text-content-dark">
+                  This week
+                </h2>
+                {onViewTimesheet && (
+                  <Button size="sm" variant="secondary" onClick={onViewTimesheet}>
+                    Timesheet
+                  </Button>
+                )}
               </div>
-            )}
-          </Card>
+              {thisWeekRows.length === 0 ? (
+                <p className="px-5 py-6 text-sm text-content-muted dark:text-content-muted-dark">
+                  No shifts scheduled this week.
+                </p>
+              ) : (
+                <ScrollRegion label="This week's hours">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+                        <th className="px-5 py-2.5">Day</th>
+                        <th className="px-3 py-2.5">Planned</th>
+                        <th className="px-3 py-2.5">Actual</th>
+                        <th className="px-5 py-2.5 text-right">Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-border dark:divide-surface-border-dark">
+                      {thisWeekRows.map((row) => (
+                        <tr key={row.id}>
+                          <td className="px-5 py-2.5 text-content dark:text-content-dark">
+                            {row.dateLabel}
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-xs text-content-muted dark:text-content-muted-dark">
+                            {row.plannedLabel}
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-xs text-content-muted dark:text-content-muted-dark">
+                            {row.actualLabel}
+                          </td>
+                          <td className="px-5 py-2.5 text-right font-mono text-xs text-content dark:text-content-dark">
+                            {row.paidLabel}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </ScrollRegion>
+              )}
+            </Card>
+          </MobileDisclosure>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-12">
-        <div className="h-full lg:col-span-3">
-          <WeeklySummaryCard
-            periodLabel={weekly.periodLabel}
-            stats={weekly.stats}
-            completedPercent={weekly.completedPercent}
-            progressLabel={weekly.progressLabel}
-            onViewTimesheet={onViewTimesheet}
-          />
-        </div>
-        <div className="h-full lg:col-span-3">
-          <AttendanceStatusCard
-            tone={attendance.tone}
-            statusTitle={attendance.statusTitle}
-            statusBody={attendance.statusBody}
-            thisWeekLabel="This Week"
-            thisWeekValue={attendance.thisWeekValue}
-            lastWeekLabel="Last Week"
-            lastWeekValue={attendance.lastWeekValue}
-            onViewReport={onViewAttendanceReport}
-          />
-        </div>
-        <div className="h-full lg:col-span-3">
-          <RecentActivityCard entries={activity} onViewAll={onViewAllActivity} />
-        </div>
-        <div className="h-full lg:col-span-3">
-          <NeedHelpCard links={help} />
-        </div>
+      {/* The policy reminder sits under the action, not above it. It explains
+          the rule the button is subject to; it does not block the button, and
+          on a phone it was 90px of explanation before anything could be
+          done. */}
+      <div className="mt-5">
+        <ClockPolicyBanner
+          title={policy.title}
+          body={policy.body}
+          onViewPolicy={policy.onViewPolicy}
+        />
       </div>
+
+      {/* Everything below is context: last week's variance, the attendance
+          trend, the audit trail and the help links. Real capability, none of
+          it what somebody starting a shift came here for, so it collapses on
+          a phone and stays open on a desktop where it costs nothing. */}
+      <MobileDisclosure
+        title="Your hours and history"
+        hint={`${activity.length} recent`}
+        className="mt-5"
+      >
+        <div className="grid gap-5 lg:grid-cols-12">
+          <div className="h-full min-w-0 lg:col-span-3">
+            <WeeklySummaryCard
+              periodLabel={weekly.periodLabel}
+              stats={weekly.stats}
+              completedPercent={weekly.completedPercent}
+              progressLabel={weekly.progressLabel}
+              onViewTimesheet={onViewTimesheet}
+            />
+          </div>
+          <div className="h-full min-w-0 lg:col-span-3">
+            <AttendanceStatusCard
+              tone={attendance.tone}
+              statusTitle={attendance.statusTitle}
+              statusBody={attendance.statusBody}
+              thisWeekLabel="This Week"
+              thisWeekValue={attendance.thisWeekValue}
+              lastWeekLabel="Last Week"
+              lastWeekValue={attendance.lastWeekValue}
+              onViewReport={onViewAttendanceReport}
+            />
+          </div>
+          <div className="h-full min-w-0 lg:col-span-3">
+            <RecentActivityCard entries={activity} onViewAll={onViewAllActivity} />
+          </div>
+          <div className="h-full min-w-0 lg:col-span-3">
+            <NeedHelpCard links={help} />
+          </div>
+        </div>
+      </MobileDisclosure>
 
       <div className="mt-5">
         <ClockSecurityFooter

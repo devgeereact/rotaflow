@@ -73,6 +73,22 @@ migration. `src/services/syncQueue.ts` replays it.
 - **Queued is not reported as saved.** The clock screen says "saved offline, will
   sync automatically" and shows queue depth; the leave and swap modals carry the
   same notice.
+- **Replay is a property of being signed in, since 2026-09-05 (BUG-077).**
+  `OfflineQueueDrain` mounts `useSyncQueue` once inside `AppShell`, and the hook
+  flushes on reconnect, **on mount when already online with work waiting**, and
+  on returning to the foreground. Only the first of those existed before, and it
+  is the one that fires least often: the `online` event reaches a mounted
+  listener, so a phone that queued a clock-in with no signal, was closed, and was
+  reopened somewhere with signal flushed nothing at all. The write was visible in
+  the pending list the whole time. The hook also lived only on the three screens
+  that can queue, so simply navigating to the dashboard stranded it.
+- **Two tabs do not burn one retry budget.** `flushQueuedWrites` takes a Web Lock
+  (`rotaflow:sync-queue`). Nothing was ever written twice — the idempotency keys
+  above cover that — but both tabs spent an attempt on every transient failure,
+  so a queue that should survive five retries died in two or three, and the
+  difference lands as a dead-lettered clock-in. Where Web Locks is unavailable the
+  flush proceeds unguarded, which is what shipped before; refusing to send
+  somebody's work because a browser API is missing would be worse.
 
 ## What the reading story really is
 
@@ -139,6 +155,15 @@ None of these are fixed by this file. They are recorded here and in
 `docs/PWA-RELEASE-GATES.md` so that the next release decision has to look at
 them.
 
+**Re-checked 2026-09-05, and defect 1 above is still true at `main`.** The
+delivery audit of that date noted in passing that the working copy had "already
+improved some offline wording", and on that basis did not raise it again. It has
+not: `OfflineBanner.tsx:14`, `SplashScreen.tsx:82` and `AppBootScreen.tsx:149`
+all still promise cached content that the five-minute LRU above may not hold.
+Whatever the audit saw was in an uncommitted state that did not survive to
+`main`. Recorded because a defect that two documents each believe the other is
+tracking is a defect nobody is tracking.
+
 ## The nine conditions, and which have been tested
 
 The PWA engine asks for critical journeys under nine network conditions. Status
@@ -151,7 +176,7 @@ uses the GEE evidence vocabulary.
 | Intermittent connection                | NOT TESTED | unit tests simulate it; no browser has                                                               |
 | Offline                                | PARTIAL    | queue logic unit-tested; no browser offline run                                                      |
 | Network loss during an operation       | PARTIAL    | the "looked online but was not" path is handled and tested at unit level (`ClockInPage.tsx:372-384`) |
-| Network restoration                    | PARTIAL    | `syncQueue.test.ts:282` covers delivery on return, in isolation                                      |
+| Network restoration                    | PARTIAL    | `syncQueue.test.ts:282` covers delivery on return, in isolation. The **restart-while-already-online** case was reproduced as broken by the 2026-09-05 audit and fixed (BUG-077); the fix is reasoned and reviewed, not browser-verified                                      |
 | Expired authentication during recovery | NOT TESTED | a queued write replayed after the session expires is unproved                                        |
 | New version available                  | NOT TESTED | `registerType: 'prompt'` with a Reload button, never exercised in a test                             |
 | Relaunch after installation            | NOT TESTED | installation itself is untested                                                                      |

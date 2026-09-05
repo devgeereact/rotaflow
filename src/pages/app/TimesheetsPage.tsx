@@ -19,7 +19,7 @@ import {
   type Timesheet,
 } from '@/services/timesheetService';
 import { logAuditEvent } from '@/services/auditService';
-import { pairClockEvents, type WorkedSegment } from '@/lib/hours';
+import { pairClockEvents, segmentsStartingWithin, type WorkedSegment } from '@/lib/hours';
 import {
   buildTimesheetDayRows,
   weekTotalsForStaff,
@@ -72,6 +72,11 @@ export function TimesheetsPage(): JSX.Element {
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [weekShifts, setWeekShifts] = useState<Shift[]>([]);
   const [weekEvents, setWeekEvents] = useState<ClockEvent[]>([]);
+  // The window the events were read for. The read is deliberately wider than
+  // this (RF-08), so the period's own bounds have to be kept to filter with.
+  const [weekWindow, setWeekWindow] = useState<{ fromIso: string; toIso: string } | null>(
+    null,
+  );
   const [weekTimesheets, setWeekTimesheets] = useState<Timesheet[]>([]);
   const [weekDates, setWeekDates] = useState<string[]>([]);
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
@@ -90,6 +95,7 @@ export function TimesheetsPage(): JSX.Element {
       const timezone = locs[0]?.timezone ?? DEFAULT_TZ;
       const week = resolvePeriod('week', todayIso(), timezone);
       setWeekDates(week.dates);
+      setWeekWindow({ fromIso: week.fromIso, toIso: week.toIso });
 
       if (isManager) {
         const staffRows = await listActiveStaff(orgId);
@@ -101,7 +107,15 @@ export function TimesheetsPage(): JSX.Element {
             toIso: week.toIso,
             publishedOnly: false,
           }),
-          listClockEventsForOrg({ orgId, fromIso: week.fromIso, toIso: week.toIso }),
+          listClockEventsForOrg({
+            orgId,
+            fromIso: week.fromIso,
+            toIso: week.toIso,
+            // RF-08. Read either side of the week so a night shift that
+            // starts on Sunday and ends on Monday is one complete segment
+            // rather than an orphan `out` and an `in` closed against `now`.
+            withBoundaryContext: true,
+          }),
           listTimesheets(orgId, week.dates[0] ?? todayIso(), week.dates[6] ?? todayIso()),
         ]);
         setWeekShifts(shifts);
@@ -119,7 +133,15 @@ export function TimesheetsPage(): JSX.Element {
               toIso: week.toIso,
               staffProfileId: me.id,
             }),
-            listClockEventsForOrg({ orgId, fromIso: week.fromIso, toIso: week.toIso }),
+            listClockEventsForOrg({
+              orgId,
+              fromIso: week.fromIso,
+              toIso: week.toIso,
+              // RF-08. Read either side of the week so a night shift that
+              // starts on Sunday and ends on Monday is one complete segment
+              // rather than an orphan `out` and an `in` closed against `now`.
+              withBoundaryContext: true,
+            }),
             listTimesheets(
               orgId,
               week.dates[0] ?? todayIso(),
@@ -177,10 +199,21 @@ export function TimesheetsPage(): JSX.Element {
       byStaff.set(event.staff_profile_id, list);
     }
     const paired = new Map<string, WorkedSegment[]>();
-    for (const [staffId, events] of byStaff)
-      paired.set(staffId, pairClockEvents(events, now));
+    for (const [staffId, events] of byStaff) {
+      const segments = pairClockEvents(events, now);
+      // A segment belongs to the period its clock-in falls in — the same rule
+      // `listShiftsForPeriod` and the timesheet report apply. Without this the
+      // boundary context read above would add the previous night's shift to
+      // this week's total as well as last week's.
+      paired.set(
+        staffId,
+        weekWindow
+          ? segmentsStartingWithin(segments, weekWindow.fromIso, weekWindow.toIso)
+          : segments,
+      );
+    }
     return paired;
-  }, [weekEvents, now]);
+  }, [weekEvents, weekWindow, now]);
 
   const todaysStartedShifts = useMemo(
     () =>

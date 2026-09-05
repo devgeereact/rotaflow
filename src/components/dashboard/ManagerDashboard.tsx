@@ -140,14 +140,24 @@ export function ManagerDashboard({
         </Callout>
       )}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Compact and two-up on phones. Six full-width tiles put "Cover
+          against minimum" — the thing this screen exists to answer — three
+          screens down a 390px viewport. `min-w-0` because a grid item's
+          default `min-width: auto` refuses to shrink below its widest cell, so
+          one long hours label pushed the whole row past the page. */}
+      <div className="mb-6 grid min-w-0 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatTile
+          compact
+          className="min-w-0"
           label="Rostered this week"
           value={weekly ? hoursLabel(weekly.totalHours) : '—'}
           hint={`across ${overview.staff.length} staff`}
           chart={<Sparkline values={hoursTrend} />}
+          to="/app/reports"
         />
         <StatTile
+          compact
+          className="min-w-0"
           label="Shifts to fill"
           value={shiftsToFill}
           hint={
@@ -162,6 +172,8 @@ export function ManagerDashboard({
           to="/app/rota"
         />
         <StatTile
+          compact
+          className="min-w-0"
           label="Leave to decide"
           value={pendingLeave.length}
           hint={
@@ -171,21 +183,37 @@ export function ManagerDashboard({
           }
           to="/app/leave"
         />
-        <StatTile label="Swaps waiting" value={pendingSwaps.length} to="/app/swaps" />
         <StatTile
+          compact
+          className="min-w-0"
+          label="Swaps waiting"
+          value={pendingSwaps.length}
+          to="/app/swaps"
+        />
+        <StatTile
+          compact
+          className="min-w-0"
           label="On shift now"
           value={today?.onShift ?? 0}
           hint={`of ${today?.required ?? 0} required`}
           to="/app/schedule"
         />
         <StatTile
+          compact
+          className="min-w-0"
           label="Rota status"
           value={weekly?.rotaStatus === 'published' ? 'Published' : 'Draft'}
           hint={
             weekly?.rotaStatus === 'published' ? (
-              <span className="text-success">staff notified</span>
+              // `success` is a FILL; as caption text on white it is 3.33:1.
+              <span className="text-success-ink dark:text-success-ink-dark">
+                staff notified
+              </span>
             ) : (
-              <span className="text-danger-ink dark:text-danger-ink-dark">
+              // Neutral, not red. An unpublished rota is the normal state of a
+              // week being built, and the dashboard was colouring it the same
+              // as "4 conflicts need attention" directly above it.
+              <span className="text-content-muted dark:text-content-muted-dark">
                 not visible to staff
               </span>
             )

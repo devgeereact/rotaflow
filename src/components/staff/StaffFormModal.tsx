@@ -3,6 +3,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Field } from '@/components/ui/Field';
 import { Label } from '@/components/ui/Label';
 import type { Department, Location, StaffProfile } from '@/types';
 
@@ -119,23 +120,22 @@ export function StaffFormModal({
   return (
     <Modal open={open} onClose={onClose} title={initial ? 'Edit staff' : 'Add staff'}>
       <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+        {/* `Field` rather than a hand-wired Label + Input: it is what carries
+            the required marker (visible *and* announced) and, when validation
+            arrives, puts the message in the same place on every form. */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="staff-first">First name</Label>
+          <Field label="First name" required>
             <Input
-              id="staff-first"
               value={values.firstName}
               onChange={(e) => setValues((v) => ({ ...v, firstName: e.target.value }))}
             />
-          </div>
-          <div>
-            <Label htmlFor="staff-last">Last name</Label>
+          </Field>
+          <Field label="Last name" required>
             <Input
-              id="staff-last"
               value={values.lastName}
               onChange={(e) => setValues((v) => ({ ...v, lastName: e.target.value }))}
             />
-          </div>
+          </Field>
         </div>
 
         <div>
@@ -181,21 +181,17 @@ export function StaffFormModal({
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="staff-hours">Weekly hours</Label>
+          <Field label="Weekly hours" hint="Contracted, not rostered.">
             <Input
-              id="staff-hours"
               type="number"
               min="0"
               step="0.5"
               value={values.weeklyHours}
               onChange={(e) => setValues((v) => ({ ...v, weeklyHours: e.target.value }))}
             />
-          </div>
-          <div>
-            <Label htmlFor="staff-holiday">Holiday allowance (days)</Label>
+          </Field>
+          <Field label="Holiday allowance (days)">
             <Input
-              id="staff-holiday"
               type="number"
               min="0"
               step="0.5"
@@ -204,7 +200,7 @@ export function StaffFormModal({
                 setValues((v) => ({ ...v, holidayAllowance: e.target.value }))
               }
             />
-          </div>
+          </Field>
         </div>
 
         <div>
@@ -301,7 +297,9 @@ export function StaffFormModal({
           />
         </div>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {error && (
+          <p className="text-sm text-danger-ink dark:text-danger-ink-dark">{error}</p>
+        )}
 
         <Button
           className="w-full"

@@ -63,7 +63,7 @@ export function PageHero({
   return (
     <section className="border-b border-surface-border bg-surface dark:border-surface-border-dark dark:bg-surface-dark">
       <div className="mx-auto max-w-3xl px-6 py-16 text-center md:py-20">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-primary dark:text-primary-ink-dark">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-primary-ink dark:text-primary-ink-dark">
           {eyebrow}
         </p>
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-content md:text-5xl dark:text-content-dark">

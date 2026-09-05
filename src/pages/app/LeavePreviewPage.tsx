@@ -3,6 +3,7 @@ import { ManagerLeave } from '@/components/leave/ManagerLeave';
 import { StaffLeave } from '@/components/leave/StaffLeave';
 import type { LeaveDisplayRow } from '@/components/leave/LeaveRowsTable';
 import type { LeaveStatus } from '@/lib/leaveRows';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const ROWS: LeaveDisplayRow[] = [
   {
@@ -99,7 +100,7 @@ export function LeavePreviewPage(): JSX.Element {
   });
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       {role === 'staff' ? (
         <StaffLeave
           rows={filtered.filter((r) => r.firstName === 'Amara')}
@@ -145,6 +146,6 @@ export function LeavePreviewPage(): JSX.Element {
           onDecline={async () => {}}
         />
       )}
-    </div>
+    </PreviewCanvas>
   );
 }

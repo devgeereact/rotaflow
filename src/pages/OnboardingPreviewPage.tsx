@@ -334,7 +334,12 @@ export function OnboardingPreviewPage(): JSX.Element {
           onCopy={() => {}}
           submitting={false}
           sent={false}
-          locationNames={aboutValues.locations.map((l) => l.name).filter(Boolean)}
+          locations={aboutValues.locations
+            .filter((l) => l.name.trim())
+            // Preview-only ids. This route never calls create_invite, so
+            // nothing here is ever sent anywhere.
+            .map((l, i) => ({ id: `preview-location-${i}`, name: l.name }))}
+          departments={[]}
         />
       )}
       {step === 4 && (
