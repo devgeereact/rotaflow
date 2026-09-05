@@ -139,7 +139,14 @@ export default defineConfig({
       injectRegister: null, // registration handled manually in src/main.tsx
 
       // Files pulled into the precache manifest (the "app shell").
-      includeAssets: ['favicon.svg', 'offline.html', 'icons/*.png'],
+      // `offline.html` was here until 5 September 2026 and nothing could ever
+      // reach it (docs/SAAS.md GAP-051): `navigateFallback` is `index.html`,
+      // so every navigation resolves to the app shell, which is precached and
+      // works offline on its own. Precaching it made every visitor download a
+      // page no route serves. Deleted rather than wired up — a second offline
+      // page for a shell that already handles offline is a thing to keep in
+      // step for no benefit.
+      includeAssets: ['favicon.svg', 'icons/*.png'],
 
       manifest: {
         // A stable identity for the installed app, independent of `start_url`.

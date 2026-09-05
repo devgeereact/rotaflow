@@ -19,7 +19,8 @@ codebase will drift from, and several below had.
   without updating that doc first.
 - **No import cycles.** Direction is `pages → services → lib`; components use
   `hooks`/`context`. `lib` imports nothing from `pages`/`components`. _Convention,
-  not lint-enforced — six files currently break it with type-only imports._
+  not lint-enforced — five files currently break it with type-only imports:
+  `clockinDemo`, `reportsDemo`, `settingsTabs`, `swapRows`, `workspaceTabs`._
 
 ## 2. TypeScript
 

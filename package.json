@@ -5,7 +5,7 @@
   "description": "Multi-tenant, offline-first staff rota scheduling — build and share rotas in minutes; clock in, swap shifts and manage leave from any device.",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "dev": "vite",

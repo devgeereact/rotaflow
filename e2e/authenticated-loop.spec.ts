@@ -99,6 +99,36 @@ test.describe('the authenticated loop', () => {
       page.getByRole('heading', { name: 'About your organisation', exact: true }),
     ).toBeVisible({ timeout: 60_000 });
 
+    // ---- step 2: save the details, which is a plain table write --------
+    //
+    // Everything above this line goes through `create_organisation`, a
+    // SECURITY DEFINER function, so it proves nothing about what a signed-in
+    // user may write directly. Step 2 PATCHes `organisations` over PostgREST
+    // and is the first thing in the journey needing a column-level GRANT
+    // rather than a policy.
+    //
+    // It is also where the wizard was stuck for every customer until
+    // 2026-09-04 (GAP-061): `0017` scoped the UPDATE grant to four columns,
+    // `0023` added three more, and the grant never followed. The screen said
+    // "Could not save those details. Please try again." and pressing Continue
+    // again did the same thing forever. This test asserted the heading above
+    // and stopped one click short of it, which is why nothing caught it.
+    //
+    // Advancing to step 3 is the assertion: `handleAbout` only reaches
+    // `setStep(3)` after `updateOrganisation` and `mergeOrgSettings` have both
+    // resolved, so the heading changing is proof the write landed. The form is
+    // left untouched deliberately — every field it needs already has a usable
+    // default, and a customer who accepts them must not be stuck.
+    await page.getByRole('button', { name: /^continue$/i }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Invite your team', exact: true }),
+    ).toBeVisible({ timeout: 60_000 });
+
+    // The failure this guards renders an alert rather than throwing, so assert
+    // the absence of one too: a regression that stalled the wizard while still
+    // changing the heading would otherwise pass.
+    await expect(page.getByRole('alert')).toHaveCount(0);
+
     expect(errors, 'uncaught errors during signup and org creation').toEqual([]);
   });
 });

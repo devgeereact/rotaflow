@@ -23,6 +23,7 @@ import {
 import { checkGeofence } from '@/lib/geo';
 import { pairClockEvents } from '@/lib/hours';
 import { reportError } from '@/lib/sentry';
+import { NoStaffProfileNotice } from '@/components/staff/NoStaffProfileNotice';
 import { sendOrQueue } from '@/lib/queuedWrite';
 import {
   CLOCK_IN_WINDOW_MINUTES,
@@ -473,14 +474,7 @@ export function ClockInPage(): JSX.Element {
   }
 
   if (!data.profile) {
-    return (
-      <Card>
-        <p className="text-content-muted dark:text-content-muted-dark">
-          You don&rsquo;t have a staff profile in this organisation, so there is nothing
-          to clock in to. Ask your manager to add you to the staff directory.
-        </p>
-      </Card>
-    );
+    return <NoStaffProfileNotice activity="clock in" />;
   }
 
   const notices = (

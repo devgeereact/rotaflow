@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { PublicNav } from '@/components/marketing/PublicNav';
 import { PublicFooter } from '@/components/marketing/PublicFooter';
 import { usePageMetadata } from '@/hooks/usePageMetadata';
+import { SkipLink } from '@/components/layout/SkipLink';
 
 interface MarketingLayoutProps {
   /**
@@ -35,8 +36,11 @@ export function MarketingLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-background dark:bg-background-dark">
+      <SkipLink />
       <PublicNav />
-      <main className="flex-1">{children}</main>
+      <main id="main-content" tabIndex={-1} className="flex-1">
+        {children}
+      </main>
       <PublicFooter />
     </div>
   );
