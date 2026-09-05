@@ -94,16 +94,56 @@ export function useSyncQueue(): UseSyncQueue {
     }
   }, [refresh, userId]);
 
-  // Auto-flush on reconnect. Not on mount while online: a cold boot with
-  // nothing queued would otherwise open an IndexedDB transaction for no
-  // reason on every page load.
+  // Auto-flush on reconnect, on an online start with work already queued, and
+  // when the app comes back to the foreground.
+  //
+  // Reconnect alone was not enough, and this was RF-06. The offline-to-online
+  // transition only fires while the hook is mounted, so the ordinary case —
+  // clock in on a ward with no signal, close the app, walk somewhere with
+  // signal, open it again — never triggered a flush at all. The event that
+  // would have fired happened while the app was closed. The pending list was
+  // loaded and rendered, so the person could see their clock-in sitting there,
+  // and nothing sent it. On a phone that had been closed overnight that is a
+  // shift recorded nowhere but one device.
+  //
+  // The original comment here worried about opening an IndexedDB transaction
+  // on every cold boot. `refresh` has already opened one by this point and
+  // `pending` is its result, so the mount flush costs nothing when the queue
+  // is empty — which is the common case it was protecting.
   const wasOnline = useRef(online);
+  const startupFlushed = useRef(false);
   useEffect(() => {
-    if (online && !wasOnline.current) {
+    const reconnected = online && !wasOnline.current;
+    wasOnline.current = online;
+
+    if (reconnected) {
+      startupFlushed.current = true;
+      void flush();
+      return;
+    }
+
+    // Started (or signed in) already online with work waiting.
+    if (online && !startupFlushed.current && pending.length > 0) {
+      startupFlushed.current = true;
       void flush();
     }
-    wasOnline.current = online;
-  }, [online, flush]);
+  }, [online, flush, pending.length]);
+
+  // Foreground recovery. A phone that was backgrounded mid-flush, or woken in
+  // a different place with signal, fires neither an `online` event nor a
+  // remount — iOS in particular freezes a backgrounded tab rather than
+  // unloading it, so `visibilitychange` is the only signal that the app is
+  // being used again.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        void flush();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [flush]);
 
   const enqueue = useCallback(
     async (kind: OutboxKind, payload: unknown): Promise<void> => {

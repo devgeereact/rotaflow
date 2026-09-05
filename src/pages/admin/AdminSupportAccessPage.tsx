@@ -607,7 +607,7 @@ function RevokeModal({
 
 function FieldError({ message }: { message: string }): JSX.Element {
   return (
-    <p role="alert" className="mt-1 text-xs text-danger">
+    <p role="alert" className="mt-1 text-xs text-danger-ink dark:text-danger-ink-dark">
       {message}
     </p>
   );

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -22,6 +23,7 @@ export function AdminPage({
   title,
   description,
   action,
+  primaryAction,
   avatar,
   meta,
   children,
@@ -30,6 +32,12 @@ export function AdminPage({
   /** Optional on a detail screen, which carries `meta` instead. */
   description?: string;
   action?: ReactNode;
+  /**
+   * The console screen's one dominant action. Rendered first on a narrow
+   * viewport and last on a wide one — see `ui/HeaderBar`. `action` stays for
+   * the secondary controls.
+   */
+  primaryAction?: ReactNode;
   /** Identity mark for a detail screen. See {@link PageHeader}. */
   avatar?: ReactNode;
   /** Identifier, plan, status and dates for a detail screen. */
@@ -45,6 +53,7 @@ export function AdminPage({
         title={title}
         description={description}
         actions={action}
+        primaryAction={primaryAction}
         avatar={avatar}
         meta={meta}
       />
@@ -74,16 +83,27 @@ export function AdminLoading({
   );
 }
 
+/**
+ * Failed to load — which is not the same state as "there is nothing here".
+ *
+ * It was a bare paragraph, so a console screen that could not reach the
+ * database looked much like one whose table was legitimately empty. This uses
+ * the shared `EmptyState` with a danger icon and a retry, so the four empty
+ * situations docs/DESIGN.md §8 names stay distinguishable in the console too.
+ */
 export function AdminError({ onRetry }: { onRetry: () => void }): JSX.Element {
   return (
-    <Card>
-      <p className="mb-3 text-sm text-content-muted dark:text-content-muted-dark">
-        Could not load this data. That is usually a connection problem, if it persists,
-        check that your account still holds platform administrator access.
-      </p>
-      <Button variant="secondary" onClick={onRetry}>
-        Retry
-      </Button>
+    <Card className="p-0">
+      <EmptyState
+        icon={AlertTriangle}
+        title="Couldn't load this data"
+        description="That is usually a connection problem. If it persists, check that your account still holds platform administrator access."
+        action={
+          <Button variant="secondary" onClick={onRetry}>
+            Retry
+          </Button>
+        }
+      />
     </Card>
   );
 }

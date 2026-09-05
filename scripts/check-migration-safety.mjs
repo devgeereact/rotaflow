@@ -24,12 +24,28 @@
  * A bare `-- SAFETY: <why>` covers every rule in that file, which is right for
  * a migration doing one deliberate thing and too blunt for one doing several.
  *
- * ## Only new migrations
+ * ## Which migrations are checked
  *
- * Diffed against `origin/main`, so existing files are never re-litigated. An
- * applied migration cannot be made safer by editing it — this project's rule
- * is to add a new one — and re-flagging history trains everyone to ignore the
- * gate.
+ * Added migrations are scanned in full. Existing ones are never re-litigated:
+ * an applied migration cannot be made safer by editing it — this project's
+ * rule is to add a new one — and re-flagging history trains everyone to
+ * ignore the gate.
+ *
+ * MODIFIED and DELETED migrations are a different failure, and are refused
+ * outright. Editing a migration that has already run changes what every
+ * future rebuild replays while leaving production exactly as it was, so the
+ * schema the history describes and the schema that exists diverge silently.
+ * That is how `0113` came to be needed. The audit (RF-14) found this gate
+ * looked only at additions, so a modification passed it without a word.
+ *
+ * ## Which base ref
+ *
+ * `git diff A...B` already means "since the merge base", but the base ref
+ * itself is now explicit — `--base <ref>`, or `MIGRATION_CHECK_BASE` — because
+ * the previous version hard-coded `origin/main` and therefore printed "No new
+ * migrations in this branch" when run ON main. That is a vacuous pass, and it
+ * reads exactly like a real one. It now names the base it used, and says so
+ * when the comparison was empty by definition.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -87,6 +103,18 @@ const RULES = [
     why: 'Grants a table or function privilege to anon, the unauthenticated role. 0075 removed every one of these deliberately.',
   },
   {
+    id: 'drop_function',
+    // `create or replace` is the ordinary way to change a function and is not
+    // this. A DROP is different: between the migration applying and the new
+    // bundle reaching a browser, every client still calling the old signature
+    // gets PGRST202 and the feature is simply broken for them. Sometimes that
+    // is unavoidable — `0126` had to drop a three-argument `create_invite`
+    // because the five-argument replacement made the call ambiguous — which is
+    // exactly the kind of thing worth one sentence in the file.
+    match: (st) => /^drop\s+function\b/.test(st),
+    why: 'Drops a function. Any client still calling that signature fails until it reloads, and a rollback cannot bring the old body back.',
+  },
+  {
     id: 'alter_column_type',
     match: (st) => /^alter\s+table\b/.test(st) && /\balter\s+column\b.*\btype\b/.test(st),
     why: 'Changes a column type. Rewrites the table, and can lose precision or fail on real data the empty test database never had.',
@@ -132,34 +160,91 @@ function statements(sql) {
     .filter(Boolean);
 }
 
-function newMigrations() {
-  try {
-    return execFileSync(
-      'git',
-      ['diff', '--name-only', '--diff-filter=A', 'origin/main...HEAD', '--', DIR],
-      { encoding: 'utf8' },
-    )
-      .split('\n')
-      .filter((f) => f.endsWith('.sql'));
-  } catch {
-    // Failing closed. A gate that silently passes when it cannot see the diff
-    // is worse than no gate, because it is believed.
-    console.error(
-      '::error::Could not diff against origin/main, so migration safety was NOT checked.',
-    );
-    process.exit(1);
-  }
+/** `--base <ref>`, else MIGRATION_CHECK_BASE, else origin/main. */
+function baseRef() {
+  const flag = process.argv.indexOf('--base');
+  if (flag !== -1 && process.argv[flag + 1]) return process.argv[flag + 1];
+  return process.env.MIGRATION_CHECK_BASE || 'origin/main';
 }
 
-const files = newMigrations();
-if (files.length === 0) {
-  console.log('No new migrations in this branch.');
+function git(args) {
+  return execFileSync('git', args, { encoding: 'utf8' }).trim();
+}
+
+/** Migration files added, changed or removed since the merge base. */
+function changedMigrations(base) {
+  const collect = (filter) =>
+    git(['diff', '--name-only', `--diff-filter=${filter}`, `${base}...HEAD`, '--', DIR])
+      .split('\n')
+      .map((f) => f.trim())
+      .filter((f) => f.endsWith('.sql'));
+
+  return {
+    added: collect('A'),
+    // R and C are renames and copies. Renaming an applied migration is the
+    // same problem as editing one: the recorded name is what
+    // `supabase_migrations.schema_migrations` holds, so a rebuild replays a
+    // file production has no record of ever running.
+    changed: collect('MRC'),
+    deleted: collect('D'),
+  };
+}
+
+const base = baseRef();
+
+let diff;
+try {
+  // Resolve the ref first, so "no such ref" is reported as itself rather than
+  // as an empty diff that reads like a pass. Failing closed: a gate that
+  // silently passes when it cannot see the diff is worse than no gate,
+  // because it is believed.
+  git(['rev-parse', '--verify', `${base}^{commit}`]);
+  diff = changedMigrations(base);
+} catch {
+  console.error(
+    `::error::Could not diff ${DIR} against '${base}', so migration safety was NOT checked. ` +
+      'Fetch the base ref, or name one with --base <ref>.',
+  );
+  process.exit(1);
+}
+
+let failed = false;
+
+// An already-applied migration is history. Changing or removing one leaves
+// production untouched while every future rebuild replays something else.
+for (const file of [...diff.changed, ...diff.deleted]) {
+  const verb = diff.deleted.includes(file) ? 'deleted' : 'modified';
+  console.error(
+    `::error file=${file}::This migration was ${verb}. A migration that has already run is history: ` +
+      'editing it changes what a rebuilt database becomes without changing production, and the two then ' +
+      'disagree with nothing to show for it. Add a new migration instead.',
+  );
+  failed = true;
+}
+
+const files = diff.added;
+
+if (files.length === 0 && !failed) {
+  // Name the base, so an empty result can be told apart from a real pass. Run
+  // on main itself, `origin/main...HEAD` is empty by definition, and the old
+  // wording read as though something had been checked (RF-14).
+  const head = git(['rev-parse', '--short', 'HEAD']);
+  const sameCommit = git(['rev-parse', base]) === git(['rev-parse', 'HEAD']);
+  console.log(
+    `No migrations added between ${base} and HEAD (${head}).` +
+      (sameCommit
+        ? ` NOTE: ${base} IS HEAD, so this comparison is empty by definition and checked nothing.` +
+          ' Name a range with --base <ref>.'
+        : ''),
+  );
   process.exit(0);
 }
 
-console.log(`Checking ${files.length} new migration(s):\n  ${files.join('\n  ')}\n`);
-
-let failed = false;
+if (files.length > 0) {
+  console.log(
+    `Checking ${files.length} added migration(s) against ${base}:\n  ${files.join('\n  ')}\n`,
+  );
+}
 
 for (const file of files) {
   const raw = readFileSync(file, 'utf8');

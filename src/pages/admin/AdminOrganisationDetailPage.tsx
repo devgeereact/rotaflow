@@ -760,7 +760,10 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                           </Button>
                         </div>
                         {reinviteError && (
-                          <p className="mt-2 text-sm text-danger" role="alert">
+                          <p
+                            className="mt-2 text-sm text-danger-ink dark:text-danger-ink-dark"
+                            role="alert"
+                          >
                             {reinviteError}
                           </p>
                         )}

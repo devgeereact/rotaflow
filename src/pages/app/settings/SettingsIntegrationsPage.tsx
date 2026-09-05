@@ -235,7 +235,7 @@ export function SettingsIntegrationsPage(): JSX.Element {
           Email (SMTP)
         </h2>
         {existing?.verified_at ? (
-          <p className="mb-4 flex items-center gap-1.5 text-sm text-success">
+          <p className="mb-4 flex items-center gap-1.5 text-sm text-success-ink dark:text-success-ink-dark">
             <CheckCircle2 size={16} aria-hidden="true" />
             Verified {new Date(existing.verified_at).toLocaleString()}
           </p>
@@ -345,7 +345,11 @@ export function SettingsIntegrationsPage(): JSX.Element {
 
           {testResult && (
             <p
-              className={testResult.ok ? 'text-sm text-success' : 'text-sm text-danger'}
+              className={
+                testResult.ok
+                  ? 'text-sm text-success-ink dark:text-success-ink-dark'
+                  : 'text-sm text-danger-ink dark:text-danger-ink-dark'
+              }
               role="status"
             >
               {testResult.message}

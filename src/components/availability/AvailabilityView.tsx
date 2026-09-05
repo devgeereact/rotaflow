@@ -10,6 +10,7 @@ import {
   type AddExceptionInput,
 } from '@/components/availability/AddExceptionModal';
 import type { ExceptionRow, WeeklyPatternDay } from '@/lib/availabilityRows';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 export interface TeamAvailabilityDisplayRow {
   staffId: string;
@@ -110,7 +111,7 @@ export function AvailabilityView({
                 No exceptions on file.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <ScrollRegion label="Availability matrix">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
@@ -143,7 +144,7 @@ export function AvailabilityView({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             )}
           </Card>
 

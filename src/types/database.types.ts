@@ -1043,10 +1043,12 @@ export type Database = {
           accepted_at: string | null;
           accepted_by: string | null;
           created_at: string;
+          department_id: string | null;
           email: string;
           expires_at: string;
           id: string;
           invited_by: string | null;
+          location_id: string | null;
           org_id: string;
           revoked_at: string | null;
           role: string;
@@ -1057,6 +1059,7 @@ export type Database = {
           accepted_at?: string | null;
           accepted_by?: string | null;
           created_at?: string;
+          department_id?: string | null;
           email: string;
           expires_at?: string;
           id?: string;
@@ -2364,6 +2367,9 @@ export type Database = {
       };
       shift_swaps: {
         Row: {
+          applied_at: string | null;
+          applied_from_staff_profile_id: string | null;
+          applied_shift_id: string | null;
           client_event_id: string | null;
           created_at: string;
           id: string;
@@ -2378,6 +2384,9 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          applied_at?: string | null;
+          applied_from_staff_profile_id?: string | null;
+          applied_shift_id?: string | null;
           client_event_id?: string | null;
           created_at?: string;
           id?: string;
@@ -2392,6 +2401,9 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          applied_at?: string | null;
+          applied_from_staff_profile_id?: string | null;
+          applied_shift_id?: string | null;
           client_event_id?: string | null;
           created_at?: string;
           id?: string;
@@ -3030,6 +3042,8 @@ export type Database = {
       };
       timesheets: {
         Row: {
+          approved_at: string | null;
+          approved_by: string | null;
           created_at: string;
           id: string;
           org_id: string;
@@ -3039,8 +3053,11 @@ export type Database = {
           status: string;
           total_minutes: number;
           updated_at: string;
+          version: number;
         };
         Insert: {
+          approved_at?: string | null;
+          approved_by?: string | null;
           created_at?: string;
           id?: string;
           org_id: string;
@@ -3050,8 +3067,11 @@ export type Database = {
           status?: string;
           total_minutes?: number;
           updated_at?: string;
+          version?: number;
         };
         Update: {
+          approved_at?: string | null;
+          approved_by?: string | null;
           created_at?: string;
           id?: string;
           org_id?: string;
@@ -3061,6 +3081,7 @@ export type Database = {
           status?: string;
           total_minutes?: number;
           updated_at?: string;
+          version?: number;
         };
         Relationships: [
           {
@@ -3184,6 +3205,19 @@ export type Database = {
         Args: { p_swap_id: string };
         Returns: Database['public']['Tables']['shifts']['Row'];
       };
+      approve_timesheets: {
+        Args: {
+          p_org: string;
+          p_period_start: string;
+          p_period_end: string;
+          p_approvals: Json;
+        };
+        Returns: Database['public']['Tables']['timesheets']['Row'][];
+      };
+      decide_shift_swap: {
+        Args: { p_swap_id: string; p_status: string };
+        Returns: Json;
+      };
       begin_rota_revision: {
         Args: { p_rota_id: string };
         Returns: Database['public']['Tables']['rotas']['Row'];
@@ -3238,7 +3272,13 @@ export type Database = {
         Returns: string;
       };
       create_invite: {
-        Args: { p_email: string; p_org: string; p_role?: string };
+        Args: {
+          p_email: string;
+          p_org: string;
+          p_role?: string;
+          p_department?: string | null;
+          p_location?: string | null;
+        };
         Returns: {
           expires_at: string;
           invite_id: string;

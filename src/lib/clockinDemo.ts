@@ -31,13 +31,13 @@ export const DEMO_POLICY = {
 
 export const DEMO_SHIFT: CurrentShiftInfo = {
   countdownLabel: 'Starts in 12 min',
-  timeRange: '09:00-17:00',
+  timeRange: '09:00–17:00',
   dateLabel: 'Today, 14 May 2026',
   locationName: HOME,
   areaName: 'Care Home, Floor 2',
   roleName: 'Senior Care Assistant',
   shiftTypeName: 'Day Shift',
-  breakRange: '12:30-13:00',
+  breakRange: '12:30–13:00',
   breakDuration: '(30 min)',
   paidHours: '7h 30m',
   reminder: {

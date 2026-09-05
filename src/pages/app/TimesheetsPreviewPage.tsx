@@ -4,6 +4,7 @@ import { ManagerTimesheets } from '@/components/timesheets/ManagerTimesheets';
 import { StaffTimesheets } from '@/components/timesheets/StaffTimesheets';
 import type { TimesheetDisplayRow } from '@/components/timesheets/TimesheetRowsTable';
 import type { TimesheetDayStatus } from '@/lib/timesheetDayRows';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const TODAY_LABEL = format(new Date(), 'EEE d MMM');
 
@@ -110,7 +111,7 @@ export function TimesheetsPreviewPage(): JSX.Element {
   });
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       {role === 'staff' ? (
         <StaffTimesheets
           rows={[ROWS[0]!]}
@@ -146,6 +147,6 @@ export function TimesheetsPreviewPage(): JSX.Element {
           clockEventsForRow={() => ({ clockIn: null, clockOut: null })}
         />
       )}
-    </div>
+    </PreviewCanvas>
   );
 }

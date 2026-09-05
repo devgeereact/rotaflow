@@ -110,7 +110,7 @@ function AccountMenu({
               to="/admin"
               role="menuitem"
               onClick={closeAndNavigate}
-              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-danger hover:bg-danger/5 dark:hover:text-danger"
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-danger-ink dark:text-danger-ink-dark hover:bg-danger/5 dark:hover:text-danger-ink-dark"
             >
               <ShieldCheck size={18} aria-hidden="true" />
               Platform console

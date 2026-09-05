@@ -249,7 +249,7 @@ export function NotificationsPage(): JSX.Element {
                     <button
                       type="button"
                       onClick={() => void handleMarkRead(notification.id)}
-                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary dark:text-primary-ink-dark hover:bg-primary/10"
+                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium text-primary-ink dark:text-primary-ink-dark hover:bg-primary/10"
                     >
                       Mark read
                     </button>

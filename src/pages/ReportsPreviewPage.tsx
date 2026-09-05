@@ -9,6 +9,7 @@ import { BarChart } from '@/components/ui/BarChart';
 import type { ReportRow } from '@/lib/reportRows';
 import type { ReportsTab } from '@/components/reports/ReportsTabs';
 import type { ReportQuickAction } from '@/components/reports/ReportsQuickActionsCard';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 /**
  * Design-loop preview only, `/app/reports` needs a real Supabase session and a
@@ -130,7 +131,7 @@ export function ReportsPreviewPage(): JSX.Element {
   }, [activeTab, favourites, favouritesOnly, category, format, search]);
 
   return (
-    <div className="min-h-screen bg-background px-6 py-7 dark:bg-background-dark">
+    <PreviewCanvas standaloneClassName="min-h-screen bg-background px-6 py-7 dark:bg-background-dark">
       <ReportsView
         // Design-loop only: the live card fetches from Supabase, which a
         // preview route has no session for. Fixed figures so the chart's
@@ -272,6 +273,6 @@ export function ReportsPreviewPage(): JSX.Element {
         tipActionIcon={CalendarDays}
         onTipAction={noop}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

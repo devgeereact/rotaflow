@@ -46,16 +46,38 @@ export function buildAcceptUrl(token: string): string {
   return appUrlFor(`/invite/${token}`);
 }
 
+/**
+ * Where this person is being invited to work. Both optional, both applied to
+ * their staff record when they accept (0126).
+ *
+ * These are ids, not names. "Invite your team" offered a Location dropdown
+ * from the start and staged the chosen NAME in component state, where it was
+ * shown back in the review table and then dropped on the floor: `createInvite`
+ * took org, email and role, and `invites` had no column for either. A manager
+ * assigned twenty people to sites during onboarding and every one of them
+ * joined unassigned (RF-11).
+ */
+export interface InviteAssignment {
+  departmentId?: string | null;
+  locationId?: string | null;
+}
+
 /** Mint an invite. Owners/managers only. Enforced in the database. */
 export async function createInvite(
   orgId: string,
   email: string,
   role: MembershipRole,
+  assignment: InviteAssignment = {},
 ): Promise<CreatedInvite> {
   const { data, error } = await supabase.rpc('create_invite', {
     p_org: orgId,
     p_email: email,
     p_role: role,
+    // The database re-checks that both belong to `orgId` — `create_invite` is
+    // SECURITY DEFINER, so RLS is not standing behind it and a foreign key
+    // alone would accept another tenant's id.
+    p_department: assignment.departmentId ?? null,
+    p_location: assignment.locationId ?? null,
   });
 
   if (error) throw error;

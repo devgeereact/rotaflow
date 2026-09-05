@@ -170,7 +170,7 @@ export function StaffProfilePage(): JSX.Element {
 
   if (error || !profile) {
     return (
-      <p className="text-sm text-danger" role="alert">
+      <p className="text-sm text-danger-ink dark:text-danger-ink-dark" role="alert">
         {error ?? 'That staff member could not be found.'}
       </p>
     );

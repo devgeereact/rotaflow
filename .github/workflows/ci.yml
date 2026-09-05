@@ -138,6 +138,43 @@ jobs:
       - name: Dependency audit
         run: npm audit --audit-level=high
 
+  # The only automated check that reads `supabase/functions/**` at all.
+  #
+  # Those files are Deno, and are excluded from `npm run typecheck` and
+  # `npm run lint` — CLAUDE.md says plainly that "no automated check stands in
+  # for reading those files". That was true of the whole tree until the
+  # delivery audit of 2026-09-05 (RF-14) pointed out what it costs: the Edge
+  # Functions are where billing, invitations and notifications live, they are
+  # the only server compute this product has, and nothing verified they even
+  # compiled. All eight entry points passed a manual check that day, so this
+  # starts green rather than arriving with a backlog.
+  #
+  # It does not replace reading them. A type error is the cheapest possible
+  # class of defect in a handler; RF-04 and RF-05 both typechecked perfectly.
+  # The decision logic that can be pulled out of a handler belongs in a module
+  # with no Deno globals, where vitest can run it in the `verify` job above —
+  # `ai-rota-assistant/grounding.ts` and `stripe-webhook/reconcile.ts` are the
+  # two worked examples.
+  edge-types:
+    name: edge-types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned, not `vX`. A minor Deno release changing what it accepts would
+      # otherwise turn this gate red on a commit that touched nothing.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.9.5'
+
+      # `--node-modules-dir=auto` because these functions import npm specifiers
+      # (`npm:stripe@17`, `npm:@supabase/supabase-js@2`) and Deno will not
+      # resolve their types without somewhere to put them. `deno.lock` is
+      # committed, so this resolves to the same versions the check passed
+      # against rather than to whatever the majors point at today.
+      - name: Typecheck every Edge entry point
+        run: deno check --node-modules-dir=auto supabase/functions/*/index.ts
+
   # Separate job, not a step in `verify` above: needs Playwright's browser
   # binary (a real download, not just npm packages) and a live dev server,
   # neither of which the typecheck/lint/build gate should have to wait on.

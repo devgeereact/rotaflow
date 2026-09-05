@@ -461,7 +461,10 @@ export function StaffPage(): JSX.Element {
   return (
     <div>
       {error && (
-        <p className="mb-4 text-sm text-danger" role="alert">
+        <p
+          className="mb-4 text-sm text-danger-ink dark:text-danger-ink-dark"
+          role="alert"
+        >
           {error}
         </p>
       )}
@@ -484,7 +487,6 @@ export function StaffPage(): JSX.Element {
           locations={locations}
           rows={filtered}
           totalRowCount={allRows.filter((r) => r.active).length}
-          emptyMessage="Nobody matches these filters."
           onOpenActions={openActions}
           onExport={handleExport}
           onAddStaff={

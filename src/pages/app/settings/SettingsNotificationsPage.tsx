@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Toggle } from '@/components/ui/Toggle';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 /**
  * `/app/settings/notifications`. Design/SettingsNotifications.png.
@@ -123,7 +124,7 @@ export function SettingsNotificationsPage(): JSX.Element {
         title="Notification defaults"
         description="What your organisation notifies staff about, and how. Individuals can override these in their own preferences."
       >
-        <div className="overflow-x-auto">
+        <ScrollRegion label="Notification settings">
           <table className="w-full min-w-[34rem] text-sm">
             <thead>
               <tr className="border-b border-surface-border text-left dark:border-surface-border-dark">
@@ -173,7 +174,7 @@ export function SettingsNotificationsPage(): JSX.Element {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
 
         {canEdit && (
           <div className="mt-6 flex justify-end">

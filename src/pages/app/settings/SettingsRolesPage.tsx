@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const ROLE_SCOPE: Record<SystemRole, string> = {
   owner: 'Full access, including billing and permissions.',
@@ -128,7 +129,7 @@ export function SettingsRolesPage(): JSX.Element {
         title="Role display labels"
         description="Customise how each role is named across RotaFlow. Labels change wording only, not what someone can do."
       >
-        <div className="overflow-x-auto">
+        <ScrollRegion label="Roles and permissions">
           <table className="w-full min-w-[36rem] text-sm">
             <thead>
               <tr className="border-b border-surface-border text-left dark:border-surface-border-dark">
@@ -175,7 +176,7 @@ export function SettingsRolesPage(): JSX.Element {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
 
         {canEdit && (
           <div className="mt-6 flex justify-end">

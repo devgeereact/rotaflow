@@ -8,6 +8,7 @@ import {
   STORED_ITEMS,
 } from '@/lib/legalFacts';
 import type { ConsentCategory } from '@/lib/consent';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const CATEGORY_LABEL: Record<ConsentCategory, string> = {
   necessary: 'Essential',
@@ -63,7 +64,7 @@ export function CookiesPage(): JSX.Element {
           </p>
         </Card>
 
-        <div className="overflow-x-auto">
+        <ScrollRegion label="What this browser keeps">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">
               Everything RotaFlow stores in your browser, and whether it is essential
@@ -106,7 +107,7 @@ export function CookiesPage(): JSX.Element {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
 
         <Card className="space-y-3">
           <h2 className="font-display text-xl font-bold text-content dark:text-content-dark">

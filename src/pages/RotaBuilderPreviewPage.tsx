@@ -27,11 +27,14 @@ function formatWeekRange(dates: string[]): string {
   return `${format(new Date(`${first}T00:00:00`), 'd MMM')}, ${format(new Date(`${last}T00:00:00`), 'd MMM yyyy')}`;
 }
 import { Button } from '@/components/ui/Button';
-import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
+import { PublicationStatus } from '@/components/rota/PublicationStatus';
 import { RotaGrid, type RotaGroup } from '@/components/rota/RotaGrid';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import type { Location, Rota, Shift, ShiftType, StaffProfile } from '@/types';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
+import { MobileDisclosure } from '@/components/ui/MobileDisclosure';
 
 const ORG_ID = 'preview-org';
 const now = new Date();
@@ -91,14 +94,24 @@ function mkStaff(
   };
 }
 
-function mkShiftType(id: string, name: string, colour: string): ShiftType {
+function mkShiftType(
+  id: string,
+  name: string,
+  colour: string,
+  // Left `null` until now, so the pattern legend rendered `--:--, --:--` on
+  // every screenshot this preview has ever produced — a fixture defect that
+  // reads as a broken query. These are the times `buildShifts` below actually
+  // uses.
+  defaultStart: string,
+  defaultEnd: string,
+): ShiftType {
   return {
     id,
     org_id: ORG_ID,
     name,
     colour,
-    default_start: null,
-    default_end: null,
+    default_start: defaultStart,
+    default_end: defaultEnd,
     is_paid: true,
     category: null,
     created_at: ISO(now),
@@ -164,9 +177,9 @@ const STAFF = [...SUNSHINE_STAFF, ...RIVERSIDE_STAFF];
 // Morning/Evening/Night map to moss/violet/indigo so the chips render the
 // green/purple/blue wash docs/design/Rota-Builder.png shows.
 const SHIFT_TYPES = [
-  mkShiftType('type-morning', 'Morning', '#86AC6A'),
-  mkShiftType('type-evening', 'Evening', '#C48FD6'),
-  mkShiftType('type-night', 'Night', '#6CA0EB'),
+  mkShiftType('type-morning', 'Morning', '#86AC6A', '07:00', '15:00'),
+  mkShiftType('type-evening', 'Evening', '#C48FD6', '15:00', '23:00'),
+  mkShiftType('type-night', 'Night', '#6CA0EB', '23:00', '07:00'),
 ];
 
 const ROTA_SUNSHINE: Rota = {
@@ -321,7 +334,7 @@ function buildShifts(): Shift[] {
   return shifts;
 }
 
-const SHIFTS = buildShifts();
+const INITIAL_SHIFTS = buildShifts();
 const DEFAULT_TZ = 'Europe/London';
 
 /**
@@ -332,8 +345,13 @@ const DEFAULT_TZ = 'Europe/London';
  */
 export function RotaBuilderPreviewPage(): JSX.Element {
   const dates = useMemo(() => getWeekDates(getMonday(now)), []);
+  // Held in state, not a module constant, so the keyboard move actually moves
+  // something here. The design loop screenshots the initial arrangement either
+  // way; what this buys is a harness where the move can be driven and asserted
+  // without a Supabase session (`e2e/rota-grid.spec.ts`).
+  const [shifts, setShifts] = useState<Shift[]>(INITIAL_SHIFTS);
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(
-    SHIFTS.find((s) => s.staff_profile_id === 'staff-sarah')?.id ?? null,
+    INITIAL_SHIFTS.find((s) => s.staff_profile_id === 'staff-sarah')?.id ?? null,
   );
 
   const shiftMapByLocation = useMemo(() => {
@@ -342,13 +360,13 @@ export function RotaBuilderPreviewPage(): JSX.Element {
       map.set(
         loc.id,
         buildShiftMap(
-          SHIFTS.filter((s) => s.location_id === loc.id),
+          shifts.filter((s) => s.location_id === loc.id),
           loc.timezone,
         ),
       );
     }
     return map;
-  }, []);
+  }, [shifts]);
 
   const groups: RotaGroup[] = [
     { location: LOCATIONS[0]!, staff: SUNSHINE_STAFF },
@@ -356,8 +374,8 @@ export function RotaBuilderPreviewPage(): JSX.Element {
   ];
 
   const dailyTotals = useMemo(
-    () => computeDailyTotals(SHIFTS, dates, DEFAULT_TZ),
-    [dates],
+    () => computeDailyTotals(shifts, dates, DEFAULT_TZ),
+    [shifts, dates],
   );
   // Design preview only: the fixture has no leave, availability or documents
   // behind it, so the rules that need them would be misleading here. The live
@@ -365,7 +383,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
   const warnings = useMemo(
     () =>
       computeRotaInsights({
-        shifts: SHIFTS,
+        shifts: shifts,
         staff: STAFF,
         shiftTypes: SHIFT_TYPES,
         locations: LOCATIONS,
@@ -375,7 +393,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
         timezone: DEFAULT_TZ,
         now: Date.now(),
       }),
-    [],
+    [shifts],
   );
   const [shiftTypeFilter, setShiftTypeFilter] = useState('all');
   const conflictedShiftIds = useMemo(
@@ -390,7 +408,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
   );
 
   return (
-    <div className="min-h-screen bg-background px-6 py-8 dark:bg-background-dark md:px-10">
+    <PreviewCanvas>
       <DndContext>
         <div>
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
@@ -491,40 +509,47 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </div>
           </div>
 
-          <Callout tone="danger" title="Draft, not visible to staff" className="mb-4">
-            {warnings.filter((w) => w.severity === 'critical').length} critical issues
-            block publication. See the Warnings tab.
-          </Callout>
+          <PublicationStatus
+            state="draft"
+            criticalCount={warnings.filter((w) => w.severity === 'critical').length}
+            advisoryCount={warnings.filter((w) => w.severity !== 'critical').length}
+          />
 
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <Select
-              aria-label="Filter by location"
-              className="w-auto py-2"
-              defaultValue="all"
-            >
-              <option value="all">All Locations</option>
-            </Select>
-            <Select
-              aria-label="Filter by department"
-              className="w-auto py-2"
-              defaultValue="all"
-            >
-              <option value="all">All Departments</option>
-            </Select>
-            <Select
-              aria-label="Filter by shift type"
-              className="w-auto py-2"
-              defaultValue="all"
-            >
-              <option value="all">All Shift Types</option>
-            </Select>
-            <button
-              type="button"
-              className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:text-content-dark"
-            >
-              More filters
-              <ChevronDown size={14} aria-hidden="true" />
-            </button>
+          {/* Mirrors the live toolbar: below `xl` the filters collapse behind
+              one counted chip so Auto-assign and Actions keep the same row. */}
+          <div className="mb-4 flex flex-wrap items-start gap-3">
+            <MobileDisclosure breakpoint="xl" variant="inline" title="Filters">
+              <div className="flex flex-wrap items-center gap-3">
+                <Select
+                  aria-label="Filter by location"
+                  className="w-auto py-2"
+                  defaultValue="all"
+                >
+                  <option value="all">All Locations</option>
+                </Select>
+                <Select
+                  aria-label="Filter by department"
+                  className="w-auto py-2"
+                  defaultValue="all"
+                >
+                  <option value="all">All Departments</option>
+                </Select>
+                <Select
+                  aria-label="Filter by shift type"
+                  className="w-auto py-2"
+                  defaultValue="all"
+                >
+                  <option value="all">All Shift Types</option>
+                </Select>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-xl border border-surface-border px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:text-content-dark"
+                >
+                  More filters
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
+              </div>
+            </MobileDisclosure>
 
             <Button
               size="sm"
@@ -540,7 +565,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
           </div>
 
           <Card className="min-w-0 overflow-hidden p-5">
-            <div className="overflow-x-auto">
+            <ScrollRegion label="Rota grid" viewportClassName="max-h-[70vh]">
               <RotaGrid
                 dates={dates}
                 groups={groups}
@@ -554,11 +579,30 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                 onShiftTypeFilterChange={setShiftTypeFilter}
                 onAddShift={() => {}}
                 onSelectShift={(shift) => setSelectedShiftId(shift.id)}
+                // A real local move: the live page writes through
+                // `updateShift`, this one rewrites the array. Same component,
+                // same keyboard path, no database.
+                onMoveShift={(shift, target) => {
+                  const day = target.date;
+                  setShifts((prev) =>
+                    prev.map((s) =>
+                      s.id === shift.id
+                        ? {
+                            ...s,
+                            staff_profile_id: target.staffProfileId,
+                            location_id: target.locationId,
+                            starts_at: `${day}T${s.starts_at.slice(11)}`,
+                            ends_at: `${day}T${s.ends_at.slice(11)}`,
+                          }
+                        : s,
+                    ),
+                  );
+                }}
                 // Passed so the design loop sees the chip's × exactly as the
                 // live grid renders it. No-op: there is no rota behind this.
                 onDeleteShift={() => {}}
               />
-            </div>
+            </ScrollRegion>
           </Card>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -580,6 +624,6 @@ export function RotaBuilderPreviewPage(): JSX.Element {
           </div>
         </div>
       </DndContext>
-    </div>
+    </PreviewCanvas>
   );
 }

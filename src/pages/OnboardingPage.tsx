@@ -27,8 +27,9 @@ import {
   completeOnboarding,
   isOnboardingComplete,
 } from '@/services/orgService';
-import { createLocation } from '@/services/locationService';
+import { createLocation, listLocations } from '@/services/locationService';
 import { createInvite, sendInviteEmail } from '@/services/inviteService';
+import { summariseInviteDelivery } from '@/lib/inviteDelivery';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -326,6 +327,9 @@ export function OnboardingPage(): JSX.Element {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationCount, setLocationCount] = useState(0);
+  // The organisation's real locations, with their ids, so step 3 can offer
+  // them as invitation assignments rather than as bare names (RF-11).
+  const [orgLocations, setOrgLocations] = useState<{ id: string; name: string }[]>([]);
   /** True when this visit picked up an unfinished wizard rather than starting one. */
   const [resuming, setResuming] = useState(false);
 
@@ -538,16 +542,31 @@ export function OnboardingPage(): JSX.Element {
           working_week: aboutValues.workingWeek,
         });
 
-        const namedLocations = aboutValues.locations.filter((l) => l.name.trim());
+        // RF-11. This used to create every named location unconditionally, so
+        // a failure on the third one left the first two behind and pressing
+        // Continue again made duplicates of them. Reading what is already
+        // there first makes the retry idempotent, which is the property the
+        // step actually needs: a half-finished save is the normal case when
+        // something goes wrong, not an exotic one.
+        const existing = await listLocations(orgId);
+        const existingNames = new Set(existing.map((l) => l.name.trim().toLowerCase()));
+        const namedLocations = aboutValues.locations.filter(
+          (l) => l.name.trim() && !existingNames.has(l.name.trim().toLowerCase()),
+        );
+        const created = [];
         for (const location of namedLocations) {
-          await createLocation({
-            org_id: orgId,
-            name: location.name.trim(),
-            address: location.address.trim() || null,
-            timezone: aboutValues.timezone,
-          });
+          created.push(
+            await createLocation({
+              org_id: orgId,
+              name: location.name.trim(),
+              address: location.address.trim() || null,
+              timezone: aboutValues.timezone,
+            }),
+          );
         }
-        setLocationCount((c) => c + namedLocations.length);
+        const all = [...existing, ...created];
+        setOrgLocations(all.map((l) => ({ id: l.id, name: l.name })));
+        setLocationCount(all.length);
         if (after === 'exit') {
           void navigate('/app/dashboard', { replace: true });
         } else {
@@ -570,12 +589,31 @@ export function OnboardingPage(): JSX.Element {
       const results = await Promise.all(
         staged.map(async (invite): Promise<StagedInvite> => {
           try {
-            const created = await createInvite(orgId, invite.email, invite.role);
+            const created = await createInvite(orgId, invite.email, invite.role, {
+              // Sent, not just staged. Until RF-11 these were shown in the
+              // review table and then discarded.
+              departmentId: invite.departmentId,
+              locationId: invite.locationId,
+            });
             // Emailing is best effort on top of a real invite: a mail server
             // being down must not lose the invitation. The link is still shown
             // for every row, so the owner can pass it on either way.
-            await sendInviteEmail(orgId, created);
-            return { ...invite, url: created.acceptUrl };
+            //
+            // RF-10: this result used to be discarded. `sendInviteEmail`
+            // returns `{ sent: false, reason }` for an HTTP failure rather
+            // than throwing, so the catch below never ran and every row —
+            // emailed or not — came back looking identical. The screen then
+            // said "Invitations sent" after a 503. The invitation was real,
+            // which is why nobody noticed: staff simply never heard anything,
+            // and the owner had no reason to chase it.
+            const delivery = await sendInviteEmail(orgId, created);
+            return {
+              ...invite,
+              url: created.acceptUrl,
+              deliveryError: delivery.sent
+                ? undefined
+                : (delivery.reason ?? 'The email could not be sent.'),
+            };
           } catch (err) {
             reportError(err, { area: 'onboarding:invite' });
             return {
@@ -588,12 +626,12 @@ export function OnboardingPage(): JSX.Element {
       setStaged(results);
       setInvitesCreated(true);
 
-      const failed = results.filter((r) => r.error).length;
-      if (failed > 0) {
-        showError(`${failed} invitation${failed === 1 ? '' : 's'} could not be created.`);
-      } else {
-        showSuccess('Invitations sent. Each link is shown below as a fallback.');
-      }
+      // Which sentence to show is decided in `lib/inviteDelivery.ts` so that a
+      // test can hold it. Deciding it inline here, in a callback, with one
+      // boolean, is how RF-10 stayed invisible to every gate this project runs.
+      const summary = summariseInviteDelivery(results);
+      if (summary.tone === 'error') showError(summary.message);
+      else showSuccess(summary.message);
     } finally {
       setSubmitting(false);
     }
@@ -730,7 +768,11 @@ export function OnboardingPage(): JSX.Element {
           onCopy={(url) => void copyLink(url)}
           submitting={submitting}
           sent={invitesCreated}
-          locationNames={aboutValues.locations.map((l) => l.name).filter(Boolean)}
+          locations={orgLocations}
+          // Onboarding creates no departments, so this is empty and the
+          // control is hidden. It used to offer a hardcoded list that
+          // belonged to no organisation and was stored nowhere.
+          departments={[]}
         />
       )}
 

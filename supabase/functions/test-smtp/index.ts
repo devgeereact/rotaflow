@@ -77,7 +77,10 @@ Deno.serve(async (req: Request) => {
     });
     if (roleError) throw roleError;
     if (!isOwner) {
-      return jsonResponse({ error: 'Only the organisation owner can test SMTP settings' }, 403);
+      return jsonResponse(
+        { error: 'Only the organisation owner can test SMTP settings' },
+        403,
+      );
     }
 
     const { data: profile, error: profileError } = await callerClient
@@ -128,7 +131,8 @@ Deno.serve(async (req: Request) => {
         text: 'This is a test email from RotaFlow. Your organisation SMTP settings are working correctly.',
       });
     } catch (sendError) {
-      const message = sendError instanceof Error ? sendError.message : 'Unknown SMTP error';
+      const message =
+        sendError instanceof Error ? sendError.message : 'Unknown SMTP error';
       return jsonResponse({ ok: false, error: message }, 200);
     }
 

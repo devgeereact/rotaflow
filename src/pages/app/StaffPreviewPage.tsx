@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TeamDirectoryView } from '@/components/staff/TeamDirectoryView';
 import type { TeamRow } from '@/lib/teamRows';
 import type { Department, Location } from '@/types';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const DEPARTMENTS: Department[] = [
   {
@@ -121,7 +122,7 @@ export function StaffPreviewPage(): JSX.Element {
   });
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       <TeamDirectoryView
         orgName="Sunnyvale Care Group"
         tiles={{
@@ -142,11 +143,10 @@ export function StaffPreviewPage(): JSX.Element {
         locations={LOCATIONS}
         rows={filtered}
         totalRowCount={ROWS.length}
-        emptyMessage="Nobody matches these filters."
         onOpenActions={() => {}}
         onExport={() => {}}
         onAddStaff={() => {}}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

@@ -101,7 +101,7 @@ describe('checkAnnouncementGrounding', () => {
     expect(result.ungroundedDates).toEqual(['2027-04-19']);
   });
 
-  it("accepts a date the manager supplied, even outside the period", () => {
+  it('accepts a date the manager supplied, even outside the period', () => {
     // The reason this is not a simple period check. A manager writing "the
     // Christmas rota closes on 12 December" is stating a fact; refusing it
     // would make the feature useless for anything but the current week.

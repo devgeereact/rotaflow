@@ -283,6 +283,60 @@ New functions worth knowing before writing a query: `my_sessions()` /
 gained delegation (`0106`). Every policy in this schema calls one of those, so
 both changes are schema-wide by design — see §5.
 
+### 4.10 What 2026-09-05 added (`0123`–`0126`)
+
+Four migrations from the reliability repairs. Every one of them exists because
+an operation could report success while leaving the records wrong, so what
+matters here is less the shape than the guarantee.
+
+| Table            | Key columns                                                                                                   | Purpose |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- | ------- |
+| `billing_events` | `(provider, mode, event_id)` unique, `event_type`, `org_id?`, `event_created_at?`, `processed_at?`, `deliveries` (`0125`) | The receipt for every Stripe webhook delivery. `processed_at` is set only after the event's effects commit, so a null value means "received, not applied" and a retry may safely finish it. `mode` is in the key because test and live events arrive at one URL. RLS on, granted to `service_role` only — no screen reads it, and one tenant reading another's delivery history would be a disclosure with no upside. Excluded from the organisation export with a reason. |
+
+Columns added to existing tables:
+
+| Table          | Columns                                                                             | Why |
+| -------------- | ----------------------------------------------------------------------------------- | --- |
+| `shift_swaps`  | `applied_at`, `applied_shift_id`, `applied_from_staff_profile_id` (`0123`)          | Immutable evidence that a swap moved its shift. An approved swap used to be a **reusable command**: replaying it reverted whatever legitimate transfer had happened since. `applied_at is null` in the update predicate is what makes a concurrent second application lose rather than both succeed. Backfilled from `audit_logs`, which is the only append-only record of what the old two-step path actually did; a swap with no `rota.shift_reassigned` event is left null rather than assumed. |
+| `timesheets`   | `approved_by`, `approved_at`, `version` (`0124`)                                    | A sign-off that records neither who made it nor when is not a sign-off. `version` increments on re-approval, so a period revisited after a clock correction is visibly a second decision rather than looking like the first one always said this. |
+| `invites`      | `department_id`, `location_id` (`0126`)                                             | Where the person was invited to work, applied to their staff record at acceptance. Both validated against the inviting org **inside** `create_invite` — it is SECURITY DEFINER, so RLS is not standing behind it and a foreign key alone would accept another tenant's id. |
+
+**One new unique index, and it is the point of `0124`.**
+`timesheets_period_unique (org_id, staff_profile_id, period_start, period_end)`.
+The table had carried no such key since `0002`, and the client compensated with
+a read-then-insert-or-update that two managers could interleave: both read "no
+row yet", both inserted, and payroll read whichever came back first. The
+migration refuses to create the index while conflicts exist and raises with the
+query to review them — it does not pick a winner, because choosing between two
+disagreeing payroll totals by `updated_at` is a decision about somebody's pay.
+`public.timesheet_approval_conflicts` is that review view, and empty is the only
+correct state.
+
+New functions:
+
+- `decide_shift_swap(uuid, text)` (`0123`) — the whole swap decision in one
+  transaction: lock, authorise from `auth.uid()`, record, verify the shift is
+  still the requester's and its rota not archived, move it, spend the swap,
+  audit. Replaces the client's approve-then-reassign pair, which could leave an
+  approved swap whose shift never moved *and* a notification saying it had.
+- `apply_swap_reassignment(uuid)` (`0123`, hardened) — kept for a cached client
+  bundle, now carrying the same guards and refusing a second application.
+- `approve_timesheets(uuid, date, date, jsonb)` (`0124`) — one statement for a
+  whole batch, so a failure on person seventeen rolls back the first sixteen.
+  Staff ids are joined against the org rather than trusted from the payload.
+- `claim_billing_event` / `complete_billing_event` / `fail_billing_event`
+  (`0125`) — `service_role` only.
+- `create_invite` gained a five-argument form (`0126`). **The three-argument
+  form is dropped**, and had to be: a defaulted five-argument overload makes
+  every three-argument call ambiguous, which is an error on every invitation
+  rather than a compatible overload. The client and this migration must ship
+  together — see GAP-074.
+
+**Two error-code families to expect.** `SWAP4`–`SWAP9` are swap refusals that
+change nothing and are meant to be shown to the manager, not reported as
+faults; `TS001`–`TS003` are timesheet guards, and `TS001` is the migration
+refusing to add its unique key while duplicates exist.
+
 ## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions

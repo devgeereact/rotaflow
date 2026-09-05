@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { fetchAllPages } from '@/lib/pagination';
 import type { Shift, ShiftInsert, ShiftUpdate } from '@/types';
 
 /** Bulk-insert shifts (e.g. accepted AI rota suggestions) into a draft rota. */
@@ -26,15 +27,21 @@ export async function createShifts(shifts: ShiftInsert[]): Promise<Shift[]> {
 export async function listShiftsForRotas(rotaIds: string[]): Promise<Shift[]> {
   if (rotaIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from('shifts')
-    .select('*')
-    .in('rota_id', rotaIds)
-    .order('rota_id', { ascending: true })
-    .order('starts_at', { ascending: true });
-
-  if (error) throw error;
-  return data ?? [];
+  // Paginated (RF-09). Six locations of a busy month is well past the
+  // PostgREST row cap, and the cap does not announce itself — the builder
+  // simply rendered a week with shifts missing from the end of it.
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from('shifts')
+      .select('*')
+      .in('rota_id', rotaIds)
+      .order('rota_id', { ascending: true })
+      .order('starts_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 
 export interface PeriodShiftQuery {
@@ -63,22 +70,31 @@ export interface PeriodShiftQuery {
  * timezone boundary.
  */
 export async function listShiftsForPeriod(query: PeriodShiftQuery): Promise<Shift[]> {
-  let request = supabase
-    .from('shifts')
-    .select('*, rota:rotas(status)')
-    .eq('org_id', query.orgId)
-    .gte('starts_at', query.fromIso)
-    .lt('starts_at', query.toIso)
-    .neq('status', 'cancelled');
+  // Paginated, and ordered by `starts_at` then `id` so the total order is
+  // deterministic: two shifts starting at the same instant would otherwise be
+  // free to swap between pages, and one of them would be read twice while the
+  // other was never read at all (RF-09).
+  const rows = await fetchAllPages(async (from, to) => {
+    let request = supabase
+      .from('shifts')
+      .select('*, rota:rotas(status)')
+      .eq('org_id', query.orgId)
+      .gte('starts_at', query.fromIso)
+      .lt('starts_at', query.toIso)
+      .neq('status', 'cancelled');
 
-  if (query.locationId) request = request.eq('location_id', query.locationId);
-  if (query.staffProfileId)
-    request = request.eq('staff_profile_id', query.staffProfileId);
+    if (query.locationId) request = request.eq('location_id', query.locationId);
+    if (query.staffProfileId)
+      request = request.eq('staff_profile_id', query.staffProfileId);
 
-  const { data, error } = await request.order('starts_at', { ascending: true });
-  if (error) throw error;
+    const { data, error } = await request
+      .order('starts_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  });
 
-  const rows = data ?? [];
   const published = query.publishedOnly !== false;
 
   return rows

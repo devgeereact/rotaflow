@@ -210,7 +210,9 @@ export function LocationFormModal({
           when clock-in ships.
         </p>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {error && (
+          <p className="text-sm text-danger-ink dark:text-danger-ink-dark">{error}</p>
+        )}
 
         <Button
           className="w-full"

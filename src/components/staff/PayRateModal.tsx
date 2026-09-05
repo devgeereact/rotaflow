@@ -139,7 +139,7 @@ export function PayRateModal({
         </div>
 
         {pounds.trim() !== '' && !valid && (
-          <p className="text-xs text-danger" role="alert">
+          <p className="text-xs text-danger-ink dark:text-danger-ink-dark" role="alert">
             Enter an amount in pounds and pence, like 12.50.
           </p>
         )}

@@ -9,6 +9,7 @@ import type {
   WeeklyRosterSummary,
 } from '@/services/dashboardService';
 import type { Announcement, Location, StaffProfile } from '@/types';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const TODAY = format(new Date(), 'yyyy-MM-dd');
 const NOW = new Date(`${TODAY}T13:00:00`);
@@ -227,7 +228,7 @@ export function DashboardPreviewPage(): JSX.Element {
   const role = new URLSearchParams(window.location.search).get('role');
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       {role === 'staff' ? (
         <StaffDashboard
           firstName="Priya"
@@ -248,6 +249,6 @@ export function DashboardPreviewPage(): JSX.Element {
           hoursTrend={[402, 418, 396, 441, 428, 449, 462]}
         />
       )}
-    </div>
+    </PreviewCanvas>
   );
 }

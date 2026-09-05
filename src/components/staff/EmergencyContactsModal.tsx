@@ -237,7 +237,7 @@ export function EmergencyContactsModal({
             />
           </div>
           {error && (
-            <p className="text-sm text-danger" role="alert">
+            <p className="text-sm text-danger-ink dark:text-danger-ink-dark" role="alert">
               {error}
             </p>
           )}

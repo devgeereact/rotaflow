@@ -192,7 +192,10 @@ export function SecurityPage(): JSX.Element {
               </div>
 
               {confirmPassword && !passwordsMatch && (
-                <p className="text-sm text-danger" role="alert">
+                <p
+                  className="text-sm text-danger-ink dark:text-danger-ink-dark"
+                  role="alert"
+                >
                   Those passwords do not match.
                 </p>
               )}

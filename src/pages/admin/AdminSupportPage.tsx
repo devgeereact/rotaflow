@@ -31,6 +31,7 @@ import {
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { reportError } from '@/lib/sentry';
 import type { Organisation } from '@/types';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const PRIORITY_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
   urgent: 'danger',
@@ -278,7 +279,7 @@ export function AdminSupportPage(): JSX.Element {
                     </Link>
                     <Badge tone="neutral">{SCOPE_LABELS[session.scope]}</Badge>
                     <Badge tone="neutral">{session.caseRef}</Badge>
-                    <span className="ml-auto font-mono text-xs tabular-nums text-warning">
+                    <span className="ml-auto font-mono text-xs tabular-nums text-warning-ink dark:text-warning-ink-dark">
                       {formatRemaining(millisecondsRemaining(session.expiresAt, now))}{' '}
                       left
                     </span>
@@ -328,7 +329,7 @@ export function AdminSupportPage(): JSX.Element {
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            <ScrollRegion label="Support cases">
               <table className="w-full table-fixed border-collapse text-sm">
                 <caption className="sr-only">Support cases</caption>
                 <colgroup>
@@ -429,7 +430,7 @@ export function AdminSupportPage(): JSX.Element {
                   )}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           </Card>
 
           <Callout tone="info" title="Where these cases come from">

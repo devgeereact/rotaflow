@@ -110,7 +110,11 @@ export function ForgotPasswordPage(): JSX.Element {
             </form>
 
             {error && (
-              <p id="forgot-error" className="mt-4 text-sm text-danger" role="alert">
+              <p
+                id="forgot-error"
+                className="mt-4 text-sm text-danger-ink dark:text-danger-ink-dark"
+                role="alert"
+              >
                 {error}
               </p>
             )}

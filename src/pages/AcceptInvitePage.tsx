@@ -152,7 +152,10 @@ export function AcceptInvitePage(): JSX.Element {
         </>
       ) : wrongAccount ? (
         <>
-          <p className="mb-4 text-sm text-danger" role="alert">
+          <p
+            className="mb-4 text-sm text-danger-ink dark:text-danger-ink-dark"
+            role="alert"
+          >
             You&rsquo;re signed in as <strong>{user.email}</strong>, but this invitation
             was sent to <strong>{preview.email}</strong>. Sign out and sign back in with
             that address to accept it.
@@ -173,7 +176,10 @@ export function AcceptInvitePage(): JSX.Element {
             {accepting ? 'Joining…' : `Accept and join ${preview.orgName}`}
           </Button>
           {error && (
-            <p className="mt-4 text-sm text-danger" role="alert">
+            <p
+              className="mt-4 text-sm text-danger-ink dark:text-danger-ink-dark"
+              role="alert"
+            >
               {error}
             </p>
           )}

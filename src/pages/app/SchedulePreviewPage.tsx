@@ -3,6 +3,7 @@ import { ManagerSchedule } from '@/components/schedule/ManagerSchedule';
 import { StaffSchedule } from '@/components/schedule/StaffSchedule';
 import { resolvePeriod, todayIso } from '@/lib/schedulePeriod';
 import type { WeeklyRosterSummary } from '@/services/dashboardService';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 import type {
   ClockEvent,
   LeaveRequest,
@@ -203,7 +204,7 @@ export function SchedulePreviewPage(): JSX.Element {
   const role = new URLSearchParams(window.location.search).get('role');
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       {role === 'staff' ? (
         <StaffSchedule
           weekStartLabel={format(new Date(`${WEEK_DATES[0]}T00:00:00`), 'd MMMM yyyy')}
@@ -227,6 +228,6 @@ export function SchedulePreviewPage(): JSX.Element {
           clockEvents={CLOCK_EVENTS}
         />
       )}
-    </div>
+    </PreviewCanvas>
   );
 }

@@ -358,3 +358,86 @@ curl -s "https://rotaflow.space/$LIVE" | grep -o '<short-sha>' | head -1
 
 `vite.config.ts` bakes the git SHA in as `__SENTRY_RELEASE__`, so this is a direct answer rather
 than an inference from a filename.
+
+## Recovery: configuring the backup and auth-monitor jobs
+
+Written 2026-09-05 for the delivery audit's RF-13. **Neither scheduled workflow
+has ever succeeded** — `.github/workflows/backup.yml` and `auth-config.yml` both
+fail on their first step because the secrets they need do not exist. The
+repository holds one secret, `OPENROUTER_API_KEY`. So there is no backup of
+production, and nothing is watching the Auth settings.
+
+That is not a code defect and cannot be fixed from a branch. It needs three
+credential values pasted into GitHub by the account owner, and nothing here
+collects, reads or echoes any of them.
+
+### The three secrets, and where each comes from
+
+| Secret                  | Used by            | Where to get it |
+| ----------------------- | ------------------ | --------------- |
+| `SUPABASE_DB_URL`       | `backup.yml`       | Supabase dashboard → Project Settings → Database → Connection string → **URI**, session mode. Use the **pooler** host on port 5432, not 6543: `pg_dump` needs a session, and the transaction pooler will drop it partway through a large dump. |
+| `BACKUP_PASSPHRASE`     | `backup.yml`       | Generate a fresh one and store it in the password manager **before** setting it here. It is symmetric: a dump encrypted with a passphrase nobody kept is a dump nobody can restore, which is indistinguishable from having no backup. |
+| `SUPABASE_ACCESS_TOKEN` | `auth-config.yml`  | Supabase dashboard → Account → Access Tokens. Scope it to this project if the plan allows. |
+
+Set them at Settings → Secrets and variables → Actions → New repository secret.
+**A value written into a workflow file, a commit, or this document instead is
+a leak**, and a deploy does not undo a leak — see the section of that name
+above.
+
+### Confirming it actually worked
+
+A secret that exists is not a backup. Run the workflow once by hand and read
+the result, rather than waiting for the schedule and assuming silence is good:
+
+```bash
+gh workflow run backup.yml
+gh run list --workflow=backup.yml --limit 3
+gh run view --log-failed          # if it is red
+```
+
+A green run means: the dump ran, was encrypted, was uploaded as an artifact,
+and a **restore rehearsal** brought it back into a stock PostgreSQL 17 and
+found at least 40 public tables including `organisations`, `shifts`,
+`clock_events` and `audit_logs`.
+
+Read what that does and does not establish, because the rehearsal says so
+itself and it is easy to over-read:
+
+- It proves the **data** survives a round trip.
+- It does **not** prove auth, storage or RLS survive. Those are Supabase's and
+  are not in the dump. Restoring this file into a fresh project gives you the
+  tables and rows and none of the accounts.
+- It restores into stock PostgreSQL, so errors about `supabase_admin`, `auth`
+  and `storage` are expected and `ON_ERROR_STOP` is deliberately off. The
+  assertion is what came back, not that every statement applied.
+- Row counts are **reported, not asserted**, because production is pre-launch
+  and legitimately near-empty. A count threshold would fail nightly for a
+  reason that is not a backup problem, and would be deleted by whoever tired
+  of it first.
+
+### What is still missing after all three secrets exist
+
+Recording these so that "backups are configured" is not mistaken for "we can
+recover":
+
+- **A restore into a compatible Supabase environment**, with roles, auth and
+  RLS, and one full rota-and-attendance journey exercised there by a real user
+  session. Stock PostgreSQL cannot answer that question.
+- **Off-platform retention.** A GitHub Actions artifact expires, and it lives
+  with the repository. A backup that disappears with the account it protects is
+  not an independent copy.
+- **A named owner, a recovery-point objective and a recovery-time objective.**
+  Without them there is no threshold to be in breach of, and no one for the
+  alert to reach.
+- **An escalation destination that a human acknowledges.** A red scheduled
+  workflow has already proved insufficient: it blocks no merge, marks no pull
+  request red, and appears on no screen anyone opens. That is the whole reason
+  these two went red for three days unnoticed.
+
+### A standing check before any release
+
+`gh run list --workflow=backup.yml --limit 3` before shipping, and treat a
+backup older than 26 hours as a release blocker rather than a note. Migrations
+apply to production the moment a pull request merges, so the window between "a
+destructive migration merged" and "we noticed" is the window the backup has to
+cover.
