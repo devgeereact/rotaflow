@@ -103,7 +103,22 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17
-          pg_dump --version
+
+          # Installing the package is not enough. `postgresql-client-common`
+          # owns /usr/bin/pg_dump as a wrapper that dispatches to the DEFAULT
+          # cluster version, and the runner image already carries 16 — so with
+          # 17 installed alongside it, `pg_dump --version` still answered
+          # "16.15" and the dump aborted with "server version mismatch"
+          # against Postgres 17.6. Measured on run 33960168846, where the
+          # install step succeeded and reported 16.15 in the same breath.
+          #
+          # Put the versioned binaries first for every later step, then assert
+          # it, because the failure this prevents looks like a server problem
+          # rather than a PATH one.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          major="$(/usr/lib/postgresql/17/bin/pg_dump --version | grep -oE '[0-9]+' | head -1)"
+          [ "$major" = "17" ] || { echo "::error::pg_dump is $major, expected 17"; exit 1; }
 
       - name: Dump and encrypt
         env:
@@ -180,6 +195,12 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17
+
+          # Same wrapper problem as the dump job: without this, `psql` here is
+          # the runner's 16 and the rehearsal restores a 17 dump with an older
+          # client.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/psql --version
 
       - name: Decrypt and restore
         env:
