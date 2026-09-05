@@ -604,8 +604,17 @@ export function OnboardingPage(): JSX.Element {
     setSubmitting(true);
     setError(null);
     try {
-      await updateOrganisation(orgId, { plan });
-      await mergeOrgSettings(orgId, { billing_period: period });
+      // The chosen plan is an INTENT, not an entitlement. `organisations.plan`
+      // is what `0070` enforces seat and location limits from and what
+      // `my_feature_access` reads, so since `0120` only a paid subscription
+      // sets it — the browser cannot write it, on insert or update. Recording
+      // the choice here is what Checkout is opened with; until that completes
+      // the organisation stays on the free `starter` tier it is created with.
+      //
+      // Until 5 September 2026 this line was `updateOrganisation(orgId, { plan })`
+      // and a radio button granted the AI assistant, advanced reporting, 200
+      // seats and 20 sites for nothing (docs/SAAS.md GAP-062).
+      await mergeOrgSettings(orgId, { intended_plan: plan, billing_period: period });
       await refresh();
       setStep(5);
     } catch (err) {

@@ -79,12 +79,22 @@ insert into public.departments (id, org_id, location_id, name) values
   ('dddddddd-1100-0000-0000-000000000002', 'dddddddd-0000-0000-0000-000000000001',
    'dddddddd-1000-0000-0000-000000000002', 'Days');
 
+-- The owner also holds a staff profile: assertion 3 needs a request whose
+-- requester and reviewer are the same person.
+--
+-- It is not inserted, because it already exists: since `0121` creating an
+-- organisation creates a staff record for its founder, and
+-- `staff_profiles_org_user_idx` is unique on (org_id, user_id). Its id is
+-- generated, so remember it rather than asserting one — a trigger refuses to
+-- let this row be rewritten, which is itself the control working.
+select set_config(
+  'test.owner_staff',
+  (select id::text from public.staff_profiles
+    where org_id = 'dddddddd-0000-0000-0000-000000000001'
+      and user_id = 'd1111111-1111-1111-1111-111111111111'),
+  true);
+
 insert into public.staff_profiles (id, org_id, user_id, first_name, last_name, department_id, active) values
-  -- The owner also holds a staff profile: assertion 3 needs a request whose
-  -- requester and reviewer are the same person.
-  ('dddddddd-2000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001',
-   'd1111111-1111-1111-1111-111111111111', 'Olive', 'Owner',
-   'dddddddd-1100-0000-0000-000000000001', true),
   ('dddddddd-2000-0000-0000-000000000002', 'dddddddd-0000-0000-0000-000000000001',
    'd2222222-2222-2222-2222-222222222222', 'Sam', 'Staff',
    'dddddddd-1100-0000-0000-000000000001', true),
@@ -99,7 +109,7 @@ insert into public.leave_requests (id, org_id, staff_profile_id, start_date, end
   ('dddddddd-3000-0000-0000-000000000002', 'dddddddd-0000-0000-0000-000000000001',
    'dddddddd-2000-0000-0000-000000000002', date '2027-04-01', date '2027-04-01', 'pending'),
   ('dddddddd-3000-0000-0000-000000000003', 'dddddddd-0000-0000-0000-000000000001',
-   'dddddddd-2000-0000-0000-000000000001', date '2027-05-01', date '2027-05-02', 'pending'),
+   current_setting('test.owner_staff')::uuid, date '2027-05-01', date '2027-05-02', 'pending'),
   ('dddddddd-3000-0000-0000-000000000004', 'dddddddd-0000-0000-0000-000000000001',
    'dddddddd-2000-0000-0000-000000000002', date '2027-06-01', date '2027-06-02', 'pending');
 
@@ -255,7 +265,7 @@ select is(
 reset role;
 insert into public.announcement_reads (org_id, announcement_id, staff_profile_id) values
   ('dddddddd-0000-0000-0000-000000000001', 'dddddddd-5000-0000-0000-000000000001',
-   'dddddddd-2000-0000-0000-000000000001'),
+   current_setting('test.owner_staff')::uuid),
   ('dddddddd-0000-0000-0000-000000000001', 'dddddddd-5000-0000-0000-000000000001',
    'dddddddd-2000-0000-0000-000000000003');
 set local role authenticated;

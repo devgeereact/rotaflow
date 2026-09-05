@@ -43,9 +43,15 @@ insert into public.locations (org_id, name) values
   ('eeeeeeee-0000-0000-0000-000000000001', 'Site 1');
 
 -- Fill the plan exactly to its limit.
+--
+-- Fourteen, not fifteen: since `0121` the organisation is created with a
+-- staff record for its founder, which is one of the plan's seats. That is
+-- the intended cost of the founder being able to clock in on day one
+-- (docs/SAAS.md GAP-068), and this fixture asserting the boundary has to
+-- count it. The assertion below still checks the limit is inclusive.
 insert into public.staff_profiles (org_id, first_name, last_name)
 select 'eeeeeeee-0000-0000-0000-000000000001', 'Staff', n::text
-from generate_series(1, 15) as n;
+from generate_series(1, 14) as n;
 
 select is(
   (select count(*)::int from public.staff_profiles
@@ -115,10 +121,13 @@ insert into public.staff_profiles (org_id, first_name, last_name)
 select 'eeeeeeee-0000-0000-0000-000000000002', 'Ent', n::text
 from generate_series(1, 40) as n;
 
+-- 41, not 40: the founder's own record (`0121`) is already here. Counting it
+-- rather than subtracting it keeps this asserting what it is named for — that
+-- a null seat_limit refuses nothing — instead of quietly asserting a number.
 select is(
   (select count(*)::int from public.staff_profiles
     where org_id = 'eeeeeeee-0000-0000-0000-000000000002'),
-  40,
+  41,
   'a null seat_limit is genuinely uncapped — the Enterprise tier''s whole point'
 );
 select lives_ok(

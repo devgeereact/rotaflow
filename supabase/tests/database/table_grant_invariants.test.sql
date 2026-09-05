@@ -66,10 +66,12 @@ select is(
       from (
         values
           -- orgService.updateOrganisation / mergeOrgSettings, written by
-          -- OnboardingPage steps 2 and 4 and SettingsOrganisationPage.
+          -- OnboardingPage step 2 and SettingsOrganisationPage. `plan` is
+          -- absent on purpose since `0120`: it is the entitlement column and
+          -- only a paid subscription sets it, so it appears in the negative
+          -- assertion below instead.
           ('organisations',     'name'),
           ('organisations',     'slug'),
-          ('organisations',     'plan'),
           ('organisations',     'settings'),
           ('organisations',     'industry'),
           ('organisations',     'country'),
@@ -113,6 +115,7 @@ select is(
         'suspended_at',
         'suspended_reason',
         'support_access_allowed',
+        'plan',
         'is_demo',
         'onboarding_completed_at',
         'created_by'
