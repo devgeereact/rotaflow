@@ -385,6 +385,9 @@ export function DashboardPreviewPage(): JSX.Element {
           direction="asc"
           onSort={() => undefined}
           onOpenRow={() => undefined}
+          // The preview organisation is fully set up, so the banner is absent —
+          // which is the state a screenshot of this screen should show.
+          setup={{ requiredDone: 6, requiredTotal: 6, nextTitle: '' }}
         />
       )}
     </PreviewCanvas>

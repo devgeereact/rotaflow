@@ -169,6 +169,7 @@ const ResetPasswordPage = lazyPage(
 );
 const SchedulePage = lazyPage('SchedulePage', () => import('@/pages/app/SchedulePage'));
 const ClockInPage = lazyPage('ClockInPage', () => import('@/pages/app/ClockInPage'));
+const SetupPage = lazyPage('SetupPage', () => import('@/pages/app/SetupPage'));
 const AttendancePage = lazyPage(
   'AttendancePage',
   () => import('@/pages/app/AttendancePage'),
@@ -690,6 +691,17 @@ export function App(): JSX.Element {
                           element={
                             <RequireRole allow={MANAGERIAL} area="the rota builder">
                               <RotaBuilderPage />
+                            </RequireRole>
+                          }
+                        />
+                        <Route
+                          path="setup"
+                          element={
+                            <RequireRole
+                              allow={MANAGERIAL}
+                              area="the organisation setup checklist"
+                            >
+                              <SetupPage />
                             </RequireRole>
                           }
                         />

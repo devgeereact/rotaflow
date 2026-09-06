@@ -1088,9 +1088,11 @@ export type Database = {
           expires_at: string;
           id: string;
           invited_by: string | null;
+          last_sent_at: string | null;
           location_id: string | null;
           org_id: string;
           revoked_at: string | null;
+          send_error: string | null;
           role: string;
           token_hash: string;
           updated_at: string;
@@ -3363,6 +3365,10 @@ export type Database = {
         Returns: string;
       };
       can_manage_job_titles: { Args: { p_org: string }; Returns: boolean };
+      record_invite_send: {
+        Args: { p_error?: string | null; p_invite: string; p_sent: boolean };
+        Returns: undefined;
+      };
       correct_clock_event: {
         Args: {
           p_event: string;

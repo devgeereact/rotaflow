@@ -2,6 +2,7 @@ import {
   CalendarPlus,
   CheckCheck,
   LayoutDashboard,
+  ListChecks,
   CalendarDays,
   CalendarRange,
   Users,
@@ -114,6 +115,11 @@ export function navItemsForRole(
   ];
 
   if (isManager) {
+    // Above the rota builder, because it is the screen that says what the
+    // builder still needs. It stays in the rail after setup is finished: a
+    // count can go back down, and "we have no locations any more" is worth a
+    // permanent place rather than a one-off wizard nobody can return to.
+    items.push({ label: 'Set up', icon: ListChecks, to: '/app/setup' });
     items.push({ label: 'Rota Builder', icon: CalendarDays, to: '/app/rota' });
   }
   items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });

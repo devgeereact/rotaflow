@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CalendarRange,
   Clock3,
+  ListChecks,
   LogIn,
   MapPin,
   Megaphone,
@@ -65,6 +66,15 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/dashboard',
     group: 'Screens',
     icon: CalendarRange,
+  },
+  {
+    label: 'Set up',
+    keywords:
+      'setup checklist onboarding first steps locations shift types staff getting started what next',
+    to: '/app/setup',
+    group: 'Screens',
+    icon: ListChecks,
+    roles: MANAGERIAL,
   },
   {
     label: 'Rota builder',

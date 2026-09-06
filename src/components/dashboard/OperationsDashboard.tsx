@@ -63,6 +63,11 @@ export interface OperationsDashboardProps {
   direction: 'asc' | 'desc';
   onSort: (id: string, direction: 'asc' | 'desc') => void;
   onOpenRow: (row: AttendanceViewRow) => void;
+  /**
+   * How far through setup this organisation is, or `null` while it is being
+   * read. Drives the banner below; see `src/lib/setupProgress.ts`.
+   */
+  setup: { requiredDone: number; requiredTotal: number; nextTitle: string } | null;
 }
 
 /** A tile whose day failed to load shows "—", never a reassuring zero. */
@@ -144,6 +149,7 @@ export function OperationsDashboard({
   direction,
   onSort,
   onOpenRow,
+  setup,
 }: OperationsDashboardProps): JSX.Element {
   const day = staffingDay === 'today' ? today : tomorrow;
   const issues = today.rows
@@ -307,6 +313,29 @@ export function OperationsDashboard({
           to={attendanceLink(tomorrow.date, selectedLocationId, [])}
         />
       </div>
+
+      {/* 0 — setup, but only while it is unfinished.
+          A board reporting zero of everything is indistinguishable from a
+          quiet Tuesday, and a new customer had no way to tell which they were
+          looking at. It disappears the moment the essentials are in place
+          rather than sitting there for ever as a dismissed banner. */}
+      {setup && setup.requiredDone < setup.requiredTotal && (
+        <Callout
+          tone="info"
+          className="mb-6"
+          title={`Setup: ${setup.requiredDone} of ${setup.requiredTotal} essentials done`}
+        >
+          The figures below will read zero until this organisation has somewhere to work,
+          somebody to roster and a published rota. Next up:{' '}
+          <Link
+            to="/app/setup"
+            className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+          >
+            {setup.nextTitle}
+          </Link>
+          .
+        </Callout>
+      )}
 
       {/* 4 — what needs a decision, before the charts. */}
       {issues.length > 0 && (

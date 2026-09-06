@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { appUrlFor } from '@/lib/appOrigin';
+import { reportError } from '@/lib/sentry';
 import type { Invite, MembershipRole } from '@/types';
 
 /**
@@ -156,6 +157,30 @@ export interface InviteEmailResult {
 }
 
 /**
+ * Record the outcome against the invitation itself (`0129`).
+ *
+ * The result used to live only in the toast the manager saw. Reload the page
+ * and a delivered invitation and one the SMTP server refused were both simply
+ * "pending" — and they need opposite actions, because one is waiting on the
+ * invitee and the other on the manager.
+ *
+ * Deliberately never throws. This is the record of a send, not the send: an
+ * invitation that went out and whose bookkeeping failed must still be reported
+ * as sent, and the caller's own return value is what the screen shows.
+ */
+async function recordSend(
+  invite: CreatedInvite,
+  result: InviteEmailResult,
+): Promise<void> {
+  const { error } = await supabase.rpc('record_invite_send', {
+    p_invite: invite.inviteId,
+    p_sent: result.sent,
+    p_error: result.reason ?? null,
+  });
+  if (error) reportError(error, { area: 'invite:recordSend' });
+}
+
+/**
  * Email the join link to the person invited.
  *
  * Split from `createInvite` on purpose rather than folded into it: the invite
@@ -194,8 +219,12 @@ export async function sendInviteEmail(
         reason = undefined;
       }
     }
-    return { sent: false, reason };
+    const failure: InviteEmailResult = reason ? { sent: false, reason } : { sent: false };
+    await recordSend(invite, failure);
+    return failure;
   }
 
-  return { sent: Boolean(result.data?.sent) };
+  const outcome: InviteEmailResult = { sent: Boolean(result.data?.sent) };
+  await recordSend(invite, outcome);
+  return outcome;
 }

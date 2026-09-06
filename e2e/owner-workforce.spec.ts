@@ -78,6 +78,32 @@ test.describe('an owner runs the workforce', () => {
     // given a personal punch clock that opened on an empty screen.
     await expect(nav.getByRole('link', { name: 'Clock In' })).toHaveCount(0);
 
+    // ---- setup is a report of what the database holds -----------------
+    //
+    // A brand-new organisation: the wizard has run and nothing else has. The
+    // checklist has to say so, in dependency order, without a stored flag.
+    await page.goto('/app/setup');
+    await expect(page.getByRole('heading', { name: 'Set up' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(/of 6 essentials done/)).toBeVisible();
+    // A rota cannot be created yet and the checklist says what it is waiting
+    // for, rather than offering a step that would refuse them.
+    // Three steps are waiting on a site — departments, staffing minimums and
+    // the rota — so this counts rather than expecting a single node.
+    await expect(page.getByText('Needs locations first.')).toHaveCount(3);
+    // The dashboard says the same thing, so the zeros on it are explained.
+    //
+    // This assertion is also the guard on a defect it found: the banner is set
+    // at the END of the dashboard's load, so anything that throws earlier
+    // leaves it absent. `0123` added a second foreign key from `shift_swaps`
+    // to `shifts` and PostgREST began refusing the un-hinted embed with
+    // `PGRST201`, which took out every swap read and with it the dashboard's
+    // "waiting on a decision" half — caught into a toast, so the board still
+    // rendered and nothing said the list was missing rather than empty.
+    await page.goto('/app/dashboard');
+    await expect(page.getByText(/essentials done/)).toBeVisible({ timeout: 30_000 });
+
     // ---- the job-title catalogue writes through RLS -------------------
     await page.goto('/app/settings/roles');
     await expect(page.getByRole('heading', { name: 'Job titles' })).toBeVisible({
@@ -102,6 +128,14 @@ test.describe('an owner runs the workforce', () => {
     if (await addButton.isEnabled()) await addButton.click();
     await page.waitForTimeout(1_000);
     await expect(nurseRows).toHaveCount(1);
+
+    // Adding a job title moves that row without a reload of anything else:
+    // the status is a count, not a flag somebody set.
+    await page.goto('/app/setup');
+    await expect(page.getByRole('listitem').filter({ hasText: 'Job titles' })).toContainText(
+      '1 title',
+      { timeout: 30_000 },
+    );
 
     // ---- add a staff member and give them the title -------------------
     await page.goto('/app/team');

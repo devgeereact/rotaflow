@@ -27,7 +27,16 @@ export async function listMyShiftSwaps(
 ): Promise<ShiftSwapWithShift[]> {
   const { data, error } = await supabase
     .from('shift_swaps')
-    .select('*, shift:shifts(*)')
+    // Named foreign key, not a bare embed.
+    //
+    // `0123` added `applied_shift_id`, a SECOND reference from `shift_swaps`
+    // to `shifts`, and PostgREST then refuses an ambiguous embed outright:
+    // `PGRST201 · Could not embed because more than one relationship was
+    // found`. Every read of a swap has been failing since that migration
+    // merged, which took the dashboard's whole "waiting on a decision" half
+    // with it — the error was caught into a toast, so the board still
+    // rendered and nothing said the list was missing rather than empty.
+    .select('*, shift:shifts!shift_swaps_shift_id_fkey(*)')
     .or(`requested_by.eq.${staffProfileId},target_staff_profile_id.eq.${staffProfileId}`)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -38,7 +47,7 @@ export async function listMyShiftSwaps(
 export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShift[]> {
   const { data, error } = await supabase
     .from('shift_swaps')
-    .select('*, shift:shifts(*)')
+    .select('*, shift:shifts!shift_swaps_shift_id_fkey(*)')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false });
   if (error) throw error;

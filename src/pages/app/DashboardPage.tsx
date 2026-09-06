@@ -12,6 +12,8 @@ import { listLocations, listDepartments } from '@/services/locationService';
 import { listJobTitles } from '@/services/jobTitleService';
 import { getOrganisation } from '@/services/orgService';
 import { loadAttendanceDay } from '@/services/attendanceService';
+import { loadSetupFacts } from '@/services/setupService';
+import { buildSetupSteps, summariseSetup } from '@/lib/setupProgress';
 import {
   getPendingRequests,
   loadDashboardOverview,
@@ -108,6 +110,11 @@ export function DashboardPage(): JSX.Element {
   const [today, setToday] = useState<OperationsDaySnapshot | null>(null);
   const [tomorrow, setTomorrow] = useState<OperationsDaySnapshot | null>(null);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
+  const [setup, setSetup] = useState<{
+    requiredDone: number;
+    requiredTotal: number;
+    nextTitle: string;
+  } | null>(null);
   const [staffingDay, setStaffingDay] = useState<StaffingDay>('today');
   const [sort, setSort] = useState('expected');
   const [direction, setDirection] = useState<'asc' | 'desc'>('asc');
@@ -151,6 +158,7 @@ export function DashboardPage(): JSX.Element {
     setToday(null);
     setTomorrow(null);
     setFetchedAt(null);
+    setSetup(null);
     setLocationId(null);
     setSelected(null);
   }, [orgId, user?.id]);
@@ -259,6 +267,23 @@ export function DashboardPage(): JSX.Element {
               : EMPTY_DAY(nextDay(operationalToday)),
           );
           setFetchedAt(todayDay?.fetchedAt ?? new Date().toISOString());
+
+          // Caught rather than awaited into the main chain: a checklist that
+          // could not be read must not take the operations board down with
+          // it, and `null` renders no banner rather than a wrong one.
+          void loadSetupFacts(orgId)
+            .then((facts) => {
+              if (token !== requestToken.current) return;
+              const summary = summariseSetup(buildSetupSteps(facts));
+              setSetup({
+                requiredDone: summary.requiredDone,
+                requiredTotal: summary.requiredTotal,
+                nextTitle: summary.next?.title ?? '',
+              });
+            })
+            .catch((error: unknown) => {
+              reportError(error, { area: 'dashboard:setup' });
+            });
         } else {
           const me = await getMyStaffProfile(orgId, user.id);
           if (token !== requestToken.current) return;
@@ -428,6 +453,7 @@ export function DashboardPage(): JSX.Element {
             setDirection(dir);
           }}
           onOpenRow={openRow}
+          setup={setup}
         />
         <AttendanceDetailModal
           open={selected !== null}
