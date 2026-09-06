@@ -80,30 +80,3 @@ export function summariseNotifications(
     byType: tally(rows.map((r) => r.type)),
   };
 }
-
-/**
- * What the console reference's Notifications screen offers that this
- * deployment cannot, and why.
- */
-export const NOTIFICATION_GAPS: readonly { title: string; detail: string }[] = [
-  {
-    title: 'No platform announcements',
-    detail:
-      'The notifications table addresses rows to one user inside one organisation. There is no table for a platform-wide message, no audience definition, and no fan-out, so there is nothing to compose here.',
-  },
-  {
-    title: 'No delivery telemetry',
-    detail:
-      'The schema records read_at and nothing else. Sent, delivered, bounced and failed are not columns, so a delivery rate would be a guess dressed as a percentage.',
-  },
-  {
-    title: 'Client cannot insert',
-    detail:
-      'The notifications table has no client insert policy by design. Rows are written by Edge Functions holding the service role. A compose form in this console would have nowhere to post.',
-  },
-  {
-    title: 'No scheduling',
-    detail:
-      'Nothing stores a future send time or a recurrence, so a scheduled maintenance notice cannot be queued from here.',
-  },
-] as const;

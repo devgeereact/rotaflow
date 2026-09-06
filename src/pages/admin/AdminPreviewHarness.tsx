@@ -581,6 +581,9 @@ const INVOICES = ORG_IDS.flatMap((org_id, i) =>
 );
 
 const ANNOUNCEMENTS = [
+  // A draft first, so the register's Publish and Cancel actions are on screen
+  // in the design loop rather than only reachable after composing one.
+  ['Draft: pricing change for Business', 'billing', 'draft', null, null],
   ['Scheduled maintenance-02:00–03:00 BST', 'maintenance', 'scheduled', null, 5],
   ['New: cost forecasting in Reports', 'product', 'sent', 7, null],
   ['Action needed: card expiring this month', 'billing', 'sent', 11, null],
@@ -604,19 +607,32 @@ const ANNOUNCEMENTS = [
   updated_at: ISO(0),
 }));
 
+/**
+ * Deliveries, with queued, delivered and failed all present.
+ *
+ * Every row used to carry `sent_at`, because the publish function stamped it
+ * at insert — so the preview could only ever show one state and the repair
+ * that separates them would be invisible here. One organisation per
+ * announcement is left queued and one is a recorded failure.
+ */
 const ANNOUNCEMENT_DELIVERIES = ANNOUNCEMENTS.filter((a) => a.status === 'sent').flatMap(
   (a) =>
-    ORG_IDS.map((org_id, i) => ({
-      id: `del-${a.id}-${i}`,
-      announcement_id: a.id,
-      org_id,
-      sent_at: a.sent_at,
-      read_at: i % 5 === 0 ? null : a.sent_at,
-      read_by: i % 5 === 0 ? null : USER_IDS[0],
-      failed_at: null,
-      failure_reason: null,
-      created_at: a.sent_at,
-    })),
+    ORG_IDS.map((org_id, i) => {
+      const queued = i === 1;
+      const failed = i === 4;
+      return {
+        id: `del-${a.id}-${i}`,
+        announcement_id: a.id,
+        org_id,
+        outbox_id: queued || failed ? null : `outbox-${a.id}-${i}`,
+        sent_at: queued || failed ? null : a.sent_at,
+        read_at: queued || failed || i % 5 === 0 ? null : a.sent_at,
+        read_by: queued || failed || i % 5 === 0 ? null : USER_IDS[0],
+        failed_at: failed ? a.sent_at : null,
+        failure_reason: failed ? 'No active owner or manager to address' : null,
+        created_at: a.sent_at,
+      };
+    }),
 );
 
 // Deliberately a mix. Production after 0073 has EVERY connector `planned`,
@@ -1129,6 +1145,48 @@ const TABLES: Record<string, unknown> = {
       .slice(offset, offset + limit)
       .map((row) => ({ ...row, total_count: matched.length }));
   }) satisfies BodyFixture,
+  // 0132's scoped delivery aggregate. A function fixture because it takes the
+  // ids on screen — the old service read the whole deliveries table into the
+  // browser instead, which is the thing this RPC exists to stop.
+  'rpc/platform_announcement_stats': ((args: Record<string, unknown>) => {
+    const ids = new Set(Array.isArray(args.p_ids) ? (args.p_ids as string[]) : []);
+    const byAnnouncement = new Map<
+      string,
+      {
+        recipients: number;
+        queued: number;
+        delivered: number;
+        failed: number;
+        read: number;
+      }
+    >();
+    for (const row of ANNOUNCEMENT_DELIVERIES) {
+      if (!ids.has(row.announcement_id)) continue;
+      const current = byAnnouncement.get(row.announcement_id) ?? {
+        recipients: 0,
+        queued: 0,
+        delivered: 0,
+        failed: 0,
+        read: 0,
+      };
+      current.recipients += 1;
+      if (row.sent_at === null && row.failed_at === null) current.queued += 1;
+      if (row.sent_at !== null) current.delivered += 1;
+      if (row.failed_at !== null) current.failed += 1;
+      if (row.read_at !== null) current.read += 1;
+      byAnnouncement.set(row.announcement_id, current);
+    }
+    return [...byAnnouncement].map(([announcement_id, counts]) => ({
+      announcement_id,
+      ...counts,
+    }));
+  }) satisfies BodyFixture,
+  // The composer's three writes. Fixtures rather than an unmocked call, so the
+  // preview can be driven all the way to a success state; nothing here changes
+  // the register, which is what a fixture harness can honestly offer.
+  'rpc/create_platform_announcement': 'preview-announcement-id',
+  'rpc/publish_platform_announcement': 6,
+  'rpc/cancel_platform_announcement': null,
   'rpc/platform_user_facets': [
     {
       total: USER_DIRECTORY_ROWS.length,
@@ -1191,6 +1249,18 @@ function fixtureFor(table: string, url: URL, body: Record<string, unknown>): unk
     const [op, ...rest] = raw.split('.');
     const wanted = rest.join('.');
     if (op === 'eq') filtered = filtered.filter((r) => String(r[key]) === wanted);
+    // `in.(a,b)`. Without this a status or type filter in the preview changed
+    // the URL and nothing else, which teaches a reviewer that the filter does
+    // not work when in production it does.
+    if (op === 'in') {
+      const allowed = new Set(
+        wanted
+          .replace(/^\(|\)$/g, '')
+          .split(',')
+          .map((value) => value.replace(/^"|"$/g, '')),
+      );
+      filtered = filtered.filter((r) => allowed.has(String(r[key])));
+    }
     if (op === 'is' && wanted === 'null') filtered = filtered.filter((r) => !r[key]);
     if (op === 'not') filtered = filtered.filter((r) => Boolean(r[key]));
   }

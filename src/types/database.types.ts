@@ -3531,6 +3531,21 @@ export type Database = {
           org_id: string;
         }[];
       };
+      platform_announcement_stats: {
+        Args: { p_ids: string[] };
+        Returns: {
+          announcement_id: string;
+          delivered: number;
+          failed: number;
+          queued: number;
+          read: number;
+          recipients: number;
+        }[];
+      };
+      cancel_platform_announcement: {
+        Args: { p_announcement: string };
+        Returns: undefined;
+      };
       platform_organisation_directory: {
         Args: {
           p_created_from?: string;
