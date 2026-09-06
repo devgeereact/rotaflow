@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDayLabel, shiftCellKey, type DailyTotal } from '@/lib/rotaGrid';
+import {
+  anchorWeekDates,
+  isWeekend,
+  isWeekStart,
+  rotaGridTemplate,
+  weekSpans,
+} from '@/lib/rotaCanvas';
 import { todayIso } from '@/lib/schedulePeriod';
 import {
   RotaGridRow,
@@ -20,6 +27,14 @@ export interface RotaGroup {
 
 interface RotaGridProps {
   dates: string[];
+  /**
+   * Monday of the week the toolbar's actions apply to.
+   *
+   * The canvas shows three weeks; publish, repeat and copy apply to one. The
+   * header marks which, so an action taken while looking at next week's
+   * columns cannot be mistaken for one about that week.
+   */
+  anchorWeekStart: string;
   groups: RotaGroup[];
   /** One shift map per location, each built with that location's own timezone. */
   shiftMapByLocation: Map<string, Map<string, Shift[]>>;
@@ -64,6 +79,7 @@ interface FlatRow {
 
 export function RotaGrid({
   dates,
+  anchorWeekStart,
   groups,
   shiftMapByLocation,
   shiftTypes,
@@ -227,6 +243,9 @@ export function RotaGrid({
     return `Moving shift to ${who}, ${weekday} ${day}. Arrow keys to change, Enter to confirm, Escape to cancel.`;
   })();
 
+  const template = rotaGridTemplate(dates.length);
+  const spans = weekSpans(dates, anchorWeekStart);
+
   const countsByType = new Map<string, number>();
   for (const locationShiftMap of shiftMapByLocation.values()) {
     for (const shifts of locationShiftMap.values()) {
@@ -241,23 +260,61 @@ export function RotaGrid({
   }
 
   return (
-    <div ref={containerRef} className="min-w-[860px]">
+    <div
+      ref={containerRef}
+      // Wide enough that the pinned staff column plus a readable week is
+      // always on screen; the parent scrolls, and the sticky axes resolve
+      // against that scrollport.
+      style={{ minWidth: `${11 + dates.length * 6.5 + 3.5}rem` }}
+    >
       {/* Announced, not just drawn. The ring on the landing cell is the whole
           feedback a sighted user needs and none of it for anybody else. */}
       <p role="status" aria-live="polite" className="sr-only">
         {moveAnnouncement}
       </p>
 
-      {/* ---- Header: weekday/date columns ---- */}
+      {/* ---- Header: week labels, then weekday/date columns ----
+
+          Two rows, both pinned. The week row is what makes a continuous
+          multiweek axis readable: twenty-one date cells with no grouping is a
+          strip a manager has to count along, and "w/c 8 Sep" above each block
+          of seven is the label they are actually navigating by. */}
       <div
         className={cn(
           ROTA_GRID_COLS,
-          // Pinned to the top of the grid's own viewport. Seven date columns
-          // are unreadable once the names above them have scrolled away, and a
-          // rota is 40 rows long in a real organisation.
-          'sticky top-0 z-20 border-b border-surface-border bg-surface pb-3 pt-1',
+          'sticky top-0 z-20 bg-surface pt-1 dark:bg-surface-dark',
+        )}
+        style={{ gridTemplateColumns: template }}
+        aria-hidden="true"
+      >
+        <div className={cn('px-2', ROTA_STICKY_STAFF_COL, 'z-30')} />
+        {spans.map((span) => (
+          <div
+            key={span.startDate}
+            style={{ gridColumn: `span ${span.length}` }}
+            className={cn(
+              'truncate border-l border-surface-border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-content-muted',
+              'dark:border-surface-border-dark dark:text-content-muted-dark',
+              span.isCurrent && 'text-primary-ink dark:text-primary-ink-dark',
+            )}
+          >
+            {span.label}
+            {span.isCurrent ? ' · this week' : ''}
+          </div>
+        ))}
+        <div />
+      </div>
+
+      <div
+        className={cn(
+          ROTA_GRID_COLS,
+          // Pinned to the top of the grid's own viewport, below the week row.
+          // Date columns are unreadable once the names above them have
+          // scrolled away, and a rota is 40 rows long in a real organisation.
+          'sticky top-[1.75rem] z-20 border-b border-surface-border bg-surface pb-3',
           'dark:border-surface-border-dark dark:bg-surface-dark',
         )}
+        style={{ gridTemplateColumns: template }}
       >
         <div
           className={cn(
@@ -278,6 +335,16 @@ export function RotaGrid({
               key={date}
               className={cn(
                 'rounded-lg px-1 py-1.5 text-center',
+                // Visible week boundary. Without it three weeks of columns run
+                // together and a Monday looks like any other day.
+                isWeekStart(date) &&
+                  'border-l border-surface-border dark:border-surface-border-dark',
+                // Weekends are shaded rather than labelled: the weekday name is
+                // already there, and a manager scanning for cover gaps reads
+                // the block, not the word.
+                !isToday &&
+                  isWeekend(date) &&
+                  'bg-surface-subtle dark:bg-surface-subtle-dark',
                 isToday && 'bg-primary',
               )}
             >
@@ -315,6 +382,7 @@ export function RotaGrid({
           staff={row.staff}
           rowIndex={rowIndex}
           dates={dates}
+          weekDates={anchorWeekDates(anchorWeekStart)}
           locationId={row.location.id}
           timezone={row.location.timezone}
           shiftMap={shiftMapByLocation.get(row.location.id) ?? new Map<string, Shift[]>()}
@@ -350,6 +418,7 @@ export function RotaGrid({
           ROTA_GRID_COLS,
           'mt-4 border-t border-surface-border pt-3 dark:border-surface-border-dark',
         )}
+        style={{ gridTemplateColumns: template }}
       >
         <div
           className={cn(

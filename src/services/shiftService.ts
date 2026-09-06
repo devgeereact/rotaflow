@@ -106,6 +106,66 @@ export async function listShiftsForPeriod(query: PeriodShiftQuery): Promise<Shif
     .map(({ rota: _rota, ...shift }) => shift);
 }
 
+export interface OverlappingShiftQuery {
+  orgId: string;
+  /** Inclusive ISO instant. A shift ending exactly here does not overlap. */
+  fromIso: string;
+  /** Exclusive ISO instant. A shift starting exactly here does not overlap. */
+  toIso: string;
+  locationId?: string | null;
+  staffProfileId?: string | null;
+  publishedOnly?: boolean;
+}
+
+/**
+ * Shifts that are *running* during a window, rather than starting in one.
+ *
+ * `listShiftsForPeriod` filters on `starts_at`, which is right for a rota — a
+ * night shift belongs to the day it starts, and every hours calculation in
+ * this product allocates it that way. It is wrong for an operations board. At
+ * 01:00 the shift that began at 22:00 is the one with people on it, and a
+ * `starts_at`-bounded query does not return it, so "who is working now"
+ * answered zero for the whole small hours.
+ *
+ * The two coexist deliberately, and the docstrings say which is which,
+ * because collapsing them would move a payroll allocation rule to satisfy a
+ * dashboard.
+ */
+export async function listShiftsOverlapping(
+  query: OverlappingShiftQuery,
+): Promise<Shift[]> {
+  const rows = await fetchAllPages(async (from, to) => {
+    let request = supabase
+      .from('shifts')
+      .select('*, rota:rotas(status)')
+      .eq('org_id', query.orgId)
+      .lt('starts_at', query.toIso)
+      .gt('ends_at', query.fromIso)
+      .neq('status', 'cancelled');
+
+    if (query.locationId) request = request.eq('location_id', query.locationId);
+    if (query.staffProfileId)
+      request = request.eq('staff_profile_id', query.staffProfileId);
+
+    const { data, error } = await request
+      .order('starts_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  });
+
+  const published = query.publishedOnly !== false;
+
+  return rows
+    .filter((row) => {
+      if (!published) return true;
+      const rota = (row as { rota?: { status?: string } | null }).rota;
+      return rota?.status === 'published';
+    })
+    .map(({ rota: _rota, ...shift }) => shift);
+}
+
 export async function createShift(shift: ShiftInsert): Promise<Shift> {
   const { data, error } = await supabase
     .from('shifts')

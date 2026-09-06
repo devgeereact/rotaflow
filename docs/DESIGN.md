@@ -121,6 +121,44 @@ An org's `shift_types.colour` should be seeded from this palette (stored as a he
 string, per `SCHEMA.md`) so every tenant's rota stays visually consistent with the
 system even though colours are per-org-configurable.
 
+### Colour. Job-title palette (12)
+
+A **separate** family from the shift palette above, and the separation is the
+point. A rota chip can carry two facts at once: what kind of shift it is
+(`shift`/`shift-tint`, per-tenant configurable) and what the person does
+(`role`, the per-tenant catalogue in `job_titles`). Two colour systems on one
+chip with one legend is unreadable, so each has its own family, its own legend
+and its own short text code. **Colour is never the only identifier for either.**
+
+The twelve were solved for rather than chosen by eye. Each hue was optimised
+for pairwise separation under normal vision *and* under simulated protanopia,
+deuteranopia and tritanopia: the worst pair across all four is ΔE(Lab) **16.4**
+(magenta/cocoa under tritanopia). An earlier hand-picked set had magenta and
+slate at ΔE **4** under deuteranopia — indistinguishable — which is why this one
+was computed. Every `-ink` on its `-wash`, and every `-ink-dark` on its `-deep`,
+measures at least **4.60:1**, so a badge carries body-weight text in both themes.
+
+| Token family      | Badge                                                          | Accent          |
+| ----------------- | -------------------------------------------------------------- | --------------- |
+| `role-<id>`       | `bg-role-<id>-wash text-role-<id>-ink` + dark `-deep`/`-ink-dark` | `bg-role-<id>` |
+
+Ids: `indigo`, `sky`, `teal`, `moss`, `olive`, `amber`, `clay`, `rose`,
+`magenta`, `violet`, `slate`, `cocoa`. Written out in full in
+`src/lib/jobTitlePalette.ts` — never concatenated, because Tailwind's content
+scan cannot see a class built by interpolation and the badge would render with
+no colour in a production build while looking perfect in dev.
+
+**Exhaustion is a refusal, not a wrap-around.** A thirteenth active title is
+offered no colour and wears the neutral labelled fallback; the database refuses
+a duplicate outright. Two occupations sharing a swatch is worse than a blocked
+form, because nothing on screen says the colour has stopped meaning one thing.
+Extending the palette is a deliberate change here and in `tailwind.config.ts`
+together, with the contrast and colour-vision measurements redone.
+
+**A palette entry is a category label.** It is not a permission, not an
+attendance state and not a conflict. Attendance uses the semantic status tokens
+(§ "Colour. Semantic"); shift pattern uses a text code.
+
 ### Typography
 
 | Role            | Size / line-height | Weight    | Tailwind class                       |

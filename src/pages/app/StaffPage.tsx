@@ -28,6 +28,7 @@ import {
   updateStaffProfile,
 } from '@/services/staffService';
 import { listDepartments, listLocations } from '@/services/locationService';
+import { listJobTitles } from '@/services/jobTitleService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listExpiringDocuments } from '@/services/documentService';
@@ -52,9 +53,21 @@ import {
   weekRangeIso,
 } from '@/lib/teamRows';
 import { reportError } from '@/lib/sentry';
+import { useFilterState } from '@/hooks/useFilterState';
+import { FilterBar } from '@/components/ui/FilterBar';
+import {
+  UNASSIGNED,
+  filterValue,
+  listOutcome,
+  matchesFilters,
+  matchesSearch,
+  type FilterDimension,
+  type FilterOption,
+} from '@/lib/filters';
 import type { TeamRow } from '@/lib/teamRows';
 import type {
   Department,
+  JobTitle,
   LeaveRequest,
   Location,
   Shift,
@@ -62,11 +75,41 @@ import type {
   StaffProfileInsert,
 } from '@/types';
 
+/**
+ * The directory's filter dimensions.
+ *
+ * `status` defaults to `active`, which is the view a manager wants nine times
+ * out of ten — and, crucially, it is now a *filter* rather than a hard-coded
+ * `if (!row.active) return false`. That line meant the Reactivate action in
+ * the row menu could never be reached: the only people it applies to were
+ * removed from the list before the menu could be opened. The rows were even
+ * being loaded (`includeInactive: true`) and then discarded.
+ *
+ * `q` is sensitive, so a filtered link never carries a colleague's name.
+ */
+const TEAM_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text', sensitive: true },
+  { id: 'loc', label: 'Site', kind: 'multi' },
+  { id: 'dept', label: 'Department', kind: 'multi' },
+  { id: 'title', label: 'Job title', kind: 'multi' },
+  { id: 'status', label: 'Status', kind: 'select', defaultValues: ['active'] },
+] as const;
+
+const STATUS_OPTIONS: readonly FilterOption[] = [
+  { value: 'active', label: 'Active only' },
+  { value: 'inactive', label: 'Deactivated only' },
+  { value: 'all', label: 'Active and deactivated' },
+] as const;
+
 function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
   return {
     org_id: orgId,
     first_name: values.firstName.trim(),
     last_name: values.lastName.trim(),
+    // Both columns, deliberately: `job_title_id` is authoritative and
+    // `job_title` is kept in step so a client bundle still in a service
+    // worker cache can render the title it cannot resolve. See 0127.
+    job_title_id: values.jobTitleId || null,
     job_title: values.jobTitle.trim() || null,
     department_id: values.departmentId || null,
     contract_type: values.contractType || null,
@@ -100,6 +143,7 @@ export function StaffPage(): JSX.Element {
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
   const [shiftsThisWeek, setShiftsThisWeek] = useState<Shift[]>([]);
   const [documentsExpiring, setDocumentsExpiring] = useState(0);
@@ -111,10 +155,6 @@ export function StaffPage(): JSX.Element {
   const [invitesOutstanding, setInvitesOutstanding] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [search, setSearch] = useState('');
-  const [locationId, setLocationId] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -145,6 +185,7 @@ export function StaffPage(): JSX.Element {
         expiringDocs,
         invites,
         siteAssignments,
+        titleRows,
       ] = await Promise.all([
         listStaff(orgId, { includeInactive: true }),
         listDepartments(orgId),
@@ -154,6 +195,7 @@ export function StaffPage(): JSX.Element {
         listExpiringDocuments(orgId, in30Days),
         listPendingInvites(orgId),
         listStaffLocations(orgId),
+        listJobTitles(orgId),
       ]);
       setStaff(staffRows);
       setDepartments(deptRows);
@@ -163,6 +205,8 @@ export function StaffPage(): JSX.Element {
       setDocumentsExpiring(expiringDocs.length);
       setInvitesOutstanding(invites.length);
       setStaffLocations(siteAssignments);
+      setJobTitles(titleRows);
+      setError(null);
     } catch (err) {
       reportError(err, { area: 'staff:load' });
       setError('Could not load the staff directory.');
@@ -207,8 +251,17 @@ export function StaffPage(): JSX.Element {
       onShiftToday,
       absentToday,
       staffLocations,
+      jobTitles,
     }),
-    [departments, locations, shiftsThisWeek, onShiftToday, absentToday, staffLocations],
+    [
+      departments,
+      locations,
+      shiftsThisWeek,
+      onShiftToday,
+      absentToday,
+      staffLocations,
+      jobTitles,
+    ],
   );
 
   const allRows = useMemo(() => buildTeamRows(staff, context), [staff, context]);
@@ -233,27 +286,124 @@ export function StaffPage(): JSX.Element {
     ],
   );
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return allRows.filter((row) => {
-      if (!row.active) return false;
-      if (term) {
-        const haystack =
-          `${row.firstName} ${row.lastName} ${row.jobTitle ?? ''} ${row.location}`.toLowerCase();
-        if (!haystack.includes(term)) return false;
+  const allowedValues = useCallback(
+    (dimensionId: string): readonly string[] | null => {
+      switch (dimensionId) {
+        case 'loc':
+          return [...locations.map((l) => l.id), UNASSIGNED];
+        case 'dept':
+          return [...departments.map((d) => d.id), UNASSIGNED];
+        case 'title':
+          return [...jobTitles.map((t) => t.id), UNASSIGNED];
+        default:
+          // `status` is an exhaustive enumeration and `q` is free text.
+          // Pruning either against a loading option list would clear a valid
+          // filter on the first paint.
+          return null;
       }
-      if (
-        departmentId &&
-        staff.find((s) => s.id === row.id)?.department_id !== departmentId
-      )
-        return false;
-      // Every site the person works, not just the one their department
-      // happens to live at (CAP-089). `row.locationIds` already carries the
-      // department fallback for anybody with nothing recorded.
-      if (locationId && !row.locationIds.includes(locationId)) return false;
-      return true;
+    },
+    [locations, departments, jobTitles],
+  );
+
+  const filterApi = useFilterState({
+    dimensions: TEAM_FILTERS,
+    allowedValues,
+    scopeKey: orgId ?? '',
+  });
+
+  const departmentById = useMemo(
+    () => new Map(staff.map((s) => [s.id, s.department_id])),
+    [staff],
+  );
+
+  const accessors = useMemo(
+    () => ({
+      loc: (row: TeamRow) => row.locationIds,
+      dept: (row: TeamRow) => departmentById.get(row.id) ?? null,
+      // Keyed on the catalogue id, so a rename does not break a saved filter.
+      title: (row: TeamRow) => row.jobTitleId,
+    }),
+    [departmentById],
+  );
+
+  /**
+   * The active/deactivated axis.
+   *
+   * Its own step rather than another accessor: `TeamRow.active` is a boolean
+   * and `all` has to match both values, which a set-membership test on ids
+   * cannot express.
+   */
+  const statusFilter = filterValue(filterApi.filters, 'status') || 'active';
+
+  const filtered = useMemo(() => {
+    const term = filterValue(filterApi.filters, 'q');
+    return allRows.filter((row) => {
+      if (statusFilter === 'active' && !row.active) return false;
+      if (statusFilter === 'inactive' && row.active) return false;
+      if (!matchesFilters(row, filterApi.filters, accessors)) return false;
+      return matchesSearch(
+        [row.firstName, row.lastName, row.jobTitle, row.location, row.department],
+        term,
+      );
     });
-  }, [allRows, search, departmentId, locationId, staff]);
+  }, [allRows, filterApi.filters, accessors, statusFilter]);
+
+  /**
+   * The denominator beside the count.
+   *
+   * It follows the status filter rather than being fixed to active people:
+   * "showing 2 of 40" beside a deactivated-only view, where the organisation
+   * has 40 active staff and 2 deactivated ones, is arithmetic nobody can
+   * follow.
+   */
+  const totalInScope = useMemo(
+    () =>
+      allRows.filter((row) =>
+        statusFilter === 'all'
+          ? true
+          : statusFilter === 'active'
+            ? row.active
+            : !row.active,
+      ).length,
+    [allRows, statusFilter],
+  );
+
+  const optionsFor = useCallback(
+    (dimensionId: string): readonly FilterOption[] => {
+      switch (dimensionId) {
+        case 'loc':
+          return [
+            ...locations.map((l) => ({ value: l.id, label: l.name })),
+            { value: UNASSIGNED, label: 'No site recorded' },
+          ];
+        case 'dept':
+          return [
+            ...departments.map((d) => ({ value: d.id, label: d.name })),
+            { value: UNASSIGNED, label: 'No department' },
+          ];
+        case 'title':
+          return [
+            ...jobTitles.map((t) => ({
+              value: t.id,
+              label: t.active ? t.name : `${t.name} (archived)`,
+            })),
+            { value: UNASSIGNED, label: 'No job title' },
+          ];
+        case 'status':
+          return STATUS_OPTIONS;
+        default:
+          return [];
+      }
+    },
+    [locations, departments, jobTitles],
+  );
+
+  const outcome = listOutcome({
+    loading,
+    failed: error !== null,
+    totalRows: allRows.length,
+    matchedRows: filtered.length,
+  });
 
   const handleSubmit = async (values: StaffFormValues): Promise<void> => {
     if (!orgId) return;
@@ -477,16 +627,26 @@ export function StaffPage(): JSX.Element {
         <TeamDirectoryView
           orgName={orgName ?? 'your organisation'}
           tiles={tiles}
-          search={search}
-          onSearchChange={setSearch}
-          departmentId={departmentId}
-          onDepartmentChange={setDepartmentId}
-          locationId={locationId}
-          onLocationChange={setLocationId}
-          departments={departments}
-          locations={locations}
+          outcome={outcome}
+          filters={
+            <FilterBar
+              dimensions={TEAM_FILTERS}
+              filters={filterApi.filters}
+              optionsFor={optionsFor}
+              onSetValue={filterApi.setValue}
+              onSetValues={filterApi.setValues}
+              onClearOne={filterApi.clearOne}
+              onClearAll={filterApi.clearAll}
+              searchPlaceholder="Search name, job title or site"
+              resultSummary={`Showing ${filtered.length} of ${totalInScope}`}
+              droppedDimensions={filterApi.droppedDimensions}
+              onDismissDropped={filterApi.dismissDropped}
+            />
+          }
           rows={filtered}
-          totalRowCount={allRows.filter((r) => r.active).length}
+          totalRowCount={totalInScope}
+          onClearFilters={filterApi.clearAll}
+          onRetry={() => void load()}
           onOpenActions={openActions}
           onExport={handleExport}
           onAddStaff={
@@ -533,6 +693,7 @@ export function StaffPage(): JSX.Element {
         onSubmit={handleSubmit}
         departments={departments}
         locations={locations}
+        jobTitles={jobTitles}
         initialLocationIds={
           editingStaff ? (staffLocations.get(editingStaff.id) ?? []) : []
         }

@@ -1,28 +1,32 @@
-import { Download, FileUp, Info, Plus, SearchX, Users } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { AlertCircle, Download, FileUp, Info, Plus, SearchX, Users } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { StatTile } from '@/components/ui/StatTile';
 import { TeamRowsTable } from '@/components/staff/TeamRowsTable';
+import type { ListOutcome } from '@/lib/filters';
 import type { TeamRow, TeamTiles } from '@/lib/teamRows';
-import type { Department, Location } from '@/types';
 
 export interface TeamDirectoryViewProps {
   orgName: string;
   tiles: TeamTiles;
-  search: string;
-  onSearchChange: (value: string) => void;
-  departmentId: string;
-  onDepartmentChange: (value: string) => void;
-  locationId: string;
-  onLocationChange: (value: string) => void;
-  departments: Department[];
-  locations: Location[];
+  /**
+   * The shared `ui/FilterBar`, built by the page.
+   *
+   * This component used to own three filter controls, its own clear-all and
+   * its own result count, none of which matched the other filterable screens.
+   * The bar is passed in so every table in the workspace uses one control set
+   * with one set of rules — see `src/lib/filters.ts`.
+   */
+  filters: ReactNode;
+  /** What the list should render. Distinguishes an error from "no matches". */
+  outcome: ListOutcome;
   rows: TeamRow[];
   totalRowCount: number;
+  onClearFilters: () => void;
+  onRetry: () => void;
   onOpenActions: (row: TeamRow) => void;
   onExport: () => void;
   onAddStaff?: () => void;
@@ -51,30 +55,17 @@ export interface TeamDirectoryViewProps {
 export function TeamDirectoryView({
   orgName,
   tiles,
-  search,
-  onSearchChange,
-  departmentId,
-  onDepartmentChange,
-  locationId,
-  onLocationChange,
-  departments,
-  locations,
+  filters,
+  outcome,
   rows,
   totalRowCount,
+  onClearFilters,
+  onRetry,
   onOpenActions,
   onExport,
   onAddStaff,
   onImportStaff,
 }: TeamDirectoryViewProps): JSX.Element {
-  const filtered = Boolean(search || departmentId || locationId);
-  const appliedCount = [search, departmentId, locationId].filter(Boolean).length;
-
-  const clearFilters = (): void => {
-    onSearchChange('');
-    onDepartmentChange('');
-    onLocationChange('');
-  };
-
   return (
     <div>
       <WorkspaceHeader
@@ -145,63 +136,28 @@ export function TeamDirectoryView({
       </p>
 
       <Card className="p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-surface-border p-4 dark:border-surface-border-dark">
-          <Input
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search name, role or site…"
-            aria-label="Search team"
-            className="w-auto flex-1 sm:max-w-xs"
-          />
-          <Select
-            value={departmentId}
-            onChange={(e) => onDepartmentChange(e.target.value)}
-            aria-label="Department"
-            className="w-auto py-2"
-          >
-            <option value="">All departments</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={locationId}
-            onChange={(e) => onLocationChange(e.target.value)}
-            aria-label="Site"
-            className="w-auto py-2"
-          >
-            <option value="">All sites</option>
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </Select>
-          {filtered && (
-            <Button size="sm" variant="ghost" onClick={clearFilters}>
-              Clear filters ({appliedCount})
-            </Button>
-          )}
-          {/* Announced, because the count is the only feedback that a filter
-              did anything when the list is longer than the viewport. */}
-          <p
-            aria-live="polite"
-            className="ml-auto text-xs tabular-nums text-content-muted dark:text-content-muted-dark"
-          >
-            Showing {rows.length} of {totalRowCount}
-          </p>
+        <div className="border-b border-surface-border p-4 dark:border-surface-border-dark">
+          {filters}
         </div>
 
-        {/* Two empty states, not one sentence. "Nobody matches these
-            filters" was shown to a brand-new organisation that had never
-            added anybody and had no filter applied, which reads as a broken
-            search rather than as the first-run state it is. */}
+        {/* Three empty states, not one sentence.
+            "Nobody matches these filters" was shown to a brand-new
+            organisation that had never added anybody and had no filter
+            applied, which reads as a broken search rather than as the
+            first-run state it is. A third has been added: a FAILED read used
+            to fall through to the same "no matches" panel, telling a manager
+            their organisation was empty when the network had dropped. */}
         <TeamRowsTable
           rows={rows}
           empty={
-            totalRowCount === 0 ? (
+            outcome === 'error' ? (
+              <EmptyState
+                icon={AlertCircle}
+                title="The directory could not be loaded"
+                description="This is not the same as having no staff — nothing is known either way until it loads."
+                action={<Button onClick={onRetry}>Retry</Button>}
+              />
+            ) : outcome === 'empty-dataset' ? (
               <EmptyState
                 icon={Users}
                 title="No staff yet"
@@ -221,11 +177,9 @@ export function TeamDirectoryView({
                 title="No staff match these filters"
                 description={`${totalRowCount} people are in this directory. Widen the search or clear the filters to see them.`}
                 action={
-                  filtered && (
-                    <Button variant="secondary" onClick={clearFilters}>
-                      Clear filters
-                    </Button>
-                  )
+                  <Button variant="secondary" onClick={onClearFilters}>
+                    Clear filters
+                  </Button>
                 }
               />
             )

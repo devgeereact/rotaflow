@@ -4,11 +4,15 @@ import {
   LayoutDashboard,
   LogIn,
   MoreHorizontal,
+  ScanFace,
   Umbrella,
   type LucideIcon,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
+import { useWorkMode } from '@/hooks/useWorkMode';
 import { cn } from '@/lib/utils';
+import type { WorkMode } from '@/lib/workMode';
+import type { MembershipRole } from '@/types';
 
 interface TabItem {
   label: string;
@@ -44,12 +48,34 @@ interface TabItem {
  * the leave queue and links the swap queue beside it, so the label describes
  * where it goes rather than overpromising a screen that does not exist.
  */
-const TABS: readonly TabItem[] = [
-  { label: 'Home', icon: LayoutDashboard, to: '/app/dashboard' },
-  { label: 'Schedule', icon: CalendarRange, to: '/app/schedule' },
-  { label: 'Clock In', icon: LogIn, to: '/app/clock' },
-  { label: 'Requests', icon: Umbrella, to: '/app/leave' },
-] as const;
+/**
+ * The four fixed tabs. The third one differs by what the person is here to
+ * do, which is resolved in `tabsFor` below.
+ */
+const HOME: TabItem = { label: 'Home', icon: LayoutDashboard, to: '/app/dashboard' };
+const SCHEDULE: TabItem = {
+  label: 'Schedule',
+  icon: CalendarRange,
+  to: '/app/schedule',
+};
+const REQUESTS: TabItem = { label: 'Requests', icon: Umbrella, to: '/app/leave' };
+
+/**
+ * The third tab: a punch clock or an attendance board.
+ *
+ * A manager on a phone is checking who turned up, not clocking themselves in
+ * — and an owner with no staff record could not clock in at all, so the tab
+ * they were given opened an empty screen. The personal one comes back the
+ * moment they turn My work on.
+ */
+function tabsFor(role: MembershipRole, mode: WorkMode): TabItem[] {
+  const managerial = role === 'owner' || role === 'manager';
+  const third: TabItem =
+    managerial && mode === 'management'
+      ? { label: 'Attendance', icon: ScanFace, to: '/app/attendance' }
+      : { label: 'Clock In', icon: LogIn, to: '/app/clock' };
+  return [HOME, SCHEDULE, third, REQUESTS];
+}
 
 interface MobileTabBarProps {
   /** Opens the navigation drawer. The `More` tab. */
@@ -58,9 +84,12 @@ interface MobileTabBarProps {
 
 export function MobileTabBar({ onOpenMore }: MobileTabBarProps): JSX.Element | null {
   const { role } = useOrg();
+  const { mode } = useWorkMode();
 
   // No role means no membership resolved yet; AppShell is showing boot state.
   if (role === null) return null;
+
+  const tabs = tabsFor(role, mode);
 
   return (
     <nav
@@ -69,7 +98,7 @@ export function MobileTabBar({ onOpenMore }: MobileTabBarProps): JSX.Element | n
       // indicator on a notched iPhone, where the bottom ~34px is not tappable.
       className="fixed inset-x-0 bottom-0 z-30 flex border-t border-surface-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden dark:border-surface-border-dark dark:bg-surface-dark"
     >
-      {TABS.map(({ label, icon: Icon, to }) => (
+      {tabs.map(({ label, icon: Icon, to }) => (
         <NavLink
           key={to}
           to={to}

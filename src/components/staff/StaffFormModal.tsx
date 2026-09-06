@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Field } from '@/components/ui/Field';
 import { Label } from '@/components/ui/Label';
-import type { Department, Location, StaffProfile } from '@/types';
+import { JobTitleBadge } from '@/components/staff/JobTitleBadge';
+import type { Department, JobTitle, Location, StaffProfile } from '@/types';
 
 const CONTRACT_TYPES = [
   { value: 'full_time', label: 'Full-time' },
@@ -17,6 +18,15 @@ const CONTRACT_TYPES = [
 export interface StaffFormValues {
   firstName: string;
   lastName: string;
+  /**
+   * Catalogue entry id (`job_titles`), or `''` for none.
+   *
+   * The free-text `jobTitle` below is written alongside it from the chosen
+   * entry's name, and is not editable here any more. Both columns are live
+   * until `0127`'s retirement condition is met; keeping the text in step is
+   * what lets an older cached bundle keep rendering a title it cannot resolve.
+   */
+  jobTitleId: string;
   jobTitle: string;
   departmentId: string;
   contractType: string;
@@ -43,6 +53,12 @@ interface StaffFormModalProps {
   onSubmit: (values: StaffFormValues) => Promise<void>;
   departments: Department[];
   locations: Location[];
+  /**
+   * The organisation's catalogue. Archived entries are passed in too, so a
+   * person who already holds one keeps showing it — an archived title is
+   * excluded from NEW assignments, not erased from the people who hold it.
+   */
+  jobTitles: JobTitle[];
   /** Sites already recorded for the person being edited. */
   initialLocationIds?: readonly string[];
   initial?: StaffProfile | null;
@@ -55,6 +71,7 @@ function toFormValues(
   return {
     firstName: staff?.first_name ?? '',
     lastName: staff?.last_name ?? '',
+    jobTitleId: staff?.job_title_id ?? '',
     jobTitle: staff?.job_title ?? '',
     departmentId: staff?.department_id ?? '',
     contractType: staff?.contract_type ?? 'full_time',
@@ -76,6 +93,7 @@ export function StaffFormModal({
   departments,
   initial,
   locations,
+  jobTitles,
   initialLocationIds = [],
 }: StaffFormModalProps): JSX.Element {
   const [values, setValues] = useState<StaffFormValues>(
@@ -83,6 +101,7 @@ export function StaffFormModal({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedTitle = jobTitles.find((t) => t.id === values.jobTitleId) ?? null;
 
   // Joined into a string so a caller passing a fresh array on every render
   // does not reset the form under the user's hands mid-edit. The values are
@@ -140,12 +159,45 @@ export function StaffFormModal({
 
         <div>
           <Label htmlFor="staff-title">Job title</Label>
-          <Input
+          <Select
             id="staff-title"
-            value={values.jobTitle}
-            onChange={(e) => setValues((v) => ({ ...v, jobTitle: e.target.value }))}
-            placeholder="Registered Nurse"
-          />
+            value={values.jobTitleId}
+            onChange={(e) => {
+              const id = e.target.value;
+              const title = jobTitles.find((t) => t.id === id);
+              setValues((v) => ({
+                ...v,
+                jobTitleId: id,
+                // Kept in step deliberately. See `StaffFormValues.jobTitleId`.
+                jobTitle: title?.name ?? '',
+              }));
+            }}
+          >
+            <option value="">No job title</option>
+            {jobTitles
+              // Archived titles are offered only to the person who already
+              // holds one, so history stays legible without the archive
+              // filling up a picker.
+              .filter((t) => t.active || t.id === values.jobTitleId)
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                  {t.active ? '' : ' (archived)'}
+                </option>
+              ))}
+          </Select>
+          {selectedTitle && (
+            <p className="mt-1.5 flex items-center gap-2 text-xs text-content-muted dark:text-content-muted-dark">
+              Shown on the rota as
+              <JobTitleBadge name={selectedTitle.name} colour={selectedTitle.colour} />
+            </p>
+          )}
+          {jobTitles.length === 0 && (
+            <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
+              No job titles have been set up yet. An owner adds them in Settings &rarr;
+              Roles.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">

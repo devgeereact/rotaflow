@@ -167,7 +167,7 @@ often. The `online` event only reaches a mounted listener, so the ordinary
 case — clock in on a ward with no signal, close the app, walk somewhere with
 signal, open it again — flushed nothing at all: the event happened while the
 app was closed. The pending list was loaded and rendered, so the person could
-*see* their clock-in sitting there, and nothing sent it.
+_see_ their clock-in sitting there, and nothing sent it.
 
 **Mount it once at app scope, not per screen.** `OfflineQueueDrain` does this
 inside `AppShell`, so replay is a property of being signed in rather than of

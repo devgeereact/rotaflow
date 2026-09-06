@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
+import { JobTitleBadge } from '@/components/staff/JobTitleBadge';
 import { cn } from '@/lib/utils';
 import type { TeamRow, TeamTodayStatus } from '@/lib/teamRows';
 
@@ -89,8 +90,13 @@ export function TeamRowsTable({
                   {row.firstName} {row.lastName}
                 </Link>
                 {row.jobTitle && (
-                  <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                    {row.jobTitle}
+                  <p className="mt-0.5">
+                    <JobTitleBadge name={row.jobTitle} colour={row.jobTitleColour} />
+                    {row.jobTitleArchived && (
+                      <span className="ml-1.5 text-xs text-content-muted dark:text-content-muted-dark">
+                        archived
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
@@ -197,8 +203,11 @@ export function TeamRowsTable({
                         {row.firstName} {row.lastName}
                       </Link>
                       {row.jobTitle && (
-                        <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
-                          {row.jobTitle}
+                        <p className="mt-0.5 truncate">
+                          <JobTitleBadge
+                            name={row.jobTitle}
+                            colour={row.jobTitleColour}
+                          />
                         </p>
                       )}
                     </div>

@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { fetchAllPages } from '@/lib/pagination';
 import { BOUNDARY_CONTEXT_HOURS, shiftIso } from '@/lib/hours';
 import { touchOrgActivity } from '@/services/activityService';
-import type { ClockEvent, ClockEventInsert, ClockEventUpdate } from '@/types';
+import type { ClockEvent, ClockEventCorrection, ClockEventInsert } from '@/types';
 
 /**
  * The insert path predates its screen (Phase 4). UseSyncQueue needed
@@ -41,28 +41,67 @@ export async function getLatestClockEvent(
 }
 
 /**
- * Correct an existing event's recorded time. RLS (`clock_events_update`,
- * 0037) restricts this to an owner or manager of the event's org — a staff
- * member's own `clock_events_insert` grant does not extend to `update`, so
- * this is never reachable from anyone editing their own clock-in.
+ * Correct an existing event's recorded time or type.
  *
- * Writes over the row directly rather than inserting a correction record:
- * there is no separate history/audit column on `clock_events` for that, so
- * `updated_at` (bumped automatically by the table's own trigger) is the only
- * trace that a correction happened.
+ * Goes through `correct_clock_event` (`0128`), which is now the only writer:
+ * the direct UPDATE grant on `clock_events` was withdrawn in the same
+ * migration, so this cannot be routed around.
+ *
+ * That function does four things a PATCH could not. It demands a reason. It
+ * records the row either side, the actor and the moment in
+ * `clock_event_corrections`, which no client may write to or edit. It refuses
+ * a write whose `expectedUpdatedAt` no longer matches, so two managers
+ * correcting the same row do not silently overwrite each other. And where the
+ * correction lands inside an already-approved period it flags that timesheet
+ * for a fresh decision instead of moving a total somebody has signed.
+ *
+ * The previous implementation wrote over the row directly and its own comment
+ * admitted the consequence: "`updated_at` is the only trace that a correction
+ * happened". These events become somebody's pay.
  */
-export async function updateClockEvent(
+export interface ClockCorrection {
+  /** Why. Three characters minimum, enforced in the database as well. */
+  reason: string;
+  /** New instant, ISO. Omit to leave the time alone. */
+  eventAt?: string;
+  /** New type. Omit to leave it alone. */
+  type?: ClockEvent['type'];
+  /**
+   * The `updated_at` the caller read.
+   *
+   * Always send it. Omitting it opts out of the concurrency check, which is
+   * only ever right for a server-side backfill — from a screen it means the
+   * last person to press Save wins and the other correction disappears.
+   */
+  expectedUpdatedAt?: string;
+}
+
+export async function correctClockEvent(
   id: string,
-  patch: ClockEventUpdate,
+  correction: ClockCorrection,
 ): Promise<ClockEvent> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
+  const { data, error } = await supabase.rpc('correct_clock_event', {
+    p_event: id,
+    p_reason: correction.reason,
+    p_event_at: correction.eventAt ?? null,
+    p_type: correction.type ?? null,
+    p_expected_updated_at: correction.expectedUpdatedAt ?? null,
+  });
   if (error) throw error;
   return data;
+}
+
+/** The correction history for one event, newest first. Owner and manager only (0128). */
+export async function listClockEventCorrections(
+  clockEventId: string,
+): Promise<ClockEventCorrection[]> {
+  const { data, error } = await supabase
+    .from('clock_event_corrections')
+    .select('*')
+    .eq('clock_event_id', clockEventId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
 
 /**

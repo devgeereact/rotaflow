@@ -48,6 +48,8 @@ import {
   repeatRotaWeeks,
   rotaRefusalMessage,
   resolveRotasForLocations,
+  resolveRotasForWeeks,
+  rotaWeekKey,
   unpublishRota,
 } from '@/services/rotaService';
 import {
@@ -58,6 +60,7 @@ import {
 } from '@/services/shiftService';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
 import { RepeatWeekModal } from '@/components/rota/RepeatWeekModal';
+import { canvasDates, weekSpans, weekStartOf } from '@/lib/rotaCanvas';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import {
@@ -127,7 +130,6 @@ const DEFAULT_TZ = 'Europe/London';
  * "Day" is safe because it is only a *display scope*: the same week's rota
  * stays loaded and editable, and the grid renders one of its columns.
  */
-const VIEW_TABS = ['Week', 'Fortnight'] as const;
 
 /**
  * One shift on the clipboard, stored relative to its week rather than on an
@@ -194,7 +196,36 @@ export function RotaBuilderPage(): JSX.Element {
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([]);
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
-  const [rotasByLocation, setRotasByLocation] = useState<Map<string, Rota>>(new Map());
+  /**
+   * Every location's rota for every week on the canvas, keyed
+   * `locationId|weekStart` (`rotaWeekKey`).
+   *
+   * A week with no entry has no rota yet, which is a legitimate state now
+   * that browsing does not create one. `ensureRotaFor` fills it in on the
+   * first edit.
+   */
+  const [rotasByWeek, setRotasByWeek] = useState<Map<string, Rota>>(new Map());
+  /** Read inside `ensureRotaFor` without making it depend on every change. */
+  const rotasByWeekRef = useRef(rotasByWeek);
+  useEffect(() => {
+    rotasByWeekRef.current = rotasByWeek;
+  }, [rotasByWeek]);
+
+  /**
+   * The anchor week's rotas, keyed by location.
+   *
+   * Every action scoped to "this week" — publish, repeat, discard, the AI
+   * assistant — reads this rather than the canvas map, so widening the view
+   * did not widen what those actions touch.
+   */
+  const rotasByLocation = useMemo(() => {
+    const map = new Map<string, Rota>();
+    for (const location of locations) {
+      const rota = rotasByWeek.get(rotaWeekKey(location.id, weekStart));
+      if (rota) map.set(location.id, rota);
+    }
+    return map;
+  }, [rotasByWeek, locations, weekStart]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   // The clash guard has to see every shift already written this tick. A bulk
   // paste awaits one insert at a time and React will not have re-rendered
@@ -269,7 +300,25 @@ export function RotaBuilderPage(): JSX.Element {
   const [repeatForwardOpen, setRepeatForwardOpen] = useState(false);
   const [repeatForwardWeeks, setRepeatForwardWeeks] = useState('4');
 
+  /**
+   * The anchor week's seven dates.
+   *
+   * **Display scope and validation scope are deliberately different
+   * variables.** The grid draws `gridDates` — three weeks — while everything
+   * that decides something stays on these seven: the publish gate, the
+   * warnings, the week totals, Repeat, Copy and Discard. Widening what is
+   * *shown* must never widen what an action *does*, and the one way to
+   * guarantee that is for the two to be separate values with the narrow one
+   * keeping the name every existing call site already uses.
+   */
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
+
+  /** The continuous three-week axis the grid is drawn on (`rotaCanvas.ts`). */
+  const gridDates = useMemo(() => canvasDates(weekStart), [weekStart]);
+  const canvasWeekStarts = useMemo(
+    () => weekSpans(gridDates).map((span) => span.startDate),
+    [gridDates],
+  );
   const weekEnd = dates[6] ?? weekStart;
 
   // Org-level data: locations, departments, staff, shift types.
@@ -301,9 +350,24 @@ export function RotaBuilderPage(): JSX.Element {
     })();
   }, [orgId, reloadKey, showError]);
 
-  // Rota + shifts for every location, for the selected week. The builder
-  // shows all locations at once (docs/design/Rota-Builder.png), so every
-  // location needs its own rota/shift fetch, not just the filtered one.
+  /**
+   * Rota + shifts for every location, across the whole three-week canvas.
+   *
+   * ## Two changes from the single-week loader this replaces
+   *
+   * **It reads three weeks in one query** rather than one week in one. The
+   * grid is continuous, so a week that scrolls into view must already have
+   * its shifts; fetching per week as it appeared would put a visible gap in
+   * the middle of a drag.
+   *
+   * **It no longer creates anything.** The old loader called
+   * `getOrCreateRotaForPeriod` for every location with no rota for the week
+   * being viewed, which meant scrolling past an empty week wrote an empty
+   * draft rota per location into the database, for ever, with nobody having
+   * asked for one. Three weeks at a time would have tripled that. A draft is
+   * now created by the first real edit — `ensureRotaFor` below — which is the
+   * moment somebody actually intends one.
+   */
   useEffect(() => {
     if (!orgId || locations.length === 0) {
       setLoading(false);
@@ -313,59 +377,29 @@ export function RotaBuilderPage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        // One query for every location's rota, not one per location
-        // (HARDEN-006). Only the locations with no rota yet then need a
-        // write, and on a week that has been opened before that is none.
-        const existing = await resolveRotasForLocations({
+        const resolved = await resolveRotasForWeeks({
           orgId,
-          periodStart: weekStart,
-          periodEnd: weekEnd,
+          weekStarts: canvasWeekStarts,
           locationIds: locations.map((l) => l.id),
         });
 
-        const rotaByLocation = new Map<string, Rota>();
-        const missing: Location[] = [];
-        for (const loc of locations) {
-          const resolved = existing.get(loc.id);
-          const open = resolved ? pickRotaToOpen(resolved) : null;
-          if (open) rotaByLocation.set(loc.id, open);
-          else missing.push(loc);
+        const byWeek = new Map<string, Rota>();
+        for (const [key, resolution] of resolved) {
+          const open = pickRotaToOpen(resolution);
+          if (open) byWeek.set(key, open);
         }
 
-        // `getOrCreateRotaForPeriod` rather than a plain insert: it re-reads
-        // the winner on a 23505, which is what makes two managers opening the
-        // same new week safe.
-        const created = await Promise.all(
-          missing.map(async (loc) => ({
-            locationId: loc.id,
-            rota: await getOrCreateRotaForPeriod({
-              orgId,
-              name: `Week of ${weekStart}`,
-              periodStart: weekStart,
-              periodEnd: weekEnd,
-              locationId: loc.id,
-            }),
-          })),
-        );
-        for (const { locationId, rota } of created) rotaByLocation.set(locationId, rota);
-
-        // Every rota, including the ones just created. Excluding those would
-        // save nothing — it is one query either way — and would rest on "a new
-        // rota has no shifts", which the 23505 path can hand back someone
-        // else's rota and quietly break.
-        const rows = await listShiftsForRotas(
-          [...rotaByLocation.values()].map((r) => r.id),
-        );
+        const rows = await listShiftsForRotas([...byWeek.values()].map((r) => r.id));
 
         if (!active) return;
-        setRotasByLocation(rotaByLocation);
+        setRotasByWeek(byWeek);
         setShifts(rows);
       } catch (err) {
         if (!active) return;
-        reportError(err, { area: 'rota:load-week' });
-        setRotasByLocation(new Map());
+        reportError(err, { area: 'rota:load-weeks' });
+        setRotasByWeek(new Map());
         setShifts([]);
-        showError('Could not load this week. Check your connection and retry.');
+        showError('Could not load these weeks. Check your connection and retry.');
       } finally {
         if (active) setLoading(false);
       }
@@ -373,7 +407,41 @@ export function RotaBuilderPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [orgId, locations, weekStart, weekEnd, weekReloadKey, showError]);
+  }, [orgId, locations, canvasWeekStarts, weekReloadKey, showError]);
+
+  /**
+   * The rota a write should land on, created if this is the first edit.
+   *
+   * Every write path goes through here rather than reading a preloaded map,
+   * because the loader deliberately no longer creates rotas. The created row
+   * is cached so a burst of edits in one week does not race to create three
+   * of them, and `getOrCreateRotaForPeriod` re-reads the winner on a 23505,
+   * which is what makes two managers editing the same new week safe.
+   */
+  const ensureRotaFor = useCallback(
+    async (locationId: string, date: string): Promise<Rota | null> => {
+      if (!orgId) return null;
+      const monday = weekStartOf(date);
+      const key = rotaWeekKey(locationId, monday);
+      const existing = rotasByWeekRef.current.get(key);
+      if (existing) return existing;
+
+      const rota = await getOrCreateRotaForPeriod({
+        orgId,
+        name: `Week of ${monday}`,
+        periodStart: monday,
+        periodEnd: format(addDays(new Date(`${monday}T00:00:00`), 6), 'yyyy-MM-dd'),
+        locationId,
+      });
+      setRotasByWeek((prev) => {
+        const next = new Map(prev);
+        next.set(key, rota);
+        return next;
+      });
+      return rota;
+    },
+    [orgId],
+  );
 
   /**
    * Leave, availability and documents for the warning rules.
@@ -674,16 +742,20 @@ export function RotaBuilderPage(): JSX.Element {
   // longer counted) and "Assigned only" read every day as fully optimal
   // (open shifts no longer counted) — the exact inconsistency `warnings`
   // below was already written to avoid, per the comment there.
+  // Over `gridDates`, not `dates`: the totals row sits under the grid and has
+  // to have a cell for every column drawn. It is a per-day figure, so widening
+  // it changes nothing about what any day means — unlike the publish gate,
+  // which stays on the anchor week.
   const dailyTotals = useMemo(
     () =>
       computeDailyTotals(
         shiftsInScope,
-        dates,
+        gridDates,
         DEFAULT_TZ,
         minimumCoverRules,
         filteredLocations,
       ),
-    [shiftsInScope, dates, minimumCoverRules, filteredLocations],
+    [shiftsInScope, gridDates, minimumCoverRules, filteredLocations],
   );
 
   const rotasInScope = filteredLocations
@@ -747,8 +819,11 @@ export function RotaBuilderPage(): JSX.Element {
       if (!orgId) return { ok: false, reason: 'unavailable' };
       if (!guardEditable()) return { ok: false, reason: 'unavailable' };
       const location = locationById.get(input.locationId);
-      const rota = rotasByLocation.get(input.locationId);
-      if (!location || !rota) return { ok: false, reason: 'unavailable' };
+      if (!location) return { ok: false, reason: 'unavailable' };
+      // Created here, on the first edit to this week, rather than by browsing
+      // to it. See `ensureRotaFor`.
+      const rota = await ensureRotaFor(input.locationId, input.date);
+      if (!rota) return { ok: false, reason: 'unavailable' };
       const { startsAt, endsAt } = computeShiftIsoRange(
         input.date,
         input.startTime,
@@ -781,7 +856,7 @@ export function RotaBuilderPage(): JSX.Element {
       setLastSavedAt(new Date());
       return { ok: true, shift: created };
     },
-    [orgId, locationById, rotasByLocation, guardEditable],
+    [orgId, locationById, ensureRotaFor, guardEditable],
   );
 
   /** Plain-English "who is already on what", for the refusal toast. */
@@ -1083,9 +1158,12 @@ export function RotaBuilderPage(): JSX.Element {
     setPublishError(null);
     try {
       const updated = await Promise.all(draftRotasInScope.map((r) => publishRota(r.id)));
-      setRotasByLocation((prev) => {
+      setRotasByWeek((prev) => {
         const next = new Map(prev);
-        for (const rota of updated) next.set(rota.location_id ?? '', rota);
+        for (const rota of updated) {
+          if (!rota.location_id) continue;
+          next.set(rotaWeekKey(rota.location_id, rota.period_start), rota);
+        }
         return next;
       });
       showSuccess(
@@ -1128,9 +1206,12 @@ export function RotaBuilderPage(): JSX.Element {
     setPublishError(null);
     try {
       const updated = await Promise.all(publishedRotas.map((r) => unpublishRota(r.id)));
-      setRotasByLocation((prev) => {
+      setRotasByWeek((prev) => {
         const next = new Map(prev);
-        for (const rota of updated) next.set(rota.location_id ?? '', rota);
+        for (const rota of updated) {
+          if (!rota.location_id) continue;
+          next.set(rotaWeekKey(rota.location_id, rota.period_start), rota);
+        }
         return next;
       });
       showSuccess('Rota returned to draft. Re-publish when your changes are ready.');
@@ -1688,7 +1769,7 @@ export function RotaBuilderPage(): JSX.Element {
   const reloadShifts = (): void => {
     // Runs after every create, move and delete, so it is the hottest of the
     // builder's reads (HARDEN-006). One `in` instead of one query per location.
-    void listShiftsForRotas([...rotasByLocation.values()].map((r) => r.id))
+    void listShiftsForRotas([...rotasByWeek.values()].map((r) => r.id))
       .then((rows) => setShifts(rows))
       .catch((err) => {
         reportError(err, { area: 'rota:reload-shifts' });
@@ -1811,36 +1892,22 @@ export function RotaBuilderPage(): JSX.Element {
             <span className="text-sm font-semibold text-content dark:text-content-dark">
               {formatWeekRange(dates)}
             </span>
+            {/* The canvas shows more than the week the actions apply to, so it
+                says which is which. Publish, Repeat, Copy and Discard all act
+                on the week named above; the grid's own header repeats it. */}
+            <span className="text-xs text-content-muted dark:text-content-muted-dark">
+              Scroll for {formatWeekRange(gridDates)}
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div
-              role="group"
-              aria-label="View"
-              className="flex rounded-xl border border-surface-border p-1 dark:border-surface-border-dark"
-            >
-              {VIEW_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  aria-pressed={tab === 'Week'}
-                  onClick={() =>
-                    tab === 'Fortnight' &&
-                    showSuccess(
-                      'Fortnight and month views use the same grid at lower density.',
-                    )
-                  }
-                  className={cn(
-                    'rounded-lg px-3 py-1.5 text-sm font-medium',
-                    tab === 'Week'
-                      ? 'bg-primary text-white'
-                      : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+            {/* The Week/Fortnight switcher is gone.
+                It rendered two buttons, one permanently pressed and one whose
+                only action was a toast claiming "fortnight and month views use
+                the same grid at lower density" — views that did not exist. The
+                grid is now a continuous three-week axis, so the thing that
+                switcher promised is simply what the screen does, and a control
+                that only explains itself is worse than no control. */}
             <Button
               size="sm"
               variant="secondary"
@@ -2195,7 +2262,8 @@ export function RotaBuilderPage(): JSX.Element {
                  grid is, which is what the design guide asks for. */
               <ScrollRegion label="Rota grid" viewportClassName="max-h-[70vh]">
                 <RotaGrid
-                  dates={dates}
+                  dates={gridDates}
+                  anchorWeekStart={weekStart}
                   groups={groups}
                   shiftMapByLocation={shiftMapByLocation}
                   shiftTypes={shiftTypes}

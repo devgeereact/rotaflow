@@ -2,6 +2,11 @@ import { format } from 'date-fns';
 import { ManagerSchedule } from '@/components/schedule/ManagerSchedule';
 import { StaffSchedule } from '@/components/schedule/StaffSchedule';
 import { resolvePeriod, todayIso } from '@/lib/schedulePeriod';
+import {
+  buildAttendanceRows,
+  summariseAttendance,
+  type AttendanceCounts,
+} from '@/lib/attendance';
 import type { WeeklyRosterSummary } from '@/services/dashboardService';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 import type {
@@ -55,6 +60,7 @@ const STAFF: StaffProfile[] = [
     first_name,
     last_name,
     job_title: 'Care Assistant',
+    job_title_id: null,
     department_id: null,
     contract_type: 'full_time',
     weekly_hours: 37.5,
@@ -200,6 +206,23 @@ if (WEEK_DATES[4]) {
  * against fixed mock data shaped to match `docs/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.schedule`. `?role=staff` switches branch.
  */
+/**
+ * The counts the manager branch shows, derived from the same fixtures the
+ * rest of this preview uses rather than typed in: a preview whose numbers do
+ * not follow from its own data teaches the wrong thing about the screen.
+ */
+const PREVIEW_ATTENDANCE: AttendanceCounts = summariseAttendance(
+  buildAttendanceRows({
+    shifts: TODAY_SHIFTS,
+    events: CLOCK_EVENTS,
+    now: new Date(`${TODAY}T13:00:00`),
+    timezone: TZ,
+    windowFromIso: resolvePeriod('day', TODAY, TZ).fromIso,
+    windowToIso: resolvePeriod('day', TODAY, TZ).toIso,
+  }),
+  TODAY_SHIFTS,
+);
+
 export function SchedulePreviewPage(): JSX.Element {
   const role = new URLSearchParams(window.location.search).get('role');
 
@@ -225,7 +248,9 @@ export function SchedulePreviewPage(): JSX.Element {
           locations={LOCATIONS}
           shiftTypes={SHIFT_TYPES}
           leave={LEAVE}
-          clockEvents={CLOCK_EVENTS}
+          attendance={PREVIEW_ATTENDANCE}
+          operationalDate={TODAY}
+          timezone={TZ}
         />
       )}
     </PreviewCanvas>

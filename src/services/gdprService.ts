@@ -32,6 +32,12 @@ export interface StaffDataExport {
   sites: unknown[];
   /** Which announcements they have read, and when. */
   announcementReads: unknown[];
+  /**
+   * Every manual correction to their clock events: before, after, who and
+   * why (0128). Without it the export shows corrected times as though they
+   * had always been the recorded ones.
+   */
+  clockCorrections: unknown[];
   /** What this export deliberately leaves out, and why. */
   notes: string[];
 }
@@ -48,6 +54,7 @@ export const SUBJECT_EXPORT_TABLES = [
   'staff_profiles',
   'shifts',
   'clock_events',
+  'clock_event_corrections',
   'leave_requests',
   'shift_swaps',
   'availability',
@@ -133,11 +140,12 @@ async function listDocumentsForStaff(staffProfileId: string): Promise<StaffDocum
 }
 
 /**
- * The four tables this export forgot, and the read-receipt table.
+ * The four tables this export forgot, the read-receipt table, and the
+ * correction history added by `0128`.
  *
- * One helper rather than five, because they differ only by name: the risk in
- * a subject-access export is a table missing from it, and five near-identical
- * functions is how the sixth gets written slightly differently and skipped.
+ * One helper rather than six, because they differ only by name: the risk in
+ * a subject-access export is a table missing from it, and six near-identical
+ * functions is how the seventh gets written slightly differently and skipped.
  */
 async function listRowsForStaff(
   table:
@@ -145,7 +153,8 @@ async function listRowsForStaff(
     | 'timesheets'
     | 'staff_pay_rates'
     | 'staff_locations'
-    | 'announcement_reads',
+    | 'announcement_reads'
+    | 'clock_event_corrections',
   staffProfileId: string,
 ): Promise<unknown[]> {
   const { data, error } = await supabase
@@ -192,6 +201,7 @@ export async function exportStaffData(staffProfileId: string): Promise<StaffData
     payRates,
     sites,
     announcementReads,
+    clockCorrections,
   ] = await Promise.all([
     getStaffProfile(staffProfileId),
     listShiftsForStaff(staffProfileId),
@@ -206,6 +216,12 @@ export async function exportStaffData(staffProfileId: string): Promise<StaffData
     listRowsForStaff('staff_pay_rates', staffProfileId),
     listRowsForStaff('staff_locations', staffProfileId),
     listRowsForStaff('announcement_reads', staffProfileId),
+    // Every manual change to this person's attendance record: what it was,
+    // what it became, who changed it and why (0128). Somebody disputing
+    // their hours is asking about exactly this, and an export of the clock
+    // events alone shows them the corrected numbers with no sign that a
+    // correction happened.
+    listRowsForStaff('clock_event_corrections', staffProfileId),
   ]);
 
   return {
@@ -223,6 +239,7 @@ export async function exportStaffData(staffProfileId: string): Promise<StaffData
     payRates,
     sites,
     announcementReads,
+    clockCorrections,
     notes: [
       "Your RotaFlow login is not included. It can belong to more than one organisation, so it is not this one's to export.",
       'Files themselves are not included — `documents` records the URL of each one.',

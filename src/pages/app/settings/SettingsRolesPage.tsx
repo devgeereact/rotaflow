@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { JobTitlesSection } from '@/components/settings/JobTitlesSection';
+import { canManageJobTitles } from '@/services/jobTitleService';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const ROLE_SCOPE: Record<SystemRole, string> = {
@@ -59,6 +61,62 @@ export function SettingsRolesPage(): JSX.Element {
   // could see this form enabled and have every save silently rejected by RLS.
   const canEdit = role === 'owner';
 
+  /**
+   * Whether this person may change the catalogue.
+   *
+   * Asked of the database rather than derived here: `can_manage_job_titles`
+   * is the same predicate the RLS policy uses, so the screen cannot offer a
+   * control the policy then refuses. Unknown means no, which is the only safe
+   * default for a permission.
+   */
+  const [canManageTitles, setCanManageTitles] = useState(false);
+  const [managedBy, setManagedBy] = useState<'owner' | 'managers'>('owner');
+
+  /**
+   * Hand the catalogue to managers, or take it back.
+   *
+   * Written to `organisations.settings`, which is what
+   * `can_manage_job_titles` reads. The optimistic update is reverted on
+   * failure rather than left showing a permission the database did not grant.
+   */
+  const handleManagedByChange = useCallback(
+    async (value: 'owner' | 'managers'): Promise<void> => {
+      if (!orgId) return;
+      const previous = managedBy;
+      setManagedBy(value);
+      try {
+        await mergeOrgSettings(orgId, { job_titles_managed_by: value });
+        setCanManageTitles(await canManageJobTitles(orgId));
+        showSuccess(
+          value === 'managers'
+            ? 'Managers can now edit job titles.'
+            : 'Job titles are owner-only again.',
+        );
+      } catch (err) {
+        reportError(err, { area: 'settings:jobTitlesManagedBy' });
+        setManagedBy(previous);
+        showError('Could not change who manages job titles.');
+      }
+    },
+    [orgId, managedBy, showError, showSuccess],
+  );
+
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void canManageJobTitles(orgId)
+      .then((allowed) => {
+        if (active) setCanManageTitles(allowed);
+      })
+      .catch((err: unknown) => {
+        reportError(err, { area: 'settings:canManageJobTitles' });
+        if (active) setCanManageTitles(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [orgId]);
+
   useEffect(() => {
     if (!orgId) return;
     let active = true;
@@ -71,6 +129,12 @@ export function SettingsRolesPage(): JSX.Element {
         ]);
         if (!active) return;
         setLabels(roleLabels(org.settings));
+        setManagedBy(
+          (org.settings as Record<string, unknown> | null)?.['job_titles_managed_by'] ===
+            'managers'
+            ? 'managers'
+            : 'owner',
+        );
 
         const tally: Record<string, number> = {};
         for (const value of memberRoles.values()) {
@@ -186,6 +250,17 @@ export function SettingsRolesPage(): JSX.Element {
           </div>
         )}
       </SettingsSection>
+
+      {orgId && (
+        <JobTitlesSection
+          orgId={orgId}
+          canManage={canManageTitles}
+          canDelegate={canEdit}
+          managedBy={managedBy}
+          onManagedByChange={(value) => void handleManagedByChange(value)}
+          onChanged={() => void refresh()}
+        />
+      )}
 
       <Card className="bg-info/5">
         <div className="flex gap-3">

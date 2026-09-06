@@ -79,6 +79,7 @@ function mkStaff(
     first_name: firstName,
     last_name: lastName,
     job_title: jobTitle,
+    job_title_id: null,
     department_id: null,
     contract_type: 'full_time',
     weekly_hours: 37.5,
@@ -344,7 +345,11 @@ const DEFAULT_TZ = 'Europe/London';
  * wired to any service call.
  */
 export function RotaBuilderPreviewPage(): JSX.Element {
-  const dates = useMemo(() => getWeekDates(getMonday(now)), []);
+  // The preview stays one week wide on purpose: it exists for a screenshot
+  // of the chips and the density, and three weeks of columns would make every
+  // one of them narrower than the real screen ever shows them.
+  const weekStart = useMemo(() => getMonday(now), []);
+  const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   // Held in state, not a module constant, so the keyboard move actually moves
   // something here. The design loop screenshots the initial arrangement either
   // way; what this buys is a harness where the move can be driven and asserted
@@ -568,6 +573,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             <ScrollRegion label="Rota grid" viewportClassName="max-h-[70vh]">
               <RotaGrid
                 dates={dates}
+                anchorWeekStart={weekStart}
                 groups={groups}
                 shiftMapByLocation={shiftMapByLocation}
                 shiftTypes={SHIFT_TYPES}

@@ -96,6 +96,7 @@ describe('buildTimesheetDayRows', () => {
             breakMinutes: 0,
             minutes: 120,
             reviewReason: null,
+            openBreakSince: null,
           },
         ],
       ],
@@ -124,6 +125,7 @@ describe('buildTimesheetDayRows', () => {
             breakMinutes: 30,
             minutes: 440,
             reviewReason: null,
+            openBreakSince: null,
           },
         ],
       ],
@@ -151,6 +153,7 @@ describe('buildTimesheetDayRows', () => {
             breakMinutes: 30,
             minutes: 451,
             reviewReason: null,
+            openBreakSince: null,
           },
         ],
       ],
@@ -167,6 +170,7 @@ describe('buildTimesheetDayRows', () => {
       breakMinutes: 0,
       minutes: 60,
       reviewReason: null,
+      openBreakSince: null,
     };
     const near = {
       clockIn: mkEvent({ id: 'near', event_at: '2026-08-11T07:01:00.000Z' }),
@@ -174,6 +178,7 @@ describe('buildTimesheetDayRows', () => {
       breakMinutes: 30,
       minutes: 449,
       reviewReason: null,
+      openBreakSince: null,
     };
     const segments = new Map([['staff-1', [far, near]]]);
     const rows = buildTimesheetDayRows([shift], segments, LOCATIONS, TZ);
@@ -192,6 +197,7 @@ describe('buildTimesheetDayRows', () => {
             breakMinutes: 0,
             minutes: 60,
             reviewReason: null,
+            openBreakSince: null,
           },
         ],
       ],
@@ -227,6 +233,7 @@ describe('weekTotalsForStaff', () => {
         breakMinutes: 30,
         minutes: 450,
         reviewReason: null,
+        openBreakSince: null,
       },
     ];
     const totals = weekTotalsForStaff(shifts, segments);

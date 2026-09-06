@@ -37,19 +37,19 @@ acceptance and the contact form carried no link to either document, and a
 signed-in member of staff — the person the notice is actually about — had no
 route to `/legal/*` from inside the app at all.
 
-| | |
-| --- | --- |
-| Projects inspected | 1 (RotaFlow) |
-| P0 | 0 |
-| P1 | 5 — 4 fixed, 1 owner-blocked |
-| P2 | 7 — 5 fixed, 2 recorded |
-| P3 | 2 — both fixed |
-| Documents created | Privacy Notice (draft), Terms of Service (draft), this report, the data map |
-| Documents corrected | Cookie Notice, Trust page, sub-processor register |
-| Code changed | 29 files |
-| Tests added | 32 (13 unit on Sentry, 19 unit on consent) + 18 e2e |
-| Owner decisions outstanding | 9 |
-| Legal questions outstanding | 11 |
+|                             |                                                                             |
+| --------------------------- | --------------------------------------------------------------------------- |
+| Projects inspected          | 1 (RotaFlow)                                                                |
+| P0                          | 0                                                                           |
+| P1                          | 5 — 4 fixed, 1 owner-blocked                                                |
+| P2                          | 7 — 5 fixed, 2 recorded                                                     |
+| P3                          | 2 — both fixed                                                              |
+| Documents created           | Privacy Notice (draft), Terms of Service (draft), this report, the data map |
+| Documents corrected         | Cookie Notice, Trust page, sub-processor register                           |
+| Code changed                | 29 files                                                                    |
+| Tests added                 | 32 (13 unit on Sentry, 19 unit on consent) + 18 e2e                         |
+| Owner decisions outstanding | 9                                                                           |
+| Legal questions outstanding | 11                                                                          |
 
 **Readiness: NOT READY — MATERIAL PRIVACY GAPS REMAIN.**
 
@@ -65,7 +65,7 @@ state, and this document will not pretend otherwise.
 
 ### P1
 
-**P1-1 — Session replay and performance tracing ran without consent, contrary to the published notice.** *Fixed.*
+**P1-1 — Session replay and performance tracing ran without consent, contrary to the published notice.** _Fixed._
 `src/lib/sentry.ts:14-19`, started at `src/main.tsx:9`. Contradicted
 `src/pages/legal/CookiesPage.tsx:29` and `src/lib/legalFacts.ts:123`. Tracing
 URLs carry organisation and staff ids; replay uploads a masked DOM recording,
@@ -74,36 +74,36 @@ reporting gated on consent. Verified against a production build: no request
 before consent, and no `replay_event` in the envelope after it. Recorded as
 BUG-068.
 
-**P1-2 — Unverifiable compliance claim on two conversion surfaces.** *Fixed.*
+**P1-2 — Unverifiable compliance claim on two conversion surfaces.** _Fixed._
 `AuthTrustStrip.tsx:5`, `StepChoosePlan.tsx:184`. Replaced with two checkable
 facts. Recorded as BUG-069.
 
-**P1-3 — No privacy information at any collection point.** *Fixed.*
+**P1-3 — No privacy information at any collection point.** _Fixed._
 Sign-up, invitation acceptance, the contact form, the clock-in pane, emergency
 contacts, documents and both AI surfaces now carry a notice at the point of
 collection, and the Help page carries the legal links so a signed-in person can
 reach them.
 
-**P1-4 — The privacy notice was a six-question summary.** *Fixed.*
+**P1-4 — The privacy notice was a six-question summary.** _Fixed._
 No operator, no lawful basis, no rights procedure, no regulator, no effective
 date, no mention of special-category data or of the third parties whose details
 the product holds. Replaced with a full draft that cites its evidence and marks
 what it cannot settle.
 
-**P1-5 — No ICO registration, no published address, no answer on an EU representative.** *Not fixed — owner.*
+**P1-5 — No ICO registration, no published address, no answer on an EU representative.** _Not fixed — owner._
 Recorded as GAP-059. Blocks publication of the notice.
 
 ### P2
 
-| | Issue | Status |
-| --- | --- | --- |
-| P2-1 | Sub-processor row for Sentry wrong in both directions — claimed a user id never sent (`Sentry.setUser` is never called), omitted replay and tracing | Fixed |
-| P2-2 | Two storage keys undeclared: the onboarding draft holding an org name and site postal address, and the install-prompt snooze | Fixed |
-| P2-3 | Query strings reaching Sentry in `event.request.url` — the field a reset token rides in on | Fixed (BUG-070) |
-| P2-4 | SEO description claimed "built to WCAG 2 AA" where the page itself claims only to aim at it | Fixed |
-| P2-5 | Cloudflare row read `outsideUkEu: false` beside a region saying "global edge network" | Fixed — reasoning written down, disclosed in prose rather than mis-grouped |
-| P2-6 | Uploaded files survive erasure and organisation deletion | Recorded (GAP-056), disclosed, not fixable here |
-| P2-7 | No self-service subject access or account deletion for an individual | Recorded (GAP-057), disclosed |
+|      | Issue                                                                                                                                               | Status                                                                     |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| P2-1 | Sub-processor row for Sentry wrong in both directions — claimed a user id never sent (`Sentry.setUser` is never called), omitted replay and tracing | Fixed                                                                      |
+| P2-2 | Two storage keys undeclared: the onboarding draft holding an org name and site postal address, and the install-prompt snooze                        | Fixed                                                                      |
+| P2-3 | Query strings reaching Sentry in `event.request.url` — the field a reset token rides in on                                                          | Fixed (BUG-070)                                                            |
+| P2-4 | SEO description claimed "built to WCAG 2 AA" where the page itself claims only to aim at it                                                         | Fixed                                                                      |
+| P2-5 | Cloudflare row read `outsideUkEu: false` beside a region saying "global edge network"                                                               | Fixed — reasoning written down, disclosed in prose rather than mis-grouped |
+| P2-6 | Uploaded files survive erasure and organisation deletion                                                                                            | Recorded (GAP-056), disclosed, not fixable here                            |
+| P2-7 | No self-service subject access or account deletion for an individual                                                                                | Recorded (GAP-057), disclosed                                              |
 
 ### P3
 
@@ -140,8 +140,8 @@ the next write is not a withdrawal.
 
 **Documents.** A full Privacy Notice in `src/lib/privacyNotice.ts`, and a Terms
 of Service draft in `src/lib/termsDraft.ts`, both rendered by a shared
-`NoticeSections` component that puts each unresolved section's warning *in
-place* rather than in an appendix. A notice that quietly omits the question of
+`NoticeSections` component that puts each unresolved section's warning _in
+place_ rather than in an appendix. A notice that quietly omits the question of
 its own lawful basis reads as finished; one that says "this paragraph needs a
 solicitor, and here is why" tells the reader what they are holding.
 
@@ -155,22 +155,22 @@ deliberately empty and say what has to be decided.
 
 ## Verification
 
-| Check | Result |
-| --- | --- |
-| `npm run typecheck` | PASS |
-| `npm run lint` | PASS (`--max-warnings 0`) |
-| `npm run format:check` | PASS |
-| `npm test` | PASS — 873 unit tests, 49 files |
-| `npm run build` | PASS |
-| `npm run check:bundle` | PASS — 16% headroom, no DEV page shipped |
-| `npm run check:docs` | PASS — 113 capability rows match the table |
-| `npm run check:export` | PASS — 40 tenant tables, 12 person-keyed tables accounted for |
-| `npm run check:migrations` | PASS — no new migrations |
-| `npx playwright test e2e/consent.spec.ts` | PASS — 16/16 |
-| `npx playwright test e2e/marketing.spec.ts e2e/app-surface.spec.ts` | PASS — 80/80, including axe on all five legal pages and 0 contrast violations on the authenticated surface |
-| Runtime consent gate, production build | PASS — 9/9 (see below) |
-| `supabase test db` (pgTAP) | **NOT TESTED** — needs Docker, unavailable here. No migration was written, so no RLS surface changed |
-| Real Sentry endpoint | **NOT TESTED** — no DSN in this working tree; probed with a DSN pointing at a non-resolving host, which proves the gate, not the vendor |
+| Check                                                               | Result                                                                                                                                  |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                                                 | PASS                                                                                                                                    |
+| `npm run lint`                                                      | PASS (`--max-warnings 0`)                                                                                                               |
+| `npm run format:check`                                              | PASS                                                                                                                                    |
+| `npm test`                                                          | PASS — 873 unit tests, 49 files                                                                                                         |
+| `npm run build`                                                     | PASS                                                                                                                                    |
+| `npm run check:bundle`                                              | PASS — 16% headroom, no DEV page shipped                                                                                                |
+| `npm run check:docs`                                                | PASS — 113 capability rows match the table                                                                                              |
+| `npm run check:export`                                              | PASS — 40 tenant tables, 12 person-keyed tables accounted for                                                                           |
+| `npm run check:migrations`                                          | PASS — no new migrations                                                                                                                |
+| `npx playwright test e2e/consent.spec.ts`                           | PASS — 16/16                                                                                                                            |
+| `npx playwright test e2e/marketing.spec.ts e2e/app-surface.spec.ts` | PASS — 80/80, including axe on all five legal pages and 0 contrast violations on the authenticated surface                              |
+| Runtime consent gate, production build                              | PASS — 9/9 (see below)                                                                                                                  |
+| `supabase test db` (pgTAP)                                          | **NOT TESTED** — needs Docker, unavailable here. No migration was written, so no RLS surface changed                                    |
+| Real Sentry endpoint                                                | **NOT TESTED** — no DSN in this working tree; probed with a DSN pointing at a non-resolving host, which proves the gate, not the vendor |
 
 ### The runtime probe, and why it mattered
 

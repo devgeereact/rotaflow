@@ -19,6 +19,24 @@ export interface WorkedSegment {
    * See the header for why this exists rather than a silent best guess.
    */
   reviewReason: SegmentReviewReason | null;
+  /**
+   * When the break that was open at the moment this segment closed began, or
+   * `null` if none was.
+   *
+   * Two different facts share one field, and which one it is depends on
+   * `clockOut`. On a segment still running (`clockOut === null` and no review
+   * reason) it means the person is **on a break right now**, which is the
+   * distinction an operational board has to draw and which `minutes` alone
+   * cannot express: somebody on their break and somebody actively working
+   * both read as an open segment. On a segment that was closed with a break
+   * still open it is the instant the deduction in `breakMinutes` was measured
+   * from, and `reviewReason` is already `unclosed_break`.
+   *
+   * It is carried here rather than recomputed by each caller so that "is this
+   * person on a break" is answered by the same pass over the event stream
+   * that produces the hours, and cannot drift from it.
+   */
+  openBreakSince: string | null;
 }
 
 /**
@@ -91,6 +109,7 @@ export function pairClockEvents(
       clockIn: openIn,
       clockOut,
       breakMinutes: breaks,
+      openBreakSince: breakStart?.event_at ?? null,
       // Clamped: contradictory rows (a break_end belonging to another day)
       // must never produce a negative that subtracts from the week's total.
       minutes: Math.max(0, grossMinutes - breaks),

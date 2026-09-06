@@ -230,13 +230,13 @@ through; it worked, and these are the steps that made it safe.
 4. **Dry-run.** The only change should be `.htaccess` itself, with no deletions.
 5. **Verify from outside afterwards**, all of it:
 
-   | Check | Expect |
-   | --- | --- |
-   | `/` and a deep route (`/app/dashboard`) | 200 — the second proves the SPA fallback survived |
-   | the hashed bundle and `/.well-known/security.txt` | 200 |
-   | `curl --resolve <domain>:443:185.61.152.45` | **403** — the lock is intact |
-   | the same, to `/.well-known/security.txt` | **200** — the ACME exemption survived, or renewal fails months later |
-   | response headers | CSP reflects the change; HSTS and `X-Content-Type-Options` still present |
+   | Check                                             | Expect                                                                   |
+   | ------------------------------------------------- | ------------------------------------------------------------------------ |
+   | `/` and a deep route (`/app/dashboard`)           | 200 — the second proves the SPA fallback survived                        |
+   | the hashed bundle and `/.well-known/security.txt` | 200                                                                      |
+   | `curl --resolve <domain>:443:185.61.152.45`       | **403** — the lock is intact                                             |
+   | the same, to `/.well-known/security.txt`          | **200** — the ACME exemption survived, or renewal fails months later     |
+   | response headers                                  | CSP reflects the change; HSTS and `X-Content-Type-Options` still present |
 
    The fourth row is the one that fails silently. A lock with no `/.well-known/` exemption
    looks perfect until a certificate comes up for renewal.
@@ -252,7 +252,7 @@ year**, at a URL that nothing links to any more but that anybody who has seen it
 fetch. Verified: the pre-`0087` `useInngestDispatch-*.js` returned 200 with
 `cf-cache-status: HIT` after the deploy that removed it from the origin.
 
-So the checks after a deploy that exists to *remove* something must be:
+So the checks after a deploy that exists to _remove_ something must be:
 
 1. **Over SSH, not over HTTP.** `ssh cpanel 'ls ~/<docroot>/assets/ | grep <thing>'`. HTTP
    answers from the edge, and the SPA fallback answers 200 for a missing file anyway —
@@ -286,7 +286,7 @@ rollback makes things worse:
 - **A migration is not.** Migrations apply to production on merge, through the Supabase GitHub
   integration. There is no down-migration in this repository and no backup to restore from
   (GAP-001: `pitr_enabled` is false and the backup list is empty). A schema change that turns
-  out to be wrong is corrected by a *new forward migration*, written deliberately, not by
+  out to be wrong is corrected by a _new forward migration_, written deliberately, not by
   reverting the old one. Reverting the file in git changes nothing in production — the
   migration is already applied and will not be re-run.
 
@@ -340,7 +340,7 @@ the deploy entirely is the safe default, and it is the default.
   the rollback is not the remedy — **revoking it at the issuer is.**
 - **Service workers do not roll back on their own schedule.** `skipWaiting` is false and
   `registerType` is `prompt`, so a client that already installed the bad build keeps running it
-  until the person accepts an update. Rolling back produces a *new* `sw.js`, which those clients
+  until the person accepts an update. Rolling back produces a _new_ `sw.js`, which those clients
   will offer as an update — so recovery for an already-updated client is one more prompt, not
   instant. `UpdatePrompt` polls hourly, so an app left open recovers within the hour.
 - **`index.html`, `sw.js` and `manifest.webmanifest` are `no-store`**, so the entry point itself
@@ -348,7 +348,7 @@ the deploy entirely is the safe default, and it is the default.
 
 ### Verifying a rollback
 
-Identical to verifying a deploy, plus one: confirm the served bundle carries the *intended* SHA,
+Identical to verifying a deploy, plus one: confirm the served bundle carries the _intended_ SHA,
 by content rather than by status code.
 
 ```bash
@@ -373,11 +373,11 @@ collects, reads or echoes any of them.
 
 ### The three secrets, and where each comes from
 
-| Secret                  | Used by            | Where to get it |
-| ----------------------- | ------------------ | --------------- |
-| `SUPABASE_DB_URL`       | `backup.yml`       | Supabase dashboard → Project Settings → Database → Connection string → **URI**, session mode. Use the **pooler** host on port 5432, not 6543: `pg_dump` needs a session, and the transaction pooler will drop it partway through a large dump. |
-| `BACKUP_PASSPHRASE`     | `backup.yml`       | Generate a fresh one and store it in the password manager **before** setting it here. It is symmetric: a dump encrypted with a passphrase nobody kept is a dump nobody can restore, which is indistinguishable from having no backup. |
-| `SUPABASE_ACCESS_TOKEN` | `auth-config.yml`  | Supabase dashboard → Account → Access Tokens. Scope it to this project if the plan allows. |
+| Secret                  | Used by           | Where to get it                                                                                                                                                                                                                                |
+| ----------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_DB_URL`       | `backup.yml`      | Supabase dashboard → Project Settings → Database → Connection string → **URI**, session mode. Use the **pooler** host on port 5432, not 6543: `pg_dump` needs a session, and the transaction pooler will drop it partway through a large dump. |
+| `BACKUP_PASSPHRASE`     | `backup.yml`      | Generate a fresh one and store it in the password manager **before** setting it here. It is symmetric: a dump encrypted with a passphrase nobody kept is a dump nobody can restore, which is indistinguishable from having no backup.          |
+| `SUPABASE_ACCESS_TOKEN` | `auth-config.yml` | Supabase dashboard → Account → Access Tokens. Scope it to this project if the plan allows.                                                                                                                                                     |
 
 Set them at Settings → Secrets and variables → Actions → New repository secret.
 **A value written into a workflow file, a commit, or this document instead is

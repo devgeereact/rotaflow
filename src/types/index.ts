@@ -47,6 +47,17 @@ export type StaffProfile = Database['public']['Tables']['staff_profiles']['Row']
 export type StaffProfileInsert = Database['public']['Tables']['staff_profiles']['Insert'];
 export type StaffProfileUpdate = Database['public']['Tables']['staff_profiles']['Update'];
 
+/**
+ * An organisation's job-title catalogue (`0127`).
+ *
+ * `name_normalised` is a generated column and therefore absent from Insert
+ * and Update — the database computes the comparison form, so no caller can
+ * put a display name and its normalised form out of step.
+ */
+export type JobTitle = Database['public']['Tables']['job_titles']['Row'];
+export type JobTitleInsert = Database['public']['Tables']['job_titles']['Insert'];
+export type JobTitleUpdate = Database['public']['Tables']['job_titles']['Update'];
+
 export type ShiftType = Database['public']['Tables']['shift_types']['Row'];
 export type ShiftTypeInsert = Database['public']['Tables']['shift_types']['Insert'];
 export type ShiftTypeUpdate = Database['public']['Tables']['shift_types']['Update'];
@@ -64,7 +75,15 @@ export type AvailabilityInsert = Database['public']['Tables']['availability']['I
 
 export type ClockEvent = Database['public']['Tables']['clock_events']['Row'];
 export type ClockEventInsert = Database['public']['Tables']['clock_events']['Insert'];
-export type ClockEventUpdate = Database['public']['Tables']['clock_events']['Update'];
+/**
+ * Append-only correction history for a clock event (`0128`).
+ *
+ * There is no Insert or Update alias, deliberately: `correct_clock_event` is
+ * the only writer and the client holds no grant, so a type that suggested a
+ * direct write would describe something the database refuses.
+ */
+export type ClockEventCorrection =
+  Database['public']['Tables']['clock_event_corrections']['Row'];
 
 export type LeaveRequest = Database['public']['Tables']['leave_requests']['Row'];
 export type LeaveRequestInsert = Database['public']['Tables']['leave_requests']['Insert'];

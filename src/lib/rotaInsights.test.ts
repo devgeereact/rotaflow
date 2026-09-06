@@ -36,6 +36,7 @@ const STAFF_DEFAULTS: StaffProfile = {
   first_name: 'Test',
   last_name: 'Person',
   job_title: 'Care Assistant',
+  job_title_id: null,
   department_id: null,
   contract_type: 'full_time',
   weekly_hours: 37.5,

@@ -14,10 +14,12 @@ import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModa
 import { DocumentsModal } from '@/components/staff/DocumentsModal';
 import { toStaffDocument } from '@/lib/staffDirectoryMapping';
 import { buildProfile } from '@/lib/staffProfileMapping';
+import { listJobTitles } from '@/services/jobTitleService';
 import { reportError } from '@/lib/sentry';
 import type { StaffProfileTab } from '@/lib/staffProfile';
 import type {
   Department,
+  JobTitle,
   EmergencyContact,
   LeaveRequest,
   Location,
@@ -39,6 +41,7 @@ export function StaffProfilePage(): JSX.Element {
   const [staff, setStaff] = useState<StaffProfile | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
@@ -66,6 +69,7 @@ export function StaffProfilePage(): JSX.Element {
         leaveRows,
         shiftRows,
         monthRows,
+        titleRows,
       ] = await Promise.all([
         getStaffProfile(staffId),
         listDepartments(orgId),
@@ -85,8 +89,10 @@ export function StaffProfilePage(): JSX.Element {
           toIso: startOfDay(today).toISOString(),
           staffProfileId: staffId,
         }),
+        listJobTitles(orgId),
       ]);
       setStaff(profile);
+      setJobTitles(titleRows);
       setDepartments(deptRows);
       setLocations(locationRows);
       setDocuments(documentRows);
@@ -194,6 +200,7 @@ export function StaffProfilePage(): JSX.Element {
         onSubmit={handleSubmit}
         departments={departments}
         locations={locations}
+        jobTitles={jobTitles}
         initial={staff}
       />
 

@@ -10,7 +10,7 @@ import { listLocations } from '@/services/locationService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import {
   recordClockEvent,
-  updateClockEvent,
+  correctClockEvent,
   listClockEventsForOrg,
 } from '@/services/clockService';
 import {
@@ -446,7 +446,16 @@ export function TimesheetsPage(): JSX.Element {
             : fromIsoInTimezone(shift.starts_at, tz).date;
           const eventAt = toIsoInTimezone(date, input.clockInTime, tz);
           if (clockIn) {
-            await updateClockEvent(clockIn.id, { event_at: eventAt });
+            // The reason and the previous value are recorded by
+            // `correct_clock_event` itself (0128), in a table no client can
+            // edit. `expectedUpdatedAt` is what makes a second manager
+            // amending the same row fail loudly instead of silently
+            // discarding the first correction.
+            await correctClockEvent(clockIn.id, {
+              reason: input.reason,
+              eventAt,
+              expectedUpdatedAt: clockIn.updated_at,
+            });
           } else {
             await recordClockEvent({
               org_id: orgId,
@@ -464,7 +473,11 @@ export function TimesheetsPage(): JSX.Element {
             : fromIsoInTimezone(shift.ends_at, tz).date;
           const eventAt = toIsoInTimezone(date, input.clockOutTime, tz);
           if (clockOut) {
-            await updateClockEvent(clockOut.id, { event_at: eventAt });
+            await correctClockEvent(clockOut.id, {
+              reason: input.reason,
+              eventAt,
+              expectedUpdatedAt: clockOut.updated_at,
+            });
           } else {
             await recordClockEvent({
               org_id: orgId,

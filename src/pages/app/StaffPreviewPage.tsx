@@ -1,58 +1,20 @@
 import { useState } from 'react';
 import { TeamDirectoryView } from '@/components/staff/TeamDirectoryView';
 import type { TeamRow } from '@/lib/teamRows';
-import type { Department, Location } from '@/types';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
+import { FilterBar } from '@/components/ui/FilterBar';
+import type { FilterDimension, FilterOption } from '@/lib/filters';
 
-const DEPARTMENTS: Department[] = [
-  {
-    id: 'd1',
-    org_id: 'org-1',
-    location_id: 'loc1',
-    name: 'Nursing',
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'd2',
-    org_id: 'org-1',
-    location_id: 'loc2',
-    name: 'Care',
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-  },
-];
+/**
+ * The preview drives only the search box: the real screen's site, department
+ * and job-title options come from the tenant, and a preview inventing them
+ * would be showing a control that filters nothing.
+ */
+const PREVIEW_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text', sensitive: true },
+] as const;
 
-const LOCATIONS: Location[] = [
-  {
-    id: 'loc1',
-    org_id: 'org-1',
-    name: 'Sunnyvale House',
-    address: null,
-    timezone: 'Europe/London',
-    latitude: null,
-    longitude: null,
-    geofence_radius_m: 150,
-    location_type: null,
-    status: 'active',
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'loc2',
-    org_id: 'org-1',
-    name: 'Riverside House',
-    address: null,
-    timezone: 'Europe/London',
-    latitude: null,
-    longitude: null,
-    geofence_radius_m: 150,
-    location_type: null,
-    status: 'active',
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
-  },
-];
+const optionsFor = (): readonly FilterOption[] => [];
 
 const ROWS: TeamRow[] = [
   {
@@ -61,6 +23,9 @@ const ROWS: TeamRow[] = [
     lastName: 'Osei',
     photoUrl: null,
     jobTitle: 'Senior Carer',
+    jobTitleId: null,
+    jobTitleColour: null,
+    jobTitleArchived: false,
     department: 'Nursing',
     location: 'Sunnyvale House',
     locationIds: [],
@@ -75,6 +40,9 @@ const ROWS: TeamRow[] = [
     lastName: 'Reid',
     photoUrl: null,
     jobTitle: 'Care Assistant',
+    jobTitleId: null,
+    jobTitleColour: null,
+    jobTitleArchived: false,
     department: 'Care',
     location: 'Riverside House',
     locationIds: [],
@@ -89,6 +57,9 @@ const ROWS: TeamRow[] = [
     lastName: 'Raman',
     photoUrl: null,
     jobTitle: 'Senior Nurse',
+    jobTitleId: null,
+    jobTitleColour: null,
+    jobTitleArchived: false,
     department: 'Nursing',
     location: 'Sunnyvale House',
     locationIds: [],
@@ -108,8 +79,6 @@ const ROWS: TeamRow[] = [
  */
 export function StaffPreviewPage(): JSX.Element {
   const [search, setSearch] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
-  const [locationId, setLocationId] = useState('');
 
   const filtered = ROWS.filter((r) => {
     if (
@@ -133,16 +102,24 @@ export function StaffPreviewPage(): JSX.Element {
           documentsExpiring: 3,
           invitesOutstanding: 2,
         }}
-        search={search}
-        onSearchChange={setSearch}
-        departmentId={departmentId}
-        onDepartmentChange={setDepartmentId}
-        locationId={locationId}
-        onLocationChange={setLocationId}
-        departments={DEPARTMENTS}
-        locations={LOCATIONS}
+        outcome={filtered.length === 0 ? 'no-match' : 'rows'}
+        filters={
+          <FilterBar
+            dimensions={PREVIEW_FILTERS}
+            filters={{ q: search ? [search] : [] }}
+            optionsFor={optionsFor}
+            onSetValue={(_, value) => setSearch(value)}
+            onSetValues={(_, values) => setSearch(values[0] ?? '')}
+            onClearOne={() => setSearch('')}
+            onClearAll={() => setSearch('')}
+            searchPlaceholder="Search name, job title or site"
+            resultSummary={`Showing ${filtered.length} of ${ROWS.length}`}
+          />
+        }
         rows={filtered}
         totalRowCount={ROWS.length}
+        onClearFilters={() => setSearch('')}
+        onRetry={() => {}}
         onOpenActions={() => {}}
         onExport={() => {}}
         onAddStaff={() => {}}

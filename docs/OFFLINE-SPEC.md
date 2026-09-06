@@ -113,6 +113,43 @@ a service call. IndexedDB is write-only. `localStorage` holds preferences
 (active org, theme, sidebar, report options) and the Supabase session, and that
 list is audited by `src/lib/legalFacts.ts`.
 
+## What a manager can and cannot see, which follows from all of the above
+
+Added 2026-09-06, with the attendance workspace, because the consequence had
+never been written down and the product was about to start asserting things
+about it.
+
+**A queued clock-in exists only on the device that made it.** It is a row in
+that browser's IndexedDB outbox until the queue drains. Nothing on the server
+knows about it, so nothing a manager opens can know about it either — not the
+dashboard, not Team Attendance, not a report, not an export.
+
+Three rules follow, and every one of them is implemented rather than intended:
+
+1. **The absence of a clock event is `not_recorded`, never "absent".**
+   `src/lib/attendance.ts` names the state that way and
+   `ATTENDANCE_STATUS_META` spells out why on every screen that counts it: an
+   unsynchronised offline clock-in is indistinguishable, from here, from one
+   that never happened. `attendanceRows.ts` writes the same thing into the
+   row's issue sentence, and `attendanceRows.test.ts` asserts the word
+   "absent" does not appear in it.
+2. **No screen invents a "pending sync" figure for somebody else.** The person
+   whose device holds the queue sees their own depth
+   (`syncStatusLabel`); a manager is told the board reflects what has reached
+   the server and is given the time of the last successful read. Reporting a
+   number the server cannot observe would be a fabrication dressed as
+   reassurance.
+3. **Reconciliation is by re-read, not by patching.** When a queued event
+   drains, it arrives as an ordinary insert; Realtime wakes the board and the
+   whole window is re-derived from `clock_events`. A late-arriving clock-in
+   for a shift already marked `not_recorded` therefore corrects itself, and a
+   correction that lands inside an approved period flags that timesheet
+   (`0128`) rather than moving a signed total.
+
+**What is still NOT TESTED here** is the same thing GAP-050 has said since
+2026-09-04: no browser test drives the offline path. Nothing above has been
+watched happening; it is the shape of the code and the wording on the screen.
+
 ## Known defects this classification found
 
 1. **The offline copy overclaims.** `src/components/OfflineBanner.tsx:14` says
@@ -133,11 +170,12 @@ list is audited by `src/lib/legalFacts.ts`.
 
    Related, and fixed in the same pass: `navigateFallback` had no
    `navigateFallbackDenylist`, so once the service worker controlled the page
-   *every* navigation resolved to the app shell — `/sitemap.xml`, `/robots.txt`
+   _every_ navigation resolved to the app shell — `/sitemap.xml`, `/robots.txt`
    and `/.well-known/security.txt` included. `.htaccess` guards that at the
    Apache layer and the service worker never sees `.htaccess`. Verified against
    the deployed build with a live service worker: those three now return
    `application/xml` and `text/plain`.
+
 3. **A cold offline load of the clock screen shows a failure state** even though
    its write path would have worked (`src/pages/app/ClockInPage.tsx:189-192`).
    The one screen most likely to be opened without signal is the one that reports
@@ -169,17 +207,17 @@ tracking is a defect nobody is tracking.
 The PWA engine asks for critical journeys under nine network conditions. Status
 uses the GEE evidence vocabulary.
 
-| Condition                              | Status     | Note                                                                                                 |
-| -------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------- |
-| Full connection                        | PASS       | covered by e2e and by daily use                                                                      |
-| Slow connection                        | NOT TESTED | no throttled run exists                                                                              |
-| Intermittent connection                | NOT TESTED | unit tests simulate it; no browser has                                                               |
-| Offline                                | PARTIAL    | queue logic unit-tested; no browser offline run                                                      |
-| Network loss during an operation       | PARTIAL    | the "looked online but was not" path is handled and tested at unit level (`ClockInPage.tsx:372-384`) |
-| Network restoration                    | PARTIAL    | `syncQueue.test.ts:282` covers delivery on return, in isolation. The **restart-while-already-online** case was reproduced as broken by the 2026-09-05 audit and fixed (BUG-077); the fix is reasoned and reviewed, not browser-verified                                      |
-| Expired authentication during recovery | NOT TESTED | a queued write replayed after the session expires is unproved                                        |
-| New version available                  | NOT TESTED | `registerType: 'prompt'` with a Reload button, never exercised in a test                             |
-| Relaunch after installation            | NOT TESTED | installation itself is untested                                                                      |
+| Condition                              | Status     | Note                                                                                                                                                                                                                                    |
+| -------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full connection                        | PASS       | covered by e2e and by daily use                                                                                                                                                                                                         |
+| Slow connection                        | NOT TESTED | no throttled run exists                                                                                                                                                                                                                 |
+| Intermittent connection                | NOT TESTED | unit tests simulate it; no browser has                                                                                                                                                                                                  |
+| Offline                                | PARTIAL    | queue logic unit-tested; no browser offline run                                                                                                                                                                                         |
+| Network loss during an operation       | PARTIAL    | the "looked online but was not" path is handled and tested at unit level (`ClockInPage.tsx:372-384`)                                                                                                                                    |
+| Network restoration                    | PARTIAL    | `syncQueue.test.ts:282` covers delivery on return, in isolation. The **restart-while-already-online** case was reproduced as broken by the 2026-09-05 audit and fixed (BUG-077); the fix is reasoned and reviewed, not browser-verified |
+| Expired authentication during recovery | NOT TESTED | a queued write replayed after the session expires is unproved                                                                                                                                                                           |
+| New version available                  | NOT TESTED | `registerType: 'prompt'` with a Reload button, never exercised in a test                                                                                                                                                                |
+| Relaunch after installation            | NOT TESTED | installation itself is untested                                                                                                                                                                                                         |
 
 The gap that would close most of this at once is a Playwright specification using
 `context.setOffline(true)`. That is not written yet, and this file does not

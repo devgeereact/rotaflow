@@ -10,6 +10,7 @@ import {
   MapPin,
   Megaphone,
   Repeat2,
+  ScanFace,
   Settings,
   Timer,
   TimerReset,
@@ -86,6 +87,15 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/clock',
     group: 'Scheduling',
     icon: LogIn,
+  },
+  {
+    label: 'Team attendance',
+    keywords:
+      'attendance clocked in late missing clock out not recorded exceptions review corrections who turned up',
+    to: '/app/attendance',
+    group: 'Scheduling',
+    icon: ScanFace,
+    roles: MANAGERIAL,
   },
   {
     label: 'Timesheets',

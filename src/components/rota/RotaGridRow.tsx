@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { rotaGridTemplate } from '@/lib/rotaCanvas';
 import { shiftCellKey } from '@/lib/rotaGrid';
 import { shiftNetMinutes } from '@/lib/rotaInsights';
 import { hoursLabel } from '@/components/dashboard/dashboardFormat';
@@ -14,8 +15,11 @@ import type { Shift, ShiftType, StaffProfile } from '@/types';
  * daily-totals footer reuse it so all three stay aligned; changing the shape
  * in one place without the others is what knocks the grid out of true.
  */
-export const ROTA_GRID_COLS =
-  'grid grid-cols-[minmax(0,11rem)_repeat(7,minmax(0,1fr))_3.5rem] gap-1.5';
+/**
+ * The layout classes every grid row shares. The column *template* is an
+ * inline style rather than a class — see `rotaGridTemplate`.
+ */
+export const ROTA_GRID_COLS = 'grid gap-1.5';
 
 /**
  * The staff-name column, pinned to the left edge of the scrolling viewport.
@@ -48,7 +52,15 @@ interface RotaGridRowProps {
   staff: StaffProfile | null;
   /** This row's index in the grid's flat row list. Used by the keyboard move. */
   rowIndex: number;
+  /** Every column drawn — the whole canvas. */
   dates: string[];
+  /**
+   * The anchor week's seven dates, which the "Week" total is summed over.
+   *
+   * Separate from `dates` deliberately: the column is a weekly figure judged
+   * against a weekly limit, and it must not grow because the view widened.
+   */
+  weekDates: string[];
   locationId: string;
   timezone: string;
   shiftMap: Map<string, Shift[]>;
@@ -76,6 +88,7 @@ export function RotaGridRow({
   staff,
   rowIndex,
   dates,
+  weekDates,
   locationId,
   timezone,
   shiftMap,
@@ -95,15 +108,24 @@ export function RotaGridRow({
 }: RotaGridRowProps): JSX.Element {
   const staffProfileId = staff?.id ?? null;
   const contractMinutes = (staff?.weekly_hours ?? 0) * 60;
+  // The ANCHOR week's hours, not the canvas's.
+  //
+  // The grid draws three weeks; this column is headed "Week" and is compared
+  // against the 48-hour statutory limit and the person's contract. Summing
+  // twenty-one days into it would put every full-time worker over the limit
+  // on a screen whose whole job is to flag exactly that.
   const weekMinutes = staffProfileId
-    ? dates.reduce((total, date) => {
+    ? weekDates.reduce((total, date) => {
         const shiftsToday = shiftMap.get(shiftCellKey(staffProfileId, date)) ?? [];
         return total + shiftsToday.reduce((sum, s) => sum + shiftNetMinutes(s), 0);
       }, 0)
     : 0;
 
   return (
-    <div className={ROTA_ROW_GRID}>
+    <div
+      className={ROTA_ROW_GRID}
+      style={{ gridTemplateColumns: rotaGridTemplate(dates.length) }}
+    >
       <div className={cn('flex items-center gap-2.5 px-2', ROTA_STICKY_STAFF_COL)}>
         {staff ? (
           <>

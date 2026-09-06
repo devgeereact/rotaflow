@@ -4,6 +4,7 @@ import { PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isAllowed } from '@/lib/consent';
 import { useOrg } from '@/hooks/useOrg';
+import { useWorkMode } from '@/hooks/useWorkMode';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useNavBadgeCounts } from '@/hooks/useNavBadgeCounts';
 import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
@@ -35,48 +36,63 @@ function NavList({
 }): JSX.Element {
   return (
     <nav aria-label="Main" className="flex-1 space-y-0.5 overflow-y-auto px-3">
-      {items.map(({ label, icon: Icon, to, badge }) => {
+      {items.map(({ label, icon: Icon, to, badge, group }, index) => {
         const count = badge ? badges[badge] : 0;
+        // The heading is drawn once, above the first row that belongs to the
+        // group, so an opted-in manager can see at a glance which rows are
+        // their own work and which are the organisation's. A `<nav>` cannot
+        // hold a list heading between links without breaking the link list,
+        // so this is a plain labelled divider rather than a nested landmark.
+        const startsMyWork = group === 'my-work' && items[index - 1]?.group !== 'my-work';
         return (
-          <NavLink
-            key={label}
-            to={to}
-            onClick={onNavigate}
-            // `title` is the tooltip when collapsed. The label also stays in
-            // the accessibility tree via `sr-only` rather than being dropped, // a collapsed sidebar of eleven unlabelled icons is unusable with
-            // a screen reader, and `title` alone is not reliably announced.
-            title={collapsed ? label : undefined}
-            className={({ isActive }) =>
-              cn(
-                LINK_BASE,
-                isActive ? LINK_ACTIVE : LINK_INACTIVE,
-                collapsed && 'justify-center px-0',
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon size={18} aria-hidden="true" className="shrink-0" />
-                {collapsed ? (
-                  <span className="sr-only">{label}</span>
-                ) : (
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                )}
-                {!collapsed && count > 0 && (
-                  <span
-                    className={cn(
-                      'ml-auto shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none',
-                      isActive
-                        ? 'bg-white/25 text-primary-fg'
-                        : 'bg-warning text-[#3A2A08]',
-                    )}
-                  >
-                    {count}
-                  </span>
-                )}
-              </>
+          <div key={label}>
+            {startsMyWork && !collapsed && (
+              <p className="mb-1 mt-3 border-t border-surface-border px-3 pt-3 text-[10px] font-semibold uppercase tracking-wider text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+                My work
+              </p>
             )}
-          </NavLink>
+            {startsMyWork && collapsed && (
+              <hr className="my-2 border-surface-border dark:border-surface-border-dark" />
+            )}
+            <NavLink
+              to={to}
+              onClick={onNavigate}
+              // `title` is the tooltip when collapsed. The label also stays in
+              // the accessibility tree via `sr-only` rather than being dropped, // a collapsed sidebar of eleven unlabelled icons is unusable with
+              // a screen reader, and `title` alone is not reliably announced.
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  LINK_BASE,
+                  isActive ? LINK_ACTIVE : LINK_INACTIVE,
+                  collapsed && 'justify-center px-0',
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={18} aria-hidden="true" className="shrink-0" />
+                  {collapsed ? (
+                    <span className="sr-only">{label}</span>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                  )}
+                  {!collapsed && count > 0 && (
+                    <span
+                      className={cn(
+                        'ml-auto shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none',
+                        isActive
+                          ? 'bg-white/25 text-primary-fg'
+                          : 'bg-warning text-[#3A2A08]',
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          </div>
         );
       })}
     </nav>
@@ -101,7 +117,8 @@ interface SidebarProps {
 /** Fixed left navigation for the /app/* tenant shell. Only routed items are real links. */
 export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.Element {
   const { role, orgId } = useOrg();
-  const items = navItemsForRole(role);
+  const { mode } = useWorkMode();
+  const items = navItemsForRole(role, { mode });
   const badges = useNavBadgeCounts(orgId);
   const setMobileOpen = onMobileOpenChange;
   const drawerRef = useRef<HTMLDivElement | null>(null);

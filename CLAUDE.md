@@ -31,6 +31,8 @@ capability's status updates its row in the same PR.
 | Need                                    | File                                                                                        |
 | --------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Is this screen built, partial or absent  | `docs/SCREENS.md` — every design mapped against the real route table in `src/App.tsx`         |
+| Who is actually working right now        | `src/lib/attendance.ts` — the state machine behind `/app/attendance` and the operations dashboard. Roster arithmetic is not attendance; read its header before adding a count |
+| One filter, one contract                 | `src/lib/filters.ts` and `src/hooks/useFilterState.ts` — every new filterable table adopts these rather than growing its own `useState`                                        |
 | Does the built screen match its design   | `docs/LOOP.md` — the `/loop` design-match prompt, driven against `localhost:5042`             |
 | The design references themselves         | `docs/design/*.png` — 1920-wide designs exported at ~87%; measure the scale before resizing type |
 | Organisation section reference           | `docs/ORGANISATION_WORKSPACE.html` — the sole reference for the Organisation workspace         |

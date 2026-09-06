@@ -1,3 +1,5 @@
+import { WORK_MODE_KEY_PREFIX } from '@/lib/workMode';
+
 /**
  * Client-side teardown that must run whenever a session ends.
  *
@@ -36,6 +38,16 @@ export const ACTIVE_ORG_STORAGE_KEY = 'rotaflow:activeOrgId';
 const TENANT_STORAGE_KEYS: readonly string[] = [ACTIVE_ORG_STORAGE_KEY];
 
 /**
+ * Key prefixes whose every entry belongs to the outgoing user.
+ *
+ * A fixed list cannot cover a key that carries an id in it. The work-mode
+ * preference is written per user per organisation
+ * (`rotaflow:workMode:<user>:<org>`), so the only way to remove the outgoing
+ * user's entries is to sweep by prefix.
+ */
+const TENANT_STORAGE_PREFIXES: readonly string[] = [WORK_MODE_KEY_PREFIX];
+
+/**
  * Purge every client-side store that holds data belonging to the outgoing
  * user. Safe to call more than once, and safe to call offline.
  */
@@ -44,6 +56,16 @@ export async function clearTenantState(): Promise<void> {
     for (const key of TENANT_STORAGE_KEYS) {
       window.localStorage.removeItem(key);
     }
+    // Collected first, then removed: removing while iterating `key(i)`
+    // reindexes the store underneath the loop and skips entries.
+    const prefixed: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && TENANT_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        prefixed.push(key);
+      }
+    }
+    for (const key of prefixed) window.localStorage.removeItem(key);
   }
 
   if (typeof caches === 'undefined') return;
