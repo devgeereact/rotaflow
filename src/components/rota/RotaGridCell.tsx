@@ -88,7 +88,7 @@ export function RotaGridCell({
           'flex w-full items-center justify-center text-sm text-content-muted/50 dark:text-content-muted-dark/50',
         )}
       >
-        <span aria-hidden="true">, </span>
+        <span aria-hidden="true">–</span>
       </button>
     );
   }
