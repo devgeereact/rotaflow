@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, Download, Plus, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
+import { Pagination } from '@/components/ui/Pagination';
 import {
   DataTable,
   type DataTableColumn,
@@ -18,40 +19,40 @@ import {
   AdminPage,
 } from '@/components/admin/AdminPage';
 import { AdminCreateOrgModal } from '@/components/admin/AdminCreateOrgModal';
-import {
-  countLocationsByOrg,
-  countMembershipsByOrg,
-  listAllOrganisations,
-  listAllSubscriptions,
-} from '@/services/platformService';
 import type { CreatedOrganisationInvite } from '@/services/platformService';
+import {
+  getOrganisationFacets,
+  listOrganisationDirectory,
+  listOrganisationDirectoryAll,
+  type OrganisationDirectoryQuery,
+  type OrganisationDirectoryRow,
+  type OrganisationFacets,
+} from '@/services/platformDirectoryService';
 import { sendInviteEmail } from '@/services/inviteService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useToast } from '@/hooks/useToast';
-import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
-import { healthBreakdown } from '@/lib/tenantHealth';
+import { humaniseKey } from '@/lib/platformOverview';
+import { HEALTH_LABEL, HEALTH_TONE } from '@/lib/tenantHealth';
 import { downloadCsv } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
 import { useFilterState } from '@/hooks/useFilterState';
 import { FilterBar } from '@/components/ui/FilterBar';
-import {
-  filterValue,
-  listOutcome,
-  matchesFilters,
-  matchesSearch,
-  type FilterDimension,
-  type FilterOption,
-} from '@/lib/filters';
-import type { Organisation, OrganisationStatus, Subscription } from '@/types';
+import { DEFAULT_PAGE_SIZE, type ServerPage } from '@/lib/serverPage';
+import { CREATED_WINDOWS, organisationQueryFrom } from '@/lib/organisationDirectory';
+import type { FilterDimension, FilterOption } from '@/lib/filters';
+import type { OrganisationStatus } from '@/types';
 
 type OrgSortKey =
-  | 'organisation'
+  | 'name'
   | 'industry'
-  | 'members'
-  | 'locations'
   | 'plan'
+  | 'subscription_status'
+  | 'members'
+  | 'staff_active'
+  | 'locations'
   | 'status'
-  | 'activity'
+  | 'health'
+  | 'last_activity_at'
   | 'actions';
 
 const STATUS_TONE: Record<OrganisationStatus, 'success' | 'warning' | 'neutral'> = {
@@ -63,23 +64,32 @@ const STATUS_TONE: Record<OrganisationStatus, 'success' | 'warning' | 'neutral'>
 /**
  * The console's filter dimensions, on the shared contract.
  *
- * `src/lib/filters.ts` was written to be shared and, until this screen
- * adopted it, only the organisation workspace used it — so a person moving
- * between the two met two sets of rules about what an empty select means,
- * whether a filter survives a reload, and whether "nothing here" means the
- * query matched nothing or failed. Two systems behaving differently is worse
- * than both behaving the same way badly.
+ * `src/lib/filters.ts` was written to be shared and, until this screen adopted
+ * it, only the organisation workspace used it — so a person moving between the
+ * two met two sets of rules about what an empty select means, whether a filter
+ * survives a reload, and whether "nothing here" means the query matched
+ * nothing or failed.
  *
  * `q` is NOT marked sensitive here, unlike the workspace's person search: an
  * organisation's name and slug are the tenant's identity to platform staff,
  * they appear in every support ticket already, and a linkable filtered view is
  * the point of a console. The workspace's is a colleague's name, which is a
  * different thing entirely.
+ *
+ * Every one of these is applied by the database (`platform_organisation_directory`,
+ * 0130), not to the rows that happened to load. That distinction is the whole
+ * of this screen's repair: filtering an array PostgREST already truncated
+ * finds three of the eleven tenants it matched, and says "no matches" for the
+ * rest.
  */
 const ORG_FILTERS: readonly FilterDimension[] = [
   { id: 'q', label: 'Search', kind: 'text' },
   { id: 'status', label: 'Status', kind: 'select' },
   { id: 'plan', label: 'Plan', kind: 'select' },
+  { id: 'subscription', label: 'Subscription', kind: 'select' },
+  { id: 'industry', label: 'Industry', kind: 'select' },
+  { id: 'health', label: 'Health', kind: 'select' },
+  { id: 'created', label: 'Created', kind: 'select' },
 ] as const;
 
 const ORG_STATUS_OPTIONS: readonly FilterOption[] = [
@@ -88,15 +98,34 @@ const ORG_STATUS_OPTIONS: readonly FilterOption[] = [
   { value: 'archived', label: 'Archived' },
 ] as const;
 
+/**
+ * Subscription status is a different domain from organisation status, and the
+ * option labels say so in words rather than relying on the reader to remember
+ * which select they are in. An active organisation and an active subscription
+ * are not the same fact, and `docs/DESIGN.md` is explicit that two status
+ * domains keep their text labels for exactly that reason.
+ */
+const SUBSCRIPTION_OPTIONS: readonly FilterOption[] = [
+  { value: 'trialing', label: 'Trialing' },
+  { value: 'active', label: 'Subscribed' },
+  { value: 'past_due', label: 'Past due' },
+  { value: 'canceled', label: 'Cancelled' },
+  // Selectable, because a tenant with no subscription row at all is a real
+  // and interesting state that none of the four statuses can find.
+  { value: 'none', label: 'No subscription' },
+] as const;
+
+const HEALTH_OPTIONS: readonly FilterOption[] = (
+  ['healthy', 'attention', 'at_risk', 'suspended', 'archived'] as const
+).map((band) => ({ value: band, label: HEALTH_LABEL[band] }));
+
 /** `/admin/organisations`. NEW_STRUCTURE §34's tenant management. */
 export function AdminOrganisationsPage(): JSX.Element {
-  const [organisations, setOrganisations] = useState<Organisation[] | null>(null);
-  const [members, setMembers] = useState<Map<string, number>>(new Map());
-  const [sites, setSites] = useState<Map<string, number>>(new Map());
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [page, setPage] = useState<ServerPage<OrganisationDirectoryRow> | null>(null);
+  const [facets, setFacets] = useState<OrganisationFacets | null>(null);
   const [failed, setFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [sort, setSort] = useState<DataTableSort<OrgSortKey> | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createdInvite, setCreatedInvite] = useState<{
     orgName: string;
@@ -113,35 +142,55 @@ export function AdminOrganisationsPage(): JSX.Element {
    * explicitly rather than omitted so the next person can see that the
    * question was asked.
    */
-  const filterApi = useFilterState({ dimensions: ORG_FILTERS, scopeKey: 'platform' });
+  const filterApi = useFilterState({
+    dimensions: ORG_FILTERS,
+    scopeKey: 'platform',
+    defaultSort: 'created_at',
+    defaultDirection: 'desc',
+  });
+  const { filters, sort, direction, page: pageNumber } = filterApi;
+
+  const query = useMemo<OrganisationDirectoryQuery>(
+    () =>
+      organisationQueryFrom(filters, {
+        sort,
+        direction,
+        page: pageNumber,
+        pageSize: DEFAULT_PAGE_SIZE,
+      }),
+    [filters, sort, direction, pageNumber],
+  );
+
+  /**
+   * Ignore a response that a newer request has already overtaken.
+   *
+   * Typing in the search box fires a request per keystroke, and they do not
+   * come back in order. Without this, "sun" can be painted over by the reply
+   * to "su" and the table shows results for a query the box no longer holds.
+   * A counter rather than an `active` flag, because the stale reply has to be
+   * identified, not merely the unmounted one.
+   */
+  const requestRef = useRef(0);
 
   useEffect(() => {
-    let active = true;
+    const ticket = ++requestRef.current;
     setFailed(false);
-    setOrganisations(null);
     void (async () => {
       try {
-        const [orgs, counts, siteCounts, subs] = await Promise.all([
-          listAllOrganisations(),
-          countMembershipsByOrg(),
-          countLocationsByOrg(),
-          listAllSubscriptions(),
+        const [rows, estate] = await Promise.all([
+          listOrganisationDirectory(query),
+          getOrganisationFacets(),
         ]);
-        if (!active) return;
-        setOrganisations(orgs);
-        setMembers(counts);
-        setSites(siteCounts);
-        setSubscriptions(subs);
+        if (ticket !== requestRef.current) return;
+        setPage(rows);
+        setFacets(estate);
       } catch (err) {
-        if (!active) return;
+        if (ticket !== requestRef.current) return;
         reportError(err, { area: 'admin:organisations' });
         setFailed(true);
       }
     })();
-    return () => {
-      active = false;
-    };
-  }, [reloadKey]);
+  }, [query, reloadKey]);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
@@ -197,142 +246,115 @@ export function AdminOrganisationsPage(): JSX.Element {
     [showError, showSuccess],
   );
 
-  const subByOrg = useMemo(() => {
-    const map = new Map<string, Subscription>();
-    for (const sub of subscriptions) map.set(sub.org_id, sub);
-    return map;
-  }, [subscriptions]);
-
-  const planOf = useCallback(
-    (org: Organisation): string => subByOrg.get(org.id)?.plan ?? org.plan,
-    [subByOrg],
-  );
-
-  const summary = useMemo(() => {
-    if (!organisations) return null;
-    const byStatus = (s: OrganisationStatus): number =>
-      organisations.filter((o) => o.status === s).length;
-    const growth = monthlyGrowth(organisations, new Date(), 2);
-    const thisMonth = growth[growth.length - 1]?.created ?? 0;
-    const lastMonth = growth[growth.length - 2]?.created ?? 0;
-    return {
-      total: organisations.length,
-      active: byStatus('active'),
-      suspended: byStatus('suspended'),
-      archived: byStatus('archived'),
-      newThisMonth: thisMonth,
-      // Real, not `DEMO_ORGS_NEW_CHANGE`: both months come from the same
-      // `created_at` column the growth chart on `/admin` reads, so this and
-      // that screen cannot disagree. Nothing to compare against when last
-      // month had zero organisations, so the hint says so rather than /0.
-      newThisMonthChange:
-        lastMonth === 0
-          ? thisMonth > 0
-            ? 'No organisations last month'
-            : null
-          : `${thisMonth >= lastMonth ? '+' : ''}${(((thisMonth - lastMonth) / lastMonth) * 100).toFixed(0)}% vs last month`,
-      plans: [...new Set(organisations.map((o) => planOf(o)))].sort(),
-      // From `subscriptions.status` and `organisations.last_activity_at`, the
-      // same two columns the Overview's health bands read, so the two screens
-      // agree about which tenants are in trouble.
-      trialing: subscriptions.filter((sub) => sub.status === 'trialing').length,
-      atRisk:
-        healthBreakdown(organisations, subscriptions, new Date()).find(
-          (band) => band.band === 'at_risk',
-        )?.count ?? 0,
-    };
-  }, [organisations, planOf, subscriptions]);
-
+  /**
+   * The option lists come from the estate, not from the loaded page.
+   *
+   * The other half of the truncation fix. A plan or an industry that only
+   * older tenants hold was never offered by a select built from the first
+   * twenty-five rows, so the filter could not reach the records it existed
+   * for.
+   */
   const optionsFor = useCallback(
-    (dimensionId: string): readonly FilterOption[] =>
-      dimensionId === 'status'
-        ? ORG_STATUS_OPTIONS
-        : dimensionId === 'plan'
-          ? // `summary` is null until the organisations load. An empty option
-            // list then renders "Plan: all" and nothing else, which is honest
-            // — there are no plans to choose between yet.
-            (summary?.plans ?? []).map((plan) => ({
-              value: plan,
-              label: humaniseKey(plan),
-            }))
-          : [],
-    [summary],
-  );
-
-  const accessors = useMemo(
-    () => ({
-      status: (org: Organisation) => org.status,
-      plan: (org: Organisation) => planOf(org),
-    }),
-    [planOf],
-  );
-
-  const filters = filterApi.filters;
-
-  const visible = useMemo(() => {
-    if (!organisations) return [];
-    const filtered = organisations.filter(
-      (o) =>
-        matchesFilters(o, filters, accessors) &&
-        // Name and slug, matched literally. The previous version lower-cased
-        // both sides by hand and each screen decided separately whether to
-        // trim; `matchesSearch` is that decision made once.
-        matchesSearch([o.name, o.slug], filterValue(filters, 'q')),
-    );
-
-    // `null` sort keeps the service's own order. Newest tenant first, which
-    // is the more useful default on this screen than any column.
-    if (!sort) return filtered;
-
-    const direction = sort.direction === 'asc' ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      switch (sort.key) {
-        case 'members':
-          return ((members.get(a.id) ?? 0) - (members.get(b.id) ?? 0)) * direction;
-        case 'locations':
-          return ((sites.get(a.id) ?? 0) - (sites.get(b.id) ?? 0)) * direction;
-        case 'plan':
-          return planOf(a).localeCompare(planOf(b)) * direction;
+    (dimensionId: string): readonly FilterOption[] => {
+      switch (dimensionId) {
         case 'status':
-          return a.status.localeCompare(b.status) * direction;
+          return ORG_STATUS_OPTIONS;
+        case 'subscription':
+          return SUBSCRIPTION_OPTIONS;
+        case 'health':
+          return HEALTH_OPTIONS;
+        case 'created':
+          return CREATED_WINDOWS;
+        case 'plan':
+          return (facets?.plans ?? []).map((plan) => ({
+            value: plan,
+            label: humaniseKey(plan),
+          }));
         case 'industry':
-          // Unset sorts last in either direction: "we don't know" is not a
-          // value that belongs between two real industries.
-          return (
-            (a.industry ?? '\uffff').localeCompare(b.industry ?? '\uffff') * direction
-          );
-        case 'activity':
-          // The real column, not created_at: `activity` sorts the same field
-          // the "Last activity" cell now shows and the "At risk" tile above
-          // already reads (tenantHealth.ts) — three places that used to be
-          // free to disagree about which organisations look neglected.
-          return (
-            ((a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0) -
-              (b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0)) *
-            direction
-          );
+          return (facets?.industries ?? []).map((industry) => ({
+            value: industry,
+            label: humaniseKey(industry),
+          }));
         default:
-          return a.name.localeCompare(b.name) * direction;
+          return [];
       }
-    });
-  }, [organisations, filters, accessors, sort, members, sites, planOf]);
+    },
+    [facets],
+  );
 
-  // A failed read is not an empty deployment. `DataTable` shows one empty
-  // message, so the outcome decides which sentence it gets; the error branch
-  // above this is what actually renders on a failure.
-  const outcome = listOutcome({
-    loading: organisations === null && !failed,
-    failed,
-    totalRows: organisations?.length ?? 0,
-    matchedRows: visible.length,
-  });
+  const tableSort = useMemo<DataTableSort<OrgSortKey> | null>(
+    () => (sort ? { key: sort as OrgSortKey, direction } : null),
+    [sort, direction],
+  );
 
-  const columns = useMemo<DataTableColumn<Organisation, OrgSortKey>[]>(
+  const onSortChange = useCallback(
+    (next: DataTableSort<OrgSortKey>) => filterApi.setSort(next.key, next.direction),
+    [filterApi],
+  );
+
+  const rows = page?.rows ?? [];
+
+  /**
+   * Export every matching row, not the page.
+   *
+   * The old export wrote `visible`, the array on screen. With filters applied
+   * that array is a page of the answer, and a file named
+   * `organisations_2026-09-06.csv` gives no hint which page. This re-runs the
+   * same predicates to exhaustion and says so if it hit the walk's ceiling —
+   * a truncated export that does not admit it is worse than none, because
+   * nothing in the file says which rows are missing.
+   */
+  const exportCsv = useCallback(async () => {
+    setExporting(true);
+    try {
+      const all = await listOrganisationDirectoryAll(query);
+      downloadCsv(`organisations_${new Date().toISOString().slice(0, 10)}`, all.rows, [
+        { label: 'Name', value: (org) => org.name },
+        { label: 'Slug', value: (org) => org.slug },
+        { label: 'Industry', value: (org) => org.industry ?? 'Not recorded' },
+        { label: 'Plan', value: (org) => org.plan },
+        { label: 'Status', value: (org) => org.status },
+        {
+          label: 'Subscription',
+          value: (org) => org.subscriptionStatus ?? 'No subscription',
+        },
+        {
+          label: 'Owner email',
+          value: (org) =>
+            org.ownerContactVisible
+              ? (org.ownerEmail ?? 'No owner recorded')
+              : 'Not available to your role',
+        },
+        { label: 'Login accounts', value: (org) => org.members },
+        { label: 'Active staff', value: (org) => org.staffActive },
+        { label: 'Sites', value: (org) => org.locations },
+        { label: 'Health', value: (org) => HEALTH_LABEL[org.health] },
+        { label: 'Last activity (UTC)', value: (org) => org.lastActivityAt ?? 'Never' },
+        { label: 'Created (UTC)', value: (org) => org.createdAt },
+      ]);
+      if (all.truncated) {
+        showError(
+          `Exported the first ${all.rows.length.toLocaleString('en-GB')} of ${all.total.toLocaleString('en-GB')} matching organisations. Narrow the filters to export the rest.`,
+        );
+      } else {
+        showSuccess(
+          `Exported ${all.rows.length.toLocaleString('en-GB')} organisations, timestamps in UTC.`,
+        );
+      }
+    } catch (err) {
+      reportError(err, { area: 'admin:organisations:export' });
+      showError('The export could not be built. Nothing was downloaded.');
+    } finally {
+      setExporting(false);
+    }
+  }, [query, showError, showSuccess]);
+
+  const columns = useMemo<DataTableColumn<OrganisationDirectoryRow, OrgSortKey>[]>(
     () => [
       {
-        key: 'organisation',
+        key: 'name',
         label: 'Organisation',
-        width: 'w-[20%]',
+        width: 'w-[19%]',
         sortable: true,
         cell: (org) => (
           <span className="flex min-w-0 items-center gap-2.5">
@@ -347,56 +369,80 @@ export function AdminOrganisationsPage(): JSX.Element {
             <span className="min-w-0">
               <Link
                 to={`/admin/organisations/${org.id}`}
-                className="block truncate font-medium text-content hover:text-primary dark:text-primary-ink-dark dark:text-content-dark"
+                className="block truncate font-medium text-content hover:text-primary dark:text-content-dark"
               >
                 {org.name}
               </Link>
               <span className="block truncate font-mono text-xs text-content-muted dark:text-content-muted-dark">
                 {org.slug}
               </span>
+              {/* The owner contact, where the reader's role may see it.
+                  `ownerContactVisible` is false for platform finance (0122),
+                  and "your role cannot see this" has to read differently
+                  from "this tenant has no owner" — one is a permission and
+                  the other is a problem with the account. */}
+              <span className="block truncate text-xs text-content-muted dark:text-content-muted-dark">
+                {org.ownerContactVisible
+                  ? (org.ownerEmail ?? 'No owner recorded')
+                  : 'Owner hidden for your role'}
+              </span>
             </span>
           </span>
         ),
       },
       {
-        key: 'industry',
-        label: 'Industry',
-        width: 'w-[11%]',
-        sortable: true,
-        // `organisations.industry`, collected during onboarding. It is
-        // nullable, and an organisation that never supplied one says so —
-        // this cell used to invent a plausible industry from the row's
-        // position in the list, which is exactly the kind of fact an admin
-        // would go on to act on. (BUG-026.)
-        cell: (org) =>
-          org.industry ?? (
-            <span className="text-content-muted dark:text-content-muted-dark">
-              Not available
-            </span>
-          ),
-      },
-      {
         key: 'plan',
         label: 'Plan',
-        width: 'w-[9%]',
+        width: 'w-[12%]',
         sortable: true,
-        cell: (org) => <Badge tone="neutral">{humaniseKey(planOf(org))}</Badge>,
+        // Plan and subscription state in one cell, with the subscription
+        // spelled out underneath rather than badged beside it. An "Active"
+        // badge in a Status column and an "Active" badge in a Subscription
+        // column are two different facts, and a console that renders them
+        // identically invites reading one as the other.
+        cell: (org) => (
+          <span className="block min-w-0">
+            <Badge tone="neutral">{humaniseKey(org.plan)}</Badge>
+            <span className="mt-1 block truncate text-xs text-content-muted dark:text-content-muted-dark">
+              {org.subscriptionStatus === null
+                ? 'No subscription'
+                : org.subscriptionStatus === 'active'
+                  ? 'Subscribed'
+                  : org.subscriptionStatus === 'past_due'
+                    ? 'Payment past due'
+                    : humaniseKey(org.subscriptionStatus)}
+            </span>
+          </span>
+        ),
+      },
+      {
+        key: 'staff_active',
+        label: 'Staff',
+        width: 'w-[8%]',
+        numeric: true,
+        sortable: true,
+        // Active staff profiles, which is the population `plans.seat_limit`
+        // is enforced on (0070) and what the customer's own billing screen
+        // counts. Login accounts are the next column and are a different and
+        // usually much smaller population — most rostered staff never sign
+        // in. Showing one under the other's name is BUG-062.
+        cell: (org) => org.staffActive,
       },
       {
         key: 'members',
-        label: 'Users',
-        width: 'w-[6%]',
+        label: 'Accounts',
+        width: 'w-[11%]',
         numeric: true,
         sortable: true,
-        cell: (org) => members.get(org.id) ?? 0,
+        cell: (org) => org.members,
       },
       {
         key: 'locations',
         label: 'Sites',
-        width: 'w-[5%]',
+        width: 'w-[7%]',
         numeric: true,
         sortable: true,
-        cell: (org) => sites.get(org.id) ?? 0,
+        cell: (org) => org.locations,
       },
       {
         key: 'status',
@@ -404,11 +450,20 @@ export function AdminOrganisationsPage(): JSX.Element {
         width: 'w-[10%]',
         sortable: true,
         cell: (org) => (
-          <span className="flex flex-wrap items-center gap-1.5">
-            <Badge tone={STATUS_TONE[org.status as OrganisationStatus] ?? 'neutral'} dot>
-              {humaniseKey(org.status)}
-            </Badge>
-          </span>
+          <Badge tone={STATUS_TONE[org.status as OrganisationStatus] ?? 'neutral'} dot>
+            {humaniseKey(org.status)}
+          </Badge>
+        ),
+      },
+      {
+        key: 'health',
+        label: 'Health',
+        width: 'w-[11%]',
+        sortable: true,
+        cell: (org) => (
+          <Badge tone={HEALTH_TONE[org.health]} className="whitespace-nowrap">
+            {HEALTH_LABEL[org.health]}
+          </Badge>
         ),
       },
       // A "Usage %" column stood here. It was invented outright — RotaFlow has
@@ -416,21 +471,19 @@ export function AdminOrganisationsPage(): JSX.Element {
       // percentage to compute — and it was drawn as a progress bar that turned
       // amber past 90%, which is a specific and actionable-looking claim about
       // a tenant. It is removed rather than replaced with "Not available",
-      // because the column measured nothing at all. Users and Sites either
-      // side of it are real counts.
+      // because the column measured nothing at all.
       {
-        key: 'activity',
+        key: 'last_activity_at',
         label: 'Last activity',
-        width: 'w-[11%]',
+        width: 'w-[13%]',
         sortable: true,
-        // The real organisations.last_activity_at, not the demo fixture's
-        // fabricated string — a tenant the "At risk" tile above counts as
-        // never-active (this same column, tenantHealth.ts) used to show
+        // The real organisations.last_activity_at. A tenant the "At risk"
+        // tile above counts as never-active (this same column) used to show
         // "today" one column across, and the two could never agree.
         cell: (org) => (
           <span className="whitespace-nowrap text-content-muted dark:text-content-muted-dark">
-            {org.last_activity_at
-              ? new Date(org.last_activity_at).toLocaleDateString('en-GB')
+            {org.lastActivityAt
+              ? new Date(org.lastActivityAt).toLocaleDateString('en-GB')
               : 'Never'}
           </span>
         ),
@@ -438,7 +491,7 @@ export function AdminOrganisationsPage(): JSX.Element {
       {
         key: 'actions',
         label: 'Actions',
-        width: 'w-[18%]',
+        width: 'w-[9%]',
         align: 'right',
         cell: (org) => (
           <span className="flex justify-end gap-1.5">
@@ -446,67 +499,34 @@ export function AdminOrganisationsPage(): JSX.Element {
               to={`/admin/organisations/${org.id}`}
               className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
             >
-              View
-            </Link>
-            <Link
-              to="/admin/support-access"
-              className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
-            >
-              Access
-            </Link>
-            {/* Suspend and reactivate are confirmed writes with a reason, so
-                they stay on the organisation's own page where the dialog and
-                the consequences live. This is the way in. */}
-            <Link
-              to={`/admin/organisations/${org.id}`}
-              className={`rounded-lg border px-2 py-1 text-xs font-medium ${
-                org.status === 'suspended'
-                  ? 'border-surface-border text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark'
-                  : 'border-danger/34 text-danger-ink hover:bg-danger-wash dark:text-danger-ink-dark dark:hover:bg-danger-wash-dark'
-              }`}
-            >
-              {org.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+              Open
             </Link>
           </span>
         ),
       },
     ],
-    [members, sites, planOf],
+    [],
   );
 
-  // Exports what is on screen, not the whole table: the filters above are the
-  // question being asked, and an export that quietly ignores them is the wrong
-  // answer to it.
-  // Industry is exported now that it is a real column rather than a fixture
-  // keyed by row position. The Usage % column it used to sit beside is gone
-  // entirely — see the note where it was defined.
-  const exportCsv = useCallback(() => {
-    downloadCsv(`organisations_${new Date().toISOString().slice(0, 10)}`, visible, [
-      { label: 'Name', value: (org) => org.name },
-      { label: 'Slug', value: (org) => org.slug },
-      { label: 'Industry', value: (org) => org.industry ?? 'Not available' },
-      { label: 'Plan', value: (org) => planOf(org) },
-      { label: 'Status', value: (org) => org.status },
-      { label: 'Members', value: (org) => members.get(org.id) ?? 0 },
-      { label: 'Sites', value: (org) => sites.get(org.id) ?? 0 },
-      { label: 'Last activity', value: (org) => org.last_activity_at ?? 'Never' },
-      { label: 'Created', value: (org) => org.created_at },
-    ]);
-  }, [visible, members, sites, planOf]);
+  const loading = page === null && !failed;
 
   return (
     <AdminPage
       title="Organisations"
-      description="Manage customer organisations, subscriptions, access and platform activity."
+      description="Every tenant on the deployment: lifecycle, plan, seat usage and the activity behind their health."
       action={
         <>
           <Button variant="secondary" disabled title="Bulk import is not built">
             <Upload size={15} aria-hidden="true" />
             Import
           </Button>
-          <Button variant="secondary" onClick={exportCsv} disabled={visible.length === 0}>
+          <Button
+            variant="secondary"
+            onClick={() => void exportCsv()}
+            disabled={exporting || (page?.total ?? 0) === 0}
+          >
             <Download size={15} aria-hidden="true" />
-            Export
+            {exporting ? 'Exporting…' : 'Export'}
           </Button>
           <Button onClick={() => setCreateModalOpen(true)}>
             <Plus size={15} aria-hidden="true" />
@@ -546,35 +566,33 @@ export function AdminOrganisationsPage(): JSX.Element {
 
       {failed ? (
         <AdminError onRetry={retry} />
-      ) : !organisations || !summary ? (
+      ) : loading || !facets ? (
         <AdminLoading />
-      ) : organisations.length === 0 ? (
+      ) : facets.total === 0 ? (
         <AdminEmpty message="No organisations have been created on this deployment yet." />
       ) : (
         <div className="space-y-4">
           <TileGrid>
-            <StatTile label="Total" value={summary.total.toLocaleString('en-GB')} />
+            <StatTile label="Total" value={facets.total.toLocaleString('en-GB')} />
             <StatTile
               label="Active"
-              value={summary.active.toLocaleString('en-GB')}
-              hint={`${((summary.active / summary.total) * 100).toFixed(1)}%`}
+              value={facets.active.toLocaleString('en-GB')}
+              hint={`${((facets.active / facets.total) * 100).toFixed(1)}% of tenants`}
             />
             <StatTile
               label="Trialing"
-              value={summary.trialing}
+              value={facets.trialing}
               hint={
-                summary.trialing === 0
-                  ? 'No trial running'
-                  : 'Subscription not yet active'
+                facets.trialing === 0 ? 'No trial running' : 'Subscription not yet active'
               }
             />
             <StatTile
               label="Suspended"
-              value={summary.suspended}
+              value={facets.suspended}
               hint={
-                summary.suspended ? (
+                facets.suspended ? (
                   <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
-                    payment or abuse
+                    Payment or abuse
                   </span>
                 ) : (
                   'None'
@@ -583,20 +601,22 @@ export function AdminOrganisationsPage(): JSX.Element {
             />
             <StatTile
               label="At risk"
-              value={summary.atRisk}
+              value={facets.atRisk}
               hint="No activity in 30 days, or never"
             />
             <StatTile
               label="New this month"
-              value={summary.newThisMonth}
+              value={facets.newThisMonth}
               hint={
-                summary.newThisMonthChange ? (
-                  <span className="font-semibold text-success-ink dark:text-success-ink-dark">
-                    {summary.newThisMonthChange}
-                  </span>
-                ) : (
-                  'No prior month to compare'
-                )
+                facets.newLastMonth === 0
+                  ? facets.newThisMonth > 0
+                    ? 'None last month'
+                    : 'No prior month to compare'
+                  : `${facets.newThisMonth >= facets.newLastMonth ? '+' : ''}${(
+                      ((facets.newThisMonth - facets.newLastMonth) /
+                        facets.newLastMonth) *
+                      100
+                    ).toFixed(0)}% vs last month`
               }
             />
           </TileGrid>
@@ -611,8 +631,14 @@ export function AdminOrganisationsPage(): JSX.Element {
                 onSetValues={filterApi.setValues}
                 onClearOne={filterApi.clearOne}
                 onClearAll={filterApi.clearAll}
-                searchPlaceholder="Search name or slug"
-                resultSummary={`${visible.length} of ${summary.total}`}
+                searchPlaceholder="Search name, slug or contact"
+                resultSummary={
+                  page === null
+                    ? 'Loading'
+                    : page.total === 0
+                      ? `0 of ${facets.total.toLocaleString('en-GB')}`
+                      : `${page.from.toLocaleString('en-GB')}–${page.to.toLocaleString('en-GB')} of ${page.total.toLocaleString('en-GB')}`
+                }
               />
             </div>
 
@@ -622,16 +648,25 @@ export function AdminOrganisationsPage(): JSX.Element {
             <DataTable
               caption="Organisations on this deployment"
               columns={columns}
-              rows={visible}
+              rows={rows}
               rowKey={(org) => org.id}
-              sort={sort}
-              onSortChange={setSort}
-              emptyMessage={
-                outcome === 'empty-dataset'
-                  ? 'No organisations on this deployment yet.'
-                  : 'No organisation matches these filters.'
-              }
+              sort={tableSort}
+              onSortChange={onSortChange}
+              emptyMessage="No organisation matches these filters."
+              tableClassName="min-w-[72rem]"
             />
+
+            {page && (
+              <Pagination
+                page={page.page}
+                pageCount={page.pageCount}
+                total={page.total}
+                from={page.from}
+                to={page.to}
+                onPageChange={filterApi.setPage}
+                noun="organisations"
+              />
+            )}
           </Card>
         </div>
       )}

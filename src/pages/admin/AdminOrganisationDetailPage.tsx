@@ -12,7 +12,7 @@ import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
-import { HEALTH_LABEL, healthBand } from '@/lib/tenantHealth';
+import { HEALTH_LABEL, HEALTH_TONE, healthBand } from '@/lib/tenantHealth';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { SuspendOrgModal } from '@/components/admin/SuspendOrgModal';
 import {
@@ -100,13 +100,6 @@ const STATUS_TONE = {
   active: 'success',
   suspended: 'warning',
   archived: 'neutral',
-} as const;
-
-const HEALTH_TONE = {
-  healthy: 'success',
-  attention: 'warning',
-  at_risk: 'danger',
-  suspended: 'neutral',
 } as const;
 
 /** What an unset column says. Never a plausible-looking guess. */

@@ -700,6 +700,143 @@ const BACKGROUND_JOBS = Array.from({ length: 48 }, (_, i) => ({
   created_at: ISO(0),
 }));
 
+/**
+ * The directory rows 0130 returns, for `/admin-preview/organisations`.
+ *
+ * Deliberately more than one page. The console's organisations screen was
+ * repaired precisely because it could only ever show the rows that happened to
+ * load, and a six-row fixture would hide the repair: the page control would
+ * not render, the "of 34" total would equal the page length, and a reviewer
+ * would sign off a screen that has never been asked to page.
+ *
+ * The six named tenants come first so the screenshots stay recognisable; the
+ * rest exist to be paged through.
+ */
+const DIRECTORY_ROWS: {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  industry: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  country: string;
+  timezone: string;
+  is_demo: boolean;
+  created_at: string;
+  last_activity_at: string | null;
+  onboarding_completed_at: string | null;
+  support_access_allowed: boolean;
+  suspended_at: string | null;
+  suspended_reason: string | null;
+  subscription_status: string | null;
+  subscription_plan: string | null;
+  subscription_currency: string | null;
+  subscription_price_pence: number | null;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  members: number;
+  staff_active: number;
+  locations: number;
+  owner_email: string | null;
+  owner_name: string | null;
+  owner_contact_visible: boolean;
+  health: string;
+}[] = [
+  ...ORGANISATIONS.map((org, i) => {
+    const sub = SUBSCRIPTIONS.find((s) => s.org_id === org.id);
+    return {
+      id: String(org.id),
+      name: String(org.name),
+      slug: String(org.slug),
+      status: String(org.status),
+      plan: String(sub?.plan ?? org.plan),
+      industry: ['Residential care', 'Hospitality', 'Retail'][i % 3] ?? null,
+      contact_email: null,
+      contact_phone: null,
+      country: 'United Kingdom',
+      timezone: 'Europe/London',
+      is_demo: false,
+      created_at: org.created_at,
+      last_activity_at: org.last_activity_at,
+      onboarding_completed_at: null,
+      support_access_allowed: Boolean(org.support_access_allowed),
+      suspended_at: org.suspended_at,
+      suspended_reason: org.suspended_reason,
+      subscription_status: sub ? String(sub.status) : null,
+      subscription_plan: sub ? String(sub.plan) : null,
+      subscription_currency: sub ? 'GBP' : null,
+      subscription_price_pence: sub ? 79000 : null,
+      trial_ends_at: null,
+      current_period_end: sub ? String(sub.current_period_end) : null,
+      // Login accounts and rostered staff are different populations, and the
+      // fixture keeps them apart on purpose: most rostered staff never sign
+      // in, so a console showing one under the other's name is BUG-062.
+      members: [7, 5, 3, 4, 2, 1][i] ?? 1,
+      staff_active: [248, 96, 41, 33, 27, 14][i] ?? 0,
+      locations: [4, 3, 2, 6, 2, 1][i] ?? 1,
+      owner_email: `owner@${String(org.slug)}.example`,
+      owner_name: 'Preview Owner',
+      owner_contact_visible: true,
+      health:
+        org.status === 'archived'
+          ? 'archived'
+          : org.status === 'suspended'
+            ? 'suspended'
+            : sub?.status === 'past_due'
+              ? 'attention'
+              : 'healthy',
+    };
+  }),
+  ...Array.from({ length: 28 }, (_, n) => {
+    const i = n + 1;
+    const status = i % 11 === 0 ? 'suspended' : 'active';
+    const plan = ['starter', 'professional', 'business'][i % 3] ?? 'starter';
+    return {
+      id: `99999999-0000-4000-8000-${String(i).padStart(12, '0')}`,
+      name: `Preview Tenant ${String(i).padStart(2, '0')}`,
+      slug: `preview-tenant-${String(i).padStart(2, '0')}`,
+      status,
+      plan,
+      industry: ['Residential care', 'Hospitality', 'Retail'][i % 3] ?? null,
+      contact_email: `accounts@preview-${i}.example`,
+      contact_phone: null,
+      country: 'United Kingdom',
+      timezone: 'Europe/London',
+      is_demo: false,
+      created_at: ISO(20 + i * 5),
+      last_activity_at: i % 7 === 0 ? null : ISO(i % 40),
+      onboarding_completed_at: null,
+      support_access_allowed: i % 4 !== 0,
+      suspended_at: status === 'suspended' ? ISO(9) : null,
+      suspended_reason: status === 'suspended' ? 'Unresolved chargeback' : null,
+      subscription_status: i % 5 === 0 ? 'trialing' : i % 9 === 0 ? null : 'active',
+      subscription_plan: i % 9 === 0 ? null : plan,
+      subscription_currency: i % 9 === 0 ? null : 'GBP',
+      subscription_price_pence: i % 9 === 0 ? null : 4900 * (1 + (i % 3)),
+      trial_ends_at: null,
+      current_period_end: null,
+      members: 1 + (i % 6),
+      staff_active: 4 + i * 3,
+      locations: 1 + (i % 4),
+      owner_email: `owner@preview-${i}.example`,
+      owner_name: `Preview Owner ${i}`,
+      owner_contact_visible: true,
+      health:
+        status === 'suspended'
+          ? 'suspended'
+          : i % 7 === 0
+            ? 'at_risk'
+            : i % 40 > 30
+              ? 'at_risk'
+              : i % 40 > 14
+                ? 'attention'
+                : 'healthy',
+    };
+  }),
+];
+
 const TABLES: Record<string, unknown> = {
   organisations: ORGANISATIONS,
   profiles: PROFILES,
@@ -815,12 +952,103 @@ const TABLES: Record<string, unknown> = {
   // POST with the org id in the body, not the URL, so every organisation's
   // detail page sees this same figure in the preview.
   'rpc/subscription_mrr_pence': 79000,
+
+  // 0130's directory. A function fixture, because this RPC pages and filters
+  // in the database: a fixed array would render page 1 forever and the
+  // Pagination control would be a decoration. It reproduces the parts of the
+  // real function the screen depends on — the search, the status/plan filters,
+  // the sort whitelist, the clamp and `total_count` over the whole match set —
+  // so the preview shows paging behaving the way production does.
+  'rpc/platform_organisation_directory': ((args: Record<string, unknown>) => {
+    const text = (key: string): string =>
+      typeof args[key] === 'string' ? args[key].toLowerCase() : '';
+    const list = (key: string): string[] =>
+      Array.isArray(args[key]) ? (args[key] as string[]) : [];
+    const search = text('p_search');
+    const status = list('p_status');
+    const plan = list('p_plan');
+    const subscription = list('p_subscription_status');
+    const industry = list('p_industry');
+    const health = list('p_health');
+
+    const matched = DIRECTORY_ROWS.filter((row) => {
+      if (status.length > 0 && !status.includes(row.status)) return false;
+      if (plan.length > 0 && !plan.includes(row.plan)) return false;
+      if (
+        subscription.length > 0 &&
+        !subscription.includes(row.subscription_status ?? 'none')
+      ) {
+        return false;
+      }
+      if (industry.length > 0 && !industry.includes(row.industry ?? '')) return false;
+      if (health.length > 0 && !health.includes(row.health)) return false;
+      if (search === '') return true;
+      return [row.name, row.slug, row.contact_email, row.owner_email]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(search);
+    });
+
+    const sortKey = typeof args.p_sort === 'string' ? args.p_sort : 'created_at';
+    const sign = args.p_direction === 'asc' ? 1 : -1;
+    const sorted = [...matched].sort((a, b) => {
+      const left = a[sortKey as keyof typeof a];
+      const right = b[sortKey as keyof typeof b];
+      const primary =
+        typeof left === 'number' && typeof right === 'number'
+          ? (left - right) * sign
+          : String(left ?? '').localeCompare(String(right ?? '')) * sign;
+      // The same tie-break 0130 applies. Without it, paging an equal-valued
+      // sort repeats one row and drops another.
+      return primary !== 0 ? primary : a.id.localeCompare(b.id);
+    });
+
+    const limit = Math.min(Math.max(Number(args.p_limit ?? 25), 1), 200);
+    const offset = Math.max(Number(args.p_offset ?? 0), 0);
+    return sorted
+      .slice(offset, offset + limit)
+      .map((row) => ({ ...row, total_count: matched.length }));
+  }) satisfies BodyFixture,
+  'rpc/platform_organisation_facets': [
+    {
+      total: DIRECTORY_ROWS.length,
+      active: DIRECTORY_ROWS.filter((r) => r.status === 'active').length,
+      suspended: DIRECTORY_ROWS.filter((r) => r.status === 'suspended').length,
+      archived: DIRECTORY_ROWS.filter((r) => r.status === 'archived').length,
+      new_this_month: 3,
+      new_last_month: 2,
+      trialing: DIRECTORY_ROWS.filter((r) => r.subscription_status === 'trialing').length,
+      past_due: DIRECTORY_ROWS.filter((r) => r.subscription_status === 'past_due').length,
+      healthy: DIRECTORY_ROWS.filter((r) => r.health === 'healthy').length,
+      attention: DIRECTORY_ROWS.filter((r) => r.health === 'attention').length,
+      at_risk: DIRECTORY_ROWS.filter((r) => r.health === 'at_risk').length,
+      plans: ['starter', 'professional', 'business', 'enterprise'],
+      industries: ['Residential care', 'Hospitality', 'Retail'],
+      subscription_statuses: ['trialing', 'active', 'past_due', 'none'],
+    },
+  ],
 };
 
+/**
+ * An RPC whose answer depends on its arguments.
+ *
+ * PostgREST posts RPC arguments in the body, not the query string, so a fixed
+ * fixture cannot page or filter — every page of a paged screen would return
+ * the same six rows, and the preview would teach the reviewer that paging does
+ * not work. These get the parsed body instead.
+ */
+type BodyFixture = (args: Record<string, unknown>) => unknown;
+
+function isBodyFixture(value: unknown): value is BodyFixture {
+  return typeof value === 'function';
+}
+
 /** Everything the console reads, keyed by the PostgREST path segment. */
-function fixtureFor(table: string, url: URL): unknown {
+function fixtureFor(table: string, url: URL, body: Record<string, unknown>): unknown {
   const rows = TABLES[table];
   if (rows === undefined) return undefined;
+  if (isBodyFixture(rows)) return rows(body);
   if (!Array.isArray(rows)) return rows;
 
   // Honour `?org_id=eq.<uuid>` and `?user_id=eq.<uuid>`, which the per-tenant
@@ -851,7 +1079,19 @@ function installFixtureFetch(): void {
     // An RPC is `rpc/<name>`; a table is just the name. Both are looked up in
     // the same map, so adding a fixture for either is one line.
     const table = path;
-    const data = fixtureFor(table, url);
+    // PostgREST posts RPC arguments in the body, so a fixture that pages or
+    // filters has to read it.
+    let rpcArgs: Record<string, unknown> = {};
+    if (typeof init?.body === 'string') {
+      try {
+        rpcArgs = JSON.parse(init.body) as Record<string, unknown>;
+      } catch {
+        // A body this harness cannot read is not a reason to fail the request;
+        // the fixture simply sees no arguments.
+        rpcArgs = {};
+      }
+    }
+    const data = fixtureFor(table, url, rpcArgs);
 
     if (data === undefined) {
       // Loud rather than empty: an unmocked table should be obvious.

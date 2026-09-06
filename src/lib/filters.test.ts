@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EMPTY_FILTERS,
   UNASSIGNED,
   activeFilterCount,
   applySort,
@@ -340,5 +341,37 @@ describe('listOutcome', () => {
     expect(
       listOutcome({ loading: false, failed: true, totalRows: 40, matchedRows: 40 }),
     ).toBe('error');
+  });
+});
+
+describe('sort direction round-trips through the URL', () => {
+  const dims: FilterDimension[] = [{ id: 'status', label: 'Status', kind: 'select' }];
+
+  it('writes dir when it departs from the screen default', () => {
+    // A screen whose default is descending must still be able to express
+    // ascending. Omitting `dir` on the assumption that ascending is always the
+    // default made the sort toggle a no-op on the platform organisations list.
+    const params = serialiseFilters(EMPTY_FILTERS, dims, {
+      sort: 'name',
+      direction: 'asc',
+      defaultDirection: 'desc',
+    });
+    expect(params.get('dir')).toBe('asc');
+  });
+
+  it('omits dir when it matches the screen default', () => {
+    expect(
+      serialiseFilters(EMPTY_FILTERS, dims, {
+        sort: 'name',
+        direction: 'desc',
+        defaultDirection: 'desc',
+      }).get('dir'),
+    ).toBeNull();
+    expect(
+      serialiseFilters(EMPTY_FILTERS, dims, {
+        sort: 'name',
+        direction: 'asc',
+      }).get('dir'),
+    ).toBeNull();
   });
 });

@@ -3515,11 +3515,88 @@ export type Database = {
           unverified: number;
         }[];
       };
+      platform_health_band: {
+        Args: {
+          p_last_activity_at: string | null;
+          p_now?: string;
+          p_org_status: string | null;
+          p_subscription_status: string | null;
+        };
+        Returns: string;
+      };
       platform_location_counts: {
         Args: never;
         Returns: {
           locations: number;
           org_id: string;
+        }[];
+      };
+      platform_organisation_directory: {
+        Args: {
+          p_created_from?: string;
+          p_created_to?: string;
+          p_direction?: string;
+          p_health?: string[];
+          p_industry?: string[];
+          p_limit?: number;
+          p_offset?: number;
+          p_plan?: string[];
+          p_search?: string;
+          p_sort?: string;
+          p_status?: string[];
+          p_subscription_status?: string[];
+        };
+        Returns: {
+          contact_email: string | null;
+          contact_phone: string | null;
+          country: string;
+          created_at: string;
+          current_period_end: string | null;
+          health: string;
+          id: string;
+          industry: string | null;
+          is_demo: boolean;
+          last_activity_at: string | null;
+          locations: number;
+          members: number;
+          name: string;
+          onboarding_completed_at: string | null;
+          owner_contact_visible: boolean;
+          owner_email: string | null;
+          owner_name: string | null;
+          plan: string;
+          slug: string;
+          staff_active: number;
+          status: string;
+          subscription_currency: string | null;
+          subscription_plan: string | null;
+          subscription_price_pence: number | null;
+          subscription_status: string | null;
+          support_access_allowed: boolean;
+          suspended_at: string | null;
+          suspended_reason: string | null;
+          timezone: string;
+          total_count: number;
+          trial_ends_at: string | null;
+        }[];
+      };
+      platform_organisation_facets: {
+        Args: never;
+        Returns: {
+          active: number;
+          archived: number;
+          at_risk: number;
+          attention: number;
+          healthy: number;
+          industries: string[];
+          new_last_month: number;
+          new_this_month: number;
+          past_due: number;
+          plans: string[];
+          subscription_statuses: string[];
+          suspended: number;
+          total: number;
+          trialing: number;
         }[];
       };
       platform_staff_counts: {

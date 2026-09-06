@@ -39,6 +39,17 @@ interface DataTableProps<Row, Key extends string> {
   /** Screen-reader description of what the table lists. */
   caption: string;
   className?: string;
+  /**
+   * Classes for the `<table>` itself, in practice a `min-w-`.
+   *
+   * `table-fixed` divides the available width between the columns, and the
+   * header labels do not wrap, so a table with many columns crushes them into
+   * each other rather than overflowing — "ACCOUNTS" and "SITES" ran together
+   * with no gap and no scrollbar to reveal that anything was wrong. A minimum
+   * width turns that silent collision into the horizontal scroll the region
+   * around it already handles.
+   */
+  tableClassName?: string;
 }
 
 const ALIGN = {
@@ -93,6 +104,7 @@ export function DataTable<Row, Key extends string = string>({
   emptyMessage = 'Nothing to show.',
   caption,
   className,
+  tableClassName,
 }: DataTableProps<Row, Key>): JSX.Element {
   const toggle = (key: Key): void => {
     if (!onSortChange) return;
@@ -125,7 +137,7 @@ export function DataTable<Row, Key extends string = string>({
       role="region"
       aria-label={caption}
     >
-      <table className="w-full table-fixed border-collapse">
+      <table className={cn('w-full table-fixed border-collapse', tableClassName)}>
         <caption className="sr-only">{caption}</caption>
         <colgroup>
           {columns.map((column) => (
