@@ -85,7 +85,7 @@ export function RotaGridCell({
         aria-label="Add shift"
         className={cn(
           containerClassName,
-          'flex w-full items-center justify-center text-sm text-content-muted/50 dark:text-content-muted-dark/50',
+          'flex w-full items-center justify-center text-sm text-content-muted dark:text-content-muted-dark',
         )}
       >
         <span aria-hidden="true">–</span>
