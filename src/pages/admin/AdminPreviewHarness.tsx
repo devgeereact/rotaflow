@@ -837,6 +837,73 @@ const DIRECTORY_ROWS: {
   }),
 ];
 
+/**
+ * The account rows 0131 returns, for `/admin-preview/users`.
+ *
+ * Marcus Bell holds two memberships and Priya Raman has one that is
+ * suspended, because those are the two states the repaired screen exists to
+ * show: an account findable by either of its organisation names, and a
+ * "no active membership" badge that the old screen could never render.
+ */
+const USER_DIRECTORY_ROWS: {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  is_platform_admin: boolean;
+  platform_role: string | null;
+  created_at: string;
+  organisations: number;
+  active_memberships: number;
+  org_ids: string[];
+  org_names: string[];
+  roles: string[];
+  membership_statuses: string[];
+}[] = [
+  ...PROFILES.map((profile, i) => {
+    const own = MEMBERSHIPS.filter((m) => m.user_id === profile.id);
+    const suspended = i === 3;
+    return {
+      id: String(profile.id),
+      email: String(profile.email),
+      full_name: profile.full_name === undefined ? null : String(profile.full_name),
+      avatar_url: null,
+      is_platform_admin: Boolean(profile.is_platform_admin),
+      platform_role: profile.is_platform_admin
+        ? i === 1
+          ? 'platform_owner'
+          : 'platform_support'
+        : null,
+      created_at: profile.created_at,
+      organisations: own.length,
+      active_memberships: suspended ? 0 : own.length,
+      org_ids: own.map((m) => String(m.org_id)),
+      org_names: own.map((m) => String(m.organisation.name ?? '')),
+      roles: [...new Set(own.map((m) => String(m.role)))].sort(),
+      membership_statuses: own.length === 0 ? [] : suspended ? ['suspended'] : ['active'],
+    };
+  }),
+  ...Array.from({ length: 26 }, (_, n) => {
+    const i = n + 1;
+    const role = ['owner', 'manager', 'staff'][i % 3] ?? 'staff';
+    return {
+      id: `88888888-0000-4000-8000-${String(i).padStart(12, '0')}`,
+      email: `person${String(i).padStart(2, '0')}@preview-tenant.example`,
+      full_name: `Preview Person ${String(i).padStart(2, '0')}`,
+      avatar_url: null,
+      is_platform_admin: false,
+      platform_role: null,
+      created_at: ISO(30 + i * 4),
+      organisations: i % 8 === 0 ? 0 : 1,
+      active_memberships: i % 8 === 0 ? 0 : 1,
+      org_ids: i % 8 === 0 ? [] : [String(ORG_IDS[i % 6] ?? '')],
+      org_names: i % 8 === 0 ? [] : [String(ORGANISATIONS[i % 6]?.name ?? '')],
+      roles: i % 8 === 0 ? [] : [role],
+      membership_statuses: i % 8 === 0 ? [] : ['active'],
+    };
+  }),
+];
+
 const TABLES: Record<string, unknown> = {
   organisations: ORGANISATIONS,
   profiles: PROFILES,
@@ -1010,6 +1077,71 @@ const TABLES: Record<string, unknown> = {
       .slice(offset, offset + limit)
       .map((row) => ({ ...row, total_count: matched.length }));
   }) satisfies BodyFixture,
+  // 0131's user directory. A function fixture for the same reason as the
+  // organisation one above: it pages and filters in the database, and a fixed
+  // array would show page 1 forever.
+  //
+  // Marcus Bell is in two organisations on purpose. He is the account the old
+  // screen could not find by either organisation name, and the preview has to
+  // be able to demonstrate that it now can.
+  'rpc/platform_user_directory': ((args: Record<string, unknown>) => {
+    const search = typeof args.p_search === 'string' ? args.p_search.toLowerCase() : '';
+    const access = args.p_platform_access;
+    const roles = Array.isArray(args.p_role) ? (args.p_role as string[]) : [];
+    const statuses = Array.isArray(args.p_membership_status)
+      ? (args.p_membership_status as string[])
+      : [];
+
+    const matched = USER_DIRECTORY_ROWS.filter((row) => {
+      if (access === 'platform' && !row.is_platform_admin) return false;
+      if (access === 'standard' && row.is_platform_admin) return false;
+      if (roles.length > 0 && !row.roles.some((r) => roles.includes(r))) return false;
+      if (
+        statuses.length > 0 &&
+        !row.membership_statuses.some((st) => statuses.includes(st))
+      ) {
+        return false;
+      }
+      if (search === '') return true;
+      return [row.email, row.full_name, ...row.org_names]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(search);
+    });
+
+    const sortKey = typeof args.p_sort === 'string' ? args.p_sort : 'created_at';
+    const sign = args.p_direction === 'asc' ? 1 : -1;
+    const sorted = [...matched].sort((a, b) => {
+      const key = sortKey === 'name' ? 'full_name' : sortKey;
+      const left = a[key as keyof typeof a];
+      const right = b[key as keyof typeof b];
+      const primary =
+        typeof left === 'number' && typeof right === 'number'
+          ? (left - right) * sign
+          : String(left ?? '').localeCompare(String(right ?? '')) * sign;
+      return primary !== 0 ? primary : a.id.localeCompare(b.id);
+    });
+
+    const limit = Math.min(Math.max(Number(args.p_limit ?? 25), 1), 200);
+    const offset = Math.max(Number(args.p_offset ?? 0), 0);
+    return sorted
+      .slice(offset, offset + limit)
+      .map((row) => ({ ...row, total_count: matched.length }));
+  }) satisfies BodyFixture,
+  'rpc/platform_user_facets': [
+    {
+      total: USER_DIRECTORY_ROWS.length,
+      with_membership: USER_DIRECTORY_ROWS.filter((r) => r.organisations > 0).length,
+      unattached: USER_DIRECTORY_ROWS.filter((r) => r.organisations === 0).length,
+      multi_org: USER_DIRECTORY_ROWS.filter((r) => r.organisations > 1).length,
+      platform_admins: USER_DIRECTORY_ROWS.filter((r) => r.is_platform_admin).length,
+      suspended_only: USER_DIRECTORY_ROWS.filter(
+        (r) => r.organisations > 0 && r.active_memberships === 0,
+      ).length,
+      roles: ['manager', 'owner', 'staff'],
+    },
+  ],
   'rpc/platform_organisation_facets': [
     {
       total: DIRECTORY_ROWS.length,

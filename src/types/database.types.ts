@@ -3580,6 +3580,47 @@ export type Database = {
           trial_ends_at: string | null;
         }[];
       };
+      platform_user_directory: {
+        Args: {
+          p_direction?: string;
+          p_limit?: number;
+          p_membership_status?: string[];
+          p_offset?: number;
+          p_org?: string[];
+          p_platform_access?: string;
+          p_role?: string[];
+          p_search?: string;
+          p_sort?: string;
+        };
+        Returns: {
+          active_memberships: number;
+          avatar_url: string | null;
+          created_at: string;
+          email: string;
+          full_name: string | null;
+          id: string;
+          is_platform_admin: boolean;
+          membership_statuses: string[];
+          org_ids: string[];
+          org_names: string[];
+          organisations: number;
+          platform_role: string | null;
+          roles: string[];
+          total_count: number;
+        }[];
+      };
+      platform_user_facets: {
+        Args: never;
+        Returns: {
+          multi_org: number;
+          platform_admins: number;
+          roles: string[];
+          suspended_only: number;
+          total: number;
+          unattached: number;
+          with_membership: number;
+        }[];
+      };
       platform_organisation_facets: {
         Args: never;
         Returns: {

@@ -332,3 +332,187 @@ export async function getOrganisationFacets(): Promise<OrganisationFacets> {
     subscriptionStatuses: arr('subscription_statuses'),
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* The user directory                                                  */
+/* ------------------------------------------------------------------ */
+
+export interface UserDirectoryRow {
+  id: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  isPlatformAdmin: boolean;
+  /** The live grant only; a revoked row is not reported as a role. */
+  platformRole: string | null;
+  createdAt: string;
+  /** Memberships of any status. */
+  organisations: number;
+  /** Of those, the ones that are active. A different and smaller number. */
+  activeMemberships: number;
+  orgIds: string[];
+  orgNames: string[];
+  roles: string[];
+  membershipStatuses: string[];
+}
+
+export interface UserDirectoryQuery {
+  search?: string;
+  orgIds?: readonly string[];
+  roles?: readonly string[];
+  membershipStatus?: readonly string[];
+  /** `'platform'` or `'standard'`. Anything else is treated as no filter. */
+  platformAccess?: string;
+  sort?: string;
+  direction?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
+export const USER_SORT_KEYS = [
+  'name',
+  'email',
+  'organisations',
+  'access',
+  'created_at',
+] as const;
+
+interface UserRpcRow {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  is_platform_admin: boolean;
+  platform_role: string | null;
+  created_at: string;
+  organisations: number;
+  active_memberships: number;
+  org_ids: string[];
+  org_names: string[];
+  roles: string[];
+  membership_statuses: string[];
+  total_count: number;
+}
+
+function toUserRow(row: UserRpcRow): UserDirectoryRow {
+  return {
+    id: row.id,
+    email: row.email,
+    fullName: row.full_name,
+    avatarUrl: row.avatar_url,
+    isPlatformAdmin: row.is_platform_admin,
+    platformRole: row.platform_role,
+    createdAt: row.created_at,
+    organisations: Number(row.organisations ?? 0),
+    activeMemberships: Number(row.active_memberships ?? 0),
+    orgIds: row.org_ids ?? [],
+    orgNames: row.org_names ?? [],
+    roles: row.roles ?? [],
+    membershipStatuses: row.membership_statuses ?? [],
+  };
+}
+
+interface UserRpcArgs {
+  p_search?: string;
+  p_org?: string[];
+  p_role?: string[];
+  p_membership_status?: string[];
+  p_platform_access?: string;
+  p_sort: string;
+  p_direction: string;
+  p_limit: number;
+  p_offset: number;
+}
+
+function userArgs(query: UserDirectoryQuery, limit: number, offset: number): UserRpcArgs {
+  const list = (values: readonly string[] | undefined): string[] | undefined =>
+    values && values.length > 0 ? [...values] : undefined;
+  return {
+    p_search: query.search?.trim() ? query.search.trim() : undefined,
+    p_org: list(query.orgIds),
+    p_role: list(query.roles),
+    p_membership_status: list(query.membershipStatus),
+    p_platform_access:
+      query.platformAccess === 'platform' || query.platformAccess === 'standard'
+        ? query.platformAccess
+        : undefined,
+    p_sort: query.sort ?? 'created_at',
+    p_direction: query.direction ?? 'desc',
+    p_limit: limit,
+    p_offset: offset,
+  };
+}
+
+/**
+ * One page of the platform user directory.
+ *
+ * Search covers every organisation an account belongs to (0131). The screen
+ * used to search `soleOrgName`, which the summary set only for accounts in
+ * exactly one organisation — so searching by organisation could not find a
+ * multi-organisation account, which is the kind a support case is most often
+ * about.
+ */
+export async function listUserDirectory(
+  query: UserDirectoryQuery = {},
+): Promise<ServerPage<UserDirectoryRow>> {
+  const pageSize = clampPageSize(query.pageSize);
+  const page = Math.max(1, Math.trunc(query.page ?? 1));
+  const { data, error } = await supabase.rpc(
+    'platform_user_directory',
+    userArgs(query, pageSize, offsetFor(page, pageSize)),
+  );
+  if (error) throw error;
+
+  const rpcRows = (data ?? []) as unknown as UserRpcRow[];
+  return serverPage({
+    rows: rpcRows.map(toUserRow),
+    total: rpcRows.length === 0 ? 0 : Number(rpcRows[0]?.total_count ?? 0),
+    page,
+    pageSize,
+  });
+}
+
+/** Every account matching the filters, for an export. Same predicates. */
+export async function listUserDirectoryAll(
+  query: UserDirectoryQuery = {},
+): Promise<FetchAllResult<UserDirectoryRow>> {
+  return fetchAllPages<UserDirectoryRow>(async (offset, limit) => {
+    const { data, error } = await supabase.rpc(
+      'platform_user_directory',
+      userArgs(query, limit, offset),
+    );
+    if (error) throw error;
+    const rpcRows = (data ?? []) as unknown as UserRpcRow[];
+    return {
+      rows: rpcRows.map(toUserRow),
+      total: rpcRows.length === 0 ? 0 : Number(rpcRows[0]?.total_count ?? 0),
+    };
+  });
+}
+
+export interface UserFacets {
+  total: number;
+  withMembership: number;
+  unattached: number;
+  multiOrg: number;
+  platformAdmins: number;
+  /** Belongs to an organisation but is active in none. */
+  suspendedOnly: number;
+  roles: string[];
+}
+
+export async function getUserFacets(): Promise<UserFacets> {
+  const { data, error } = await supabase.rpc('platform_user_facets');
+  if (error) throw error;
+  const row = ((data ?? []) as unknown as Record<string, unknown>[])[0];
+  const num = (key: string): number => Number(row?.[key] ?? 0);
+  return {
+    total: num('total'),
+    withMembership: num('with_membership'),
+    unattached: num('unattached'),
+    multiOrg: num('multi_org'),
+    platformAdmins: num('platform_admins'),
+    suspendedOnly: num('suspended_only'),
+    roles: Array.isArray(row?.roles) ? (row.roles as string[]).filter(Boolean) : [],
+  };
+}
