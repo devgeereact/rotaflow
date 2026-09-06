@@ -131,16 +131,16 @@ chip with one legend is unreadable, so each has its own family, its own legend
 and its own short text code. **Colour is never the only identifier for either.**
 
 The twelve were solved for rather than chosen by eye. Each hue was optimised
-for pairwise separation under normal vision *and* under simulated protanopia,
+for pairwise separation under normal vision _and_ under simulated protanopia,
 deuteranopia and tritanopia: the worst pair across all four is ΔE(Lab) **16.4**
 (magenta/cocoa under tritanopia). An earlier hand-picked set had magenta and
 slate at ΔE **4** under deuteranopia — indistinguishable — which is why this one
 was computed. Every `-ink` on its `-wash`, and every `-ink-dark` on its `-deep`,
 measures at least **4.60:1**, so a badge carries body-weight text in both themes.
 
-| Token family      | Badge                                                          | Accent          |
-| ----------------- | -------------------------------------------------------------- | --------------- |
-| `role-<id>`       | `bg-role-<id>-wash text-role-<id>-ink` + dark `-deep`/`-ink-dark` | `bg-role-<id>` |
+| Token family | Badge                                                             | Accent         |
+| ------------ | ----------------------------------------------------------------- | -------------- |
+| `role-<id>`  | `bg-role-<id>-wash text-role-<id>-ink` + dark `-deep`/`-ink-dark` | `bg-role-<id>` |
 
 Ids: `indigo`, `sky`, `teal`, `moss`, `olive`, `amber`, `clay`, `rose`,
 `magenta`, `violet`, `slate`, `cocoa`. Written out in full in

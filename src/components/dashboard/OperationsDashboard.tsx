@@ -244,7 +244,10 @@ export function OperationsDashboard({
           className="min-w-0"
           label="Scheduled today"
           value={tileValue(today.failed, today.counts.scheduledPeople)}
-          hint={`${today.counts.scheduledShifts} shift${today.counts.scheduledShifts === 1 ? '' : 's'} · people, not shifts`}
+          // Both numbers, because they are different questions: cover is
+          // about people, workload is about shifts. Somebody with two shifts
+          // today is one scheduled person and two scheduled shifts.
+          hint={`people · ${today.counts.scheduledShifts} shift${today.counts.scheduledShifts === 1 ? '' : 's'}`}
           to={attendanceLink(today.date, selectedLocationId, [])}
         />
         <StatTile
