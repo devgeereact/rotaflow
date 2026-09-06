@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, Download, Plus, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { StatTile } from '@/components/ui/StatTile';
@@ -34,6 +32,16 @@ import { humaniseKey, monthlyGrowth } from '@/lib/platformOverview';
 import { healthBreakdown } from '@/lib/tenantHealth';
 import { downloadCsv } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
+import { useFilterState } from '@/hooks/useFilterState';
+import { FilterBar } from '@/components/ui/FilterBar';
+import {
+  filterValue,
+  listOutcome,
+  matchesFilters,
+  matchesSearch,
+  type FilterDimension,
+  type FilterOption,
+} from '@/lib/filters';
 import type { Organisation, OrganisationStatus, Subscription } from '@/types';
 
 type OrgSortKey =
@@ -52,6 +60,34 @@ const STATUS_TONE: Record<OrganisationStatus, 'success' | 'warning' | 'neutral'>
   archived: 'neutral',
 };
 
+/**
+ * The console's filter dimensions, on the shared contract.
+ *
+ * `src/lib/filters.ts` was written to be shared and, until this screen
+ * adopted it, only the organisation workspace used it — so a person moving
+ * between the two met two sets of rules about what an empty select means,
+ * whether a filter survives a reload, and whether "nothing here" means the
+ * query matched nothing or failed. Two systems behaving differently is worse
+ * than both behaving the same way badly.
+ *
+ * `q` is NOT marked sensitive here, unlike the workspace's person search: an
+ * organisation's name and slug are the tenant's identity to platform staff,
+ * they appear in every support ticket already, and a linkable filtered view is
+ * the point of a console. The workspace's is a colleague's name, which is a
+ * different thing entirely.
+ */
+const ORG_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text' },
+  { id: 'status', label: 'Status', kind: 'select' },
+  { id: 'plan', label: 'Plan', kind: 'select' },
+] as const;
+
+const ORG_STATUS_OPTIONS: readonly FilterOption[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'suspended', label: 'Suspended' },
+  { value: 'archived', label: 'Archived' },
+] as const;
+
 /** `/admin/organisations`. NEW_STRUCTURE §34's tenant management. */
 export function AdminOrganisationsPage(): JSX.Element {
   const [organisations, setOrganisations] = useState<Organisation[] | null>(null);
@@ -60,9 +96,6 @@ export function AdminOrganisationsPage(): JSX.Element {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [plan, setPlan] = useState('');
   const [sort, setSort] = useState<DataTableSort<OrgSortKey> | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createdInvite, setCreatedInvite] = useState<{
@@ -71,6 +104,16 @@ export function AdminOrganisationsPage(): JSX.Element {
     url: string;
   } | null>(null);
   const { showSuccess, showError } = useToast();
+
+  /**
+   * Filters, sort and page in the URL.
+   *
+   * `scopeKey` is fixed: this list is the whole deployment rather than one
+   * tenant, so there is no scope to switch and nothing to prune. It is passed
+   * explicitly rather than omitted so the next person can see that the
+   * question was asked.
+   */
+  const filterApi = useFilterState({ dimensions: ORG_FILTERS, scopeKey: 'platform' });
 
   useEffect(() => {
     let active = true;
@@ -200,15 +243,42 @@ export function AdminOrganisationsPage(): JSX.Element {
     };
   }, [organisations, planOf, subscriptions]);
 
+  const optionsFor = useCallback(
+    (dimensionId: string): readonly FilterOption[] =>
+      dimensionId === 'status'
+        ? ORG_STATUS_OPTIONS
+        : dimensionId === 'plan'
+          ? // `summary` is null until the organisations load. An empty option
+            // list then renders "Plan: all" and nothing else, which is honest
+            // — there are no plans to choose between yet.
+            (summary?.plans ?? []).map((plan) => ({
+              value: plan,
+              label: humaniseKey(plan),
+            }))
+          : [],
+    [summary],
+  );
+
+  const accessors = useMemo(
+    () => ({
+      status: (org: Organisation) => org.status,
+      plan: (org: Organisation) => planOf(org),
+    }),
+    [planOf],
+  );
+
+  const filters = filterApi.filters;
+
   const visible = useMemo(() => {
     if (!organisations) return [];
-    const q = search.trim().toLowerCase();
-    const filtered = organisations.filter((o) => {
-      if (status && o.status !== status) return false;
-      if (plan && planOf(o) !== plan) return false;
-      if (!q) return true;
-      return o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q);
-    });
+    const filtered = organisations.filter(
+      (o) =>
+        matchesFilters(o, filters, accessors) &&
+        // Name and slug, matched literally. The previous version lower-cased
+        // both sides by hand and each screen decided separately whether to
+        // trim; `matchesSearch` is that decision made once.
+        matchesSearch([o.name, o.slug], filterValue(filters, 'q')),
+    );
 
     // `null` sort keeps the service's own order. Newest tenant first, which
     // is the more useful default on this screen than any column.
@@ -245,7 +315,17 @@ export function AdminOrganisationsPage(): JSX.Element {
           return a.name.localeCompare(b.name) * direction;
       }
     });
-  }, [organisations, search, status, plan, sort, members, sites, planOf]);
+  }, [organisations, filters, accessors, sort, members, sites, planOf]);
+
+  // A failed read is not an empty deployment. `DataTable` shows one empty
+  // message, so the outcome decides which sentence it gets; the error branch
+  // above this is what actually renders on a failure.
+  const outcome = listOutcome({
+    loading: organisations === null && !failed,
+    failed,
+    totalRows: organisations?.length ?? 0,
+    matchedRows: visible.length,
+  });
 
   const columns = useMemo<DataTableColumn<Organisation, OrgSortKey>[]>(
     () => [
@@ -522,41 +602,18 @@ export function AdminOrganisationsPage(): JSX.Element {
           </TileGrid>
 
           <Card className="p-0">
-            <div className="flex flex-wrap items-center gap-2 border-b border-divider p-3 dark:border-divider-dark">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name or slug…"
-                aria-label="Search organisations"
-                className="max-w-xs"
+            <div className="border-b border-divider p-3 dark:border-divider-dark">
+              <FilterBar
+                dimensions={ORG_FILTERS}
+                filters={filters}
+                optionsFor={optionsFor}
+                onSetValue={filterApi.setValue}
+                onSetValues={filterApi.setValues}
+                onClearOne={filterApi.clearOne}
+                onClearAll={filterApi.clearAll}
+                searchPlaceholder="Search name or slug"
+                resultSummary={`${visible.length} of ${summary.total}`}
               />
-              <Select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                aria-label="Filter by status"
-                className="w-auto"
-              >
-                <option value="">Any status</option>
-                <option value="active">Active</option>
-                <option value="suspended">Suspended</option>
-                <option value="archived">Archived</option>
-              </Select>
-              <Select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value)}
-                aria-label="Filter by plan"
-                className="w-auto"
-              >
-                <option value="">All plans</option>
-                {summary.plans.map((p) => (
-                  <option key={p} value={p}>
-                    {humaniseKey(p)}
-                  </option>
-                ))}
-              </Select>
-              <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                {visible.length} of {summary.total}
-              </span>
             </div>
 
             {/* The table scrolls inside its own container so the page never
@@ -569,7 +626,11 @@ export function AdminOrganisationsPage(): JSX.Element {
               rowKey={(org) => org.id}
               sort={sort}
               onSortChange={setSort}
-              emptyMessage="No organisation matches these filters."
+              emptyMessage={
+                outcome === 'empty-dataset'
+                  ? 'No organisations on this deployment yet.'
+                  : 'No organisation matches these filters.'
+              }
             />
           </Card>
         </div>

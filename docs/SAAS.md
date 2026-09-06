@@ -819,7 +819,7 @@ itself: a restore, a real charge, and a phone.
 - [x] CAP-115 🟢 Every swap read works again — `0123` added `applied_shift_id`, a second foreign
       key from `shift_swaps` to `shifts`, and PostgREST then refused the un-hinted
       `shift:shifts(*)` embed outright with `PGRST201 · Could not embed because more than one
-      relationship was found`. Every read of a swap has failed since that migration merged,
+    relationship was found`. Every read of a swap has failed since that migration merged,
       which took the dashboard's whole "waiting on a decision" half with it — and it was
       invisible, because the error was caught into a toast and the board rendered anyway, so a
       missing list was indistinguishable from an empty one. The embed now names the foreign key.
