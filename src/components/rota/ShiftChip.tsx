@@ -12,6 +12,15 @@ interface ShiftChipProps {
   shiftType?: ShiftType;
   startTime: string; // pre-formatted 'HH:MM' in the location's timezone
   endTime: string;
+  /**
+   * Who and when this chip sits under, e.g. "Sarah Johnson, Mon 31 Aug".
+   *
+   * The grid's date header is `aria-hidden` and the staff column is a separate
+   * sticky element, so neither reaches a chip through the accessibility tree.
+   * Without this the chip's whole name is its own text, and tabbing the grid
+   * reads twenty-five shifts that are all "07:00-15:00 Morning".
+   */
+  contextLabel?: string;
   /** Past shifts drop their colour; current and upcoming ones keep it. */
   timeState: ShiftTimeState;
   selected?: boolean;
@@ -74,6 +83,7 @@ export function ShiftChip({
   shiftType,
   startTime,
   endTime,
+  contextLabel,
   timeState,
   selected,
   hasConflict,
@@ -105,6 +115,13 @@ export function ShiftChip({
         // moved in 25px increments that address no cell and fought this
         // button's own Enter handler; the move a keyboard user gets instead is
         // the `M` shortcut below, and this is where they are told about it.
+        aria-label={
+          contextLabel
+            ? `${contextLabel}, ${describeTimeRange(startTime, endTime)}${
+                shiftType ? `, ${shiftType.name}` : ''
+              }`
+            : undefined
+        }
         aria-roledescription="Shift. Press Enter to edit, or M to move it with the arrow keys."
         aria-keyshortcuts={onStartMove ? 'M' : undefined}
         data-shift-id={shift.id}

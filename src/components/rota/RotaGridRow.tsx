@@ -158,6 +158,7 @@ export function RotaGridRow({
           <RotaGridCell
             key={key}
             staffProfileId={staffProfileId}
+            staffName={staff ? `${staff.first_name} ${staff.last_name}` : null}
             date={date}
             isMoveTarget={moveTargetDateIndex === dateIndex}
             movingShiftId={movingShiftId}
