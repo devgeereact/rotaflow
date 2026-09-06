@@ -142,22 +142,32 @@ export function ShiftChip({
         className={cn(
           'relative w-full rounded-lg px-1 py-1.5 text-center ring-1 transition-opacity',
           isPast ? PAST_SHIFT_TINT : paletteTintForColour(shiftType?.colour),
+          // Every state ring below repeats itself as a `dark:` variant, and has
+          // to. The tint above ends in `dark:ring-shift-<hue>/25`. `cn` is
+          // tailwind-merge, so it drops the tint's *plain* ring in favour of
+          // the state's, but a `dark:` ring is a different merge group and
+          // survives, then outranks a plain ring under `.dark` on specificity.
+          // Without the repeat, a chip in dark mode showed only its shift-type
+          // ring: selection, the live edge and a publication-blocking conflict
+          // were all invisible, on a screen that says "1 issue blocks
+          // publication" and expects you to find it.
+          //
           // A shift running right now is the one thing on the grid that is
           // literally happening, so it gets a live edge rather than a colour.
           timeState === 'live' &&
-            'ring-2 ring-success ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+            'ring-2 ring-success ring-offset-1 ring-offset-surface dark:ring-success dark:ring-offset-surface-dark',
           selected &&
-            'ring-2 ring-primary ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+            'ring-2 ring-primary ring-offset-1 ring-offset-surface dark:ring-primary dark:ring-offset-surface-dark',
           // Matches the grid legend's "Conflict" swatch: a double-booking,
           // rest breach or other critical, shift-specific insight.
           hasConflict &&
             !selected &&
-            'ring-2 ring-danger ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+            'ring-2 ring-danger ring-offset-1 ring-offset-surface dark:ring-danger dark:ring-offset-surface-dark',
           isDragging && 'opacity-40',
           // Lifted, not faded: the chip stays legible because it is the thing
           // being placed, and the landing cell carries the ring.
           moving &&
-            'ring-2 ring-primary ring-offset-2 ring-offset-surface shadow dark:ring-offset-surface-dark',
+            'ring-2 ring-primary ring-offset-2 ring-offset-surface shadow dark:ring-primary dark:ring-offset-surface-dark',
         )}
       >
         {/* An en dash, not a comma: a comma between two times reads as two
