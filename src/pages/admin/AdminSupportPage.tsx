@@ -5,8 +5,6 @@ import { Card, Panel } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Callout } from '@/components/ui/Callout';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
@@ -30,6 +28,15 @@ import {
 } from '@/lib/supportMetrics';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { reportError } from '@/lib/sentry';
+import { useFilterState } from '@/hooks/useFilterState';
+import { FilterBar } from '@/components/ui/FilterBar';
+import {
+  filterValue,
+  matchesFilters,
+  matchesSearch,
+  type FilterDimension,
+  type FilterOption,
+} from '@/lib/filters';
 import type { Organisation } from '@/types';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
@@ -93,14 +100,65 @@ const WIDTHS = [
  * file no longer exists at all (BUG-059). See the
  * "Where these cases come from" callout on the screen for what is real today.
  */
+/**
+ * The dimensions this screen filters on, on the shared contract.
+ *
+ * `q` travels in the URL, like the rest of the console and unlike the
+ * workspace's person search: a case reference IS the thing somebody pastes
+ * into a message, and a filtered link that arrives unfiltered is the failure
+ * this replaces.
+ */
+const CASE_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text' },
+  { id: 'status', label: 'Status', kind: 'multi' },
+  { id: 'priority', label: 'Priority', kind: 'multi' },
+] as const;
+
+const CASE_STATUS_OPTIONS: readonly FilterOption[] = [
+  { value: 'open', label: 'Open' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'on_hold', label: 'On hold' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'closed', label: 'Closed' },
+] as const;
+
+const CASE_PRIORITY_OPTIONS: readonly FilterOption[] = [
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'high', label: 'High' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'low', label: 'Low' },
+] as const;
+
+/**
+ * Both are `multi`, so "open or pending" — the queue somebody actually works
+ * — is one filter rather than two visits. The old pair of selects could only
+ * ask about one value at a time.
+ */
+const CASE_ACCESSORS = {
+  status: (item: { status: string }) => item.status,
+  priority: (item: { priority: string }) => item.priority,
+};
+
+function optionsFor(dimensionId: string): readonly FilterOption[] {
+  if (dimensionId === 'status') return CASE_STATUS_OPTIONS;
+  if (dimensionId === 'priority') return CASE_PRIORITY_OPTIONS;
+  return [];
+}
+
 export function AdminSupportPage(): JSX.Element {
   const [organisations, setOrganisations] = useState<Organisation[] | null>(null);
   const [sessions, setSessions] = useState<SupportAccessSession[]>([]);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [priority, setPriority] = useState('');
+  /**
+   * Filters in the URL, on the shared contract (`src/lib/filters.ts`).
+   *
+   * A support case is the one thing on this console somebody genuinely pastes
+   * a link to — "the four urgent open ones" is a message to a colleague — and
+   * before this the link carried none of the filter.
+   */
+  const filterApi = useFilterState({ dimensions: CASE_FILTERS, scopeKey: 'platform' });
+  const filters = filterApi.filters;
   const [allCases, setAllCases] = useState<SupportCaseRow[]>([]);
 
   // One clock per render pass so every countdown on the screen agrees.
@@ -151,20 +209,23 @@ export function AdminSupportPage(): JSX.Element {
     [sessions, now],
   );
 
-  const cases = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return allCases.filter((item) => {
-      if (status && item.status !== status) return false;
-      if (priority && item.priority !== priority) return false;
-      if (!q) return true;
-      return (
-        item.reference.toLowerCase().includes(q) ||
-        item.subject.toLowerCase().includes(q) ||
-        (item.orgName ?? '').toLowerCase().includes(q) ||
-        (item.requester_name ?? item.requester_email).toLowerCase().includes(q)
-      );
-    });
-  }, [allCases, search, status, priority]);
+  const cases = useMemo(
+    () =>
+      allCases.filter(
+        (item) =>
+          matchesFilters(item, filters, CASE_ACCESSORS) &&
+          matchesSearch(
+            [
+              item.reference,
+              item.subject,
+              item.orgName,
+              item.requester_name ?? item.requester_email,
+            ],
+            filterValue(filters, 'q'),
+          ),
+      ),
+    [allCases, filters],
+  );
 
   // Every figure below is derived from the rows, so the tiles and the table
   // cannot disagree, and each reads "-" rather than zero when there is
@@ -290,43 +351,18 @@ export function AdminSupportPage(): JSX.Element {
           )}
 
           <Card className="p-0">
-            <div className="flex flex-wrap items-center gap-2 border-b border-divider p-3 dark:border-divider-dark">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search case, subject, organisation…"
-                aria-label="Search cases"
-                className="max-w-xs"
+            <div className="border-b border-divider p-3 dark:border-divider-dark">
+              <FilterBar
+                dimensions={CASE_FILTERS}
+                filters={filters}
+                optionsFor={optionsFor}
+                onSetValue={filterApi.setValue}
+                onSetValues={filterApi.setValues}
+                onClearOne={filterApi.clearOne}
+                onClearAll={filterApi.clearAll}
+                searchPlaceholder="Search case, subject or organisation"
+                resultSummary={`${cases.length} of ${allCases.length}`}
               />
-              <Select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                aria-label="Filter by status"
-                className="w-auto"
-              >
-                <option value="">Any status</option>
-                <option value="open">Open</option>
-                <option value="pending">Pending</option>
-                <option value="on_hold">On hold</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </Select>
-              <Select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                aria-label="Filter by priority"
-                className="w-auto"
-              >
-                <option value="">Any priority</option>
-                {['urgent', 'high', 'normal', 'low'].map((p) => (
-                  <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </option>
-                ))}
-              </Select>
-              <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                {cases.length} of {allCases.length}
-              </span>
             </div>
 
             <ScrollRegion label="Support cases">
@@ -360,7 +396,9 @@ export function AdminSupportPage(): JSX.Element {
                         colSpan={COLUMNS.length}
                         className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark"
                       >
-                        No case matches these filters.
+                        {allCases.length === 0
+                          ? 'No support cases have been raised yet.'
+                          : 'No case matches these filters.'}
                       </td>
                     </tr>
                   ) : (

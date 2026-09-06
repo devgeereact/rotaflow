@@ -221,3 +221,131 @@ describe('both screens tell an error apart from an empty deployment', () => {
     ).toBe('error');
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* The three screens converted in the second pass                      */
+/* ------------------------------------------------------------------ */
+
+interface Case {
+  id: string;
+  reference: string;
+  status: string;
+  priority: string;
+}
+
+const CASE_ACCESSORS = {
+  status: (c: Case) => c.status,
+  priority: (c: Case) => c.priority,
+};
+
+const CASES: Case[] = [
+  { id: '1', reference: 'SUP-001', status: 'open', priority: 'urgent' },
+  { id: '2', reference: 'SUP-002', status: 'pending', priority: 'normal' },
+  { id: '3', reference: 'SUP-003', status: 'closed', priority: 'urgent' },
+];
+
+describe('support cases', () => {
+  it('asks about the working queue in one filter, not two visits', () => {
+    // Both dimensions are `multi`, so "open or pending" is expressible. The
+    // pair of selects this replaces could only ask about one value at a time.
+    const state = setFilterValues({}, 'status', ['open', 'pending']);
+    expect(
+      CASES.filter((c) => matchesFilters(c, state, CASE_ACCESSORS)).map((c) => c.id),
+    ).toEqual(['1', '2']);
+  });
+
+  it('ANDs status with priority', () => {
+    let state = setFilterValues({}, 'status', ['open', 'pending']);
+    state = setFilterValues(state, 'priority', ['urgent']);
+    expect(
+      CASES.filter((c) => matchesFilters(c, state, CASE_ACCESSORS)).map((c) => c.id),
+    ).toEqual(['1']);
+  });
+});
+
+interface SubRow {
+  id: string;
+  plan: string;
+  state: string | null;
+}
+
+/**
+ * A row with no subscription record filters as a value, not as a gap.
+ *
+ * "No record" is the state finance asks about most, and the previous version
+ * expressed it as the magic string `'none'` inside the predicate — which
+ * worked and could not be linked to.
+ */
+const NO_SUBSCRIPTION = 'none';
+
+const SUB_ACCESSORS = {
+  plan: (r: SubRow) => r.plan,
+  state: (r: SubRow) => r.state ?? NO_SUBSCRIPTION,
+};
+
+const SUB_ROWS: SubRow[] = [
+  { id: '1', plan: 'starter', state: 'active' },
+  { id: '2', plan: 'business', state: 'past_due' },
+  { id: '3', plan: 'starter', state: null },
+];
+
+describe('subscriptions', () => {
+  it('finds the organisations with no subscription record at all', () => {
+    const state = setFilterValues({}, 'state', [NO_SUBSCRIPTION]);
+    expect(
+      SUB_ROWS.filter((r) => matchesFilters(r, state, SUB_ACCESSORS)).map((r) => r.id),
+    ).toEqual(['3']);
+  });
+
+  it('does not sweep those into a real subscription state', () => {
+    const state = setFilterValues({}, 'state', ['active']);
+    expect(
+      SUB_ROWS.filter((r) => matchesFilters(r, state, SUB_ACCESSORS)).map((r) => r.id),
+    ).toEqual(['1']);
+  });
+});
+
+interface AuditRow {
+  id: string;
+  scope: string;
+  orgId: string | null;
+  severity: string;
+}
+
+const PLATFORM_SCOPE = '__platform__';
+
+const AUDIT_ACCESSORS = {
+  org: (e: AuditRow) =>
+    e.scope === 'platform' ? PLATFORM_SCOPE : (e.orgId ?? PLATFORM_SCOPE),
+  severity: (e: AuditRow) => e.severity,
+};
+
+const AUDIT: AuditRow[] = [
+  { id: '1', scope: 'platform', orgId: null, severity: 'info' },
+  { id: '2', scope: 'org', orgId: 'o1', severity: 'warning' },
+  { id: '3', scope: 'org', orgId: 'o2', severity: 'info' },
+];
+
+describe('audit', () => {
+  it('separates what platform staff did from what a tenant did', () => {
+    const state = setFilterValue({}, 'org', PLATFORM_SCOPE);
+    expect(
+      AUDIT.filter((e) => matchesFilters(e, state, AUDIT_ACCESSORS)).map((e) => e.id),
+    ).toEqual(['1']);
+  });
+
+  it('scopes to one tenant', () => {
+    const state = setFilterValue({}, 'org', 'o1');
+    expect(
+      AUDIT.filter((e) => matchesFilters(e, state, AUDIT_ACCESSORS)).map((e) => e.id),
+    ).toEqual(['2']);
+  });
+
+  it('combines a tenant with a result', () => {
+    let state = setFilterValue({}, 'org', 'o2');
+    state = setFilterValues(state, 'severity', ['warning']);
+    expect(AUDIT.filter((e) => matchesFilters(e, state, AUDIT_ACCESSORS))).toHaveLength(
+      0,
+    );
+  });
+});

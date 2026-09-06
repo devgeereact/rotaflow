@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import {
   AdminEmpty,
   AdminError,
@@ -17,6 +15,15 @@ import { Button } from '@/components/ui/Button';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { downloadCsv } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
+import { useFilterState } from '@/hooks/useFilterState';
+import { FilterBar } from '@/components/ui/FilterBar';
+import {
+  filterValue,
+  matchesFilters,
+  matchesSearch,
+  type FilterDimension,
+  type FilterOption,
+} from '@/lib/filters';
 import type { AuditLog, Organisation } from '@/types';
 
 const LIMIT = 200;
@@ -109,14 +116,29 @@ function ChangeCell({
   );
 }
 
+/**
+ * The value a platform-scoped event filters as.
+ *
+ * An event with no `org_id` belongs to the platform rather than to a tenant,
+ * and "only what platform staff did" is the question this screen is most often
+ * opened for. It is an option rather than a gap for the same reason "No
+ * record" is one on the subscriptions screen.
+ */
+const PLATFORM_SCOPE = '__platform__';
+
+const AUDIT_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text' },
+  { id: 'org', label: 'Organisation', kind: 'select' },
+  { id: 'severity', label: 'Result', kind: 'multi' },
+] as const;
+
 export function AdminAuditPage(): JSX.Element {
   const [entries, setEntries] = useState<AuditLog[] | null>(null);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [search, setSearch] = useState('');
-  const [orgFilter, setOrgFilter] = useState('all');
-  const [severityFilter, setSeverityFilter] = useState('all');
+  const filterApi = useFilterState({ dimensions: AUDIT_FILTERS, scopeKey: 'platform' });
+  const filters = filterApi.filters;
 
   useEffect(() => {
     let active = true;
@@ -147,28 +169,47 @@ export function AdminAuditPage(): JSX.Element {
     [organisations],
   );
 
-  const visible = useMemo(() => {
-    let rows = entries ?? [];
-    if (orgFilter === 'platform') {
-      rows = rows.filter((e) => e.scope === 'platform');
-    } else if (orgFilter !== 'all') {
-      rows = rows.filter((e) => e.org_id === orgFilter);
-    }
-    if (severityFilter !== 'all') {
-      rows = rows.filter((e) => e.severity === severityFilter);
-    }
-    const q = search.trim().toLowerCase();
-    if (q) {
-      rows = rows.filter(
-        (e) =>
-          e.action.toLowerCase().includes(q) ||
-          (e.entity_type ?? '').toLowerCase().includes(q) ||
-          (e.actor_name ?? '').toLowerCase().includes(q) ||
-          (e.actor_email ?? '').toLowerCase().includes(q),
-      );
-    }
-    return rows;
-  }, [entries, orgFilter, severityFilter, search]);
+  const accessors = useMemo(
+    () => ({
+      // Platform-scoped events are their own value rather than a null org.
+      // "Show me only what platform staff did" is the question this screen is
+      // most often opened for, and it was previously the magic string 'all'
+      // versus 'platform' inside the predicate — expressible, and not linkable.
+      org: (entry: AuditLog) =>
+        entry.scope === 'platform' ? PLATFORM_SCOPE : (entry.org_id ?? PLATFORM_SCOPE),
+      severity: (entry: AuditLog) => entry.severity,
+    }),
+    [],
+  );
+
+  const visible = useMemo(
+    () =>
+      (entries ?? []).filter(
+        (entry) =>
+          matchesFilters(entry, filters, accessors) &&
+          matchesSearch(
+            [entry.action, entry.entity_type, entry.actor_name, entry.actor_email],
+            filterValue(filters, 'q'),
+          ),
+      ),
+    [entries, filters, accessors],
+  );
+
+  const optionsFor = useCallback(
+    (dimensionId: string): readonly FilterOption[] => {
+      if (dimensionId === 'org') {
+        return [
+          { value: PLATFORM_SCOPE, label: 'Platform events only' },
+          ...organisations.map((org) => ({ value: org.id, label: org.name })),
+        ];
+      }
+      if (dimensionId === 'severity') {
+        return SEVERITIES.map((level) => ({ value: level, label: level }));
+      }
+      return [];
+    },
+    [organisations],
+  );
 
   const columns = useMemo<DataTableColumn<AuditLog>[]>(
     () => [
@@ -328,45 +369,17 @@ export function AdminAuditPage(): JSX.Element {
             </p>
           </Callout>
 
-          <div className="flex flex-wrap gap-3">
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search action, entity or actor…"
-              aria-label="Search audit events"
-              className="max-w-xs"
-            />
-            <Select
-              value={orgFilter}
-              onChange={(e) => setOrgFilter(e.target.value)}
-              aria-label="Filter by organisation"
-              className="max-w-xs"
-            >
-              <option value="all">All organisations</option>
-              <option value="platform">Platform events only</option>
-              {organisations.map((org) => (
-                <option key={org.id} value={org.id}>
-                  {org.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-              aria-label="Filter by result"
-              className="max-w-[12rem]"
-            >
-              <option value="all">Any result</option>
-              {SEVERITIES.map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </Select>
-            <span className="ml-auto self-center text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-              {visible.length} of {entries.length}
-            </span>
-          </div>
+          <FilterBar
+            dimensions={AUDIT_FILTERS}
+            filters={filters}
+            optionsFor={optionsFor}
+            onSetValue={filterApi.setValue}
+            onSetValues={filterApi.setValues}
+            onClearOne={filterApi.clearOne}
+            onClearAll={filterApi.clearAll}
+            searchPlaceholder="Search action, entity or actor"
+            resultSummary={`${visible.length} of ${entries.length}`}
+          />
 
           <Card className="overflow-hidden p-0">
             <DataTable
@@ -374,7 +387,11 @@ export function AdminAuditPage(): JSX.Element {
               columns={columns}
               rows={visible}
               rowKey={(entry) => entry.id}
-              emptyMessage="No event matches those filters."
+              emptyMessage={
+                entries.length === 0
+                  ? 'No audit events have been recorded yet.'
+                  : 'No event matches these filters.'
+              }
             />
           </Card>
 

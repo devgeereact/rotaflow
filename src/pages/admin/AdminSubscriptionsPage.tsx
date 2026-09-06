@@ -5,8 +5,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Callout } from '@/components/ui/Callout';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import {
   DataTable,
   type DataTableColumn,
@@ -40,6 +38,15 @@ import {
 } from '@/lib/revenue';
 import { Sparkline } from '@/components/ui/TrendChart';
 import { reportError } from '@/lib/sentry';
+import { useFilterState } from '@/hooks/useFilterState';
+import { FilterBar } from '@/components/ui/FilterBar';
+import {
+  filterValue,
+  matchesFilters,
+  matchesSearch,
+  type FilterDimension,
+  type FilterOption,
+} from '@/lib/filters';
 import type { Organisation, Subscription } from '@/types';
 
 type PaymentState = 'paid' | 'pending' | 'failed';
@@ -98,6 +105,22 @@ interface Row {
  * subscriptions cannot show one. `/admin/billing` takes the other cut. The
  * renewal lifecycle across the records that do exist.
  */
+/**
+ * The value a row with no subscription record filters as.
+ *
+ * "No record" is a state finance asks about far more often than any of the
+ * live ones, so it is an option rather than a gap. The previous version
+ * expressed it as the magic string `'none'` inside the predicate, which
+ * worked and could not be linked to.
+ */
+const NO_SUBSCRIPTION = 'none';
+
+const SUB_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text' },
+  { id: 'plan', label: 'Plan', kind: 'select' },
+  { id: 'state', label: 'Subscription', kind: 'multi' },
+] as const;
+
 export function AdminSubscriptionsPage(): JSX.Element {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -107,9 +130,8 @@ export function AdminSubscriptionsPage(): JSX.Element {
   const [staffCounts, setStaffCounts] = useState<Map<string, number>>(new Map());
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [search, setSearch] = useState('');
-  const [plan, setPlan] = useState('');
-  const [status, setStatus] = useState('');
+  const filterApi = useFilterState({ dimensions: SUB_FILTERS, scopeKey: 'platform' });
+  const filters = filterApi.filters;
   const [sort, setSort] = useState<DataTableSort<SubSortKey> | null>(null);
 
   useEffect(() => {
@@ -257,22 +279,48 @@ export function AdminSubscriptionsPage(): JSX.Element {
     };
   }, [rows, planOf]);
 
+  const optionsFor = useCallback(
+    (dimensionId: string): readonly FilterOption[] => {
+      if (dimensionId === 'plan') {
+        // Null until the rows load. An empty list renders "Plan: all" and
+        // nothing else, which is honest — there are no plans to choose yet.
+        return (stats?.plans ?? []).map((plan) => ({
+          value: plan,
+          label: humaniseKey(plan),
+        }));
+      }
+      if (dimensionId === 'state') {
+        return [
+          ...(stats?.statuses ?? []).map((status) => ({
+            value: status,
+            label: humaniseKey(status),
+          })),
+          { value: NO_SUBSCRIPTION, label: 'No record' },
+        ];
+      }
+      return [];
+    },
+    [stats],
+  );
+
   const visible = useMemo(() => {
     if (!rows) return [];
-    const q = search.trim().toLowerCase();
-    const filtered = rows.filter((row) => {
-      if (plan && planOf(row) !== plan) return false;
-      if (status) {
-        if (status === 'none' ? row.subscription : row.subscription?.status !== status) {
-          return false;
-        }
-      }
-      if (!q) return true;
-      return (
-        row.organisation.name.toLowerCase().includes(q) ||
-        row.organisation.slug.toLowerCase().includes(q)
-      );
-    });
+    const accessors = {
+      plan: (row: Row) => planOf(row),
+      // `NO_SUBSCRIPTION` rather than null: an organisation with no
+      // subscription row is a real thing to filter FOR — it is the one a
+      // finance query is usually about — and the contract's `UNASSIGNED`
+      // convention only reaches a value the option list offers.
+      state: (row: Row) => row.subscription?.status ?? NO_SUBSCRIPTION,
+    };
+    const filtered = rows.filter(
+      (row) =>
+        matchesFilters(row, filters, accessors) &&
+        matchesSearch(
+          [row.organisation.name, row.organisation.slug],
+          filterValue(filters, 'q'),
+        ),
+    );
 
     if (!sort) return filtered;
     const direction = sort.direction === 'asc' ? 1 : -1;
@@ -300,7 +348,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
           return a.organisation.name.localeCompare(b.organisation.name) * direction;
       }
     });
-  }, [rows, search, plan, status, sort, facts, planOf]);
+  }, [rows, filters, sort, facts, planOf]);
 
   const columns = useMemo<DataTableColumn<Row, SubSortKey>[]>(
     () => [
@@ -574,44 +622,18 @@ export function AdminSubscriptionsPage(): JSX.Element {
           </Callout>
 
           <Card className="p-0">
-            <div className="flex flex-wrap items-center gap-2 border-b border-divider p-3 dark:border-divider-dark">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search organisation…"
-                aria-label="Search subscriptions"
-                className="max-w-xs"
+            <div className="border-b border-divider p-3 dark:border-divider-dark">
+              <FilterBar
+                dimensions={SUB_FILTERS}
+                filters={filters}
+                optionsFor={optionsFor}
+                onSetValue={filterApi.setValue}
+                onSetValues={filterApi.setValues}
+                onClearOne={filterApi.clearOne}
+                onClearAll={filterApi.clearAll}
+                searchPlaceholder="Search organisation"
+                resultSummary={`${visible.length} of ${stats.tenants}`}
               />
-              <Select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value)}
-                aria-label="Filter by plan"
-                className="w-auto"
-              >
-                <option value="">All plans</option>
-                {stats.plans.map((p) => (
-                  <option key={p} value={p}>
-                    {humaniseKey(p)}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                aria-label="Filter by subscription status"
-                className="w-auto"
-              >
-                <option value="">Any subscription state</option>
-                {stats.statuses.map((s) => (
-                  <option key={s} value={s}>
-                    {humaniseKey(s)}
-                  </option>
-                ))}
-                <option value="none">No record</option>
-              </Select>
-              <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                {visible.length} of {stats.tenants}
-              </span>
             </div>
 
             <DataTable
@@ -621,7 +643,11 @@ export function AdminSubscriptionsPage(): JSX.Element {
               rowKey={({ organisation }) => organisation.id}
               sort={sort}
               onSortChange={setSort}
-              emptyMessage="No organisation matches these filters."
+              emptyMessage={
+                rows.length === 0
+                  ? 'No organisations on this deployment yet.'
+                  : 'No organisation matches these filters.'
+              }
             />
           </Card>
         </div>
