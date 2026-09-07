@@ -92,11 +92,11 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 114   |
-| 🟡 Partial            | 0     |
+| 🟡 Partial            | 1     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 1     |
+| 🔴 Missing            | 0     |
 | ⚫ Deferred           | 10    |
 | ❓ Not audited        | 4     |
 
@@ -679,14 +679,18 @@ itself: a restore, a real charge, and a phone.
 
 ### Reliability and operations
 
-- [ ] CAP-095 🔴 Production backups — **the mechanism is built and running; two secrets are
-      missing, and only the owner can add them.** `pitr_enabled: false` and an empty backup list
-      on the Supabase side (a paid feature), and `.github/workflows/backup.yml` runs nightly and
-      fails in seven seconds with `Missing secret(s): SUPABASE_DB_URL BACKUP_PASSPHRASE` — last
-      at 08:53 on 2026-08-31. That failure is deliberate and correct: a backup job that skipped
-      quietly would be worse than none. Nothing an agent can close — one is a database
-      credential — and it is the last 🔴 in this register and the largest single risk in the
-      product, because every other item here is recoverable
+- [ ] CAP-095 🟡 Production backups — **running nightly since 5 September 2026, and the
+      restore now brings the grants back too.** This entry said the secrets were missing and
+      cited a failure of 2026-08-31; both secrets were set on 5 September and `backup.yml` has
+      succeeded on its schedule since. The 7 September restore rehearsal then found the part
+      that mattered: the dump was taken `--no-privileges`, so it restored 64 tables and 99
+      policies with **zero grants**, and RLS admits nobody on its own — a database restored
+      from any earlier artifact refuses every request. Fixed the same day; run `34166278425`
+      measured 173 table grants and 135 function EXECUTE grants to `authenticated`, and 0 to
+      `anon`. Amber rather than green because two things remain and neither is code:
+      `pitr_enabled: false` is a paid Supabase feature and the owner's billing decision, and no
+      restore into a real Supabase project has been done, so auth and storage are still
+      unproven (❓-005)
       `.github/workflows/backup.yml` · GAP-001 · **P0, owner only**
 - [x] CAP-096 🟢 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
       in the migration; verified to fire on all nine and stay silent on all ten written today
