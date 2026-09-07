@@ -11,16 +11,21 @@ import { MeterRows } from '@/components/ui/MeterRows';
 import { Sparkline, TrendChart } from '@/components/ui/TrendChart';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import {
-  countMembershipsByOrg,
-  countPublishedRotas,
-  listAllOrganisations,
-  listAllProfiles,
+  getOperationsSummary,
+  getPlatformGrowth,
+  getPlatformTotals,
   listAllSubscriptions,
   listPlatformAuditLogs,
+  type GrowthPoint as ServerGrowthPoint,
+  type OperationsSummary,
 } from '@/services/platformService';
+import {
+  getOrganisationFacets,
+  type OrganisationFacets,
+} from '@/services/platformDirectoryService';
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import { sessionStatus, type SupportAccessSession } from '@/lib/supportAccess';
-import { monthlyChurnCounts, monthlyGrowth } from '@/lib/platformOverview';
+
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
 import { listSupportCases, type SupportCaseRow } from '@/services/supportCaseService';
 import { getHealthSummary, type HealthSummaryRow } from '@/services/platformFactsService';
@@ -32,24 +37,88 @@ import {
   revenueByPlan,
   revenueChurnForMonth,
 } from '@/lib/revenue';
-import { openCases, urgentOpenCases } from '@/lib/supportMetrics';
-import { healthBreakdown, tenantsActiveWithin } from '@/lib/tenantHealth';
+import { HEALTH_LABEL } from '@/lib/tenantHealth';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { reportError } from '@/lib/sentry';
-import type { AuditLog, Organisation, Profile, Subscription } from '@/types';
+import type { AuditLog, Subscription } from '@/types';
 
+/**
+ * What the overview loaded, panel by panel, and which panels could not be.
+ *
+ * ## Why this is not one `Promise.all`
+ *
+ * It was. Eleven reads in one `Promise.all`, so a single failing one — a
+ * refused RPC, a 500 on invoices — rejected the whole thing and the screen
+ * showed nothing but a retry button. The dashboard's whole job is to say what
+ * is happening, and losing every number because one of eleven providers was
+ * unhappy is the worst moment to lose it.
+ *
+ * `Promise.allSettled` instead, with the failures named. A panel whose source
+ * failed says so; the others carry on. This matters more than it looks: a
+ * caught failure that renders as `0` is worse than one that renders as an
+ * error, because a zero is a claim.
+ */
 interface Snapshot {
-  organisations: Organisation[];
-  profiles: Profile[];
-  subscriptions: Subscription[];
-  recentAudit: AuditLog[];
-  members: Map<string, number>;
-  sessions: SupportAccessSession[];
+  totals: PlatformTotals | null;
+  facets: OrganisationFacets | null;
+  operations: OperationsSummary | null;
+  growth: ServerGrowthPoint[] | null;
+  subscriptions: Subscription[] | null;
+  recentAudit: AuditLog[] | null;
+  sessions: SupportAccessSession[] | null;
+  plans: { code: string; monthly_price_pence: number }[] | null;
+  invoices: Invoice[] | null;
+  supportCases: SupportCaseRow[] | null;
+  health: HealthSummaryRow[] | null;
+  /** Human names of the sources that could not be read. */
+  unavailable: string[];
+}
+
+interface PlatformTotals {
+  organisations: number;
+  activeOrgs: number;
+  profiles: number;
+  staffProfiles: number;
   publishedRotas: number;
-  plans: { code: string; monthly_price_pence: number }[];
-  invoices: Invoice[];
-  supportCases: SupportCaseRow[];
-  health: HealthSummaryRow[];
+  shiftsThisMonth: number;
+}
+
+/**
+ * One panel's source could not be read.
+ *
+ * Not an empty state and not a zero. "No open cases" and "the open-case count
+ * could not be read" are opposite facts and the second one used to render as
+ * the first, because the whole page shared a single try/catch that turned
+ * every failure into a blank screen or, once caught, into an optimistic
+ * number.
+ */
+function UnavailablePanel({
+  what,
+  onRetry,
+}: {
+  what: string;
+  onRetry: () => void;
+}): JSX.Element {
+  return (
+    <div className="rounded-xl bg-warning-wash p-3 text-sm text-warning-ink dark:bg-warning-wash-dark dark:text-warning-ink-dark">
+      <p>The {what} could not be read, so this panel is empty rather than zero.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-1.5 text-xs font-semibold underline underline-offset-2"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+/** "Sep" from an ISO date. The chart's axis, in the database's UTC months. */
+function monthLabel(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-GB', {
+    month: 'short',
+    timeZone: 'UTC',
+  });
 }
 
 const ACTIVITY_ICON = {
@@ -155,59 +224,67 @@ export function AdminOverviewPage(): JSX.Element {
     setFailed(false);
     setData(null);
     void (async () => {
-      try {
-        const [
-          organisations,
-          profiles,
-          subscriptions,
-          recentAudit,
-          members,
-          sessions,
-          publishedRotas,
-          plans,
-          invoices,
-          supportCases,
-          health,
-        ] = await Promise.all([
-          listAllOrganisations(),
-          listAllProfiles(),
-          listAllSubscriptions(),
-          listPlatformAuditLogs(4),
-          countMembershipsByOrg(),
-          listSupportAccessSessions(20),
-          countPublishedRotas(),
-          listPlans(),
-          listInvoices(),
-          listSupportCases(),
-          // Never fatal to the dashboard: an empty summary renders as "not
-          // sampled", which is the truth, whereas failing the whole page
-          // because uptime could not be read would be a worse trade.
-          getHealthSummary().catch(() => []),
-        ]);
-        if (!active) return;
-        setData({
-          organisations,
-          profiles,
-          subscriptions,
-          recentAudit,
-          members,
-          sessions,
-          publishedRotas,
-          plans,
-          invoices,
-          supportCases,
-          health,
-        });
-      } catch (err) {
-        if (!active) return;
-        reportError(err, { area: 'admin:overview' });
+      // Named, so a failure can be reported as "subscriptions could not be
+      // read" rather than as a generic error with no clue which panel to
+      // distrust.
+      const sources = [
+        ['tenant and account totals', getPlatformTotals()],
+        ['organisation health', getOrganisationFacets()],
+        ['support and incidents', getOperationsSummary()],
+        ['growth', getPlatformGrowth(periodMonths)],
+        ['subscriptions', listAllSubscriptions()],
+        ['recent activity', listPlatformAuditLogs(4)],
+        ['support access', listSupportAccessSessions(20)],
+        ['plans', listPlans()],
+        ['invoices', listInvoices()],
+        ['support cases', listSupportCases()],
+        ['service health', getHealthSummary()],
+      ] as const;
+
+      const settled = await Promise.allSettled(sources.map(([, promise]) => promise));
+      if (!active) return;
+
+      const unavailable: string[] = [];
+      const value = <T,>(index: number): T | null => {
+        const result = settled[index];
+        if (result?.status === 'fulfilled') return result.value as T;
+        if (result?.status === 'rejected') {
+          reportError(result.reason, {
+            area: `admin:overview:${sources[index]?.[0] ?? 'unknown'}`,
+          });
+        }
+        const name = sources[index]?.[0];
+        if (name) unavailable.push(name);
+        return null;
+      };
+
+      const snapshot: Snapshot = {
+        totals: value<PlatformTotals>(0),
+        facets: value<OrganisationFacets>(1),
+        operations: value<OperationsSummary>(2),
+        growth: value<ServerGrowthPoint[]>(3),
+        subscriptions: value<Subscription[]>(4),
+        recentAudit: value<AuditLog[]>(5),
+        sessions: value<SupportAccessSession[]>(6),
+        plans: value<{ code: string; monthly_price_pence: number }[]>(7),
+        invoices: value<Invoice[]>(8),
+        supportCases: value<SupportCaseRow[]>(9),
+        health: value<HealthSummaryRow[]>(10),
+        unavailable,
+      };
+
+      // Only a total failure is a failed page. Anything less renders what it
+      // has and names what it does not.
+      if (unavailable.length === sources.length) {
         setFailed(true);
+        return;
       }
+      setData(snapshot);
     })();
     return () => {
       active = false;
     };
-  }, [reloadKey]);
+  }, [reloadKey, periodMonths]);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
@@ -215,63 +292,116 @@ export function AdminOverviewPage(): JSX.Element {
   const derived = useMemo(() => {
     if (!data) return null;
     const now = new Date();
-    const growth = monthlyGrowth(data.organisations, now, periodMonths);
-    const active = data.organisations.filter((o) => o.status === 'active').length;
+    const planPrices = new Map(
+      (data.plans ?? []).map((plan) => [plan.code, plan.monthly_price_pence]),
+    );
+    // Every figure below is `null` when its source could not be read, and the
+    // tiles render that as "unavailable" rather than as zero. A zero is a
+    // claim, and a claim made out of a failed request is the specific lie
+    // this dashboard used to tell.
+    const growth = data.growth;
+    // From the facets, not from `platform_totals`, which answers the same
+    // question. Two sources for one number is two numbers, and the screen was
+    // showing both: "6 organisations" beside "34 tenants".
+    const total = data.facets?.total ?? data.totals?.organisations ?? null;
+    const active = data.facets?.active ?? data.totals?.activeOrgs ?? null;
+    const subscriptions = data.subscriptions;
+
     return {
       growth,
       active,
-      churnCounts: monthlyChurnCounts(data.subscriptions, now, periodMonths),
-      activeShare: data.organisations.length
-        ? `${((active / data.organisations.length) * 100).toFixed(1)}% of all tenants`
-        : 'No tenants yet',
-      newThisMonth: growth[growth.length - 1]?.created ?? 0,
+      total,
+      churnCounts: growth?.map((point) => point.churned) ?? null,
+      activeShare:
+        total !== null && active !== null
+          ? total > 0
+            ? `${((active / total) * 100).toFixed(1)}% of all tenants`
+            : 'No tenants yet'
+          : null,
+      newThisMonth: growth ? (growth[growth.length - 1]?.created ?? 0) : null,
 
-      // Revenue and the support queue are real tables now (0023, 0024), so the
+      // Revenue and the support queue are real tables (0023, 0024), so the
       // overview computes them from the same functions Billing and the Support
       // Centre use. Two screens quoting one number is only safe when they share
       // the arithmetic.
-      mrr: monthlyRecurringPence(
-        data.subscriptions,
-        new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
-      ),
-      churnThisMonth: revenueChurnForMonth(
-        data.subscriptions,
-        new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
-        new Date(now.getFullYear(), now.getMonth(), 1),
-        new Date(now.getFullYear(), now.getMonth() + 1, 1),
-      ),
-      revenueTrend: collectedByMonth(data.invoices, periodMonths, now).map((t) =>
-        Math.round(t.pence / 100),
-      ),
-      planMix: revenueByPlan(
-        data.subscriptions,
-        new Map(data.plans.map((p) => [p.code, p.monthly_price_pence])),
-      ),
-      openCases: openCases(data.supportCases),
-      urgentCases: urgentOpenCases(data.supportCases),
-      recentCases: data.supportCases.slice(0, 4),
+      mrr: subscriptions ? monthlyRecurringPence(subscriptions, planPrices) : null,
+      churnThisMonth: subscriptions
+        ? revenueChurnForMonth(
+            subscriptions,
+            planPrices,
+            new Date(now.getFullYear(), now.getMonth(), 1),
+            new Date(now.getFullYear(), now.getMonth() + 1, 1),
+          )
+        : null,
+      revenueTrend: data.invoices
+        ? collectedByMonth(data.invoices, periodMonths, now).map((t) =>
+            Math.round(t.pence / 100),
+          )
+        : null,
+      planMix: subscriptions ? revenueByPlan(subscriptions, planPrices) : null,
+
+      // Counts, from a server aggregate. `listSupportCases()` returns up to
+      // two hundred rows so the screen could count the open ones, which is
+      // both the wrong way to ask and a cap: three hundred open cases reported
+      // as two hundred.
+      openCases: data.operations?.openCases ?? null,
+      urgentCases: data.operations?.urgentOpenCases ?? null,
+      openIncidents: data.operations?.openIncidents ?? null,
+      failedNotifications: data.operations?.failedNotifications ?? null,
+      recentCases: data.supportCases?.slice(0, 4) ?? null,
 
       // `organisations.last_activity_at` is maintained by touch_org_activity()
       // (0023), so tenant activity is measurable. Per-*user* activity still is
       // not. Nothing records a session, so the tile counts tenants and says
       // so rather than reporting a number of people nobody observed.
-      activeTenants: tenantsActiveWithin(data.organisations, now),
-      health: healthBreakdown(data.organisations, data.subscriptions, now),
-      openSessions: data.sessions.filter((s) => sessionStatus(s, now) === 'active')
-        .length,
+      activeTenants: data.facets?.active24h ?? null,
+      health: data.facets
+        ? (
+            [
+              ['healthy', data.facets.healthy],
+              ['attention', data.facets.attention],
+              ['at_risk', data.facets.atRisk],
+              ['suspended', data.facets.suspended],
+              ['archived', data.facets.archivedBand],
+            ] as const
+          ).map(([band, count]) => ({ band, label: HEALTH_LABEL[band], count }))
+        : null,
+      openSessions:
+        data.operations?.activeSupportSessions ??
+        (data.sessions
+          ? data.sessions.filter((session) => sessionStatus(session, now) === 'active')
+              .length
+          : null),
     };
   }, [data, periodMonths]);
 
+  /**
+   * A figure whose source may not have loaded.
+   *
+   * An em dash, never a zero. A dashboard that renders a failed read as `0`
+   * makes a claim it has no evidence for, and "no open cases" is exactly the
+   * claim somebody acts on by going home.
+   */
+  const figure = (value: number | null): string =>
+    value === null ? '—' : value.toLocaleString('en-GB');
+
   const exportReport = useCallback(() => {
-    if (!derived) return;
+    if (!derived?.growth) return;
     downloadCsv(
       `platform-overview_${new Date().toISOString().slice(0, 10)}`,
       derived.growth,
       [
-        { label: 'Month', value: (g) => g.label },
+        { label: 'Month (UTC)', value: (g) => g.monthStart },
         { label: 'Total organisations', value: (g) => String(g.total) },
         { label: 'New organisations', value: (g) => String(g.created) },
+        { label: 'Churned subscriptions', value: (g) => String(g.churned) },
       ],
+      {
+        notes: [
+          `RotaFlow platform growth, generated ${new Date().toISOString()}`,
+          'Months are UTC. Churn counts a cancellation once the subscription has stopped, not when one was requested.',
+        ],
+      },
     );
   }, [derived]);
 
@@ -303,57 +433,102 @@ export function AdminOverviewPage(): JSX.Element {
         <AdminLoading variant="tiles" />
       ) : (
         <div className="space-y-4">
+          {data.unavailable.length > 0 && (
+            <div
+              role="status"
+              className="rounded-2xl bg-warning-wash p-3 text-sm text-warning-ink dark:bg-warning-wash-dark dark:text-warning-ink-dark"
+            >
+              <p>
+                {data.unavailable.length === 1
+                  ? `The ${data.unavailable[0]} could not be read.`
+                  : `${data.unavailable.length} sources could not be read: ${data.unavailable.join(', ')}.`}{' '}
+                Everything else on this page loaded. The panels those feed are empty
+                rather than zero.
+              </p>
+              <button
+                type="button"
+                onClick={retry}
+                className="mt-1.5 text-xs font-semibold underline underline-offset-2"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
           <TileGrid>
             <StatTile
               label="Total organisations"
-              value={data.organisations.length.toLocaleString('en-GB')}
+              value={figure(derived.total)}
               hint={
-                <>
-                  <span className="font-semibold text-success-ink dark:text-success-ink-dark">
-                    +{derived.newThisMonth}
-                  </span>{' '}
-                  this month
-                </>
+                derived.newThisMonth === null ? (
+                  'Growth could not be read'
+                ) : (
+                  <>
+                    <span className="font-semibold text-success-ink dark:text-success-ink-dark">
+                      +{derived.newThisMonth}
+                    </span>{' '}
+                    this month
+                  </>
+                )
               }
               to="/admin/organisations"
-              chart={<Sparkline values={derived.growth.map((g) => g.total)} />}
+              chart={
+                derived.growth ? (
+                  <Sparkline values={derived.growth.map((g) => g.total)} />
+                ) : undefined
+              }
             />
             <StatTile
               label="Active organisations"
-              value={derived.active.toLocaleString('en-GB')}
-              hint={derived.activeShare}
+              value={figure(derived.active)}
+              hint={derived.activeShare ?? 'Totals could not be read'}
               to="/admin/organisations"
               chart={
-                <Sparkline values={derived.growth.map((g) => g.total)} colour="#1EA06B" />
+                derived.growth ? (
+                  <Sparkline
+                    values={derived.growth.map((g) => g.total)}
+                    colour="#1EA06B"
+                  />
+                ) : undefined
               }
             />
             <StatTile
               label="Total users"
-              value={data.profiles.length.toLocaleString('en-GB')}
-              hint={`${data.profiles.filter((p) => p.is_platform_admin).length} platform administrators`}
+              value={figure(data.totals?.profiles ?? null)}
+              hint="Accounts across every organisation"
               to="/admin/users"
             />
             <StatTile
               label="Tenants active today"
-              value={derived.activeTenants.toLocaleString('en-GB')}
+              value={figure(derived.activeTenants)}
               hint={
-                data.organisations.length
-                  ? `${((derived.activeTenants / data.organisations.length) * 100).toFixed(0)}% of all tenants`
-                  : 'No tenants yet'
+                derived.activeTenants !== null && derived.total
+                  ? `${((derived.activeTenants / derived.total) * 100).toFixed(0)}% of all tenants`
+                  : derived.activeTenants === null
+                    ? 'Activity could not be read'
+                    : 'No tenants yet'
               }
               to="/admin/organisations"
             />
             <StatTile
               label="Published rotas"
-              value={data.publishedRotas.toLocaleString('en-GB')}
+              value={figure(data.totals?.publishedRotas ?? null)}
               hint="Across every tenant"
             />
             <StatTile
               label="Monthly recurring revenue"
-              value={formatMoney(derived.mrr)}
-              hint="Active and past due"
+              value={derived.mrr === null ? '—' : formatMoney(derived.mrr)}
+              hint={
+                derived.mrr === null
+                  ? 'Subscriptions could not be read'
+                  : 'Active and past due'
+              }
               to="/admin/billing"
-              chart={<Sparkline values={derived.revenueTrend} colour="#E0A030" />}
+              chart={
+                derived.revenueTrend ? (
+                  <Sparkline values={derived.revenueTrend} colour="#E0A030" />
+                ) : undefined
+              }
             />
           </TileGrid>
 
@@ -367,42 +542,53 @@ export function AdminOverviewPage(): JSX.Element {
                 </Badge>
               }
             >
-              <TrendChart
-                title="Organisations created and total, by month"
-                labels={derived.growth.map((g) => g.label)}
-                series={[
-                  {
-                    name: 'Active organisations',
-                    values: derived.growth.map((g) => g.total),
-                    colour: '#3B6FE0',
-                  },
-                  {
-                    name: 'New organisations',
-                    values: derived.growth.map((g) => g.created),
-                    colour: '#1EA06B',
-                    lineOnly: true,
-                  },
-                  {
-                    name: 'Churned',
-                    values: derived.churnCounts,
-                    colour: '#D94A3A',
-                    lineOnly: true,
-                  },
-                ]}
-                height={310}
-              />
-              <p className="mt-1 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
-                New organisations are counted in the month they signed up, and the current
-                month is partial. Churned counts cancellations by month
-                {derived.churnThisMonth !== null &&
-                  ` — ${derived.churnThisMonth}% of MRR lost so far this month`}
-                .
-              </p>
+              {derived.growth === null ? (
+                <UnavailablePanel what="growth" onRetry={retry} />
+              ) : (
+                <>
+                  <TrendChart
+                    title="Organisations created and total, by month"
+                    labels={derived.growth.map((g) => monthLabel(g.monthStart))}
+                    series={[
+                      {
+                        name: 'Active organisations',
+                        values: derived.growth.map((g) => g.total),
+                        colour: '#3B6FE0',
+                      },
+                      {
+                        name: 'New organisations',
+                        values: derived.growth.map((g) => g.created),
+                        colour: '#1EA06B',
+                        lineOnly: true,
+                      },
+                      {
+                        name: 'Churned',
+                        values: derived.churnCounts ?? [],
+                        colour: '#D94A3A',
+                        lineOnly: true,
+                      },
+                    ]}
+                    height={310}
+                  />
+                  <p className="mt-1 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
+                    Counted in the database over every tenant, in UTC months, so this
+                    chart reads the same for everybody. New organisations are counted in
+                    the month they signed up and the current month is partial. Churned
+                    counts a cancellation once its subscription has actually stopped, not
+                    when one was requested
+                    {derived.churnThisMonth !== null &&
+                      ` — ${derived.churnThisMonth}% of MRR lost so far this month`}
+                    .
+                  </p>
+                </>
+              )}
             </Panel>
 
             <div className="grid content-start gap-4">
               <Panel title="Subscription mix">
-                {derived.planMix.length === 0 ? (
+                {derived.planMix === null ? (
+                  <UnavailablePanel what="subscriptions" onRetry={retry} />
+                ) : derived.planMix.length === 0 ? (
                   <p className="text-sm text-content-muted dark:text-content-muted-dark">
                     No subscription is active or past due.
                   </p>
@@ -428,14 +614,18 @@ export function AdminOverviewPage(): JSX.Element {
                   </Link>
                 }
               >
-                <MeterRows
-                  caption="Organisations by account health"
-                  rows={derived.health.map((row) => ({
-                    label: row.label,
-                    value: row.count,
-                    colour: HEALTH_COLOUR[row.band],
-                  }))}
-                />
+                {derived.health === null ? (
+                  <UnavailablePanel what="organisation health" onRetry={retry} />
+                ) : (
+                  <MeterRows
+                    caption="Organisations by account health"
+                    rows={derived.health.map((row) => ({
+                      label: row.label,
+                      value: row.count,
+                      colour: HEALTH_COLOUR[row.band],
+                    }))}
+                  />
+                )}
                 <p className="mt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                   From account status, subscription state and last activity: suspended
                   first, then a failed payment, then silence. Over a fortnight needs
@@ -473,7 +663,11 @@ export function AdminOverviewPage(): JSX.Element {
               }
               flush
             >
-              {data.health.length === 0 ? (
+              {data.health === null ? (
+                <div className="px-4 py-3">
+                  <UnavailablePanel what="service health" onRetry={retry} />
+                </div>
+              ) : data.health.length === 0 ? (
                 <p className="px-4 py-3 text-sm text-content-muted dark:text-content-muted-dark">
                   Nothing has been sampled in the last 24 hours. Samples are written when
                   System status runs its checks, so opening that screen is currently what
@@ -524,7 +718,11 @@ export function AdminOverviewPage(): JSX.Element {
               flush
             >
               <ul>
-                {data.recentAudit.length === 0 ? (
+                {data.recentAudit === null ? (
+                  <li className="px-4 py-3">
+                    <UnavailablePanel what="recent activity" onRetry={retry} />
+                  </li>
+                ) : data.recentAudit.length === 0 ? (
                   <li className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
                     Nothing has been recorded yet.
                   </li>
@@ -587,7 +785,7 @@ export function AdminOverviewPage(): JSX.Element {
                     Open cases
                   </p>
                   <p className="mt-1 font-display text-[1.7rem] font-semibold leading-tight tabular-nums text-content dark:text-content-dark">
-                    {derived.openCases}
+                    {figure(derived.openCases)}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-surface-border p-3.5 dark:border-surface-border-dark">
@@ -595,12 +793,16 @@ export function AdminOverviewPage(): JSX.Element {
                     Urgent
                   </p>
                   <p className="mt-1 font-display text-[1.7rem] font-semibold leading-tight tabular-nums text-content dark:text-content-dark">
-                    {derived.urgentCases}
+                    {figure(derived.urgentCases)}
                   </p>
                 </div>
               </div>
 
-              {derived.recentCases.length === 0 ? (
+              {derived.recentCases === null ? (
+                <div className="mt-3">
+                  <UnavailablePanel what="support cases" onRetry={retry} />
+                </div>
+              ) : derived.recentCases.length === 0 ? (
                 <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
                   No support case has been raised.
                 </p>

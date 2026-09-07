@@ -406,3 +406,63 @@ export async function findExistingSlugs(slugs: readonly string[]): Promise<strin
 
   return found;
 }
+
+export interface GrowthPoint {
+  /** First day of the UTC month. */
+  monthStart: string;
+  created: number;
+  /** Cumulative: every organisation that existed by the end of the month. */
+  total: number;
+  churned: number;
+}
+
+/**
+ * Organisations created, the running total and subscriptions churned, per
+ * month, counted by the database (0133).
+ *
+ * The overview used to bucket `listAllOrganisations()` and
+ * `listAllSubscriptions()` in the browser. Above PostgREST's cap that is a
+ * chart of the cap rather than of the estate, and it slopes the wrong way as
+ * the product succeeds.
+ *
+ * Months are UTC. The old client-side buckets used the browser's zone, which
+ * for a UK operator differs by an hour twice a year; UTC makes the chart
+ * identical for every reader, which is the more useful property for a shared
+ * operations screen, and the axis says so.
+ */
+export async function getPlatformGrowth(months = 12): Promise<GrowthPoint[]> {
+  const { data, error } = await supabase.rpc('platform_growth', { p_months: months });
+  if (error) throw error;
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
+    monthStart: String(row.month_start),
+    created: Number(row.created ?? 0),
+    total: Number(row.total ?? 0),
+    churned: Number(row.churned ?? 0),
+  }));
+}
+
+export interface OperationsSummary {
+  openCases: number;
+  urgentOpenCases: number;
+  unassignedOpenCases: number;
+  openIncidents: number;
+  activeSupportSessions: number;
+  /** Dispatches that will not be retried again. Not "pending" or "sent". */
+  failedNotifications: number;
+}
+
+/** The support, incident, access and delivery counts on `/admin`, as counts. */
+export async function getOperationsSummary(): Promise<OperationsSummary> {
+  const { data, error } = await supabase.rpc('platform_operations_summary');
+  if (error) throw error;
+  const row = ((data ?? []) as unknown as Record<string, unknown>[])[0];
+  const num = (key: string): number => Number(row?.[key] ?? 0);
+  return {
+    openCases: num('open_cases'),
+    urgentOpenCases: num('urgent_open_cases'),
+    unassignedOpenCases: num('unassigned_open_cases'),
+    openIncidents: num('open_incidents'),
+    activeSupportSessions: num('active_support_sessions'),
+    failedNotifications: num('failed_notifications'),
+  };
+}

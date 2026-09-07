@@ -982,8 +982,10 @@ const TABLES: Record<string, unknown> = {
   ],
   'rpc/platform_totals': [
     {
-      organisations: ORGANISATIONS.length,
-      active_orgs: ORGANISATIONS.filter((o) => o.status === 'active').length,
+      // Matches the directory fixture, so the overview cannot show one count
+      // beside a different one for the same fact.
+      organisations: DIRECTORY_ROWS.length,
+      active_orgs: DIRECTORY_ROWS.filter((o) => o.status === 'active').length,
       profiles: PROFILES.length,
       staff_profiles: 91,
       published_rotas: 96,
@@ -1187,6 +1189,34 @@ const TABLES: Record<string, unknown> = {
   'rpc/create_platform_announcement': 'preview-announcement-id',
   'rpc/publish_platform_announcement': 6,
   'rpc/cancel_platform_announcement': null,
+  // 0133. A function fixture so the reporting-period select actually changes
+  // the chart in the design loop.
+  'rpc/platform_growth': ((args: Record<string, unknown>) => {
+    const months = Math.min(Math.max(Number(args.p_months ?? 12), 1), 36);
+    const now = new Date();
+    return Array.from({ length: months }, (_, i) => {
+      const start = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1 - i), 1),
+      );
+      const created = [1, 0, 2, 1, 3, 0, 1, 2, 0, 1, 1, 3][i % 12] ?? 1;
+      return {
+        month_start: start.toISOString().slice(0, 10),
+        created,
+        total: 6 + i * 2,
+        churned: i % 5 === 0 ? 1 : 0,
+      };
+    });
+  }) satisfies BodyFixture,
+  'rpc/platform_operations_summary': [
+    {
+      open_cases: 3,
+      urgent_open_cases: 1,
+      unassigned_open_cases: 1,
+      open_incidents: 1,
+      active_support_sessions: 2,
+      failed_notifications: 0,
+    },
+  ],
   'rpc/platform_user_facets': [
     {
       total: USER_DIRECTORY_ROWS.length,
@@ -1213,6 +1243,12 @@ const TABLES: Record<string, unknown> = {
       healthy: DIRECTORY_ROWS.filter((r) => r.health === 'healthy').length,
       attention: DIRECTORY_ROWS.filter((r) => r.health === 'attention').length,
       at_risk: DIRECTORY_ROWS.filter((r) => r.health === 'at_risk').length,
+      archived_band: DIRECTORY_ROWS.filter((r) => r.health === 'archived').length,
+      active_24h: DIRECTORY_ROWS.filter(
+        (r) =>
+          r.last_activity_at !== null &&
+          Date.now() - Date.parse(r.last_activity_at) < 86_400_000,
+      ).length,
       plans: ['starter', 'professional', 'business', 'enterprise'],
       industries: ['Residential care', 'Hospitality', 'Retail'],
       subscription_statuses: ['trialing', 'active', 'past_due', 'none'],
@@ -1278,6 +1314,29 @@ function installFixtureFetch(): void {
 
     const url = new URL(href);
     const path = url.pathname.split('/rest/v1/')[1]?.split('?')[0] ?? '';
+
+    /**
+     * `?fail=a,b` makes those paths return 500.
+     *
+     * Partial failure is a state the console is now supposed to render — a
+     * panel whose source could not be read says so rather than showing zero —
+     * and a state nobody can reach is a state nobody reviews. The list is read
+     * from the page's own address, so
+     * `/admin-preview?fail=rpc/platform_operations_summary` shows the
+     * overview with its support panel unavailable and everything else intact.
+     */
+    const failing = new Set(
+      (new URLSearchParams(window.location.search).get('fail') ?? '')
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean),
+    );
+    if (failing.has(path)) {
+      return new Response(JSON.stringify({ message: 'Forced failure (preview)' }), {
+        status: 500,
+        headers: new Headers({ 'content-type': 'application/json' }),
+      });
+    }
     // An RPC is `rpc/<name>`; a table is just the name. Both are looked up in
     // the same map, so adding a fixture for either is one line.
     const table = path;

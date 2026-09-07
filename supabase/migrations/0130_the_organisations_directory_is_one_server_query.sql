@@ -426,6 +426,12 @@ returns table (
   healthy          bigint,
   attention        bigint,
   at_risk          bigint,
+  archived_band    bigint,
+  -- Tenants that did something in the last 24 hours. TENANTS, not people:
+  -- nothing records a per-person session, so "active users today" is not
+  -- derivable at all and the tile that used to claim it now counts
+  -- organisations, which is a different and true thing.
+  active_24h       bigint,
   plans            text[],
   industries       text[],
   subscription_statuses text[]
@@ -450,6 +456,7 @@ begin
            o.status,
            o.industry,
            o.created_at,
+           o.last_activity_at,
            coalesce(s.plan, o.plan)     as plan,
            coalesce(s.status, 'none')   as sub_status,
            public.platform_health_band(o.status, o.last_activity_at, s.status, v_now) as health
@@ -468,6 +475,8 @@ begin
     count(*) filter (where j.health = 'healthy'),
     count(*) filter (where j.health = 'attention'),
     count(*) filter (where j.health = 'at_risk'),
+    count(*) filter (where j.health = 'archived'),
+    count(*) filter (where j.last_activity_at >= v_now - interval '24 hours'),
     coalesce(array_agg(distinct j.plan) filter (where j.plan is not null), '{}'),
     coalesce(array_agg(distinct j.industry) filter (where j.industry is not null), '{}'),
     coalesce(array_agg(distinct j.sub_status), '{}')

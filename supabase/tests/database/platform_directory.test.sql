@@ -30,7 +30,7 @@
 -- =====================================================================
 
 begin;
-select plan(23);
+select plan(24);
 
 -- ---------- people ----------------------------------------------------
 insert into auth.users (
@@ -250,6 +250,14 @@ select is(
 select ok(
   (select 'enterprise' = any (plans) from public.platform_organisation_facets()),
   'and offer a plan that only a tenant beyond the first page is on');
+
+-- TENANTS active, not people. Nothing records a per-person session, so
+-- "active users today" is not derivable at all; the tile that used to
+-- claim it counts organisations instead.
+select is(
+  (select active_24h::int from public.platform_organisation_facets()),
+  59,
+  'active in the last 24 hours counts tenants, and Zulu (two days ago) is not one');
 
 select * from finish();
 rollback;

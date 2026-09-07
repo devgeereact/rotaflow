@@ -3546,6 +3546,26 @@ export type Database = {
         Args: { p_announcement: string };
         Returns: undefined;
       };
+      platform_growth: {
+        Args: { p_months?: number };
+        Returns: {
+          churned: number;
+          created: number;
+          month_start: string;
+          total: number;
+        }[];
+      };
+      platform_operations_summary: {
+        Args: never;
+        Returns: {
+          active_support_sessions: number;
+          failed_notifications: number;
+          open_cases: number;
+          open_incidents: number;
+          unassigned_open_cases: number;
+          urgent_open_cases: number;
+        }[];
+      };
       platform_organisation_directory: {
         Args: {
           p_created_from?: string;
@@ -3640,7 +3660,9 @@ export type Database = {
         Args: never;
         Returns: {
           active: number;
+          active_24h: number;
           archived: number;
+          archived_band: number;
           at_risk: number;
           attention: number;
           healthy: number;

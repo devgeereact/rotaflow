@@ -294,6 +294,9 @@ export interface OrganisationFacets {
   healthy: number;
   attention: number;
   atRisk: number;
+  archivedBand: number;
+  /** Tenants that did something in the last 24 hours. Tenants, not people. */
+  active24h: number;
   /** Distinct values across the estate, for the filter selects. */
   plans: string[];
   industries: string[];
@@ -327,6 +330,8 @@ export async function getOrganisationFacets(): Promise<OrganisationFacets> {
     healthy: num('healthy'),
     attention: num('attention'),
     atRisk: num('at_risk'),
+    archivedBand: num('archived_band'),
+    active24h: num('active_24h'),
     plans: arr('plans'),
     industries: arr('industries'),
     subscriptionStatuses: arr('subscription_statuses'),

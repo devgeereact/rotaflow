@@ -61,7 +61,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after eighty-three pull requests landed (#178-#265); the full website and PWA audit of 2026-09-02, the production-readiness pass of 2026-09-04 and the delivery audit of 2026-09-05 and the reliability repairs of 2026-09-05 (RF-02 to RF-14) then took `main` to 132 migrations: the workforce pass of 2026-09-06 — `0127` (the job-title catalogue), `0128` (an audited clock correction) and `0129` (an invitation that records whether it was sent) — and the platform console repair of 2026-09-06: `0130` (the organisations directory as one server query), `0131` (a user directory that searches every membership) and `0132` (an announcement that is delivered rather than only written).
+Recounted 2026-08-31, after eighty-three pull requests landed (#178-#265); the full website and PWA audit of 2026-09-02, the production-readiness pass of 2026-09-04 and the delivery audit of 2026-09-05 and the reliability repairs of 2026-09-05 (RF-02 to RF-14) then took `main` to 133 migrations: the workforce pass of 2026-09-06 — `0127` (the job-title catalogue), `0128` (an audited clock correction) and `0129` (an invitation that records whether it was sent) — and the platform console repair of 2026-09-06: `0130` (the organisations directory as one server query), `0131` (a user directory that searches every membership) `0132` (an announcement that is delivered rather than only written) and `0133` (an overview that counts the estate).
 
 ### What production actually holds, 2026-08-31
 
