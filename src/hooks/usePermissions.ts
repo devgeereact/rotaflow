@@ -5,6 +5,7 @@ import {
   PLATFORM_CONFIG_ROLES,
   PLATFORM_ROLE_ADMIN_ROLES,
   PLATFORM_SUPPORT_ROLES,
+  PLATFORM_OPERATIONAL_ROLES,
 } from '@/lib/platformRoles';
 
 export interface Permissions {
@@ -21,6 +22,19 @@ export interface Permissions {
   canManagePlatformAdmins: boolean;
   /** Change a support case's status or assignee. Owner, admin, support. */
   canManageSupportCases: boolean;
+  /**
+   * Read operational tenant data: memberships, profiles, the audit log,
+   * support cases, incidents, integrations and tenant counts. Owner, admin,
+   * support.
+   *
+   * Mirrors `is_platform_operational()` (0122, extended by 0135), which is the
+   * database-side predicate on all of it. `platform_finance` is excluded, and
+   * the policies FILTER rather than raise — so a screen that offers a finance
+   * administrator one of these views renders an empty table, which reads as a
+   * broken product rather than as a boundary. This flag exists so the UI can
+   * refuse instead.
+   */
+  canReadTenantOperations: boolean;
 }
 
 /**
@@ -53,6 +67,7 @@ export function usePermissions(): Permissions {
       canManagePlatformConfig: holds(PLATFORM_CONFIG_ROLES),
       canManagePlatformAdmins: holds(PLATFORM_ROLE_ADMIN_ROLES),
       canManageSupportCases: holds(PLATFORM_SUPPORT_ROLES),
+      canReadTenantOperations: holds(PLATFORM_OPERATIONAL_ROLES),
     };
   }, [role, isPlatformAdmin, platformRole]);
 }

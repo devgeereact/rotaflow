@@ -700,21 +700,39 @@ const RETENTION_POLICIES = [
   updated_at: ISO(30),
 }));
 
-const BACKGROUND_JOBS = Array.from({ length: 48 }, (_, i) => ({
-  id: `job-${i}`,
-  queue: ['rota-publish', 'payroll-export', 'notifications', 'reminders'][i % 4],
-  job_key: `job:${i}`,
-  status:
-    i % 11 === 0 ? 'failed' : i < 9 ? 'queued' : i % 7 === 0 ? 'running' : 'succeeded',
-  attempts: 1,
-  org_id: ORG_IDS[i % 6],
-  payload: {},
-  error: null,
-  scheduled_for: ISO(0),
-  started_at: ISO(0),
-  finished_at: ISO(0),
-  created_at: ISO(0),
-}));
+/**
+ * Notification outbox depth, in the shape `platform_queue_depths()` (0138)
+ * returns.
+ *
+ * This replaces a 48-row `background_jobs` fixture across four invented queues
+ * ("rota-publish", "payroll-export", "reminders"). That table has had no writer
+ * since Inngest was retired in `0087`, so the fixture showed a busy queue on a
+ * screen that reads permanently empty in production. That is the inversion of
+ * the BUG-059 problem this harness exists to catch, and it is why the dead tile
+ * went unnoticed for so long: the only place anyone looked at it, it had data.
+ *
+ * The event names are ones `send-notification` actually dispatches.
+ */
+const QUEUE_DEPTHS = [
+  {
+    queue: 'rota/published',
+    queued: 6,
+    failed: 0,
+    oldest_at: new Date(Date.now() - 40 * 1_000).toISOString(),
+  },
+  {
+    queue: 'platform/announcement',
+    queued: 3,
+    failed: 2,
+    oldest_at: new Date(Date.now() - 9 * 60 * 1_000).toISOString(),
+  },
+  {
+    queue: 'leave/decided',
+    queued: 1,
+    failed: 0,
+    oldest_at: new Date(Date.now() - 12 * 1_000).toISOString(),
+  },
+];
 
 /**
  * The directory rows 0130 returns, for `/admin-preview/organisations`.
@@ -963,7 +981,7 @@ const TABLES: Record<string, unknown> = {
   platform_health_summary: HEALTH_SUMMARY,
   retention_policies: RETENTION_POLICIES,
   platform_ip_allowlist: [],
-  background_jobs: BACKGROUND_JOBS,
+  'rpc/platform_queue_depths': QUEUE_DEPTHS,
 
   // RPCs the console calls. Keyed by the path segment after `/rpc/`, so the
   // interceptor can serve them exactly like a table. Without these the screens

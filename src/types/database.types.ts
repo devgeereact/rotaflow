@@ -3566,6 +3566,15 @@ export type Database = {
           urgent_open_cases: number;
         }[];
       };
+      platform_queue_depths: {
+        Args: never;
+        Returns: {
+          queue: string;
+          queued: number;
+          failed: number;
+          oldest_at: string | null;
+        }[];
+      };
       platform_billing_summary: {
         Args: never;
         Returns: {

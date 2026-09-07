@@ -309,9 +309,28 @@ export function AdminGdprPage(): JSX.Element {
           <StatTile
             label="Median turnaround"
             value={counts.median === null ? '-' : `${counts.median} days`}
+            /* "one month", not "30 days". `src/lib/gdprRequests.ts` opens by
+               explaining that Article 12(3) says one month and the difference
+               is not academic: a request received on 31 January is due 28
+               February, and thirty days would give 2 March, two days of breach
+               nobody notices. This label contradicted that module, the heading
+               above it, the callout below it and `0020`'s own column comment,
+               on the single tile a reader would quote.
+
+               The tone now follows the value instead of being permanently
+               green. A median that has already run past the deadline is not a
+               success, and colouring the label rather than the number said it
+               was. Thirty-one days is the longest a one-month deadline can
+               be. */
             hint={
-              <span className="font-semibold text-success-ink dark:text-success-ink-dark">
-                statutory 30 days
+              <span
+                className={
+                  counts.median !== null && counts.median > 31
+                    ? 'font-semibold text-danger-ink dark:text-danger-ink-dark'
+                    : 'font-semibold text-success-ink dark:text-success-ink-dark'
+                }
+              >
+                statutory one month
               </span>
             }
           />
