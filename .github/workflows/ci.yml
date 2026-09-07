@@ -159,7 +159,7 @@ jobs:
     name: edge-types
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Pinned, not `vX`. A minor Deno release changing what it accepts would
       # otherwise turn this gate red on a commit that touched nothing.
