@@ -466,41 +466,64 @@ export function AdminSettingsPage(): JSX.Element {
         />
 
         {tab === 'general' && (
-          <Panel
-            title="Platform identity"
-            bodyClassName="grid gap-4 p-4 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]"
-          >
-            <Field
-              id="platform-name"
-              label="Platform name"
-              value={value('platform_name')}
-              disabled={!canManagePlatformConfig}
-              onChange={(v) => setDraft((d) => ({ ...d, platform_name: v }))}
-            />
-            <Field
-              id="support-email"
-              label="Support email"
-              type="email"
-              value={value('support_email')}
-              disabled={!canManagePlatformConfig}
-              onChange={(v) => setDraft((d) => ({ ...d, support_email: v }))}
-            />
-            <Field
-              id="platform-url"
-              label="Platform URL"
-              value={value('platform_url')}
-              disabled={!canManagePlatformConfig}
-              onChange={(v) => setDraft((d) => ({ ...d, platform_url: v }))}
-            />
-            <Field
-              id="default-timezone"
-              label="Default timezone"
-              value={value('default_timezone')}
-              disabled={!canManagePlatformConfig}
-              onChange={(v) => setDraft((d) => ({ ...d, default_timezone: v }))}
-              hint="Used when an organisation has not chosen one. Existing organisations are unaffected."
-            />
-          </Panel>
+          <>
+            {/* Said once, at the top, rather than four times in four hints.
+                `platform_settings` has 28 columns and exactly ONE of them is
+                read by anything outside this console: `require_mfa`, by
+                `is_platform_admin()`. The rest are stored and read back and
+                drive nothing — the support address a customer actually sees is
+                the constant in `src/lib/marketing.ts`, and the product name is
+                compiled in from `VITE_APP_NAME`.
+
+                Leaving that unsaid is the same defect as a disabled button that
+                claims a missing backend: a field that saves, reads back, and
+                changes nothing is indistinguishable from one that works. */}
+            <Callout tone="info" title="These are recorded, not yet wired">
+              <p>
+                Saving works and the values persist, but nothing outside this screen reads
+                them yet. The name in the interface comes from the build (
+                <code>VITE_APP_NAME</code>), and the support address customers see is the
+                one in <code>src/lib/marketing.ts</code>. Changing a field here does not
+                change either. The one setting on this page that does take effect is the
+                second-factor requirement, under Security.
+              </p>
+            </Callout>
+            <Panel
+              title="Platform identity"
+              bodyClassName="grid gap-4 p-4 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]"
+            >
+              <Field
+                id="platform-name"
+                label="Platform name"
+                value={value('platform_name')}
+                disabled={!canManagePlatformConfig}
+                onChange={(v) => setDraft((d) => ({ ...d, platform_name: v }))}
+              />
+              <Field
+                id="support-email"
+                label="Support email"
+                type="email"
+                value={value('support_email')}
+                disabled={!canManagePlatformConfig}
+                onChange={(v) => setDraft((d) => ({ ...d, support_email: v }))}
+              />
+              <Field
+                id="platform-url"
+                label="Platform URL"
+                value={value('platform_url')}
+                disabled={!canManagePlatformConfig}
+                onChange={(v) => setDraft((d) => ({ ...d, platform_url: v }))}
+              />
+              <Field
+                id="default-timezone"
+                label="Default timezone"
+                value={value('default_timezone')}
+                disabled={!canManagePlatformConfig}
+                onChange={(v) => setDraft((d) => ({ ...d, default_timezone: v }))}
+                hint="Recorded only. An organisation's own timezone is set during onboarding and this is not read as a fallback."
+              />
+            </Panel>
+          </>
         )}
 
         {tab === 'administrators' && (
@@ -672,9 +695,18 @@ export function AdminSettingsPage(): JSX.Element {
             </div>
             <Callout tone="warning" className="mt-4">
               <p>
-                This is a banner, not a kill switch. A static PWA cannot refuse to serve
-                itself, and row-level security is what actually stands between a user and
-                their data, so this informs people rather than stopping them.
+                <strong>Nothing renders this yet.</strong> The flag and the message are
+                stored, and no screen in the app reads either, so turning it on shows
+                nobody anything today. It is recorded here rather than removed because the
+                column is the right home for the decision, and wiring it needs a policy
+                call first: <code>platform_settings</code> is readable by platform
+                administrators only, so a banner every signed-in user can see means
+                letting tenants read a row of this table.
+              </p>
+              <p className="mt-2">
+                When it is wired it will be a banner, not a kill switch. A static PWA
+                cannot refuse to serve itself, and row-level security is what actually
+                stands between a user and their data.
               </p>
             </Callout>
           </Panel>

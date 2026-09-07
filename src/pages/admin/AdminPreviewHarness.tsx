@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminShell } from '@/components/layout/AdminShell';
 import { OrgContext, type OrgContextValue } from '@/context/OrgContext';
 
@@ -1483,9 +1484,49 @@ export function AdminPreviewHarness(): JSX.Element {
     [],
   );
 
+  /**
+   * Keep a click inside the harness.
+   *
+   * Every console screen links to `/admin/...` because that is where it lives
+   * in production. Inside `/admin-preview` those links navigated OUT of the
+   * harness to the real console, which has no session, so following any
+   * organisation row, user row or invoice link bounced the reviewer to the
+   * sign-in page. The design loop is the one place these screens get looked at,
+   * and half the journeys through them could not be walked.
+   *
+   * Rewriting the 18 hard-coded links in the pages themselves would have put
+   * harness-awareness into production components and left the next link to rot
+   * the same way. This is the harness's problem, so it stays in the harness and
+   * covers links that do not exist yet.
+   *
+   * Only plain left clicks on same-tab, in-app `/admin/` links are touched;
+   * modified clicks (new tab, download, external) fall through untouched.
+   */
+  const navigate = useNavigate();
+  const keepInHarness = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>): void => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as HTMLElement).closest('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (href === null || !href.startsWith('/admin/')) return;
+      if (anchor.target !== '' && anchor.target !== '_self') return;
+      event.preventDefault();
+      void navigate(`/admin-preview/${href.slice('/admin/'.length)}`);
+    },
+    [navigate],
+  );
+
   return (
     <OrgContext.Provider value={org}>
-      <AdminShell />
+      {/* A capture-phase listener on a wrapper, not an interactive element: it
+          redirects navigations that are already links, and adds nothing a
+          keyboard user cannot reach, since Enter on an anchor dispatches a
+          click. */}
+      <div onClickCapture={keepInHarness}>
+        <AdminShell />
+      </div>
     </OrgContext.Provider>
   );
 }

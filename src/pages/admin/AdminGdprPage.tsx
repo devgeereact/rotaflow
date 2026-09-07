@@ -97,18 +97,25 @@ export function AdminGdprPage(): JSX.Element {
   const [logging, setLogging] = useState(false);
   const [closing, setClosing] = useState<GdprRequest | null>(null);
   const [extending, setExtending] = useState<GdprRequest | null>(null);
+  /** Id of the request whose status is mid-flight, so its buttons can wait. */
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [totalRequests, setTotalRequests] = useState(0);
 
   const today = todayIso();
 
   const load = useCallback(async (): Promise<void> => {
     setFailed(false);
     try {
-      const [rows, allOrgs, policies] = await Promise.all([
+      const [page, allOrgs, policies] = await Promise.all([
         listGdprRequests(),
         listAllOrganisations(),
         listRetentionPolicies(),
       ]);
-      setRequests(rows);
+      setRequests(page.rows);
+      // The server's count under the same predicates, so the board can say when
+      // it is showing a subset. Every tile here is computed over `rows`, and
+      // without this they were presented as estate totals whatever the cap did.
+      setTotalRequests(page.total);
       setOrgs(allOrgs);
       setRetentionPolicies(policies);
     } catch {
@@ -122,6 +129,33 @@ export function AdminGdprPage(): JSX.Element {
 
   const refresh = useCallback(() => void load(), [load]);
   useRegisterConsoleRefresh(refresh);
+
+  /**
+   * Move a request between the two working states.
+   *
+   * Separate from the Close and Extend modals because neither of these needs
+   * anything typed: `set_gdpr_request_status` requires an outcome note only for
+   * `completed` and `refused`. A modal asking for nothing would be ceremony.
+   *
+   * The reload is awaited before the toast, so the row shown is the row the
+   * database holds rather than an optimistic guess — this board is a register
+   * somebody can be asked to produce.
+   */
+  const moveStatus = useCallback(
+    async (request: GdprRequest, status: GdprRequestStatus): Promise<void> => {
+      setMovingId(request.id);
+      try {
+        await setGdprRequestStatus(request.id, status);
+        await load();
+        showSuccess(`Request marked ${GDPR_STATUS_LABELS[status].toLowerCase()}.`);
+      } catch (e) {
+        showError(e instanceof Error ? e.message : 'Could not update that request.');
+      } finally {
+        setMovingId(null);
+      }
+    },
+    [load, showError, showSuccess],
+  );
 
   const counts = useMemo(() => {
     const all = requests ?? [];
@@ -250,6 +284,33 @@ export function AdminGdprPage(): JSX.Element {
             </span>
           ) : (
             <div className="flex flex-wrap gap-2">
+              {/* `set_gdpr_request_status` has always accepted all five
+                  statuses, and this board offered two. A request could only sit
+                  at Received or be closed, which defeats the triage the page
+                  header describes — and the two unreachable states already had
+                  badge tones defined for them, so the register was rendering
+                  states nothing could produce. Neither needs an outcome note:
+                  the RPC requires one only for completed and refused. */}
+              {r.status !== 'in_progress' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={movingId === r.id}
+                  onClick={() => void moveStatus(r, 'in_progress')}
+                >
+                  Start work
+                </Button>
+              )}
+              {r.status !== 'awaiting_information' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={movingId === r.id}
+                  onClick={() => void moveStatus(r, 'awaiting_information')}
+                >
+                  Awaiting information
+                </Button>
+              )}
               <Button size="sm" variant="secondary" onClick={() => setClosing(r)}>
                 Close
               </Button>
@@ -262,7 +323,7 @@ export function AdminGdprPage(): JSX.Element {
           ),
       },
     ],
-    [today],
+    [today, moveStatus, movingId],
   );
 
   return (
@@ -356,6 +417,19 @@ export function AdminGdprPage(): JSX.Element {
               eventual answer. If a request is complex, extend it and tell the subject
               why, an extension taken late is worth more than none at all.
             </p>
+          </Callout>
+        )}
+
+        {/* Said out loud when it applies. A register that quietly shows 200 of
+            412 rows, with tiles computed over the 200 and an "Export register"
+            button beside them, is a compliance artefact that misleads the
+            person producing it. */}
+        {requests !== null && totalRequests > requests.length && (
+          <Callout tone="warning" title="This is not the whole register">
+            Showing the {requests.length} requests with the earliest deadlines, of{' '}
+            {totalRequests} on record. The tiles above and the export below cover only
+            these. Narrow the register, or read it from the database, before quoting a
+            total.
           </Callout>
         )}
 

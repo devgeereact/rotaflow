@@ -33,9 +33,9 @@ import {
   type OrgMemberRow,
   type OrgUsage,
 } from '@/services/platformOrgService';
-import { listSupportAccessSessions } from '@/services/supportAccessService';
+import { listSessionsForOrg } from '@/services/supportAccessService';
 import { getOrgSmtpSettings } from '@/services/smtpSettingsService';
-import { listGdprRequests } from '@/services/gdprRequestService';
+import { listGdprRequestsForOrg } from '@/services/gdprRequestService';
 import { createInvite, sendInviteEmail } from '@/services/inviteService';
 import { isValidEmail } from '@/lib/email';
 import {
@@ -92,6 +92,8 @@ interface Detail {
   subscription: Subscription | null;
   usage: OrgUsage;
   audit: AuditLog[];
+  /** Audit rows for this tenant on the server, which the 100 cap may hide. */
+  auditTotal: number;
   sessions: SupportAccessSession[];
   smtp: OrgSmtpSettingsSafe | null;
   gdpr: GdprRequest[];
@@ -223,13 +225,16 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           // Filtered client-side: the sessions table is small, the console
           // already reads it whole on the overview, and a per-org endpoint
           // would be a third query shape over the same forty rows.
-          listSupportAccessSessions(200).then((all) =>
-            all.filter((s) => s.orgId === organisationId),
-          ),
+          // Both scoped in the query. They used to read the platform-wide
+          // list capped at 200 and filter it here, so past that cap this tab
+          // asserted "no session has ever been opened" and "no request has
+          // been raised" about a tenant whose rows had simply been crowded out
+          // by other tenants'. The GDPR one was the sharper of the two: that
+          // list is ordered by deadline ASCENDING, so the newest requests were
+          // dropped first.
+          listSessionsForOrg(organisationId),
           getOrgSmtpSettings(organisationId),
-          listGdprRequests(200).then((all) =>
-            all.filter((r) => r.orgId === organisationId),
-          ),
+          listGdprRequestsForOrg(organisationId),
           getOrgMrrPence(organisationId),
         ]);
         if (!active) return;
@@ -240,7 +245,8 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           departments,
           subscription,
           usage,
-          audit,
+          audit: audit.rows,
+          auditTotal: audit.total,
           sessions,
           smtp,
           gdpr,
@@ -1043,7 +1049,26 @@ export function AdminOrganisationDetailPage(): JSX.Element {
         )}
 
         {tab === 'audit' && (
-          <Panel title="Organisation audit trail" flush>
+          <Panel
+            title="Organisation audit trail"
+            /* The cap has always been 100 and the page never said so, so a
+               tenant with thousands of events showed a list that looked
+               complete. The number is the server's count under the same
+               predicate, not the length of what came back. */
+            actions={
+              detail.auditTotal > detail.audit.length ? (
+                <span className="text-xs text-content-muted dark:text-content-muted-dark">
+                  Showing the most recent {detail.audit.length} of{' '}
+                  {detail.auditTotal.toLocaleString('en-GB')}
+                </span>
+              ) : detail.auditTotal > 0 ? (
+                <span className="text-xs text-content-muted dark:text-content-muted-dark">
+                  {detail.auditTotal.toLocaleString('en-GB')} events
+                </span>
+              ) : undefined
+            }
+            flush
+          >
             <ul>
               {detail.audit.length === 0 ? (
                 <li className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">

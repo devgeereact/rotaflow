@@ -93,6 +93,26 @@ export async function listActiveSessionsForOrg(
   return ((data ?? []) as unknown as SessionRow[]).map(toSession);
 }
 
+/**
+ * Every session ever opened against one organisation, newest first.
+ *
+ * The organisation detail page used to read the platform-wide list capped at
+ * 200 and filter it in the browser, so past that cap the Support tab asserted
+ * "No support session has ever been opened against this organisation" about a
+ * tenant whose sessions had simply been crowded out by other tenants'. Scoped
+ * in the query instead; at tenant scope this needs no paging.
+ */
+export async function listSessionsForOrg(orgId: string): Promise<SupportAccessSession[]> {
+  const { data, error } = await supabase
+    .from('support_access_sessions')
+    .select(SELECT)
+    .eq('org_id', orgId)
+    .order('granted_at', { ascending: false });
+
+  if (error) throw error;
+  return ((data ?? []) as unknown as SessionRow[]).map(toSession);
+}
+
 /** Open a session. Returns the new session id; raises if the database refuses. */
 export async function requestSupportAccess(input: {
   orgId: string;

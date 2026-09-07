@@ -23,6 +23,11 @@ import { CURRENCIES, DATE_FORMATS, orgProfileFields } from '@/lib/orgPreferences
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Callout } from '@/components/ui/Callout';
+import { Toggle } from '@/components/ui/Toggle';
+import { setOrgSupportAccess } from '@/services/platformOrgService';
+import { listActiveSessionsForOrg } from '@/services/supportAccessService';
+import { SCOPE_LABELS, type SupportAccessSession } from '@/lib/supportAccess';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
@@ -51,14 +56,15 @@ import {
  * - **Industry Pack**. Templates, compliance rules and settings bundled per
  *   industry. There is no packs table, no template rows and no installer. A
  *   card reading "Care Homes · Active" would be a label over nothing.
- * - **Platform Support Access**. Granting RotaFlow staff temporary access to
- *   a tenant. That is a support-impersonation feature: it needs an
- *   access-grant table, an expiry job, and an audit event per grant, and it
- *   hands a third party a customer's staff PII. Not something to mock up.
- *
- * Both are recorded in the audit rather than stubbed, because a settings
- * screen that shows a security control which does not exist is worse than one
- * that omits it.
+ * That reasoning also excluded **Platform Support Access**, on the grounds that
+ * it "needs an access-grant table, an expiry job, and an audit event per grant".
+ * `0019` built all three, and the switch has been on `organisations` since
+ * `0017` with `set_org_support_access` granted to `authenticated` and called by
+ * nothing — so the customer was told, on the platform side, that they had a
+ * control they could not reach. It is built now, in the Support access section
+ * below, which is the same principle running the other way: a settings screen
+ * that omits a security control the customer DOES have is as misleading as one
+ * that shows a control that does not exist.
  */
 export function SettingsOrganisationPage(): JSX.Element {
   const { orgId, role, refresh } = useOrg();
@@ -73,6 +79,20 @@ export function SettingsOrganisationPage(): JSX.Element {
   const [name, setName] = useState('');
   const [fields, setFields] = useState(() => orgProfileFields(null));
   const [siteCount, setSiteCount] = useState<number | null>(null);
+  /**
+   * The customer's consent to platform support opening their data, and the
+   * sessions currently open against them.
+   *
+   * `organisations.support_access_allowed` has existed since 0017 and
+   * `set_org_support_access` since then too, granted to `authenticated` and
+   * called by NOTHING — so the switch a customer is told they have could not be
+   * reached from anywhere in the product. The comment at the top of this file
+   * argued the feature "needs an access-grant table, an expiry job, and an
+   * audit event per grant"; 0019 built all three.
+   */
+  const [supportAccessAllowed, setSupportAccessAllowed] = useState<boolean | null>(null);
+  const [activeSessions, setActiveSessions] = useState<SupportAccessSession[]>([]);
+  const [savingConsent, setSavingConsent] = useState(false);
 
   // Ownership transfer (CAP-091). Candidates are active members other than
   // the current owner, named from their staff record where one exists — a
@@ -154,15 +174,19 @@ export function SettingsOrganisationPage(): JSX.Element {
     setLoadFailed(false);
     void (async () => {
       try {
-        const [org, locations] = await Promise.all([
+        const [org, locations, sessions] = await Promise.all([
           getOrganisation(orgId),
           // Non-fatal: the summary is a nicety, the form is the screen.
           listLocations(orgId).catch(() => null),
+          // Also non-fatal, and empty in the overwhelmingly common case.
+          listActiveSessionsForOrg(orgId).catch(() => []),
         ]);
         if (!active) return;
         setName(org.name);
         setFields(orgProfileFields(org.settings, org));
         setSiteCount(locations?.length ?? null);
+        setSupportAccessAllowed(org.support_access_allowed);
+        setActiveSessions(sessions);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'settings-organisation:load' });
@@ -176,6 +200,36 @@ export function SettingsOrganisationPage(): JSX.Element {
       active = false;
     };
   }, [orgId, reloadKey, showError]);
+
+  /**
+   * Withdraw or restore consent.
+   *
+   * Reloads the sessions afterwards rather than assuming: withdrawing consent
+   * closes every live session in the database (0140), and the list beneath the
+   * switch has to show that rather than claim it.
+   */
+  const setConsent = useCallback(
+    async (allowed: boolean): Promise<void> => {
+      if (!orgId) return;
+      setSavingConsent(true);
+      try {
+        await setOrgSupportAccess(orgId, allowed);
+        setSupportAccessAllowed(allowed);
+        setActiveSessions(await listActiveSessionsForOrg(orgId).catch(() => []));
+        showSuccess(
+          allowed
+            ? 'Support can now ask to open your data.'
+            : 'Support access is off. Any session already open has ended.',
+        );
+      } catch (err) {
+        reportError(err, { area: 'settings-organisation:support-access' });
+        showError('Could not change support access.');
+      } finally {
+        setSavingConsent(false);
+      }
+    },
+    [orgId, showError, showSuccess],
+  );
 
   const set = useCallback(
     <K extends keyof typeof fields>(key: K, value: (typeof fields)[K]): void => {
@@ -400,6 +454,46 @@ export function SettingsOrganisationPage(): JSX.Element {
             />
           </div>
         </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Support access"
+        description="Whether RotaFlow support may open your data to help with a problem, and who is in there now."
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 max-w-prose">
+            <p className="text-sm text-content dark:text-content-dark">
+              {supportAccessAllowed === false
+                ? 'Support cannot open your data. Nobody can start a session, and any session already open has ended.'
+                : 'Support can ask to open your data. Every request records a reason and a case number, expires on its own, and is written to your audit log.'}
+            </p>
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              Turning this off takes effect at once, including on a session already
+              running. You can turn it back on whenever you like; support cannot turn it
+              on for you.
+            </p>
+          </div>
+          <Toggle
+            checked={supportAccessAllowed === true}
+            disabled={savingConsent || supportAccessAllowed === null}
+            label="Allow RotaFlow support to open my organisation's data"
+            onChange={(checked) => void setConsent(checked)}
+          />
+        </div>
+
+        {activeSessions.length > 0 && (
+          <Callout tone="warning" title="Somebody is in here now" className="mt-4">
+            <ul className="space-y-1">
+              {activeSessions.map((session) => (
+                <li key={session.id}>
+                  {SCOPE_LABELS[session.scope] ?? session.scope} access, case{' '}
+                  {session.caseRef}, until{' '}
+                  {new Date(session.expiresAt).toLocaleString('en-GB')}. {session.reason}
+                </li>
+              ))}
+            </ul>
+          </Callout>
+        )}
       </SettingsSection>
 
       <SettingsSection
