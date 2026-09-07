@@ -15,7 +15,7 @@ import {
 } from '@/services/orgService';
 import { getProfile } from '@/services/profileService';
 import type { Profile } from '@/types';
-import { getMyPlatformRole } from '@/services/platformRoleService';
+import { getMyPlatformRole, getPlatformAccess } from '@/services/platformRoleService';
 import { reportError } from '@/lib/sentry';
 import { ACTIVE_ORG_STORAGE_KEY } from '@/lib/session';
 import { isOrgStateStale } from '@/lib/orgLoading';
@@ -106,7 +106,7 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       // spinner that never resolves, which is worse than the error card: the
       // card at least says what happened and offers the same retry by hand.
       const loadOnce = async (): Promise<
-        [MyMembership[], Profile | null, PlatformRole | null]
+        [MyMembership[], Profile | null, PlatformRole | null, boolean | null]
       > =>
         await Promise.all([
           listMyMemberships(user.id),
@@ -122,16 +122,30 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
             reportError(error, { area: 'org:platformRole' });
             return null;
           }),
+          // The database's own verdict, which is the flag AND 0102's MFA
+          // condition. Cannot reject for the same reason as the role above:
+          // null degrades to "fall back to the flag", never to a failed
+          // session.
+          getPlatformAccess().catch((error: unknown) => {
+            reportError(error, { area: 'org:platformAccess' });
+            return null;
+          }),
         ]);
 
-      const [rows, profile, role] = await loadOnce().catch(async (error: unknown) => {
-        reportError(error, { area: 'org:refresh-retry' });
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        return await loadOnce();
-      });
+      const [rows, profile, role, access] = await loadOnce().catch(
+        async (error: unknown) => {
+          reportError(error, { area: 'org:refresh-retry' });
+          await new Promise((resolve) => setTimeout(resolve, 600));
+          return await loadOnce();
+        },
+      );
 
       setMemberships(rows);
-      setIsPlatformAdmin(profile?.is_platform_admin ?? false);
+      // The function's answer when we have it, the raw flag only as a
+      // fallback. They differ exactly when `require_mfa` is on and the session
+      // is `aal1`, and taking the flag there admitted an administrator to a
+      // console where every policy returned nothing.
+      setIsPlatformAdmin(access ?? profile?.is_platform_admin ?? false);
       setPlatformRole(role);
       setLoadFailed(false);
     } catch (error) {

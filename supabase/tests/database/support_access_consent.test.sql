@@ -34,7 +34,7 @@
 -- =====================================================================
 
 begin;
-select plan(7);
+select plan(10);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
@@ -44,11 +44,16 @@ select '00000000-0000-0000-0000-000000000000', v.id, 'authenticated', 'authentic
   v.email, crypt('x', gen_salt('bf')), now(), now(), now(), '{}'::jsonb, '{}'::jsonb
 from (values
   ('ca000000-0000-0000-0000-000000000001'::uuid, 'consent-admin@example.test'),
-  ('ca000000-0000-0000-0000-000000000002'::uuid, 'consent-owner@example.test')
+  ('ca000000-0000-0000-0000-000000000002'::uuid, 'consent-owner@example.test'),
+  ('ca000000-0000-0000-0000-000000000003'::uuid, 'consent-platform-owner@example.test')
 ) as v(id, email);
 
-insert into public.platform_admins (user_id, role)
-values ('ca000000-0000-0000-0000-000000000001', 'platform_admin');
+insert into public.platform_admins (user_id, role) values
+  ('ca000000-0000-0000-0000-000000000001', 'platform_admin'),
+  -- The platform owner who does the removing in assertions 8 to 10. Seeded
+  -- here with the rest: `auth.users` is not writable once the role has been
+  -- switched to `authenticated`, which is what a mid-file insert hits.
+  ('ca000000-0000-0000-0000-000000000003', 'platform_owner');
 
 insert into public.organisations (id, name, slug, support_access_allowed)
 values ('cb000000-0000-0000-0000-000000000001', 'Consent Care Ltd', 'consent-care', true);
@@ -115,6 +120,36 @@ select pg_temp.become('ca000000-0000-0000-0000-000000000002');
 select lives_ok(
   $$ select public.set_org_support_access('cb000000-0000-0000-0000-000000000001', true) $$,
   'and the owner can give it back, which is what makes it a consent');
+
+-- ---------- and removing the administrator ends it too (0141) ---------
+--
+-- The other way an open session must close. Before `0141`, revoking somebody's
+-- platform role left `is_platform_admin()` false — so the console locked them
+-- out — while `has_org_role(org, ['owner'])` stayed TRUE through
+-- `has_support_access`. A removed administrator kept owner-equivalent read and
+-- write on the tenant until the session expired, and could not even end it,
+-- because ending it needs the console they had just lost.
+--
+-- Reproduced before the fix:
+--   when         | write_access | owner_equiv | console
+--   BEFORE       | t            | t           | t
+--   AFTER revoke | t            | t           | f
+
+select pg_temp.become('ca000000-0000-0000-0000-000000000001');
+select ok(
+  public.has_support_access('cb000000-0000-0000-0000-000000000001', true),
+  'the session is live again once consent is back');
+
+-- A platform owner removes them, through the RPC the Settings page calls.
+select pg_temp.become('ca000000-0000-0000-0000-000000000003');
+select lives_ok(
+  $$ select public.revoke_platform_role('ca000000-0000-0000-0000-000000000001') $$,
+  'a platform owner removes the administrator');
+
+select pg_temp.become('ca000000-0000-0000-0000-000000000001');
+select ok(
+  not public.has_org_role('cb000000-0000-0000-0000-000000000001', array['owner']),
+  'and their owner-equivalent access to the tenant ends with the grant, not at the session expiry');
 
 select * from finish();
 rollback;

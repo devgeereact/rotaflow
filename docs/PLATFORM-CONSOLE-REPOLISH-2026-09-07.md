@@ -280,6 +280,32 @@ sign-in. Fixed inside the harness with a capture-phase click handler rather than
 by editing 18 links in production components, so it covers links that do not
 exist yet.
 
+### Three more, found after those fixes
+
+A follow-up audit of `/admin/users/:id` and `/admin/settings` confirmed three
+defects against the live stack, and the first is the most serious thing this
+whole pass found. None was closed by `0140`.
+
+**Revoking a platform role left the person owner-equivalent inside every tenant
+they were in** (GAP-097, `0141`). `has_support_access` only asked whether the
+session was live, never whether the holder was still staff. Reproduced through
+the RPC the Remove button calls: the console locks them out and
+`has_org_role(org, ['owner'])` stays true until the session expires — up to a
+day. They keep owner-equivalent read and write on the customer's data and are
+locked out of the only screen that could end it. The confirm dialog promised
+the opposite in as many words.
+
+**An `aal1` session was admitted to a console that then read nothing**
+(GAP-098). The route gated on the raw `profiles` flag while every policy behind
+it uses `is_platform_admin()`, which also carries `0102`'s MFA condition. With
+`require_mfa` on, a genuine administrator got in and saw empty tables, a
+profile reading "no such account", and an administrators roster collapsed to
+themselves — from which `ownerCount` was then computed, so the last-owner guard
+ran on false data.
+
+**A permission-denied read rendered as "no such account"** (GAP-099), which is
+the same conflation this pass fixed elsewhere, reached via GAP-098.
+
 ### Still not verified, after those fixes
 
 - **The consent control is not seen rendered.** It is on an authenticated screen
@@ -289,6 +315,14 @@ exist yet.
   against PostgREST directly: `Content-Range: 0-2/7` for a three-row page over
   seven rows.
 - **Wiring the maintenance banner is a decision, not a repair**, and is left.
+- **Neither `/admin/users/:id` nor `/admin/settings` was seen rendered.** Both
+  audits were source inspection plus live SQL; the UI verdicts are read off the
+  JSX. `/admin/settings` has no preview-harness route.
+- **The MFA path was exercised in SQL, not in a browser.** `require_mfa` was
+  never switched on against a real session, and the sign-in form still has no
+  MFA challenge, so `aal2` is not reachable through the product at all — which
+  means turning `require_mfa` on today would lock every administrator out of
+  the console. That is a separate gap and is not fixed here.
 
 ## 8. Remaining blockers, unchanged
 

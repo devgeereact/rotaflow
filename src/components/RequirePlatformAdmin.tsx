@@ -29,7 +29,7 @@ import { useOrg } from '@/hooks/useOrg';
  * tables.
  */
 export function RequirePlatformAdmin({ children }: { children: ReactNode }): JSX.Element {
-  const { isPlatformAdmin, loading } = useOrg();
+  const { isPlatformAdmin, platformRole, loading } = useOrg();
 
   // Resolving the profile is what sets the flag. Rendering the denial before
   // it lands would flash "access denied" at a genuine administrator on every
@@ -50,14 +50,38 @@ export function RequirePlatformAdmin({ children }: { children: ReactNode }): JSX
           <h1 className="mb-2 font-display text-xl font-semibold text-content dark:text-content-dark">
             Platform administration
           </h1>
-          <p className="mb-1 text-sm text-content-muted dark:text-content-muted-dark">
-            This area manages every organisation on RotaFlow, so it is limited to platform
-            administrators.
-          </p>
-          <p className="mb-5 text-sm text-content-muted dark:text-content-muted-dark">
-            Being an owner of your own organisation does not grant it, that is a separate
-            permission held on your RotaFlow account.
-          </p>
+          {/* Two different refusals. Somebody who holds a platform grant but
+              fails `is_platform_admin()` is being stopped by 0102's
+              second-factor requirement, not by lacking the permission — and
+              telling them "being an owner of your own organisation does not
+              grant it" is both wrong and unactionable. This branch used to be
+              unreachable from the client, because the gate read the raw
+              `profiles` flag and so admitted them to a console where every
+              policy returned nothing. */}
+          {platformRole !== null ? (
+            <>
+              <p className="mb-1 text-sm text-content-muted dark:text-content-muted-dark">
+                You hold platform access, but this console requires a second factor and
+                this session does not have one.
+              </p>
+              <p className="mb-5 text-sm text-content-muted dark:text-content-muted-dark">
+                Enrol a second factor on your account security screen, then sign in again.
+                Until then the database would refuse every read behind this screen, so it
+                is not shown to you empty.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mb-1 text-sm text-content-muted dark:text-content-muted-dark">
+                This area manages every organisation on RotaFlow, so it is limited to
+                platform administrators.
+              </p>
+              <p className="mb-5 text-sm text-content-muted dark:text-content-muted-dark">
+                Being an owner of your own organisation does not grant it, that is a
+                separate permission held on your RotaFlow account.
+              </p>
+            </>
+          )}
           <Link to="/app/dashboard">
             <Button>
               <ArrowLeft size={18} aria-hidden="true" />
