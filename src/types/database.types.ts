@@ -3231,6 +3231,45 @@ export type Database = {
       };
     };
     Views: {
+      /**
+       * `staff_profiles` with the five personal columns nulled unless the
+       * reader manages that organisation or the row is their own (0150,
+       * GAP-117). Read by `staffService`; the base table no longer grants
+       * SELECT on those columns to `authenticated`.
+       *
+       * Written by hand, and deliberately NOT nullable where the base table
+       * is NOT NULL. Supabase's generator marks every view column nullable
+       * because it cannot prove otherwise; here the view is a straight
+       * projection of `staff_profiles`, so `id`, `org_id`, `first_name`,
+       * `last_name`, `skills`, `active`, `created_at` and `updated_at` cannot
+       * be null and saying they can would push false null checks through
+       * every consumer. If this file is regenerated, restore this shape.
+       */
+      staff_profiles_visible: {
+        Row: {
+          active: boolean;
+          contract_type: string | null;
+          created_at: string;
+          department_id: string | null;
+          email: string | null;
+          first_name: string;
+          holiday_allowance: number | null;
+          id: string;
+          job_title: string | null;
+          job_title_id: string | null;
+          last_name: string;
+          org_id: string;
+          payroll_id: string | null;
+          phone: string | null;
+          photo_url: string | null;
+          skills: string[];
+          start_date: string | null;
+          updated_at: string;
+          user_id: string | null;
+          weekly_hours: number | null;
+        };
+        Relationships: [];
+      };
       integration_connector_stats: {
         Row: {
           available: boolean | null;
