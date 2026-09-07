@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { PanelTabs } from '@/components/ui/PanelTabs';
+import { ScrollableCode } from '@/components/ui/ScrollableCode';
 import { Callout } from '@/components/ui/Callout';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
@@ -710,9 +711,12 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                           shown once and cannot be retrieved again.
                         </p>
                         <div className="flex flex-wrap items-center gap-2">
-                          <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+                          <ScrollableCode
+                            label="Invitation link"
+                            className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+                          >
                             {reinviteResult}
-                          </code>
+                          </ScrollableCode>
                           <Button
                             size="sm"
                             variant="secondary"

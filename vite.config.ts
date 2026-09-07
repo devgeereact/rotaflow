@@ -28,6 +28,41 @@ function resolveSentryRelease(): string {
 const sentryRelease = resolveSentryRelease();
 
 /**
+ * Which origin the service worker treats as "the Supabase REST API".
+ *
+ * The rule below used to be the literal `/^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i`.
+ * That is true of the hosted project and of nothing else, and it fails in two
+ * ways that both look like nothing at all:
+ *
+ *   * A local or self-hosted stack (`http://127.0.0.1:54321`, or Supabase on a
+ *     custom domain) never matches, so the `supabase-api` cache is never
+ *     written. Offline reads simply do not work there, and no error says so.
+ *   * More awkwardly, it made GAP-072 untestable. The scenario that gap asks
+ *     for — warm an authenticated response, replace the session, read what is
+ *     still in `caches` — cannot be run against a local stack if the cache is
+ *     never populated in the first place. A test written against the old
+ *     pattern would have passed while proving nothing.
+ *
+ * So the origin comes from the same variable the client is built with, and the
+ * hosted wildcard remains the fallback for a build with no `.env` (CI does
+ * exactly that). Only the ORIGIN is interpolated, and it is escaped, so a
+ * malformed variable cannot widen the pattern into one that matches
+ * somebody else's host.
+ */
+function supabaseRestPattern(): RegExp {
+  const configured = process.env['VITE_SUPABASE_URL'];
+  if (!configured) return /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i;
+  try {
+    const origin = new URL(configured).origin;
+    const escaped = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^${escaped}/rest/v1/.*`, 'i');
+  } catch {
+    return /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i;
+  }
+}
+const SUPABASE_REST_PATTERN = supabaseRestPattern();
+
+/**
  * The origin the sitemap advertises.
  *
  * Not `appOrigin()`: that is deliberately the browser's own origin, which does
@@ -244,7 +279,8 @@ export default defineConfig({
           },
           {
             // Supabase REST/GraphQL reads — network-first with short fallback.
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
+            // Derived from VITE_SUPABASE_URL; see supabaseRestPattern above.
+            urlPattern: SUPABASE_REST_PATTERN,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-api',

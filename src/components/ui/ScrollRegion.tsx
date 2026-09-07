@@ -8,6 +8,13 @@ interface ScrollRegionProps {
   className?: string;
   /** Class for the scrolling element itself, e.g. a `max-h-*`. */
   viewportClassName?: string;
+  /**
+   * Id for the outer element, so a disclosure button can point `aria-controls`
+   * at the whole region — the scrolling viewport and its overflow cue together,
+   * which is what the button actually reveals. `BarChart` and `TrendChart` both
+   * do this for their "Show figures" toggle.
+   */
+  id?: string;
 }
 
 /**
@@ -38,6 +45,7 @@ export function ScrollRegion({
   children,
   className,
   viewportClassName,
+  id,
 }: ScrollRegionProps): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const [overflowing, setOverflowing] = useState(false);
@@ -65,7 +73,7 @@ export function ScrollRegion({
   }, [measure, children]);
 
   return (
-    <div className={cn('relative', className)}>
+    <div id={id} className={cn('relative', className)}>
       <div
         ref={ref}
         onScroll={measure}

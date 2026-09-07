@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Callout } from '@/components/ui/Callout';
+import { ScrollableCode } from '@/components/ui/ScrollableCode';
 import {
   createOrganisationWithInvite,
   findExistingSlugs,
@@ -391,9 +392,12 @@ export function AdminImportOrgsModal({
                   </Badge>
                 </div>
                 {outcome.acceptUrl && (
-                  <code className="mt-1 block overflow-x-auto rounded-lg bg-surface-subtle px-2 py-1 font-mono text-[0.7rem] text-content dark:bg-surface-subtle-dark dark:text-content-dark">
+                  <ScrollableCode
+                    label={`Invitation link for ${outcome.name}`}
+                    className="mt-1 block rounded-lg bg-surface-subtle px-2 py-1 font-mono text-[0.7rem] text-content dark:bg-surface-subtle-dark dark:text-content-dark"
+                  >
                     {outcome.acceptUrl}
-                  </code>
+                  </ScrollableCode>
                 )}
                 {outcome.error && (
                   <p className="mt-1 text-xs text-danger-ink dark:text-danger-ink-dark">

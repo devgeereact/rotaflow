@@ -368,11 +368,12 @@ Deployed 2026-09-04 at `9ae1a54`, verified by finding the SHA **inside** the ser
 `index-*.js` rather than inferring it from a filename, and by a live browser session across
 six routes contacting no third-party origin except Sentry.
 
-**P3-4 · No cookie consent mechanism** _(open, likely correct)_
-There is no banner, and no advertising or analytics cookie to consent to — the app stores
-a session and one preference key. Under PECR that is arguably strictly-necessary storage
-and needs no consent. **Flagged for legal review rather than resolved**, per the standard's
-instruction not to claim compliance.
+**P3-4 · Cookie consent** _(resolved 4 September 2026)_
+A cookie notice was written and published at `/legal/cookies`. Session replay and
+performance tracing were removed from Sentry config; remaining crash reporting is opt-in.
+The page lists what is stored, what is sent, and how to switch each category off,
+built from `STORED_ITEMS` which the consent UI also reads, so the notice and controls
+cannot describe different things.
 
 ---
 
@@ -476,7 +477,7 @@ timeout and a five-minute TTL, and both tenant-scoped caches are purged on sign-
 | precache                    | app shell, JS, CSS, icons, fonts | precache             | per build         | no        | n/a, versioned                  |
 | `supabase-api`              | `/rest/v1/` responses            | NetworkFirst, 5s     | 5 min, 50 entries | **yes**   | **yes**                         |
 | `imagekit-media`            | staff photos                     | CacheFirst           | 30 days, 200      | **yes**   | **yes**                         |
-| `google-fonts`              | webfonts                         | StaleWhileRevalidate | —                 | no        | no                              |
+| `rotaflow-fonts`            | self-hosted `/fonts/*.woff2`     | CacheFirst           | 365 days, 8       | no        | n/a, no third party             |
 | IndexedDB `rotaflow-outbox` | unsent writes                    | —                    | until sent        | **yes**   | **no, deliberately** — see P1-4 |
 
 ---

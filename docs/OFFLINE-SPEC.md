@@ -159,14 +159,12 @@ watched happening; it is the shape of the code and the wording on the screen.
    on a screen with nothing cached at all. Honest network states are a stated
    requirement of the PWA engine, and telling a user their rota is cached when it
    may not be is the failure mode it names.
-2. **`public/offline.html` is precached and never served.** It is in
-   `includeAssets` (`vite.config.ts:142`) and nothing else references it:
-   `navigateFallback` is `index.html`, and no route, handler or `.htaccess` rule
-   mentions it. `docs/ARCHITECTURE.md` calls it a "last-resort static fallback",
-   which is what it was meant to be, not what it is. **Given a register row on
-   2026-09-04 as GAP-051**, having been described here since this specification
-   was written and tracked nowhere — which is how a known defect becomes a
-   forgotten one.
+2. **`public/offline.html` was removed on 5 September 2026.** It had been
+   precached but never served — `navigateFallback` is `index.html`, and no route,
+   handler or `.htaccess` rule ever referenced it. Precaching an unreachable page
+   meant every visitor downloaded a page no route served. Deleted rather than wired
+   up, since a second offline page for a shell that already handles offline is
+   unnecessary.
 
    Related, and fixed in the same pass: `navigateFallback` had no
    `navigateFallbackDenylist`, so once the service worker controlled the page
@@ -233,11 +231,10 @@ a page mid-task; `cleanupOutdatedCaches` removes old caches. Push handlers are
 added through `workbox.importScripts: ['/push-sw.js']`, which is the documented
 way to get custom code into a `generateSW` worker.
 
-The manifest is inline in `vite.config.ts:144`: `standalone`, portrait,
-scope and start URL `/`, three icons (192, 512, and a 512 maskable). It has no
-`id`, no `screenshots` and no `shortcuts`. None of those are required for
-installation; `id` is worth adding before the app is ever listed anywhere, since
-without it the identity is the start URL.
+The manifest is inline in `vite.config.ts:151-170`: `standalone`, portrait,
+scope and start URL `/`, three icons (192, 512, and a 512 maskable), and `id: '/'`
+(added so browser identity is independent of start URL). It has no `screenshots`
+and no `shortcuts`, neither of which are required for installation.
 
 `.htaccess:78-80` serves `sw.js`, `workbox-*.js`, `manifest.webmanifest` and
 `index.html` with `no-cache, no-store, must-revalidate`, while hashed assets are

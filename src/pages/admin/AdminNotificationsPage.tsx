@@ -10,6 +10,7 @@ import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { Pagination } from '@/components/ui/Pagination';
 import { FilterBar } from '@/components/ui/FilterBar';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { AdminAnnouncementComposer } from '@/components/admin/AdminAnnouncementComposer';
 import type { AnnouncementComposerResult } from '@/components/admin/AdminAnnouncementComposer';
@@ -421,16 +422,10 @@ export function AdminNotificationsPage(): JSX.Element {
             {/* This table scrolls horizontally and has no focusable child, so
                 without `tabIndex` its off-screen columns cannot be reached
                 without a mouse (axe `scrollable-region-focusable`, WCAG 2.1.1).
-                jsx-a11y objects to tabIndex on a non-interactive element; the
-                two rules genuinely disagree and axe is the one that is right
-                here, so its rule is disabled for this element only. */}
-            <div
-              className="overflow-x-auto"
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-              tabIndex={0}
-              role="region"
-              aria-label="Platform announcements, scrollable"
-            >
+                It hand-rolled `ScrollRegion`'s three attributes; using the
+                component instead also gets the visible overflow cue, which is
+                the half of the problem a tab stop alone does not solve. */}
+            <ScrollRegion label="Platform announcements">
               <table className="w-full min-w-[68rem] table-fixed border-collapse text-sm">
                 <caption className="sr-only">Platform announcements</caption>
                 <colgroup>
@@ -579,7 +574,7 @@ export function AdminNotificationsPage(): JSX.Element {
                   )}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
 
             <Pagination
               page={announcements.page}

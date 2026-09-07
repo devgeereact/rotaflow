@@ -166,9 +166,19 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
           </div>
         </div>
 
-        <aside className="space-y-3">
+        {/* `min-w-0` because a grid item defaults to `min-width: auto` and so
+            refuses to shrink below its widest child (docs/DESIGN.md §7). This
+            rail's action row has a 128px `shrink-0` button, a 20px gap and a
+            `whitespace-nowrap` one: 353px of min-content in a 327px track on a
+            375px phone, which pushed `documentElement.scrollWidth` to 377 and
+            scrolled the whole PAGE sideways. `flex-wrap` is the other half —
+            `min-w-0` lets the track shrink, and without somewhere for the
+            second button to go the row would simply overflow the rail instead.
+            Above ~373px of rail width nothing wraps, so every breakpoint from
+            `sm` up renders exactly as before. */}
+        <aside className="min-w-0 space-y-3">
           {showRailActions && (
-            <div className="flex items-center gap-5 pb-2.5">
+            <div className="flex flex-wrap items-center gap-5 pb-2.5">
               {props.onFilters && (
                 <Button
                   variant="secondary"

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarPlus, Clock3, MapPin, TriangleAlert } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useOrg } from '@/hooks/useOrg';
+import { useWorkMode } from '@/hooks/useWorkMode';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -42,9 +44,30 @@ import { PageHeader } from '@/components/ui/PageHeader';
  * labelled rather than filtered out. Filtering would leave somebody staring
  * at a board that says "no open shifts" while a colleague sees four, with no
  * way to tell why. The database refuses the claim regardless.
+ *
+ * ## A reader with no staff profile sees cover, not a claim
+ *
+ * An owner is an authorisation fact and need not work shifts
+ * (`src/lib/workMode.ts`). Until this change the rail showed them Open Shifts
+ * unconditionally and the board offered them "Take it" — a control that could
+ * only ever fail, because `claim_open_shift` writes a `staff_profile_id` and
+ * they have none. That is the exact shape `src/lib/unavailableControls.test.ts`
+ * exists to stop: a primary action that is a promise the product cannot keep.
+ *
+ * So the board is read two ways. Somebody who can work shifts claims one.
+ * Somebody who cannot is looking at a coverage problem rather than an
+ * opportunity, and gets the count, the reason the control is unavailable, and
+ * a link to the builder, which is where an owner actually fixes it.
  */
 export function OpenShiftsPage(): JSX.Element {
   const { orgId } = useOrg();
+  const navigate = useNavigate();
+  // `staffProfileId` is null for a manager or owner with no staff record in
+  // the active organisation. It is the same fact the work-mode switch is
+  // gated on, read from the same place, so the rail and this screen cannot
+  // disagree about whether personal controls apply.
+  const { staffProfileId } = useWorkMode();
+  const canClaim = staffProfileId !== null;
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
 
@@ -127,7 +150,23 @@ export function OpenShiftsPage(): JSX.Element {
     <div className="space-y-6">
       <PageHeader
         title="Open shifts"
-        description="Shifts nobody is covering yet. Taking one puts it straight on your schedule."
+        description={
+          canClaim
+            ? 'Shifts nobody is covering yet. Taking one puts it straight on your schedule.'
+            : 'Shifts nobody is covering yet. Assign somebody in the rota builder, or wait for a member of staff to take one.'
+        }
+        actions={
+          canClaim ? undefined : (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void navigate('/app/rota');
+              }}
+            >
+              Open the rota builder
+            </Button>
+          )
+        }
       />
 
       {shifts === null ? (
@@ -194,7 +233,15 @@ export function OpenShiftsPage(): JSX.Element {
                     )}
                   </div>
 
-                  {shift.clashesWithMine ? (
+                  {!canClaim ? (
+                    /* Not a disabled "Take it". The reader has no staff
+                       profile, so claiming is not a thing they could do on a
+                       better day — it does not apply to them at all, and a
+                       greyed-out primary action would read as "not yet"
+                       rather than "not you". The uncovered shift is the
+                       information; the builder is the action. */
+                    <Badge tone="warning">Needs cover</Badge>
+                  ) : shift.clashesWithMine ? (
                     <>
                       <Badge tone="warning">Clashes with your rota</Badge>
                       {/* The reason is on the control, not only in the badge

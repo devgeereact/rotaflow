@@ -273,6 +273,35 @@ export function RotaGrid({
         {moveAnnouncement}
       </p>
 
+      {/* A keyboard shortcut nobody is told about is a keyboard shortcut
+          nobody has. `aria-keyshortcuts` on the chip covers assistive tech;
+          this covers everyone else.
+
+          It used to sit under the legend, below the last row: on a 900px
+          window that put it at y=1160, past the whole grid, so the sighted
+          keyboard users it is written for were the only people who could not
+          see it. Above the date axis it is on screen the moment the grid is,
+          which is before anyone has focused a chip.
+
+          `sticky left-0 w-fit` because the grid is ~2,400px wide and this
+          paragraph is a child of it: without them the text scrolls off to the
+          left as soon as a manager scrolls to Friday.
+
+          `hidden sm:block` because below 640px there is no keyboard to press
+          M with, and F6 of the same review is that the phone grid already
+          starts 596px down an 812px screen. Costing that reader 20 more
+          pixels to tell them about a key they do not have is the trade going
+          the wrong way. `aria-keyshortcuts` on the chip is unaffected. */}
+      {onMoveShift && (
+        <p className="sticky left-0 mb-1 hidden w-fit text-xs text-content-muted sm:block dark:text-content-muted-dark">
+          Drag a shift to move it, or select one and press{' '}
+          <kbd className="rounded border border-surface-border px-1 font-mono text-[0.7rem] dark:border-surface-border-dark">
+            M
+          </kbd>{' '}
+          to move it with the arrow keys.
+        </p>
+      )}
+
       {/* ---- Header: week labels, then weekday/date columns ----
 
           Two rows, both pinned. The week row is what makes a continuous
@@ -466,19 +495,6 @@ export function RotaGrid({
           Conflict
         </span>
       </div>
-
-      {/* A keyboard shortcut nobody is told about is a keyboard shortcut
-          nobody has. `aria-keyshortcuts` on the chip covers assistive tech;
-          this covers everyone else. */}
-      {onMoveShift && (
-        <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
-          Drag a shift to move it, or select one and press{' '}
-          <kbd className="rounded border border-surface-border px-1 font-mono text-[0.7rem] dark:border-surface-border-dark">
-            M
-          </kbd>{' '}
-          to move it with the arrow keys.
-        </p>
-      )}
     </div>
   );
 }

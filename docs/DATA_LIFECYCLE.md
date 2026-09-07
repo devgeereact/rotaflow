@@ -242,7 +242,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 134 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 135 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -482,8 +482,8 @@ could schedule.
    anything else in this document.
 2. **Name an incident owner and an on-call path** (§6) — a decision, not
    code.
-3. **Wire a scheduled health probe** so detection does not depend on someone
-   opening the console (§6).
+3. ✅ **Scheduled health probe** runs every 5 minutes via `pg_cron`, testing
+   Postgres and Supabase service reachability (`0076_scheduled_health_probe.sql`).
 4. **Build the deleted-tenant grace window** — the one policy in §3 still not on a
    timer. Four of the five listed here as unenforced have been running nightly since
    2026-08-21 (`0029`, fixed by `0057`); this item was left stale and is corrected,

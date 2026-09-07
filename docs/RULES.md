@@ -107,7 +107,8 @@ codebase will drift from, and several below had.
 - **Times & timezones:** store timestamps as `timestamptz` (UTC); shift times display
   in the location's timezone. Use `font-mono` for times/hours so columns align.
 - **Offline writes go through the outbox.** Clock-ins, leave requests and swap
-  responses use `services/syncQueue` (never a raw insert that silently fails offline).
+  requests use `services/syncQueue` (never a raw insert that silently fails offline).
+  Swap and leave responses are review actions and require a network connection.
 - **Notifications channel `sms` is reserved, not delivered in V1.** Do not wire a
   Twilio/SMS send; the column value and seam exist for later.
 - **Secrets stay server-side.** SMTP credentials, payment-provider secrets and the
