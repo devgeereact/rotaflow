@@ -4,6 +4,5 @@
       "Read(./.env)",
       "Read(./.env.*)"
     ]
-  },
-  "model": "opus 4.8"
+  }
 }
