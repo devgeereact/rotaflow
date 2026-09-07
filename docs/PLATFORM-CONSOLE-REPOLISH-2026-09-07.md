@@ -319,10 +319,23 @@ the same conflation this pass fixed elsewhere, reached via GAP-098.
   audits were source inspection plus live SQL; the UI verdicts are read off the
   JSX. `/admin/settings` has no preview-harness route.
 - **The MFA path was exercised in SQL, not in a browser.** `require_mfa` was
-  never switched on against a real session, and the sign-in form still has no
-  MFA challenge, so `aal2` is not reachable through the product at all — which
-  means turning `require_mfa` on today would lock every administrator out of
-  the console. That is a separate gap and is not fixed here.
+  never switched on against a real session.
+
+  The claim that first sat here — that turning it on "would lock every
+  administrator out" — was investigated and is **half wrong**, in both
+  directions. `set_platform_mfa_required` refuses to turn it on from a session
+  that is not already `aal2`, so the RPC could never have caused the lockout.
+  But `require_mfa` also carried a table-level UPDATE grant, so a
+  `platform_admin` on `aal1` could set it directly from the ordinary settings
+  screen and lock everyone out in one request — a worse hole than the one the
+  note described, reachable by a non-owner. Closed by `0142` (GAP-100), with the
+  off switch moved onto the console gate's own refusal screen because that is
+  where a locked-out owner ends up.
+
+  **Still true and still not fixed:** the sign-in form has no MFA challenge, so
+  no session can reach `aal2`. The requirement therefore cannot be turned on by
+  anybody now, which is safe but means the feature is inert. Building enrolment
+  and a challenge is a capability, not a repair, and is not attempted here.
 
 ## 8. Remaining blockers, unchanged
 

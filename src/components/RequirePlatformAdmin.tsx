@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useOrg } from '@/hooks/useOrg';
+import { setPlatformMfaRequired } from '@/services/platformSettingsService';
+import { reportError } from '@/lib/sentry';
 
 /**
  * Route gate for `/admin/*`.
@@ -29,7 +31,26 @@ import { useOrg } from '@/hooks/useOrg';
  * tables.
  */
 export function RequirePlatformAdmin({ children }: { children: ReactNode }): JSX.Element {
-  const { isPlatformAdmin, platformRole, loading } = useOrg();
+  const { isPlatformAdmin, platformRole, loading, refresh } = useOrg();
+  const [lifting, setLifting] = useState(false);
+  const [liftError, setLiftError] = useState<string | null>(null);
+
+  const liftRequirement = useCallback(async (): Promise<void> => {
+    setLifting(true);
+    setLiftError(null);
+    try {
+      await setPlatformMfaRequired(false);
+      // Re-read the session's access, which is what this gate turns on.
+      await refresh();
+    } catch (err) {
+      reportError(err, { area: 'platform-gate:lift-mfa' });
+      setLiftError(
+        err instanceof Error ? err.message : 'Could not change the requirement.',
+      );
+    } finally {
+      setLifting(false);
+    }
+  }, [refresh]);
 
   // Resolving the profile is what sets the flag. Rendering the denial before
   // it lands would flash "access denied" at a genuine administrator on every
@@ -69,6 +90,38 @@ export function RequirePlatformAdmin({ children }: { children: ReactNode }): JSX
                 Until then the database would refuse every read behind this screen, so it
                 is not shown to you empty.
               </p>
+              {/* The escape hatch, and the reason it is HERE rather than on the
+                  settings screen. `set_platform_mfa_required(false)` needs
+                  `platform_owner` and deliberately does NOT need `aal2` — only
+                  turning the requirement ON does — so an owner can always undo
+                  it. What they could not do is REACH it: the switch lives on
+                  `/admin/settings`, behind this very gate. 0102's own comment
+                  warns that "a switch whose own guard depends on the setting it
+                  writes is how an off switch becomes unreachable", and moving
+                  the gate onto the MFA-aware predicate completed that circle.
+
+                  Owners only, because the RPC is owners only; offering it to an
+                  admin would be a button that always fails. */}
+              {platformRole === 'platform_owner' && (
+                <div className="mb-5 rounded-lg border border-surface-border p-3 text-left dark:border-surface-border-dark">
+                  <p className="mb-2 text-sm text-content dark:text-content-dark">
+                    You are a platform owner, so you can lift the requirement from here
+                    without a second factor.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    disabled={lifting}
+                    onClick={() => void liftRequirement()}
+                  >
+                    Turn off the second-factor requirement
+                  </Button>
+                  {liftError !== null && (
+                    <p className="mt-2 text-sm text-danger-ink dark:text-danger-ink-dark">
+                      {liftError}
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>
