@@ -36,21 +36,30 @@ import { expect, test, type Page } from '@playwright/test';
  *
  * A skipped test that could have written to production is the right default.
  *
- * ## Running it locally
+ * ## The browser and the fixture must be the same Supabase
  *
- * In CI there is no `.env`, so the `VITE_SUPABASE_*` values this job exports
- * are what Vite serves. On a developer's machine `.env` exists and wins —
- * Vite's `loadEnv` overwrites process env with the file — which points the
- * browser at PRODUCTION while the seeding below writes to localhost. The
- * symptom is "Invalid login credentials": the account exists on one server and
- * the sign-in happens on the other. Move `.env` aside for the run:
+ * This spec seeds over the service role and then drives the browser against
+ * what it seeded, so a mismatch is fatal and silent: the account exists on one
+ * instance, the sign-in happens on the other, and the only symptom is "Invalid
+ * login credentials". `playwright.config.ts` therefore refuses to reuse a
+ * running dev server when `E2E_LIVE_SUPABASE` is set, and `signIn` below
+ * asserts the origin the app actually calls.
+ *
+ * Locally:
  *
  *   supabase status -o env > /tmp/sb.env && . /tmp/sb.env
- *   mv .env .env.parked
- *   VITE_SUPABASE_URL="$API_URL" VITE_SUPABASE_ANON_KEY="$ANON_KEY" \
- *     E2E_LIVE_SUPABASE=1 E2E_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+ *   VITE_SUPABASE_URL="$API_URL" VITE_SUPABASE_ANON_KEY="$ANON_KEY" \\
+ *     E2E_LIVE_SUPABASE=1 E2E_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \\
  *     npx playwright test e2e/platform-console.spec.ts
- *   mv .env.parked .env
+ *
+ * Nothing needs moving out of the way: Vite's `loadEnv` applies `process.env`
+ * after the `.env` files, so these win.
+ *
+ * The fixtures are left behind deliberately — they are what proves the bodies
+ * ran rather than the assertions being vacuous. Run `supabase db reset` before
+ * `supabase test db` afterwards: pgTAP has assertions that count over whole
+ * tables, and thirty stray organisations fail them. CI destroys its stack per
+ * job, so this only bites locally.
  */
 const LIVE = process.env.E2E_LIVE_SUPABASE === '1';
 const SERVICE_KEY = process.env.E2E_SERVICE_ROLE_KEY ?? '';
@@ -136,7 +145,20 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.goto('/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
+
+  // The token request names the instance the app is configured against. If it
+  // is not the one seeded above, say so here rather than letting it surface as
+  // "Invalid login credentials" — which is what a mis-targeted run looks like,
+  // and is indistinguishable from a real password problem.
+  const token = page.waitForRequest((request) =>
+    request.url().includes('/auth/v1/token'),
+  );
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const origin = new URL((await token).url()).origin;
+  expect(
+    origin,
+    `the app signed in against ${origin} but the fixture was seeded into ${API_URL} — a stale dev server is being reused`,
+  ).toBe(new URL(API_URL).origin);
   // A user with no organisation lands on onboarding; a platform administrator
   // still has none, and `/admin` is reachable from there because the console
   // is gated on the platform flag rather than on a membership.

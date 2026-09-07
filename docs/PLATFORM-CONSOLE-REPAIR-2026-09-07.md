@@ -159,15 +159,15 @@ everything else renders.
 
 Stated plainly, because a report that omits this reads as though everything was.
 
-- **The authenticated platform-admin spec is written but has not run green.**
-  `e2e/platform-console.spec.ts` seeds a platform owner and thirty tenants, signs in
-  through the real form, and asserts the count against the match set, a search finding a
-  tenant beyond the first page, page two, and `platform_finance` meeting a refusal. It is
-  wired into `e2e-authenticated`. It could not be executed on this machine: Vite's
-  `loadEnv` lets `.env` overwrite the process env, so the browser signs in against
-  production while the fixture seeds localhost — `Invalid login credentials`. Running it
-  locally needs `.env` moved aside; the recipe is in the spec's own header. Production was
-  checked afterwards and holds no `e2e-%@example.test` account. GAP-082.
+- **The authenticated platform-admin spec ran green** — 2 passed, and it left 30
+  organisations, one "Zulu Care Homes" and a promoted grant behind, which is the evidence
+  the bodies executed. GAP-082 closed. It took four attempts, and the failure was worth
+  keeping: `reuseExistingServer: !CI` meant a dev server left running from an earlier
+  suite run was reused, started against a different Supabase — so the fixture seeded one
+  instance and the browser signed in to another, and the only symptom was `Invalid login
+credentials`. On a developer's machine the other instance is production. The config
+  refuses to reuse a server on a live run now, and the spec asserts the origin the app
+  actually calls.
 - **No production volumes.** Production holds no tenant. Every truncation defect fixed
   here was demonstrated against a synthetic 60-record fixture, not observed.
 - **No real delivery.** No email or push has been watched arriving. `0132` proves the
