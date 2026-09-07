@@ -12,6 +12,15 @@ interface ShiftChipProps {
   shiftType?: ShiftType;
   startTime: string; // pre-formatted 'HH:MM' in the location's timezone
   endTime: string;
+  /**
+   * Who and when this chip sits under, e.g. "Sarah Johnson, Mon 31 Aug".
+   *
+   * The grid's date header is `aria-hidden` and the staff column is a separate
+   * sticky element, so neither reaches a chip through the accessibility tree.
+   * Without this the chip's whole name is its own text, and tabbing the grid
+   * reads twenty-five shifts that are all "07:00-15:00 Morning".
+   */
+  contextLabel?: string;
   /** Past shifts drop their colour; current and upcoming ones keep it. */
   timeState: ShiftTimeState;
   selected?: boolean;
@@ -74,6 +83,7 @@ export function ShiftChip({
   shiftType,
   startTime,
   endTime,
+  contextLabel,
   timeState,
   selected,
   hasConflict,
@@ -105,6 +115,13 @@ export function ShiftChip({
         // moved in 25px increments that address no cell and fought this
         // button's own Enter handler; the move a keyboard user gets instead is
         // the `M` shortcut below, and this is where they are told about it.
+        aria-label={
+          contextLabel
+            ? `${contextLabel}, ${describeTimeRange(startTime, endTime)}${
+                shiftType ? `, ${shiftType.name}` : ''
+              }`
+            : undefined
+        }
         aria-roledescription="Shift. Press Enter to edit, or M to move it with the arrow keys."
         aria-keyshortcuts={onStartMove ? 'M' : undefined}
         data-shift-id={shift.id}
@@ -125,22 +142,32 @@ export function ShiftChip({
         className={cn(
           'relative w-full rounded-lg px-1 py-1.5 text-center ring-1 transition-opacity',
           isPast ? PAST_SHIFT_TINT : paletteTintForColour(shiftType?.colour),
+          // Every state ring below repeats itself as a `dark:` variant, and has
+          // to. The tint above ends in `dark:ring-shift-<hue>/25`. `cn` is
+          // tailwind-merge, so it drops the tint's *plain* ring in favour of
+          // the state's, but a `dark:` ring is a different merge group and
+          // survives, then outranks a plain ring under `.dark` on specificity.
+          // Without the repeat, a chip in dark mode showed only its shift-type
+          // ring: selection, the live edge and a publication-blocking conflict
+          // were all invisible, on a screen that says "1 issue blocks
+          // publication" and expects you to find it.
+          //
           // A shift running right now is the one thing on the grid that is
           // literally happening, so it gets a live edge rather than a colour.
           timeState === 'live' &&
-            'ring-2 ring-success ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+            'ring-2 ring-success ring-offset-1 ring-offset-surface dark:ring-success dark:ring-offset-surface-dark',
           selected &&
-            'ring-2 ring-primary ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+            'ring-2 ring-primary ring-offset-1 ring-offset-surface dark:ring-primary dark:ring-offset-surface-dark',
           // Matches the grid legend's "Conflict" swatch: a double-booking,
           // rest breach or other critical, shift-specific insight.
           hasConflict &&
             !selected &&
-            'ring-2 ring-danger ring-offset-1 ring-offset-surface dark:ring-offset-surface-dark',
+            'ring-2 ring-danger ring-offset-1 ring-offset-surface dark:ring-danger dark:ring-offset-surface-dark',
           isDragging && 'opacity-40',
           // Lifted, not faded: the chip stays legible because it is the thing
           // being placed, and the landing cell carries the ring.
           moving &&
-            'ring-2 ring-primary ring-offset-2 ring-offset-surface shadow dark:ring-offset-surface-dark',
+            'ring-2 ring-primary ring-offset-2 ring-offset-surface shadow dark:ring-primary dark:ring-offset-surface-dark',
         )}
       >
         {/* An en dash, not a comma: a comma between two times reads as two

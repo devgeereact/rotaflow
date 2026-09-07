@@ -142,7 +142,12 @@ function mkShift(input: {
     staff_profile_id: input.staffProfileId,
     shift_type_id: input.shiftTypeId,
     starts_at: stamp(monday, input.day, input.start),
-    ends_at: stamp(monday, input.day, input.end),
+    // A shift whose end time is at or before its start crosses midnight and so
+    // ends on the following day. Stamping both ends on the same day made every
+    // night shift end eight hours before it began; `shiftNetMinutes` clamps a
+    // negative elapsed time to zero, so the grid showed staff rostered on four
+    // nights as `0h` against a 37.5h contract.
+    ends_at: stamp(monday, input.day + (input.end <= input.start ? 1 : 0), input.end),
     break_minutes: 30,
     status: input.status ?? (input.staffProfileId ? 'confirmed' : 'open'),
     colour: null,
@@ -591,17 +596,25 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                 onMoveShift={(shift, target) => {
                   const day = target.date;
                   setShifts((prev) =>
-                    prev.map((s) =>
-                      s.id === shift.id
-                        ? {
-                            ...s,
-                            staff_profile_id: target.staffProfileId,
-                            location_id: target.locationId,
-                            starts_at: `${day}T${s.starts_at.slice(11)}`,
-                            ends_at: `${day}T${s.ends_at.slice(11)}`,
-                          }
-                        : s,
-                    ),
+                    prev.map((s) => {
+                      if (s.id !== shift.id) return s;
+                      // Carry the shift's own duration to the target day rather
+                      // than rebuilding both ends on it. Rebuilding collapsed an
+                      // overnight shift onto a single day, so moving a night
+                      // shift with the keyboard silently turned it into 0h.
+                      const startsAt = `${day}T${s.starts_at.slice(11)}`;
+                      const durationMs =
+                        new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime();
+                      return {
+                        ...s,
+                        staff_profile_id: target.staffProfileId,
+                        location_id: target.locationId,
+                        starts_at: startsAt,
+                        ends_at: new Date(
+                          new Date(startsAt).getTime() + durationMs,
+                        ).toISOString(),
+                      };
+                    }),
                   );
                 }}
                 // Passed so the design loop sees the chip's × exactly as the

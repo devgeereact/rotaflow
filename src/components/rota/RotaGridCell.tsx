@@ -1,6 +1,11 @@
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { fromIsoInTimezone, shiftCellKey, shiftTimeState } from '@/lib/rotaGrid';
+import {
+  formatDayLabel,
+  fromIsoInTimezone,
+  shiftCellKey,
+  shiftTimeState,
+} from '@/lib/rotaGrid';
 import { ShiftChip } from '@/components/rota/ShiftChip';
 import { PreviewShiftChip } from '@/components/rota/PreviewShiftChip';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
@@ -8,6 +13,8 @@ import type { Shift, ShiftType } from '@/types';
 
 interface RotaGridCellProps {
   staffProfileId: string | null;
+  /** The row's person, or `null` on the Unfilled row. Names the cell for assistive tech. */
+  staffName: string | null;
   date: string;
   locationId: string;
   timezone: string;
@@ -32,6 +39,7 @@ interface RotaGridCellProps {
 
 export function RotaGridCell({
   staffProfileId,
+  staffName,
   date,
   locationId,
   timezone,
@@ -62,6 +70,13 @@ export function RotaGridCell({
   });
   const isEmpty = shifts.length === 0 && previewSuggestions.length === 0;
 
+  // The grid's date header is `aria-hidden` and the staff column is a sibling
+  // of the cells rather than an ancestor, so a cell carries no position that
+  // assistive tech can read. This is that position, said once and handed to
+  // both the empty cell's button and every chip in a filled one.
+  const dayLabel = formatDayLabel(date);
+  const cellContext = `${staffName ?? 'Unfilled'}, ${dayLabel.weekday} ${dayLabel.day}`;
+
   const containerClassName = cn(
     'min-h-[44px] rounded-lg border border-transparent p-0.5 transition-colors duration-control motion-reduce:transition-none',
     isOver && 'border-primary bg-primary/5',
@@ -82,13 +97,13 @@ export function RotaGridCell({
         type="button"
         ref={setNodeRef}
         onClick={onAddShift}
-        aria-label="Add shift"
+        aria-label={`Add a shift. ${cellContext}`}
         className={cn(
           containerClassName,
-          'flex w-full items-center justify-center text-sm text-content-muted/50 dark:text-content-muted-dark/50',
+          'flex w-full items-center justify-center text-sm text-content-muted dark:text-content-muted-dark',
         )}
       >
-        <span aria-hidden="true">, </span>
+        <span aria-hidden="true">–</span>
       </button>
     );
   }
@@ -107,6 +122,7 @@ export function RotaGridCell({
               shiftType={shiftType}
               startTime={startTime}
               endTime={endTime}
+              contextLabel={cellContext}
               timeState={shiftTimeState(shift.starts_at, shift.ends_at, now)}
               selected={shift.id === selectedShiftId}
               hasConflict={conflictedShiftIds.has(shift.id)}
