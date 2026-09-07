@@ -4,8 +4,14 @@
 **Date:** 2026-09-02 into 2026-09-03
 **Scope:** the public site at `https://rotaflow.space`, the authenticated PWA, the
 Supabase schema behind both, and the CI that guards them
-**Supersedes:** the 2026-08-14 QA audit, preserved in full as **Appendix A** — it is
-still the home of BUG-001 to BUG-042, which `docs/SAAS.md` §6 points here for
+**Supersedes:** the 2026-08-14 QA audit, preserved in full as **Appendix A**. Between
+them these two documents hold **BUG-001 to BUG-005, BUG-042 and BUG-046** — that is the
+whole set, and the range this line used to claim ("BUG-001 to BUG-042") was never true.
+The ids `docs/SAAS.md` §6 pointed here for — BUG-010 to BUG-015, 024, 029 to 032 — came
+from a **different** audit, the 2026-08-23 release audit, whose artifact is gone. Nine of
+them exist in no commit that has ever been made; BUG-029 survives only in code comments
+and was fixed by #149 on 2026-08-24. §6 now records that as an absence rather than
+pointing here, and a defect worth tracking today gets a row in that register instead.
 
 ---
 

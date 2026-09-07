@@ -1055,17 +1055,42 @@ headers and source comments.
 
 | ~~BUG-082~~ | Open Shifts offered an owner a control that could only fail | The board says which reading applies | 🟢 **Closed 2026-09-07.** `sidebarNav.ts` puts Open Shifts in every rail, correctly: an uncovered shift is a management problem before it is an opportunity. The board did not know that. It offered "Take it" to everybody, and for a reader with no staff record in the active organisation the claim can only fail, because `claim_open_shift` writes a `staff_profile_id` they do not have. It now reads the same fact the work-mode switch is gated on (`useWorkMode().staffProfileId`, so the rail and the screen cannot disagree) and renders a `Needs cover` badge with a link to the builder instead of a greyed-out primary action — deliberately not a disabled button, because claiming is not something this reader could do on a better day. Covered by `src/pages/app/OpenShiftsPage.test.tsx` (2 assertions) rather than by the owner journey: `0121` gives the founder a staff record, so the e2e owner always has one and the case only arises for an owner invited into an existing organisation or one whose record was archived. The journey asserts the claim path is untouched. | P2 |
 
-**Carried forward, still open** from the 2026-08-23 release audit: BUG-010, 011, 012, 013, 014,
-015, 024, 029, 030, 031, 032, plus the `auth.users` half of GDPR erasure.
+**The 2026-08-23 release-audit numbering is lost, and this paragraph used to claim otherwise.**
 
-These are **`docs/QA-AUDIT-REPORT.md`'s numbering, not this register's**, and they deliberately
-have no rows here — the two sequences collide (this file's BUG-010 would be a different defect
-from the audit's). An earlier version of this paragraph said they had "no home in the repo until
-this file", which read as a claim that they had been given rows. They have not. The audit report
-is a dated record of testing performed and remains the place they live — it was rewritten on
-2026-09-02 by the website and PWA audit, which kept the 2026-08-14 document whole as its
-Appendix A precisely so this pointer stays true; anything from it that warranted ongoing
-tracking was re-raised here under this register's own numbering.
+Until 2026-09-07 it read: "**Carried forward, still open** from the 2026-08-23 release audit:
+BUG-010, 011, 012, 013, 014, 015, 024, 029, 030, 031, 032, plus the `auth.users` half of GDPR
+erasure", and said those ids were `docs/QA-AUDIT-REPORT.md`'s numbering and lived there. They
+did not, and they never had.
+
+What the search found (GAP-087, and the method is worth repeating before trusting any pointer
+like this): `git log --all -S'<id>'` across the whole history, plus a grep of the current tree
+and of every surviving published artifact.
+
+- **Nine of the eleven — 011, 012, 013, 014, 015, 024, 030, 031, 032 — appear nowhere.** Not in
+  the tree, not in any commit that has ever existed, not in an artifact. They have no
+  description, no severity, no screen and no reproduction, so they cannot be restored and
+  cannot be re-tested either: you cannot re-test a defect you cannot describe.
+- **BUG-010** appears exactly once in the whole repository, inside the sentence above. Same
+  position as the nine.
+- **BUG-029 is recoverable, and was already fixed.** It is described in
+  `src/pages/app/RotaBuilderPage.tsx`, `src/services/rotaService.ts` and
+  `0061_rota_revisions.sql`: unpublishing a rota was a state with no way out. Closed on
+  2026-08-24 by #149, the day after the audit that raised it, and the list was never updated.
+  So the paragraph was not merely unsupported — it was demonstrably wrong about the one member
+  that could be checked.
+- **The `auth.users` half of GDPR erasure is tracked**, and always was, as GAP-057 in this
+  register. It was the only part of the sentence that pointed at something real.
+
+The audit those ids came from was the **2026-08-23 release audit**, whose artifact URLs 404.
+`docs/QA-AUDIT-REPORT.md` is a different document — the 2026-08-14 QA audit, preserved as its
+Appendix A — and it holds BUG-001 to BUG-005, BUG-042 and BUG-046. The pointer named the wrong
+document, and that document's own header made the matching claim back (corrected in the same
+change).
+
+**Read this as an absence, not as coverage.** Ten defects were raised, went unrecorded, and are
+gone. What replaced the practice is this register: a defect worth tracking gets a row here, in
+this file's numbering, with its evidence beside it — which is why the numbering collision the
+old paragraph worried about never mattered.
 
 ## §7 Gap register
 
@@ -1198,7 +1223,7 @@ tracking was re-raised here under this register's own numbering.
 | GAP-084     | Documents and avatars are pasted links, and nothing signs an upload                           | 🟡 **Opened 2026-09-07, from `docs/SCREENS.md:165`, verified against the tree.** `src/lib/imagekit.ts` builds a URL from an endpoint and nothing else: there is no signature, no upload token and no Edge Function that issues one. So `documents.file_url` and `staff_profiles.photo_url` hold whatever address somebody typed, and every right-to-work scan and staff photograph the product appears to hold is in fact hosted somewhere nobody here controls. It has never had a register row, which is why it has stayed invisible next to GAP-056 — that row covers erasure of an uploaded file and takes the existence of an upload for granted. **Next check:** decide whether the product stores files at all before building an upload; if it does, the authentication endpoint is an Edge Function and the private key never reaches the browser. | P2       |
 | GAP-085     | An account cannot change its own email address                                                | 🟡 **Opened 2026-09-07, from `docs/SCREENS.md:166`, verified against the tree.** `supabase.auth.updateUser` is called exactly once in this codebase, in `src/pages/app/account/SecurityPage.tsx:89`, and only with `{ password }`. There is no path anywhere to change the address an account is keyed on. That is more than an inconvenience: `accept_invite` matches an invitation by email, so somebody invited at an address they have lost cannot be reached at all, and a person who leaves an employer keeps signing in with a work address that no longer belongs to them. It needs Supabase's confirmation round-trip on both addresses, which is why it was never a small job. | P2       |
 | GAP-086     | A queued write the server refuses has nowhere to go                                           | 🟡 **Opened 2026-09-07, from `docs/OFFLINE-SPEC.md:51` and `docs/PWA-RELEASE-GATES.md:54`, which both describe it and neither tracks it.** Leave requests and swap responses queue offline. Conflict resolution while offline is "none — server-side rejection only": a request the server refuses on replay dead-letters, and a human re-enters it, if they notice. The gate document is blunter — "a queued leave request that the server refuses dead-letters and a human re-enters it" — and release gate 17 has been partial on exactly this since it was written. Separately, `docs/PRD.md:38` still lists "staff can open the app and see their shifts with no network" as a goal that `docs/OFFLINE-SPEC.md:42` classes as network required, so the product's headline claim and its own specification disagree. **Next check:** decide whether a refused replay surfaces as a notification the person can act on, or whether the offline claim narrows to match what ships. | P2       |
-| GAP-087     | Eleven carried-forward defects have no description anywhere in the repository                 | 🔴 **Opened 2026-09-07.** `docs/SAAS.md` carries "**Carried forward, still open** from the 2026-08-23 release audit: BUG-010, 011, 012, 013, 014, 015, 024, 029, 030, 031, 032, plus the `auth.users` half of GDPR erasure", and says plainly that these are `docs/QA-AUDIT-REPORT.md`'s numbering and live there rather than here. They do not. That file contains `BUG-001` to `BUG-005`, `BUG-042` and `BUG-046`, and none of the eleven. A grep across all of `docs/` returns only the pointer itself. So eleven defects the register believes are open and tracked have no description, no severity, no screen and no reproduction anywhere — most likely lost when the audit report was rewritten on 2026-09-02. This is worse than an untracked defect, because the register asserts they are handled. **Next check:** recover them from the 2026-08-23 audit in git history (`git log --follow docs/QA-AUDIT-REPORT.md`), then either restore the descriptions or re-test and close them. Until that happens the sentence must not be read as coverage. | **P1**   |
+| ~~GAP-087~~ | Eleven carried-forward defects have no description anywhere in the repository                 | 🟢 **Opened and closed 2026-09-07.** §6 asserted eleven defects from the 2026-08-23 release audit were carried forward and still open, and said they lived in `docs/QA-AUDIT-REPORT.md`. The search the row asked for was run — `git log --all -S'<id>'` over the entire history, a grep of the tree, and a check of every surviving published artifact — and the answer is that they cannot be recovered. **Nine (011, 012, 013, 014, 015, 024, 030, 031, 032) appear in no commit that has ever been made**, and BUG-010 appears only inside the sentence claiming to track it: no description, no severity, no reproduction, so they can be neither restored nor re-tested. **BUG-029 was recoverable and was already closed** — described in `RotaBuilderPage.tsx`, `rotaService.ts` and `0061_rota_revisions.sql`, fixed by #149 on 2026-08-24, the day after the audit raised it — so the sentence was wrong, not merely unsupported, about the one member that could be checked. The `auth.users` half of erasure was the only real pointer, and it is GAP-057. **The pointer also named the wrong document**: `QA-AUDIT-REPORT.md` is the 2026-08-14 QA audit and holds BUG-001 to BUG-005, BUG-042 and BUG-046; its own header returned the compliment by claiming to be "still the home of BUG-001 to BUG-042". Both statements are now what is true, and §6 records an absence instead of coverage. Closed as unrecoverable rather than fixed: ten defects were raised, went unrecorded and are gone, and the honest register says so. | **P1**   |
 | GAP-088     | Thirteen workspace screens have never been compared to their design reference                 | 🟡 **Opened 2026-09-07, from `docs/LOOP.md:98-130`.** The design-match backlog lives only in `LOOP.md` and has no row in this register, so it is invisible to anyone reading the register as the plan of record. Never matched: `/appboot`, `/app/team`, `/app/team/:staffId`, `/app/availability`, `/app/settings/organisation`, `/app/settings/integrations`, `/app/settings/policies`, `/app/settings/audit`, `/app/settings/notifications`, `/app/settings/billing`, `/app/account/profile`, `/app/account/preferences` and `/app/account/security` — which is the whole of Settings and My Profile. Some carry a real reason rather than an omission (the reference's language selector needs an i18n layer that does not exist; Industry Pack and Platform Support Access need tables that do not exist), and those are decisions, not debt. The rest is simply undone. `LOOP.md`'s own tooling section describes scripts by paths that no longer resolve, so the first step is making the loop runnable again. | P3       |
 | ~~GAP-025~~ | No vertical configuration | ⚫ **The owner's decision, not engineering's — stated 2026-08-31 rather than left looking like a backlog item.** Every other row in this register can be settled by reading the code; this one cannot. Configurable verticals means choosing between one product that fits four industries adequately and a configuration surface that fits each well and doubles the states every future feature has to work in. Care is the primary wedge per `docs/PRD.md`, and the honest cheap move is to keep shipping one generic product until a named customer is lost for a reason that is specifically vertical. **Reopens on that**, or on a decision to sell into one vertical exclusively. | P3 |
 
