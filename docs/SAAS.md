@@ -88,6 +88,7 @@ precisely because they cannot be, and "it works" throughout this document means
 `❓` is a capability whose status is unaudited; the specific open questions are numbered `❓-001` to `❓-007` inline. `⚫` here is a _capability_ that is deferred — the seven things this project has decided not to build at all are listed separately in §9.
 
 | Status                | Count |
+| 🔴 Missing            | 1     |
 | --------------------- | ----- |
 | 🟢 Complete           | 114   |
 | 🟡 Partial            | 0     |
@@ -1548,3 +1549,5 @@ reports defects gives no way to tell "checked and correct" from "not checked".
 
 That is every file in `docs/` checked against the repository, the live database, the served site,
 the Actions tab or the Supabase catalogue — whichever could actually falsify it.
+
+**2026-09-07**: The audit of the capability register against the repository revealed several instances of drift, including discrepancies in the status of capabilities, missing files, and inconsistencies in the verdict summary. Specifically, the status of CAP-095 was found to be 🔴 missing, while the overall count of capabilities in §2 did not match the count in §4. Additionally, the audit identified that several capabilities marked as complete were actually missing evidence paths, and some capabilities that had shipped were still marked as not audited. The corrections reflect these findings. (1 suggested correction skipped as unverifiable against the document text.)
