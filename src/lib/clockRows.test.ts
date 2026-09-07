@@ -226,7 +226,9 @@ describe('buildCurrentShift', () => {
   const info = buildCurrentShift(shift(), LOOKUPS, new Date('2026-05-14T08:48:00'));
 
   it('reproduces the reference values', () => {
-    expect(info.timeRange).toBe('09:00-17:00');
+    // En dash, not a hyphen: `@/lib/timeRange` owns the range separator for
+    // the whole product now (docs/DESIGN.md §2, "Time and figures").
+    expect(info.timeRange).toBe('09:00\u201317:00');
     expect(info.dateLabel).toBe('Today, 14 May 2026');
     expect(info.countdownLabel).toBe('Starts in 12 min');
     expect(info.locationName).toBe('Sunnyvale Care Home');

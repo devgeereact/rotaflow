@@ -151,7 +151,8 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     const orgName = (org?.name as string | undefined) ?? 'your organisation';
 
-    const origin = req.headers.get('Origin') || Deno.env.get('APP_URL') || 'https://rotaflow.space';
+    const origin =
+      req.headers.get('Origin') || Deno.env.get('APP_URL') || 'https://rotaflow.space';
     const link = `${origin}/invite/${token}`;
     const expires = new Date(invite.expires_at as string).toUTCString();
     const roleLabel = ROLE_LABEL[invite.role as string] ?? 'a team member';
@@ -181,7 +182,10 @@ Deno.serve(async (req: Request) => {
       // invite to whoever sent it, so this one is reported rather than logged.
       reportEdgeError(mailError, 'send-invite:smtp');
       return jsonResponse(
-        { error: 'The invite could not be emailed. Share the link yourself.', sent: false },
+        {
+          error: 'The invite could not be emailed. Share the link yourself.',
+          sent: false,
+        },
         502,
       );
     }

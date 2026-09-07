@@ -3,6 +3,7 @@ import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { LeaveStatusPill } from '@/components/leave/LeaveStatusPill';
 import { LeaveTypeChip } from '@/components/leave/LeaveTypeChip';
 import type { LeaveStatus, LeaveTypeKey } from '@/lib/leaveRows';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 export interface LeaveDisplayRow {
   id: string;
@@ -61,7 +62,7 @@ export function LeaveRowsTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label="Leave requests">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
@@ -164,6 +165,6 @@ export function LeaveRowsTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

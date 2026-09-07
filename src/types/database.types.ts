@@ -474,6 +474,46 @@ export type Database = {
           },
         ];
       };
+      clock_event_corrections: {
+        Row: {
+          actor_name: string | null;
+          actor_user_id: string | null;
+          after_value: Json;
+          before_value: Json;
+          clock_event_id: string;
+          created_at: string;
+          id: string;
+          org_id: string;
+          reason: string;
+          staff_profile_id: string;
+        };
+        /** Append-only, written only by `correct_clock_event` (0128). No client grant. */
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'clock_event_corrections_clock_event_id_fkey';
+            columns: ['clock_event_id'];
+            isOneToOne: false;
+            referencedRelation: 'clock_events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clock_event_corrections_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clock_event_corrections_staff_profile_id_fkey';
+            columns: ['staff_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       departments: {
         Row: {
           created_at: string;
@@ -1043,12 +1083,16 @@ export type Database = {
           accepted_at: string | null;
           accepted_by: string | null;
           created_at: string;
+          department_id: string | null;
           email: string;
           expires_at: string;
           id: string;
           invited_by: string | null;
+          last_sent_at: string | null;
+          location_id: string | null;
           org_id: string;
           revoked_at: string | null;
+          send_error: string | null;
           role: string;
           token_hash: string;
           updated_at: string;
@@ -1057,6 +1101,7 @@ export type Database = {
           accepted_at?: string | null;
           accepted_by?: string | null;
           created_at?: string;
+          department_id?: string | null;
           email: string;
           expires_at?: string;
           id?: string;
@@ -1172,6 +1217,46 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'invoices_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      job_titles: {
+        Row: {
+          active: boolean;
+          colour: string | null;
+          created_at: string;
+          id: string;
+          name: string;
+          /** Generated: lower-cased, whitespace-collapsed `name`. Read-only. */
+          name_normalised: string;
+          org_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          colour?: string | null;
+          created_at?: string;
+          id?: string;
+          name: string;
+          org_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          colour?: string | null;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          org_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'job_titles_org_id_fkey';
             columns: ['org_id'];
             isOneToOne: false;
             referencedRelation: 'organisations';
@@ -2364,6 +2449,9 @@ export type Database = {
       };
       shift_swaps: {
         Row: {
+          applied_at: string | null;
+          applied_from_staff_profile_id: string | null;
+          applied_shift_id: string | null;
           client_event_id: string | null;
           created_at: string;
           id: string;
@@ -2378,6 +2466,9 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          applied_at?: string | null;
+          applied_from_staff_profile_id?: string | null;
+          applied_shift_id?: string | null;
           client_event_id?: string | null;
           created_at?: string;
           id?: string;
@@ -2392,6 +2483,9 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          applied_at?: string | null;
+          applied_from_staff_profile_id?: string | null;
+          applied_shift_id?: string | null;
           client_event_id?: string | null;
           created_at?: string;
           id?: string;
@@ -2680,6 +2774,7 @@ export type Database = {
           holiday_allowance: number | null;
           id: string;
           job_title: string | null;
+          job_title_id: string | null;
           last_name: string;
           org_id: string;
           payroll_id: string | null;
@@ -2701,6 +2796,7 @@ export type Database = {
           holiday_allowance?: number | null;
           id?: string;
           job_title?: string | null;
+          job_title_id?: string | null;
           last_name: string;
           org_id: string;
           payroll_id?: string | null;
@@ -2722,6 +2818,7 @@ export type Database = {
           holiday_allowance?: number | null;
           id?: string;
           job_title?: string | null;
+          job_title_id?: string | null;
           last_name?: string;
           org_id?: string;
           payroll_id?: string | null;
@@ -2739,6 +2836,13 @@ export type Database = {
             columns: ['department_id'];
             isOneToOne: false;
             referencedRelation: 'departments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_profiles_job_title_id_fkey';
+            columns: ['job_title_id'];
+            isOneToOne: false;
+            referencedRelation: 'job_titles';
             referencedColumns: ['id'];
           },
           {
@@ -3030,6 +3134,9 @@ export type Database = {
       };
       timesheets: {
         Row: {
+          recalculation_required_at: string | null;
+          approved_at: string | null;
+          approved_by: string | null;
           created_at: string;
           id: string;
           org_id: string;
@@ -3039,8 +3146,11 @@ export type Database = {
           status: string;
           total_minutes: number;
           updated_at: string;
+          version: number;
         };
         Insert: {
+          approved_at?: string | null;
+          approved_by?: string | null;
           created_at?: string;
           id?: string;
           org_id: string;
@@ -3050,8 +3160,11 @@ export type Database = {
           status?: string;
           total_minutes?: number;
           updated_at?: string;
+          version?: number;
         };
         Update: {
+          approved_at?: string | null;
+          approved_by?: string | null;
           created_at?: string;
           id?: string;
           org_id?: string;
@@ -3061,6 +3174,7 @@ export type Database = {
           status?: string;
           total_minutes?: number;
           updated_at?: string;
+          version?: number;
         };
         Relationships: [
           {
@@ -3184,6 +3298,19 @@ export type Database = {
         Args: { p_swap_id: string };
         Returns: Database['public']['Tables']['shifts']['Row'];
       };
+      approve_timesheets: {
+        Args: {
+          p_org: string;
+          p_period_start: string;
+          p_period_end: string;
+          p_approvals: Json;
+        };
+        Returns: Database['public']['Tables']['timesheets']['Row'][];
+      };
+      decide_shift_swap: {
+        Args: { p_swap_id: string; p_status: string };
+        Returns: Json;
+      };
       begin_rota_revision: {
         Args: { p_rota_id: string };
         Returns: Database['public']['Tables']['rotas']['Row'];
@@ -3237,8 +3364,29 @@ export type Database = {
         Args: { p_connector: string; p_org: string; p_ref?: string };
         Returns: string;
       };
+      can_manage_job_titles: { Args: { p_org: string }; Returns: boolean };
+      record_invite_send: {
+        Args: { p_error?: string | null; p_invite: string; p_sent: boolean };
+        Returns: undefined;
+      };
+      correct_clock_event: {
+        Args: {
+          p_event: string;
+          p_event_at?: string | null;
+          p_expected_updated_at?: string | null;
+          p_reason: string;
+          p_type?: string | null;
+        };
+        Returns: Database['public']['Tables']['clock_events']['Row'];
+      };
       create_invite: {
-        Args: { p_email: string; p_org: string; p_role?: string };
+        Args: {
+          p_email: string;
+          p_org: string;
+          p_role?: string;
+          p_department?: string | null;
+          p_location?: string | null;
+        };
         Returns: {
           expires_at: string;
           invite_id: string;

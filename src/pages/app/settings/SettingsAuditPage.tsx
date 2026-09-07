@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { formatAuditAction } from '@/lib/auditActions';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString('en-GB', {
@@ -98,7 +99,7 @@ export function SettingsAuditPage(): JSX.Element {
             description="Nothing that RotaFlow currently audits has happened in this organisation."
           />
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollRegion label="Audit log">
             <table className="w-full min-w-[40rem] text-sm">
               <thead>
                 <tr className="border-b border-surface-border text-left dark:border-surface-border-dark">
@@ -140,7 +141,7 @@ export function SettingsAuditPage(): JSX.Element {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
         )}
       </SettingsSection>
 

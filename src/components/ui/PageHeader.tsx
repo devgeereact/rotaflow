@@ -1,4 +1,9 @@
 import type { ReactNode } from 'react';
+import {
+  HEADER_DESCRIPTION_CLASS,
+  HEADER_TITLE_CLASS,
+  HeaderBar,
+} from '@/components/ui/HeaderBar';
 import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
@@ -7,6 +12,12 @@ interface PageHeaderProps {
   description?: string;
   /** Right-aligned actions. Buttons, filters, a search field. */
   actions?: ReactNode;
+  /**
+   * The one dominant action for the page. Rendered first on phones, last on
+   * desktop. Optional: a header with a single action can keep passing it in
+   * `actions` and nothing changes.
+   */
+  primaryAction?: ReactNode;
   /** Tab bar or breadcrumb rendered below the title block. */
   below?: ReactNode;
   /**
@@ -47,39 +58,31 @@ export function PageHeader({
   title,
   description,
   actions,
+  primaryAction,
   below,
   avatar,
   meta,
   className,
 }: PageHeaderProps): JSX.Element {
   return (
-    <header className={cn('mb-5', className)}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          {avatar}
-          <div className="min-w-0">
-            <h1 className="text-balance font-display text-page-title font-semibold tracking-[-0.5px] text-content dark:text-content-dark">
-              {title}
-            </h1>
-            {description && (
-              // Capped at 64 characters: past that a one-line purpose becomes a
-              // paragraph the eye has to track back across, and every one of
-              // these sits directly above dense content.
-              <p className="mt-1.5 max-w-[64ch] text-sm text-content-muted dark:text-content-muted-dark">
-                {description}
-              </p>
-            )}
-            {meta && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-content-muted dark:text-content-muted-dark">
-                {meta}
-              </div>
-            )}
-          </div>
+    <header className={cn('mb-6', className)}>
+      <HeaderBar primaryAction={primaryAction} actions={actions}>
+        {avatar}
+        <div className="min-w-0">
+          <h1 className={HEADER_TITLE_CLASS}>{title}</h1>
+          {description && (
+            // Capped at 64 characters: past that a one-line purpose becomes a
+            // paragraph the eye has to track back across, and every one of
+            // these sits directly above dense content.
+            <p className={HEADER_DESCRIPTION_CLASS}>{description}</p>
+          )}
+          {meta && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-content-muted dark:text-content-muted-dark">
+              {meta}
+            </div>
+          )}
         </div>
-        {/* `shrink-0` so a long title wraps rather than crushing the actions,
-            which are the only things on the row that can be clicked. */}
-        {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}
-      </div>
+      </HeaderBar>
       {below && <div className="mt-5">{below}</div>}
     </header>
   );

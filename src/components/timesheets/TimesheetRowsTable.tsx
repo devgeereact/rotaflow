@@ -2,6 +2,7 @@ import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import type { TimesheetDayStatus } from '@/lib/timesheetDayRows';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 export interface TimesheetDisplayRow {
   staffId: string;
@@ -64,7 +65,7 @@ export function TimesheetRowsTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label="Timesheets">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
@@ -146,6 +147,6 @@ export function TimesheetRowsTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

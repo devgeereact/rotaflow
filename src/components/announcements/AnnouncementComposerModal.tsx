@@ -186,19 +186,28 @@ export function AnnouncementComposerModal({
                 : 'Included with the Business and Enterprise plans. Upgrade in Settings → Billing, or write the announcement below as normal.'}
             </p>
             {aiNote && (
-              <p className="mt-1.5 text-xs text-success" role="status">
+              <p
+                className="mt-1.5 text-xs text-success-ink dark:text-success-ink-dark"
+                role="status"
+              >
                 {aiNote}
               </p>
             )}
             {aiUnverified.length > 0 && (
-              <p className="mt-1.5 text-xs text-warning" role="status">
+              <p
+                className="mt-1.5 text-xs text-warning-ink dark:text-warning-ink-dark"
+                role="status"
+              >
                 {aiUnverified.length === 1
                   ? `“${aiUnverified[0]}” does not match anyone on your team. Check it before posting.`
                   : `${aiUnverified.map((n) => `“${n}”`).join(', ')} do not match anyone on your team. Check them before posting.`}
               </p>
             )}
             {aiError && (
-              <p className="mt-1.5 text-xs text-warning" role="status">
+              <p
+                className="mt-1.5 text-xs text-warning-ink dark:text-warning-ink-dark"
+                role="status"
+              >
                 {aiError}
               </p>
             )}

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { appUrlFor } from '@/lib/appOrigin';
+import { reportError } from '@/lib/sentry';
 import type { Invite, MembershipRole } from '@/types';
 
 /**
@@ -46,16 +47,38 @@ export function buildAcceptUrl(token: string): string {
   return appUrlFor(`/invite/${token}`);
 }
 
+/**
+ * Where this person is being invited to work. Both optional, both applied to
+ * their staff record when they accept (0126).
+ *
+ * These are ids, not names. "Invite your team" offered a Location dropdown
+ * from the start and staged the chosen NAME in component state, where it was
+ * shown back in the review table and then dropped on the floor: `createInvite`
+ * took org, email and role, and `invites` had no column for either. A manager
+ * assigned twenty people to sites during onboarding and every one of them
+ * joined unassigned (RF-11).
+ */
+export interface InviteAssignment {
+  departmentId?: string | null;
+  locationId?: string | null;
+}
+
 /** Mint an invite. Owners/managers only. Enforced in the database. */
 export async function createInvite(
   orgId: string,
   email: string,
   role: MembershipRole,
+  assignment: InviteAssignment = {},
 ): Promise<CreatedInvite> {
   const { data, error } = await supabase.rpc('create_invite', {
     p_org: orgId,
     p_email: email,
     p_role: role,
+    // The database re-checks that both belong to `orgId` — `create_invite` is
+    // SECURITY DEFINER, so RLS is not standing behind it and a foreign key
+    // alone would accept another tenant's id.
+    p_department: assignment.departmentId ?? null,
+    p_location: assignment.locationId ?? null,
   });
 
   if (error) throw error;
@@ -134,6 +157,30 @@ export interface InviteEmailResult {
 }
 
 /**
+ * Record the outcome against the invitation itself (`0129`).
+ *
+ * The result used to live only in the toast the manager saw. Reload the page
+ * and a delivered invitation and one the SMTP server refused were both simply
+ * "pending" — and they need opposite actions, because one is waiting on the
+ * invitee and the other on the manager.
+ *
+ * Deliberately never throws. This is the record of a send, not the send: an
+ * invitation that went out and whose bookkeeping failed must still be reported
+ * as sent, and the caller's own return value is what the screen shows.
+ */
+async function recordSend(
+  invite: CreatedInvite,
+  result: InviteEmailResult,
+): Promise<void> {
+  const { error } = await supabase.rpc('record_invite_send', {
+    p_invite: invite.inviteId,
+    p_sent: result.sent,
+    p_error: result.reason ?? null,
+  });
+  if (error) reportError(error, { area: 'invite:recordSend' });
+}
+
+/**
  * Email the join link to the person invited.
  *
  * Split from `createInvite` on purpose rather than folded into it: the invite
@@ -172,8 +219,12 @@ export async function sendInviteEmail(
         reason = undefined;
       }
     }
-    return { sent: false, reason };
+    const failure: InviteEmailResult = reason ? { sent: false, reason } : { sent: false };
+    await recordSend(invite, failure);
+    return failure;
   }
 
-  return { sent: Boolean(result.data?.sent) };
+  const outcome: InviteEmailResult = { sent: Boolean(result.data?.sent) };
+  await recordSend(invite, outcome);
+  return outcome;
 }

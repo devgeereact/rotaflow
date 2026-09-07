@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LogOut, MoreVertical, ShieldCheck } from 'lucide-react';
+import { Briefcase, Building2, LogOut, MoreVertical, ShieldCheck } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useOrg } from '@/hooks/useOrg';
+import { useWorkMode } from '@/hooks/useWorkMode';
 import { footerNavItemsForRole } from '@/lib/sidebarNav';
 import { cn } from '@/lib/utils';
+import type { WorkMode } from '@/lib/workMode';
 
 function initialsFor(label: string): string {
   return label
@@ -33,12 +35,23 @@ function AccountMenu({
   role,
   isPlatformAdmin,
   collapsed,
+  mode,
+  canSwitchMode,
+  onSwitchMode,
   onNavigate,
   onSignOut,
 }: {
   role: Parameters<typeof footerNavItemsForRole>[0];
   isPlatformAdmin: boolean;
   collapsed: boolean;
+  /** Which half of the product the rail is currently showing. */
+  mode: WorkMode;
+  /**
+   * Whether to offer the switch at all. False for staff, and false for a
+   * manager or owner with no staff profile here — see `canSwitchWorkMode`.
+   */
+  canSwitchMode: boolean;
+  onSwitchMode: (mode: WorkMode) => void;
   onNavigate?: () => void;
   onSignOut: () => void;
 }): JSX.Element {
@@ -105,12 +118,34 @@ function AccountMenu({
             </Link>
           ))}
 
+          {canSwitchMode && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onSwitchMode(mode === 'my-work' ? 'management' : 'my-work');
+                }}
+                className={cn(MENU_ITEM, 'w-full')}
+              >
+                {mode === 'my-work' ? (
+                  <Building2 size={18} aria-hidden="true" />
+                ) : (
+                  <Briefcase size={18} aria-hidden="true" />
+                )}
+                {mode === 'my-work' ? 'Managing only' : 'Show my work'}
+              </button>
+              <hr className="my-1 border-surface-border dark:border-surface-border-dark" />
+            </>
+          )}
+
           {isPlatformAdmin && (
             <Link
               to="/admin"
               role="menuitem"
               onClick={closeAndNavigate}
-              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-danger hover:bg-danger/5 dark:hover:text-danger"
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-danger-ink dark:text-danger-ink-dark hover:bg-danger/5 dark:hover:text-danger-ink-dark"
             >
               <ShieldCheck size={18} aria-hidden="true" />
               Platform console
@@ -152,6 +187,7 @@ export function SidebarFooter({
 }: SidebarFooterProps): JSX.Element {
   const { user, signOut } = useSupabaseAuth();
   const { role, isPlatformAdmin } = useOrg();
+  const { mode, setMode, canSwitch } = useWorkMode();
 
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '';
@@ -163,6 +199,9 @@ export function SidebarFooter({
           role={role}
           isPlatformAdmin={isPlatformAdmin}
           collapsed
+          mode={mode}
+          canSwitchMode={canSwitch}
+          onSwitchMode={setMode}
           onNavigate={onNavigate}
           onSignOut={() => void signOut()}
         />
@@ -205,6 +244,9 @@ export function SidebarFooter({
           role={role}
           isPlatformAdmin={isPlatformAdmin}
           collapsed={false}
+          mode={mode}
+          canSwitchMode={canSwitch}
+          onSwitchMode={setMode}
           onNavigate={onNavigate}
           onSignOut={() => void signOut()}
         />

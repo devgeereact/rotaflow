@@ -78,27 +78,30 @@ export function CurrentShiftPane({
     <div className="flex h-full flex-col p-6">
       <ClockCardHeading icon={CalendarDays} title="Current Shift" />
 
-      <div className="mt-6 flex gap-8">
+      {/* Stacked on a phone. Side by side, the fixed 160px detail column left
+          the time range about 100px to live in, so "09:00–17:00" broke across
+          two lines and the site name wrapped a word at a time. */}
+      <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:gap-8">
         <div className="min-w-0 flex-1">
           <span className="inline-flex items-center rounded-lg bg-clock-tint px-2.5 py-1 text-xs font-semibold text-clock-fg dark:bg-clock/20 dark:text-clock-tint">
             {shift.countdownLabel}
           </span>
 
-          <p className="mt-4 text-4xl font-bold tracking-tight text-content dark:text-content-dark">
+          <p className="mt-4 text-3xl font-bold tracking-tight tabular-nums text-content sm:text-4xl dark:text-content-dark">
             {shift.timeRange}
           </p>
           <p className="mt-1 text-base text-content dark:text-content-dark">
             {shift.dateLabel}
           </p>
 
-          <ul className="mt-5 space-y-5 border-t border-divider pt-5 dark:border-divider-dark">
+          <ul className="mt-5 space-y-4 border-t border-divider pt-5 dark:border-divider-dark">
             <MetaRow icon={Building2} label={shift.locationName} />
             {shift.areaName && <MetaRow icon={MapPin} label={shift.areaName} />}
             {shift.roleName && <MetaRow icon={Briefcase} label={shift.roleName} />}
           </ul>
         </div>
 
-        <div className="w-40 shrink-0 space-y-5 pt-1">
+        <div className="grid grid-cols-2 gap-4 sm:block sm:w-40 sm:shrink-0 sm:space-y-5 sm:pt-1">
           {shift.shiftTypeName && (
             <Detail label="Shift Type">
               <span className="inline-flex items-center rounded-lg bg-clock-tint px-2.5 py-1 text-xs font-semibold text-clock-fg dark:bg-clock/20 dark:text-clock-tint">
@@ -124,7 +127,10 @@ export function CurrentShiftPane({
 
       {shift.reminder && (
         <div className="mt-auto border-t border-divider pt-6 dark:border-divider-dark">
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3">
+          {/* The opaque wash token, not `warning/10`: an alpha of the solid
+              hue lands on a different colour over a card than over the canvas,
+              so the same reminder read as two shades. docs/DESIGN.md §2. */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning-wash px-4 py-3 dark:bg-warning-wash-dark">
             <div className="flex items-start gap-3">
               <TriangleAlert
                 size={18}
@@ -138,7 +144,7 @@ export function CurrentShiftPane({
                 {/* `content`, not `content-muted`: on the warning tint this
                     line is 4.49 : 1 against a 4.5 : 1 minimum (GAP-030). One
                     hundredth under is still under. */}
-                <p className="text-sm text-content dark:text-content-muted-dark">
+                <p className="text-sm text-content dark:text-content-dark">
                   {shift.reminder.body}
                 </p>
               </div>
@@ -147,7 +153,7 @@ export function CurrentShiftPane({
               <button
                 type="button"
                 onClick={onViewReminder}
-                className="inline-flex shrink-0 items-center gap-1 rounded text-sm font-semibold text-primary dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
               >
                 View Details
                 <ChevronRight size={16} aria-hidden="true" />

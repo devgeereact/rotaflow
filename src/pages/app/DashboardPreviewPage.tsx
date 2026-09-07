@@ -1,5 +1,16 @@
 import { format } from 'date-fns';
-import { ManagerDashboard } from '@/components/dashboard/ManagerDashboard';
+import {
+  OperationsDashboard,
+  type OperationsDaySnapshot,
+} from '@/components/dashboard/OperationsDashboard';
+import { buildAttendanceViewRows } from '@/lib/attendanceRows';
+import {
+  buildAttendanceRows,
+  summariseAttendance,
+  type AttendanceCounts,
+} from '@/lib/attendance';
+import { operationalWindow, nextDay } from '@/lib/operationalDay';
+import type { ClockEvent, Shift } from '@/types';
 import { StaffDashboard } from '@/components/dashboard/StaffDashboard';
 import type {
   DashboardOverview,
@@ -9,6 +20,7 @@ import type {
   WeeklyRosterSummary,
 } from '@/services/dashboardService';
 import type { Announcement, Location, StaffProfile } from '@/types';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const TODAY = format(new Date(), 'yyyy-MM-dd');
 const NOW = new Date(`${TODAY}T13:00:00`);
@@ -63,6 +75,7 @@ const STAFF: StaffProfile[] = [
     first_name,
     last_name,
     job_title: 'Care Assistant',
+    job_title_id: null,
     department_id: null,
     contract_type: 'full_time',
     weekly_hours: 37.5,
@@ -217,17 +230,125 @@ const MY_UPCOMING: ShiftGroup[] = [
 ];
 
 /**
+ * A day's worth of shifts and clock events, built so the preview exercises
+ * every attendance state rather than a happy path.
+ *
+ * One person working, one on a break, one who finished, one starting later
+ * and one overdue with nothing recorded. This is the same set the acceptance
+ * tests use, and it is here so a screenshot of this screen shows what the
+ * states actually look like beside each other.
+ */
+const PREVIEW_TZ = 'Europe/London';
+
+function previewShift(
+  id: string,
+  staffIndex: number,
+  start: string,
+  end: string,
+  dayOffset = 0,
+): Shift {
+  return {
+    id,
+    org_id: 'preview',
+    rota_id: 'rota-preview',
+    staff_profile_id: `staff-${staffIndex}`,
+    location_id: 'loc-0',
+    department_id: null,
+    shift_type_id: null,
+    starts_at: at(start, dayOffset),
+    ends_at: at(end, dayOffset),
+    break_minutes: 30,
+    notes: null,
+    colour: null,
+    status: 'scheduled',
+    created_at: NOW.toISOString(),
+    updated_at: NOW.toISOString(),
+  };
+}
+
+function previewEvent(
+  id: string,
+  staffIndex: number,
+  type: string,
+  time: string,
+  dayOffset = 0,
+): ClockEvent {
+  return {
+    id,
+    org_id: 'preview',
+    staff_profile_id: `staff-${staffIndex}`,
+    shift_id: null,
+    type,
+    event_at: at(time, dayOffset),
+    event_at_reported: null,
+    method: 'gps',
+    location_name: 'Sunnyvale Care Home',
+    latitude: null,
+    longitude: null,
+    accuracy: null,
+    client_event_id: null,
+    synced: true,
+    created_at: NOW.toISOString(),
+    updated_at: NOW.toISOString(),
+  };
+}
+
+const PREVIEW_SHIFTS: Shift[] = [
+  previewShift('shift-working', 0, '07:00', '19:00'),
+  previewShift('shift-break', 1, '08:00', '16:00'),
+  previewShift('shift-done', 2, '06:00', '12:00'),
+  previewShift('shift-later', 3, '14:00', '22:00'),
+];
+
+const PREVIEW_EVENTS: ClockEvent[] = [
+  previewEvent('ev-1', 0, 'in', '06:58'),
+  previewEvent('ev-2', 1, 'in', '07:59'),
+  previewEvent('ev-3', 1, 'break_start', '12:30'),
+  previewEvent('ev-4', 2, 'in', '05:57'),
+  previewEvent('ev-5', 2, 'out', '12:04'),
+];
+
+function previewDay(
+  date: string,
+  shifts: Shift[],
+  events: ClockEvent[],
+): OperationsDaySnapshot {
+  const window = operationalWindow(date, PREVIEW_TZ);
+  const rows = buildAttendanceRows({
+    shifts,
+    events,
+    now: NOW,
+    timezone: PREVIEW_TZ,
+    windowFromIso: window.fromIso,
+    windowToIso: window.toIso,
+  });
+  const counts: AttendanceCounts = summariseAttendance(rows, shifts);
+  return {
+    date,
+    rows: buildAttendanceViewRows(rows, {
+      staffById: new Map(STAFF.map((s) => [s.id, s])),
+      locationById: new Map(LOCATIONS.map((l) => [l.id, l])),
+      departmentById: new Map(),
+      jobTitleById: new Map(),
+      fallbackTimezone: PREVIEW_TZ,
+    }),
+    counts,
+    failed: false,
+  };
+}
+
+/**
  * Design-loop preview only, at `/dashboard-preview`. The real `/app/dashboard`
  * needs a live Supabase session and a seeded organisation, neither of which a
- * screenshot tool has. Renders the real `ManagerDashboard`/`StaffDashboard`
- * against fixed mock data shaped to match
- * `docs/ORGANISATION_WORKSPACE.html`'s numbers. `?role=staff` switches branch.
+ * screenshot tool has. Renders the real
+ * `OperationsDashboard`/`StaffDashboard` against fixed mock data.
+ * `?role=staff` switches branch.
  */
 export function DashboardPreviewPage(): JSX.Element {
   const role = new URLSearchParams(window.location.search).get('role');
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       {role === 'staff' ? (
         <StaffDashboard
           firstName="Priya"
@@ -239,15 +360,36 @@ export function DashboardPreviewPage(): JSX.Element {
           openSwaps={2}
         />
       ) : (
-        <ManagerDashboard
-          firstName="Marcus"
+        <OperationsDashboard
           orgName="Sunnyvale Care Group"
-          overview={OVERVIEW}
+          locations={LOCATIONS}
+          selectedLocationId={null}
+          onSelectLocation={() => undefined}
+          timezone={PREVIEW_TZ}
+          mixedTimezones={false}
+          today={previewDay(TODAY, PREVIEW_SHIFTS, PREVIEW_EVENTS)}
+          tomorrow={previewDay(
+            nextDay(TODAY),
+            [previewShift('shift-tomorrow', 0, '07:00', '19:00', 1)],
+            [],
+          )}
+          staffingDay="today"
+          onStaffingDayChange={() => undefined}
           pending={PENDING}
           weekly={WEEKLY}
-          hoursTrend={[402, 418, 396, 441, 428, 449, 462]}
+          fetchedAt={NOW.toISOString()}
+          refreshing={false}
+          stale={false}
+          onRefresh={() => undefined}
+          sort="expected"
+          direction="asc"
+          onSort={() => undefined}
+          onOpenRow={() => undefined}
+          // The preview organisation is fully set up, so the banner is absent —
+          // which is the state a screenshot of this screen should show.
+          setup={{ requiredDone: 6, requiredTotal: 6, nextTitle: '' }}
         />
       )}
-    </div>
+    </PreviewCanvas>
   );
 }

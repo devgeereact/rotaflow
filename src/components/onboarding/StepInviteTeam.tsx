@@ -22,17 +22,37 @@ export interface StagedInvite {
   email: string;
   role: MembershipRole;
   /**
-   * Department/location are staged locally for the reviewer's own planning
-   * only, `createInvite` (src/services/inviteService.ts) takes just
-   * org/email/role, and the `invites` table has no columns for either yet.
-   * Shown in the review table below to match docs/design/Team-onboarding.png, but
-   * not persisted; a future migration would be needed to actually save them.
+   * Where this person will work. Held as ids because they are sent to
+   * `create_invite`, which validates both against the inviting organisation
+   * and applies them to the staff record on acceptance (0126).
+   *
+   * Until RF-11 these were NAMES, staged in component state, shown back in
+   * the review table below, and then dropped: `createInvite` took only
+   * org/email/role and `invites` had no column for either. A manager
+   * assigned twenty people to sites during onboarding and every one of them
+   * joined unassigned. The code comment that used to sit here said so, which
+   * nobody administering an organisation ever reads.
    */
+  departmentId?: string;
+  locationId?: string;
+  /** The chosen names, for the review table. Display only. */
   department?: string;
   location?: string;
   /** Set once the invitation exists in the database. */
   url?: string;
   error?: string;
+  /**
+   * Why the join link could not be emailed, when the invitation itself was
+   * created. Distinct from `error`, which means no invitation exists at all.
+   *
+   * RF-10: these two used to be the same thing, which is to say neither was
+   * recorded. `handleCreateInvites` awaited `sendInviteEmail` and threw its
+   * result away, so a mail server returning 503 produced the same green
+   * "Invitations sent" as a successful send. The invite worked — it is durable
+   * and the link is shown — but the owner walked away believing their staff
+   * had been written to, and nobody had.
+   */
+  deliveryError?: string;
 }
 
 interface StepInviteTeamProps {
@@ -44,7 +64,17 @@ interface StepInviteTeamProps {
   submitting: boolean;
   sent: boolean;
   /** Locations captured in step 2, offered here as real (not invented) options. */
-  locationNames: string[];
+  locations: readonly { id: string; name: string }[];
+  /**
+   * The organisation's real departments.
+   *
+   * Empty during onboarding, because nothing creates a department before this
+   * step — and the control is hidden when it is empty. It used to offer a
+   * hardcoded Care/Nursing/Support/Admin, which belonged to no organisation
+   * and was stored nowhere: a list invented by the interface, presented as
+   * though it were the customer's own.
+   */
+  departments: readonly { id: string; name: string }[];
 }
 
 const ROLE_BADGE: Record<MembershipRole, string> = {
@@ -78,7 +108,8 @@ export function StepInviteTeam({
   onCopy,
   submitting,
   sent,
-  locationNames,
+  locations,
+  departments,
 }: StepInviteTeamProps): JSX.Element {
   const [emails, setEmails] = useState('');
   const [invalidCount, setInvalidCount] = useState(0);
@@ -108,14 +139,16 @@ export function StepInviteTeam({
       .map((email) => ({
         email,
         role,
-        department: department || undefined,
-        location: location || undefined,
+        departmentId: department || undefined,
+        locationId: location || undefined,
+        department: departments.find((d) => d.id === department)?.name,
+        location: locations.find((l) => l.id === location)?.name,
       }));
 
     onStage([...staged, ...additions]);
     setEmails(invalid.join(' '));
     setInvalidCount(invalid.length);
-  }, [emails, role, department, location, staged, onStage]);
+  }, [emails, role, department, location, departments, locations, staged, onStage]);
 
   const remove = useCallback(
     (email: string): void => onStage(staged.filter((s) => s.email !== email)),
@@ -175,7 +208,10 @@ export function StepInviteTeam({
                 Add one or more email addresses, separated by commas, then press Enter.
               </p>
               {invalidCount > 0 && (
-                <p className="mt-1 text-xs text-danger" role="alert">
+                <p
+                  className="mt-1 text-xs text-danger-ink dark:text-danger-ink-dark"
+                  role="alert"
+                >
                   {invalidCount === 1
                     ? "That address doesn't look valid. It's been left above so you can correct it."
                     : `${invalidCount} addresses don't look valid. They've been left above so you can correct them.`}
@@ -197,21 +233,29 @@ export function StepInviteTeam({
                   <option value="owner">Owner</option>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="invite-department">Department (optional)</Label>
-                <Select
-                  id="invite-department"
-                  icon={Building2}
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                >
-                  <option value="">Select department</option>
-                  <option value="Care">Care</option>
-                  <option value="Nursing">Nursing</option>
-                  <option value="Support">Support</option>
-                  <option value="Admin">Admin</option>
-                </Select>
-              </div>
+              {/* Hidden when the organisation has no departments, which is
+                  every organisation at this point in onboarding. An empty
+                  dropdown is honest where the old hardcoded Care/Nursing/
+                  Support/Admin was not: those belonged to no organisation and
+                  were saved nowhere. */}
+              {departments.length > 0 && (
+                <div>
+                  <Label htmlFor="invite-department">Department (optional)</Label>
+                  <Select
+                    id="invite-department"
+                    icon={Building2}
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                  >
+                    <option value="">Select department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label htmlFor="invite-location">Location (optional)</Label>
                 <Select
@@ -219,12 +263,12 @@ export function StepInviteTeam({
                   icon={MapPin}
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  disabled={locationNames.length === 0}
+                  disabled={locations.length === 0}
                 >
                   <option value="">Select location</option>
-                  {locationNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
                     </option>
                   ))}
                 </Select>
@@ -313,13 +357,23 @@ export function StepInviteTeam({
                       </td>
                       <td className="px-4 py-3">
                         {invite.error ? (
-                          <span className="text-xs text-danger">{invite.error}</span>
+                          <span className="text-xs text-danger-ink dark:text-danger-ink-dark">
+                            {invite.error}
+                          </span>
+                        ) : invite.url && invite.deliveryError ? (
+                          // The invitation is real and the link below works.
+                          // Only the email did not go, and saying so is the
+                          // whole point — the owner has to pass the link on
+                          // themselves, and cannot know that from "Created".
+                          <span className="rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning-ink dark:text-warning-ink-dark">
+                            Not emailed
+                          </span>
                         ) : invite.url ? (
-                          <span className="rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
-                            Created
+                          <span className="rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success-ink dark:text-success-ink-dark">
+                            Emailed
                           </span>
                         ) : (
-                          <span className="rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">
+                          <span className="rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning-ink dark:text-warning-ink-dark">
                             Pending
                           </span>
                         )}

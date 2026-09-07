@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Download } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { StatTile } from '@/components/ui/StatTile';
@@ -26,6 +24,16 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { reportError } from '@/lib/sentry';
+import { useFilterState } from '@/hooks/useFilterState';
+import { FilterBar } from '@/components/ui/FilterBar';
+import {
+  filterValue,
+  listOutcome,
+  matchesFilters,
+  matchesSearch,
+  type FilterDimension,
+  type FilterOption,
+} from '@/lib/filters';
 import { humaniseKey } from '@/lib/platformOverview';
 import { downloadCsv } from '@/lib/csv';
 import {
@@ -56,6 +64,30 @@ type UserSortKey =
  * held in `revoke_platform_role` as well as here, because a guard that lives
  * only in the browser is not a guard.
  */
+/**
+ * The dimensions this screen filters on, on the shared contract.
+ *
+ * `q` is deliberately NOT marked sensitive, unlike the workspace's person
+ * search. This list is platform administration: an account's email is how a
+ * support case identifies it, it is already in the ticket, and a linkable
+ * filtered view is the point of a console. The workspace's search is a
+ * colleague's name inside one tenant, which is a different thing.
+ *
+ * `role` is `multi` rather than `select`: an account can hold a role in
+ * several organisations, and the OR-within-a-dimension rule is what makes
+ * "owner or manager anywhere" expressible.
+ */
+const USER_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text' },
+  { id: 'access', label: 'Platform access', kind: 'select' },
+  { id: 'role', label: 'Organisation role', kind: 'multi' },
+] as const;
+
+const ACCESS_OPTIONS: readonly FilterOption[] = [
+  { value: 'platform', label: 'Platform administrators' },
+  { value: 'standard', label: 'Standard accounts' },
+] as const;
+
 export function AdminUsersPage(): JSX.Element {
   const { user } = useSupabaseAuth();
   const { canManagePlatformAdmins } = usePermissions();
@@ -70,11 +102,19 @@ export function AdminUsersPage(): JSX.Element {
   );
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [search, setSearch] = useState('');
-  const [access, setAccess] = useState('');
-  const [orgRole, setOrgRole] = useState('');
   const [sort, setSort] = useState<DataTableSort<UserSortKey> | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  /**
+   * Filters and sort in the URL, on the shared contract
+   * (`src/lib/filters.ts`), so this screen and the organisation workspace
+   * behave the same way.
+   *
+   * `scopeKey` is fixed: this list is every account on the deployment rather
+   * than one tenant's, so there is no scope to switch and nothing to prune.
+   */
+  const filterApi = useFilterState({ dimensions: USER_FILTERS, scopeKey: 'platform' });
+  const filters = filterApi.filters;
 
   useEffect(() => {
     let active = true;
@@ -132,22 +172,27 @@ export function AdminUsersPage(): JSX.Element {
    * screen where one call is proportionate.
    */
 
+  const accessors = useMemo(
+    () => ({
+      access: (p: Profile) => (p.is_platform_admin ? 'platform' : 'standard'),
+      // Every organisation role this account holds, so somebody who is an
+      // owner in one tenant and staff in another matches either — which is
+      // what the OR-within-a-dimension rule already means everywhere else.
+      role: (p: Profile) => memberships.get(p.id)?.roles ?? [],
+    }),
+    [memberships],
+  );
+
   const visible = useMemo(() => {
     if (!profiles) return [];
-    const q = search.trim().toLowerCase();
-    const filtered = profiles.filter((p) => {
-      if (access === 'platform' && !p.is_platform_admin) return false;
-      if (access === 'standard' && p.is_platform_admin) return false;
-      if (orgRole && !(memberships.get(p.id)?.roles ?? []).includes(orgRole)) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        (p.email ?? '').toLowerCase().includes(q) ||
-        (p.full_name ?? '').toLowerCase().includes(q) ||
-        (memberships.get(p.id)?.soleOrgName ?? '').toLowerCase().includes(q)
-      );
-    });
+    const filtered = profiles.filter(
+      (p) =>
+        matchesFilters(p, filters, accessors) &&
+        matchesSearch(
+          [p.email, p.full_name, memberships.get(p.id)?.soleOrgName],
+          filterValue(filters, 'q'),
+        ),
+    );
 
     if (!sort) return filtered;
     const direction = sort.direction === 'asc' ? 1 : -1;
@@ -189,7 +234,7 @@ export function AdminUsersPage(): JSX.Element {
           );
       }
     });
-  }, [profiles, search, access, orgRole, sort, memberships]);
+  }, [profiles, filters, accessors, sort, memberships]);
 
   const adminCount = useMemo(
     () => (profiles ?? []).filter((p) => p.is_platform_admin).length,
@@ -262,6 +307,31 @@ export function AdminUsersPage(): JSX.Element {
     },
     [confirm, showError, showSuccess],
   );
+
+  const optionsFor = useCallback(
+    (dimensionId: string): readonly FilterOption[] =>
+      dimensionId === 'access'
+        ? ACCESS_OPTIONS
+        : dimensionId === 'role'
+          ? // Null until the accounts load. An empty list renders
+            // "Organisation role: all" and nothing else, which is honest —
+            // there are no roles to choose between yet.
+            (summary?.roles ?? []).map((role) => ({
+              value: role,
+              label: humaniseKey(role),
+            }))
+          : [],
+    [summary],
+  );
+
+  // A failed read is not an empty deployment. `DataTable` shows one empty
+  // message, so the outcome decides which sentence it gets.
+  const outcome = listOutcome({
+    loading: profiles === null && !failed,
+    failed,
+    totalRows: profiles?.length ?? 0,
+    matchedRows: visible.length,
+  });
 
   const columns = useMemo<DataTableColumn<Profile, UserSortKey>[]>(
     () => [
@@ -536,40 +606,18 @@ export function AdminUsersPage(): JSX.Element {
           </TileGrid>
 
           <Card className="p-0">
-            <div className="flex flex-wrap items-center gap-2 border-b border-divider p-3 dark:border-divider-dark">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name, email or organisation…"
-                aria-label="Search accounts"
-                className="max-w-xs"
+            <div className="border-b border-divider p-3 dark:border-divider-dark">
+              <FilterBar
+                dimensions={USER_FILTERS}
+                filters={filters}
+                optionsFor={optionsFor}
+                onSetValue={filterApi.setValue}
+                onSetValues={filterApi.setValues}
+                onClearOne={filterApi.clearOne}
+                onClearAll={filterApi.clearAll}
+                searchPlaceholder="Search name, email or organisation"
+                resultSummary={`${visible.length} of ${summary.total}`}
               />
-              <Select
-                value={access}
-                onChange={(e) => setAccess(e.target.value)}
-                aria-label="Filter by platform access"
-                className="w-auto"
-              >
-                <option value="">All accounts</option>
-                <option value="platform">Platform administrators</option>
-                <option value="standard">Standard accounts</option>
-              </Select>
-              <Select
-                value={orgRole}
-                onChange={(e) => setOrgRole(e.target.value)}
-                aria-label="Filter by organisation role"
-                className="w-auto"
-              >
-                <option value="">Any organisation role</option>
-                {summary.roles.map((role) => (
-                  <option key={role} value={role}>
-                    {humaniseKey(role)}
-                  </option>
-                ))}
-              </Select>
-              <span className="ml-auto font-mono text-xs tabular-nums text-content-muted dark:text-content-muted-dark">
-                {visible.length} of {summary.total}
-              </span>
             </div>
 
             <DataTable
@@ -579,7 +627,11 @@ export function AdminUsersPage(): JSX.Element {
               rowKey={(profile) => profile.id}
               sort={sort}
               onSortChange={setSort}
-              emptyMessage="No account matches these filters."
+              emptyMessage={
+                outcome === 'empty-dataset'
+                  ? 'No accounts on this deployment yet.'
+                  : 'No account matches these filters.'
+              }
             />
           </Card>
 

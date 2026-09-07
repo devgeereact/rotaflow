@@ -10,6 +10,8 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SkipLink } from '@/components/layout/SkipLink';
+import { InAppShellContext } from '@/components/ui/inAppShell';
+import { OfflineQueueDrain } from '@/components/OfflineQueueDrain';
 
 /**
  * Tenant shell for every /app/* route: gates on org membership and renders the
@@ -79,6 +81,9 @@ export function AppShell(): JSX.Element {
      */
     <div className="flex h-[100dvh] overflow-hidden bg-background dark:bg-background-dark">
       <SkipLink />
+      {/* Renders nothing. Replay belongs to being signed in, not to which
+          screen is open — see the component for what RF-06 was. */}
+      <OfflineQueueDrain />
       {/* Drawer state lives here rather than inside Sidebar so the mobile tab
           bar's `More` opens the same drawer. Two components owning one panel
           is the alternative, and it desyncs the moment either can close it. */}
@@ -103,9 +108,14 @@ export function AppShell(): JSX.Element {
           {/* Scoped to the content region on purpose. A Suspense boundary
               higher up would unmount the sidebar and header while a lazy route
               chunk loads, so every in-app navigation would flash the chrome. */}
-          <Suspense fallback={<RouteFallback />}>
-            <Outlet />
-          </Suspense>
+          {/* Only `PreviewCanvas` reads this: it is how a design-loop preview
+              page knows not to add the page padding the shell already
+              supplies. Product screens never look at it. */}
+          <InAppShellContext.Provider value={true}>
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </InAppShellContext.Provider>
         </main>
       </div>
       <MobileTabBar onOpenMore={() => setNavOpen(true)} />

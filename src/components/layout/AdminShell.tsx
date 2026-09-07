@@ -227,7 +227,7 @@ function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element
                 type="button"
                 role="menuitem"
                 onClick={() => void signOut()}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-danger-wash dark:hover:bg-danger-wash-dark"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger-ink dark:text-danger-ink-dark hover:bg-danger-wash dark:hover:bg-danger-wash-dark"
               >
                 <LogOut size={15} aria-hidden="true" />
                 Sign out

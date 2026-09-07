@@ -1,8 +1,6 @@
-import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
-import { pairClockEvents } from '@/lib/hours';
+import { CalendarDays, ScanFace } from 'lucide-react';
+import { ATTENDANCE_STATUS_META, type AttendanceCounts } from '@/lib/attendance';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import { cn } from '@/lib/utils';
 import { timeRange } from '@/components/dashboard/dashboardFormat';
@@ -10,14 +8,7 @@ import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Panel } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
 import type { WeeklyRosterSummary } from '@/services/dashboardService';
-import type {
-  ClockEvent,
-  LeaveRequest,
-  Location,
-  Shift,
-  ShiftType,
-  StaffProfile,
-} from '@/types';
+import type { LeaveRequest, Location, Shift, ShiftType, StaffProfile } from '@/types';
 
 export interface ManagerScheduleProps {
   todayLabel: string;
@@ -30,8 +21,22 @@ export interface ManagerScheduleProps {
   shiftTypes: ShiftType[];
   /** The org's leave requests, any status; filtered to today here. */
   leave: LeaveRequest[];
-  /** Today's clock events, org-wide. */
-  clockEvents: ClockEvent[];
+  /**
+   * Today's attendance, derived from `clock_events` by `lib/attendance.ts`.
+   *
+   * This screen used to pair the events itself and subtract "whoever has an
+   * open segment" from "everyone rostered today", which produced two wrong
+   * readings at once: somebody who finished at 14:00 counted as *not yet*
+   * clocked in for the rest of the day, and somebody due to start at 18:00
+   * counted the same way from midnight. Both now have their own state, and
+   * the counts come from the same module the dashboard and the attendance
+   * workspace use, so the three cannot disagree.
+   */
+  attendance: AttendanceCounts;
+  /** The date these figures describe, in the reporting timezone. */
+  operationalDate: string;
+  /** Which clock the date is stated in, for the header. */
+  timezone: string;
 }
 
 interface SitePerson {
@@ -92,46 +97,15 @@ function groupBySite(
     .sort((a, b) => a.locationName.localeCompare(b.locationName));
 }
 
-/** Who currently has an open clock-in segment, and who is scheduled today but
- * has not yet started one. */
-function clockStatus(
-  shifts: Shift[],
-  clockEvents: ClockEvent[],
-): { clockedIn: number; notYetClockedIn: number } {
-  const scheduled = new Set(
-    shifts.map((s) => s.staff_profile_id).filter((id): id is string => id !== null),
-  );
-
-  const eventsByStaff = new Map<string, ClockEvent[]>();
-  for (const event of clockEvents) {
-    const list = eventsByStaff.get(event.staff_profile_id) ?? [];
-    list.push(event);
-    eventsByStaff.set(event.staff_profile_id, list);
-  }
-
-  const clockedInIds = new Set<string>();
-  for (const [staffId, events] of eventsByStaff) {
-    const segments = pairClockEvents(events);
-    const last = segments[segments.length - 1];
-    if (last && last.clockOut === null) clockedInIds.add(staffId);
-  }
-
-  const notYetClockedIn = [...scheduled].filter((id) => !clockedInIds.has(id)).length;
-  return { clockedIn: clockedInIds.size, notYetClockedIn };
-}
-
 /**
  * The manager's Schedule (`docs/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.schedule` manager branch): who is on, where, right now. Distinct
- * from the Rota Builder, which is where that reality gets changed. "Week" is
- * deliberately inert here (a toast points at the builder), matching the
- * reference: this screen answers "who's on today", not "what does the whole
- * rota look like".
+ * from the Rota Builder, which is where that reality gets changed, and from
+ * Team Attendance, which is where the record is reviewed and corrected.
  *
  * No "Agency cover" tile: the reference's is a fabricated headcount with no
  * table behind it in this schema, and inventing one would be worse than
- * leaving it out (the same call `ManagerDashboard` makes for "Next
- * auto-publish").
+ * leaving it out.
  */
 export function ManagerSchedule({
   todayLabel,
@@ -141,17 +115,16 @@ export function ManagerSchedule({
   locations,
   shiftTypes,
   leave,
-  clockEvents,
+  attendance,
+  operationalDate,
+  timezone,
 }: ManagerScheduleProps): JSX.Element {
-  const { showToast } = useToast();
-  const today = format(new Date(), 'yyyy-MM-dd');
-
-  const onShiftNow = new Set(
-    shifts.map((s) => s.staff_profile_id).filter((id): id is string => id !== null),
-  ).size;
+  // The date this screen is about, in the SITE's clock rather than the
+  // browser's. `format(new Date())` here meant a manager covering a London
+  // home from a laptop set to New York read yesterday's cover figure for five
+  // hours every evening.
+  const today = operationalDate;
   const requiredToday = weekly?.coverByDate.find((d) => d.date === today)?.required ?? 0;
-
-  const { clockedIn, notYetClockedIn } = clockStatus(shifts, clockEvents);
 
   const onLeaveToday = leave.filter(
     (l) =>
@@ -177,29 +150,18 @@ export function ManagerSchedule({
         subtitle="Who is on, where, right now. The rota builder is where you change it."
         actions={
           <>
-            <div
-              role="group"
-              aria-label="View"
-              className="flex rounded-xl border border-surface-border p-1 dark:border-surface-border-dark"
+            {/* The Day/Week pair is gone. "Week" was a button whose only
+                effect was a toast saying week view lives in the rota builder,
+                which is navigation described rather than performed. The rota
+                builder is now a continuous three-week grid, so the link below
+                goes to the thing the toast was talking about. */}
+            <Link
+              to="/app/attendance"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-5 font-semibold text-content transition-transform duration-150 ease-in-out hover:scale-[1.02] hover:bg-surface-subtle active:scale-[0.98] dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
             >
-              <button
-                type="button"
-                aria-pressed="true"
-                className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-fg"
-              >
-                Day
-              </button>
-              <button
-                type="button"
-                aria-pressed="false"
-                onClick={() =>
-                  showToast('info', 'Week view is the rota builder grid, read-only here.')
-                }
-                className="rounded-lg px-3 py-1.5 text-sm font-medium text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark"
-              >
-                Week
-              </button>
-            </div>
+              <ScanFace size={16} aria-hidden="true" />
+              Attendance
+            </Link>
             <Link
               to="/app/rota"
               className="inline-flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-5 font-semibold text-content transition-transform duration-150 ease-in-out hover:scale-[1.02] hover:bg-surface-subtle active:scale-[0.98] dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
@@ -213,24 +175,35 @@ export function ManagerSchedule({
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatTile
-          label="On shift now"
-          value={onShiftNow}
-          hint={`of ${requiredToday} required`}
+          label="Scheduled today"
+          value={attendance.scheduledPeople}
+          hint={`people · of ${requiredToday} required`}
         />
         <StatTile
-          label="Clocked in"
-          value={clockedIn}
+          label="Working now"
+          value={attendance.workingNow}
           hint={
-            notYetClockedIn > 0 ? (
-              <span className="text-danger-ink dark:text-danger-ink-dark">
-                {notYetClockedIn} not yet
+            attendance.late > 0 ? (
+              <span className="text-warning-ink dark:text-warning-ink-dark">
+                {attendance.late} late
               </span>
-            ) : undefined
+            ) : (
+              ATTENDANCE_STATUS_META.working.definition
+            )
           }
-          to="/app/timesheets"
+          to="/app/attendance"
         />
-        <StatTile label="On leave" value={onLeaveToday} />
-        <StatTile label="Off sick" value={offSickToday} />
+        <StatTile
+          label="On break"
+          value={attendance.onBreak}
+          hint={ATTENDANCE_STATUS_META.on_break.definition}
+          to="/app/attendance"
+        />
+        <StatTile
+          label="On leave"
+          value={onLeaveToday}
+          hint={`${offSickToday} off sick`}
+        />
         <StatTile
           label="Status"
           value={weekly?.rotaStatus === 'published' ? 'Published' : 'Draft'}
@@ -250,7 +223,7 @@ export function ManagerSchedule({
         title={todayLabel}
         actions={
           <span className="text-xs text-content-muted dark:text-content-muted-dark">
-            Grouped by site
+            Grouped by site · times in {timezone}
           </span>
         }
         flush

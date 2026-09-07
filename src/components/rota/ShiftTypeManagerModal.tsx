@@ -186,7 +186,11 @@ export function ShiftTypeManagerModal({
               </li>
             )}
           </ul>
-          {error && <p className="mb-3 text-sm text-danger">{error}</p>}
+          {error && (
+            <p className="mb-3 text-sm text-danger-ink dark:text-danger-ink-dark">
+              {error}
+            </p>
+          )}
           <Button className="w-full" variant="secondary" onClick={startCreate}>
             <Plus size={16} aria-hidden="true" className="mr-1.5" />
             New shift type
@@ -272,7 +276,9 @@ export function ShiftTypeManagerModal({
             Paid shift
           </label>
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && (
+            <p className="text-sm text-danger-ink dark:text-danger-ink-dark">{error}</p>
+          )}
 
           <Button
             className="w-full"

@@ -170,7 +170,11 @@ export function ResetPasswordPage(): JSX.Element {
                 unassociated paragraph at the bottom of a card is announced
                 once and then unreachable. */}
             {error && (
-              <p id="reset-error" className="mt-4 text-sm text-danger" role="alert">
+              <p
+                id="reset-error"
+                className="mt-4 text-sm text-danger-ink dark:text-danger-ink-dark"
+                role="alert"
+              >
                 {error}
               </p>
             )}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AnnouncementsView } from '@/components/announcements/AnnouncementsView';
 import type { AnnouncementCard, ReachRow } from '@/lib/announcementsMapping';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const CARDS: AnnouncementCard[] = [
   {
@@ -50,7 +51,7 @@ export function AnnouncementsPreviewPage(): JSX.Element {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-background px-7 py-7 dark:bg-background-dark">
+    <PreviewCanvas standaloneClassName="min-h-screen bg-background px-7 py-7 dark:bg-background-dark">
       <AnnouncementsView
         cards={CARDS}
         reach={REACH}
@@ -63,6 +64,6 @@ export function AnnouncementsPreviewPage(): JSX.Element {
         onTakeDown={() => {}}
         onMarkRead={(card) => setBusyId(card.id)}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

@@ -260,7 +260,7 @@ describe('pairClockEvents. The messy cases that cost money', () => {
   it('counts an unclosed break rather than paying through it', () => {
     // Someone starts a break and clocks out without ending it. Common when a
     // shift is cut short. The break time is real: they were not working. Paying
-    // the full 09:00-17:00 would be paying for a break they took.
+    // the full 09:00–17:00 would be paying for a break they took.
     const segments = pairClockEvents([
       event('in', '2026-06-15T09:00:00Z'),
       event('break_start', '2026-06-15T12:00:00Z'),

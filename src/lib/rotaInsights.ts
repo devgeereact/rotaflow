@@ -140,7 +140,7 @@ function leaveCovers(leave: LeaveRequest, dateIso: string): boolean {
 }
 
 // KNOWN GAP: this only ever looks at `status`, never `start_time`/`end_time`.
-// A staff member who declares "Available Monday 09:00-13:00" (mornings only)
+// A staff member who declares "Available Monday 09:00–13:00" (mornings only)
 // reads as free all Monday — this only catches a whole day marked
 // `unavailable`. `suggestCoverForShift` has the same gap. Closing it means
 // comparing the shift's own time-of-day against the declared window, which

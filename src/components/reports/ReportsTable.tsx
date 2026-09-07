@@ -2,6 +2,7 @@ import { Download, MoreVertical, Play, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ReportChip } from '@/components/reports/ReportChip';
 import { ReportIcon } from '@/components/reports/ReportIcon';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import {
   REPORT_CATEGORY_TONE,
   REPORT_FORMAT_TONE,
@@ -48,7 +49,7 @@ export function ReportsTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label="Report results">
       <table className="w-full min-w-[58rem] table-fixed border-collapse">
         <thead>
           <tr className="border-b border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
@@ -197,6 +198,6 @@ export function ReportsTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

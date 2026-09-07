@@ -218,6 +218,91 @@ const config: Config = {
           'pref-dark': '#16224A',
           'pref-fg-dark': '#9DB8FD',
         },
+        // Job-title palette (12) — docs/DESIGN.md §2b.
+        //
+        // A SEPARATE family from `shift`, and the separation is the point. A
+        // chip on the rota can carry two facts at once: what kind of shift it
+        // is (`shift`/`shift-tint`, per-tenant configurable) and what the
+        // person does (`role`, per-tenant catalogue). Two colour systems on
+        // one chip with one legend is unreadable, so each has its own family,
+        // its own legend and its own text code — colour is never the only
+        // identifier for either.
+        //
+        // Generated rather than sampled, then measured. Twelve hues optimised
+        // for pairwise separation under normal vision AND under simulated
+        // protanopia, deuteranopia and tritanopia: the worst pair in any of
+        // the four is ΔE(Lab) 16.4 (magenta/cocoa under tritanopia). An
+        // earlier hand-picked set had magenta and slate at ΔE 4 under
+        // deuteranopia — indistinguishable — which is why this one was solved
+        // for rather than chosen by eye.
+        //
+        // Every `-ink` on its `-wash` and every `-ink-dark` on its `-deep`
+        // measures at least 4.60:1, so a job-title badge carries body-weight
+        // text in both themes. The `-deep` washes exist for the same reason
+        // `leave-*-deep` does: the light washes are near-white and blow out on
+        // `background-dark`.
+        role: {
+          indigo: '#3749C8',
+          'indigo-wash': '#F1F2FA',
+          'indigo-ink': '#2F40BB',
+          'indigo-deep': '#14172E',
+          'indigo-ink-dark': '#707CD4',
+          sky: '#29A6C8',
+          'sky-wash': '#F0F8FA',
+          'sky-ink': '#1A7993',
+          'sky-deep': '#122A31',
+          'sky-ink-dark': '#50BBD7',
+          teal: '#4BDDAB',
+          'teal-wash': '#F0FBF7',
+          'teal-ink': '#15805C',
+          'teal-deep': '#113126',
+          'teal-ink-dark': '#4FD9AA',
+          moss: '#3A954C',
+          'moss-wash': '#F2F9F3',
+          'moss-ink': '#2F7E3F',
+          'moss-deep': '#172B1B',
+          'moss-ink-dark': '#68C079',
+          olive: '#8FC05A',
+          'olive-wash': '#F5F9F2',
+          'olive-ink': '#567B2C',
+          'olive-deep': '#222C17',
+          'olive-ink-dark': '#96C266',
+          amber: '#CFB936',
+          'amber-wash': '#FAF9F1',
+          'amber-ink': '#7F711C',
+          'amber-deep': '#2F2B13',
+          'amber-ink-dark': '#D2C155',
+          clay: '#C27726',
+          'clay-wash': '#FBF6F0',
+          'clay-ink': '#A0611C',
+          'clay-deep': '#312212',
+          'clay-ink-dark': '#D89750',
+          rose: '#D04C7E',
+          'rose-wash': '#FAF1F4',
+          'rose-ink': '#BD2D63',
+          'rose-deep': '#2F141E',
+          'rose-ink-dark': '#D15F8A',
+          magenta: '#94279A',
+          'magenta-wash': '#F9F1FA',
+          'magenta-ink': '#B72BBF',
+          'magenta-deep': '#2E132F',
+          'magenta-ink-dark': '#CA57D1',
+          violet: '#925BCD',
+          'violet-wash': '#F5F1F9',
+          'violet-ink': '#7333B7',
+          'violet-deep': '#21152E',
+          'violet-ink-dark': '#9D6ED0',
+          slate: '#4B5571',
+          'slate-wash': '#F4F5F7',
+          'slate-ink': '#5D6A8E',
+          'slate-deep': '#1D1F26',
+          'slate-ink-dark': '#808AA8',
+          cocoa: '#6E4A49',
+          'cocoa-wash': '#F7F4F4',
+          'cocoa-ink': '#8E5E5C',
+          'cocoa-deep': '#261D1C',
+          'cocoa-ink-dark': '#A9807F',
+        },
         // Shift-type chip palette (8) — see docs/DESIGN.md §2. Same in both
         // themes; org shift_types.colour should be seeded from these.
         shift: {
@@ -313,11 +398,37 @@ const config: Config = {
       fontSize: {
         // Custom type scale from docs/DESIGN.md §2 (size/line-height).
         'page-title': ['2rem', { lineHeight: '2.5rem' }], // 32/40
+        // The same role at phone width. 32/40 is a desktop measure: on a
+        // 390px canvas a two-word title plus a pair of action buttons cannot
+        // share a line, and the title block is what loses, so "Team" rendered
+        // as "Tea". Shrinking the type is not the fix for the overflow (the
+        // header stacks below `sm` for that), but 32px is oversized for the
+        // column it now owns. 24/32 is the same semibold weight and the same
+        // tracking, one step down the existing scale.
+        //
+        // Applied as `text-page-title-mobile sm:text-page-title` by the two
+        // header components, never by a page.
+        'page-title-mobile': ['1.5rem', { lineHeight: '2rem' }], // 24/32
         'section-heading': ['1.5rem', { lineHeight: '2rem' }], // 24/32
         'card-heading': ['1rem', { lineHeight: '1.5rem' }], // 16/24
         // Splash/marketing lockup only — 120/120, tight tracking, measured off
         // docs/design/splash-screen.png. Not part of the product type scale.
         wordmark: ['7.375rem', { lineHeight: '1', letterSpacing: '-0.026em' }],
+      },
+      transitionDuration: {
+        // Centralised motion durations (docs/DESIGN.md §4). Before these, a
+        // duration was a number typed at the call site — `duration-150` on
+        // Button, `duration-200` on a menu, nothing at all on a dialog — so
+        // "how fast does this product move" had no answer and no way to
+        // change.
+        //
+        // Four values, named for what they are attached to rather than for
+        // their length, so a new control picks the role and inherits the
+        // number:
+        press: '100ms', // a button's own press/hover transform
+        control: '140ms', // hover/focus colour on any control, row or link
+        overlay: '180ms', // a menu, popover, dropdown or dialog appearing
+        entrance: '300ms', // the existing `animate-fade-up` page entrance
       },
       spacing: {
         // 266px — the splash logo mark at its reference size; sits between

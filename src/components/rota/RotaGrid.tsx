@@ -1,10 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDayLabel, shiftCellKey, type DailyTotal } from '@/lib/rotaGrid';
+import {
+  anchorWeekDates,
+  isWeekend,
+  isWeekStart,
+  rotaGridTemplate,
+  weekSpans,
+} from '@/lib/rotaCanvas';
 import { todayIso } from '@/lib/schedulePeriod';
-import { RotaGridRow, ROTA_GRID_COLS } from '@/components/rota/RotaGridRow';
+import {
+  RotaGridRow,
+  ROTA_GRID_COLS,
+  ROTA_STICKY_STAFF_COL,
+} from '@/components/rota/RotaGridRow';
 import { ShiftPatternLegend } from '@/components/rota/ShiftPatternLegend';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
 import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
@@ -16,6 +27,14 @@ export interface RotaGroup {
 
 interface RotaGridProps {
   dates: string[];
+  /**
+   * Monday of the week the toolbar's actions apply to.
+   *
+   * The canvas shows three weeks; publish, repeat and copy apply to one. The
+   * header marks which, so an action taken while looking at next week's
+   * columns cannot be mistaken for one about that week.
+   */
+  anchorWeekStart: string;
   groups: RotaGroup[];
   /** One shift map per location, each built with that location's own timezone. */
   shiftMapByLocation: Map<string, Map<string, Shift[]>>;
@@ -29,8 +48,26 @@ interface RotaGridProps {
   onShiftTypeFilterChange: (shiftTypeId: string) => void;
   onAddShift: (staffProfileId: string | null, date: string, locationId: string) => void;
   onSelectShift: (shift: Shift) => void;
+  /**
+   * Commits a keyboard move. Omitted for a viewer who cannot edit, which
+   * removes the `M` shortcut from every chip.
+   *
+   * The same call the drag handler makes, so the two paths cannot diverge on
+   * what a move means (clash checking, timezone, the shift keeping its times).
+   */
+  onMoveShift?: (
+    shift: Shift,
+    target: { staffProfileId: string | null; date: string; locationId: string },
+  ) => void;
   /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
   onDeleteShift?: (shift: Shift) => void;
+}
+
+/** A keyboard move in progress: which shift, and where it would land. */
+interface MoveState {
+  shift: Shift;
+  rowIndex: number;
+  dateIndex: number;
 }
 
 /** One row: a staff member (or the location's unfilled shifts) and where to look up their shifts. */
@@ -42,6 +79,7 @@ interface FlatRow {
 
 export function RotaGrid({
   dates,
+  anchorWeekStart,
   groups,
   shiftMapByLocation,
   shiftTypes,
@@ -53,6 +91,7 @@ export function RotaGrid({
   onShiftTypeFilterChange,
   onAddShift,
   onSelectShift,
+  onMoveShift,
   onDeleteShift,
 }: RotaGridProps): JSX.Element {
   // One clock for the whole grid. Every chip needs to know whether it is in
@@ -93,6 +132,120 @@ export function RotaGrid({
       : staffRows;
   });
 
+  // ---- Keyboard move -----------------------------------------------------
+  //
+  // Drag-and-drop is the fast path and it is pointer-only. dnd-kit's
+  // `KeyboardSensor` is registered on the DndContext but is not a usable
+  // alternative here: it translates by a fixed pixel step that addresses no
+  // particular cell, and its Enter/Space activation collides with the chip's
+  // own "open the editor" click. So the grid provides the keyboard path
+  // itself, over the same row/date model the grid is already built from.
+  //
+  // M starts it, the arrows choose a cell, Enter commits, Escape cancels.
+  const [move, setMove] = useState<MoveState | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Which chip to put focus back on after a committed move re-renders it into
+  // a different cell. Without this the DOM node is unmounted and focus falls
+  // to <body>, which is the classic way an accessible feature stops being one.
+  const [refocusShiftId, setRefocusShiftId] = useState<string | null>(null);
+
+  const startMove = useCallback(
+    (shift: Shift, rowIndex: number, dateIndex: number): void => {
+      setMove({ shift, rowIndex, dateIndex });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    // A move cannot outlive the rows it is addressing: changing the filter or
+    // the week would leave `rowIndex` pointing at somebody else.
+    setMove(null);
+  }, [dates, groups]);
+
+  useLayoutEffect(() => {
+    if (!refocusShiftId) return;
+    const el = containerRef.current?.querySelector<HTMLElement>(
+      `[data-shift-id="${refocusShiftId}"]`,
+    );
+    el?.focus();
+    setRefocusShiftId(null);
+  }, [refocusShiftId, shiftMapByLocation]);
+
+  /**
+   * One key of a move in progress. Returns true when it consumed the key.
+   *
+   * Called by the moving chip, which is the focused element throughout — so
+   * this needs no listener on a wrapper element and cannot be reached when
+   * nothing is being moved.
+   */
+  const handleMoveKey = useCallback(
+    (key: string): boolean => {
+      if (!move) return false;
+      const clamp = (value: number, max: number): number =>
+        Math.max(0, Math.min(max, value));
+
+      switch (key) {
+        case 'ArrowLeft':
+        case 'ArrowRight':
+          setMove({
+            ...move,
+            dateIndex: clamp(
+              move.dateIndex + (key === 'ArrowLeft' ? -1 : 1),
+              dates.length - 1,
+            ),
+          });
+          return true;
+        case 'ArrowUp':
+        case 'ArrowDown':
+          setMove({
+            ...move,
+            rowIndex: clamp(
+              move.rowIndex + (key === 'ArrowUp' ? -1 : 1),
+              rows.length - 1,
+            ),
+          });
+          return true;
+        case 'Escape':
+          setMove(null);
+          return true;
+        case 'Enter':
+        case ' ': {
+          const targetRow = rows[move.rowIndex];
+          const targetDate = dates[move.dateIndex];
+          setMove(null);
+          // The chip is about to be unmounted and remounted in another cell,
+          // which drops focus to <body>. Remember where to put it back.
+          setRefocusShiftId(move.shift.id);
+          if (!targetRow || !targetDate || !onMoveShift) return true;
+          onMoveShift(move.shift, {
+            staffProfileId: targetRow.staff?.id ?? null,
+            date: targetDate,
+            locationId: targetRow.location.id,
+          });
+          return true;
+        }
+        default:
+          return false;
+      }
+    },
+    [move, rows, dates, onMoveShift],
+  );
+
+  const cancelMove = useCallback((): void => setMove(null), []);
+
+  const moveAnnouncement = ((): string => {
+    if (!move) return '';
+    const row = rows[move.rowIndex];
+    const date = dates[move.dateIndex];
+    if (!row || !date) return '';
+    const { weekday, day } = formatDayLabel(date);
+    const who = row.staff ? `${row.staff.first_name} ${row.staff.last_name}` : 'Unfilled';
+    return `Moving shift to ${who}, ${weekday} ${day}. Arrow keys to change, Enter to confirm, Escape to cancel.`;
+  })();
+
+  const template = rotaGridTemplate(dates.length);
+  const spans = weekSpans(dates, anchorWeekStart);
+
   const countsByType = new Map<string, number>();
   for (const locationShiftMap of shiftMapByLocation.values()) {
     for (const shifts of locationShiftMap.values()) {
@@ -107,15 +260,71 @@ export function RotaGrid({
   }
 
   return (
-    <div className="min-w-[860px]">
-      {/* ---- Header: weekday/date columns ---- */}
+    <div
+      ref={containerRef}
+      // Wide enough that the pinned staff column plus a readable week is
+      // always on screen; the parent scrolls, and the sticky axes resolve
+      // against that scrollport.
+      style={{ minWidth: `${11 + dates.length * 6.5 + 3.5}rem` }}
+    >
+      {/* Announced, not just drawn. The ring on the landing cell is the whole
+          feedback a sighted user needs and none of it for anybody else. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {moveAnnouncement}
+      </p>
+
+      {/* ---- Header: week labels, then weekday/date columns ----
+
+          Two rows, both pinned. The week row is what makes a continuous
+          multiweek axis readable: twenty-one date cells with no grouping is a
+          strip a manager has to count along, and "w/c 8 Sep" above each block
+          of seven is the label they are actually navigating by. */}
       <div
         className={cn(
           ROTA_GRID_COLS,
-          'border-b border-surface-border pb-3 dark:border-surface-border-dark',
+          'sticky top-0 z-20 bg-surface pt-1 dark:bg-surface-dark',
         )}
+        style={{ gridTemplateColumns: template }}
+        aria-hidden="true"
       >
-        <div className="px-2 text-xs font-semibold text-content-muted dark:text-content-muted-dark">
+        <div className={cn('px-2', ROTA_STICKY_STAFF_COL, 'z-30')} />
+        {spans.map((span) => (
+          <div
+            key={span.startDate}
+            style={{ gridColumn: `span ${span.length}` }}
+            className={cn(
+              'truncate border-l border-surface-border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-content-muted',
+              'dark:border-surface-border-dark dark:text-content-muted-dark',
+              span.isCurrent && 'text-primary-ink dark:text-primary-ink-dark',
+            )}
+          >
+            {span.label}
+            {span.isCurrent ? ' · this week' : ''}
+          </div>
+        ))}
+        <div />
+      </div>
+
+      <div
+        className={cn(
+          ROTA_GRID_COLS,
+          // Pinned to the top of the grid's own viewport, below the week row.
+          // Date columns are unreadable once the names above them have
+          // scrolled away, and a rota is 40 rows long in a real organisation.
+          'sticky top-[1.75rem] z-20 border-b border-surface-border bg-surface pb-3',
+          'dark:border-surface-border-dark dark:bg-surface-dark',
+        )}
+        style={{ gridTemplateColumns: template }}
+      >
+        <div
+          className={cn(
+            'px-2 text-xs font-semibold text-content-muted dark:text-content-muted-dark',
+            ROTA_STICKY_STAFF_COL,
+            // Above both sticky axes: this cell is pinned left *and* top, so it
+            // has to outrank the row it shares an edge with.
+            'z-30',
+          )}
+        >
           Staff
         </div>
         {dates.map((date) => {
@@ -126,6 +335,16 @@ export function RotaGrid({
               key={date}
               className={cn(
                 'rounded-lg px-1 py-1.5 text-center',
+                // Visible week boundary. Without it three weeks of columns run
+                // together and a Monday looks like any other day.
+                isWeekStart(date) &&
+                  'border-l border-surface-border dark:border-surface-border-dark',
+                // Weekends are shaded rather than labelled: the weekday name is
+                // already there, and a manager scanning for cover gaps reads
+                // the block, not the word.
+                !isToday &&
+                  isWeekend(date) &&
+                  'bg-surface-subtle dark:bg-surface-subtle-dark',
                 isToday && 'bg-primary',
               )}
             >
@@ -157,11 +376,13 @@ export function RotaGrid({
       </div>
 
       {/* ---- One flat staff list, no location grouping ---- */}
-      {rows.map((row) => (
+      {rows.map((row, rowIndex) => (
         <RotaGridRow
           key={row.key}
           staff={row.staff}
+          rowIndex={rowIndex}
           dates={dates}
+          weekDates={anchorWeekDates(anchorWeekStart)}
           locationId={row.location.id}
           timezone={row.location.timezone}
           shiftMap={shiftMapByLocation.get(row.location.id) ?? new Map<string, Shift[]>()}
@@ -170,17 +391,22 @@ export function RotaGrid({
           now={now}
           selectedShiftId={selectedShiftId}
           conflictedShiftIds={conflictedShiftIds}
+          moveTargetDateIndex={move && move.rowIndex === rowIndex ? move.dateIndex : null}
+          movingShiftId={move?.shift.id ?? null}
           onAddShift={(staffProfileId, date) =>
             onAddShift(staffProfileId, date, row.location.id)
           }
           onSelectShift={onSelectShift}
+          onStartMove={onMoveShift ? startMove : undefined}
+          onMoveKey={handleMoveKey}
+          onMoveCancel={cancelMove}
           onDeleteShift={onDeleteShift}
         />
       ))}
 
       <Link
         to="/app/team"
-        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-primary dark:text-primary-ink-dark transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-primary-ink dark:text-primary-ink-dark transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
       >
         <Plus size={14} aria-hidden="true" />
         Add staff
@@ -192,8 +418,14 @@ export function RotaGrid({
           ROTA_GRID_COLS,
           'mt-4 border-t border-surface-border pt-3 dark:border-surface-border-dark',
         )}
+        style={{ gridTemplateColumns: template }}
       >
-        <div className="px-2 text-xs font-medium text-content dark:text-content-dark">
+        <div
+          className={cn(
+            'px-2 text-xs font-medium text-content dark:text-content-dark',
+            ROTA_STICKY_STAFF_COL,
+          )}
+        >
           On shift · minimum
         </div>
         {dates.map((date) => {
@@ -234,6 +466,19 @@ export function RotaGrid({
           Conflict
         </span>
       </div>
+
+      {/* A keyboard shortcut nobody is told about is a keyboard shortcut
+          nobody has. `aria-keyshortcuts` on the chip covers assistive tech;
+          this covers everyone else. */}
+      {onMoveShift && (
+        <p className="mt-2 text-xs text-content-muted dark:text-content-muted-dark">
+          Drag a shift to move it, or select one and press{' '}
+          <kbd className="rounded border border-surface-border px-1 font-mono text-[0.7rem] dark:border-surface-border-dark">
+            M
+          </kbd>{' '}
+          to move it with the arrow keys.
+        </p>
+      )}
     </div>
   );
 }

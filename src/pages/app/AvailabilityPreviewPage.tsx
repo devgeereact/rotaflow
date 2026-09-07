@@ -1,5 +1,6 @@
 import { AvailabilityView } from '@/components/availability/AvailabilityView';
 import type { ExceptionRow, WeeklyPatternDay } from '@/lib/availabilityRows';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const WEEK_PATTERN: WeeklyPatternDay[] = [
   { weekday: 1, label: 'Mon', available: true, note: null, entryId: null },
@@ -85,7 +86,7 @@ export function AvailabilityPreviewPage(): JSX.Element {
   const isManager = role !== 'staff';
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       <AvailabilityView
         weekPattern={WEEK_PATTERN}
         onToggleDay={() => {}}
@@ -96,6 +97,6 @@ export function AvailabilityPreviewPage(): JSX.Element {
         onRemoveException={() => {}}
         team={isManager ? { todayLabel: 'Wednesday', rows: TEAM_ROWS } : null}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

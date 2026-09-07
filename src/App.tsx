@@ -13,6 +13,7 @@ import { RequirePlatformRole } from '@/components/RequirePlatformRole';
 import { PLATFORM_BILLING_ROLES, PLATFORM_CONFIG_ROLES } from '@/lib/platformRoles';
 import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
+import { WorkModeProvider } from '@/context/WorkModeContext';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
@@ -168,6 +169,11 @@ const ResetPasswordPage = lazyPage(
 );
 const SchedulePage = lazyPage('SchedulePage', () => import('@/pages/app/SchedulePage'));
 const ClockInPage = lazyPage('ClockInPage', () => import('@/pages/app/ClockInPage'));
+const SetupPage = lazyPage('SetupPage', () => import('@/pages/app/SetupPage'));
+const AttendancePage = lazyPage(
+  'AttendancePage',
+  () => import('@/pages/app/AttendancePage'),
+);
 const TimesheetsPage = lazyPage(
   'TimesheetsPage',
   () => import('@/pages/app/TimesheetsPage'),
@@ -612,7 +618,13 @@ export function App(): JSX.Element {
                         path="/app"
                         element={
                           <ProtectedRoute>
-                            <AppShell />
+                            {/* Inside ProtectedRoute, so the staff lookup is
+                                only ever made for a resolved session, and
+                                outside AppShell so the rail, the tab bar and
+                                every page read one answer rather than four. */}
+                            <WorkModeProvider>
+                              <AppShell />
+                            </WorkModeProvider>
                           </ProtectedRoute>
                         }
                       >
@@ -682,7 +694,29 @@ export function App(): JSX.Element {
                             </RequireRole>
                           }
                         />
+                        <Route
+                          path="setup"
+                          element={
+                            <RequireRole
+                              allow={MANAGERIAL}
+                              area="the organisation setup checklist"
+                            >
+                              <SetupPage />
+                            </RequireRole>
+                          }
+                        />
                         <Route path="schedule" element={<SchedulePage />} />
+                        <Route
+                          path="attendance"
+                          element={
+                            <RequireRole
+                              allow={MANAGERIAL}
+                              area="the team attendance record"
+                            >
+                              <AttendancePage />
+                            </RequireRole>
+                          }
+                        />
                         <Route path="clock" element={<ClockInPage />} />
                         {/* The spec's spelling. See RouteAliases. */}
                         <Route

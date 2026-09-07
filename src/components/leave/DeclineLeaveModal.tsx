@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Label } from '@/components/ui/Label';
+import { Field } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Modal';
 
 const MIN_REASON = 5;
@@ -44,34 +44,30 @@ export function DeclineLeaveModal({
   return (
     <Modal open={open} onClose={onClose} title={`Decline ${staffName}'s request?`}>
       <div className="space-y-4">
-        <div>
-          <Label htmlFor="decline-reason">Reason</Label>
+        {/* The hint stays visible alongside the error rather than being
+            replaced by it: "recorded in the audit trail" is the context that
+            makes the length requirement make sense, and it was disappearing
+            exactly when the person needed it. `Field` fixes that order for
+            every form (docs/DESIGN.md §6). */}
+        <Field
+          label="Reason"
+          required
+          hint={`Recorded in the audit trail, not shown to ${staffName} on this screen.`}
+          error={
+            showError
+              ? `Give at least ${MIN_REASON} characters. It is recorded in the audit trail.`
+              : null
+          }
+        >
           <textarea
-            id="decline-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             onBlur={() => setTouched(true)}
             rows={3}
-            required
-            aria-describedby={showError ? 'decline-reason-error' : undefined}
-            aria-invalid={showError}
-            className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             placeholder="e.g. Two other team members are already off that week."
           />
-          {showError ? (
-            <p
-              id="decline-reason-error"
-              role="alert"
-              className="mt-1 text-xs text-danger"
-            >
-              Give at least {MIN_REASON} characters. It is recorded in the audit trail.
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-              Recorded in the audit trail, not shown to {staffName} on this screen.
-            </p>
-          )}
-        </div>
+        </Field>
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={busy}>

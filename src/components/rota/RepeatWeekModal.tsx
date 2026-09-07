@@ -56,7 +56,7 @@ export function RepeatWeekModal({
         </div>
 
         {weeks.trim() !== '' && !valid && (
-          <p className="text-xs text-danger" role="alert">
+          <p className="text-xs text-danger-ink dark:text-danger-ink-dark" role="alert">
             A whole number between 1 and {MAX_WEEKS}.
           </p>
         )}

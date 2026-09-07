@@ -66,7 +66,7 @@ export function WeeklySummaryCard({
         <button
           type="button"
           onClick={onViewTimesheet}
-          className="rounded text-sm font-semibold text-primary dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="rounded text-sm font-semibold text-primary-ink dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           View Timesheet
         </button>

@@ -54,7 +54,7 @@ export function toIsoInTimezone(date: string, time: string, timezone: string): s
 
 /**
  * Start/end ISO timestamps for a shift on `date`, handling shifts that cross
- * midnight (e.g. a 22:00-06:00 night shift) by rolling the end date forward
+ * midnight (e.g. a 22:00–06:00 night shift) by rolling the end date forward
  * a day when endTime is earlier than startTime.
  */
 export function computeShiftIsoRange(

@@ -17,6 +17,7 @@ import { UpcomingShiftsCard } from '@/components/staff/UpcomingShiftsCard';
 import { WorkInformationCard } from '@/components/staff/WorkInformationCard';
 import type { IconTileTone } from '@/components/ui/IconTile';
 import type { StaffProfileData, StaffProfileTab } from '@/lib/staffProfile';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 interface StaffProfileViewProps {
   profile: StaffProfileData;
@@ -176,7 +177,7 @@ export function StaffProfileView({
                 No leave recorded for this person.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <ScrollRegion label="Staff record">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
@@ -205,7 +206,7 @@ export function StaffProfileView({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             )}
           </Card>
         )}

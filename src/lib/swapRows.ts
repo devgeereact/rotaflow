@@ -27,7 +27,7 @@ export interface SwapParty {
 export interface SwapShiftSide {
   /** Pre-formatted, e.g. "Tue 27 May 2025". */
   dateLabel: string;
-  /** Pre-formatted, e.g. "07:00-15:00". */
+  /** Pre-formatted, e.g. "07:00–15:00". */
   timeLabel: string;
   locationName: string | null;
 }

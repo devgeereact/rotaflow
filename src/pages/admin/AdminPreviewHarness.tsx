@@ -581,7 +581,7 @@ const INVOICES = ORG_IDS.flatMap((org_id, i) =>
 );
 
 const ANNOUNCEMENTS = [
-  ['Scheduled maintenance-02:00-03:00 BST', 'maintenance', 'scheduled', null, 5],
+  ['Scheduled maintenance-02:00–03:00 BST', 'maintenance', 'scheduled', null, 5],
   ['New: cost forecasting in Reports', 'product', 'sent', 7, null],
   ['Action needed: card expiring this month', 'billing', 'sent', 11, null],
   ['Resolved: sign-in outage', 'incident', 'sent', 14, null],

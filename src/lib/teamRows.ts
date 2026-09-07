@@ -5,7 +5,14 @@
  */
 
 import { addDays, format, startOfWeek } from 'date-fns';
-import type { Department, LeaveRequest, Location, Shift, StaffProfile } from '@/types';
+import type {
+  Department,
+  JobTitle,
+  LeaveRequest,
+  Location,
+  Shift,
+  StaffProfile,
+} from '@/types';
 
 export type TeamTodayStatus = 'on_shift' | 'absent' | 'off';
 
@@ -15,6 +22,18 @@ export interface TeamRow {
   lastName: string;
   photoUrl: string | null;
   jobTitle: string | null;
+  /**
+   * Catalogue id (`0127`), or `null` where the person holds none.
+   *
+   * Filtering keys on this rather than on the printed name, so renaming
+   * "Nurse" to "Registered Nurse" changes every label and breaks no saved
+   * filter or link.
+   */
+  jobTitleId: string | null;
+  /** Palette id for the badge, or `null` for the neutral fallback. */
+  jobTitleColour: string | null;
+  /** True where the title has been archived. Still shown; not offered for new assignments. */
+  jobTitleArchived: boolean;
   department: string;
   location: string;
   /** Every site this person works, for filtering. `location` is the label. */
@@ -89,6 +108,13 @@ export interface TeamRowContext {
    * site, which is what this file did for its whole life.
    */
   staffLocations?: Map<string, string[]>;
+  /**
+   * The organisation's job-title catalogue (`0127`), including archived
+   * entries. Optional: without it a row falls back to the legacy free-text
+   * `job_title` and gets the neutral badge, which is what every screen did
+   * before the catalogue existed.
+   */
+  jobTitles?: JobTitle[];
 }
 
 /**
@@ -123,8 +149,10 @@ function locationNameFor(profile: StaffProfile, context: TeamRowContext): string
 }
 
 export function buildTeamRows(staff: StaffProfile[], context: TeamRowContext): TeamRow[] {
+  const titleById = new Map((context.jobTitles ?? []).map((t) => [t.id, t]));
   return staff.map((profile) => {
     const rostered = sumRosteredHours(context.shiftsThisWeek, profile.id);
+    const title = profile.job_title_id ? titleById.get(profile.job_title_id) : undefined;
     const status: TeamTodayStatus = context.absentToday.has(profile.id)
       ? 'absent'
       : context.onShiftToday.has(profile.id)
@@ -135,7 +163,12 @@ export function buildTeamRows(staff: StaffProfile[], context: TeamRowContext): T
       firstName: profile.first_name,
       lastName: profile.last_name,
       photoUrl: profile.photo_url,
-      jobTitle: profile.job_title,
+      // Catalogue name first, legacy free text second. Both columns are live
+      // until 0127's retirement condition is met.
+      jobTitle: title?.name ?? profile.job_title,
+      jobTitleId: profile.job_title_id,
+      jobTitleColour: title?.colour ?? null,
+      jobTitleArchived: title ? !title.active : false,
       department:
         context.departments.find((d) => d.id === profile.department_id)?.name ?? '-',
       location: locationNameFor(profile, context),

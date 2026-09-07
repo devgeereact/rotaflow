@@ -31,6 +31,7 @@ import {
 } from '@/lib/revenue';
 import { reportError } from '@/lib/sentry';
 import type { Organisation, Subscription } from '@/types';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const INVOICE_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   draft: 'neutral',
@@ -350,7 +351,7 @@ export function AdminBillingPage(): JSX.Element {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel className="lg:col-span-2" title="Recent invoices" flush>
-              <div className="overflow-x-auto">
+              <ScrollRegion label="Billing">
                 <table className="w-full border-collapse text-sm">
                   <caption className="sr-only">Recent invoices</caption>
                   <thead>
@@ -439,7 +440,7 @@ export function AdminBillingPage(): JSX.Element {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             </Panel>
 
             <Panel

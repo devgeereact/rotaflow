@@ -6,10 +6,12 @@ import {
   CalendarDays,
   CalendarRange,
   Clock3,
+  ListChecks,
   LogIn,
   MapPin,
   Megaphone,
   Repeat2,
+  ScanFace,
   Settings,
   Timer,
   TimerReset,
@@ -66,6 +68,15 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     icon: CalendarRange,
   },
   {
+    label: 'Set up',
+    keywords:
+      'setup checklist onboarding first steps locations shift types staff getting started what next',
+    to: '/app/setup',
+    group: 'Screens',
+    icon: ListChecks,
+    roles: MANAGERIAL,
+  },
+  {
     label: 'Rota builder',
     keywords: 'build draft publish shifts grid schedule week',
     to: '/app/rota',
@@ -86,6 +97,15 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/clock',
     group: 'Scheduling',
     icon: LogIn,
+  },
+  {
+    label: 'Team attendance',
+    keywords:
+      'attendance clocked in late missing clock out not recorded exceptions review corrections who turned up',
+    to: '/app/attendance',
+    group: 'Scheduling',
+    icon: ScanFace,
+    roles: MANAGERIAL,
   },
   {
     label: 'Timesheets',

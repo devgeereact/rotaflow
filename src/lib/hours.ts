@@ -19,6 +19,24 @@ export interface WorkedSegment {
    * See the header for why this exists rather than a silent best guess.
    */
   reviewReason: SegmentReviewReason | null;
+  /**
+   * When the break that was open at the moment this segment closed began, or
+   * `null` if none was.
+   *
+   * Two different facts share one field, and which one it is depends on
+   * `clockOut`. On a segment still running (`clockOut === null` and no review
+   * reason) it means the person is **on a break right now**, which is the
+   * distinction an operational board has to draw and which `minutes` alone
+   * cannot express: somebody on their break and somebody actively working
+   * both read as an open segment. On a segment that was closed with a break
+   * still open it is the instant the deduction in `breakMinutes` was measured
+   * from, and `reviewReason` is already `unclosed_break`.
+   *
+   * It is carried here rather than recomputed by each caller so that "is this
+   * person on a break" is answered by the same pass over the event stream
+   * that produces the hours, and cannot drift from it.
+   */
+  openBreakSince: string | null;
 }
 
 /**
@@ -91,6 +109,7 @@ export function pairClockEvents(
       clockIn: openIn,
       clockOut,
       breakMinutes: breaks,
+      openBreakSince: breakStart?.event_at ?? null,
       // Clamped: contradictory rows (a break_end belonging to another day)
       // must never produce a negative that subtracts from the week's total.
       minutes: Math.max(0, grossMinutes - breaks),
@@ -148,4 +167,58 @@ export function segmentsNeedingReview(segments: WorkedSegment[]): WorkedSegment[
 
 export function formatHours(minutes: number): string {
   return (minutes / 60).toFixed(1);
+}
+
+/**
+ * How far either side of a reporting window the event stream must be read for
+ * the segments inside it to be complete.
+ *
+ * RF-08. A clock query bounded exactly by the window returns an `out` whose
+ * `in` fell before it, and `pairClockEvents` — correctly — ignores an `out`
+ * with no `in`. So a night shift that started at 23:00 contributed nothing to
+ * the day it ended on. Worse in the other direction: the window that *did*
+ * contain the 23:00 `in` did not contain the 07:00 `out`, so the segment was
+ * closed against `now` instead, and a report run days later paid that person
+ * for the intervening days with no review flag on it at all.
+ *
+ * Twenty-four hours. A worked segment longer than that is already a data
+ * error the review flags exist to surface, and widening the margin further
+ * costs a proportionally larger read on every report for no additional
+ * correctness.
+ */
+export const BOUNDARY_CONTEXT_HOURS = 24;
+
+/** `iso` shifted by `hours`, positive or negative. */
+export function shiftIso(iso: string, hours: number): string {
+  return new Date(new Date(iso).getTime() + hours * 3_600_000).toISOString();
+}
+
+/**
+ * The segments a reporting period owns, from a stream read with boundary
+ * context either side.
+ *
+ * A segment belongs to the period its clock-in falls in. That is the rule the
+ * rest of the product already applies — `listShiftsForPeriod` filters on
+ * `starts_at` for the same reason, and `getTimesheetReportRows` dates a row by
+ * `segment.clockIn` — and it is the ordinary payroll convention for a night
+ * shift: the whole of a 23:00-to-07:00 shift is Monday's, not six minutes of
+ * Monday and the rest of Tuesday's.
+ *
+ * Stated as a rule rather than left implicit because the alternative —
+ * allocating by overlap, clipping each segment at the boundary — is equally
+ * defensible and produces different pay. Adjacent periods must agree on one of
+ * them or the same hour is either paid twice or not at all. This is the one
+ * the code already had; changing it is a payroll decision, not a refactor.
+ */
+export function segmentsStartingWithin(
+  segments: WorkedSegment[],
+  fromIso: string,
+  toIso: string,
+): WorkedSegment[] {
+  const from = new Date(fromIso).getTime();
+  const to = new Date(toIso).getTime();
+  return segments.filter((segment) => {
+    const startedAt = new Date(segment.clockIn.event_at).getTime();
+    return startedAt >= from && startedAt < to;
+  });
 }

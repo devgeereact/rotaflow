@@ -1,4 +1,9 @@
 import type { ReactNode } from 'react';
+import {
+  HEADER_DESCRIPTION_CLASS,
+  HEADER_TITLE_CLASS,
+  HeaderBar,
+} from '@/components/ui/HeaderBar';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
 interface WorkspaceHeaderProps {
@@ -12,6 +17,11 @@ interface WorkspaceHeaderProps {
   tabs?: TabItem[];
   /** Page-level actions, right-aligned against the title. */
   actions?: ReactNode;
+  /**
+   * The workspace's one dominant action — Add Staff, Publish, New request.
+   * Rendered first on phones and last on desktop; see `HeaderBar`.
+   */
+  primaryAction?: ReactNode;
 }
 
 /**
@@ -46,20 +56,16 @@ export function WorkspaceHeader({
   subtitle,
   tabs = [],
   actions,
+  primaryAction,
 }: WorkspaceHeaderProps): JSX.Element {
   return (
     <div className="mb-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-            {title}
-          </h1>
-          <p className="mt-1.5 text-sm text-content-muted dark:text-content-muted-dark">
-            {subtitle}
-          </p>
+      <HeaderBar primaryAction={primaryAction} actions={actions}>
+        <div className="min-w-0">
+          <h1 className={HEADER_TITLE_CLASS}>{title}</h1>
+          <p className={HEADER_DESCRIPTION_CLASS}>{subtitle}</p>
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-      </div>
+      </HeaderBar>
       {tabs.length > 1 && (
         <Tabs items={tabs} label={`${title} sections`} className="mt-4" />
       )}

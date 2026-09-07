@@ -52,6 +52,11 @@ import {
   priceColumn,
   type StripeMode,
 } from '../_shared/stripe.ts';
+import {
+  decideInvoiceFailure,
+  subscriptionRefOf,
+  subscriptionScope,
+} from './reconcile.ts';
 import type Stripe from 'npm:stripe@17';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -110,28 +115,24 @@ async function handleCheckoutCompleted(
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-  const { error } = await supabase
-    .from('subscriptions')
-    .upsert(
-      {
-        org_id: orgId,
-        plan,
-        status: mapSubscriptionStatus(subscription.status),
-        provider: 'stripe',
-        provider_ref: subscription.id,
-        stripe_customer_id:
-          typeof session.customer === 'string' ? session.customer : session.customer?.id,
-        // Records which Stripe namespace the two ids above live in, so
-        // Checkout and the Portal can tell a reusable customer from one that
-        // belongs to the other mode — see migration 0058.
-        stripe_mode: mode,
-        started_at: new Date(subscription.start_date * 1000).toISOString(),
-        current_period_end: new Date(
-          subscription.current_period_end * 1000,
-        ).toISOString(),
-      },
-      { onConflict: 'org_id' },
-    );
+  const { error } = await supabase.from('subscriptions').upsert(
+    {
+      org_id: orgId,
+      plan,
+      status: mapSubscriptionStatus(subscription.status),
+      provider: 'stripe',
+      provider_ref: subscription.id,
+      stripe_customer_id:
+        typeof session.customer === 'string' ? session.customer : session.customer?.id,
+      // Records which Stripe namespace the two ids above live in, so
+      // Checkout and the Portal can tell a reusable customer from one that
+      // belongs to the other mode — see migration 0058.
+      stripe_mode: mode,
+      started_at: new Date(subscription.start_date * 1000).toISOString(),
+      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    },
+    { onConflict: 'org_id' },
+  );
   if (error) throw new Error(`subscriptions upsert failed: ${error.message}`);
 }
 
@@ -167,7 +168,10 @@ async function handleSubscriptionUpdated(
 ): Promise<void> {
   const orgId = subscription.metadata?.org_id;
   if (!orgId) {
-    console.error('customer.subscription.updated missing org_id metadata', subscription.id);
+    console.error(
+      'customer.subscription.updated missing org_id metadata',
+      subscription.id,
+    );
     return;
   }
 
@@ -186,9 +190,7 @@ async function handleSubscriptionUpdated(
 
   const updatePayload: Record<string, unknown> = {
     status: mapSubscriptionStatus(subscription.status),
-    current_period_end: new Date(
-      subscription.current_period_end * 1000,
-    ).toISOString(),
+    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
     canceled_at: subscription.canceled_at
       ? new Date(subscription.canceled_at * 1000).toISOString()
       : null,
@@ -267,9 +269,7 @@ async function handleInvoicePaid(
   }
 
   const line = invoice.lines.data[0];
-  const periodStart = new Date(
-    (line?.period.start ?? invoice.period_start) * 1000,
-  );
+  const periodStart = new Date((line?.period.start ?? invoice.period_start) * 1000);
   const periodEnd = new Date((line?.period.end ?? invoice.period_end) * 1000);
   const paidAt = new Date().toISOString();
 
@@ -352,13 +352,26 @@ async function handleInvoicePaymentFailed(
   const orgId = invoice.subscription_details?.metadata?.org_id;
   if (!orgId) return;
 
-  const failureReason = await resolveFailureReason(invoice, mode);
-
   const { data: existing } = await supabase
     .from('invoices')
-    .select('id, attempts')
+    .select('id, attempts, status, paid_at')
     .eq('provider_ref', invoice.id)
     .maybeSingle();
+
+  // RF-04. Stripe delivers at least once and does not promise order, so a
+  // failure from before the customer's successful retry can land after the
+  // `invoice.paid` for the same invoice, and Stripe retries its own webhook
+  // until it gets a 200. The old code wrote `past_due` and incremented
+  // `attempts` on every delivery regardless of either, which suspended a
+  // customer who had already paid and inflated the dunning count with
+  // webhook retries rather than card attempts. See `reconcile.ts`.
+  const decision = decideInvoiceFailure(existing, invoice.attempt_count);
+  if (!decision.apply) {
+    console.log(`invoice.payment_failed ${invoice.id}: no change (${decision.reason})`);
+    return;
+  }
+
+  const failureReason = await resolveFailureReason(invoice, mode);
 
   if (existing) {
     const { error } = await supabase
@@ -366,15 +379,13 @@ async function handleInvoicePaymentFailed(
       .update({
         status: 'past_due',
         failure_reason: failureReason,
-        attempts: (existing.attempts ?? 0) + 1,
+        attempts: decision.attempts,
       })
       .eq('id', existing.id);
     if (error) throw new Error(`invoices update (past_due) failed: ${error.message}`);
   } else {
     const line = invoice.lines.data[0];
-    const periodStart = new Date(
-      (line?.period.start ?? invoice.period_start) * 1000,
-    );
+    const periodStart = new Date((line?.period.start ?? invoice.period_start) * 1000);
     const periodEnd = new Date((line?.period.end ?? invoice.period_end) * 1000);
     const { error } = await supabase.from('invoices').insert({
       org_id: orgId,
@@ -389,7 +400,7 @@ async function handleInvoicePaymentFailed(
         ? new Date(invoice.due_date * 1000).toISOString().slice(0, 10)
         : new Date(invoice.created * 1000).toISOString().slice(0, 10),
       failure_reason: failureReason,
-      attempts: 1,
+      attempts: decision.attempts,
       provider: 'stripe',
       provider_ref: invoice.id,
     });
@@ -401,10 +412,28 @@ async function handleInvoicePaymentFailed(
   // manual correction cannot leave the three disagreeing — and a second
   // failed payment inside one dunning run cannot restart the clock, which
   // would make the deadline permanently a fortnight away.
+  //
+  // RF-05. This filtered on `org_id` alone while the handler deliberately
+  // accepts both Stripe modes at one URL, so a TEST fixture carrying a live
+  // organisation's id could mark that live subscription past due, and an
+  // invoice belonging to a replaced subscription could suspend its
+  // replacement. Every other handler here already scoped by `provider_ref`;
+  // this one did not. An event we cannot pin to one subscription is one whose
+  // target we do not know, so it declines to write rather than widening.
+  const scope = subscriptionScope(orgId, subscriptionRefOf(invoice), mode);
+  if (!scope) {
+    console.error(
+      `invoice.payment_failed ${invoice.id} names no subscription; the invoice was recorded but no subscription was suspended`,
+    );
+    return;
+  }
+
   const { error: subError } = await supabase
     .from('subscriptions')
     .update({ status: 'past_due' })
-    .eq('org_id', orgId);
+    .eq('org_id', scope.org_id)
+    .eq('provider_ref', scope.provider_ref)
+    .eq('stripe_mode', scope.stripe_mode);
   if (subError) {
     throw new Error(`subscriptions update (past_due) failed: ${subError.message}`);
   }
@@ -476,6 +505,48 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
+  // RF-04. Record the delivery before acting on it, and mark it finished only
+  // once its effects have committed. Stripe delivers at least once by design
+  // and retries until it gets a 200, so without this an event that succeeded
+  // and then lost its response was applied again on the retry.
+  //
+  // `claim_billing_event` returns false only for an event already processed to
+  // completion. A redelivery of one that was interrupted returns true, because
+  // finishing it is exactly what the retry is for.
+  const orgIdOf = (e: Stripe.Event): string | null => {
+    const object = e.data.object as {
+      metadata?: Record<string, string> | null;
+      subscription_details?: { metadata?: Record<string, string> | null } | null;
+    };
+    return (
+      object.metadata?.org_id ?? object.subscription_details?.metadata?.org_id ?? null
+    );
+  };
+
+  let shouldProcess = true;
+  try {
+    const { data, error } = await supabase.rpc('claim_billing_event', {
+      p_provider: 'stripe',
+      p_mode: mode,
+      p_event_id: event.id,
+      p_event_type: event.type,
+      p_org: orgIdOf(event),
+      p_created_at: new Date(event.created * 1000).toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    shouldProcess = data !== false;
+  } catch (err) {
+    // The ledger being unavailable must not silently turn idempotency off.
+    // A 500 makes Stripe retry, which is the safe direction.
+    reportEdgeError(err, 'stripe-webhook:claim', { eventType: event.type });
+    return jsonResponse({ error: 'Could not record the event' }, 500);
+  }
+
+  if (!shouldProcess) {
+    // Already applied. 200, so Stripe stops retrying.
+    return jsonResponse({ received: true, duplicate: true });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed':
@@ -513,12 +584,31 @@ Deno.serve(async (req: Request) => {
         // config sends more than this function subscribes to handling.
         break;
     }
+
+    // Only now. An event marked processed before its effects committed is one
+    // Stripe will never send again and this database never applied.
+    await supabase.rpc('complete_billing_event', {
+      p_provider: 'stripe',
+      p_mode: mode,
+      p_event_id: event.id,
+    });
     return jsonResponse({ received: true });
   } catch (err) {
     // The one place money and subscription state change. A webhook that
     // throws here is Stripe believing something happened that this database
     // does not record.
     reportEdgeError(err, 'stripe-webhook:handler', { eventType: event.type });
+    // The receipt keeps `processed_at` null, so the retry below reprocesses
+    // it. Recording why makes an event that keeps failing visible rather than
+    // only countable in Stripe's dashboard.
+    await supabase
+      .rpc('fail_billing_event', {
+        p_provider: 'stripe',
+        p_mode: mode,
+        p_event_id: event.id,
+        p_error: err instanceof Error ? err.message : String(err),
+      })
+      .then(undefined, () => undefined);
     // Non-200 so Stripe retries — this is a real failure, not a signature
     // problem, and retry is the correct behaviour for a transient DB error.
     return jsonResponse({ error: 'Handler error' }, 500);

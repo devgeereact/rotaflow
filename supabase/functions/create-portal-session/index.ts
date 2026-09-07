@@ -105,10 +105,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (subError) throw subError;
     if (!sub?.stripe_customer_id) {
-      return jsonResponse(
-        { error: 'No billing account yet — choose a plan first' },
-        404,
-      );
+      return jsonResponse({ error: 'No billing account yet — choose a plan first' }, 404);
     }
 
     // Unlike Checkout, the Portal has no fallback: it needs an existing

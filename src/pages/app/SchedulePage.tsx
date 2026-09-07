@@ -9,13 +9,17 @@ import { listActiveStaff, getMyStaffProfile } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
-import { listClockEventsForOrg } from '@/services/clockService';
+import { loadAttendanceDay } from '@/services/attendanceService';
+import { getOrganisation } from '@/services/orgService';
 import { listRotas } from '@/services/rotaService';
 import {
   loadWeeklyRosterSummary,
   type WeeklyRosterSummary,
 } from '@/services/dashboardService';
 import { resolvePeriod, todayIso } from '@/lib/schedulePeriod';
+import { FALLBACK_TIMEZONE, resolveReportingTimezone } from '@/lib/operationalDay';
+import { useOperationalDate } from '@/hooks/useOperationalDate';
+import type { AttendanceCounts } from '@/lib/attendance';
 import { isWeekPublished } from '@/lib/rotaRollup';
 import { downloadIcs } from '@/lib/ics';
 import {
@@ -28,14 +32,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ManagerSchedule } from '@/components/schedule/ManagerSchedule';
 import { StaffSchedule } from '@/components/schedule/StaffSchedule';
-import type {
-  ClockEvent,
-  LeaveRequest,
-  Location,
-  Shift,
-  ShiftType,
-  StaffProfile,
-} from '@/types';
+import type { LeaveRequest, Location, Shift, ShiftType, StaffProfile } from '@/types';
 
 const DEFAULT_TZ = 'Europe/London';
 
@@ -57,6 +54,10 @@ export function SchedulePage(): JSX.Element {
 
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [reportingTimezone, setReportingTimezone] = useState(FALLBACK_TIMEZONE);
+  // Rolls over at local midnight, so a screen left open overnight is not
+  // still showing yesterday's roster in the morning.
+  const operationalToday = useOperationalDate(reportingTimezone);
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([]);
@@ -66,7 +67,7 @@ export function SchedulePage(): JSX.Element {
   const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
   const [weekly, setWeekly] = useState<WeeklyRosterSummary | null>(null);
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
-  const [clockEvents, setClockEvents] = useState<ClockEvent[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceCounts | null>(null);
   const [todayLabel, setTodayLabel] = useState('');
 
   // Staff
@@ -80,14 +81,20 @@ export function SchedulePage(): JSX.Element {
     setLoading(true);
     setLoadFailed(false);
     try {
-      const [locs, types] = await Promise.all([
+      const [locs, types, org] = await Promise.all([
         listLocations(orgId),
         listShiftTypes(orgId),
+        getOrganisation(orgId),
       ]);
       setLocations(locs);
       setShiftTypes(types);
-      const timezone = locs[0]?.timezone ?? DEFAULT_TZ;
-      const today = todayIso();
+      // The organisation's own clock for an all-sites view, not the first
+      // site's — `locations[0]?.timezone` silently stood in for every other
+      // site, which is wrong the moment an organisation spans two zones.
+      const reporting = resolveReportingTimezone(locs, null, org?.timezone ?? null);
+      const timezone = reporting.timezone || DEFAULT_TZ;
+      setReportingTimezone(timezone);
+      const today = operationalToday;
       const week = resolvePeriod('week', today, timezone);
 
       if (isManager) {
@@ -95,7 +102,7 @@ export function SchedulePage(): JSX.Element {
         setTodayLabel(day.label);
         const staffRows = await listActiveStaff(orgId);
         setStaff(staffRows);
-        const [shifts, weeklySummary, leaveRows, events] = await Promise.all([
+        const [shifts, weeklySummary, leaveRows, attendanceDay] = await Promise.all([
           listShiftsForPeriod({
             orgId,
             fromIso: day.fromIso,
@@ -111,16 +118,17 @@ export function SchedulePage(): JSX.Element {
             timezone,
           ),
           listOrgLeaveRequests(orgId),
-          listClockEventsForOrg({
-            orgId,
-            fromIso: day.fromIso,
-            toIso: new Date().toISOString(),
-          }),
+          // Published-only and boundary-aware, the same read the dashboard
+          // and the attendance workspace make. The previous query bounded the
+          // events at `now` with no earlier context, so a night shift's
+          // clock-in fell outside the window and its worker read as never
+          // having arrived.
+          loadAttendanceDay({ orgId, date: today, timezone }),
         ]);
         setTodayShifts(shifts);
         setWeekly(weeklySummary);
         setLeave(leaveRows);
-        setClockEvents(events);
+        setAttendance(attendanceDay.counts);
       } else {
         setWeekStartLabel(
           new Date(`${week.dates[0]}T00:00:00`).toLocaleDateString('en-GB', {
@@ -160,7 +168,7 @@ export function SchedulePage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [orgId, user, isManager, showError]);
+  }, [orgId, user, isManager, operationalToday, showError]);
 
   useEffect(() => {
     void load();
@@ -233,7 +241,22 @@ export function SchedulePage(): JSX.Element {
         locations={locations}
         shiftTypes={shiftTypes}
         leave={leave}
-        clockEvents={clockEvents}
+        attendance={
+          attendance ?? {
+            scheduledPeople: 0,
+            scheduledShifts: 0,
+            workingNow: 0,
+            onBreak: 0,
+            completed: 0,
+            late: 0,
+            notRecorded: 0,
+            missingClockOut: 0,
+            unscheduled: 0,
+            openShifts: 0,
+          }
+        }
+        operationalDate={operationalToday}
+        timezone={reportingTimezone}
       />
     );
   }

@@ -208,7 +208,8 @@ function resolveOrgChannels(
   const typed = row as Record<string, unknown>;
   const resolved = { ...ALL_CHANNELS_ON };
   for (const channel of ['in_app', 'email', 'push'] as ChannelKey[]) {
-    if (typeof typed[channel] === 'boolean') resolved[channel] = typed[channel] as boolean;
+    if (typeof typed[channel] === 'boolean')
+      resolved[channel] = typed[channel] as boolean;
   }
   return resolved;
 }
@@ -219,8 +220,6 @@ function jsonResponse(payload: unknown, status = 200): Response {
     headers: { ...requestCorsHeaders, 'Content-Type': 'application/json' },
   });
 }
-
-
 
 async function sendPush(
   subscription: { endpoint: string; p256dh: string; auth_key: string },
@@ -318,7 +317,11 @@ Deno.serve(async (req: Request) => {
 
     const memberUserIds = members?.map((m) => m.user_id) ?? [];
     if (memberUserIds.length === 0) {
-      return jsonResponse({ ok: true, results: { push: null, email: null }, dropped: userIds.length });
+      return jsonResponse({
+        ok: true,
+        results: { push: null, email: null },
+        dropped: userIds.length,
+      });
     }
 
     // ---- Preferences. See "PREFERENCES" in the file header. ----------------
@@ -402,7 +405,12 @@ Deno.serve(async (req: Request) => {
     for (const channel of ['email', 'push'] as ChannelKey[]) {
       if (!orgChannels[channel]) {
         for (const userId of reachableUserIds) {
-          record(userId, channel, 'skipped', 'channel disabled for this event by the organisation');
+          record(
+            userId,
+            channel,
+            'skipped',
+            'channel disabled for this event by the organisation',
+          );
         }
       }
     }
@@ -433,11 +441,19 @@ Deno.serve(async (req: Request) => {
       for (const userId of scopedUserIds) record(userId, 'in_app', 'sent');
     } else {
       for (const userId of scopedUserIds) {
-        record(userId, 'in_app', 'skipped', 'in-app disabled for this event by the organisation');
+        record(
+          userId,
+          'in_app',
+          'skipped',
+          'in-app disabled for this event by the organisation',
+        );
       }
     }
 
-    const results = { push: { sent: 0, expired: 0, failed: 0 }, email: { sent: 0, skipped: 0, failed: 0 } };
+    const results = {
+      push: { sent: 0, expired: 0, failed: 0 },
+      email: { sent: 0, skipped: 0, failed: 0 },
+    };
 
     if (channels.includes('push')) {
       const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
@@ -446,7 +462,12 @@ Deno.serve(async (req: Request) => {
 
       if (!vapidPrivateKey || !vapidPublicKey || !vapidSubject) {
         for (const userId of reachableUserIds) {
-          record(userId, 'push', 'skipped', 'VAPID keys not configured on this deployment');
+          record(
+            userId,
+            'push',
+            'skipped',
+            'VAPID keys not configured on this deployment',
+          );
         }
       }
       if (vapidPrivateKey && vapidPublicKey && vapidSubject) {
@@ -491,7 +512,12 @@ Deno.serve(async (req: Request) => {
         //. Either the org's own, or the global fallback.
         results.email.skipped = reachableUserIds.length;
         for (const userId of reachableUserIds) {
-          record(userId, 'email', 'skipped', 'no SMTP configured for this organisation or platform');
+          record(
+            userId,
+            'email',
+            'skipped',
+            'no SMTP configured for this organisation or platform',
+          );
         }
       } else {
         const transport = await createSmtpTransport(smtpConfig);
@@ -565,7 +591,9 @@ Deno.serve(async (req: Request) => {
               profile.id,
               'email',
               'failed',
-              mailError instanceof Error ? mailError.message.slice(0, 500) : 'unknown error',
+              mailError instanceof Error
+                ? mailError.message.slice(0, 500)
+                : 'unknown error',
             );
           }
         }
@@ -595,6 +623,9 @@ Deno.serve(async (req: Request) => {
       recorded: deliveries.length,
     });
   } catch (error) {
-    return jsonResponse({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return jsonResponse(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      500,
+    );
   }
 });

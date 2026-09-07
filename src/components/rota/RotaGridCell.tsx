@@ -17,8 +17,15 @@ interface RotaGridCellProps {
   now: number;
   selectedShiftId: string | null;
   conflictedShiftIds: Set<string>;
+  /** This cell is where a keyboard move would currently land. */
+  isMoveTarget: boolean;
+  /** The shift being moved by keyboard, so its own chip reads as lifted. */
+  movingShiftId: string | null;
   onAddShift: () => void;
   onSelectShift: (shift: Shift) => void;
+  onStartMove?: (shift: Shift) => void;
+  onMoveKey?: (key: string) => boolean;
+  onMoveCancel?: () => void;
   /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
   onDeleteShift?: (shift: Shift) => void;
 }
@@ -34,8 +41,13 @@ export function RotaGridCell({
   now,
   selectedShiftId,
   conflictedShiftIds,
+  isMoveTarget,
+  movingShiftId,
   onAddShift,
   onSelectShift,
+  onStartMove,
+  onMoveKey,
+  onMoveCancel,
   onDeleteShift,
 }: RotaGridCellProps): JSX.Element {
   // Location-qualified: staff_profiles has no location column, so someone
@@ -51,8 +63,14 @@ export function RotaGridCell({
   const isEmpty = shifts.length === 0 && previewSuggestions.length === 0;
 
   const containerClassName = cn(
-    'min-h-[44px] rounded-lg border border-transparent p-0.5 transition-colors',
+    'min-h-[44px] rounded-lg border border-transparent p-0.5 transition-colors duration-control motion-reduce:transition-none',
     isOver && 'border-primary bg-primary/5',
+    // The keyboard move's landing cell. Deliberately a stronger treatment than
+    // the pointer's `isOver`: a dragging hand is already over the cell it means,
+    // whereas a keyboard user is reading where the shift *would* go from
+    // several rows away.
+    isMoveTarget &&
+      'border-primary bg-primary-wash ring-2 ring-primary dark:bg-primary-wash-dark',
     isEmpty && 'cursor-pointer hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
   );
 
@@ -92,7 +110,11 @@ export function RotaGridCell({
               timeState={shiftTimeState(shift.starts_at, shift.ends_at, now)}
               selected={shift.id === selectedShiftId}
               hasConflict={conflictedShiftIds.has(shift.id)}
+              moving={shift.id === movingShiftId}
               onClick={() => onSelectShift(shift)}
+              onStartMove={onStartMove ? () => onStartMove(shift) : undefined}
+              onMoveKey={onMoveKey}
+              onMoveCancel={onMoveCancel}
               onDelete={onDeleteShift ? () => onDeleteShift(shift) : undefined}
             />
           );

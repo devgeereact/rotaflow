@@ -2,12 +2,14 @@ import {
   CalendarPlus,
   CheckCheck,
   LayoutDashboard,
+  ListChecks,
   CalendarDays,
   CalendarRange,
   Users,
   MapPin,
   Clock3,
   LogIn,
+  ScanFace,
   Umbrella,
   Repeat2,
   Timer,
@@ -19,6 +21,7 @@ import {
   LifeBuoy,
   type LucideIcon,
 } from 'lucide-react';
+import type { WorkMode } from '@/lib/workMode';
 import type { MembershipRole } from '@/types';
 
 export interface NavItem {
@@ -37,10 +40,21 @@ export interface NavItem {
   to: string;
   /** Which live count, if any, decorates this row. See `useNavBadges`. */
   badge?: 'leave' | 'swaps';
+  /**
+   * Marks a row that only exists because the person opted into `my-work`.
+   * The rail draws these under a "My work" heading so it is obvious which
+   * half of the product a row belongs to.
+   */
+  group?: 'my-work';
+}
+
+export interface NavOptions {
+  /** Management or personal. Defaults to management for anyone but staff. */
+  mode?: WorkMode;
 }
 
 /**
- * The primary sidebar, resolved against the signed-in role.
+ * The primary sidebar, resolved against the signed-in role and work mode.
  *
  * Lives in `lib` rather than beside the component so `navigationTargets.test`
  * can check every target against the real route table without importing a
@@ -48,56 +62,87 @@ export interface NavItem {
  *
  * ## Order and labels: `docs/ORGANISATION_WORKSPACE.html`
  *
- * Dashboard, Rota Builder, Schedule, Clock in, Timesheets, Availability,
- * Leave, Shift Swaps, Overtime, Team, Locations, Announcements, Reports.
+ * Dashboard, Rota Builder, Schedule, Team Attendance, Timesheets, Team
+ * Availability, Leave, Shift Swaps, Open Shifts, Overtime, Approvals, Team,
+ * Locations, Announcements, Reports.
  *
- * **Rota Builder and Schedule are separate rows again**, and so are **Team
- * and Availability**. An earlier pass merged each pair into one destination
- * with an in-page tab bar (`workspaceTabs.ts`) on the reasoning that building
- * a week and reading the published one were "one workspace, two halves". The
+ * **Rota Builder and Schedule are separate rows**, and so are Team and
+ * Availability. An earlier pass merged each pair into one destination with an
+ * in-page tab bar (`workspaceTabs.ts`) on the reasoning that building a week
+ * and reading the published one were "one workspace, two halves". The
  * organisation workspace reference treats them as two separate journeys with
- * their own sidebar rows instead (a manager builds the rota far more often
+ * their own sidebar rows instead: a manager builds the rota far more often
  * than they read the read-only view of it, and burying "Schedule" a click
- * inside "Rota" cost it a place a keyboard-driven user could jump straight
- * to). Rota Builder and Schedule dropped the cross-link entirely, matching
- * the reference's own nav (two rows, no shared tab bar); Team and Availability
- * keep theirs, since `workspaceTabs.ts`'s `teamWorkspaceTabs` is still wired
- * into both pages.
+ * inside "Rota" cost it a place a keyboard-driven user could jump straight to.
  *
- * ## Why Clock In is shown to managers too
+ * ## Why a manager no longer gets Clock In by default
  *
- * The obvious reading of the mockups is "staff only". They are all signed in
- * as Sarah Manager. It is wrong for this product, because of how the risk is
- * shaped: in a small care home the owner and the manager are usually *on the
- * rota themselves*. Hiding the control costs a working manager the thing they
- * open twice a day and gives them no way to find it; showing it to a manager
- * who never clocks in costs one row of nav they can ignore.
+ * This file used to argue the opposite, and the argument was: "in a small care
+ * home the owner and the manager are usually on the rota themselves. Hiding
+ * the control costs a working manager the thing they open twice a day."
  *
- * Gating on "has a staff_profile" would be more precise, but the sidebar has
- * no such query and adding one to render navigation is a poor trade for a row.
+ * The half that was wrong is that the cost was assumed to fall only on the
+ * manager who does work shifts. It fell on everybody. An owner with no staff
+ * profile — which is the ordinary case for anybody running more than one site
+ * — was given Clock In, a personal Availability editor and a personal
+ * timesheet, and every one of them opened on an empty screen, because there
+ * was no staff record for any of it to attach to. The comment then dismissed
+ * gating on a staff profile as "a poor trade for a row"; it is not a row, it
+ * is four screens that cannot work.
+ *
+ * So: management is the default, `my-work` is opted into, and the opt-in is
+ * only offered to somebody who has a staff profile here (`useWorkMode`). A
+ * manager who does work shifts keeps everything they had — they start in
+ * `my-work` — and nothing managerial is ever removed by the mode. See
+ * `src/lib/workMode.ts` for why the two roles default in opposite directions.
+ *
+ * ## Team Attendance, not Clock In
+ *
+ * The managerial equivalent of Clock In is not a personal punch clock, it is
+ * the review workspace: who actually clocked in, who is late, whose shift
+ * ended with the clock still running. `/app/attendance`.
  */
-export function navItemsForRole(role: MembershipRole | null): NavItem[] {
+export function navItemsForRole(
+  role: MembershipRole | null,
+  options: NavOptions = {},
+): NavItem[] {
   const isManager = role === 'owner' || role === 'manager';
+  const mode: WorkMode = options.mode ?? (role === 'staff' ? 'my-work' : 'management');
+  const personal = mode === 'my-work';
 
   const items: NavItem[] = [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard' },
   ];
 
   if (isManager) {
+    // Above the rota builder, because it is the screen that says what the
+    // builder still needs. It stays in the rail after setup is finished: a
+    // count can go back down, and "we have no locations any more" is worth a
+    // permanent place rather than a one-off wizard nobody can return to.
+    items.push({ label: 'Set up', icon: ListChecks, to: '/app/setup' });
     items.push({ label: 'Rota Builder', icon: CalendarDays, to: '/app/rota' });
   }
   items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });
-  items.push({ label: 'Clock In', icon: LogIn, to: '/app/clock' });
+
+  if (isManager) {
+    // The management counterpart of Clock In: the attendance record, not a
+    // punch clock. It is above Timesheets because a timesheet is what
+    // attendance becomes once it has been reviewed.
+    items.push({ label: 'Team Attendance', icon: ScanFace, to: '/app/attendance' });
+  }
+
   items.push({ label: 'Timesheets', icon: Timer, to: '/app/timesheets' });
-  items.push({ label: 'Availability', icon: Clock3, to: '/app/availability' });
+  items.push({
+    // A manager opens this to see who is available, with staff and date
+    // controls; a staff member opens it to say when they are. Same route,
+    // and the page reads the work mode to decide which it is.
+    label: isManager && !personal ? 'Team Availability' : 'Availability',
+    icon: Clock3,
+    to: '/app/availability',
+  });
   items.push({ label: 'Leave', icon: Umbrella, to: '/app/leave', badge: 'leave' });
   items.push({ label: 'Shift Swaps', icon: Repeat2, to: '/app/swaps', badge: 'swaps' });
-  // Everybody, manager included. A manager who works shifts covers gaps too,
-  // and the board is empty for anyone with nothing to take.
   items.push({ label: 'Open Shifts', icon: CalendarPlus, to: '/app/open-shifts' });
-  // §2 lists "Request overtime" among what a staff member can do, so this
-  // sits outside the managerial block. The page's own Team toggle is what
-  // gates the approval queue.
   items.push({ label: 'Overtime', icon: TimerReset, to: '/app/overtime' });
 
   if (isManager) {
@@ -114,6 +159,19 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
     items.push({ label: 'Reports', icon: BarChart3, to: '/app/reports' });
   }
 
+  // Staff reach Clock In as an ordinary row: it is the screen they open twice
+  // a day and it belongs at the top of their list, not in an opt-in group.
+  if (!isManager) {
+    items.splice(2, 0, { label: 'Clock In', icon: LogIn, to: '/app/clock' });
+  } else if (personal) {
+    items.push({
+      label: 'Clock In',
+      icon: LogIn,
+      to: '/app/clock',
+      group: 'my-work',
+    });
+  }
+
   return items;
 }
 
@@ -122,6 +180,10 @@ export function navItemsForRole(role: MembershipRole | null): NavItem[] {
  * than workspace ones. A manager gets Settings; staff get My Profile in the
  * same slot, `settingsTabsForRole('staff')` is empty, so a Settings link
  * would land them on a redirect every time. Help & Support is common to both.
+ *
+ * A manager's own account stays reachable here in either work mode — the
+ * profile, password, sessions and preferences of the person signed in are not
+ * a managerial function and must never be behind one.
  */
 export function footerNavItemsForRole(role: MembershipRole | null): NavItem[] {
   const isManager = role === 'owner' || role === 'manager';

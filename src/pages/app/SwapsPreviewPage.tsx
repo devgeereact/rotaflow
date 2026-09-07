@@ -2,6 +2,7 @@ import { BadgeCheck, CalendarClock, Clock3, ShieldCheck, Users } from 'lucide-re
 import { SwapsView } from '@/components/swaps/SwapsView';
 import type { SwapRow } from '@/lib/swapRows';
 import type { SwapRule } from '@/components/swaps/SwapRulesCard';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 
 const ROWS: SwapRow[] = [
   {
@@ -178,7 +179,7 @@ export function SwapsPreviewPage(): JSX.Element {
   const viewerStaffId = canApprove ? 'staff-mgr' : 'staff-4';
 
   return (
-    <div className="p-8">
+    <PreviewCanvas>
       <SwapsView
         rows={ROWS}
         loading={false}
@@ -196,6 +197,6 @@ export function SwapsPreviewPage(): JSX.Element {
         onClaim={async () => {}}
         onWithdraw={async () => {}}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

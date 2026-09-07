@@ -167,6 +167,59 @@ export interface MultiLocationRotaQuery {
  * merely looking at a week should not create rows for locations nobody has
  * scheduled.
  */
+export interface MultiWeekRotaQuery {
+  orgId: string;
+  /** Monday of each week to resolve, 'YYYY-MM-DD'. */
+  weekStarts: readonly string[];
+  locationIds: readonly string[];
+}
+
+/** Key for the multiweek map: one location's rota for one week. */
+export function rotaWeekKey(locationId: string, weekStart: string): string {
+  return `${locationId}|${weekStart}`;
+}
+
+/**
+ * Resolve every location's rota for several weeks in one query.
+ *
+ * The planner shows three weeks at once, and three separate
+ * `resolveRotasForLocations` calls would be three round trips for rows one
+ * `IN` covers. It also **never writes**: browsing a week that has no rota is
+ * not an intention to create one, and the previous loader's
+ * `getOrCreateRotaForPeriod` on load wrote an empty draft into the database
+ * for every location every time somebody scrolled past an empty week. A draft
+ * is created by the first real edit instead — see `ensureRotaForWeek`.
+ */
+export async function resolveRotasForWeeks(
+  input: MultiWeekRotaQuery,
+): Promise<Map<string, RotaPeriodResolution>> {
+  const byKey = new Map<string, RotaPeriodResolution>();
+  if (input.locationIds.length === 0 || input.weekStarts.length === 0) return byKey;
+
+  const { data, error } = await supabase
+    .from('rotas')
+    .select('*')
+    .eq('org_id', input.orgId)
+    .in('period_start', [...input.weekStarts])
+    .in('location_id', [...input.locationIds])
+    // Same ordering as `listRotasForPeriod`, because `resolveRotaRows` picks
+    // the first row of each status and therefore depends on it.
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const grouped = new Map<string, Rota[]>();
+  for (const row of data ?? []) {
+    if (row.location_id === null) continue;
+    const key = rotaWeekKey(row.location_id, row.period_start);
+    const bucket = grouped.get(key);
+    if (bucket) bucket.push(row);
+    else grouped.set(key, [row]);
+  }
+
+  for (const [key, rows] of grouped) byKey.set(key, resolveRotaRows(rows));
+  return byKey;
+}
+
 export async function resolveRotasForLocations(
   input: MultiLocationRotaQuery,
 ): Promise<Map<string, RotaPeriodResolution>> {

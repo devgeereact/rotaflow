@@ -1,4 +1,5 @@
 import { ClockInView } from '@/components/clockin/ClockInView';
+import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 import {
   DEMO_ACTIVITY,
   DEMO_ATTENDANCE,
@@ -34,7 +35,7 @@ function noop(): void {
 
 export function ClockInPreviewPage(): JSX.Element {
   return (
-    <div className="min-h-screen bg-background px-6 py-8 dark:bg-background-dark md:px-10">
+    <PreviewCanvas>
       <ClockInView
         policy={DEMO_POLICY}
         shift={DEMO_SHIFT}
@@ -55,6 +56,6 @@ export function ClockInPreviewPage(): JSX.Element {
         help={DEMO_HELP}
         footer={{ ...DEMO_FOOTER, onReportIssue: noop }}
       />
-    </div>
+    </PreviewCanvas>
   );
 }

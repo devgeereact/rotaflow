@@ -16,6 +16,7 @@ const STAFF_DEFAULTS: StaffProfile = {
   first_name: 'Priya',
   last_name: 'Raman',
   job_title: 'Senior Nurse',
+  job_title_id: null,
   department_id: null,
   contract_type: 'full_time',
   weekly_hours: 37.5,

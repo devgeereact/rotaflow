@@ -255,7 +255,13 @@ describe('navigation targets', () => {
    * roles are checked, not just the manager's superset.
    */
   const sidebarLinks = (['owner', 'manager', 'staff'] as const).flatMap((role) =>
-    navItemsForRole(role).map((item) => [`${role} › ${item.label}`, item.to] as const),
+    // Both work modes, because `my-work` adds rows a manager can reach and an
+    // unrouted one of those is just as dead as an unrouted default one.
+    (['management', 'my-work'] as const).flatMap((mode) =>
+      navItemsForRole(role, { mode }).map(
+        (item) => [`${role}/${mode} › ${item.label}`, item.to] as const,
+      ),
+    ),
   );
 
   it('builds a non-trivial sidebar for every role', () => {
@@ -288,6 +294,60 @@ describe('navigation targets', () => {
     for (const role of ['owner', 'manager', 'staff'] as const) {
       expect(footerNavItemsForRole(role).map((i) => i.to)).toContain('/app/help');
     }
+  });
+
+  /*
+   * The assumption this suite used to encode, and what replaced it.
+   *
+   * `sidebarNav.ts` gave Clock In, Availability and Open Shifts to owners and
+   * managers unconditionally, arguing that a manager in a small care home is
+   * usually on the rota. That handed every owner without a staff record four
+   * screens with nothing behind them. Management is now the default and the
+   * personal controls are opted into; the tests below assert the new rule
+   * rather than being worked around.
+   */
+  it('does not give an owner a personal clock-in by default', () => {
+    const management = navItemsForRole('owner').map((i) => i.to);
+    expect(management).not.toContain('/app/clock');
+    // The managerial counterpart is there instead: the attendance record.
+    expect(management).toContain('/app/attendance');
+  });
+
+  it('offers Clock In to an owner who opts into My work, marked as such', () => {
+    const personal = navItemsForRole('owner', { mode: 'my-work' });
+    const clockIn = personal.find((i) => i.to === '/app/clock');
+    expect(clockIn).toBeDefined();
+    expect(clockIn?.group).toBe('my-work');
+  });
+
+  it('never removes a managerial destination when My work is on', () => {
+    const management = navItemsForRole('manager').map((i) => i.to);
+    const personal = navItemsForRole('manager', { mode: 'my-work' }).map((i) => i.to);
+    for (const to of management) expect(personal).toContain(to);
+  });
+
+  it('gives staff Clock In as an ordinary row, not an opt-in group', () => {
+    const staffNav = navItemsForRole('staff');
+    const clockIn = staffNav.find((i) => i.to === '/app/clock');
+    expect(clockIn).toBeDefined();
+    expect(clockIn?.group).toBeUndefined();
+    // And nothing managerial leaks into it.
+    expect(staffNav.map((i) => i.to)).not.toContain('/app/attendance');
+    expect(staffNav.map((i) => i.to)).not.toContain('/app/team');
+  });
+
+  it('labels Availability for the audience it is showing', () => {
+    expect(
+      navItemsForRole('owner').find((i) => i.to === '/app/availability')?.label,
+    ).toBe('Team Availability');
+    expect(
+      navItemsForRole('staff').find((i) => i.to === '/app/availability')?.label,
+    ).toBe('Availability');
+  });
+
+  it('routes Team Attendance and keeps it managerial', () => {
+    expect(isRoutable('/app/attendance')).toBe(true);
+    expect(navItemsForRole('manager').map((i) => i.to)).toContain('/app/attendance');
   });
 
   it('puts the team directory at the spec spelling, with the old one aliased', () => {

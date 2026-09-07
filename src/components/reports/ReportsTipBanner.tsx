@@ -36,7 +36,7 @@ export function ReportsTipBanner({
       <button
         type="button"
         onClick={onAction}
-        className="flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-4 text-sm font-semibold text-primary dark:text-primary-ink-dark transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
+        className="flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-4 text-sm font-semibold text-primary-ink dark:text-primary-ink-dark transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
       >
         <ActionIcon size={16} aria-hidden="true" />
         {actionLabel}

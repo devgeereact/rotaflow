@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fromIsoInTimezone } from '@/lib/rotaGrid';
 import { Button } from '@/components/ui/Button';
-import { Label } from '@/components/ui/Label';
+import { Field } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Modal';
 import type { ClockEvent } from '@/types';
 
@@ -137,59 +137,55 @@ export function AmendClockEventModal({
         )}
 
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="amend-in">Clock in</Label>
+          <Field label="Clock in">
             <input
-              id="amend-in"
               type="time"
               value={clockInTime}
               onChange={(e) => setClockInTime(e.target.value)}
               onBlur={() => setTouched(true)}
-              className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             />
-          </div>
-          <div>
-            <Label htmlFor="amend-out">Clock out</Label>
+          </Field>
+          <Field label="Clock out">
             <input
-              id="amend-out"
               type="time"
               value={clockOutTime}
               onChange={(e) => setClockOutTime(e.target.value)}
               onBlur={() => setTouched(true)}
-              className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             />
-          </div>
+          </Field>
         </div>
+        {/* This one belongs to the pair, not to either field. */}
         {showNoChangeError && (
-          <p role="alert" className="mt-1 text-xs text-danger">
+          <p
+            role="alert"
+            className="mt-1.5 text-xs font-medium text-danger-ink dark:text-danger-ink-dark"
+          >
             Set a clock-in or clock-out time to amend.
           </p>
         )}
 
-        <div className="mt-4">
-          <Label htmlFor="amend-reason">Reason</Label>
+        {/* `Field`, so the hint and the error are both present rather than the
+            hint being replaced by the error. "Recorded in the audit trail" is
+            the reason the length rule exists, and it was disappearing exactly
+            when somebody was struggling to satisfy it. */}
+        <Field
+          label="Reason"
+          required
+          className="mt-4"
+          hint="Recorded in the organisation's audit trail alongside this correction."
+          error={showReasonError ? `Give at least ${MIN_REASON} characters.` : null}
+        >
           <textarea
-            id="amend-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             onBlur={() => setTouched(true)}
             rows={3}
-            required
-            aria-describedby={showReasonError ? 'amend-reason-error' : undefined}
-            aria-invalid={showReasonError}
-            className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             placeholder="e.g. Forgot to clock out, confirmed with them they left at 17:00."
           />
-          {showReasonError ? (
-            <p id="amend-reason-error" role="alert" className="mt-1 text-xs text-danger">
-              Give at least {MIN_REASON} characters.
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-              Recorded in the organisation&rsquo;s audit trail alongside this correction.
-            </p>
-          )}
-        </div>
+        </Field>
 
         <div className="mt-5 flex justify-end gap-3">
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>

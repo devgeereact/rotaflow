@@ -17,6 +17,16 @@ export interface StatTileProps {
   to?: string;
   /** A `Sparkline` under the figure. Its recent shape, not a second number. */
   chart?: ReactNode;
+  /**
+   * Tighten the tile on phones only: smaller padding and a smaller figure,
+   * unchanged from `sm` up.
+   *
+   * For a screen whose tiles are context rather than the point of the page.
+   * Team stacked six full-width tiles before its staff list, so the list — the
+   * reason anybody opens Team — started 850px down a 390px screen. Six compact
+   * tiles in two columns are a third of that height and read the same.
+   */
+  compact?: boolean;
   className?: string;
 }
 
@@ -53,6 +63,7 @@ export function StatTile({
   hint,
   to,
   chart,
+  compact = false,
   className,
 }: StatTileProps): JSX.Element {
   const body = (
@@ -68,9 +79,10 @@ export function StatTile({
       </div>
       <p
         className={cn(
-          'flex items-baseline gap-1.5 font-display text-[1.7rem] font-semibold leading-tight tracking-[-0.6px] tabular-nums',
+          'flex items-baseline gap-1.5 font-display font-semibold leading-tight tracking-[-0.6px] tabular-nums',
+          compact ? 'text-xl sm:text-[1.7rem]' : 'text-[1.7rem]',
           'text-content dark:text-content-dark',
-          icon ? 'mt-2.5' : 'mt-1.5',
+          icon ? 'mt-2.5' : compact ? 'mt-0.5 sm:mt-1.5' : 'mt-1.5',
         )}
       >
         {value}
@@ -90,10 +102,11 @@ export function StatTile({
   );
 
   const shell = cn(
-    'block rounded-2xl border border-surface-border bg-surface px-3.5 py-3.5 shadow-sm',
+    'block rounded-2xl border border-surface-border bg-surface shadow-sm',
+    compact ? 'px-3 py-2.5 sm:px-3.5 sm:py-3.5' : 'px-3.5 py-3.5',
     'dark:border-surface-border-dark dark:bg-surface-dark',
     to &&
-      'transition-colors hover:border-primary/45 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+      'transition-colors duration-control motion-reduce:transition-none hover:border-primary/45 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
     className,
   );
 

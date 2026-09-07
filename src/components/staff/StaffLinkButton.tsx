@@ -21,7 +21,7 @@ export function StaffLinkButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1 whitespace-nowrap rounded text-sm font-semibold text-primary dark:text-primary-ink-dark',
+        'inline-flex items-center gap-1 whitespace-nowrap rounded text-sm font-semibold text-primary-ink dark:text-primary-ink-dark',
         'hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         className,
       )}

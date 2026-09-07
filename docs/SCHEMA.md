@@ -102,7 +102,7 @@ Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, excep
 | `invites`                 | `org_id`, `email`, `role`, `token`, `expires_at`, `accepted_at?`, `revoked_at?` (`0006`)                                                                                                                                                                  | One-time join links. `create_invite()` returns the token; **nothing emails it** — a manager copies the link by hand (`docs/SAAS.md` GAP-005). `accept_invite()` links the new `auth.users` row to a pre-existing `staff_profiles` row by email (`0053`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `push_subscriptions`      | `user_id`, `endpoint`, `p256dh`, `auth_key` (`0009`)                                                                                                                                                                                                      | Web Push endpoints. **User-scoped, not org-scoped — the one domain table with no `org_id`**, because a browser subscription belongs to a person, not a tenant. `send-notification` prunes 404/410 endpoints on send.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `org_smtp_settings`       | `org_id` PK, `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`, `from_email`, `from_name?`, `verified_at?` (`0010`)                                                                                                                                      | Per-org SMTP so mail leaves the organisation's own server. `smtp_pass` is excluded from the column-level SELECT grant for `authenticated`, so it can never come back through the client; read `org_smtp_settings_safe` instead. `verified_at` is written **only** by a successful `test-smtp` send — "saved" and "known to work" are different claims.                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `notification_deliveries` | `org_id`, `user_id`, `channel` (`in_app`\|`email`\|`push`), `status` (`sent`\|`failed`\|`skipped`\|`expired`), `event_type`, `detail?` (`0067`)                                                                                                           | Was this person told, on which channel, and did it land. One row per recipient per channel per notification — `send-notification` computed this and discarded it until `0067`. Written only by that function (service_role); there is no client write policy. A manager or owner reads their org's rows and a person reads their own; `anon` is refused by the GRANT before RLS is consulted. **`sent` means the provider accepted it, not that a human saw it.** Retention is 12 months, set by `0092` and enforced by the nightly job; this line said "no retention policy yet — see GAP-027" for a week after that shipped.                                                                                                                                                                                                                                                        |
+| `notification_deliveries` | `org_id`, `user_id`, `channel` (`in_app`\|`email`\|`push`), `status` (`sent`\|`failed`\|`skipped`\|`expired`), `event_type`, `detail?` (`0067`)                                                                                                           | Was this person told, on which channel, and did it land. One row per recipient per channel per notification — `send-notification` computed this and discarded it until `0067`. Written only by that function (service_role); there is no client write policy. A manager or owner reads their org's rows and a person reads their own; `anon` is refused by the GRANT before RLS is consulted. **`sent` means the provider accepted it, not that a human saw it.** Retention is 12 months, set by `0092` and enforced by the nightly job; this line said "no retention policy yet — see GAP-027" for a week after that shipped.                                                                                                                                                 |
 | `notification_outbox`     | `org_id`, `event_name`, `payload jsonb`, `status` (`pending`\|`sent`\|`failed`\|`abandoned`), `attempts`, `request_id?`, `last_error?`, `dispatched_at?` (`0069`)                                                                                         | Notifications the database knows are owed, written in the same transaction as the event that caused them — so a closed browser tab cannot lose one. `rotas_enqueue_publish_notification` fills it on a rota publish, and since `0087` `leave_requests_enqueue_reviewed`, `shift_swaps_enqueue_reviewed` and `announcements_enqueue_published` fill it on the other three events the product notifies about — nothing is dispatched from the browser any more; `dispatch_notification_outbox()` drains it on a pg_cron tick via `pg_net`, reconciling each response before retrying. Owners and managers read their own org's queue; no client write policy. Secrets for the drain live in `vault`, never in a migration.                                                       |
 
 ## 4. Platform-level tables (from `0015`+)
@@ -225,14 +225,14 @@ count it returns is zero, and that is correct rather than broken.
 **Two more tables live here that no role but `service_role` can touch**, added after this
 section was last written and absent from it until 2026-08-31:
 
-| Table                    | Key columns                                                     | Purpose                                                                                     |
-| ------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Table                    | Key columns                                                      | Purpose                                                                                       |
+| ------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `platform_health_probes` | `request_id` (the `pg_net` id), `service`, `sent_at`, `classify` | `0076`/`0079`. One row per in-flight probe, so the reply can be matched back to what asked it |
 | `rate_limit_events`      | `id`, `bucket`, `subject`, `created_at`                          | `0085`. The shared limiter's ledger — one row per counted attempt, per bucket and subject     |
 
 Both have **RLS enabled and zero policies**, and grants to `service_role` alone. That is not
 an oversight and it is not the RLS-without-a-policy hazard `rls_invariants.test.sql` fails on:
-that test asks whether a table any client role can *reach* has a policy, and no client role
+that test asks whether a table any client role can _reach_ has a policy, and no client role
 can reach these. `anon` and `authenticated` hold nothing on either, so RLS-on-no-policy is a
 second closed door behind a locked one.
 
@@ -282,6 +282,86 @@ New functions worth knowing before writing a query: `my_sessions()` /
 `is_platform_admin()` gained an MFA condition (`0102`) and `has_org_role()`
 gained delegation (`0106`). Every policy in this schema calls one of those, so
 both changes are schema-wide by design — see §5.
+
+### 4.11 What 2026-09-06 added (`0127`–`0129`)
+
+The workforce pass. Both migrations move a rule out of a screen and into the
+schema, because in both cases the screen's version could be raced or bypassed.
+
+| Table                     | Key columns                                                                                                                                                       | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `job_titles`              | `org_id`, `name`, `name_normalised` (generated), `colour?`, `active`, unique `(org_id, name_normalised)`, partial unique `(org_id, colour) where active` (`0127`) | The organisation's catalogue of occupations. `name_normalised` is **generated**, so the comparison form cannot drift from the display name the way a trigger-maintained copy would. `colour` is a palette id from `src/lib/jobTitlePalette.ts`, CHECK-constrained to the twelve, and carries no authority — a title called "Owner" is a description of work; `memberships.role` is the only thing that decides anything. Archiving releases the colour. Writes are gated by `can_manage_job_titles`. |
+| `clock_event_corrections` | `org_id`, `clock_event_id`, `staff_profile_id`, `actor_user_id?`, `actor_name?`, `reason`, `before_value` jsonb, `after_value` jsonb (`0128`)                     | Append-only history of every manual change to a clock event. `authenticated` holds SELECT and nothing else — the write privileges the image's default ACL grants are explicitly revoked, because TRUNCATE is not subject to RLS and an append-only table one statement from empty is not append-only. Written only by `correct_clock_event`.                                                                                                                                                         |
+
+Columns added to existing tables:
+
+| Table            | Columns                               | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `staff_profiles` | `job_title_id` (`0127`)               | The catalogue entry, authoritative. The free-text `job_title` stays live and is kept in step by the application, so a client bundle still in a service-worker cache keeps rendering a title it cannot resolve. **Retire the text column only when** no read of `job_title` remains in `src/` and no cached bundle older than that release can still be running. A trigger refuses a title belonging to another organisation — the foreign key alone would accept one. |
+| `invites`        | `last_sent_at`, `send_error` (`0129`) | Whether the join email actually left, and why it did not. Both were previously known only to the toast the manager saw, so after a reload a delivered invitation and one the SMTP server refused were both simply "pending" — and they need opposite actions. Written **only** by `record_invite_send`: `0118` narrowed the client's UPDATE on `invites` to `revoked_at`, so a direct write would fail with 42501 at the screen, which is GAP-061 exactly.            |
+| `timesheets`     | `recalculation_required_at` (`0128`)  | Set when a correction lands inside an `approved` or `exported` period. `total_minutes` is **not** touched: `0124` made it the snapshot of what a person signed off, and a trigger that moved it afterwards would rewrite that decision without anybody deciding anything. The manager re-approves through `approve_timesheets`, which increments `version`.                                                                                                           |
+
+**One function was withdrawn rather than added.** `0128` drops the
+`clock_events_update` policy and revokes `UPDATE` on `clock_events` from
+`authenticated`. The capability is preserved through `correct_clock_event`,
+which applies the same owner/manager check the policy did; what changes is that
+a correction can no longer be made without a reason, an author and the previous
+value. Leaving both paths open would have made the audited one optional, and an
+optional audit trail records only the corrections nobody minded being seen.
+
+### 4.10 What 2026-09-05 added (`0123`–`0126`)
+
+Four migrations from the reliability repairs. Every one of them exists because
+an operation could report success while leaving the records wrong, so what
+matters here is less the shape than the guarantee.
+
+| Table            | Key columns                                                                                                               | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `billing_events` | `(provider, mode, event_id)` unique, `event_type`, `org_id?`, `event_created_at?`, `processed_at?`, `deliveries` (`0125`) | The receipt for every Stripe webhook delivery. `processed_at` is set only after the event's effects commit, so a null value means "received, not applied" and a retry may safely finish it. `mode` is in the key because test and live events arrive at one URL. RLS on, granted to `service_role` only — no screen reads it, and one tenant reading another's delivery history would be a disclosure with no upside. Excluded from the organisation export with a reason. |
+
+Columns added to existing tables:
+
+| Table         | Columns                                                                    | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shift_swaps` | `applied_at`, `applied_shift_id`, `applied_from_staff_profile_id` (`0123`) | Immutable evidence that a swap moved its shift. An approved swap used to be a **reusable command**: replaying it reverted whatever legitimate transfer had happened since. `applied_at is null` in the update predicate is what makes a concurrent second application lose rather than both succeed. Backfilled from `audit_logs`, which is the only append-only record of what the old two-step path actually did; a swap with no `rota.shift_reassigned` event is left null rather than assumed. |
+| `timesheets`  | `approved_by`, `approved_at`, `version` (`0124`)                           | A sign-off that records neither who made it nor when is not a sign-off. `version` increments on re-approval, so a period revisited after a clock correction is visibly a second decision rather than looking like the first one always said this.                                                                                                                                                                                                                                                  |
+| `invites`     | `department_id`, `location_id` (`0126`)                                    | Where the person was invited to work, applied to their staff record at acceptance. Both validated against the inviting org **inside** `create_invite` — it is SECURITY DEFINER, so RLS is not standing behind it and a foreign key alone would accept another tenant's id.                                                                                                                                                                                                                         |
+
+**One new unique index, and it is the point of `0124`.**
+`timesheets_period_unique (org_id, staff_profile_id, period_start, period_end)`.
+The table had carried no such key since `0002`, and the client compensated with
+a read-then-insert-or-update that two managers could interleave: both read "no
+row yet", both inserted, and payroll read whichever came back first. The
+migration refuses to create the index while conflicts exist and raises with the
+query to review them — it does not pick a winner, because choosing between two
+disagreeing payroll totals by `updated_at` is a decision about somebody's pay.
+`public.timesheet_approval_conflicts` is that review view, and empty is the only
+correct state.
+
+New functions:
+
+- `decide_shift_swap(uuid, text)` (`0123`) — the whole swap decision in one
+  transaction: lock, authorise from `auth.uid()`, record, verify the shift is
+  still the requester's and its rota not archived, move it, spend the swap,
+  audit. Replaces the client's approve-then-reassign pair, which could leave an
+  approved swap whose shift never moved _and_ a notification saying it had.
+- `apply_swap_reassignment(uuid)` (`0123`, hardened) — kept for a cached client
+  bundle, now carrying the same guards and refusing a second application.
+- `approve_timesheets(uuid, date, date, jsonb)` (`0124`) — one statement for a
+  whole batch, so a failure on person seventeen rolls back the first sixteen.
+  Staff ids are joined against the org rather than trusted from the payload.
+- `claim_billing_event` / `complete_billing_event` / `fail_billing_event`
+  (`0125`) — `service_role` only.
+- `create_invite` gained a five-argument form (`0126`). **The three-argument
+  form is dropped**, and had to be: a defaulted five-argument overload makes
+  every three-argument call ambiguous, which is an error on every invitation
+  rather than a compatible overload. The client and this migration must ship
+  together — see GAP-074.
+
+**Two error-code families to expect.** `SWAP4`–`SWAP9` are swap refusals that
+change nothing and are meant to be shown to the manager, not reported as
+faults; `TS001`–`TS003` are timesheet guards, and `TS001` is the migration
+refusing to add its unique key while duplicates exist.
 
 ## 5. Row Level Security
 
@@ -392,7 +472,7 @@ and only `is_org_member()` governs access, same as every other tenant table.
 ## 6. Automation
 
 **This section is selective, and says so on purpose.** It explains the functions whose
-*behaviour* a reader has to know before changing something — the ones that are load-bearing
+_behaviour_ a reader has to know before changing something — the ones that are load-bearing
 for tenancy, for the audit trail, or for a boundary. It is **not** a catalogue: there are
 111 `security definer` functions in `public` and roughly half are named here. Do not read an
 absence as "does not exist". The list itself is one query, and a query cannot go stale:

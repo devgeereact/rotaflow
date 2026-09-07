@@ -36,6 +36,7 @@ import {
   startedThisMonth,
 } from '@/lib/incidentMetrics';
 import { reportError } from '@/lib/sentry';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const SEVERITY_TONE: Record<string, BadgeTone> = {
   critical: 'danger',
@@ -251,7 +252,7 @@ export function AdminIncidentsPage(): JSX.Element {
             {rows.length === 0 ? (
               <AdminEmpty message="No incident has been declared." />
             ) : (
-              <div className="overflow-x-auto">
+              <ScrollRegion label="Incidents">
                 <table className="w-full table-fixed text-sm">
                   <caption className="sr-only">
                     Platform incidents, most recent first
@@ -337,7 +338,7 @@ export function AdminIncidentsPage(): JSX.Element {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             )}
           </Card>
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Coffee, Fingerprint, LogOut, MapPinOff, Play, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import type { ClockStage } from '@/lib/clockRows';
 
@@ -145,15 +146,21 @@ export function ClockActionPane({
         </div>
       </div>
 
-      <button
-        type="button"
+      {/* Both actions are `Button` variants now, not hand-rolled markup.
+          They carried their own `transition-transform duration-150` with no
+          reduced-motion handling and their own `disabled:pointer-events-none`,
+          which suppresses the hover that would explain why a control is
+          unavailable — the exact two things `Button` had already fixed
+          everywhere else. */}
+      <Button
+        variant="clock"
         onClick={onPrimary}
         disabled={busy}
-        className="mt-8 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-lg bg-clock text-base font-semibold text-primary-fg transition-transform duration-150 ease-in-out hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clock focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
+        className="mt-8 h-14 w-full"
       >
         <PrimaryIcon size={20} aria-hidden="true" />
         {copy.primaryLabel}
-      </button>
+      </Button>
 
       <div className="mt-5 flex w-full items-center gap-4">
         <span className="h-px flex-1 bg-divider dark:bg-divider-dark" />
@@ -163,26 +170,26 @@ export function ClockActionPane({
         <span className="h-px flex-1 bg-divider dark:bg-divider-dark" />
       </div>
 
-      <button
-        type="button"
+      <Button
+        variant="secondary"
         onClick={onSecondary}
         disabled={busy}
-        className="mt-5 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-lg border border-surface-border bg-surface text-base font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-60 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+        className="mt-5 h-14 w-full"
       >
         <SecondaryIcon size={20} aria-hidden="true" />
         {copy.secondaryLabel}
-      </button>
+      </Button>
 
       {tertiaryLabel && onTertiary ? (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={onTertiary}
           disabled={busy}
-          className="mt-3 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-lg border border-surface-border bg-surface text-base font-semibold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-60 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+          className="mt-3 h-14 w-full"
         >
           <MapPinOff size={20} aria-hidden="true" />
           {tertiaryLabel}
-        </button>
+        </Button>
       ) : null}
 
       {/* The only just-in-time notice the product had, and it said less than

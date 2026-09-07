@@ -89,7 +89,7 @@ export function SuspendOrgModal({
             <p
               id="suspend-reason-error"
               role="alert"
-              className="mt-1 text-xs text-danger"
+              className="mt-1 text-xs text-danger-ink dark:text-danger-ink-dark"
             >
               Give at least {MIN_REASON} characters. The organisation’s owner sees this.
             </p>

@@ -181,7 +181,10 @@ export function extractNameCandidates(text: string): string[] {
     // A leading bullet or dash is not the first word. Without this, the first
     // real word of every bulleted line loses its sentence-initial exemption
     // and a body written as a list reports most of its own headings.
-    const words = sentence.trim().replace(/^[\s\-*•—–]+/, '').split(/\s+/);
+    const words = sentence
+      .trim()
+      .replace(/^[\s\-*•—–]+/, '')
+      .split(/\s+/);
     for (let i = 1; i < words.length; i += 1) {
       const bare = (words[i] ?? '').replace(/[^A-Za-z'-]/g, '');
       if (bare.length < 2) continue;

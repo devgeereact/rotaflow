@@ -8,6 +8,13 @@ type Variant =
   | 'success'
   | 'warning'
   | 'danger'
+  // The attendance CTA, and the only place the `clock` palette is a button
+  // fill. It is a deliberate exception to "primary blue means action": on the
+  // clock-in screen there is exactly one thing to do and it is not a
+  // navigation, and the reference (docs/design/clockin.png) draws it green.
+  // Kept as a variant rather than a className so the exception is countable —
+  // one variant, used twice, instead of a green button anybody can hand-roll.
+  | 'clock'
   // Outlined destructive. The "Revoke Access" treatment in
   // docs/design/SettingsOrganisation.png. A solid red button next to a neutral one
   // pulls the eye to the destructive choice; the outline keeps it legible as
@@ -29,23 +36,51 @@ const VARIANTS: Record<Variant, string> = {
   secondary:
     'bg-surface text-content border border-surface-border hover:bg-surface-subtle ' +
     'dark:bg-surface-dark dark:text-content-dark dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark',
+  // `text-primary` is a FILL colour: #3B6FE0 as text on `surface` measures
+  // 4.08:1, under the 4.5:1 AA minimum, and `ghost` is the one variant whose
+  // colour *is* its label. The dark half was already using the ink pair; the
+  // light half was not, which is the exact half-applied pattern
+  // docs/DESIGN.md §5 warns about.
   ghost:
-    'bg-transparent text-primary dark:text-primary-ink-dark hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
+    'bg-transparent text-primary-ink dark:text-primary-ink-dark hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
   success: 'bg-success text-white hover:bg-success/90',
   // `warning` is the one fill in the set that fails contrast against white at
   // its token value (#E0A030), so its ink is the dark content token rather
   // than white. Same swatch as the reference; readable text on it.
   warning: 'bg-warning text-content hover:bg-warning/90',
   danger: 'bg-danger text-white hover:bg-danger/90',
+  clock:
+    'bg-clock text-primary-fg hover:bg-clock/90 focus-visible:ring-clock focus-visible:ring-offset-2',
   'danger-outline':
     'bg-transparent text-danger border border-danger/40 hover:bg-danger/10',
 };
 
 const SIZES: Record<Size, string> = {
+  // 36px tall, under the 44px product target. It stays, because a dense table
+  // row cannot carry a 44px control without becoming a different table — but
+  // it is for controls inside dense content only, never for a page action, and
+  // an icon-only control at this size must use `IconButton` instead.
   sm: 'h-9 px-3 text-sm',
   md: 'h-11 px-5 text-base',
   lg: 'h-12 px-6 text-base',
 };
+
+/**
+ * The motion contract shared by every control in the product.
+ *
+ * Two changes from what Button carried before. `transition-transform` moved to
+ * an explicit property list that includes the colours a hover actually
+ * changes — the hover fill used to snap while only the scale eased. And the
+ * transforms are removed under `prefers-reduced-motion`.
+ *
+ * The global rule in `src/index.css` collapses every *duration* to ~0 under
+ * that preference, which is necessary and not sufficient: a `scale(1.02)` with
+ * no transition still scales, just instantly. `motion-reduce:` is what removes
+ * the transform itself. docs/DESIGN.md §4.
+ */
+export const CONTROL_MOTION =
+  'transition-[transform,background-color,border-color,color,box-shadow] duration-control ease-in-out ' +
+  'motion-reduce:transition-none motion-reduce:transform-none';
 
 /** Design-system button. Meets the 44px touch-target minimum at md/lg. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -64,7 +99,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       type={type}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-xl font-semibold',
-        'transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02]',
+        CONTROL_MOTION,
+        'active:scale-[0.98] hover:scale-[1.02]',
+        'motion-reduce:hover:scale-100 motion-reduce:active:scale-100',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         // A disabled button must *look* disabled and must still be hoverable.
         //

@@ -590,7 +590,7 @@ function LogRequestModal({
           gives a deadline of {statutoryDueDate(receivedOn)}.
         </p>
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-danger-ink dark:text-danger-ink-dark">
             {error}
           </p>
         )}
@@ -668,7 +668,7 @@ function CloseRequestModal({
           </p>
         </div>
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-danger-ink dark:text-danger-ink-dark">
             {error}
           </p>
         )}
@@ -747,7 +747,7 @@ function ExtendRequestModal({
           />
         </div>
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-danger-ink dark:text-danger-ink-dark">
             {error}
           </p>
         )}

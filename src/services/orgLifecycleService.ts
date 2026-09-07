@@ -96,6 +96,7 @@ const EXPORTED_TABLES = [
   'staff_locations',
   'staff_pay_rates',
   'shift_types',
+  'job_titles',
   'rotas',
   'shifts',
   'minimum_cover_rules',
@@ -104,6 +105,7 @@ const EXPORTED_TABLES = [
   'overtime_requests',
   'shift_swaps',
   'clock_events',
+  'clock_event_corrections',
   'timesheets',
   'emergency_contacts',
   'documents',
@@ -135,6 +137,11 @@ type ExportedTable = (typeof EXPORTED_TABLES)[number];
  * organised against, so the omissions are part of the output.
  */
 export const DELIBERATELY_EXCLUDED: readonly { table: string; reason: string }[] = [
+  {
+    table: 'billing_events',
+    reason:
+      'A ledger of which webhook deliveries Stripe has made and whether they finished (0125). It is operational plumbing, not your data: the invoices and subscription states those events produced are exported, and they are the record that means anything to you. It also carries no personal data at all.',
+  },
   {
     table: 'org_smtp_settings',
     reason:

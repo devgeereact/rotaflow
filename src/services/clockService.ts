@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
+import { fetchAllPages } from '@/lib/pagination';
+import { BOUNDARY_CONTEXT_HOURS, shiftIso } from '@/lib/hours';
 import { touchOrgActivity } from '@/services/activityService';
-import type { ClockEvent, ClockEventInsert, ClockEventUpdate } from '@/types';
+import type { ClockEvent, ClockEventCorrection, ClockEventInsert } from '@/types';
 
 /**
  * The insert path predates its screen (Phase 4). UseSyncQueue needed
@@ -39,31 +41,88 @@ export async function getLatestClockEvent(
 }
 
 /**
- * Correct an existing event's recorded time. RLS (`clock_events_update`,
- * 0037) restricts this to an owner or manager of the event's org — a staff
- * member's own `clock_events_insert` grant does not extend to `update`, so
- * this is never reachable from anyone editing their own clock-in.
+ * Correct an existing event's recorded time or type.
  *
- * Writes over the row directly rather than inserting a correction record:
- * there is no separate history/audit column on `clock_events` for that, so
- * `updated_at` (bumped automatically by the table's own trigger) is the only
- * trace that a correction happened.
+ * Goes through `correct_clock_event` (`0128`), which is now the only writer:
+ * the direct UPDATE grant on `clock_events` was withdrawn in the same
+ * migration, so this cannot be routed around.
+ *
+ * That function does four things a PATCH could not. It demands a reason. It
+ * records the row either side, the actor and the moment in
+ * `clock_event_corrections`, which no client may write to or edit. It refuses
+ * a write whose `expectedUpdatedAt` no longer matches, so two managers
+ * correcting the same row do not silently overwrite each other. And where the
+ * correction lands inside an already-approved period it flags that timesheet
+ * for a fresh decision instead of moving a total somebody has signed.
+ *
+ * The previous implementation wrote over the row directly and its own comment
+ * admitted the consequence: "`updated_at` is the only trace that a correction
+ * happened". These events become somebody's pay.
  */
-export async function updateClockEvent(
+export interface ClockCorrection {
+  /** Why. Three characters minimum, enforced in the database as well. */
+  reason: string;
+  /** New instant, ISO. Omit to leave the time alone. */
+  eventAt?: string;
+  /** New type. Omit to leave it alone. */
+  type?: ClockEvent['type'];
+  /**
+   * The `updated_at` the caller read.
+   *
+   * Always send it. Omitting it opts out of the concurrency check, which is
+   * only ever right for a server-side backfill — from a screen it means the
+   * last person to press Save wins and the other correction disappears.
+   */
+  expectedUpdatedAt?: string;
+}
+
+export async function correctClockEvent(
   id: string,
-  patch: ClockEventUpdate,
+  correction: ClockCorrection,
 ): Promise<ClockEvent> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
+  const { data, error } = await supabase.rpc('correct_clock_event', {
+    p_event: id,
+    p_reason: correction.reason,
+    p_event_at: correction.eventAt ?? null,
+    p_type: correction.type ?? null,
+    p_expected_updated_at: correction.expectedUpdatedAt ?? null,
+  });
   if (error) throw error;
   return data;
 }
 
-export interface ClockEventRange {
+/** The correction history for one event, newest first. Owner and manager only (0128). */
+export async function listClockEventCorrections(
+  clockEventId: string,
+): Promise<ClockEventCorrection[]> {
+  const { data, error } = await supabase
+    .from('clock_event_corrections')
+    .select('*')
+    .eq('clock_event_id', clockEventId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Whether to read the events either side of the window as well.
+ *
+ * RF-08. A stream bounded exactly by the reporting window cannot be paired
+ * correctly at its edges: the `out` of a night shift is inside the window and
+ * its `in` is not, so `pairClockEvents` drops it; and the window that held
+ * that `in` had no `out`, so the segment was closed against `now` and paid to
+ * the moment the report was run.
+ *
+ * Callers that want *the events in this window* — a live dashboard count, the
+ * schedule strip — leave this off and get exactly that. Callers computing
+ * hours turn it on and then keep the segments the period owns, with
+ * `segmentsStartingWithin`.
+ */
+export interface BoundaryContext {
+  withBoundaryContext?: boolean;
+}
+
+export interface ClockEventRange extends BoundaryContext {
   staffProfileId: string;
   /** Inclusive ISO instant. */
   fromIso: string;
@@ -71,22 +130,40 @@ export interface ClockEventRange {
   toIso: string;
 }
 
+/** The instants to actually query, widened when boundary context was asked for. */
+function windowFor(range: {
+  fromIso: string;
+  toIso: string;
+  withBoundaryContext?: boolean;
+}): [string, string] {
+  if (!range.withBoundaryContext) return [range.fromIso, range.toIso];
+  return [
+    shiftIso(range.fromIso, -BOUNDARY_CONTEXT_HOURS),
+    shiftIso(range.toIso, BOUNDARY_CONTEXT_HOURS),
+  ];
+}
+
 /** One person's events in a window, oldest first. Pairs into in/out shifts for hours totals. */
 export async function listClockEventsForStaff(
   range: ClockEventRange,
 ): Promise<ClockEvent[]> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .select('*')
-    .eq('staff_profile_id', range.staffProfileId)
-    .gte('event_at', range.fromIso)
-    .lt('event_at', range.toIso)
-    .order('event_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const [fromIso, toIso] = windowFor(range);
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from('clock_events')
+      .select('*')
+      .eq('staff_profile_id', range.staffProfileId)
+      .gte('event_at', fromIso)
+      .lt('event_at', toIso)
+      .order('event_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  });
 }
 
-export interface OrgClockEventRange {
+export interface OrgClockEventRange extends BoundaryContext {
   orgId: string;
   fromIso: string;
   toIso: string;
@@ -96,13 +173,21 @@ export interface OrgClockEventRange {
 export async function listClockEventsForOrg(
   range: OrgClockEventRange,
 ): Promise<ClockEvent[]> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .select('*')
-    .eq('org_id', range.orgId)
-    .gte('event_at', range.fromIso)
-    .lt('event_at', range.toIso)
-    .order('event_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const [fromIso, toIso] = windowFor(range);
+  return fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from('clock_events')
+      .select('*')
+      .eq('org_id', range.orgId)
+      .gte('event_at', fromIso)
+      .lt('event_at', toIso)
+      // Ascending, then reversed below. Paging a descending order is the same
+      // work; ordering by the same key in both places is what keeps the pages
+      // from overlapping, and `id` is the tie-breaker that makes it total.
+      .order('event_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  }).then((rows) => rows.reverse());
 }

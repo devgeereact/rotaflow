@@ -37,10 +37,13 @@ import { expect, test } from '@playwright/test';
 
 /** Screens inside the organisation workspace. */
 const APP_SCREENS = [
-  // The dashboard's h1 is a greeting, not a page title. Matched as written
-  // rather than loosening the assertion until it would pass on anything —
-  // `NotFoundPage` has an h1 too, so a permissive regex proves nothing.
-  { path: '/dashboard-preview', heading: /good (morning|afternoon|evening)/i },
+  // The manager dashboard's h1 was a greeting ("Good morning, Marcus") until
+  // the operations rebuild. It is now the screen's own name, because the
+  // screen is an operations board rather than a home page — and a greeting
+  // above a board reporting a missed clock-in reads badly. Matched exactly
+  // rather than loosened until it would pass on anything: `NotFoundPage` has
+  // an h1 too, so a permissive regex proves nothing.
+  { path: '/dashboard-preview', heading: /^operations$/i },
   { path: '/rota-builder-preview', heading: /^rota builder$/i },
   { path: '/schedule-preview', heading: /^schedule$/i },
   { path: '/timesheets-preview', heading: /^timesheets$/i },

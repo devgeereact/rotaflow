@@ -307,7 +307,9 @@ export function AssignShiftModal({
           />
         </div>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {error && (
+          <p className="text-sm text-danger-ink dark:text-danger-ink-dark">{error}</p>
+        )}
 
         <div className="flex gap-3">
           <Button

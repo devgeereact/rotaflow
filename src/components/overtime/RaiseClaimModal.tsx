@@ -65,7 +65,7 @@ export function RaiseClaimModal({
             onChange={(e) => setHours(e.target.value)}
           />
           {!validHours && (
-            <p className="mt-1 text-xs text-danger">
+            <p className="mt-1 text-xs text-danger-ink dark:text-danger-ink-dark">
               Enter more than zero and no more than 24 hours.
             </p>
           )}

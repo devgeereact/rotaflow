@@ -12,6 +12,7 @@ import {
   type RaiseClaimDraft,
 } from '@/components/overtime/RaiseClaimModal';
 import type { OvertimeRow, OvertimeStatus } from '@/lib/overtimeRows';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const STATUS_LABEL: Record<OvertimeStatus, string> = {
   pending: 'Pending',
@@ -138,7 +139,7 @@ export function OvertimeView({
             {emptyMessage}
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollRegion label="Overtime">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-surface-border text-left text-xs font-semibold uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
@@ -260,7 +261,7 @@ export function OvertimeView({
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
         )}
       </Card>
 

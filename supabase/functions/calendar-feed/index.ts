@@ -48,7 +48,10 @@ interface FeedShift {
 
 /** `2027-03-04T09:00:00Z` → `20270304T090000Z`. */
 function icsStamp(iso: string): string {
-  return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  return new Date(iso)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '');
 }
 
 /**
@@ -97,7 +100,8 @@ function buildCalendar(shifts: FeedShift[]): string {
 
   for (const shift of shifts) {
     const description: string[] = [];
-    if (shift.break_minutes > 0) description.push(`Break: ${shift.break_minutes} minutes`);
+    if (shift.break_minutes > 0)
+      description.push(`Break: ${shift.break_minutes} minutes`);
     if (shift.notes) description.push(shift.notes);
 
     lines.push(

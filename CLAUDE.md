@@ -31,6 +31,8 @@ capability's status updates its row in the same PR.
 | Need                                    | File                                                                                        |
 | --------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Is this screen built, partial or absent  | `docs/SCREENS.md` — every design mapped against the real route table in `src/App.tsx`         |
+| Who is actually working right now        | `src/lib/attendance.ts` — the state machine behind `/app/attendance` and the operations dashboard. Roster arithmetic is not attendance; read its header before adding a count |
+| One filter, one contract                 | `src/lib/filters.ts` and `src/hooks/useFilterState.ts` — every new filterable table adopts these rather than growing its own `useState`                                        |
 | Does the built screen match its design   | `docs/LOOP.md` — the `/loop` design-match prompt, driven against `localhost:5042`             |
 | The design references themselves         | `docs/design/*.png` — 1920-wide designs exported at ~87%; measure the scale before resizing type |
 | Organisation section reference           | `docs/ORGANISATION_WORKSPACE.html` — the sole reference for the Organisation workspace         |
@@ -193,13 +195,15 @@ Every one of these runs in CI and blocks a merge:
 | `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                                                                                                   |
 | `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                                                                                             |
 
-`ci.yml` runs these as **five** jobs, not one: `verify` (everything up to
+`ci.yml` runs these as **six** jobs, not one: `verify` (everything up to
 `check:export`, plus `npm audit --audit-level=high`), `e2e`, `e2e-authenticated`
 (boots a local Supabase stack and signs a real user up), `db-tests` (the pgTAP
-run) and `scheduled-checks` (which reads whether `backup.yml` and
-`auth-config.yml` have ever succeeded and annotates the pull request). The two
-Supabase jobs need Docker and the Supabase CLI, so a green local `verify` is a
-partial signal — a merge can still go red on a job you cannot run here.
+run), `edge-types` (a pinned Deno 2.9.5 typecheck of all eight Edge entry
+points, added 2026-09-05) and `scheduled-checks` (which reads whether
+`backup.yml` and `auth-config.yml` have ever succeeded and annotates the pull
+request). The two Supabase jobs need Docker and the Supabase CLI, so a green
+local `verify` is a partial signal — a merge can still go red on a job you
+cannot run here.
 
 Two checks run on a schedule rather than on a merge, because they read live
 state no pull request can change: `.github/workflows/backup.yml` (a nightly
@@ -217,13 +221,23 @@ workflow fails where nobody is standing.** It blocks no merge, marks no pull
 request red, and appears on no screen anyone opens — unlike the gates in the
 table above, which are seen whether or not you go looking. Before trusting
 either of these, check the Actions tab:
-`gh run list --workflow=backup.yml --limit 3`.
+`gh run list --workflow=backup.yml --limit 3`. The runbook for configuring all
+three secrets — where each comes from, and what a green run does and does not
+prove — is `docs/DEPLOYMENT.md` § "Recovery".
 
-`supabase/functions/**` is Deno and is excluded from typecheck and lint — no
-automated check stands in for reading those files. The exception is a module
-with no Deno globals in it, which vitest can run unchanged: `ai-rota-assistant/
-grounding.ts` is the worked example, and extracting the decision-making part of
-a function that way is preferred to leaving it untested inside the handler.
+`supabase/functions/**` is Deno and is excluded from `npm run typecheck` and
+`npm run lint`. Since 2026-09-05 the `edge-types` job typechecks all eight entry
+points with a pinned Deno and a committed `deno.lock`, so "it compiles" is no
+longer an open question — but that is the cheapest class of defect there is, and
+**reading those files is still the only check on what they do**. RF-04 and RF-05
+were both replay and namespace bugs in the billing webhook, and both typechecked
+perfectly.
+
+The part that can be tested is the part that decides something. A module with no
+Deno globals in it runs unchanged under vitest: `ai-rota-assistant/grounding.ts`
+and `stripe-webhook/reconcile.ts` are the two worked examples, and extracting the
+decision-making part of a handler that way is preferred to leaving it untested
+inside one.
 
 ## Scope discipline
 
