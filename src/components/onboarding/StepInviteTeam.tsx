@@ -11,6 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import { isValidEmail } from '@/lib/email';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/Label';
@@ -311,7 +312,10 @@ export function StepInviteTeam({
               )}
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-surface-border dark:border-surface-border-dark">
+            <ScrollRegion
+              label={sent ? 'Invitations created' : 'Invited team members'}
+              viewportClassName="rounded-xl border border-surface-border dark:border-surface-border-dark"
+            >
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-surface-border bg-surface-subtle text-xs uppercase tracking-wide text-content-muted dark:border-surface-border-dark dark:bg-surface-subtle-dark dark:text-content-muted-dark">
@@ -405,7 +409,7 @@ export function StepInviteTeam({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           </div>
         )}
       </div>

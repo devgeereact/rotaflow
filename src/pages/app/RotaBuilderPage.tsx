@@ -607,6 +607,11 @@ export function RotaBuilderPage(): JSX.Element {
   /** `extraFilterCount` plus the three selects that live on the toolbar itself. */
   const appliedFilterCount =
     extraFilterCount +
+    // The search moves inside this disclosure below `sm`, so it has to be
+    // counted like the rest. A filter you cannot see and cannot count is a
+    // filter you forget you applied, and then the grid is lying to you about
+    // who is rostered (docs/DESIGN.md §7).
+    (search.trim() ? 1 : 0) +
     (locationFilter !== 'all' ? 1 : 0) +
     (departmentFilter !== 'all' ? 1 : 0) +
     (shiftTypeFilter !== 'all' ? 1 : 0);
@@ -1832,6 +1837,34 @@ export function RotaBuilderPage(): JSX.Element {
     );
   }
 
+  /**
+   * One search field, rendered in the page header above `sm` and inside the
+   * Filters disclosure below it.
+   *
+   * A 320px box on its own line was the first of eight bands of chrome above
+   * the grid on a phone, and it filters exactly what the three selects beside
+   * it filter. `appliedFilterCount` counts it, so a term typed into a
+   * disclosure that is then collapsed still says it is there.
+   */
+  const searchField = (
+    <>
+      <Search
+        size={16}
+        aria-hidden="true"
+        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
+      />
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search staff, skills, shifts…"
+        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+      />
+      <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+        ⌘ K
+      </kbd>
+    </>
+  );
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div>
@@ -1840,22 +1873,13 @@ export function RotaBuilderPage(): JSX.Element {
           title="Rota Builder"
           subtitle={`Week commencing ${formatWeekStart(dates)} · ${orgName ?? ''}. Click any cell to assign or clear a shift.`}
           actions={
-            <div className="relative">
-              <Search
-                size={16}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
-              />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search staff, skills, shifts…"
-                className="w-80 rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
-              />
-              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-                ⌘ K
-              </kbd>
-            </div>
+            /* Below `sm` this collapses to nothing and the same field is
+               rendered inside the Filters disclosure instead — see
+               `searchField`. `hidden` rather than a media query in JS so the
+               input is never unmounted and remounted on a resize, and a
+               `display: none` field is out of the accessibility tree, so only
+               one of the two is ever exposed. */
+            <div className="relative hidden sm:block">{searchField}</div>
           }
         />
 
@@ -1901,56 +1925,69 @@ export function RotaBuilderPage(): JSX.Element {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* The Week/Fortnight switcher is gone.
+            {/* Below `sm` the three week-scoped actions move behind one chip.
+                They are secondary to Publish, which stays outside it: the
+                primary action for the current state never collapses. `sm`
+                rather than `md` because the row already fits at 640px, and
+                collapsing at `md` would change a tablet that was never
+                wrong. */}
+            <MobileDisclosure
+              breakpoint="sm"
+              variant="inline"
+              title="Week actions"
+              className="flex flex-wrap items-center gap-2 sm:gap-3"
+            >
+              {/* The Week/Fortnight switcher is gone.
                 It rendered two buttons, one permanently pressed and one whose
                 only action was a toast claiming "fortnight and month views use
                 the same grid at lower density" — views that did not exist. The
                 grid is now a continuous three-week axis, so the thing that
                 switcher promised is simply what the screen does, and a control
                 that only explains itself is worse than no control. */}
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleCopyPreviousWeek}
-              disabled={busyAction === 'previous-week'}
-            >
-              {busyAction === 'previous-week' ? 'Copying…' : 'Copy last week'}
-            </Button>
-            {/* CAP-006. Beside Copy last week because they are the same
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleCopyPreviousWeek}
+                disabled={busyAction === 'previous-week'}
+              >
+                {busyAction === 'previous-week' ? 'Copying…' : 'Copy last week'}
+              </Button>
+              {/* CAP-006. Beside Copy last week because they are the same
                 thought pointed in opposite directions, and a manager who has
                 just built a week is standing right here. */}
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setRepeatOpen(true)}
-              disabled={busyAction === 'repeat' || draftRotasInScope.length === 0}
-              title={
-                draftRotasInScope.length === 0
-                  ? 'Repeat works from a draft week'
-                  : undefined
-              }
-            >
-              {busyAction === 'repeat' ? 'Repeating…' : 'Repeat forward'}
-            </Button>
-            {/* Shown but disabled rather than hidden while the entitlement is
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setRepeatOpen(true)}
+                disabled={busyAction === 'repeat' || draftRotasInScope.length === 0}
+                title={
+                  draftRotasInScope.length === 0
+                    ? 'Repeat works from a draft week'
+                    : undefined
+                }
+              >
+                {busyAction === 'repeat' ? 'Repeating…' : 'Repeat forward'}
+              </Button>
+              {/* Shown but disabled rather than hidden while the entitlement is
                 unknown or absent: a button that disappears once the features
                 load reads as a bug, and one that was never there gives a
                 manager nothing to ask their owner about. `title` carries the
                 reason for a pointer; the click handler says it out loud. */}
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleAutoFillClick}
-              disabled={featuresLoading}
-              title={
-                hasAiAssistant
-                  ? undefined
-                  : 'Included with the Business and Enterprise plans'
-              }
-            >
-              <Sparkles size={14} aria-hidden="true" />
-              AI fill gaps
-            </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleAutoFillClick}
+                disabled={featuresLoading}
+                title={
+                  hasAiAssistant
+                    ? undefined
+                    : 'Included with the Business and Enterprise plans'
+                }
+              >
+                <Sparkles size={14} aria-hidden="true" />
+                AI fill gaps
+              </Button>
+            </MobileDisclosure>
 
             <div className="relative flex">
               {readOnly ? (
@@ -2061,6 +2098,7 @@ export function RotaBuilderPage(): JSX.Element {
             defaultOpen={appliedFilterCount > 0}
             className="min-w-0"
           >
+            <div className="relative mb-3 sm:hidden">{searchField}</div>
             <div className="flex flex-wrap items-center gap-3">
               <Select
                 aria-label="Filter by location"
@@ -2243,7 +2281,7 @@ export function RotaBuilderPage(): JSX.Element {
         {loading || orgDataLoading ? (
           <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>
         ) : (
-          <Card className="min-w-0 overflow-hidden p-5">
+          <Card className="min-w-0 overflow-hidden p-4 sm:p-5">
             {groups.length === 0 ? (
               <p className="text-content-muted dark:text-content-muted-dark">
                 No staff rostered for this filter yet. Select a single location above to

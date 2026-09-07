@@ -62,11 +62,10 @@ src/
 ```
 
 **Dependency direction:** `pages → services → lib`. Components consume `hooks`
-and `context`. `lib` should import nothing from `pages`/`components`; five files
+and `context`. `lib` should import nothing from `pages`/`components`. Five files
 currently break that with type-only imports — `clockinDemo`, `reportsDemo`,
-`settingsTabs`, `swapRows`, `workspaceTabs` — tracked in `docs/SAAS.md`. This
-said "six" while naming five, which is the kind of number that survives because
-nobody counts the list beside it. Count it rather than trusting either:
+`settingsTabs`, `swapRows`, `workspaceTabs` — a convention that is not
+lint-enforced and not tracked in the register:
 
 ```bash
 grep -ln "from '@/pages\|from '@/components" src/lib/*.ts
@@ -212,10 +211,9 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 - **Updates:** `registerType: 'prompt'` + `skipWaiting: false`. A new SW waits;
   the app shows a "Reload to update" prompt so users are never interrupted.
 - `public/offline.html` is precached but **never served**. It is in `includeAssets`
-  and nothing references it: `navigateFallback` is `index.html`, and no route,
-  handler or `.htaccess` rule points at it. It was meant to be a last-resort static
-  fallback; today it is an entry in the precache manifest and nothing else. Either
-  wire it to a `navigateFallbackDenylist` case or drop it.
+  It was removed 5 September 2026 — it had been precached but was never served,
+  since `navigateFallback` is `index.html` and no route or handler referenced it.
+  Precaching an unreachable page meant every visitor downloaded a page no route served.
 
 ## 6. Data flow example (publish a rota → notify staff)
 

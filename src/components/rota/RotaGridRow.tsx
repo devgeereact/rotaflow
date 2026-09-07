@@ -136,7 +136,20 @@ export function RotaGridRow({
               size="md"
             />
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-content dark:text-content-dark">
+              {/* The name wraps; it never truncates.
+                  The pinned column is 11rem, which on a 375px phone leaves
+                  73px of text and cut "Sarah Johnson" to "Sarah Jo…" — and
+                  two people sharing a forename then read identically, on the
+                  one column whose entire job is saying whose row this is. A
+                  name that runs onto a second line is still the person.
+                  `break-words` only breaks inside a word when a single word
+                  cannot fit at all, so at desktop widths this renders exactly
+                  as it did: one line, no wrap, no change.
+
+                  The job title keeps `truncate` deliberately. It is context,
+                  not identity — "Care Assis…" costs a reader nothing, and
+                  wrapping every second line would grow every row. */}
+              <p className="break-words text-sm font-semibold text-content dark:text-content-dark">
                 {staff.first_name} {staff.last_name}
               </p>
               {staff.job_title && (

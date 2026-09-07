@@ -52,26 +52,20 @@ Skip this and correct type reads 15-30% too large, and you will spend an iterati
 shrinking a type scale that was already right. Where the scale cannot be recovered
 (the locations mockups' body text is ~0.7× `text-sm` and no clean ratio fits),
 match _proportions and structure_ at the project's real type scale rather than the
-reference's literal font sizes or container widths. `docs/design/.loop/` carries
-`shot.sh`, `compare.py` and `diff.py` from the leave pass, which do the scaling and
-produce a registered red/green overlay. Working shown in
-`docs/design/.loop/leave-log.md`.
+reference's literal font sizes or container widths.
 
-Three caveats on those scripts, all of which have cost time:
+**The loop has no committed tooling, and this section used to imply otherwise.**
+`docs/design/.loop/` is git-ignored (`.gitignore:47`) and does not exist in a fresh
+clone. The `shot.sh`, `compare.py` and `diff.py` referred to below and in the
+per-screen logs were written during the leave pass and live only in whatever working
+copy produced them; nothing in this repository ships them, and `scripts/` holds
+seven files, none of which is a design-loop script. So every capture, log and overlay
+this document cites is a local artefact, and the loop is run by hand: capture the
+screen, capture the reference, scale, compare.
 
-1. They are **run by hand**. No `npm` script invokes any of them. (`scripts/` exists
-   but holds only `plan-drift-audit.mjs`, which CI runs weekly; it has nothing to do
-   with the design loop.) There is no
-   `scripts/` directory.
-2. `shot.sh`'s defaults are stale: it falls back to
-   `http://localhost:5183/leave-preview`, and both halves are wrong. This project's
-   dev port is **5042** (`strictPort` in `vite.config.ts`) and `/leave-preview` no
-   longer exists. Always pass the URL explicitly, e.g.
-   `shot.sh out.png 1450 1160 http://localhost:5042/app/leave`.
-3. `compare.py` and `diff.py` open `docs/design/Leave.png` by a hardcoded relative path
-   that the move under `docs/` broke, and `docs/design/.loop/` is **git-ignored**
-   (`.gitignore:47`), so every log and capture cited here is a local artefact that a
-   fresh clone will not have.
+The reference PNGs in `docs/design/` are committed and are the durable half. Pass the
+URL explicitly when capturing — the dev port is **5042** (`strictPort` in
+`vite.config.ts`) and several `-preview` routes named in older logs no longer exist.
 
 Two things about the preview routes that have caused re-work:
 

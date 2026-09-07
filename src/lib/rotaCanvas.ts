@@ -140,9 +140,30 @@ export function isInAnchorWeek(date: string, anchorWeekStart: string): boolean {
  * week still stretches to fill a wide screen, because the same track is `1fr`
  * above its minimum.
  *
+ * ## The staff column has a floor, and did not
+ *
+ * It was `minmax(0,11rem)`, so on a narrow viewport the pinned column
+ * collapsed towards nothing while the date tracks kept their 6.5rem minimum.
+ * Measured in Chromium at 375px on 7 September 2026: **49px**, of which the
+ * avatar takes most, leaving the name element a client width of **0**.
+ *
+ * That is the real cause of the design review's F6, which read it as "the
+ * column is simply too narrow for what it pins". With `truncate` the symptom
+ * was an ellipsis after eight characters; with `break-words` it became a
+ * tower of one letter per line, several hundred pixels tall, because text in
+ * a zero-width box wraps at every character. Neither is the bug — the
+ * collapsing track is.
+ *
+ * `8rem` is the floor: enough for an avatar and a two-line name at `text-sm`.
+ * It cannot break the layout, because the grid already overflows its own
+ * bounded scroll region at every width (2,416px against 902px on a laptop),
+ * so widening the first track moves the scrollbar and nothing else. Above
+ * 8rem of available space nothing changes at all: the track still stretches
+ * to 11rem exactly as before.
+ *
  * It lives here rather than beside the row component so that file exports only
  * components and keeps fast refresh.
  */
 export function rotaGridTemplate(count: number): string {
-  return `minmax(0,11rem) repeat(${count}, minmax(6.5rem,1fr)) 3.5rem`;
+  return `minmax(8rem,11rem) repeat(${count}, minmax(6.5rem,1fr)) 3.5rem`;
 }

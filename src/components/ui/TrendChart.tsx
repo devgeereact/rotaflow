@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 export interface TrendSeries {
   name: string;
@@ -114,7 +115,7 @@ export function TrendChart({
       </div>
 
       {showTable ? (
-        <div id={tableId} className="overflow-x-auto">
+        <ScrollRegion id={tableId} label={title}>
           <table className="w-full border-collapse text-sm">
             <caption className="sr-only">{title}</caption>
             <thead>
@@ -154,7 +155,7 @@ export function TrendChart({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       ) : (
         <svg
           viewBox={`0 0 ${VIEW_W} ${height}`}

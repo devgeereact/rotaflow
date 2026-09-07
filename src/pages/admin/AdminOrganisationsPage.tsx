@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { Pagination } from '@/components/ui/Pagination';
+import { ScrollableCode } from '@/components/ui/ScrollableCode';
 import {
   DataTable,
   type DataTableColumn,
@@ -548,9 +549,12 @@ export function AdminOrganisationsPage(): JSX.Element {
             a hash of the token, so it cannot be retrieved again.
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+            <ScrollableCode
+              label="Invitation link"
+              className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            >
               {createdInvite.url}
-            </code>
+            </ScrollableCode>
             <Button
               size="sm"
               variant="secondary"

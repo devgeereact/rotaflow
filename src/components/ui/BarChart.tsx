@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { useTheme } from '@/context/ThemeContext';
 import { seriesColour } from '@/lib/chartPalette';
 import { cn } from '@/lib/utils';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 export interface BarSeries {
   /** Stable key. Colour follows this, never the position after filtering. */
@@ -255,9 +256,9 @@ export function BarChart({
         {showTable ? 'Hide figures' : 'Show figures'}
       </button>
       {showTable && (
-        <div id={tableId} className="mt-2 overflow-x-auto">
+        <ScrollRegion id={tableId} label={title} className="mt-2">
           {table}
-        </div>
+        </ScrollRegion>
       )}
     </div>
   );

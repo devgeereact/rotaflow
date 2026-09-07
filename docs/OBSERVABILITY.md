@@ -129,6 +129,6 @@ metrics already have their data is exactly the premature-dashboard mistake
    the others.
 
 No third-party analytics vendor is assumed or recommended here. A vendor
-decision carries its own privacy-disclosure obligation (`/legal/cookies`
-currently a placeholder pending counsel, see `docs/DATA_LIFECYCLE.md`) that
-this document deliberately does not resolve.
+decision carries its own privacy-disclosure obligation. The current state
+of storage, telemetry and consent is documented at `/legal/cookies` and
+backed by config in `src/lib/legalFacts.ts`.

@@ -20,8 +20,13 @@ interface MobileDisclosureProps {
    * `AppShell`'s 256px rail means a 1,280px window is a ~950px column, and the
    * rota toolbar needs about that much before its filters, Auto-assign and
    * Actions fit on one line.
+   *
+   * `sm` is the narrowest of the four and collapses only on an actual phone.
+   * It exists for a toolbar that already fits at 640px and is only crowded
+   * below it: collapsing such a row at `md` would change a tablet that was
+   * never wrong.
    */
-  breakpoint?: 'md' | 'lg' | 'xl';
+  breakpoint?: 'sm' | 'md' | 'lg' | 'xl';
   /**
    * `panel` is the default: a full-width summary bar over stacked content.
    * `inline` is a compact chip that sits in a toolbar row beside other
@@ -31,7 +36,8 @@ interface MobileDisclosureProps {
   className?: string;
 }
 
-const MAX_WIDTH: Record<'md' | 'lg' | 'xl', string> = {
+const MAX_WIDTH: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
+  sm: '(max-width: 639px)',
   md: '(max-width: 767px)',
   lg: '(max-width: 1023px)',
   xl: '(max-width: 1279px)',

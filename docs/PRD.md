@@ -35,7 +35,7 @@ with minimal industry-specific customisation.
 | ------------- | ---------------------------------------------------------------- |
 | Time to rota  | A manager builds a full week's rota in **< 10 minutes**          |
 | Performance   | Lighthouse ≥ 95 (Performance, A11y, Best Practices, PWA)         |
-| Offline       | Staff can open the app and see their shifts with **no** network  |
+| Offline       | Staff can open the app and see their shifts with **no** network — **not met**: `docs/OFFLINE-SPEC.md` §2 classes the rota view, my shifts and clock history as network required. What ships is queued writes, not cached reads |
 | Sync          | Offline actions (clock-in, leave request) reconcile on reconnect |
 | Reliability   | 100% of unhandled errors captured in Sentry                      |
 | Tenant safety | Zero cross-tenant data access (enforced by RLS on every table)   |
@@ -60,8 +60,9 @@ role membership, never in the client alone.
    `org_id`-scoped with RLS isolation; role-based memberships.
 2. **Staff management**. Profiles (photo, job title, department, skills, contract
    type, working hours, holiday allowance, emergency contact, documents, payroll ID).
-3. **Rota builder**. Weekly/fortnightly/monthly grid, drag-and-drop, shift templates,
+3. **Rota builder**. Weekly/fortnightly/monthly grid, drag-and-drop,
    copy-previous-week, **repeat a week forward up to 26 weeks** in one transaction
+   (shift templates were dropped in `0096`)
    (`0107`, arithmetic done in the site's timezone so a 07:00 shift is still 07:00
    after the clocks change), colour coding, conflict
    detection (double-booking, availability, leave, max hours, min rest).
@@ -108,7 +109,7 @@ role membership, never in the client alone.
 - Advanced analytics (utilisation, coverage gaps). **Labour cost shipped early**
   (`0104`) — it needed a rate table, not a forecast, and a rota approved without a
   cost is approved against the wrong question.
-- Documents with expiry **automation** — expiry is already stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`); what is missing is a scheduled reminder. (DBS, Right to Work, visas, certificates).
+- Documents with expiry **automation** — expiry is stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`). Scheduled reminders run every 15 minutes via `pg_cron` and `notification_outbox` (`0093_scheduled_alerts.sql`), notifying owners and managers of missed clock-ins and expiring documents. (DBS, Right to Work, visas, certificates).
 - SSO, custom per-tenant branding, open API, advanced compliance.
 - **Subscription billing**. Stripe Checkout + Billing Portal shipped `0050`
   (`create-checkout-session`, `create-portal-session`, `stripe-webhook` — see

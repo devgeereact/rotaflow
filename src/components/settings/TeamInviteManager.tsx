@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
+import { ScrollableCode } from '@/components/ui/ScrollableCode';
 import type { Invite, MembershipRole } from '@/types';
 
 const ROLE_OPTIONS: { value: MembershipRole; label: string; hint: string }[] = [
@@ -211,9 +212,12 @@ export function TeamInviteManager(): JSX.Element {
             so it cannot be retrieved again. Revoke and reissue if it is lost.
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark">
+            <ScrollableCode
+              label="Invitation link"
+              className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-surface-border bg-background px-3 py-2 font-mono text-xs text-content dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            >
               {lastLink.url}
-            </code>
+            </ScrollableCode>
             <Button
               size="sm"
               variant="secondary"

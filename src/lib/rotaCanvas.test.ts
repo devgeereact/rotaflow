@@ -108,8 +108,27 @@ describe('display scope versus action scope', () => {
 describe('the column template', () => {
   it('gives every day a minimum width so a wide canvas scrolls', () => {
     expect(rotaGridTemplate(7)).toBe(
-      'minmax(0,11rem) repeat(7, minmax(6.5rem,1fr)) 3.5rem',
+      'minmax(8rem,11rem) repeat(7, minmax(6.5rem,1fr)) 3.5rem',
     );
     expect(rotaGridTemplate(21)).toContain('repeat(21,');
+  });
+
+  it('gives the pinned staff column a floor, not just a ceiling', () => {
+    // It was `minmax(0,11rem)`, and the zero is what the design review's F6
+    // actually was. On a 375px viewport the date tracks kept their 6.5rem
+    // minimum and the staff column absorbed the shortfall: measured at 49px
+    // in Chromium, leaving the name element a client width of ZERO. With
+    // `truncate` that showed as an ellipsis after eight characters; with
+    // `break-words` it became a tower of one letter per line, because text in
+    // a zero-width box wraps at every character. The truncation was the
+    // symptom both times; the collapsing track was the defect.
+    //
+    // Asserted on the string rather than in a browser because this is the one
+    // place the number is written, and a rendered check would need a viewport
+    // narrow enough to squeeze it — which `e2e/rota-grid.spec.ts` does, at
+    // 375px, against the rendered geometry.
+    const [staffTrack] = rotaGridTemplate(21).split(' ');
+    expect(staffTrack).toBe('minmax(8rem,11rem)');
+    expect(staffTrack).not.toContain('minmax(0');
   });
 });

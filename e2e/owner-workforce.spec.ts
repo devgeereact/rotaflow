@@ -6,9 +6,20 @@ import { expect, test } from '@playwright/test';
  * `app-surface.spec.ts` renders these screens through `-preview` routes,
  * which mount the real components against fixtures with no session at all.
  * That proves a screen renders. It proves nothing about the thing this change
- * is actually about: that an owner **with no staff record** can run the
- * workforce, that the job-title catalogue writes through RLS, and that the
- * directory's status filter reaches a deactivated person.
+ * is actually about: that an owner runs the workforce **from management
+ * screens by default**, that the job-title catalogue writes through RLS, and
+ * that the directory's status filter reaches a deactivated person.
+ *
+ * A correction, made 2026-09-07. This file used to say it proved an owner
+ * "with no staff record" could run the workforce. It does not, and cannot:
+ * `0121` creates a staff record for whoever founds an organisation, and this
+ * owner founds theirs in the first twenty lines of the test. What is actually
+ * proved is the thing that matters day to day — the default is management,
+ * and no personal control is required to reach any of it. The case of an
+ * owner who genuinely has no staff record (invited into an existing
+ * organisation, or archived) is a database state this journey cannot
+ * construct, and is covered where the decision is made:
+ * `src/lib/workMode.test.ts` and `src/pages/app/OpenShiftsPage.test.tsx`.
  *
  * Every assertion below failed before this change set, and most of them could
  * not have been written: `/app/attendance` did not exist, the catalogue did
@@ -26,7 +37,7 @@ const LIVE = process.env.E2E_LIVE_SUPABASE === '1';
 test.describe('an owner runs the workforce', () => {
   test.skip(!LIVE, 'needs a local Supabase stack — see e2e-authenticated in ci.yml');
 
-  test('with no staff record of their own', async ({ page }) => {
+  test('from management screens, with no personal control required', async ({ page }) => {
     test.setTimeout(180_000);
 
     const stamp = Date.now();
@@ -74,8 +85,11 @@ test.describe('an owner runs the workforce', () => {
     const nav = page.getByRole('navigation', { name: 'Main' });
     await expect(nav.getByRole('link', { name: 'Team Attendance' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Team Availability' })).toBeVisible();
-    // The assumption this change reverses: an owner with no staff profile was
-    // given a personal punch clock that opened on an empty screen.
+    // The assumption this change reverses: every owner was given a personal
+    // punch clock in the rail, whether or not they work shifts, and an owner
+    // with no staff record opened it on an empty screen. Clock In is absent
+    // here because the mode defaults to management, not because this owner
+    // lacks a profile — they have one, from `0121`.
     await expect(nav.getByRole('link', { name: 'Clock In' })).toHaveCount(0);
 
     // ---- setup is a report of what the database holds -----------------
@@ -113,9 +127,7 @@ test.describe('an owner runs the workforce', () => {
     await page.getByRole('button', { name: 'Add job title' }).click();
     // The badge renders its short code and its name inside one element, so
     // the row is located rather than the bare string.
-    const nurseRows = page
-      .getByRole('listitem')
-      .filter({ hasText: 'Registered Nurse' });
+    const nurseRows = page.getByRole('listitem').filter({ hasText: 'Registered Nurse' });
     await expect(nurseRows).toHaveCount(1, { timeout: 30_000 });
 
     // A case and spacing variant is the same title. Asserted as an outcome —
@@ -132,10 +144,9 @@ test.describe('an owner runs the workforce', () => {
     // Adding a job title moves that row without a reload of anything else:
     // the status is a count, not a flag somebody set.
     await page.goto('/app/setup');
-    await expect(page.getByRole('listitem').filter({ hasText: 'Job titles' })).toContainText(
-      '1 title',
-      { timeout: 30_000 },
-    );
+    await expect(
+      page.getByRole('listitem').filter({ hasText: 'Job titles' }),
+    ).toContainText('1 title', { timeout: 30_000 });
 
     // ---- add a staff member and give them the title -------------------
     await page.goto('/app/team');
@@ -188,6 +199,28 @@ test.describe('an owner runs the workforce', () => {
     await expect(
       page.getByRole('button', { name: /Attendance status:\s*Late/i }),
     ).toBeVisible();
+
+    // ---- open shifts still work for an owner who does have a record ---
+    //
+    // The board now reads two ways: a reader with a staff profile claims a
+    // shift, and one without sees a coverage problem and a link to the
+    // builder. THIS owner has a profile — `0121` gives the founder of an
+    // organisation a staff record — so the claim path must be untouched, and
+    // that is what is asserted here. The other half cannot be reached from
+    // this journey at all, because reaching it means an owner who was invited
+    // into an existing organisation or whose record was archived; it is
+    // covered by `src/pages/app/OpenShiftsPage.test.tsx`, where the decision
+    // is one boolean rather than a database state to construct.
+    await page.goto('/app/open-shifts');
+    await expect(page.getByRole('heading', { name: 'Open shifts' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByText(/Taking one puts it straight on your schedule/i),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open the rota builder' })).toHaveCount(
+      0,
+    );
 
     expect(errors, 'uncaught errors during the owner journey').toEqual([]);
   });

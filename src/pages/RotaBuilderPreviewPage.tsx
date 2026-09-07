@@ -417,6 +417,27 @@ export function RotaBuilderPreviewPage(): JSX.Element {
     [warnings],
   );
 
+  /**
+   * One search field, rendered in the header above `sm` and inside the
+   * Filters disclosure below it. See the two call sites.
+   */
+  const searchField = (
+    <>
+      <Search
+        size={16}
+        aria-hidden="true"
+        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
+      />
+      <input
+        placeholder="Search staff, skills, shifts…"
+        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+      />
+      <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+        ⌘ K
+      </kbd>
+    </>
+  );
+
   return (
     <PreviewCanvas>
       <DndContext>
@@ -431,20 +452,14 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                 <Info size={14} aria-hidden="true" />
               </p>
             </div>
-            <div className="relative">
-              <Search
-                size={16}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted"
-              />
-              <input
-                placeholder="Search staff, skills, shifts…"
-                className="w-80 rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
-              />
-              <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-                ⌘ K
-              </kbd>
-            </div>
+            {/* Below `sm` the search moves into the Filters disclosure, where
+                it belongs: it filters the same grid the three selects do, and
+                a 320px box on its own line cost 60px of an 812px screen
+                before any rota appeared. Rendered from one element in two
+                places, switched with `hidden`/`sm:hidden` rather than a media
+                query in JS — a `display: none` field is out of the
+                accessibility tree, so only ever one is exposed. */}
+            <div className="relative hidden sm:block">{searchField}</div>
           </div>
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -477,33 +492,50 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div
-                role="group"
-                aria-label="View"
-                className="flex rounded-xl border border-surface-border p-1 dark:border-surface-border-dark"
+              {/* Below `sm` the view switcher and the shift-type button move
+                  behind one chip. On a 375px screen this row wrapped onto two
+                  lines and the whole toolbar stack pushed the first rota row
+                  to y=676 of an 812px viewport — most of a phone spent before
+                  any rota appears, on the screen managers live in.
+
+                  Publish stays outside it. The primary action for the current
+                  state is never the thing that collapses. `sm` rather than
+                  `md` because the row already fits at 640px; collapsing at
+                  `md` would change a tablet that was never wrong. */}
+              <MobileDisclosure
+                breakpoint="sm"
+                variant="inline"
+                title="View"
+                className="flex flex-wrap items-center gap-2 sm:gap-3"
               >
-                {['Day', 'Week', '2 Weeks', 'Month'].map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    className={cn(
-                      'rounded-lg px-3 py-1.5 text-sm font-medium',
-                      tab === 'Week'
-                        ? 'bg-primary text-white'
-                        : 'text-content-muted dark:text-content-muted-dark',
-                    )}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                aria-label="Manage shift types"
-                className="rounded-xl border border-surface-border p-2 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
-              >
-                <Settings2 size={16} />
-              </button>
+                <div
+                  role="group"
+                  aria-label="View"
+                  className="flex rounded-xl border border-surface-border p-1 dark:border-surface-border-dark"
+                >
+                  {['Day', 'Week', '2 Weeks', 'Month'].map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={cn(
+                        'rounded-lg px-3 py-1.5 text-sm font-medium',
+                        tab === 'Week'
+                          ? 'bg-primary text-white'
+                          : 'text-content-muted dark:text-content-muted-dark',
+                      )}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  aria-label="Manage shift types"
+                  className="rounded-xl border border-surface-border p-2 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
+                >
+                  <Settings2 size={16} />
+                </button>
+              </MobileDisclosure>
               <div className="flex">
                 <Button size="sm" className="rounded-r-none">
                   Publish (3 changes)
@@ -529,6 +561,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
               one counted chip so Auto-assign and Actions keep the same row. */}
           <div className="mb-4 flex flex-wrap items-start gap-3">
             <MobileDisclosure breakpoint="xl" variant="inline" title="Filters">
+              <div className="relative mb-3 sm:hidden">{searchField}</div>
               <div className="flex flex-wrap items-center gap-3">
                 <Select
                   aria-label="Filter by location"
@@ -574,7 +607,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             </Button>
           </div>
 
-          <Card className="min-w-0 overflow-hidden p-5">
+          <Card className="min-w-0 overflow-hidden p-4 sm:p-5">
             <ScrollRegion label="Rota grid" viewportClassName="max-h-[70vh]">
               <RotaGrid
                 dates={dates}
