@@ -228,33 +228,67 @@ Stated plainly, because a report that omits this reads as though everything was.
 
 ---
 
-## 7. Found, recorded, not fixed
+## 7. Found, recorded, then fixed
 
-These are real and were left deliberately, because each is a decision rather
-than a repair, or falls outside this pass's contract.
+These six were listed here as deliberately left. They were fixed in a follow-up
+commit on the same branch, so this section now records what they were and where
+they went rather than what is outstanding.
 
-- **The support-access opt-out is unreachable and unenforced.**
-  `set_org_support_access` has zero callers in `src/`, and
-  `has_support_access` never reads `organisations.support_access_allowed` — it
-  is checked once, at request time. So an owner who turns support access off
-  does not end a session already open, and the holder of a `read_write` session
-  satisfies the owner branch of the setter and could turn the flag back on.
-- **GDPR requests cannot be moved to "In progress" or "Awaiting information"**,
-  though both are valid statuses with badge tones defined, and rows in the
-  fixture already carry them. The board offers Close and Extend only.
-- **Incidents have no status transitions, filters or pagination.**
-  `add_incident_update` exists in the live database and has no caller.
-- **Several lists still truncate**: GDPR at 200 ordered oldest-due-first across
-  the estate then filtered in the browser, support-access sessions at 200 the
-  same way, the organisation audit tab at 100 with no total.
-- **`/admin/settings` has dead fields.** `platform_settings` is read by two
-  console files and nothing else, so the platform name and support email save
-  and read back but drive nothing; the real address is a constant in
-  `src/lib/marketing.ts`.
-- **The preview harness's organisation rows link to `/admin/…`, not
-  `/admin-preview/…`**, so clicking a row leaves the harness.
+**The support-access opt-out was unreachable and unenforced.** `0140`.
+`organisations.support_access_allowed` was read only by
+`request_support_access`, once, as a precondition; `has_support_access` — the
+function every tenant policy routes through — never read it, so withdrawing
+consent did nothing to a session already open. And because `has_org_role` ends
+at `has_support_access`, the holder of a `read_write` session satisfied
+`set_org_support_access`'s owner branch and could switch that consent back on.
+The flag now sits inside `has_support_access` (re-read per query, so withdrawal
+closes every live session at once) and the setter tests `memberships` directly
+with no platform branch. It also had no caller at all: built on the customer's
+own settings screen, with live sessions listed beneath it.
+`support_access_consent.test.sql`, 7 assertions.
 
----
+**GDPR requests could not reach two of their five statuses.**
+`set_gdpr_request_status` always accepted all five and requires a note only for
+`completed` and `refused`; the board offered Close and Extend. Both unreachable
+states already had badge tones defined, so the register rendered states nothing
+could produce. Start work and Awaiting information are now row actions.
+
+**Incidents had no status transitions, filters or pagination.**
+`add_incident_update` and `listIncidentUpdates` both existed with no caller, so
+`identified` and `monitoring` were unreachable and an incident went from
+declared straight to resolved. A timeline modal reads and writes it, with the
+status moving in the same statement. Filters adopt the shared contract, and "no
+matches" is a different sentence from "no incident has been declared".
+
+**Three lists truncated silently.** The organisation detail page read the
+platform-wide GDPR list capped at 200 and filtered it in the browser — ordered
+by deadline ascending, so this tenant's newest requests were dropped first,
+under a heading claiming none had been raised. Same shape for support sessions.
+Both are scoped in the query now. The GDPR board carries the server's exact
+count and says when it is showing a subset; the organisation audit tab says
+"showing the most recent 100 of N".
+
+**`/admin/settings` had dead fields.** `platform_settings` has 28 columns and
+exactly one, `require_mfa`, drives anything. The page says so once at the top,
+and the maintenance callout stops describing a banner no code renders — wiring
+it needs a policy decision first, because that table is readable by platform
+administrators only.
+
+**The preview harness leaked out of itself.** Console screens link to
+`/admin/...`, so following a row from `/admin-preview` bounced the reviewer to
+sign-in. Fixed inside the harness with a capture-phase click handler rather than
+by editing 18 links in production components, so it covers links that do not
+exist yet.
+
+### Still not verified, after those fixes
+
+- **The consent control is not seen rendered.** It is on an authenticated screen
+  with no preview route, so it is proved by pgTAP and typecheck only.
+- **The GDPR truncation notice cannot fire in the harness**, whose fixture
+  derives its count from the page length. That the count is real was checked
+  against PostgREST directly: `Content-Range: 0-2/7` for a three-row page over
+  seven rows.
+- **Wiring the maintenance banner is a decision, not a repair**, and is left.
 
 ## 8. Remaining blockers, unchanged
 
