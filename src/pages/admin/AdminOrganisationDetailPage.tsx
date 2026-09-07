@@ -33,7 +33,10 @@ import {
   type OrgMemberRow,
   type OrgUsage,
 } from '@/services/platformOrgService';
-import { listSessionsForOrg } from '@/services/supportAccessService';
+import {
+  listActiveSessionsForOrg,
+  listSessionsForOrg,
+} from '@/services/supportAccessService';
 import { getOrgSmtpSettings } from '@/services/smtpSettingsService';
 import { listGdprRequestsForOrg } from '@/services/gdprRequestService';
 import { createInvite, sendInviteEmail } from '@/services/inviteService';
@@ -183,6 +186,48 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   const [reinviting, setReinviting] = useState(false);
   const [reinviteError, setReinviteError] = useState<string | null>(null);
   const [reinviteResult, setReinviteResult] = useState<string | null>(null);
+
+  /**
+   * Whether a support session is still open, re-asked every 60 seconds.
+   *
+   * `has_support_access` is STABLE, so the DATABASE re-evaluates it on every
+   * statement: the next request after an expiry, a revocation, a withdrawal of
+   * consent (0141) or a revoked platform role (0142) is refused. The gate was
+   * never the problem. The problem was that nothing on this console asked
+   * again — `useConsoleRefresh` is a button, and the only intervals in
+   * `pages/admin` are the health probe and two clock ticks that re-render
+   * countdowns without refetching.
+   *
+   * So a session ending mid-investigation left that tenant's staff, locations
+   * and rotas rendered on screen indefinitely, until the operator happened to
+   * navigate or press Refresh. The data was already stale and already refused;
+   * it just stayed visible.
+   *
+   * The tenant side has done this correctly since it shipped —
+   * `SupportAccessBanner` refetches on the same cadence and self-dismisses —
+   * so this is that behaviour on the other side of the same session.
+   */
+  const [sessionEnded, setSessionEnded] = useState(false);
+
+  useEffect(() => {
+    if (!organisationId) return;
+    let active = true;
+    const check = async (): Promise<void> => {
+      try {
+        const open = await listActiveSessionsForOrg(organisationId);
+        if (active) setSessionEnded(open.length === 0);
+      } catch {
+        // A failed check is not evidence the session ended. Leaving the
+        // previous answer in place is the honest degradation: claiming it
+        // ended would blank the screen on a dropped connection.
+      }
+    };
+    const id = setInterval(() => void check(), 60_000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, [organisationId]);
 
   useEffect(() => {
     setReinviteEmail('');
@@ -785,7 +830,17 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           </div>
         )}
 
-        {gateClosed && TENANT_TABS.has(tab) && (
+        {sessionEnded && TENANT_TABS.has(tab) && (
+          <Callout tone="warning" title="That support session has ended">
+            <p>
+              Anything from this tenant still on screen is from before it ended and the
+              database will refuse the next read of it, so it is not shown. Request access
+              again if you still need it.
+            </p>
+          </Callout>
+        )}
+
+        {!sessionEnded && gateClosed && TENANT_TABS.has(tab) && (
           <Callout tone="info" title="This tab needs an active support session">
             <p>
               Since migration 0028 a platform administrator reads a tenant&rsquo;s staff
