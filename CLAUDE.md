@@ -42,6 +42,7 @@ capability's status updates its row in the same PR.
 | Metrics and the event taxonomy           | `docs/OBSERVABILITY.md` — what computes each success metric, and whether that data exists yet  |
 | How a full QA audit is run               | `docs/Working-Agent.md` — the spec behind the `rotaflow-qa-auditor` agent                     |
 | What the last full audit found           | `docs/QA-AUDIT-REPORT.md` — a dated snapshot (14 Aug 2026), not current state; `docs/SAAS.md` is |
+| What the platform console repair did     | `docs/PLATFORM-CONSOLE-REPAIR-2026-09-07.md` — a dated record of one pass over `/admin/*`: root causes, a route-and-control matrix, migration order, and what was **not** verified |
 | What actually works without a network    | `docs/OFFLINE-SPEC.md` — per feature, and it is narrower than "offline-first" implies          |
 | Release evidence before a deploy         | `docs/PWA-RELEASE-GATES.md` — recorded statuses, not a checklist to tick from memory           |
 
