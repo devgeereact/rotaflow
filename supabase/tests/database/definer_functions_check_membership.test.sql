@@ -91,7 +91,18 @@ select is(
        -- one. It is `is_platform_admin()` AND a role test, so it is strictly
        -- narrower than the predicate already on this list, and it inherits
        -- 0102's MFA condition.
-       and pg_get_functiondef(p.oid) !~* 'is_org_member\s*\(|has_org_role\s*\(|is_platform_admin\s*\(|has_platform_role\s*\(|is_platform_operational\s*\(|my_staff_profile_id\s*\(|auth\.uid\s*\('
+       --
+       -- `my_managed_org_ids()` and `my_member_org_ids()` (0136, 0137) are
+       -- the SET forms of `has_org_role` and `is_org_member`, introduced so
+       -- an RLS policy can use them uncorrelated. They are guards by the
+       -- same argument as the predicates above, and both scope to
+       -- `auth.uid()` in their own bodies. They are named here because a
+       -- function that composes THEM — `my_readable_rota_ids()` does, and
+       -- contains no literal `auth.uid()` of its own — is caller-scoped
+       -- transitively, and the sweep would otherwise flag it. Allowlisting
+       -- that function instead would have recorded a silenced sweep; naming
+       -- the idiom keeps the check live for everything else.
+       and pg_get_functiondef(p.oid) !~* 'is_org_member\s*\(|has_org_role\s*\(|is_platform_admin\s*\(|has_platform_role\s*\(|is_platform_operational\s*\(|my_staff_profile_id\s*\(|my_managed_org_ids\s*\(|my_member_org_ids\s*\(|auth\.uid\s*\('
   ),
   '',
   'every SECURITY DEFINER function authenticated may execute scopes itself to the caller'
