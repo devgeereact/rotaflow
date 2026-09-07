@@ -51,8 +51,20 @@ name: backup
 #
 # It does NOT replace a human restoring into a real Supabase project and
 # looking at the app against it. A logical dump restored into stock Postgres
-# proves the DATA survived; it cannot prove that auth, storage and RLS come
-# back, because those are Supabase's and are not in this dump. ❓-005 stays
+# proves the DATA and the GRANTS survived; it cannot prove that auth and
+# storage come back, because those are Supabase's own schemas and are not in
+# this dump.
+#
+# ## What the 7 September 2026 rehearsal found
+#
+# The dump was taken `--no-privileges`, so it restored 64 tables, 99 policies
+# and ZERO grants. RLS admits nobody on its own: a database in that state
+# refuses every client request on permission before a policy is consulted.
+# The backup restored perfectly and the product would not have come back.
+# The rehearsal did not catch it because it asserted that tables and rows
+# existed and never asked whether anyone was allowed to read them. Both
+# halves are fixed: the dump keeps privileges, and the assertions below fail
+# if the grants do not come back. ❓-005 stays
 # open until somebody does the real thing. What this closes is the failure
 # where the nightly job produces an encrypted file for months and the first
 # person to open it discovers it never contained anything.
@@ -131,7 +143,19 @@ jobs:
           # runner's disk, where a later step or a cached path could pick it up.
           # `pipefail` above is what makes a pg_dump failure fail the job rather
           # than producing a valid encryption of nothing.
-          pg_dump --no-owner --no-privileges --format=plain "$DB_URL" \
+          # `--no-owner` but NOT `--no-privileges`. Ownership is dropped
+          # because the restoring role differs between projects and every
+          # object would fail to be assigned to a role that may not exist.
+          # Privileges are KEPT because they are not decoration: RLS admits
+          # nobody on its own. A dump taken `--no-privileges` restores 64
+          # tables with 99 policies and zero grants, and every client request
+          # then fails on permission before a policy is ever consulted. That
+          # is what the 7 September rehearsal found, and it meant the product
+          # would not have come back from any backup taken before this line
+          # changed. The roles the GRANTs name (`anon`, `authenticated`,
+          # `service_role`) are cluster-level in every Supabase project, so
+          # they exist wherever this is restored.
+          pg_dump --no-owner --format=plain "$DB_URL" \
             | gzip -9 \
             | gpg --batch --yes --symmetric --cipher-algo AES256 \
                   --passphrase "$PASSPHRASE" \
@@ -202,6 +226,27 @@ jobs:
           echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
           /usr/lib/postgresql/17/bin/psql --version
 
+      - name: Create the roles the grants name
+        env:
+          PGPASSWORD: rehearsal
+        run: |
+          set -euo pipefail
+          # Roles are cluster-level in PostgreSQL, so they are not in a
+          # database dump — they exist in a real Supabase project and do not
+          # exist in stock Postgres. Before the dump carried privileges that
+          # did not matter; now every GRANT names a role, and a missing one
+          # turns into `role "authenticated" does not exist` and a silently
+          # ungranted table. So they are created here, and the restore's
+          # stderr is checked below for any role this list has missed.
+          for r in anon authenticated service_role authenticator dashboard_user \
+                   supabase_admin supabase_auth_admin supabase_storage_admin \
+                   supabase_read_only_user supabase_realtime_admin \
+                   supabase_replication_admin pgbouncer pgsodium_keyholder; do
+            psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -qc \
+              "do \$\$ begin if not exists (select 1 from pg_roles where rolname = '$r') then execute format('create role %I', '$r'); end if; end \$\$;"
+          done
+          echo "Roles created."
+
       - name: Decrypt and restore
         env:
           PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
@@ -257,6 +302,51 @@ jobs:
           # legitimately near-empty, so a row-count threshold here would fail
           # every night for a reason that is not a backup problem — and would
           # be quietly deleted by whoever got tired of it.
-          echo "Restore rehearsal passed. This proves the DATA survives a"
-          echo "round trip; auth, storage and RLS are Supabase's and are not"
-          echo "in this dump. See docs/SAAS.md ❓-005."
+          # ── The half that was missing until 2026-09-07 ────────────────
+          #
+          # RLS admits nobody by itself. A restore with 64 tables, 99 policies
+          # and no grants is a database where every request fails on
+          # permission before a policy is consulted — a backup that restores
+          # cleanly and brings back a product nobody can log into. The dump
+          # carried `--no-privileges` for months and nothing here looked, so
+          # the rehearsal passed and the answer was still no.
+
+          missing_roles=$(grep -oE 'role "[a-z_]+" does not exist' restore.err | sort -u || true)
+          if [ -n "$missing_roles" ]; then
+            echo "::error::The restore names a role the rehearsal did not create:"
+            echo "$missing_roles"
+            echo "::error::Add it to the 'Create the roles the grants name' step. Until then its grants are silently absent."
+            exit 1
+          fi
+
+          auth_tables=$(q "select count(*) from information_schema.role_table_grants where grantee='authenticated' and table_schema='public'")
+          echo "table grants to authenticated: $auth_tables"
+          if [ "$auth_tables" -lt 40 ]; then
+            echo "::error::Only $auth_tables table grants to 'authenticated' came back. A restored database with RLS and no grants refuses every request."
+            exit 1
+          fi
+
+          # 0113 exists because production grants EXECUTE to `authenticated`
+          # through a `pg_default_acl` the migration history does not carry.
+          # So replaying the migrations does not reconstruct this, and the
+          # dump is the only thing that can.
+          auth_funcs=$(q "select count(*) from information_schema.routine_privileges where grantee='authenticated' and specific_schema='public' and privilege_type='EXECUTE'")
+          echo "function EXECUTE grants to authenticated: $auth_funcs"
+          if [ "$auth_funcs" -lt 20 ]; then
+            echo "::error::Only $auth_funcs function grants to 'authenticated' came back. See migration 0113 — replaying the history does not restore these."
+            exit 1
+          fi
+
+          # 0075 narrowed `anon` to schema usage and one function grant. The
+          # backup is the one place that boundary could quietly widen without
+          # a migration, so it is asserted where it would show.
+          anon_tables=$(q "select count(*) from information_schema.role_table_grants where grantee='anon' and table_schema='public'")
+          echo "table grants to anon: $anon_tables"
+          if [ "$anon_tables" != "0" ]; then
+            echo "::error::$anon_tables table grants to 'anon' in public. 0075 says there should be none — either the backup is wrong or production is."
+            exit 1
+          fi
+
+          echo "Restore rehearsal passed: the data AND the grants survive a"
+          echo "round trip. Auth and storage are Supabase's own schemas and"
+          echo "are still not proven by this. See docs/SAAS.md ❓-005."
