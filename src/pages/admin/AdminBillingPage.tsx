@@ -15,6 +15,7 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { needsAttention, renewalBreakdown } from '@/lib/platformBilling';
 import { monthlyGrowth } from '@/lib/platformOverview';
 import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
+import { AdminInvoiceModal } from '@/components/admin/AdminInvoiceModal';
 import { formatMoney, formatMoneyExact, formatMoneyShort } from '@/lib/money';
 import { downloadCsv } from '@/lib/csv';
 import {
@@ -110,6 +111,7 @@ export function AdminBillingPage(): JSX.Element {
   const [planPrices, setPlanPrices] = useState<Map<string, number>>(new Map());
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [openInvoice, setOpenInvoice] = useState<Invoice | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -415,23 +417,21 @@ export function AdminBillingPage(): JSX.Element {
                             </td>
                             <td className="px-4 py-2.5">
                               <span className="flex justify-end gap-1.5">
-                                {/* Real disabled buttons, not spans dressed as
-                                    them: `opacity-60` over muted grey is
-                                    2.32 : 1, and the disabled-control exemption
-                                    does not apply to a span (GAP-030). It also
-                                    tells a screen reader these are unavailable,
-                                    which the spans never did. */}
-                                {['View', 'Credit'].map((label) => (
-                                  <button
-                                    key={label}
-                                    type="button"
-                                    disabled
-                                    title="This console has no Stripe-side lookup or credit action wired in yet, so nothing can be opened or credited from here"
-                                    className="cursor-not-allowed rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
-                                  >
-                                    {label}
-                                  </button>
-                                ))}
+                                {/* View works, and Credit is gone rather than
+                                    disabled. There is no credit note anywhere
+                                    in this schema, no RPC that could write one,
+                                    and no test-mode Stripe credential to call
+                                    the provider with — so the button was a
+                                    promise of a feature nobody had designed.
+                                    What the console CAN show is the record it
+                                    holds, which is what View now opens. */}
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenInvoice(invoice)}
+                                  className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                                >
+                                  View
+                                </button>
                               </span>
                             </td>
                           </tr>
@@ -539,16 +539,23 @@ export function AdminBillingPage(): JSX.Element {
               <p>
                 A payment provider is connected: Stripe billing writes and updates these
                 rows for real, and dunning suspension (<code>stripe-webhook</code>) is
-                real, deployed code. View and Credit stay disabled because this console
-                has no Stripe-side lookup or credit-note call wired in yet &mdash; that is
-                a UI gap, not an absent provider. And while the dunning-suspension code
-                exists, nobody has yet watched it fire end-to-end against a real Stripe
-                Smart Retries exhaustion.
+                real, deployed code. View opens RotaFlow&rsquo;s own invoice record; it
+                does not link to Stripe, because <code>invoices</code> stores no hosted
+                URL and a link built from the provider reference would be a guessed
+                address that could point at the wrong Stripe mode.
               </p>
             </Callout>
           </div>
         </div>
       )}
+
+      <AdminInvoiceModal
+        invoice={openInvoice}
+        organisationName={
+          openInvoice ? (orgById.get(openInvoice.org_id)?.name ?? null) : null
+        }
+        onClose={() => setOpenInvoice(null)}
+      />
     </AdminPage>
   );
 }

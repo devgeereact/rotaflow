@@ -19,6 +19,7 @@ import {
   AdminPage,
 } from '@/components/admin/AdminPage';
 import { AdminCreateOrgModal } from '@/components/admin/AdminCreateOrgModal';
+import { AdminImportOrgsModal } from '@/components/admin/AdminImportOrgsModal';
 import type { CreatedOrganisationInvite } from '@/services/platformService';
 import {
   getOrganisationFacets,
@@ -127,6 +128,7 @@ export function AdminOrganisationsPage(): JSX.Element {
   const [exporting, setExporting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [createdInvite, setCreatedInvite] = useState<{
     orgName: string;
     email: string;
@@ -516,7 +518,7 @@ export function AdminOrganisationsPage(): JSX.Element {
       description="Every tenant on the deployment: lifecycle, plan, seat usage and the activity behind their health."
       action={
         <>
-          <Button variant="secondary" disabled title="Bulk import is not built">
+          <Button variant="secondary" onClick={() => setImportOpen(true)}>
             <Upload size={15} aria-hidden="true" />
             Import
           </Button>
@@ -675,6 +677,19 @@ export function AdminOrganisationsPage(): JSX.Element {
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onCreated={handleOrgCreated}
+      />
+
+      <AdminImportOrgsModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={(count) => {
+          setReloadKey((k) => k + 1);
+          if (count > 0) {
+            showSuccess(
+              `${count} ${count === 1 ? 'organisation' : 'organisations'} created. Nothing was emailed — send the invitation links yourself.`,
+            );
+          }
+        }}
       />
     </AdminPage>
   );
