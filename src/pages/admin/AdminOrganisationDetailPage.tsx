@@ -876,7 +876,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           </Card>
         )}
 
-        {tab === 'locations' && (
+        {tab === 'locations' && !sessionEnded && (
           <div className="space-y-4">
             <Card className="p-0">
               <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
