@@ -7,7 +7,6 @@ import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPag
 import { getPlatformSettings } from '@/services/platformSettingsService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { reportError } from '@/lib/sentry';
-import { Button } from '@/components/ui/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -225,14 +224,6 @@ export function AdminFeatureFlagsPage(): JSX.Element {
     <AdminPage
       title="Feature flags"
       description="Ship behind a flag, roll out by percentage, and turn it off without a deploy. Flags marked critical change live tenant behaviour for every organisation at once, and ask for confirmation before they do."
-      action={
-        <Button
-          disabled
-          title="Flags are declared in migration 0022, because code checks the key by name"
-        >
-          Create flag
-        </Button>
-      }
     >
       {failed ? (
         <AdminError onRetry={retry} />

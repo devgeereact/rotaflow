@@ -48,7 +48,12 @@ export interface AdminNavItem {
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: 'Overview', icon: LayoutDashboard, to: '/admin', end: true },
   { label: 'Organisations', icon: Building2, to: '/admin/organisations' },
-  { label: 'Users', icon: Users, to: '/admin/users' },
+  {
+    label: 'Users',
+    icon: Users,
+    to: '/admin/users',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
+  },
   {
     label: 'Subscriptions',
     icon: CreditCard,
@@ -61,8 +66,18 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     to: '/admin/billing',
     roles: ['platform_owner', 'platform_admin', 'platform_finance'],
   },
-  { label: 'Support Centre', icon: LifeBuoy, to: '/admin/support' },
-  { label: 'Support Access', icon: KeyRound, to: '/admin/support-access' },
+  {
+    label: 'Support Centre',
+    icon: LifeBuoy,
+    to: '/admin/support',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
+  },
+  {
+    label: 'Support Access',
+    icon: KeyRound,
+    to: '/admin/support-access',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
+  },
   // Platform Health is deliberately NOT a primary entry. It and the secondary
   // "System Status" link pointed at the same route, so the console offered two
   // names for one screen and a reader had to discover they were the same thing.
@@ -72,15 +87,30 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   // nav anyway because the decision it exists to force, who declares, who
   // owns, and whether anyone outside this console may read it, is one nobody
   // makes while the screen is invisible.
-  { label: 'Incidents', icon: AlertTriangle, to: '/admin/incidents' },
-  { label: 'Integrations', icon: Plug, to: '/admin/integrations' },
+  {
+    label: 'Incidents',
+    icon: AlertTriangle,
+    to: '/admin/incidents',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
+  },
+  {
+    label: 'Integrations',
+    icon: Plug,
+    to: '/admin/integrations',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
+  },
   {
     label: 'Notifications',
     icon: Bell,
     to: '/admin/notifications',
     roles: ['platform_owner', 'platform_admin'],
   },
-  { label: 'Audit Logs', icon: ScrollText, to: '/admin/audit' },
+  {
+    label: 'Audit Logs',
+    icon: ScrollText,
+    to: '/admin/audit',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
+  },
   {
     label: 'Feature Flags',
     icon: Flag,

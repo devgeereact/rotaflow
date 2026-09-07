@@ -10,7 +10,11 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RequireRole } from '@/components/RequireRole';
 import { RequirePlatformAdmin } from '@/components/RequirePlatformAdmin';
 import { RequirePlatformRole } from '@/components/RequirePlatformRole';
-import { PLATFORM_BILLING_ROLES, PLATFORM_CONFIG_ROLES } from '@/lib/platformRoles';
+import {
+  PLATFORM_BILLING_ROLES,
+  PLATFORM_CONFIG_ROLES,
+  PLATFORM_OPERATIONAL_ROLES,
+} from '@/lib/platformRoles';
 import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { WorkModeProvider } from '@/context/WorkModeContext';
@@ -819,8 +823,35 @@ export function App(): JSX.Element {
                           path="organisations/:organisationId"
                           element={<AdminOrganisationDetailPage />}
                         />
-                        <Route path="users" element={<AdminUsersPage />} />
-                        <Route path="users/:userId" element={<AdminUserDetailPage />} />
+                        {/* Operational roles only, mirroring
+                      `is_platform_operational()` (0122), which is the
+                      platform-side predicate on `profiles` and `memberships`.
+                      Without the gate a finance administrator opened this
+                      screen and RLS filtered it to their own row — a
+                      one-account table rather than a refusal, which reads as
+                      a broken product rather than as a boundary. */}
+                        <Route
+                          path="users"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Platform users"
+                            >
+                              <AdminUsersPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                        <Route
+                          path="users/:userId"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Platform users"
+                            >
+                              <AdminUserDetailPage />
+                            </RequirePlatformRole>
+                          }
+                        />
                         <Route
                           path="subscriptions"
                           element={
@@ -861,22 +892,79 @@ export function App(): JSX.Element {
                             </RequirePlatformRole>
                           }
                         />
-                        <Route path="support" element={<AdminSupportPage />} />
+                        {/* Support cases, their internal notes and the audit
+                      log are all operational tenant data under 0122. Same
+                      reasoning as Users above. */}
+                        <Route
+                          path="support"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Support centre"
+                            >
+                              <AdminSupportPage />
+                            </RequirePlatformRole>
+                          }
+                        />
                         <Route
                           path="support/:caseId"
-                          element={<AdminSupportCaseDetailPage />}
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Support centre"
+                            >
+                              <AdminSupportCaseDetailPage />
+                            </RequirePlatformRole>
+                          }
                         />
                         <Route
                           path="support-access"
-                          element={<AdminSupportAccessPage />}
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Support access"
+                            >
+                              <AdminSupportAccessPage />
+                            </RequirePlatformRole>
+                          }
                         />
-                        <Route path="audit" element={<AdminAuditPage />} />
+                        <Route
+                          path="audit"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Audit logs"
+                            >
+                              <AdminAuditPage />
+                            </RequirePlatformRole>
+                          }
+                        />
                         <Route
                           path="platform-health"
                           element={<AdminPlatformHealthPage />}
                         />
-                        <Route path="incidents" element={<AdminIncidentsPage />} />
-                        <Route path="integrations" element={<AdminIntegrationsPage />} />
+                        <Route
+                          path="incidents"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Incidents"
+                            >
+                              <AdminIncidentsPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                        <Route
+                          path="integrations"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Integrations"
+                            >
+                              <AdminIntegrationsPage />
+                            </RequirePlatformRole>
+                          }
+                        />
                         {/* Config roles only: this reads every tenant's delivery
                       record, which is a cross-tenant view of who was told what.
                       The nav hides it for support and finance, and so does the

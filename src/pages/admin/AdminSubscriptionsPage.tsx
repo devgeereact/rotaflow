@@ -478,14 +478,6 @@ export function AdminSubscriptionsPage(): JSX.Element {
             >
               Change plan
             </Link>
-            <button
-              type="button"
-              disabled
-              title="No pricing exists to discount. See the note below the table"
-              className="cursor-not-allowed whitespace-nowrap rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
-            >
-              Discount
-            </button>
           </span>
         ),
       },

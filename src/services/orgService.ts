@@ -1,20 +1,18 @@
 import { supabase } from '@/lib/supabase';
+import { slugify } from '@/lib/slug';
 import type { Membership, Organisation, OrganisationUpdate } from '@/types';
 
 export interface MyMembership extends Membership {
   organisation: Organisation;
 }
 
-/** Normalise a name into a URL-safe slug. No random suffix. The user owns it. */
-export function slugify(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'org'
-  );
-}
+/**
+ * Re-exported from `src/lib/slug.ts`, where it moved so the pure unit suite
+ * can use it without importing this module and, through it, the Supabase
+ * client. Every existing caller imports it from here; both paths are the same
+ * function.
+ */
+export { slugify };
 
 /**
  * Is this slug free?

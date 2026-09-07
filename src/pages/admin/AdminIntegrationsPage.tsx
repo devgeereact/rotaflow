@@ -11,7 +11,6 @@ import { runHealthChecks } from '@/services/platformHealthService';
 import { listAllSmtpSettings } from '@/services/smtpSettingsService';
 import { listAllOrganisations } from '@/services/platformService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
-import { Button } from '@/components/ui/Button';
 import { listConnectorStats, type ConnectorStats } from '@/services/integrationService';
 import { reportError } from '@/lib/sentry';
 import type { HealthCheck } from '@/lib/platformHealth';
@@ -133,11 +132,6 @@ export function AdminIntegrationsPage(): JSX.Element {
     <AdminPage
       title="Integrations"
       description="Connector health across every tenant. A failing connector is a silent data problem, so failures are counted, not just flagged."
-      action={
-        <Button disabled title="Nothing records a sync, so there is nothing to retry">
-          Retry all failed
-        </Button>
-      }
     >
       {failed ? (
         <AdminError onRetry={retry} />
@@ -465,6 +459,15 @@ export function AdminIntegrationsPage(): JSX.Element {
               monitor. Setting a connector to anything other than <code>planned</code>{' '}
               asserts running code; do not do it until there is an Edge Function behind
               it.
+            </p>
+            <p>
+              There is no &ldquo;Retry all failed&rdquo; here, and that is the honest
+              state rather than an omission. A retry needs a failed operation to
+              re-execute and a runner to execute it; <code>integration_sync_runs</code>{' '}
+              has no writer and no connector has code behind it, so the button would have
+              had nothing to act on. Building a job runner to make a button work would be
+              the wrong way round: it arrives with the first connector, and this control
+              comes back with it.
             </p>
           </Callout>
         </div>

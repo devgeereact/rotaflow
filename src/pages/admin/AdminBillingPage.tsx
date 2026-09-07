@@ -10,27 +10,33 @@ import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { Sparkline, TrendChart } from '@/components/ui/TrendChart';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
-import { listAllOrganisations, listAllSubscriptions } from '@/services/platformService';
+import { listAllSubscriptions } from '@/services/platformService';
+import { getOrganisationFacets } from '@/services/platformDirectoryService';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { needsAttention, renewalBreakdown } from '@/lib/platformBilling';
-import { monthlyGrowth } from '@/lib/platformOverview';
-import { listInvoices, listPlans, type Invoice } from '@/services/billingService';
+import {
+  getBillingSummary,
+  listInvoiceDirectory,
+  listInvoiceDirectoryAll,
+  listInvoices,
+  listPlans,
+  type BillingSummaryRow,
+  type Invoice,
+  type InvoiceDirectoryRow,
+} from '@/services/billingService';
+import { Pagination } from '@/components/ui/Pagination';
+import { type ServerPage } from '@/lib/serverPage';
+import { AdminInvoiceModal } from '@/components/admin/AdminInvoiceModal';
 import { formatMoney, formatMoneyExact, formatMoneyShort } from '@/lib/money';
 import { downloadCsv } from '@/lib/csv';
 import {
   annualRunRatePence,
   averageRevenuePerOrgPence,
   collectedByMonth,
-  collectedInMonth,
-  monthKey,
-  monthlyRecurringPence,
-  outstandingPence,
-  pastDuePence,
-  refundedInMonth,
   revenueByPlan,
 } from '@/lib/revenue';
 import { reportError } from '@/lib/sentry';
-import type { Organisation, Subscription } from '@/types';
+import type { Subscription } from '@/types';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 const INVOICE_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
@@ -105,11 +111,20 @@ const RENEWAL_COLOUR: Record<string, string> = {
  */
 export function AdminBillingPage(): JSX.Element {
   const [subscriptions, setSubscriptions] = useState<Subscription[] | null>(null);
-  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [tenantCount, setTenantCount] = useState(0);
+  const [summary, setSummary] = useState<BillingSummaryRow[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicePage, setInvoicePage] = useState<ServerPage<InvoiceDirectoryRow> | null>(
+    null,
+  );
+  const [pageNumber, setPageNumber] = useState(1);
   const [planPrices, setPlanPrices] = useState<Map<string, number>>(new Map());
   const [failed, setFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [openInvoice, setOpenInvoice] = useState<Invoice | null>(null);
+  /** Which currency's totals the tiles are showing. */
+  const [currency, setCurrency] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -117,17 +132,26 @@ export function AdminBillingPage(): JSX.Element {
     setSubscriptions(null);
     void (async () => {
       try {
-        const [subs, orgs, invoiceRows, plans] = await Promise.all([
+        const [subs, facets, totals, recentInvoices, plans] = await Promise.all([
           listAllSubscriptions(),
-          listAllOrganisations(),
+          getOrganisationFacets(),
+          // The money figures, summed over every row in the database and
+          // grouped by currency. They used to be sums over the three hundred
+          // invoices this screen happened to load.
+          getBillingSummary(),
+          // Still a bounded read, and now used only for the twelve-month
+          // collections trend and the plan mix — a shape, not a total. The
+          // panel says what it is drawn from.
           listInvoices(),
           listPlans(),
         ]);
         if (!active) return;
         setSubscriptions(subs);
-        setOrganisations(orgs);
-        setInvoices(invoiceRows);
+        setTenantCount(facets.total);
+        setSummary(totals);
+        setInvoices(recentInvoices);
         setPlanPrices(new Map(plans.map((p) => [p.code, p.monthly_price_pence])));
+        setCurrency((current) => current ?? totals[0]?.currency ?? 'GBP');
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'admin:billing' });
@@ -139,51 +163,115 @@ export function AdminBillingPage(): JSX.Element {
     };
   }, [reloadKey]);
 
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const page = await listInvoiceDirectory({ page: pageNumber, pageSize: 25 });
+        if (active) setInvoicePage(page);
+      } catch (err) {
+        // The invoice list failing must not take the revenue tiles with it.
+        reportError(err, { area: 'admin:billing:invoices' });
+        if (active) setInvoicePage(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [pageNumber, reloadKey]);
+
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
-  // By id, not by name: an invoice references `org_id`, and matching on a name
-  // breaks the moment two tenants share one.
-  const orgById = useMemo(
-    () => new Map(organisations.map((o) => [o.id, o])),
-    [organisations],
-  );
+  /**
+   * Export every invoice, not the page.
+   *
+   * The old export wrote the three hundred rows this screen had loaded, under
+   * a filename that named a date and nothing else. This walks the directory to
+   * exhaustion, states the currency on every row rather than assuming one, and
+   * says in the file's own header when it stopped short.
+   */
+  const exportReport = useCallback(async (): Promise<void> => {
+    setExporting(true);
+    try {
+      const all = await listInvoiceDirectoryAll({});
+      downloadCsv(
+        `billing-invoices_${new Date().toISOString().slice(0, 10)}`,
+        all.rows,
+        [
+          { label: 'Invoice', value: (i) => i.number },
+          { label: 'Organisation', value: (i) => i.org_name ?? 'Organisation deleted' },
+          { label: 'Currency', value: (i) => i.currency },
+          { label: 'Net', value: (i) => (i.amount_pence - i.tax_pence) / 100 },
+          { label: 'Tax', value: (i) => i.tax_pence / 100 },
+          { label: 'Total', value: (i) => i.amount_pence / 100 },
+          { label: 'Status', value: (i) => INVOICE_LABEL[i.status] ?? i.status },
+          { label: 'Issued', value: (i) => i.issued_on },
+          { label: 'Due', value: (i) => i.due_on },
+          { label: 'Paid (UTC)', value: (i) => i.paid_at ?? '' },
+        ],
+        {
+          notes: [
+            `RotaFlow invoice export, generated ${new Date().toISOString()}`,
+            'Amounts are in the currency named on each row. They are NOT converted and must not be summed across currencies.',
+            all.truncated
+              ? `TRUNCATED: ${all.rows.length} of ${all.total} invoices.`
+              : `Complete: all ${all.total} invoices.`,
+          ],
+        },
+      );
+    } catch (err) {
+      reportError(err, { area: 'admin:billing:export' });
+    } finally {
+      setExporting(false);
+    }
+  }, []);
 
-  const exportReport = useCallback(() => {
-    downloadCsv(`billing-invoices_${new Date().toISOString().slice(0, 10)}`, invoices, [
-      { label: 'Invoice', value: (i) => i.number },
-      { label: 'Organisation', value: (i) => orgById.get(i.org_id)?.name ?? '' },
-      { label: 'Amount', value: (i) => formatMoneyExact(i.amount_pence, i.currency) },
-      { label: 'Status', value: (i) => INVOICE_LABEL[i.status] ?? i.status },
-      { label: 'Issued', value: (i) => i.issued_on },
-      { label: 'Due', value: (i) => i.due_on },
-      { label: 'Paid', value: (i) => i.paid_at ?? '' },
-    ]);
-  }, [invoices, orgById]);
+  /**
+   * A money figure, or a refusal.
+   *
+   * `null` currency means the rows behind the number are in more than one, and
+   * adding them produced a figure with no unit. Printing it with a pound sign
+   * is the specific failure this guards.
+   */
+  const money = (pence: number, code: string): string => formatMoney(pence, code);
 
   const derived = useMemo(() => {
     if (!subscriptions) return null;
     const now = new Date();
-    const thisMonth = monthKey(now.toISOString());
-    const mrr = monthlyRecurringPence(subscriptions, planPrices);
-    const paying = subscriptions.filter(
-      (s) => s.status === 'active' || s.status === 'past_due',
-    ).length;
     const trend = collectedByMonth(invoices, 12, now);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const collectedNow = collectedInMonth(invoices, thisMonth);
-    const collectedBefore = collectedInMonth(invoices, monthKey(lastMonth.toISOString()));
+
+    /**
+     * The totals for the currency being shown.
+     *
+     * `platform_billing_summary` (0134) returns one row per currency and never
+     * converts between them, so this picks a row rather than adding them up.
+     * £100 plus €100 is 200 of nothing, and `formatMoney` would have printed
+     * it with a pound sign — which is what happened, correctly by accident,
+     * for as long as every row was GBP.
+     */
+    const row =
+      summary.find((entry) => entry.currency === currency) ?? summary[0] ?? null;
+
+    const mrr = row?.mrrPence ?? 0;
+    const collectedNow = row?.collectedMonthPence ?? 0;
+    const collectedBefore = row?.collectedPrevMonthPence ?? 0;
 
     return {
+      currencies: summary.map((entry) => entry.currency),
+      shownCurrency: row?.currency ?? 'GBP',
+      // More than one currency is a fact the screen has to state, because the
+      // tiles then describe one of them rather than the business.
+      mixedCurrencies: summary.length > 1 ? summary.map((e) => e.currency) : null,
+
       renewals: renewalBreakdown(subscriptions, now),
       flagged: needsAttention(subscriptions, now),
       active: subscriptions.filter((s) => s.status === 'active').length,
-      withoutRecord: organisations.length - subscriptions.length,
-      months: monthlyGrowth(organisations, now).map((g) => g.label),
+      withoutRecord: Math.max(0, tenantCount - subscriptions.length),
 
       mrr,
       arr: annualRunRatePence(mrr),
-      arpo: averageRevenuePerOrgPence(mrr, paying),
+      arpo: averageRevenuePerOrgPence(mrr, row?.payingOrgs ?? 0),
       collected: collectedNow,
       // Month over month on collections, not on MRR: MRR is a snapshot with no
       // history behind it, so a change figure on it would be invented.
@@ -191,15 +279,13 @@ export function AdminBillingPage(): JSX.Element {
         collectedBefore === 0
           ? null
           : Math.round(((collectedNow - collectedBefore) / collectedBefore) * 1000) / 10,
-      outstanding: outstandingPence(invoices),
-      pastDue: pastDuePence(invoices),
-      pastDueCount: invoices.filter((i) => i.status === 'past_due').length,
-      openCount: invoices.filter((i) => i.status === 'open' || i.status === 'past_due')
-        .length,
-      refunds: refundedInMonth(invoices, thisMonth),
-      refundCount: invoices.filter(
-        (i) => i.refunded_at !== null && monthKey(i.refunded_at) === thisMonth,
-      ).length,
+      outstanding: row?.outstandingPence ?? 0,
+      pastDue: row?.pastDuePence ?? 0,
+      pastDueCount: row?.pastDueInvoices ?? 0,
+      openCount: row?.openInvoices ?? 0,
+      refunds: row?.refundedMonthPence ?? 0,
+      refundCount: row?.refundedInvoices ?? 0,
+
       trendValues: trend.map((t) => Math.round(t.pence / 100)),
       trendLabels: trend.map((t) => {
         const [, month] = t.month.split('-');
@@ -221,23 +307,43 @@ export function AdminBillingPage(): JSX.Element {
         );
       }),
       byPlan: revenueByPlan(subscriptions, planPrices),
-      recent: invoices.slice(0, 8),
-      failing: invoices.filter((i) => i.status === 'past_due').slice(0, 6),
+      failing: (invoicePage?.rows ?? [])
+        .filter((i) => i.status === 'past_due')
+        .slice(0, 6),
     };
-  }, [subscriptions, organisations, invoices, planPrices]);
+  }, [subscriptions, summary, currency, tenantCount, invoices, invoicePage, planPrices]);
 
   return (
     <AdminPage
       title="Billing and finance"
       description="Platform-wide revenue, invoices and payment recovery."
       action={
-        <Button
-          variant="secondary"
-          onClick={exportReport}
-          disabled={invoices.length === 0}
-        >
-          Export report
-        </Button>
+        <>
+          {derived && derived.currencies.length > 1 && (
+            <label className="flex items-center gap-2 text-sm text-content dark:text-content-dark">
+              <span className="sr-only">Currency</span>
+              <select
+                aria-label="Currency"
+                value={derived.shownCurrency}
+                onChange={(event) => setCurrency(event.target.value)}
+                className="h-11 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+              >
+                {derived.currencies.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => void exportReport()}
+            disabled={exporting || (invoicePage?.total ?? 0) === 0}
+          >
+            {exporting ? 'Exporting…' : 'Export report'}
+          </Button>
+        </>
       }
     >
       {failed ? (
@@ -246,21 +352,38 @@ export function AdminBillingPage(): JSX.Element {
         <AdminLoading variant="tiles" rows={4} />
       ) : (
         <div className="space-y-4">
+          {derived.mixedCurrencies && (
+            <div
+              role="status"
+              className="rounded-2xl bg-warning-wash p-3 text-sm text-warning-ink dark:bg-warning-wash-dark dark:text-warning-ink-dark"
+            >
+              <p>
+                Subscriptions and invoices on this deployment are recorded in more than
+                one currency ({derived.mixedCurrencies.join(', ')}). They are never added
+                together: an exchange rate is a decision with a source and a date behind
+                it, and one number with the wrong symbol on it is worse than two with the
+                right ones. The tiles below show <strong>{derived.shownCurrency}</strong>{' '}
+                only &mdash; use the currency selector above to switch. The export carries
+                every row with its own currency named.
+              </p>
+            </div>
+          )}
+
           <TileGrid>
             <StatTile
               label="MRR"
-              value={formatMoney(derived.mrr)}
+              value={money(derived.mrr, derived.shownCurrency)}
               hint="Active and past due"
               chart={<Sparkline values={derived.trendValues} colour="#1EA06B" />}
             />
             <StatTile
               label="ARR"
-              value={formatMoney(derived.arr)}
+              value={money(derived.arr, derived.shownCurrency)}
               hint="Twelve months at today's rate"
             />
             <StatTile
               label="Collected this month"
-              value={formatMoney(derived.collected)}
+              value={money(derived.collected, derived.shownCurrency)}
               hint={
                 derived.collectedChange === null ? (
                   'By payment date'
@@ -283,11 +406,11 @@ export function AdminBillingPage(): JSX.Element {
             />
             <StatTile
               label="Outstanding"
-              value={formatMoney(derived.outstanding)}
+              value={money(derived.outstanding, derived.shownCurrency)}
               hint={
                 derived.pastDueCount > 0 ? (
                   <span className="font-semibold text-danger-ink dark:text-danger-ink-dark">
-                    {formatMoney(derived.pastDue)} past due
+                    {money(derived.pastDue, derived.shownCurrency)} past due
                   </span>
                 ) : (
                   `${derived.openCount} open`
@@ -296,12 +419,14 @@ export function AdminBillingPage(): JSX.Element {
             />
             <StatTile
               label="Refunds"
-              value={formatMoney(derived.refunds)}
+              value={money(derived.refunds, derived.shownCurrency)}
               hint={`${derived.refundCount} this month`}
             />
             <StatTile
               label="ARPO"
-              value={derived.arpo === null ? '-' : formatMoney(derived.arpo)}
+              value={
+                derived.arpo === null ? '-' : money(derived.arpo, derived.shownCurrency)
+              }
               hint="Per paying organisation"
             />
           </TileGrid>
@@ -371,7 +496,17 @@ export function AdminBillingPage(): JSX.Element {
                     </tr>
                   </thead>
                   <tbody>
-                    {derived.recent.length === 0 ? (
+                    {invoicePage === null ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-10 text-center text-sm text-warning-ink dark:text-warning-ink-dark"
+                        >
+                          The invoice list could not be read. The totals above come from a
+                          separate query and are unaffected.
+                        </td>
+                      </tr>
+                    ) : invoicePage.rows.length === 0 ? (
                       <tr>
                         <td
                           colSpan={5}
@@ -381,8 +516,7 @@ export function AdminBillingPage(): JSX.Element {
                         </td>
                       </tr>
                     ) : (
-                      derived.recent.map((invoice) => {
-                        const org = orgById.get(invoice.org_id);
+                      invoicePage.rows.map((invoice) => {
                         return (
                           <tr
                             key={invoice.id}
@@ -392,12 +526,12 @@ export function AdminBillingPage(): JSX.Element {
                               {invoice.number}
                             </td>
                             <td className="px-4 py-2.5">
-                              {org ? (
+                              {invoice.org_name ? (
                                 <Link
-                                  to={`/admin/organisations/${org.id}`}
+                                  to={`/admin/organisations/${invoice.org_id}`}
                                   className="text-primary-ink hover:underline dark:text-primary-ink-dark"
                                 >
-                                  {org.name}
+                                  {invoice.org_name}
                                 </Link>
                               ) : (
                                 <span className="text-content-muted dark:text-content-muted-dark">
@@ -415,23 +549,21 @@ export function AdminBillingPage(): JSX.Element {
                             </td>
                             <td className="px-4 py-2.5">
                               <span className="flex justify-end gap-1.5">
-                                {/* Real disabled buttons, not spans dressed as
-                                    them: `opacity-60` over muted grey is
-                                    2.32 : 1, and the disabled-control exemption
-                                    does not apply to a span (GAP-030). It also
-                                    tells a screen reader these are unavailable,
-                                    which the spans never did. */}
-                                {['View', 'Credit'].map((label) => (
-                                  <button
-                                    key={label}
-                                    type="button"
-                                    disabled
-                                    title="This console has no Stripe-side lookup or credit action wired in yet, so nothing can be opened or credited from here"
-                                    className="cursor-not-allowed rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content-muted opacity-60 dark:border-surface-border-dark dark:text-content-muted-dark"
-                                  >
-                                    {label}
-                                  </button>
-                                ))}
+                                {/* View works, and Credit is gone rather than
+                                    disabled. There is no credit note anywhere
+                                    in this schema, no RPC that could write one,
+                                    and no test-mode Stripe credential to call
+                                    the provider with — so the button was a
+                                    promise of a feature nobody had designed.
+                                    What the console CAN show is the record it
+                                    holds, which is what View now opens. */}
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenInvoice(invoice)}
+                                  className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                                >
+                                  View
+                                </button>
                               </span>
                             </td>
                           </tr>
@@ -441,6 +573,17 @@ export function AdminBillingPage(): JSX.Element {
                   </tbody>
                 </table>
               </ScrollRegion>
+              {invoicePage && (
+                <Pagination
+                  page={invoicePage.page}
+                  pageCount={invoicePage.pageCount}
+                  total={invoicePage.total}
+                  from={invoicePage.from}
+                  to={invoicePage.to}
+                  onPageChange={setPageNumber}
+                  noun="invoices"
+                />
+              )}
             </Panel>
 
             <Panel
@@ -458,7 +601,6 @@ export function AdminBillingPage(): JSX.Element {
               ) : (
                 <ul className="space-y-2.5">
                   {derived.failing.map((invoice) => {
-                    const org = orgById.get(invoice.org_id);
                     return (
                       <li
                         key={invoice.id}
@@ -469,12 +611,12 @@ export function AdminBillingPage(): JSX.Element {
                           aria-hidden="true"
                           className="shrink-0 text-danger"
                         />
-                        {org ? (
+                        {invoice.org_name ? (
                           <Link
-                            to={`/admin/organisations/${org.id}`}
+                            to={`/admin/organisations/${invoice.org_id}`}
                             className="text-sm font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
                           >
-                            {org.name}
+                            {invoice.org_name}
                           </Link>
                         ) : (
                           <span className="text-sm text-content dark:text-content-dark">
@@ -539,16 +681,26 @@ export function AdminBillingPage(): JSX.Element {
               <p>
                 A payment provider is connected: Stripe billing writes and updates these
                 rows for real, and dunning suspension (<code>stripe-webhook</code>) is
-                real, deployed code. View and Credit stay disabled because this console
-                has no Stripe-side lookup or credit-note call wired in yet &mdash; that is
-                a UI gap, not an absent provider. And while the dunning-suspension code
-                exists, nobody has yet watched it fire end-to-end against a real Stripe
-                Smart Retries exhaustion.
+                real, deployed code. View opens RotaFlow&rsquo;s own invoice record; it
+                does not link to Stripe, because <code>invoices</code> stores no hosted
+                URL and a link built from the provider reference would be a guessed
+                address that could point at the wrong Stripe mode.
               </p>
             </Callout>
           </div>
         </div>
       )}
+
+      <AdminInvoiceModal
+        invoice={openInvoice}
+        organisationName={
+          openInvoice
+            ? ((invoicePage?.rows ?? []).find((row) => row.id === openInvoice.id)
+                ?.org_name ?? null)
+            : null
+        }
+        onClose={() => setOpenInvoice(null)}
+      />
     </AdminPage>
   );
 }

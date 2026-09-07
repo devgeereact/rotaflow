@@ -3515,11 +3515,217 @@ export type Database = {
           unverified: number;
         }[];
       };
+      platform_health_band: {
+        Args: {
+          p_last_activity_at: string | null;
+          p_now?: string;
+          p_org_status: string | null;
+          p_subscription_status: string | null;
+        };
+        Returns: string;
+      };
       platform_location_counts: {
         Args: never;
         Returns: {
           locations: number;
           org_id: string;
+        }[];
+      };
+      platform_announcement_stats: {
+        Args: { p_ids: string[] };
+        Returns: {
+          announcement_id: string;
+          delivered: number;
+          failed: number;
+          queued: number;
+          read: number;
+          recipients: number;
+        }[];
+      };
+      cancel_platform_announcement: {
+        Args: { p_announcement: string };
+        Returns: undefined;
+      };
+      platform_growth: {
+        Args: { p_months?: number };
+        Returns: {
+          churned: number;
+          created: number;
+          month_start: string;
+          total: number;
+        }[];
+      };
+      platform_operations_summary: {
+        Args: never;
+        Returns: {
+          active_support_sessions: number;
+          failed_notifications: number;
+          open_cases: number;
+          open_incidents: number;
+          unassigned_open_cases: number;
+          urgent_open_cases: number;
+        }[];
+      };
+      platform_billing_summary: {
+        Args: never;
+        Returns: {
+          collected_month_pence: number;
+          collected_prev_month_pence: number;
+          currency: string;
+          mrr_pence: number;
+          open_invoices: number;
+          outstanding_pence: number;
+          past_due_invoices: number;
+          past_due_pence: number;
+          paying_orgs: number;
+          refunded_invoices: number;
+          refunded_month_pence: number;
+        }[];
+      };
+      platform_invoice_directory: {
+        Args: {
+          p_currency?: string[];
+          p_direction?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_org?: string[];
+          p_search?: string;
+          p_sort?: string;
+          p_status?: string[];
+          p_to?: string;
+        };
+        Returns: {
+          amount_pence: number;
+          attempts: number;
+          currency: string;
+          due_on: string;
+          failure_reason: string | null;
+          id: string;
+          issued_on: string;
+          number: string;
+          org_id: string;
+          org_name: string | null;
+          paid_at: string | null;
+          period_end: string;
+          period_start: string;
+          provider: string | null;
+          provider_ref: string | null;
+          refunded_at: string | null;
+          status: string;
+          tax_pence: number;
+          total_count: number;
+        }[];
+      };
+      platform_organisation_directory: {
+        Args: {
+          p_created_from?: string;
+          p_created_to?: string;
+          p_direction?: string;
+          p_health?: string[];
+          p_industry?: string[];
+          p_limit?: number;
+          p_offset?: number;
+          p_plan?: string[];
+          p_search?: string;
+          p_sort?: string;
+          p_status?: string[];
+          p_subscription_status?: string[];
+        };
+        Returns: {
+          contact_email: string | null;
+          contact_phone: string | null;
+          country: string;
+          created_at: string;
+          current_period_end: string | null;
+          health: string;
+          id: string;
+          industry: string | null;
+          is_demo: boolean;
+          last_activity_at: string | null;
+          locations: number;
+          members: number;
+          name: string;
+          onboarding_completed_at: string | null;
+          owner_contact_visible: boolean;
+          owner_email: string | null;
+          owner_name: string | null;
+          plan: string;
+          slug: string;
+          staff_active: number;
+          status: string;
+          subscription_currency: string | null;
+          subscription_plan: string | null;
+          subscription_price_pence: number | null;
+          subscription_status: string | null;
+          support_access_allowed: boolean;
+          suspended_at: string | null;
+          suspended_reason: string | null;
+          timezone: string;
+          total_count: number;
+          trial_ends_at: string | null;
+        }[];
+      };
+      platform_user_directory: {
+        Args: {
+          p_direction?: string;
+          p_limit?: number;
+          p_membership_status?: string[];
+          p_offset?: number;
+          p_org?: string[];
+          p_platform_access?: string;
+          p_role?: string[];
+          p_search?: string;
+          p_sort?: string;
+        };
+        Returns: {
+          active_memberships: number;
+          avatar_url: string | null;
+          created_at: string;
+          email: string;
+          full_name: string | null;
+          id: string;
+          is_platform_admin: boolean;
+          membership_statuses: string[];
+          org_ids: string[];
+          org_names: string[];
+          organisations: number;
+          platform_role: string | null;
+          roles: string[];
+          total_count: number;
+        }[];
+      };
+      platform_user_facets: {
+        Args: never;
+        Returns: {
+          multi_org: number;
+          platform_admins: number;
+          roles: string[];
+          suspended_only: number;
+          total: number;
+          unattached: number;
+          with_membership: number;
+        }[];
+      };
+      platform_organisation_facets: {
+        Args: never;
+        Returns: {
+          active: number;
+          active_24h: number;
+          archived: number;
+          archived_band: number;
+          at_risk: number;
+          attention: number;
+          healthy: number;
+          industries: string[];
+          new_last_month: number;
+          new_this_month: number;
+          past_due: number;
+          plans: string[];
+          subscription_statuses: string[];
+          suspended: number;
+          total: number;
+          trialing: number;
         }[];
       };
       platform_staff_counts: {

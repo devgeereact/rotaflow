@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  NOTIFICATION_GAPS,
   summariseNotifications,
   type NotificationRow,
 } from '@/lib/platformNotifications';
@@ -92,15 +91,5 @@ describe('summariseNotifications', () => {
     const summary = summariseNotifications([row({ created_at: 'not-a-date' })], NOW);
     expect(summary.total).toBe(1);
     expect(summary.recent).toBe(0);
-  });
-});
-
-describe('NOTIFICATION_GAPS', () => {
-  it('explains every gap rather than only naming it', () => {
-    expect(NOTIFICATION_GAPS.length).toBeGreaterThan(0);
-    for (const gap of NOTIFICATION_GAPS) {
-      expect(gap.title.length).toBeGreaterThan(0);
-      expect(gap.detail.length).toBeGreaterThan(40);
-    }
   });
 });

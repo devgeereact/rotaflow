@@ -261,6 +261,17 @@ export interface UrlFilterOptions {
   page?: number;
   sort?: string;
   direction?: 'asc' | 'desc';
+  /**
+   * The screen's own default direction, so only a departure from it is written.
+   *
+   * `dir` used to be omitted whenever the direction was `asc`, on the
+   * assumption that ascending is always the default. On a screen that defaults
+   * to `desc` — the platform organisations list, newest tenant first — that
+   * made ascending unrepresentable: choosing it wrote no parameter, and the
+   * reader then fell back to the default. The column header toggled and the
+   * order never changed.
+   */
+  defaultDirection?: 'asc' | 'desc';
 }
 
 /**
@@ -285,7 +296,7 @@ export function serialiseFilters(
     }
   }
   if (options.sort) params.set('sort', options.sort);
-  if (options.direction && options.direction !== 'asc') {
+  if (options.direction && options.direction !== (options.defaultDirection ?? 'asc')) {
     params.set('dir', options.direction);
   }
   if (options.page && options.page > 1) params.set('page', String(options.page));

@@ -40,7 +40,22 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5042',
-    reuseExistingServer: !process.env.CI,
+    /**
+     * Never reuse a running server for a live-Supabase run.
+     *
+     * `e2e/platform-console.spec.ts` seeds fixtures over the service role and
+     * then drives the browser against them, so the browser and the fixture
+     * have to be pointed at the SAME Supabase. Reusing whatever dev server
+     * happened to be listening breaks that silently: the server was started
+     * with a different `VITE_SUPABASE_URL`, the account exists on one instance
+     * and the sign-in happens on the other, and the only symptom is "Invalid
+     * login credentials".
+     *
+     * On a developer's machine that other instance is production. So a live
+     * run starts its own server with the environment it was given, and fails
+     * loudly on a busy port rather than quietly on the wrong database.
+     */
+    reuseExistingServer: !process.env.CI && process.env.E2E_LIVE_SUPABASE !== '1',
     timeout: 60_000,
   },
 });

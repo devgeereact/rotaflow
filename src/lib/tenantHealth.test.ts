@@ -56,8 +56,12 @@ describe('healthBand', () => {
     expect(healthBand(org({ status: 'suspended' }), 'active', NOW)).toBe('suspended');
   });
 
-  it('treats archived as suspended rather than healthy', () => {
-    expect(healthBand(org({ status: 'archived' }), 'active', NOW)).toBe('suspended');
+  it('gives an archived account its own band rather than calling it suspended', () => {
+    // They were one band until the console showed a closed account a red
+    // "Suspended" pill. Suspension is something the platform did to a live
+    // customer and needs acting on; archiving is a closed account and does
+    // not.
+    expect(healthBand(org({ status: 'archived' }), 'active', NOW)).toBe('archived');
   });
 
   it('flags a failed payment ahead of a quiet fortnight', () => {
@@ -88,12 +92,13 @@ describe('healthBand', () => {
 });
 
 describe('healthBreakdown', () => {
-  it('returns the four bands in severity order and sums to the tenant count', () => {
+  it('returns every band in severity order and sums to the tenant count', () => {
     const organisations = [
       org({ id: 'a' }),
       org({ id: 'b', last_activity_at: daysAgo(20) }),
       org({ id: 'c', last_activity_at: daysAgo(60) }),
       org({ id: 'd', status: 'suspended' }),
+      org({ id: 'e', status: 'archived' }),
     ];
     const rows = healthBreakdown(organisations, [{ org_id: 'a', status: 'active' }], NOW);
     expect(rows.map((r) => r.band)).toEqual([
@@ -101,8 +106,9 @@ describe('healthBreakdown', () => {
       'attention',
       'at_risk',
       'suspended',
+      'archived',
     ]);
-    expect(rows.map((r) => r.count)).toEqual([1, 1, 1, 1]);
+    expect(rows.map((r) => r.count)).toEqual([1, 1, 1, 1, 1]);
     expect(rows.reduce((t, r) => t + r.count, 0)).toBe(organisations.length);
   });
 

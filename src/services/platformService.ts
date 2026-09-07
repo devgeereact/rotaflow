@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { buildAcceptUrl } from '@/services/inviteService';
 import { grantPlatformRole, revokePlatformRole } from '@/services/platformRoleService';
+import { escapeLikePattern, escapeOrValue } from '@/lib/filters';
+import { fetchAllPages } from '@/lib/serverPage';
 import type { AuditLog, Organisation, Profile, Subscription } from '@/types';
 
 /**
@@ -261,5 +263,206 @@ export async function createOrganisationWithInvite(
     inviteToken: row.invite_token,
     inviteExpiresAt: row.invite_expires_at,
     acceptUrl: buildAcceptUrl(row.invite_token),
+  };
+}
+
+export interface AuditQuery {
+  /** Matches action, entity type, actor name or actor email. */
+  search?: string;
+  /** An organisation id, or the literal `'platform'` for platform-scoped events. */
+  scope?: string;
+  severity?: readonly string[];
+  action?: readonly string[];
+  /** ISO instants. `to` is exclusive. */
+  from?: string | null;
+  to?: string | null;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * Search the whole audit history, not the recent window.
+ *
+ * ## What this replaces
+ *
+ * `listPlatformAuditLogs(200)` loaded the last two hundred events and the
+ * screen filtered that array. Every filter on it was therefore a filter *of
+ * the recent window*: searching for an action from last month returned
+ * nothing and said "No audit entries match these filters", which is a
+ * sentence about the filter rather than about the window. On a deployment
+ * with any traffic at all, two hundred events is hours.
+ *
+ * The cap was defended in the old function's comment as "a recent-activity
+ * view, not an archive". That is a reasonable default and a bad ceiling: an
+ * audit log exists to be searched after the fact, and the one question it is
+ * always opened for — "what happened to this organisation on this date" —
+ * is the one the window cannot answer.
+ *
+ * Filtered, ordered, counted and paged by PostgREST, so the total is the
+ * number of matching events rather than the number that arrived.
+ */
+export async function searchPlatformAuditLogs(query: AuditQuery = {}): Promise<{
+  rows: AuditLog[];
+  total: number;
+}> {
+  const pageSize = Math.min(Math.max(query.pageSize ?? 50, 1), 200);
+  const page = Math.max(1, Math.trunc(query.page ?? 1));
+  const from = (page - 1) * pageSize;
+
+  let request = supabase
+    .from('audit_logs')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    // The tie-break. `created_at` is not unique — a transaction writing two
+    // rows stamps both identically — so without a second key the two are free
+    // to swap between pages and one gets read twice.
+    .order('id', { ascending: false })
+    .range(from, from + pageSize - 1);
+
+  if (query.scope === 'platform') request = request.eq('scope', 'platform');
+  else if (query.scope && query.scope !== 'all')
+    request = request.eq('org_id', query.scope);
+
+  if (query.severity && query.severity.length > 0) {
+    request = request.in('severity', [...query.severity]);
+  }
+  if (query.action && query.action.length > 0) {
+    request = request.in('action', [...query.action]);
+  }
+  if (query.from) request = request.gte('created_at', query.from);
+  if (query.to) request = request.lt('created_at', query.to);
+
+  const term = query.search?.trim();
+  if (term) {
+    // `escapeLikePattern` first, so a `%` in the term is a percent sign
+    // rather than "everything"; `escapeOrValue` second, because the `or=(…)`
+    // list is comma-separated and parenthesised, and an unquoted comma in a
+    // search term changes the shape of the filter rather than its content.
+    const pattern = escapeOrValue(`%${escapeLikePattern(term)}%`);
+    request = request.or(
+      [
+        `action.ilike.${pattern}`,
+        `entity_type.ilike.${pattern}`,
+        `actor_name.ilike.${pattern}`,
+        `actor_email.ilike.${pattern}`,
+      ].join(','),
+    );
+  }
+
+  const { data, error, count } = await request;
+  if (error) throw error;
+  return { rows: data ?? [], total: count ?? data?.length ?? 0 };
+}
+
+/**
+ * Every event matching the filters, for an export within a stated range.
+ *
+ * Bounded, and the caller must say when it stopped. An audit export that
+ * silently holds the first ten thousand of forty thousand events is worse than
+ * none, because an investigation reads absence as evidence.
+ */
+export async function exportPlatformAuditLogs(
+  query: AuditQuery = {},
+): Promise<{ rows: AuditLog[]; total: number; truncated: boolean }> {
+  const result = await fetchAllPages<AuditLog>(async (offset, limit) => {
+    const page = await searchPlatformAuditLogs({
+      ...query,
+      page: Math.floor(offset / limit) + 1,
+      pageSize: limit,
+    });
+    return { rows: page.rows, total: page.total };
+  });
+  return result;
+}
+
+/**
+ * Which of these slugs already belong to an organisation.
+ *
+ * One query rather than one `isSlugAvailable` call per row: a fifty-row
+ * import would otherwise make fifty round trips to answer a question one
+ * `in` clause answers. Chunked, because a URL carrying two thousand slugs is
+ * how a GET becomes a 414.
+ *
+ * Reads `organisations` directly, which a platform administrator may do —
+ * `0031`'s carve-out puts organisations, subscriptions and memberships within
+ * reach without a support-access session. For anybody else RLS returns
+ * nothing, and the import would then report every slug as free; that is
+ * harmless, because the creation RPC refuses a non-administrator outright and
+ * a duplicate is refused again by the unique index.
+ */
+export async function findExistingSlugs(slugs: readonly string[]): Promise<string[]> {
+  const unique = [...new Set(slugs.filter((s) => s !== ''))];
+  const found: string[] = [];
+
+  for (let i = 0; i < unique.length; i += 200) {
+    const chunk = unique.slice(i, i + 200);
+    const { data, error } = await supabase
+      .from('organisations')
+      .select('slug')
+      .in('slug', chunk);
+    if (error) throw error;
+    found.push(...(data ?? []).map((row) => row.slug));
+  }
+
+  return found;
+}
+
+export interface GrowthPoint {
+  /** First day of the UTC month. */
+  monthStart: string;
+  created: number;
+  /** Cumulative: every organisation that existed by the end of the month. */
+  total: number;
+  churned: number;
+}
+
+/**
+ * Organisations created, the running total and subscriptions churned, per
+ * month, counted by the database (0133).
+ *
+ * The overview used to bucket `listAllOrganisations()` and
+ * `listAllSubscriptions()` in the browser. Above PostgREST's cap that is a
+ * chart of the cap rather than of the estate, and it slopes the wrong way as
+ * the product succeeds.
+ *
+ * Months are UTC. The old client-side buckets used the browser's zone, which
+ * for a UK operator differs by an hour twice a year; UTC makes the chart
+ * identical for every reader, which is the more useful property for a shared
+ * operations screen, and the axis says so.
+ */
+export async function getPlatformGrowth(months = 12): Promise<GrowthPoint[]> {
+  const { data, error } = await supabase.rpc('platform_growth', { p_months: months });
+  if (error) throw error;
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
+    monthStart: String(row.month_start),
+    created: Number(row.created ?? 0),
+    total: Number(row.total ?? 0),
+    churned: Number(row.churned ?? 0),
+  }));
+}
+
+export interface OperationsSummary {
+  openCases: number;
+  urgentOpenCases: number;
+  unassignedOpenCases: number;
+  openIncidents: number;
+  activeSupportSessions: number;
+  /** Dispatches that will not be retried again. Not "pending" or "sent". */
+  failedNotifications: number;
+}
+
+/** The support, incident, access and delivery counts on `/admin`, as counts. */
+export async function getOperationsSummary(): Promise<OperationsSummary> {
+  const { data, error } = await supabase.rpc('platform_operations_summary');
+  if (error) throw error;
+  const row = ((data ?? []) as unknown as Record<string, unknown>[])[0];
+  const num = (key: string): number => Number(row?.[key] ?? 0);
+  return {
+    openCases: num('open_cases'),
+    urgentOpenCases: num('urgent_open_cases'),
+    unassignedOpenCases: num('unassigned_open_cases'),
+    openIncidents: num('open_incidents'),
+    activeSupportSessions: num('active_support_sessions'),
+    failedNotifications: num('failed_notifications'),
   };
 }

@@ -581,6 +581,9 @@ const INVOICES = ORG_IDS.flatMap((org_id, i) =>
 );
 
 const ANNOUNCEMENTS = [
+  // A draft first, so the register's Publish and Cancel actions are on screen
+  // in the design loop rather than only reachable after composing one.
+  ['Draft: pricing change for Business', 'billing', 'draft', null, null],
   ['Scheduled maintenance-02:00–03:00 BST', 'maintenance', 'scheduled', null, 5],
   ['New: cost forecasting in Reports', 'product', 'sent', 7, null],
   ['Action needed: card expiring this month', 'billing', 'sent', 11, null],
@@ -604,19 +607,32 @@ const ANNOUNCEMENTS = [
   updated_at: ISO(0),
 }));
 
+/**
+ * Deliveries, with queued, delivered and failed all present.
+ *
+ * Every row used to carry `sent_at`, because the publish function stamped it
+ * at insert — so the preview could only ever show one state and the repair
+ * that separates them would be invisible here. One organisation per
+ * announcement is left queued and one is a recorded failure.
+ */
 const ANNOUNCEMENT_DELIVERIES = ANNOUNCEMENTS.filter((a) => a.status === 'sent').flatMap(
   (a) =>
-    ORG_IDS.map((org_id, i) => ({
-      id: `del-${a.id}-${i}`,
-      announcement_id: a.id,
-      org_id,
-      sent_at: a.sent_at,
-      read_at: i % 5 === 0 ? null : a.sent_at,
-      read_by: i % 5 === 0 ? null : USER_IDS[0],
-      failed_at: null,
-      failure_reason: null,
-      created_at: a.sent_at,
-    })),
+    ORG_IDS.map((org_id, i) => {
+      const queued = i === 1;
+      const failed = i === 4;
+      return {
+        id: `del-${a.id}-${i}`,
+        announcement_id: a.id,
+        org_id,
+        outbox_id: queued || failed ? null : `outbox-${a.id}-${i}`,
+        sent_at: queued || failed ? null : a.sent_at,
+        read_at: queued || failed || i % 5 === 0 ? null : a.sent_at,
+        read_by: queued || failed || i % 5 === 0 ? null : USER_IDS[0],
+        failed_at: failed ? a.sent_at : null,
+        failure_reason: failed ? 'No active owner or manager to address' : null,
+        created_at: a.sent_at,
+      };
+    }),
 );
 
 // Deliberately a mix. Production after 0073 has EVERY connector `planned`,
@@ -700,6 +716,210 @@ const BACKGROUND_JOBS = Array.from({ length: 48 }, (_, i) => ({
   created_at: ISO(0),
 }));
 
+/**
+ * The directory rows 0130 returns, for `/admin-preview/organisations`.
+ *
+ * Deliberately more than one page. The console's organisations screen was
+ * repaired precisely because it could only ever show the rows that happened to
+ * load, and a six-row fixture would hide the repair: the page control would
+ * not render, the "of 34" total would equal the page length, and a reviewer
+ * would sign off a screen that has never been asked to page.
+ *
+ * The six named tenants come first so the screenshots stay recognisable; the
+ * rest exist to be paged through.
+ */
+const DIRECTORY_ROWS: {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  industry: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  country: string;
+  timezone: string;
+  is_demo: boolean;
+  created_at: string;
+  last_activity_at: string | null;
+  onboarding_completed_at: string | null;
+  support_access_allowed: boolean;
+  suspended_at: string | null;
+  suspended_reason: string | null;
+  subscription_status: string | null;
+  subscription_plan: string | null;
+  subscription_currency: string | null;
+  subscription_price_pence: number | null;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  members: number;
+  staff_active: number;
+  locations: number;
+  owner_email: string | null;
+  owner_name: string | null;
+  owner_contact_visible: boolean;
+  health: string;
+}[] = [
+  ...ORGANISATIONS.map((org, i) => {
+    const sub = SUBSCRIPTIONS.find((s) => s.org_id === org.id);
+    return {
+      id: String(org.id),
+      name: String(org.name),
+      slug: String(org.slug),
+      status: String(org.status),
+      plan: String(sub?.plan ?? org.plan),
+      industry: ['Residential care', 'Hospitality', 'Retail'][i % 3] ?? null,
+      contact_email: null,
+      contact_phone: null,
+      country: 'United Kingdom',
+      timezone: 'Europe/London',
+      is_demo: false,
+      created_at: org.created_at,
+      last_activity_at: org.last_activity_at,
+      onboarding_completed_at: null,
+      support_access_allowed: Boolean(org.support_access_allowed),
+      suspended_at: org.suspended_at,
+      suspended_reason: org.suspended_reason,
+      subscription_status: sub ? String(sub.status) : null,
+      subscription_plan: sub ? String(sub.plan) : null,
+      subscription_currency: sub ? 'GBP' : null,
+      subscription_price_pence: sub ? 79000 : null,
+      trial_ends_at: null,
+      current_period_end: sub ? String(sub.current_period_end) : null,
+      // Login accounts and rostered staff are different populations, and the
+      // fixture keeps them apart on purpose: most rostered staff never sign
+      // in, so a console showing one under the other's name is BUG-062.
+      members: [7, 5, 3, 4, 2, 1][i] ?? 1,
+      staff_active: [248, 96, 41, 33, 27, 14][i] ?? 0,
+      locations: [4, 3, 2, 6, 2, 1][i] ?? 1,
+      owner_email: `owner@${String(org.slug)}.example`,
+      owner_name: 'Preview Owner',
+      owner_contact_visible: true,
+      health:
+        org.status === 'archived'
+          ? 'archived'
+          : org.status === 'suspended'
+            ? 'suspended'
+            : sub?.status === 'past_due'
+              ? 'attention'
+              : 'healthy',
+    };
+  }),
+  ...Array.from({ length: 28 }, (_, n) => {
+    const i = n + 1;
+    const status = i % 11 === 0 ? 'suspended' : 'active';
+    const plan = ['starter', 'professional', 'business'][i % 3] ?? 'starter';
+    return {
+      id: `99999999-0000-4000-8000-${String(i).padStart(12, '0')}`,
+      name: `Preview Tenant ${String(i).padStart(2, '0')}`,
+      slug: `preview-tenant-${String(i).padStart(2, '0')}`,
+      status,
+      plan,
+      industry: ['Residential care', 'Hospitality', 'Retail'][i % 3] ?? null,
+      contact_email: `accounts@preview-${i}.example`,
+      contact_phone: null,
+      country: 'United Kingdom',
+      timezone: 'Europe/London',
+      is_demo: false,
+      created_at: ISO(20 + i * 5),
+      last_activity_at: i % 7 === 0 ? null : ISO(i % 40),
+      onboarding_completed_at: null,
+      support_access_allowed: i % 4 !== 0,
+      suspended_at: status === 'suspended' ? ISO(9) : null,
+      suspended_reason: status === 'suspended' ? 'Unresolved chargeback' : null,
+      subscription_status: i % 5 === 0 ? 'trialing' : i % 9 === 0 ? null : 'active',
+      subscription_plan: i % 9 === 0 ? null : plan,
+      subscription_currency: i % 9 === 0 ? null : 'GBP',
+      subscription_price_pence: i % 9 === 0 ? null : 4900 * (1 + (i % 3)),
+      trial_ends_at: null,
+      current_period_end: null,
+      members: 1 + (i % 6),
+      staff_active: 4 + i * 3,
+      locations: 1 + (i % 4),
+      owner_email: `owner@preview-${i}.example`,
+      owner_name: `Preview Owner ${i}`,
+      owner_contact_visible: true,
+      health:
+        status === 'suspended'
+          ? 'suspended'
+          : i % 7 === 0
+            ? 'at_risk'
+            : i % 40 > 30
+              ? 'at_risk'
+              : i % 40 > 14
+                ? 'attention'
+                : 'healthy',
+    };
+  }),
+];
+
+/**
+ * The account rows 0131 returns, for `/admin-preview/users`.
+ *
+ * Marcus Bell holds two memberships and Priya Raman has one that is
+ * suspended, because those are the two states the repaired screen exists to
+ * show: an account findable by either of its organisation names, and a
+ * "no active membership" badge that the old screen could never render.
+ */
+const USER_DIRECTORY_ROWS: {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  is_platform_admin: boolean;
+  platform_role: string | null;
+  created_at: string;
+  organisations: number;
+  active_memberships: number;
+  org_ids: string[];
+  org_names: string[];
+  roles: string[];
+  membership_statuses: string[];
+}[] = [
+  ...PROFILES.map((profile, i) => {
+    const own = MEMBERSHIPS.filter((m) => m.user_id === profile.id);
+    const suspended = i === 3;
+    return {
+      id: String(profile.id),
+      email: String(profile.email),
+      full_name: profile.full_name === undefined ? null : String(profile.full_name),
+      avatar_url: null,
+      is_platform_admin: Boolean(profile.is_platform_admin),
+      platform_role: profile.is_platform_admin
+        ? i === 1
+          ? 'platform_owner'
+          : 'platform_support'
+        : null,
+      created_at: profile.created_at,
+      organisations: own.length,
+      active_memberships: suspended ? 0 : own.length,
+      org_ids: own.map((m) => String(m.org_id)),
+      org_names: own.map((m) => String(m.organisation.name ?? '')),
+      roles: [...new Set(own.map((m) => String(m.role)))].sort(),
+      membership_statuses: own.length === 0 ? [] : suspended ? ['suspended'] : ['active'],
+    };
+  }),
+  ...Array.from({ length: 26 }, (_, n) => {
+    const i = n + 1;
+    const role = ['owner', 'manager', 'staff'][i % 3] ?? 'staff';
+    return {
+      id: `88888888-0000-4000-8000-${String(i).padStart(12, '0')}`,
+      email: `person${String(i).padStart(2, '0')}@preview-tenant.example`,
+      full_name: `Preview Person ${String(i).padStart(2, '0')}`,
+      avatar_url: null,
+      is_platform_admin: false,
+      platform_role: null,
+      created_at: ISO(30 + i * 4),
+      organisations: i % 8 === 0 ? 0 : 1,
+      active_memberships: i % 8 === 0 ? 0 : 1,
+      org_ids: i % 8 === 0 ? [] : [String(ORG_IDS[i % 6] ?? '')],
+      org_names: i % 8 === 0 ? [] : [String(ORGANISATIONS[i % 6]?.name ?? '')],
+      roles: i % 8 === 0 ? [] : [role],
+      membership_statuses: i % 8 === 0 ? [] : ['active'],
+    };
+  }),
+];
+
 const TABLES: Record<string, unknown> = {
   organisations: ORGANISATIONS,
   profiles: PROFILES,
@@ -762,8 +982,10 @@ const TABLES: Record<string, unknown> = {
   ],
   'rpc/platform_totals': [
     {
-      organisations: ORGANISATIONS.length,
-      active_orgs: ORGANISATIONS.filter((o) => o.status === 'active').length,
+      // Matches the directory fixture, so the overview cannot show one count
+      // beside a different one for the same fact.
+      organisations: DIRECTORY_ROWS.length,
+      active_orgs: DIRECTORY_ROWS.filter((o) => o.status === 'active').length,
       profiles: PROFILES.length,
       staff_profiles: 91,
       published_rotas: 96,
@@ -815,12 +1037,293 @@ const TABLES: Record<string, unknown> = {
   // POST with the org id in the body, not the URL, so every organisation's
   // detail page sees this same figure in the preview.
   'rpc/subscription_mrr_pence': 79000,
+
+  // 0130's directory. A function fixture, because this RPC pages and filters
+  // in the database: a fixed array would render page 1 forever and the
+  // Pagination control would be a decoration. It reproduces the parts of the
+  // real function the screen depends on — the search, the status/plan filters,
+  // the sort whitelist, the clamp and `total_count` over the whole match set —
+  // so the preview shows paging behaving the way production does.
+  'rpc/platform_organisation_directory': ((args: Record<string, unknown>) => {
+    const text = (key: string): string =>
+      typeof args[key] === 'string' ? args[key].toLowerCase() : '';
+    const list = (key: string): string[] =>
+      Array.isArray(args[key]) ? (args[key] as string[]) : [];
+    const search = text('p_search');
+    const status = list('p_status');
+    const plan = list('p_plan');
+    const subscription = list('p_subscription_status');
+    const industry = list('p_industry');
+    const health = list('p_health');
+
+    const matched = DIRECTORY_ROWS.filter((row) => {
+      if (status.length > 0 && !status.includes(row.status)) return false;
+      if (plan.length > 0 && !plan.includes(row.plan)) return false;
+      if (
+        subscription.length > 0 &&
+        !subscription.includes(row.subscription_status ?? 'none')
+      ) {
+        return false;
+      }
+      if (industry.length > 0 && !industry.includes(row.industry ?? '')) return false;
+      if (health.length > 0 && !health.includes(row.health)) return false;
+      if (search === '') return true;
+      return [row.name, row.slug, row.contact_email, row.owner_email]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(search);
+    });
+
+    const sortKey = typeof args.p_sort === 'string' ? args.p_sort : 'created_at';
+    const sign = args.p_direction === 'asc' ? 1 : -1;
+    const sorted = [...matched].sort((a, b) => {
+      const left = a[sortKey as keyof typeof a];
+      const right = b[sortKey as keyof typeof b];
+      const primary =
+        typeof left === 'number' && typeof right === 'number'
+          ? (left - right) * sign
+          : String(left ?? '').localeCompare(String(right ?? '')) * sign;
+      // The same tie-break 0130 applies. Without it, paging an equal-valued
+      // sort repeats one row and drops another.
+      return primary !== 0 ? primary : a.id.localeCompare(b.id);
+    });
+
+    const limit = Math.min(Math.max(Number(args.p_limit ?? 25), 1), 200);
+    const offset = Math.max(Number(args.p_offset ?? 0), 0);
+    return sorted
+      .slice(offset, offset + limit)
+      .map((row) => ({ ...row, total_count: matched.length }));
+  }) satisfies BodyFixture,
+  // 0131's user directory. A function fixture for the same reason as the
+  // organisation one above: it pages and filters in the database, and a fixed
+  // array would show page 1 forever.
+  //
+  // Marcus Bell is in two organisations on purpose. He is the account the old
+  // screen could not find by either organisation name, and the preview has to
+  // be able to demonstrate that it now can.
+  'rpc/platform_user_directory': ((args: Record<string, unknown>) => {
+    const search = typeof args.p_search === 'string' ? args.p_search.toLowerCase() : '';
+    const access = args.p_platform_access;
+    const roles = Array.isArray(args.p_role) ? (args.p_role as string[]) : [];
+    const statuses = Array.isArray(args.p_membership_status)
+      ? (args.p_membership_status as string[])
+      : [];
+
+    const matched = USER_DIRECTORY_ROWS.filter((row) => {
+      if (access === 'platform' && !row.is_platform_admin) return false;
+      if (access === 'standard' && row.is_platform_admin) return false;
+      if (roles.length > 0 && !row.roles.some((r) => roles.includes(r))) return false;
+      if (
+        statuses.length > 0 &&
+        !row.membership_statuses.some((st) => statuses.includes(st))
+      ) {
+        return false;
+      }
+      if (search === '') return true;
+      return [row.email, row.full_name, ...row.org_names]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(search);
+    });
+
+    const sortKey = typeof args.p_sort === 'string' ? args.p_sort : 'created_at';
+    const sign = args.p_direction === 'asc' ? 1 : -1;
+    const sorted = [...matched].sort((a, b) => {
+      const key = sortKey === 'name' ? 'full_name' : sortKey;
+      const left = a[key as keyof typeof a];
+      const right = b[key as keyof typeof b];
+      const primary =
+        typeof left === 'number' && typeof right === 'number'
+          ? (left - right) * sign
+          : String(left ?? '').localeCompare(String(right ?? '')) * sign;
+      return primary !== 0 ? primary : a.id.localeCompare(b.id);
+    });
+
+    const limit = Math.min(Math.max(Number(args.p_limit ?? 25), 1), 200);
+    const offset = Math.max(Number(args.p_offset ?? 0), 0);
+    return sorted
+      .slice(offset, offset + limit)
+      .map((row) => ({ ...row, total_count: matched.length }));
+  }) satisfies BodyFixture,
+  // 0132's scoped delivery aggregate. A function fixture because it takes the
+  // ids on screen — the old service read the whole deliveries table into the
+  // browser instead, which is the thing this RPC exists to stop.
+  'rpc/platform_announcement_stats': ((args: Record<string, unknown>) => {
+    const ids = new Set(Array.isArray(args.p_ids) ? (args.p_ids as string[]) : []);
+    const byAnnouncement = new Map<
+      string,
+      {
+        recipients: number;
+        queued: number;
+        delivered: number;
+        failed: number;
+        read: number;
+      }
+    >();
+    for (const row of ANNOUNCEMENT_DELIVERIES) {
+      if (!ids.has(row.announcement_id)) continue;
+      const current = byAnnouncement.get(row.announcement_id) ?? {
+        recipients: 0,
+        queued: 0,
+        delivered: 0,
+        failed: 0,
+        read: 0,
+      };
+      current.recipients += 1;
+      if (row.sent_at === null && row.failed_at === null) current.queued += 1;
+      if (row.sent_at !== null) current.delivered += 1;
+      if (row.failed_at !== null) current.failed += 1;
+      if (row.read_at !== null) current.read += 1;
+      byAnnouncement.set(row.announcement_id, current);
+    }
+    return [...byAnnouncement].map(([announcement_id, counts]) => ({
+      announcement_id,
+      ...counts,
+    }));
+  }) satisfies BodyFixture,
+  // The composer's three writes. Fixtures rather than an unmocked call, so the
+  // preview can be driven all the way to a success state; nothing here changes
+  // the register, which is what a fixture harness can honestly offer.
+  'rpc/create_platform_announcement': 'preview-announcement-id',
+  'rpc/publish_platform_announcement': 6,
+  'rpc/cancel_platform_announcement': null,
+  // 0133. A function fixture so the reporting-period select actually changes
+  // the chart in the design loop.
+  'rpc/platform_growth': ((args: Record<string, unknown>) => {
+    const months = Math.min(Math.max(Number(args.p_months ?? 12), 1), 36);
+    const now = new Date();
+    return Array.from({ length: months }, (_, i) => {
+      const start = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1 - i), 1),
+      );
+      const created = [1, 0, 2, 1, 3, 0, 1, 2, 0, 1, 1, 3][i % 12] ?? 1;
+      return {
+        month_start: start.toISOString().slice(0, 10),
+        created,
+        total: 6 + i * 2,
+        churned: i % 5 === 0 ? 1 : 0,
+      };
+    });
+  }) satisfies BodyFixture,
+  'rpc/platform_operations_summary': [
+    {
+      open_cases: 3,
+      urgent_open_cases: 1,
+      unassigned_open_cases: 1,
+      open_incidents: 1,
+      active_support_sessions: 2,
+      failed_notifications: 0,
+    },
+  ],
+  // 0134's per-currency billing summary and paged invoice list. Two
+  // currencies on purpose: the mixed-currency banner is a state the console
+  // is now supposed to render, and one nobody could reach in a preview.
+  'rpc/platform_billing_summary': [
+    {
+      currency: 'GBP',
+      mrr_pence: 121800,
+      paying_orgs: 3,
+      collected_month_pence: 98000,
+      collected_prev_month_pence: 91000,
+      outstanding_pence: 34000,
+      past_due_pence: 12900,
+      refunded_month_pence: 4900,
+      open_invoices: 4,
+      past_due_invoices: 1,
+      refunded_invoices: 1,
+    },
+    {
+      currency: 'EUR',
+      mrr_pence: 29900,
+      paying_orgs: 1,
+      collected_month_pence: 29900,
+      collected_prev_month_pence: 29900,
+      outstanding_pence: 0,
+      past_due_pence: 0,
+      refunded_month_pence: 0,
+      open_invoices: 0,
+      past_due_invoices: 0,
+      refunded_invoices: 0,
+    },
+  ],
+  'rpc/platform_invoice_directory': ((args: Record<string, unknown>) => {
+    const limit = Math.min(Math.max(Number(args.p_limit ?? 25), 1), 200);
+    const offset = Math.max(Number(args.p_offset ?? 0), 0);
+    const rows = INVOICES.map((invoice) => ({
+      ...invoice,
+      org_name: ORGANISATIONS.find((org) => org.id === invoice.org_id)?.name ?? null,
+      tax_pence: 0,
+      period_start: invoice.issued_on,
+      period_end: invoice.due_on,
+      failure_reason: null,
+      attempts: invoice.status === 'past_due' ? 2 : 0,
+      provider: 'stripe',
+      provider_ref: `in_preview_${invoice.number}`,
+    }));
+    return rows
+      .slice(offset, offset + limit)
+      .map((row) => ({ ...row, total_count: rows.length }));
+  }) satisfies BodyFixture,
+  'rpc/platform_user_facets': [
+    {
+      total: USER_DIRECTORY_ROWS.length,
+      with_membership: USER_DIRECTORY_ROWS.filter((r) => r.organisations > 0).length,
+      unattached: USER_DIRECTORY_ROWS.filter((r) => r.organisations === 0).length,
+      multi_org: USER_DIRECTORY_ROWS.filter((r) => r.organisations > 1).length,
+      platform_admins: USER_DIRECTORY_ROWS.filter((r) => r.is_platform_admin).length,
+      suspended_only: USER_DIRECTORY_ROWS.filter(
+        (r) => r.organisations > 0 && r.active_memberships === 0,
+      ).length,
+      roles: ['manager', 'owner', 'staff'],
+    },
+  ],
+  'rpc/platform_organisation_facets': [
+    {
+      total: DIRECTORY_ROWS.length,
+      active: DIRECTORY_ROWS.filter((r) => r.status === 'active').length,
+      suspended: DIRECTORY_ROWS.filter((r) => r.status === 'suspended').length,
+      archived: DIRECTORY_ROWS.filter((r) => r.status === 'archived').length,
+      new_this_month: 3,
+      new_last_month: 2,
+      trialing: DIRECTORY_ROWS.filter((r) => r.subscription_status === 'trialing').length,
+      past_due: DIRECTORY_ROWS.filter((r) => r.subscription_status === 'past_due').length,
+      healthy: DIRECTORY_ROWS.filter((r) => r.health === 'healthy').length,
+      attention: DIRECTORY_ROWS.filter((r) => r.health === 'attention').length,
+      at_risk: DIRECTORY_ROWS.filter((r) => r.health === 'at_risk').length,
+      archived_band: DIRECTORY_ROWS.filter((r) => r.health === 'archived').length,
+      active_24h: DIRECTORY_ROWS.filter(
+        (r) =>
+          r.last_activity_at !== null &&
+          Date.now() - Date.parse(r.last_activity_at) < 86_400_000,
+      ).length,
+      plans: ['starter', 'professional', 'business', 'enterprise'],
+      industries: ['Residential care', 'Hospitality', 'Retail'],
+      subscription_statuses: ['trialing', 'active', 'past_due', 'none'],
+    },
+  ],
 };
 
+/**
+ * An RPC whose answer depends on its arguments.
+ *
+ * PostgREST posts RPC arguments in the body, not the query string, so a fixed
+ * fixture cannot page or filter — every page of a paged screen would return
+ * the same six rows, and the preview would teach the reviewer that paging does
+ * not work. These get the parsed body instead.
+ */
+type BodyFixture = (args: Record<string, unknown>) => unknown;
+
+function isBodyFixture(value: unknown): value is BodyFixture {
+  return typeof value === 'function';
+}
+
 /** Everything the console reads, keyed by the PostgREST path segment. */
-function fixtureFor(table: string, url: URL): unknown {
+function fixtureFor(table: string, url: URL, body: Record<string, unknown>): unknown {
   const rows = TABLES[table];
   if (rows === undefined) return undefined;
+  if (isBodyFixture(rows)) return rows(body);
   if (!Array.isArray(rows)) return rows;
 
   // Honour `?org_id=eq.<uuid>` and `?user_id=eq.<uuid>`, which the per-tenant
@@ -831,6 +1334,18 @@ function fixtureFor(table: string, url: URL): unknown {
     const [op, ...rest] = raw.split('.');
     const wanted = rest.join('.');
     if (op === 'eq') filtered = filtered.filter((r) => String(r[key]) === wanted);
+    // `in.(a,b)`. Without this a status or type filter in the preview changed
+    // the URL and nothing else, which teaches a reviewer that the filter does
+    // not work when in production it does.
+    if (op === 'in') {
+      const allowed = new Set(
+        wanted
+          .replace(/^\(|\)$/g, '')
+          .split(',')
+          .map((value) => value.replace(/^"|"$/g, '')),
+      );
+      filtered = filtered.filter((r) => allowed.has(String(r[key])));
+    }
     if (op === 'is' && wanted === 'null') filtered = filtered.filter((r) => !r[key]);
     if (op === 'not') filtered = filtered.filter((r) => Boolean(r[key]));
   }
@@ -848,10 +1363,45 @@ function installFixtureFetch(): void {
 
     const url = new URL(href);
     const path = url.pathname.split('/rest/v1/')[1]?.split('?')[0] ?? '';
+
+    /**
+     * `?fail=a,b` makes those paths return 500.
+     *
+     * Partial failure is a state the console is now supposed to render — a
+     * panel whose source could not be read says so rather than showing zero —
+     * and a state nobody can reach is a state nobody reviews. The list is read
+     * from the page's own address, so
+     * `/admin-preview?fail=rpc/platform_operations_summary` shows the
+     * overview with its support panel unavailable and everything else intact.
+     */
+    const failing = new Set(
+      (new URLSearchParams(window.location.search).get('fail') ?? '')
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean),
+    );
+    if (failing.has(path)) {
+      return new Response(JSON.stringify({ message: 'Forced failure (preview)' }), {
+        status: 500,
+        headers: new Headers({ 'content-type': 'application/json' }),
+      });
+    }
     // An RPC is `rpc/<name>`; a table is just the name. Both are looked up in
     // the same map, so adding a fixture for either is one line.
     const table = path;
-    const data = fixtureFor(table, url);
+    // PostgREST posts RPC arguments in the body, so a fixture that pages or
+    // filters has to read it.
+    let rpcArgs: Record<string, unknown> = {};
+    if (typeof init?.body === 'string') {
+      try {
+        rpcArgs = JSON.parse(init.body) as Record<string, unknown>;
+      } catch {
+        // A body this harness cannot read is not a reason to fail the request;
+        // the fixture simply sees no arguments.
+        rpcArgs = {};
+      }
+    }
+    const data = fixtureFor(table, url, rpcArgs);
 
     if (data === undefined) {
       // Loud rather than empty: an unmocked table should be obvious.

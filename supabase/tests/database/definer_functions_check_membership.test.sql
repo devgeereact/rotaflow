@@ -75,7 +75,23 @@ select is(
          'slug_available',
          'notification_delivery_configured'
        )
-       and pg_get_functiondef(p.oid) !~* 'is_org_member|has_org_role|is_platform_admin|has_platform_role|platform_admins|my_staff_profile_id|auth\.uid'
+       -- Each idiom is matched as a CALL — the name followed by an open
+       -- bracket — not as a bare name. `platform_user_facets` (0131) passed
+       -- this sweep while guarding itself with `is_platform_operational`,
+       -- and it passed for the wrong reason: its body selects the
+       -- `profiles.is_platform_admin` COLUMN, and the old pattern could not
+       -- tell a column reference from a guard. A function that merely reads
+       -- that column and checks nothing would have been waved through.
+       --
+       -- `platform_admins` is gone from the list for the same reason: naming
+       -- the table is not checking it. Every function that legitimately
+       -- joined it also calls one of the predicates below.
+       --
+       -- `is_platform_operational()` (0122) is a guard and is now named as
+       -- one. It is `is_platform_admin()` AND a role test, so it is strictly
+       -- narrower than the predicate already on this list, and it inherits
+       -- 0102's MFA condition.
+       and pg_get_functiondef(p.oid) !~* 'is_org_member\s*\(|has_org_role\s*\(|is_platform_admin\s*\(|has_platform_role\s*\(|is_platform_operational\s*\(|my_staff_profile_id\s*\(|auth\.uid\s*\('
   ),
   '',
   'every SECURITY DEFINER function authenticated may execute scopes itself to the caller'

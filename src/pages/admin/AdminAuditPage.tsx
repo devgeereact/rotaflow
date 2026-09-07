@@ -1,32 +1,48 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Link2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
+import { Pagination } from '@/components/ui/Pagination';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import {
-  AdminEmpty,
-  AdminError,
-  AdminLoading,
-  AdminPage,
-} from '@/components/admin/AdminPage';
-import { listAllOrganisations, listPlatformAuditLogs } from '@/services/platformService';
+  exportPlatformAuditLogs,
+  searchPlatformAuditLogs,
+  type AuditQuery,
+} from '@/services/platformService';
+import { listOrganisationDirectoryAll } from '@/services/platformDirectoryService';
 import { Callout } from '@/components/ui/Callout';
 import { Button } from '@/components/ui/Button';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
+import { useToast } from '@/hooks/useToast';
+import { useFilterState } from '@/hooks/useFilterState';
+import { filterValue, filterValues } from '@/lib/filters';
+import type { FilterDimension, FilterOption } from '@/lib/filters';
+import { serverPage, type ServerPage } from '@/lib/serverPage';
+import { createdWindowBounds, CREATED_WINDOWS } from '@/lib/organisationDirectory';
 import { downloadCsv } from '@/lib/csv';
 import { reportError } from '@/lib/sentry';
-import { useFilterState } from '@/hooks/useFilterState';
-import { FilterBar } from '@/components/ui/FilterBar';
-import {
-  filterValue,
-  matchesFilters,
-  matchesSearch,
-  type FilterDimension,
-  type FilterOption,
-} from '@/lib/filters';
-import type { AuditLog, Organisation } from '@/types';
+import type { AuditLog } from '@/types';
 
-const LIMIT = 200;
+const PAGE_SIZE = 50;
+
+/**
+ * The dimensions this screen filters on, applied by the database.
+ *
+ * `q` is not marked sensitive. An audit search term is an action name, an
+ * entity type or a colleague's name — the last of those is a person, but this
+ * screen exists to answer "what did this person do", the answer is already an
+ * audit record, and a linkable filtered view is what replaces the saved filter
+ * this screen used to pretend to offer.
+ */
+const AUDIT_FILTERS: readonly FilterDimension[] = [
+  { id: 'q', label: 'Search', kind: 'text' },
+  { id: 'scope', label: 'Organisation', kind: 'select' },
+  { id: 'severity', label: 'Result', kind: 'multi' },
+  { id: 'when', label: 'Period', kind: 'select' },
+] as const;
 
 /** Severity → badge tone. Colour is never the only signal; the word is there too. */
 const SEVERITY_TONE = {
@@ -39,6 +55,11 @@ const SEVERITY_TONE = {
 type SeverityKey = keyof typeof SEVERITY_TONE;
 
 const SEVERITIES = Object.keys(SEVERITY_TONE) as SeverityKey[];
+
+/** Sentence case, because a badge reading "critical" is a word, not a key. */
+function humanSeverity(severity: string): string {
+  return severity.charAt(0).toUpperCase() + severity.slice(1);
+}
 
 function toneFor(severity: string): (typeof SEVERITY_TONE)[SeverityKey] {
   return SEVERITY_TONE[severity as SeverityKey] ?? 'neutral';
@@ -116,100 +137,111 @@ function ChangeCell({
   );
 }
 
-/**
- * The value a platform-scoped event filters as.
- *
- * An event with no `org_id` belongs to the platform rather than to a tenant,
- * and "only what platform staff did" is the question this screen is most often
- * opened for. It is an option rather than a gap for the same reason "No
- * record" is one on the subscriptions screen.
- */
-const PLATFORM_SCOPE = '__platform__';
-
-const AUDIT_FILTERS: readonly FilterDimension[] = [
-  { id: 'q', label: 'Search', kind: 'text' },
-  { id: 'org', label: 'Organisation', kind: 'select' },
-  { id: 'severity', label: 'Result', kind: 'multi' },
-] as const;
-
 export function AdminAuditPage(): JSX.Element {
-  const [entries, setEntries] = useState<AuditLog[] | null>(null);
-  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [page, setPage] = useState<ServerPage<AuditLog> | null>(null);
+  const [organisations, setOrganisations] = useState<{ id: string; name: string }[]>([]);
   const [failed, setFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const { showError, showSuccess } = useToast();
+
   const filterApi = useFilterState({ dimensions: AUDIT_FILTERS, scopeKey: 'platform' });
-  const filters = filterApi.filters;
+  const { filters, page: pageNumber } = filterApi;
+
+  const query = useMemo<AuditQuery>(() => {
+    const window = createdWindowBounds(filterValue(filters, 'when'), new Date());
+    return {
+      search: filterValue(filters, 'q') || undefined,
+      scope: filterValue(filters, 'scope') || undefined,
+      severity: filterValues(filters, 'severity').length
+        ? [...filterValues(filters, 'severity')]
+        : undefined,
+      from: window.from,
+      to: window.to,
+      page: pageNumber,
+      pageSize: PAGE_SIZE,
+    };
+  }, [filters, pageNumber]);
+
+  const requestRef = useRef(0);
 
   useEffect(() => {
-    let active = true;
+    const ticket = ++requestRef.current;
     setFailed(false);
-    setEntries(null);
     void (async () => {
       try {
-        const [logs, orgs] = await Promise.all([
-          listPlatformAuditLogs(LIMIT),
-          listAllOrganisations(),
-        ]);
-        if (!active) return;
-        setEntries(logs);
-        setOrganisations(orgs);
+        const result = await searchPlatformAuditLogs(query);
+        if (ticket !== requestRef.current) return;
+        setPage(
+          serverPage({
+            rows: result.rows,
+            total: result.total,
+            page: pageNumber,
+            pageSize: PAGE_SIZE,
+          }),
+        );
       } catch (err) {
-        if (!active) return;
+        if (ticket !== requestRef.current) return;
         reportError(err, { area: 'admin:audit' });
         setFailed(true);
+      }
+    })();
+  }, [query, pageNumber, reloadKey]);
+
+  /**
+   * The organisation filter's options, loaded once.
+   *
+   * Every tenant, not the ones that happen to appear in the loaded events —
+   * filtering an audit log by an organisation only works if the organisation
+   * with no recent events is still in the list, and that is exactly the one
+   * somebody is looking for.
+   */
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const all = await listOrganisationDirectoryAll({ pageSize: 200 });
+        if (!active) return;
+        setOrganisations(all.rows.map((row) => ({ id: row.id, name: row.name })));
+      } catch (err) {
+        // The list still works without it; the filter simply offers fewer
+        // options and says nothing it cannot back up.
+        reportError(err, { area: 'admin:audit:organisations' });
       }
     })();
     return () => {
       active = false;
     };
-  }, [reloadKey]);
+  }, []);
 
   const orgById = useMemo(
     () => new Map(organisations.map((o) => [o.id, o])),
     [organisations],
   );
 
-  const accessors = useMemo(
-    () => ({
-      // Platform-scoped events are their own value rather than a null org.
-      // "Show me only what platform staff did" is the question this screen is
-      // most often opened for, and it was previously the magic string 'all'
-      // versus 'platform' inside the predicate — expressible, and not linkable.
-      org: (entry: AuditLog) =>
-        entry.scope === 'platform' ? PLATFORM_SCOPE : (entry.org_id ?? PLATFORM_SCOPE),
-      severity: (entry: AuditLog) => entry.severity,
-    }),
-    [],
-  );
-
-  const visible = useMemo(
-    () =>
-      (entries ?? []).filter(
-        (entry) =>
-          matchesFilters(entry, filters, accessors) &&
-          matchesSearch(
-            [entry.action, entry.entity_type, entry.actor_name, entry.actor_email],
-            filterValue(filters, 'q'),
-          ),
-      ),
-    [entries, filters, accessors],
-  );
-
   const optionsFor = useCallback(
     (dimensionId: string): readonly FilterOption[] => {
-      if (dimensionId === 'org') {
-        return [
-          { value: PLATFORM_SCOPE, label: 'Platform events only' },
-          ...organisations.map((org) => ({ value: org.id, label: org.name })),
-        ];
+      switch (dimensionId) {
+        case 'scope':
+          return [
+            { value: 'platform', label: 'Platform events only' },
+            ...organisations.map((org) => ({ value: org.id, label: org.name })),
+          ];
+        case 'severity':
+          return SEVERITIES.map((level) => ({
+            value: level,
+            label: humanSeverity(level),
+          }));
+        case 'when':
+          return CREATED_WINDOWS;
+        default:
+          return [];
       }
-      if (dimensionId === 'severity') {
-        return SEVERITIES.map((level) => ({ value: level, label: level }));
-      }
-      return [];
     },
     [organisations],
   );
+
+  const rows = page?.rows ?? [];
 
   const columns = useMemo<DataTableColumn<AuditLog>[]>(
     () => [
@@ -317,46 +349,116 @@ export function AdminAuditPage(): JSX.Element {
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
 
-  const exportCsv = useCallback(() => {
-    downloadCsv(`platform-audit_${new Date().toISOString().slice(0, 10)}`, visible, [
-      { label: 'When', value: (e) => e.created_at },
-      { label: 'Scope', value: (e) => e.scope ?? '' },
-      {
-        label: 'Organisation',
-        value: (e) => orgById.get(e.org_id ?? '')?.name ?? e.org_name ?? '',
-      },
-      { label: 'Actor', value: (e) => e.actor_name ?? e.actor_email ?? 'System' },
-      { label: 'Action', value: (e) => e.action },
-      { label: 'Entity', value: (e) => e.entity_type ?? '' },
-      { label: 'Severity', value: (e) => e.severity ?? '' },
-    ]);
-  }, [visible, orgById]);
+  /**
+   * A link, not a saved filter.
+   *
+   * The old control was a disabled "Save filter" whose own title admitted
+   * "Nothing stores a saved filter. There is no table for one". A durable,
+   * named, shareable view is a real feature with a table, an owner and an
+   * authorisation question behind it, and none of that had been decided. What
+   * this screen genuinely has, now that its filters live in the URL, is a
+   * bookmarkable address — so the control says that instead of promising the
+   * other thing and doing neither.
+   */
+  const copyLink = useCallback(async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      showSuccess('Link copied. It reopens this exact search.');
+    } catch (err) {
+      reportError(err, { area: 'admin:audit:copy-link' });
+      showError('Could not copy. Use the browser address bar instead.');
+    }
+  }, [showError, showSuccess]);
+
+  const exportCsv = useCallback(async (): Promise<void> => {
+    setExporting(true);
+    try {
+      const all = await exportPlatformAuditLogs(query);
+      const window = createdWindowBounds(filterValue(filters, 'when'), new Date());
+      downloadCsv(
+        `platform-audit_${new Date().toISOString().slice(0, 10)}`,
+        all.rows,
+        [
+          { label: 'When (UTC)', value: (e) => e.created_at },
+          { label: 'Scope', value: (e) => e.scope ?? '' },
+          {
+            label: 'Organisation',
+            value: (e) => orgById.get(e.org_id ?? '')?.name ?? e.org_name ?? '',
+          },
+          { label: 'Actor', value: (e) => e.actor_name ?? e.actor_email ?? 'System' },
+          { label: 'Action', value: (e) => e.action },
+          { label: 'Entity', value: (e) => e.entity_type ?? '' },
+          { label: 'Before', value: (e) => changeValue(e, 'before') ?? '' },
+          { label: 'After', value: (e) => changeValue(e, 'after') ?? '' },
+          { label: 'Severity', value: (e) => e.severity ?? '' },
+        ],
+        {
+          // An export is read away from the screen that produced it, so it
+          // carries its own scope. An audit file with no stated range is
+          // evidence of nothing in particular.
+          notes: [
+            `RotaFlow platform audit export, generated ${new Date().toISOString()}`,
+            `Range: ${window.from ?? 'all time'} to ${window.to ?? 'now'} (UTC)`,
+            `Filters: ${
+              [
+                filterValue(filters, 'q') && `search "${filterValue(filters, 'q')}"`,
+                filterValue(filters, 'scope') &&
+                  `scope ${filterValue(filters, 'scope') === 'platform' ? 'platform events' : (orgById.get(filterValue(filters, 'scope'))?.name ?? filterValue(filters, 'scope'))}`,
+                filterValues(filters, 'severity').length > 0 &&
+                  `severity ${filterValues(filters, 'severity').join(', ')}`,
+              ]
+                .filter(Boolean)
+                .join('; ') || 'none'
+            }`,
+            all.truncated
+              ? `TRUNCATED: ${all.rows.length} of ${all.total} matching events. Narrow the range and export again.`
+              : `Complete: all ${all.total} matching events.`,
+          ],
+        },
+      );
+      if (all.truncated) {
+        showError(
+          `Exported the first ${all.rows.length.toLocaleString('en-GB')} of ${all.total.toLocaleString('en-GB')} matching events. The file says so, and the range is in its header.`,
+        );
+      } else {
+        showSuccess(
+          `Exported all ${all.total.toLocaleString('en-GB')} matching events, timestamps in UTC.`,
+        );
+      }
+    } catch (err) {
+      reportError(err, { area: 'admin:audit:export' });
+      showError('The export could not be built. Nothing was downloaded.');
+    } finally {
+      setExporting(false);
+    }
+  }, [query, filters, orgById, showError, showSuccess]);
+
+  const loading = page === null && !failed;
 
   return (
     <AdminPage
       title="Audit logs"
-      description="Append-only record of every platform-administrator action. Records cannot be edited or deleted by anyone, including a Platform Owner."
+      description="Append-only record of every platform-administrator action, searched across the whole history. Records cannot be edited or deleted by anyone, including a Platform Owner."
       action={
         <>
+          <Button variant="secondary" onClick={() => void copyLink()}>
+            <Link2 size={15} aria-hidden="true" />
+            Copy link
+          </Button>
           <Button
             variant="secondary"
-            disabled
-            title="Nothing stores a saved filter. There is no table for one"
+            onClick={() => void exportCsv()}
+            disabled={exporting || (page?.total ?? 0) === 0}
           >
-            Save filter
-          </Button>
-          <Button variant="secondary" onClick={exportCsv} disabled={visible.length === 0}>
-            Export CSV
+            {exporting ? 'Exporting…' : 'Export CSV'}
           </Button>
         </>
       }
     >
       {failed ? (
         <AdminError onRetry={retry} />
-      ) : !entries ? (
+      ) : loading ? (
         <AdminLoading />
-      ) : entries.length === 0 ? (
-        <AdminEmpty message="No audit events have been recorded yet." />
       ) : (
         <div className="space-y-4">
           <Callout tone="info">
@@ -367,38 +469,53 @@ export function AdminAuditPage(): JSX.Element {
               recorded before those columns existed, and only ever a scalar, because an
               audit view is the wrong place to dump a payload that may hold personal data.
             </p>
+            <p>
+              The search runs in the database over the whole history. It used to filter
+              the two hundred most recent events, so looking for something older found
+              nothing and said the filter matched nothing.
+            </p>
           </Callout>
 
-          <FilterBar
-            dimensions={AUDIT_FILTERS}
-            filters={filters}
-            optionsFor={optionsFor}
-            onSetValue={filterApi.setValue}
-            onSetValues={filterApi.setValues}
-            onClearOne={filterApi.clearOne}
-            onClearAll={filterApi.clearAll}
-            searchPlaceholder="Search action, entity or actor"
-            resultSummary={`${visible.length} of ${entries.length}`}
-          />
-
           <Card className="overflow-hidden p-0">
+            <div className="border-b border-divider p-3 dark:border-divider-dark">
+              <FilterBar
+                dimensions={AUDIT_FILTERS}
+                filters={filters}
+                optionsFor={optionsFor}
+                onSetValue={filterApi.setValue}
+                onSetValues={filterApi.setValues}
+                onClearOne={filterApi.clearOne}
+                onClearAll={filterApi.clearAll}
+                searchPlaceholder="Search action, entity or actor"
+                resultSummary={
+                  page === null || page.total === 0
+                    ? 'No events'
+                    : `${page.from.toLocaleString('en-GB')}–${page.to.toLocaleString('en-GB')} of ${page.total.toLocaleString('en-GB')}`
+                }
+              />
+            </div>
+
             <DataTable
               caption="Platform audit events"
               columns={columns}
-              rows={visible}
+              rows={rows}
               rowKey={(entry) => entry.id}
-              emptyMessage={
-                entries.length === 0
-                  ? 'No audit events have been recorded yet.'
-                  : 'No event matches these filters.'
-              }
+              emptyMessage="No event matches these filters, across the whole history."
+              tableClassName="min-w-[70rem]"
             />
-          </Card>
 
-          <p className="text-xs text-content-muted dark:text-content-muted-dark">
-            Showing {visible.length} of the {entries.length} most recent events.
-            {entries.length === LIMIT && ' Older events exist but are not loaded here.'}
-          </p>
+            {page && (
+              <Pagination
+                page={page.page}
+                pageCount={page.pageCount}
+                total={page.total}
+                from={page.from}
+                to={page.to}
+                onPageChange={filterApi.setPage}
+                noun="events"
+              />
+            )}
+          </Card>
         </div>
       )}
     </AdminPage>

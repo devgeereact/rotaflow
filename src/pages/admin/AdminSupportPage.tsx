@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { Card, Panel } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -8,6 +8,8 @@ import { Callout } from '@/components/ui/Callout';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
+import { AdminNewCaseModal } from '@/components/admin/AdminNewCaseModal';
+import { useToast } from '@/hooks/useToast';
 import { listAllOrganisations } from '@/services/platformService';
 import { listSupportAccessSessions } from '@/services/supportAccessService';
 import {
@@ -160,6 +162,9 @@ export function AdminSupportPage(): JSX.Element {
   const filterApi = useFilterState({ dimensions: CASE_FILTERS, scopeKey: 'platform' });
   const filters = filterApi.filters;
   const [allCases, setAllCases] = useState<SupportCaseRow[]>([]);
+  const [newCaseOpen, setNewCaseOpen] = useState(false);
+  const navigate = useNavigate();
+  const { showSuccess } = useToast();
 
   // One clock per render pass so every countdown on the screen agrees.
   const [now, setNow] = useState(() => new Date());
@@ -255,10 +260,7 @@ export function AdminSupportPage(): JSX.Element {
           <Link to="/admin/support-access">
             <Button variant="secondary">Support access</Button>
           </Link>
-          <Button
-            disabled
-            title="Cases arrive from customers; opening one on their behalf is not built yet"
-          >
+          <Button onClick={() => setNewCaseOpen(true)}>
             <Plus size={15} aria-hidden="true" />
             New case
           </Button>
@@ -493,6 +495,16 @@ export function AdminSupportPage(): JSX.Element {
           </Callout>
         </div>
       )}
+
+      <AdminNewCaseModal
+        open={newCaseOpen}
+        onClose={() => setNewCaseOpen(false)}
+        onCreated={(caseId, subject) => {
+          setNewCaseOpen(false);
+          showSuccess(`Case opened: ${subject}`);
+          void navigate(`/admin/support/${caseId}`);
+        }}
+      />
     </AdminPage>
   );
 }

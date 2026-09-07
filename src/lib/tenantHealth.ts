@@ -38,13 +38,41 @@ export function tenantsActiveWithin(
   }).length;
 }
 
-export type HealthBand = 'healthy' | 'attention' | 'at_risk' | 'suspended';
+export type HealthBand = 'healthy' | 'attention' | 'at_risk' | 'suspended' | 'archived';
 
 export const HEALTH_LABEL: Record<HealthBand, string> = {
   healthy: 'Healthy',
   attention: 'Needs attention',
   at_risk: 'At risk',
   suspended: 'Suspended',
+  archived: 'Archived',
+};
+
+/**
+ * The badge tone for each band, in one place.
+ *
+ * It was in two places and they disagreed: the organisations list drew
+ * `at_risk` as a warning and `suspended` as danger; the organisation detail
+ * page drew `at_risk` as danger and `suspended` as neutral. The same tenant
+ * therefore changed colour on the way to its own page, which is worse than
+ * either choice — a console teaches its colours by repetition, and one that
+ * contradicts itself teaches nothing.
+ *
+ * The rule, from `docs/DESIGN.md` §5: danger is failure or a stopped account,
+ * warning is review, neutral is inactive with no failure implied. So
+ * suspension — the state that actually stops a customer using the product —
+ * is the only danger; `attention` and `at_risk` are both review and are told
+ * apart by their labels, never by colour alone.
+ */
+export const HEALTH_TONE: Record<
+  HealthBand,
+  'success' | 'warning' | 'danger' | 'neutral'
+> = {
+  healthy: 'success',
+  attention: 'warning',
+  at_risk: 'warning',
+  suspended: 'danger',
+  archived: 'neutral',
 };
 
 /**
@@ -64,6 +92,14 @@ export function healthBand(
   subscriptionStatus: string | undefined,
   now: Date,
 ): HealthBand {
+  // Archived and suspended were one band until the console showed an archived
+  // tenant a red "Suspended" pill. They are not the same event: suspension is
+  // something the platform did to an account that is still a customer, usually
+  // over payment or abuse, and it is the one an administrator has to act on.
+  // Archiving is a closed account. Colouring the second as a failure puts a
+  // danger tone on a row nobody needs to do anything about, and buries the
+  // rows that do.
+  if (organisation.status === 'archived') return 'archived';
   if (organisation.status && organisation.status !== 'active') return 'suspended';
   if (subscriptionStatus === 'past_due') return 'attention';
 
@@ -89,13 +125,16 @@ export function healthBreakdown(
     attention: 0,
     at_risk: 0,
     suspended: 0,
+    archived: 0,
   };
   for (const organisation of organisations) {
     counts[healthBand(organisation, byOrg.get(organisation.id), now)] += 1;
   }
-  return (['healthy', 'attention', 'at_risk', 'suspended'] as const).map((band) => ({
-    band,
-    label: HEALTH_LABEL[band],
-    count: counts[band],
-  }));
+  return (['healthy', 'attention', 'at_risk', 'suspended', 'archived'] as const).map(
+    (band) => ({
+      band,
+      label: HEALTH_LABEL[band],
+      count: counts[band],
+    }),
+  );
 }

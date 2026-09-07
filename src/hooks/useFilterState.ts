@@ -111,7 +111,20 @@ export function useFilterState(options: UseFilterStateOptions): FilterStateApi {
 
   const page = parsePage(searchParams);
   const sort = searchParams.get('sort') ?? defaultSort;
-  const direction = searchParams.get('dir') === 'desc' ? 'desc' : defaultDirection;
+  /**
+   * An explicit `dir` in the URL wins; the default applies only when there is
+   * none.
+   *
+   * This read `get('dir') === 'desc' ? 'desc' : defaultDirection`, which looks
+   * equivalent and is not: on a screen whose `defaultDirection` is `desc`,
+   * `?dir=asc` fell through to the default, so ascending was unreachable —
+   * clicking a sorted column header a second time changed the URL and nothing
+   * else. It only showed up on the platform organisations list because that is
+   * the first screen to default to descending.
+   */
+  const dirParam = searchParams.get('dir');
+  const direction: 'asc' | 'desc' =
+    dirParam === 'desc' ? 'desc' : dirParam === 'asc' ? 'asc' : defaultDirection;
 
   const write = useCallback(
     (
@@ -124,13 +137,14 @@ export function useFilterState(options: UseFilterStateOptions): FilterStateApi {
         page: nextPage,
         sort: nextSort || undefined,
         direction: nextDirection,
+        defaultDirection,
       });
       // `replace`, so a filter change does not push a history entry per
       // keystroke and Back still leaves the screen rather than walking through
       // every intermediate state.
       setSearchParams(params, { replace: true });
     },
-    [dimensions, setSearchParams],
+    [dimensions, defaultDirection, setSearchParams],
   );
 
   const apply = useCallback(
