@@ -180,7 +180,7 @@ jobs:
 
     steps:
       - name: Fetch the dump this run produced
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: rotaflow-db-backup
 
