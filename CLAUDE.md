@@ -103,10 +103,21 @@ migrations reach it by merging a PR, which is a slower path on purpose.
 **Two timezones, deliberately.** `vitest.config.ts` pins `TZ=Europe/London` (DST
 exists, and a day-arithmetic bug on a clock-change date is invisible in UTC);
 `.github/workflows/ci.yml` pins `TZ=UTC` for the build. Neither zone covers the
-other's bug class — do not "unify" them. CI runs **Node 20**, so anything that
-constructs a Supabase client at module scope dies on the missing native
-`WebSocket`; keep pure logic in `src/lib`, not `src/services`, and unit tests
-never import a service.
+other's bug class — do not "unify" them. CI runs **Node 22** since 2026-09-07
+(Node 20 is end-of-life, and jsdom 30 requires `^22.22.2 || ^24.15.0 || >=26.0.0`).
+
+That bump removed an accidental guard, so read the replacement rather than the
+old sentence: on Node 20 anything constructing a Supabase client at module
+scope died on the missing native `WebSocket`, and this file recorded that as
+the reason pure logic stays in `src/lib`. Node 22 has `WebSocket`, so nothing
+crashes any more. **`src/lib/moduleBoundaries.test.ts` states the rule on
+purpose**: no module under `src/lib` may take a *runtime* import from
+`src/services` or `@/lib/supabase`. Type-only imports are fine, being erased
+before anything runs. The crash was never much of a guard anyway — it never
+caught `lib/reportsCatalogue.ts`, which imports four fetch functions and is
+allowlisted in that test and tracked as GAP-114. The old sentence also claimed
+"unit tests never import a service"; eleven under `src/services/` always have,
+and they pass.
 
 ## Hard constraints
 
