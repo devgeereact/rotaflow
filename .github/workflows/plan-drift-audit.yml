@@ -95,7 +95,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
 
       # Checked in shell rather than in an `if:` expression because the
       # `secrets` context is not reliably available to step conditionals.
