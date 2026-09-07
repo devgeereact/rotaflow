@@ -14,6 +14,11 @@ import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import { StatTile } from '@/components/ui/StatTile';
 import { TileGrid } from '@/components/ui/TileGrid';
 import { HEALTH_LABEL, HEALTH_TONE, healthBand } from '@/lib/tenantHealth';
+import {
+  ORGANISATION_TABS,
+  resolveOrganisationTabs,
+  type OrganisationTab,
+} from '@/lib/organisationTabs';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { SuspendOrgModal } from '@/components/admin/SuspendOrgModal';
 import {
@@ -28,9 +33,12 @@ import {
   type OrgMemberRow,
   type OrgUsage,
 } from '@/services/platformOrgService';
-import { listSupportAccessSessions } from '@/services/supportAccessService';
+import {
+  listActiveSessionsForOrg,
+  listSessionsForOrg,
+} from '@/services/supportAccessService';
 import { getOrgSmtpSettings } from '@/services/smtpSettingsService';
-import { listGdprRequests } from '@/services/gdprRequestService';
+import { listGdprRequestsForOrg } from '@/services/gdprRequestService';
 import { createInvite, sendInviteEmail } from '@/services/inviteService';
 import { isValidEmail } from '@/lib/email';
 import {
@@ -58,43 +66,16 @@ import type {
   Subscription,
 } from '@/types';
 
-type Tab =
-  | 'overview'
-  | 'users'
-  | 'locations'
-  | 'subscription'
-  | 'usage'
-  | 'support'
-  | 'integrations'
-  | 'audit'
-  | 'data';
-
-/**
- * The console reference lists ten tabs. Nine are here; the tenth, Activity, is
- * not, a tenant activity timeline would have to come from `audit_logs`, which
- * still has essentially one writer, so it would show a couple of rows and imply
- * nothing else had happened. Stated on the Data tab rather than shown empty.
- */
-const TABS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'users', label: 'Users' },
-  { value: 'locations', label: 'Locations' },
-  { value: 'subscription', label: 'Subscription' },
-  { value: 'usage', label: 'Usage' },
-  { value: 'support', label: 'Support' },
-  { value: 'integrations', label: 'Integrations' },
-  { value: 'audit', label: 'Audit' },
-  { value: 'data', label: 'Data' },
-] as const satisfies readonly { value: Tab; label: string }[];
-
 /** The tabs that read tenant rows rather than the customer register. */
 // Only `locations` (and its `departments` sub-view) actually routes through
 // `is_org_member()`/`has_org_role()`, the two functions 0028 gated on a
-// session. `users` reads `memberships`, reopened to any platform admin by
-// 0031; `usage` reads `platform_tenant_counts()`, a SECURITY DEFINER function
-// that counts past RLS; `data` reads `gdpr_requests`, gated on platform role
-// alone (0020). Listing them here would train an operator to open a session
-// for a tab that was never going to ask for one.
+// session. `integrations` joined it in 0142, which let operational platform
+// staff READ `org_smtp_settings` without one — before that the tab reported
+// every tenant as having no SMTP, because the `security_invoker` view refused
+// the read and the page rendered the refusal as a fact about the customer.
+// `usage` reads `platform_tenant_counts()`, a SECURITY DEFINER function that
+// counts past RLS. Listing a tab here would train an operator to open a
+// session for one that was never going to ask for one.
 const TENANT_TABS = new Set(['locations']);
 
 const STATUS_TONE = {
@@ -114,6 +95,8 @@ interface Detail {
   subscription: Subscription | null;
   usage: OrgUsage;
   audit: AuditLog[];
+  /** Audit rows for this tenant on the server, which the 100 cap may hide. */
+  auditTotal: number;
   sessions: SupportAccessSession[];
   smtp: OrgSmtpSettingsSafe | null;
   gdpr: GdprRequest[];
@@ -154,7 +137,7 @@ function Row({
 
 export function AdminOrganisationDetailPage(): JSX.Element {
   const { organisationId = '' } = useParams();
-  const { canManagePlatformConfig } = usePermissions();
+  const { canManagePlatformConfig, canReadTenantOperations } = usePermissions();
   const { confirm } = useConfirm();
   const { showError, showSuccess } = useToast();
 
@@ -168,11 +151,23 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   // send, and it was unlinkable before.
   const [params, setParams] = useSearchParams();
   const requestedTab = params.get('tab');
-  const tab: Tab = TABS.some((t) => t.value === requestedTab)
-    ? (requestedTab as Tab)
-    : 'overview';
+  // A finance administrator is not offered the operational tabs, and cannot
+  // reach one by typing `?tab=audit` either. `refusedTab` keeps the two cases
+  // apart: an unknown value falls back to Overview silently, while a real tab
+  // this role may not read says so, because an empty table is what made this
+  // look like a broken product rather than a boundary.
+  const resolved = useMemo(
+    () => resolveOrganisationTabs({ requested: requestedTab, canReadTenantOperations }),
+    [requestedTab, canReadTenantOperations],
+  );
+  const visibleTabs = useMemo(
+    () => ORGANISATION_TABS.filter((t) => resolved.visible.includes(t.value)),
+    [resolved.visible],
+  );
+  const refusedTab = resolved.refused;
+  const tab: OrganisationTab = resolved.active;
   const setTab = useCallback(
-    (next: Tab) => {
+    (next: OrganisationTab) => {
       setParams((prev) => {
         const copy = new URLSearchParams(prev);
         copy.set('tab', next);
@@ -191,6 +186,48 @@ export function AdminOrganisationDetailPage(): JSX.Element {
   const [reinviting, setReinviting] = useState(false);
   const [reinviteError, setReinviteError] = useState<string | null>(null);
   const [reinviteResult, setReinviteResult] = useState<string | null>(null);
+
+  /**
+   * Whether a support session is still open, re-asked every 60 seconds.
+   *
+   * `has_support_access` is STABLE, so the DATABASE re-evaluates it on every
+   * statement: the next request after an expiry, a revocation, a withdrawal of
+   * consent (0143) or a revoked platform role (0144) is refused. The gate was
+   * never the problem. The problem was that nothing on this console asked
+   * again — `useConsoleRefresh` is a button, and the only intervals in
+   * `pages/admin` are the health probe and two clock ticks that re-render
+   * countdowns without refetching.
+   *
+   * So a session ending mid-investigation left that tenant's staff, locations
+   * and rotas rendered on screen indefinitely, until the operator happened to
+   * navigate or press Refresh. The data was already stale and already refused;
+   * it just stayed visible.
+   *
+   * The tenant side has done this correctly since it shipped —
+   * `SupportAccessBanner` refetches on the same cadence and self-dismisses —
+   * so this is that behaviour on the other side of the same session.
+   */
+  const [sessionEnded, setSessionEnded] = useState(false);
+
+  useEffect(() => {
+    if (!organisationId) return;
+    let active = true;
+    const check = async (): Promise<void> => {
+      try {
+        const open = await listActiveSessionsForOrg(organisationId);
+        if (active) setSessionEnded(open.length === 0);
+      } catch {
+        // A failed check is not evidence the session ended. Leaving the
+        // previous answer in place is the honest degradation: claiming it
+        // ended would blank the screen on a dropped connection.
+      }
+    };
+    const id = setInterval(() => void check(), 60_000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, [organisationId]);
 
   useEffect(() => {
     setReinviteEmail('');
@@ -233,13 +270,16 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           // Filtered client-side: the sessions table is small, the console
           // already reads it whole on the overview, and a per-org endpoint
           // would be a third query shape over the same forty rows.
-          listSupportAccessSessions(200).then((all) =>
-            all.filter((s) => s.orgId === organisationId),
-          ),
+          // Both scoped in the query. They used to read the platform-wide
+          // list capped at 200 and filter it here, so past that cap this tab
+          // asserted "no session has ever been opened" and "no request has
+          // been raised" about a tenant whose rows had simply been crowded out
+          // by other tenants'. The GDPR one was the sharper of the two: that
+          // list is ordered by deadline ASCENDING, so the newest requests were
+          // dropped first.
+          listSessionsForOrg(organisationId),
           getOrgSmtpSettings(organisationId),
-          listGdprRequests(200).then((all) =>
-            all.filter((r) => r.orgId === organisationId),
-          ),
+          listGdprRequestsForOrg(organisationId),
           getOrgMrrPence(organisationId),
         ]);
         if (!active) return;
@@ -250,7 +290,8 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           departments,
           subscription,
           usage,
-          audit,
+          audit: audit.rows,
+          auditTotal: audit.total,
           sessions,
           smtp,
           gdpr,
@@ -553,11 +594,27 @@ export function AdminOrganisationDetailPage(): JSX.Element {
         )}
 
         <PanelTabs
-          items={TABS.map((t) => ({ value: t.value, label: t.label }))}
+          items={visibleTabs.map((t) => ({ value: t.value, label: t.label }))}
           active={tab}
           onChange={setTab}
           label="Organisation sections"
         />
+
+        {/* Reached by URL, not by a control. Said out loud, because RLS filters
+            rather than raises: without this the tab would have rendered as an
+            empty table and read as a product fault instead of a boundary. */}
+        {refusedTab !== null && (
+          <Callout tone="warning" title="That section is not part of your role">
+            <p>
+              {ORGANISATION_TABS.find((t) => t.value === refusedTab)?.label} reads
+              operational tenant data — memberships, the audit trail, support and
+              integrations. A finance administrator holds subscriptions and billing state
+              only, so the database would return nothing here rather than refuse, which is
+              why this says so instead of showing you an empty table. Overview, Locations,
+              Subscription and Usage are available.
+            </p>
+          </Callout>
+        )}
 
         {tab === 'overview' && (
           <div className="space-y-4">
@@ -773,7 +830,17 @@ export function AdminOrganisationDetailPage(): JSX.Element {
           </div>
         )}
 
-        {gateClosed && TENANT_TABS.has(tab) && (
+        {sessionEnded && TENANT_TABS.has(tab) && (
+          <Callout tone="warning" title="That support session has ended">
+            <p>
+              Anything from this tenant still on screen is from before it ended and the
+              database will refuse the next read of it, so it is not shown. Request access
+              again if you still need it.
+            </p>
+          </Callout>
+        )}
+
+        {!sessionEnded && gateClosed && TENANT_TABS.has(tab) && (
           <Callout tone="info" title="This tab needs an active support session">
             <p>
               Since migration 0028 a platform administrator reads a tenant&rsquo;s staff
@@ -1024,17 +1091,39 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             <Panel title="Other integrations">
               <p className="text-sm text-content-muted dark:text-content-muted-dark">
                 SMTP is the only per-organisation integration this deployment has.
-                Payroll, HR, calendar and identity connectors are not built. There are no
-                tables holding a connection, a sync state or a failure count, so there is
-                nothing here to report on rather than a list of connectors showing a green
-                tick for something that does not run.
+                Payroll, HR, calendar and identity connectors are not built. The tables
+                exist — <code>org_integrations</code> holds a connection and{' '}
+                <code>integration_sync_runs</code> a sync history — but <code>0073</code>{' '}
+                set every connector <code>available = false</code> and nothing writes to
+                either, so both are empty by construction. That is why there is nothing to
+                report here rather than a list of connectors showing a green tick for
+                something that does not run.
               </p>
             </Panel>
           </div>
         )}
 
         {tab === 'audit' && (
-          <Panel title="Organisation audit trail" flush>
+          <Panel
+            title="Organisation audit trail"
+            /* The cap has always been 100 and the page never said so, so a
+               tenant with thousands of events showed a list that looked
+               complete. The number is the server's count under the same
+               predicate, not the length of what came back. */
+            actions={
+              detail.auditTotal > detail.audit.length ? (
+                <span className="text-xs text-content-muted dark:text-content-muted-dark">
+                  Showing the most recent {detail.audit.length} of{' '}
+                  {detail.auditTotal.toLocaleString('en-GB')}
+                </span>
+              ) : detail.auditTotal > 0 ? (
+                <span className="text-xs text-content-muted dark:text-content-muted-dark">
+                  {detail.auditTotal.toLocaleString('en-GB')} events
+                </span>
+              ) : undefined
+            }
+            flush
+          >
             <ul>
               {detail.audit.length === 0 ? (
                 <li className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
@@ -1104,22 +1193,37 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             </Panel>
 
             {/* What this tab in the reference offers that this deployment does
-                not, said plainly rather than shown as a disabled button. */}
+                not, said plainly rather than shown as a disabled button.
+
+                Two entries here were WRONG until 2026-09-07, and a wrong entry
+                in this panel is worse than an ordinary stale comment: the panel
+                is the page's own honesty mechanism, so it teaches an operator
+                that a capability which exists was never built. Both claimed a
+                thing "does not exist" while the code, a CI gate and a live
+                modal all said otherwise. Check the tree before adding a row. */}
             <Panel title="Not available here">
               <ul className="space-y-3 text-sm text-content-muted dark:text-content-muted-dark">
                 <li>
                   <span className="font-semibold text-content dark:text-content-dark">
-                    Whole-organisation export.
+                    Whole-organisation export, from this screen.
                   </span>{' '}
-                  Export is per data subject, through the GDPR screen. There is no
-                  tenant-wide bundle, because nothing assembles one.
+                  The bundle itself exists — <code>exportOrganisationData</code> assembles
+                  every tenant table, and <code>npm run check:export</code> fails the
+                  build when a new one is left out of it. It is reachable from the
+                  organisation&rsquo;s own Settings screen, not from here, because the
+                  export is the customer&rsquo;s to take.
                 </li>
                 <li>
                   <span className="font-semibold text-content dark:text-content-dark">
-                    Deletion with a grace period.
+                    Deletion, from this screen.
                   </span>{' '}
-                  Erasure anonymises one staff record. Deleting a tenant is a database
-                  operation, deliberately not a console button.
+                  Deleting a tenant is a real workflow, not a database operation:{' '}
+                  <code>organisation_deletion_preview</code> shows what would be
+                  destroyed, the name must be typed to confirm, and{' '}
+                  <code>delete_organisation</code> admits an organisation owner or a
+                  platform owner or administrator. It is deliberately not duplicated onto
+                  this page. What genuinely does not exist is a grace period: the cascade
+                  is immediate, which <code>docs/DATA_LIFECYCLE.md</code> records.
                 </li>
                 <li>
                   <span className="font-semibold text-content dark:text-content-dark">

@@ -195,12 +195,24 @@ export function AdminUserDetailPage(): JSX.Element {
   if (notFound) {
     return (
       <AdminPage
-        title="Account not found"
-        description="No RotaFlow profile has that identifier."
+        title="Account not shown"
+        description="Either no profile has that identifier, or this session may not read it."
       >
         <Card>
+          {/* `maybeSingle()` returns null for BOTH "no such row" and "RLS
+              filtered it away", and this screen used to render the second as
+              the first. `profiles_select_own` (0122) admits
+              `is_platform_operational()`, which is false for a session that
+              fails 0102's MFA condition — so a genuine administrator without a
+              second factor was told the account did not exist. The two cannot
+              be told apart from here without a second query that would report
+              existence to somebody not allowed to know it, so the honest
+              wording covers both. */}
           <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
-            The account may have been deleted, or the link may be from another deployment.
+            The account may have been deleted, the link may be from another deployment, or
+            your platform role may not permit reading it. If you hold platform access and
+            this console required a second factor at sign-in, sign in again with one
+            before concluding the account is gone.
           </p>
           <Link to="/admin/users">
             <Button variant="secondary">

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminShell } from '@/components/layout/AdminShell';
 import { OrgContext, type OrgContextValue } from '@/context/OrgContext';
 
@@ -700,21 +701,39 @@ const RETENTION_POLICIES = [
   updated_at: ISO(30),
 }));
 
-const BACKGROUND_JOBS = Array.from({ length: 48 }, (_, i) => ({
-  id: `job-${i}`,
-  queue: ['rota-publish', 'payroll-export', 'notifications', 'reminders'][i % 4],
-  job_key: `job:${i}`,
-  status:
-    i % 11 === 0 ? 'failed' : i < 9 ? 'queued' : i % 7 === 0 ? 'running' : 'succeeded',
-  attempts: 1,
-  org_id: ORG_IDS[i % 6],
-  payload: {},
-  error: null,
-  scheduled_for: ISO(0),
-  started_at: ISO(0),
-  finished_at: ISO(0),
-  created_at: ISO(0),
-}));
+/**
+ * Notification outbox depth, in the shape `platform_queue_depths()` (0141)
+ * returns.
+ *
+ * This replaces a 48-row `background_jobs` fixture across four invented queues
+ * ("rota-publish", "payroll-export", "reminders"). That table has had no writer
+ * since Inngest was retired in `0087`, so the fixture showed a busy queue on a
+ * screen that reads permanently empty in production. That is the inversion of
+ * the BUG-059 problem this harness exists to catch, and it is why the dead tile
+ * went unnoticed for so long: the only place anyone looked at it, it had data.
+ *
+ * The event names are ones `send-notification` actually dispatches.
+ */
+const QUEUE_DEPTHS = [
+  {
+    queue: 'rota/published',
+    queued: 6,
+    failed: 0,
+    oldest_at: new Date(Date.now() - 40 * 1_000).toISOString(),
+  },
+  {
+    queue: 'platform/announcement',
+    queued: 3,
+    failed: 2,
+    oldest_at: new Date(Date.now() - 9 * 60 * 1_000).toISOString(),
+  },
+  {
+    queue: 'leave/decided',
+    queued: 1,
+    failed: 0,
+    oldest_at: new Date(Date.now() - 12 * 1_000).toISOString(),
+  },
+];
 
 /**
  * The directory rows 0130 returns, for `/admin-preview/organisations`.
@@ -963,7 +982,7 @@ const TABLES: Record<string, unknown> = {
   platform_health_summary: HEALTH_SUMMARY,
   retention_policies: RETENTION_POLICIES,
   platform_ip_allowlist: [],
-  background_jobs: BACKGROUND_JOBS,
+  'rpc/platform_queue_depths': QUEUE_DEPTHS,
 
   // RPCs the console calls. Keyed by the path segment after `/rpc/`, so the
   // interceptor can serve them exactly like a table. Without these the screens
@@ -1465,9 +1484,49 @@ export function AdminPreviewHarness(): JSX.Element {
     [],
   );
 
+  /**
+   * Keep a click inside the harness.
+   *
+   * Every console screen links to `/admin/...` because that is where it lives
+   * in production. Inside `/admin-preview` those links navigated OUT of the
+   * harness to the real console, which has no session, so following any
+   * organisation row, user row or invoice link bounced the reviewer to the
+   * sign-in page. The design loop is the one place these screens get looked at,
+   * and half the journeys through them could not be walked.
+   *
+   * Rewriting the 18 hard-coded links in the pages themselves would have put
+   * harness-awareness into production components and left the next link to rot
+   * the same way. This is the harness's problem, so it stays in the harness and
+   * covers links that do not exist yet.
+   *
+   * Only plain left clicks on same-tab, in-app `/admin/` links are touched;
+   * modified clicks (new tab, download, external) fall through untouched.
+   */
+  const navigate = useNavigate();
+  const keepInHarness = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>): void => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as HTMLElement).closest('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (href === null || !href.startsWith('/admin/')) return;
+      if (anchor.target !== '' && anchor.target !== '_self') return;
+      event.preventDefault();
+      void navigate(`/admin-preview/${href.slice('/admin/'.length)}`);
+    },
+    [navigate],
+  );
+
   return (
     <OrgContext.Provider value={org}>
-      <AdminShell />
+      {/* A capture-phase listener on a wrapper, not an interactive element: it
+          redirects navigations that are already links, and adds nothing a
+          keyboard user cannot reach, since Enter on an anchor dispatches a
+          click. */}
+      <div onClickCapture={keepInHarness}>
+        <AdminShell />
+      </div>
     </OrgContext.Provider>
   );
 }

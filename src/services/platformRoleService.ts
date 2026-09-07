@@ -33,6 +33,33 @@ export async function getMyPlatformRole(): Promise<PlatformRole | null> {
   return (data as PlatformRole | null) ?? null;
 }
 
+/**
+ * The database's own verdict on whether this session may act at platform level.
+ *
+ * Not the same question as `profiles.is_platform_admin`, which is what
+ * `OrgContext` used to gate the whole `/admin` area on. `is_platform_admin()`
+ * is that flag AND `0102`'s condition: when `platform_settings.require_mfa` is
+ * on, the session must be `aal2`.
+ *
+ * The two diverge exactly when it matters. With `require_mfa` on and a session
+ * at `aal1` — the only level the sign-in form can currently produce, since it
+ * has no MFA challenge — the flag is true and the function is false. The gate
+ * let the administrator in and every policy behind it then filtered to nothing:
+ * the users directory empty, a profile reading "No RotaFlow profile has that
+ * identifier", and the administrators roster collapsing to the single row the
+ * viewer can see of themselves, which reads as "everybody else has been
+ * removed" rather than as a permissions boundary. Worse, `ownerCount` was
+ * computed from that one row, so the last-owner guard fired on false data.
+ *
+ * Asking the database the same question it will ask itself removes the
+ * divergence by construction.
+ */
+export async function getPlatformAccess(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('is_platform_admin');
+  if (error) throw error;
+  return data === true;
+}
+
 /** The roster, live grants first. Platform-admin only via RLS. */
 export async function listPlatformAdmins(): Promise<PlatformAdmin[]> {
   const { data, error } = await supabase

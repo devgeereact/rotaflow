@@ -38,8 +38,15 @@ from (values
   ('c4444444-2222-1111-1111-111111111111'::uuid, 'admin-sla@example.test')
 ) as v(id, email);
 
-update public.profiles set is_platform_admin = true
- where id = 'c4444444-2222-1111-1111-111111111111';
+-- A real grant, not just the boolean. `platform_admins_sync` sets
+-- `profiles.is_platform_admin` from this row and `grant_platform_role` is the
+-- only supported way in, so a profile carrying the flag with no grant behind it
+-- is a state production cannot reach. Setting the flag alone was enough here
+-- while `support_sla_state` guarded on `is_platform_admin()`, which is true for
+-- all four platform roles. `0138` made it `is_platform_operational()`, and this
+-- fixture now models the grant it always implied.
+insert into public.platform_admins (user_id, role)
+values ('c4444444-2222-1111-1111-111111111111', 'platform_admin');
 
 -- A case that arrived two hours ago, at normal priority (24h response).
 insert into public.support_cases

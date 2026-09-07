@@ -472,13 +472,13 @@ timeout and a five-minute TTL, and both tenant-scoped caches are purged on sign-
 
 **Cache inventory.**
 
-| Cache                       | Contents                         | Strategy             | Lifetime          | Sensitive | Cleared on sign-out             |
-| --------------------------- | -------------------------------- | -------------------- | ----------------- | --------- | ------------------------------- |
-| precache                    | app shell, JS, CSS, icons, fonts | precache             | per build         | no        | n/a, versioned                  |
-| `supabase-api`              | `/rest/v1/` responses            | NetworkFirst, 5s     | 5 min, 50 entries | **yes**   | **yes**                         |
-| `imagekit-media`            | staff photos                     | CacheFirst           | 30 days, 200      | **yes**   | **yes**                         |
-| `rotaflow-fonts`            | self-hosted `/fonts/*.woff2`     | CacheFirst           | 365 days, 8       | no        | n/a, no third party             |
-| IndexedDB `rotaflow-outbox` | unsent writes                    | —                    | until sent        | **yes**   | **no, deliberately** — see P1-4 |
+| Cache                       | Contents                         | Strategy         | Lifetime          | Sensitive | Cleared on sign-out             |
+| --------------------------- | -------------------------------- | ---------------- | ----------------- | --------- | ------------------------------- |
+| precache                    | app shell, JS, CSS, icons, fonts | precache         | per build         | no        | n/a, versioned                  |
+| `supabase-api`              | `/rest/v1/` responses            | NetworkFirst, 5s | 5 min, 50 entries | **yes**   | **yes**                         |
+| `imagekit-media`            | staff photos                     | CacheFirst       | 30 days, 200      | **yes**   | **yes**                         |
+| `rotaflow-fonts`            | self-hosted `/fonts/*.woff2`     | CacheFirst       | 365 days, 8       | no        | n/a, no third party             |
+| IndexedDB `rotaflow-outbox` | unsent writes                    | —                | until sent        | **yes**   | **no, deliberately** — see P1-4 |
 
 ---
 

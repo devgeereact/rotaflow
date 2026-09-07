@@ -114,24 +114,43 @@ export async function listIpAllowlist(): Promise<IpAllowlistEntry[]> {
   return data ?? [];
 }
 
-/** Queued background work, by queue. The console's queue-depth figure. */
-export async function getQueueDepths(): Promise<
-  { queue: string; queued: number; failed: number }[]
-> {
-  const { data, error } = await supabase
-    .from('background_jobs')
-    .select('queue, status')
-    .in('status', ['queued', 'running', 'failed']);
-  if (error) throw error;
+export interface QueueDepth {
+  queue: string;
+  queued: number;
+  failed: number;
+  /** Age of the oldest item still waiting, or null when nothing is. */
+  oldestAt: string | null;
+}
 
-  const byQueue = new Map<string, { queued: number; failed: number }>();
-  for (const row of data ?? []) {
-    const current = byQueue.get(row.queue) ?? { queued: 0, failed: 0 };
-    if (row.status === 'failed') current.failed += 1;
-    else current.queued += 1;
-    byQueue.set(row.queue, current);
-  }
-  return [...byQueue.entries()]
-    .map(([queue, v]) => ({ queue, ...v }))
-    .sort((a, b) => b.queued - a.queued);
+/**
+ * Depth of the notification outbox, by event. The console's queue-depth figure.
+ *
+ * ## What this used to read
+ *
+ * `background_jobs`, a table with no writer. Its only one was Inngest, retired
+ * in `0087`, and since then it has had zero rows, no triggers, and no function
+ * in `public` referencing it at all. So the tile read "0 queued" and the panel
+ * read "Nothing is queued or running" permanently — on the one screen whose job
+ * is to say whether work is stuck. That is worse than having no tile: a real
+ * backlog looked exactly like a healthy queue.
+ *
+ * `notification_outbox` is the only background queue the product has, drained
+ * every minute by `send-notification` (`0069`, extended by `0132`).
+ *
+ * ## Counted in the database
+ *
+ * Through `platform_queue_depths()` (`0141`) rather than select-and-group.
+ * Grouping in the browser would have carried the truncation bug `0130`-`0134`
+ * spent five migrations removing: above `db.max_rows` the browser would group a
+ * capped page and report it as the estate's queue depth.
+ */
+export async function getQueueDepths(): Promise<QueueDepth[]> {
+  const { data, error } = await supabase.rpc('platform_queue_depths');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    queue: row.queue,
+    queued: Number(row.queued ?? 0),
+    failed: Number(row.failed ?? 0),
+    oldestAt: row.oldest_at ?? null,
+  }));
 }

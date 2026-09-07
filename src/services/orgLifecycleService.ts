@@ -125,6 +125,9 @@ const EXPORTED_TABLES = [
   'integration_sync_runs',
   'subscriptions',
   'invoices',
+  // A credit is money the customer is owed back against an invoice they
+  // hold, so it belongs in their export beside the invoice itself (0149).
+  'invoice_credits',
 ] as const;
 
 type ExportedTable = (typeof EXPORTED_TABLES)[number];

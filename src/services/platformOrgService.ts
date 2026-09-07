@@ -100,16 +100,33 @@ export async function getOrgSubscription(orgId: string): Promise<Subscription | 
   return data;
 }
 
-/** This tenant's audit trail, newest first. Capped for the same reason as the platform view. */
-export async function listOrgAuditLogs(orgId: string, limit = 100): Promise<AuditLog[]> {
-  const { data, error } = await supabase
+export interface OrgAuditPage {
+  rows: AuditLog[];
+  /** Rows for this tenant, from the server. Never `rows.length`. */
+  total: number;
+}
+
+/**
+ * This tenant's audit trail, newest first, with the count of everything behind
+ * it.
+ *
+ * The cap is unchanged; what changes is that the page can now say so. Before
+ * this it returned 100 rows with no total, so a tenant with 4,000 audit events
+ * showed a list that looked complete and there was no number anywhere that
+ * would have contradicted it.
+ */
+export async function listOrgAuditLogs(
+  orgId: string,
+  limit = 100,
+): Promise<OrgAuditPage> {
+  const { data, error, count } = await supabase
     .from('audit_logs')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return data ?? [];
+  return { rows: data ?? [], total: count ?? 0 };
 }
 
 export interface OrgUsage {

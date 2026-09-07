@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LATENCY_DEGRADED_MS,
   LATENCY_DOWN_MS,
+  classifyProbeFailure,
   formatLatency,
   overallStatus,
   statusForLatency,
@@ -100,5 +101,54 @@ describe('statusLabel', () => {
     expect(statusLabel('degraded')).toBe('Degraded');
     expect(statusLabel('down')).toBe('Down');
     expect(statusLabel('unknown')).toBe('Unknown');
+  });
+});
+
+describe('classifyProbeFailure', () => {
+  // The defect this guards: every probe collapsed each of its failure modes to
+  // `down`, and the page then WROTE that verdict into `platform_health_samples`.
+  // Realtime has no scheduled probe (0076 covers database, auth and REST only),
+  // so its uptime comes entirely from console samples — meaning one
+  // administrator's blocked websocket permanently lowered the figure everyone
+  // else reads.
+
+  it('an offline browser cannot judge the platform, and is not recorded', () => {
+    const result = classifyProbeFailure({ online: false });
+    expect(result.status).toBe('unknown');
+    expect(result.attributable).toBe(false);
+  });
+
+  it('an RLS refusal is an authorisation result, not an outage', () => {
+    const result = classifyProbeFailure({ online: true, code: '42501' });
+    expect(result.status).toBe('unknown');
+    expect(result.attributable).toBe(false);
+    expect(result.reason).toContain('42501');
+  });
+
+  it("a missing or expired JWT is the caller's problem, not the service's", () => {
+    for (const code of ['PGRST301', 'PGRST302']) {
+      const result = classifyProbeFailure({ online: true, code });
+      expect(result.status).toBe('unknown');
+      expect(result.attributable).toBe(false);
+    }
+  });
+
+  it('a timeout with the browser online IS the platform, and is recorded', () => {
+    const result = classifyProbeFailure({ online: true, timedOut: true });
+    expect(result.status).toBe('down');
+    expect(result.attributable).toBe(true);
+  });
+
+  it('an unrecognised error with the browser online is still an outage', () => {
+    // The default must stay `down`. Treating an unknown code as "cannot check"
+    // would be the opposite failure: a real outage recorded as nothing.
+    const result = classifyProbeFailure({ online: true, code: '08006' });
+    expect(result.status).toBe('down');
+    expect(result.attributable).toBe(true);
+  });
+
+  it('offline outranks a caller-fault code', () => {
+    const result = classifyProbeFailure({ online: false, code: '42501' });
+    expect(result.reason).toContain('offline');
   });
 });

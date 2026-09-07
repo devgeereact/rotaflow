@@ -52,6 +52,73 @@ export function statusForLatency(ms: number): HealthStatus {
 }
 
 /**
+ * `42501` is an RLS refusal; `PGRST301`/`PGRST302` are a missing or expired
+ * JWT. All three mean the service answered and declined THIS caller, which is
+ * the opposite of an outage.
+ */
+const CALLER_FAULT_CODES = new Set(['42501', 'PGRST301', 'PGRST302']);
+
+/**
+ * Whether a failed probe says anything about the PLATFORM.
+ *
+ * ## Why this exists
+ *
+ * Every probe collapsed all of its failure modes to `down`, and the page then
+ * wrote that verdict into `platform_health_samples`. So an expired JWT, an RLS
+ * refusal, a corporate proxy blocking websockets, or a laptop that had simply
+ * lost wifi were each recorded as a platform outage — by one browser, on behalf
+ * of everybody who reads the number afterwards.
+ *
+ * For Realtime that is not cosmetic. `probe_platform_health` (`0076`) samples
+ * only `PostgreSQL database`, `Authentication` and `REST API`, so Realtime has
+ * no scheduled probe and its uptime comes ENTIRELY from console samples. One
+ * administrator behind a websocket-blocking proxy permanently lowers the
+ * Realtime uptime every other reader sees, and nothing in the figure says so.
+ *
+ * ## The rule
+ *
+ * A failure is the platform's only when the platform answered. If this browser
+ * is offline, or the error is about this caller's authorisation rather than the
+ * service's availability, the honest answer is `unknown` — "cannot check from
+ * here" — and the sample must not be recorded.
+ */
+export function classifyProbeFailure(input: {
+  /** `navigator.onLine`, passed in so this stays pure and testable. */
+  online: boolean;
+  /** PostgREST or PostgreSQL code, where there is one. */
+  code?: string | null;
+  /** True when the probe hit its own timeout rather than receiving an answer. */
+  timedOut?: boolean;
+}): { status: HealthStatus; attributable: boolean; reason: string } {
+  if (!input.online) {
+    return {
+      status: 'unknown',
+      attributable: false,
+      reason: 'This browser is offline, so nothing can be checked from here.',
+    };
+  }
+  if (input.code && CALLER_FAULT_CODES.has(input.code)) {
+    return {
+      status: 'unknown',
+      attributable: false,
+      reason: `The service answered and refused this session (${input.code}). That is an authorisation result, not an outage.`,
+    };
+  }
+  if (input.timedOut) {
+    return {
+      status: 'down',
+      attributable: true,
+      reason: 'No answer within the probe timeout.',
+    };
+  }
+  return {
+    status: 'down',
+    attributable: true,
+    reason: 'The service returned an error.',
+  };
+}
+
+/**
  * The worst status across a set of checks, that is what the page headline
  * should report. A single hard failure outranks any number of green ticks.
  */

@@ -194,7 +194,11 @@ export function AdminSupportCaseDetailPage(): JSX.Element {
     setPosting(true);
     try {
       await replyToCase(caseId, body, internal);
-      showSuccess(internal ? 'Internal note added.' : 'Reply sent.');
+      // "Posted", not "sent". The reply lands on the case and the requester
+      // sees it when they next open /app/help; nothing emails or pushes it to
+      // them — no Edge Function handles a support message and no trigger
+      // enqueues one. "Sent" claimed a delivery that does not happen.
+      showSuccess(internal ? 'Internal note added.' : 'Reply posted to the case.');
       setReplyBody('');
       setInternal(false);
       await load();
@@ -463,7 +467,7 @@ export function AdminSupportCaseDetailPage(): JSX.Element {
                 placeholder={
                   internal
                     ? 'Visible to platform staff only.'
-                    : 'Visible to the requester and, when the case belongs to a tenant, its owner.'
+                    : 'Visible to the requester, and to the organisation owner when the case belongs to a tenant. They see it next time they open the case — nothing notifies them.'
                 }
                 className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
               />

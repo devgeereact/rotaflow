@@ -1150,6 +1150,42 @@ export type Database = {
           },
         ];
       };
+      invoice_credits: {
+        Row: {
+          amount_pence: number;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          id: string;
+          idempotency_key: string | null;
+          invoice_id: string;
+          org_id: string;
+          reason: string;
+        };
+        Insert: {
+          amount_pence: number;
+          created_at?: string;
+          created_by?: string | null;
+          currency: string;
+          id?: string;
+          idempotency_key?: string | null;
+          invoice_id: string;
+          org_id: string;
+          reason: string;
+        };
+        Update: {
+          amount_pence?: number;
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          id?: string;
+          idempotency_key?: string | null;
+          invoice_id?: string;
+          org_id?: string;
+          reason?: string;
+        };
+        Relationships: [];
+      };
       invoices: {
         Row: {
           amount_pence: number;
@@ -3564,6 +3600,24 @@ export type Database = {
           open_incidents: number;
           unassigned_open_cases: number;
           urgent_open_cases: number;
+        }[];
+      };
+      credit_invoice: {
+        Args: {
+          p_amount_pence: number;
+          p_idempotency_key?: string | null;
+          p_invoice: string;
+          p_reason: string;
+        };
+        Returns: string;
+      };
+      platform_queue_depths: {
+        Args: never;
+        Returns: {
+          queue: string;
+          queued: number;
+          failed: number;
+          oldest_at: string | null;
         }[];
       };
       platform_billing_summary: {

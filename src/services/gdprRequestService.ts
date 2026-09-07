@@ -64,13 +64,54 @@ function toRequest(row: RequestRow): GdprRequest {
   };
 }
 
-/** Every request this account may see. Oldest deadline first. The useful order. */
-export async function listGdprRequests(limit = 200): Promise<GdprRequest[]> {
+export interface GdprRequestPage {
+  rows: GdprRequest[];
+  /** Rows matching the same predicates, from the server. Never `rows.length`. */
+  total: number;
+}
+
+/**
+ * Every request this account may see. Oldest deadline first, the useful order.
+ *
+ * Returns the server's exact count alongside the page, so the board can say
+ * "showing 200 of 412" rather than presenting a truncated array as the whole
+ * register. It used to return the array alone, and every tile on the screen was
+ * computed over it and labelled as an estate total — including an "Export
+ * register" that shipped the same subset under a complete-sounding name.
+ */
+export async function listGdprRequests(limit = 200): Promise<GdprRequestPage> {
+  const { data, error, count } = await supabase
+    .from('gdpr_requests')
+    .select(SELECT, { count: 'exact' })
+    .order('due_on', { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return {
+    rows: ((data ?? []) as unknown as RequestRow[]).map(toRequest),
+    total: count ?? 0,
+  };
+}
+
+/**
+ * The requests raised for ONE organisation.
+ *
+ * The organisation detail page used to read the platform-wide list and filter
+ * it in the browser. That list is ordered `due_on` ASCENDING and capped, so the
+ * 200 it kept were the oldest-due across the whole estate — a request raised
+ * for this tenant last week has the furthest-out deadline and was therefore the
+ * first to be dropped. The tab then rendered "No export, deletion or correction
+ * request has been raised for this organisation", which is a compliance claim
+ * made from a truncated array.
+ *
+ * Scoped in the query instead. At tenant scope this needs no paging.
+ */
+export async function listGdprRequestsForOrg(orgId: string): Promise<GdprRequest[]> {
   const { data, error } = await supabase
     .from('gdpr_requests')
     .select(SELECT)
-    .order('due_on', { ascending: true })
-    .limit(limit);
+    .eq('org_id', orgId)
+    .order('due_on', { ascending: true });
 
   if (error) throw error;
   return ((data ?? []) as unknown as RequestRow[]).map(toRequest);
