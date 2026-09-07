@@ -205,7 +205,7 @@ export function SettingsOrganisationPage(): JSX.Element {
    * Withdraw or restore consent.
    *
    * Reloads the sessions afterwards rather than assuming: withdrawing consent
-   * closes every live session in the database (0141), and the list beneath the
+   * closes every live session in the database (0143), and the list beneath the
    * switch has to show that rather than claim it.
    */
   const setConsent = useCallback(

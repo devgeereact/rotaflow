@@ -69,7 +69,7 @@ import type {
 /** The tabs that read tenant rows rather than the customer register. */
 // Only `locations` (and its `departments` sub-view) actually routes through
 // `is_org_member()`/`has_org_role()`, the two functions 0028 gated on a
-// session. `integrations` joined it in 0140, which let operational platform
+// session. `integrations` joined it in 0142, which let operational platform
 // staff READ `org_smtp_settings` without one — before that the tab reported
 // every tenant as having no SMTP, because the `security_invoker` view refused
 // the read and the page rendered the refusal as a fact about the customer.
@@ -192,7 +192,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
    *
    * `has_support_access` is STABLE, so the DATABASE re-evaluates it on every
    * statement: the next request after an expiry, a revocation, a withdrawal of
-   * consent (0141) or a revoked platform role (0142) is refused. The gate was
+   * consent (0143) or a revoked platform role (0144) is refused. The gate was
    * never the problem. The problem was that nothing on this console asked
    * again — `useConsoleRefresh` is a button, and the only intervals in
    * `pages/admin` are the health probe and two clock ticks that re-render

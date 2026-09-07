@@ -1,8 +1,8 @@
 -- =====================================================================
--- 0144_only_the_decision_function_approves_a_swap.sql
+-- 0146_only_the_decision_function_approves_a_swap.sql
 --
 -- Three write surfaces wider than the function that is supposed to own them.
--- Found by running the query `0143` should have prompted: compare what an RPC
+-- Found by running the query `0145` should have prompted: compare what an RPC
 -- protects against what the table lets through.
 --
 --   select t.table_name, string_agg(distinct t.privilege_type, ',')
@@ -51,9 +51,9 @@
 -- means the day somebody adds one permissive policy for a good reason, they
 -- also hand out three they never considered.
 --
--- That is exactly the shape `require_mfa` had before `0143`: one added policy
+-- That is exactly the shape `require_mfa` had before `0145`: one added policy
 -- away from a hole. These are the three where it would matter most —
--- `platform_admins` holds `role` and `revoked_at`, which `0138` and `0142` just
+-- `platform_admins` holds `role` and `revoked_at`, which `0140` and `0144` just
 -- spent two migrations protecting; `subscriptions` holds `plan`, `status` and
 -- `stripe_customer_id`; and `audit_logs` is supposed to be append-only, so an
 -- UPDATE or DELETE grant on it contradicts the immutability the whole register
@@ -106,7 +106,7 @@ create policy shift_swaps_write on public.shift_swaps
   );
 
 comment on policy shift_swaps_write on public.shift_swaps is
-  'A requester manages their own pending or cancelled request; an owner or manager manages any swap EXCEPT approving it. Approval writes through decide_shift_swap (0123), which also reassigns the shift — a direct write would mark the swap approved and move nothing (0144).';
+  'A requester manages their own pending or cancelled request; an owner or manager manages any swap EXCEPT approving it. Approval writes through decide_shift_swap (0123), which also reassigns the shift — a direct write would mark the swap approved and move nothing (0146).';
 
 drop policy if exists shift_swaps_requester_finalize on public.shift_swaps;
 
@@ -126,7 +126,7 @@ create policy shift_swaps_requester_finalize on public.shift_swaps
   );
 
 comment on policy shift_swaps_requester_finalize on public.shift_swaps is
-  'The requester may reject their own accepted swap, which moves no shift. Approving it does move one, so it goes through decide_shift_swap (0144).';
+  'The requester may reject their own accepted swap, which moves no shift. Approving it does move one, so it goes through decide_shift_swap (0146).';
 
 -- ---------- 2. take back the writes nothing uses -----------------------
 
@@ -135,6 +135,6 @@ revoke insert, update, delete on public.subscriptions   from authenticated;
 revoke insert, update, delete on public.audit_logs      from authenticated;
 
 comment on table public.platform_admins is
-  'Platform role grants. Written ONLY by grant_platform_role and revoke_platform_role (0015, hardened by 0138 and 0142). 0056 granted authenticated full writes and no policy admitted them; 0144 took the grant back so the absence of a policy is no longer the only thing standing there.';
+  'Platform role grants. Written ONLY by grant_platform_role and revoke_platform_role (0015, hardened by 0140 and 0144). 0056 granted authenticated full writes and no policy admitted them; 0146 took the grant back so the absence of a policy is no longer the only thing standing there.';
 comment on table public.audit_logs is
-  'Append-only. Written by audit_write alone. The UPDATE and DELETE grants 0056 handed to authenticated contradicted that outright and were revoked by 0144.';
+  'Append-only. Written by audit_write alone. The UPDATE and DELETE grants 0056 handed to authenticated contradicted that outright and were revoked by 0146.';

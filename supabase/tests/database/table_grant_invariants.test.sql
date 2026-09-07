@@ -149,11 +149,11 @@ select is(
 -- policy at all. Nothing was exploitable — `0015` states the design as "the
 -- absence of a policy is the control" — but it is one added policy away from a
 -- hole, on the three tables where that would matter most: the platform role
--- grants `0138` and `0142` spent two migrations protecting, the subscription
+-- grants `0140` and `0144` spent two migrations protecting, the subscription
 -- plan and Stripe customer, and an audit log that is supposed to be
 -- append-only.
 --
--- This is the same shape `platform_settings.require_mfa` had before `0143`,
+-- This is the same shape `platform_settings.require_mfa` had before `0145`,
 -- where a policy DID exist and the wide grant turned into a real bypass. The
 -- assertion exists so the next grant fails CI rather than waiting for an audit
 -- to notice.

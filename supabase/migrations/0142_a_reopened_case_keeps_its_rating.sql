@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0140_a_reopened_case_keeps_its_rating.sql
+-- 0142_a_reopened_case_keeps_its_rating.sql
 --
 -- Two defects on the support and organisation-detail screens, both of which
 -- make a screen state something it did not observe.
@@ -112,7 +112,7 @@ create trigger support_cases_rating_needs_resolution
   execute function public.support_case_rating_needs_resolution();
 
 comment on function public.support_case_rating_needs_resolution() is
-  'Refuses a rating on a case with no resolution, at the moment the rating is set. Replaces support_cases_csat_after_resolution, which expressed the same intent as a whole-row invariant and so blocked reopening a rated case with a bare 23514 (0140).';
+  'Refuses a rating on a case with no resolution, at the moment the rating is set. Replaces support_cases_csat_after_resolution, which expressed the same intent as a whole-row invariant and so blocked reopening a rated case with a bare 23514 (0142).';
 
 -- ---------- 2. an operator can see whether SMTP is configured ----------
 
@@ -129,4 +129,4 @@ create policy org_smtp_settings_write on public.org_smtp_settings
   with check (public.has_org_role(org_id, array['owner']));
 
 comment on policy org_smtp_settings_write on public.org_smtp_settings is
-  'An organisation owner manages its own mail settings. Operational platform staff may READ them (0140) so the console can say whether a tenant has its own sender rather than asserting it has none; the with-check is unchanged, so no platform role can write them. The password is withheld by org_smtp_settings_safe at the column level either way.';
+  'An organisation owner manages its own mail settings. Operational platform staff may READ them (0142) so the console can say whether a tenant has its own sender rather than asserting it has none; the with-check is unchanged, so no platform role can write them. The password is withheld by org_smtp_settings_safe at the column level either way.';

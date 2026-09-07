@@ -27,7 +27,7 @@ export interface Permissions {
    * support cases, incidents, integrations and tenant counts. Owner, admin,
    * support.
    *
-   * Mirrors `is_platform_operational()` (0122, extended by 0136), which is the
+   * Mirrors `is_platform_operational()` (0122, extended by 0138), which is the
    * database-side predicate on all of it. `platform_finance` is excluded, and
    * the policies FILTER rather than raise — so a screen that offers a finance
    * administrator one of these views renders an empty table, which reads as a

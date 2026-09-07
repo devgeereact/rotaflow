@@ -702,7 +702,7 @@ const RETENTION_POLICIES = [
 }));
 
 /**
- * Notification outbox depth, in the shape `platform_queue_depths()` (0139)
+ * Notification outbox depth, in the shape `platform_queue_depths()` (0141)
  * returns.
  *
  * This replaces a 48-row `background_jobs` fixture across four invented queues

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- support_access_consent.test.sql — withdrawing consent ends a live session,
--- and a session cannot restore it (0141)
+-- and a session cannot restore it (0143)
 --
 -- ## The defect
 --
@@ -20,7 +20,7 @@
 --
 -- ## Shown to fail on the real defect
 --
--- With `0141` reverted: assertion 3 fails (the session survives the
+-- With `0143` reverted: assertion 3 fails (the session survives the
 -- withdrawal), and assertions 5 and 6 fail (the session holder and the platform
 -- owner both succeed in re-granting).
 --
@@ -121,9 +121,9 @@ select lives_ok(
   $$ select public.set_org_support_access('cb000000-0000-0000-0000-000000000001', true) $$,
   'and the owner can give it back, which is what makes it a consent');
 
--- ---------- and removing the administrator ends it too (0142) ---------
+-- ---------- and removing the administrator ends it too (0144) ---------
 --
--- The other way an open session must close. Before `0142`, revoking somebody's
+-- The other way an open session must close. Before `0144`, revoking somebody's
 -- platform role left `is_platform_admin()` false — so the console locked them
 -- out — while `has_org_role(org, ['owner'])` stayed TRUE through
 -- `has_support_access`. A removed administrator kept owner-equivalent read and

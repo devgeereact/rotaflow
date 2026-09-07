@@ -1,11 +1,11 @@
 -- =====================================================================
--- 0146_a_reply_reaches_the_person_who_asked.sql
+-- 0148_a_reply_reaches_the_person_who_asked.sql
 --
 -- Two of the three gaps the 7 September audits recorded rather than closed.
--- GAP-106, stale tenant data left on screen after a session ends, is a client
+-- GAP-113, stale tenant data left on screen after a session ends, is a client
 -- change and is in the same commit.
 --
--- ## GAP-104 — a support reply notified nobody
+-- ## GAP-111 — a support reply notified nobody
 --
 -- The tenant-visible thread on `/app/help` was the only delivery. No Edge
 -- Function handles a support message and no trigger enqueued one, so a
@@ -34,7 +34,7 @@
 -- proves the reply joins the queue that drains — the same claim, and the same
 -- limit, `0132` records for announcements (❓-007).
 --
--- ## GAP-105 — a support session could create an organisation owner
+-- ## GAP-112 — a support session could create an organisation owner
 --
 -- `memberships_write` is `has_org_role(org_id, array['owner'])` for ALL
 -- commands, and since `0028` `has_org_role` ends with
@@ -58,7 +58,7 @@
 --
 -- ## Rollback
 --
--- Re-issue `reply_to_support_case` from `0145` and `memberships_write` from
+-- Re-issue `reply_to_support_case` from `0147` and `memberships_write` from
 -- its original migration.
 -- =====================================================================
 
@@ -112,7 +112,7 @@ begin
   -- Audited, like every other write on a case. `open_support_case`,
   -- `set_support_case_status` and `assign_support_case` all call `audit_write`;
   -- this one never did, so what a customer was told, and every internal note
-  -- written about a tenant, left no trace at all (0145).
+  -- written about a tenant, left no trace at all (0147).
   --
   -- Visibility follows the message: a public reply is part of the customer's
   -- own record and is visible to both sides, an internal note is platform-only.
@@ -125,7 +125,7 @@ begin
     'info',
     case when p_internal then 'platform_only' else 'both' end);
 
-  -- Tell the requester there is something to read (0146, GAP-104).
+  -- Tell the requester there is something to read (0148, GAP-111).
   --
   -- Through `notification_outbox`, which a pg_cron job has drained every
   -- minute since 0069 — so this needs no Edge Function deployed and no new
@@ -165,7 +165,7 @@ $$;
 revoke all on function public.reply_to_support_case(uuid, text, boolean) from public, anon;
 grant execute on function public.reply_to_support_case(uuid, text, boolean) to authenticated;
 
--- ---------- GAP-105: act as an owner, do not create one ----------------
+-- ---------- GAP-112: act as an owner, do not create one ----------------
 
 -- The check must read `memberships` without re-entering `memberships`'s own
 -- policy. Writing the subquery inline raises
@@ -194,7 +194,7 @@ revoke all on function public.is_direct_org_owner(uuid) from public, anon;
 grant execute on function public.is_direct_org_owner(uuid) to authenticated;
 
 comment on function public.is_direct_org_owner(uuid) is
-  'Owner by real membership, deliberately WITHOUT has_org_role''s support-access branch. Used where a support session must not be able to satisfy the guard that constrains it (0146).';
+  'Owner by real membership, deliberately WITHOUT has_org_role''s support-access branch. Used where a support session must not be able to satisfy the guard that constrains it (0148).';
 
 drop policy if exists memberships_write on public.memberships;
 
@@ -207,4 +207,4 @@ create policy memberships_write on public.memberships
   );
 
 comment on policy memberships_write on public.memberships is
-  'An organisation owner manages memberships. Creating another OWNER additionally requires being a real owner by membership, not one by support access — a support session may act as an owner and may not create one, which is what transfer_ownership is for (0146).';
+  'An organisation owner manages memberships. Creating another OWNER additionally requires being a real owner by membership, not one by support access — a support session may act as an owner and may not create one, which is what transfer_ownership is for (0148).';

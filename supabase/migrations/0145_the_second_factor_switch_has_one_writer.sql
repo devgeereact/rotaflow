@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0143_the_second_factor_switch_has_one_writer.sql
+-- 0145_the_second_factor_switch_has_one_writer.sql
 --
 -- ## The defect
 --
@@ -102,4 +102,4 @@ grant update (
 -- the next column needs to know.
 
 comment on column public.platform_settings.require_mfa is
-  'Whether platform administrators must hold an aal2 session. Writable ONLY through set_platform_mfa_required (0102), which is platform-owner-only and refuses to turn it on from a session that is not itself aal2. The direct UPDATE grant was revoked by 0143 because it bypassed both guards: a platform_admin on aal1 could set it and lock every administrator out in one request.';
+  'Whether platform administrators must hold an aal2 session. Writable ONLY through set_platform_mfa_required (0102), which is platform-owner-only and refuses to turn it on from a session that is not itself aal2. The direct UPDATE grant was revoked by 0145 because it bypassed both guards: a platform_admin on aal1 could set it and lock every administrator out in one request.';

@@ -1,8 +1,8 @@
 -- =====================================================================
--- 0147_a_credit_is_recorded_against_an_invoice.sql (GAP-080)
+-- 0149_a_credit_is_recorded_against_an_invoice.sql (GAP-080)
 --
 -- The billing console had a "Credit" button, disabled since it shipped, and
--- `0136`'s pass removed it rather than leave a promise. GAP-080 recorded why
+-- `0138`'s pass removed it rather than leave a promise. GAP-080 recorded why
 -- completing it was not a UI task: no credit-note table, no RPC that could
 -- write one, and no documented policy about who may credit what and up to how
 -- much.
@@ -64,7 +64,7 @@
 -- ## Grants
 --
 -- `authenticated` gets SELECT and nothing else. Every write goes through the
--- RPC, which is the lesson `0143` and `0144` are both records of: a table grant
+-- RPC, which is the lesson `0145` and `0146` are both records of: a table grant
 -- wider than the function meant to own it is a guard waiting to be bypassed.
 -- =====================================================================
 
@@ -110,7 +110,7 @@ revoke all on public.invoice_credits from public, anon;
 grant select on public.invoice_credits to authenticated;
 
 comment on table public.invoice_credits is
-  'Credits recorded against an invoice in RotaFlow''s own ledger. Written only by credit_invoice (0147). This does NOT call Stripe, issue a credit note or move money — see the migration header for what is deliberately not decided.';
+  'Credits recorded against an invoice in RotaFlow''s own ledger. Written only by credit_invoice (0149). This does NOT call Stripe, issue a credit note or move money — see the migration header for what is deliberately not decided.';
 
 -- ---------- the one writer ---------------------------------------------
 
@@ -150,7 +150,7 @@ begin
   end if;
 
   -- `for update`, so two concurrent credits cannot both read the same
-  -- remaining headroom and both pass the ceiling. The last-owner race in 0138
+  -- remaining headroom and both pass the ceiling. The last-owner race in 0140
   -- was exactly this shape.
   select * into inv from public.invoices where id = p_invoice for update;
   if not found then
@@ -220,4 +220,4 @@ revoke all on function public.credit_invoice(uuid, integer, text, text) from pub
 grant execute on function public.credit_invoice(uuid, integer, text, text) to authenticated;
 
 comment on function public.credit_invoice(uuid, integer, text, text) is
-  'Records a credit against an invoice. Platform billing roles only; open, past due or paid invoices only; capped at the invoice gross less what is already credited; currency inherited from the invoice; reason required; idempotent on (invoice, key). Records only — it does not call Stripe or move money (0147).';
+  'Records a credit against an invoice. Platform billing roles only; open, past due or paid invoices only; capped at the invoice gross less what is already credited; currency inherited from the invoice; reason required; idempotent on (invoice, key). Records only — it does not call Stripe or move money (0149).';

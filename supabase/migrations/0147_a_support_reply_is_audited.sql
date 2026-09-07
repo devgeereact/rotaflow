@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0145_a_support_reply_is_audited.sql
+-- 0147_a_support_reply_is_audited.sql
 --
 -- `reply_to_support_case` wrote a message row and nothing else. Every other
 -- write on a case audits: `open_support_case` (`0024`),
@@ -29,7 +29,7 @@
 --
 -- ## Rollback
 --
--- Re-issue the function from `0137`, which is the last migration to rewrite it.
+-- Re-issue the function from `0139`, which is the last migration to rewrite it.
 -- =====================================================================
 
 create or replace function public.reply_to_support_case(
@@ -81,7 +81,7 @@ begin
   -- Audited, like every other write on a case. `open_support_case`,
   -- `set_support_case_status` and `assign_support_case` all call `audit_write`;
   -- this one never did, so what a customer was told, and every internal note
-  -- written about a tenant, left no trace at all (0145).
+  -- written about a tenant, left no trace at all (0147).
   --
   -- Visibility follows the message: a public reply is part of the customer's
   -- own record and is visible to both sides, an internal note is platform-only.
@@ -102,4 +102,4 @@ revoke all on function public.reply_to_support_case(uuid, text, boolean) from pu
 grant execute on function public.reply_to_support_case(uuid, text, boolean) to authenticated;
 
 comment on function public.reply_to_support_case(uuid, text, boolean) is
-  'Posts a reply or an internal note onto a case, and audits it (0145). Operational platform staff write as the platform side; the requester and the organisation owner write as the customer (0136).';
+  'Posts a reply or an internal note onto a case, and audits it (0147). Operational platform staff write as the platform side; the requester and the organisation owner write as the customer (0138).';

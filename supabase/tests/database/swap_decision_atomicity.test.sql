@@ -238,7 +238,7 @@ select is(
 -- produced a swap every screen reports as approved with both people still
 -- holding the shifts they started with. Nothing in the app takes that path,
 -- which is what made it worth closing: a second door nobody walks through is
--- a door nobody is watching. Closed by 0144.
+-- a door nobody is watching. Closed by 0146.
 
 -- `second` is still 'accepted' at this point, asserted immediately above:
 -- exactly the state the bypass needed. This session is the manager.

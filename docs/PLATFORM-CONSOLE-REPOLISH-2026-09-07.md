@@ -126,7 +126,7 @@ configured, and the tab rendered "This organisation has not configured its own
 SMTP."
 
 **Three statements in the console's own honesty panel were false**, plus one on
-the GDPR board. Detailed in GAP-089.
+the GDPR board. Detailed in GAP-096.
 
 **A browser's own failure was recorded as a platform outage.** Every probe
 collapsed each failure mode to `down` and the page wrote it to
@@ -139,22 +139,22 @@ every other reader sees.
 
 ## 4. Migrations, in the order they must apply
 
-`0136` → `0140`, on top of `0130`–`0134`, which have still never been applied
+`0138` → `0142`, on top of `0130`–`0134`, which have still never been applied
 anywhere. Every one is `create or replace` or a policy swap: no table is
 rewritten and no grant is widened beyond `EXECUTE` to `authenticated` on
 functions that refuse the wrong caller before reading anything.
 
 | Migration | What it does                                                                                                                           | Rollback                                                                   |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `0136`    | Nine role-blind guards moved to `is_platform_operational()`; `organisation_deletion_preview` to the roles `delete_organisation` admits | Restore the bodies from `0020`, `0024`, `0027`, `0028`, `0110`             |
-| `0137`    | `create_invite`'s bootstrap branch restored, plus `invites_select` and `record_invite_send`                                            | Re-issue from `0126`, `0006` and `0129`                                    |
-| `0138`    | `for update` on the live owner set before the last-owner count, in grant and revoke                                                    | Re-issue both from `0015`                                                  |
-| `0139`    | `platform_queue_depths()` over `notification_outbox`                                                                                   | `drop function`; `background_jobs` is left in place                        |
-| `0140`    | CSAT CHECK replaced by a trigger; `org_smtp_settings` read widened (with-check untouched)                                              | Re-add the CHECK once no reopened-and-rated row exists; restore the policy |
+| `0138`    | Nine role-blind guards moved to `is_platform_operational()`; `organisation_deletion_preview` to the roles `delete_organisation` admits | Restore the bodies from `0020`, `0024`, `0027`, `0028`, `0110`             |
+| `0139`    | `create_invite`'s bootstrap branch restored, plus `invites_select` and `record_invite_send`                                            | Re-issue from `0126`, `0006` and `0129`                                    |
+| `0140`    | `for update` on the live owner set before the last-owner count, in grant and revoke                                                    | Re-issue both from `0015`                                                  |
+| `0141`    | `platform_queue_depths()` over `notification_outbox`                                                                                   | `drop function`; `background_jobs` is left in place                        |
+| `0142`    | CSAT CHECK replaced by a trigger; `org_smtp_settings` read widened (with-check untouched)                                              | Re-add the CHECK once no reopened-and-rated row exists; restore the policy |
 
 **They must merge with the client, not before or after it.** The console calls
 `platform_queue_depths` and the client stops reading `background_jobs`, so the
-client without `0139` calls a function that does not exist, and `0139` without
+client without `0141` calls a function that does not exist, and `0141` without
 the client changes nothing. This is the constraint GAP-074 already records for
 `0126`–`0128`, and the whole set ships together.
 
@@ -234,7 +234,7 @@ These six were listed here as deliberately left. They were fixed in a follow-up
 commit on the same branch, so this section now records what they were and where
 they went rather than what is outstanding.
 
-**The support-access opt-out was unreachable and unenforced.** `0141`.
+**The support-access opt-out was unreachable and unenforced.** `0143`.
 `organisations.support_access_allowed` was read only by
 `request_support_access`, once, as a precondition; `has_support_access` — the
 function every tenant policy routes through — never read it, so withdrawing
@@ -284,10 +284,10 @@ exist yet.
 
 A follow-up audit of `/admin/users/:id` and `/admin/settings` confirmed three
 defects against the live stack, and the first is the most serious thing this
-whole pass found. None was closed by `0141`.
+whole pass found. None was closed by `0143`.
 
 **Revoking a platform role left the person owner-equivalent inside every tenant
-they were in** (GAP-097, `0142`). `has_support_access` only asked whether the
+they were in** (GAP-104, `0144`). `has_support_access` only asked whether the
 session was live, never whether the holder was still staff. Reproduced through
 the RPC the Remove button calls: the console locks them out and
 `has_org_role(org, ['owner'])` stays true until the session expires — up to a
@@ -296,15 +296,15 @@ locked out of the only screen that could end it. The confirm dialog promised
 the opposite in as many words.
 
 **An `aal1` session was admitted to a console that then read nothing**
-(GAP-098). The route gated on the raw `profiles` flag while every policy behind
+(GAP-105). The route gated on the raw `profiles` flag while every policy behind
 it uses `is_platform_admin()`, which also carries `0102`'s MFA condition. With
 `require_mfa` on, a genuine administrator got in and saw empty tables, a
 profile reading "no such account", and an administrators roster collapsed to
 themselves — from which `ownerCount` was then computed, so the last-owner guard
 ran on false data.
 
-**A permission-denied read rendered as "no such account"** (GAP-099), which is
-the same conflation this pass fixed elsewhere, reached via GAP-098.
+**A permission-denied read rendered as "no such account"** (GAP-106), which is
+the same conflation this pass fixed elsewhere, reached via GAP-105.
 
 ### Still not verified, after those fixes
 
@@ -328,7 +328,7 @@ the same conflation this pass fixed elsewhere, reached via GAP-098.
   But `require_mfa` also carried a table-level UPDATE grant, so a
   `platform_admin` on `aal1` could set it directly from the ordinary settings
   screen and lock everyone out in one request — a worse hole than the one the
-  note described, reachable by a non-owner. Closed by `0143` (GAP-100), with the
+  note described, reachable by a non-owner. Closed by `0145` (GAP-107), with the
   off switch moved onto the console gate's own refusal screen because that is
   where a locked-out owner ends up.
 
@@ -343,6 +343,6 @@ the same conflation this pass fixed elsewhere, reached via GAP-098.
 - **GAP-081** — the tenant-side announcement surface.
 - **GAP-073** — Stripe test-mode verification, blocked on a credential.
 - **GAP-036** — production still has no backup and no PITR. Unrelated to this
-  work, and larger than all of it. `0138` exists because of it: a race that
+  work, and larger than all of it. `0140` exists because of it: a race that
   empties the owner table is only unrecoverable because there is nothing to
   restore from.

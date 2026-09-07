@@ -1,6 +1,6 @@
 -- =====================================================================
 -- platform_finance_boundary.test.sql — the part of GAP-053 that 0122 left
--- (closed by 0136)
+-- (closed by 0138)
 --
 -- `platform_reads.test.sql` beside this file covers the eight TABLES `0122`
 -- fixed. It passes, and it passed while every assertion below would have
@@ -23,7 +23,7 @@
 --
 -- ## Shown to fail on the real defect
 --
--- With `0136` reverted and the database rebuilt, assertions 1 to 8 fail:
+-- With `0138` reverted and the database rebuilt, assertions 1 to 8 fail:
 -- finance reads the DSAR row, both auth-fact functions return, the tenant
 -- counts return, the SLA row returns, the reply is accepted and the deletion
 -- preview returns.

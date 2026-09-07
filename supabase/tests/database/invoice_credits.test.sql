@@ -1,8 +1,8 @@
 -- =====================================================================
--- invoice_credits.test.sql — GAP-080, credit_invoice (0147)
+-- invoice_credits.test.sql — GAP-080, credit_invoice (0149)
 --
 -- The billing console's "Credit" button was disabled since it shipped and was
--- removed in 0136's pass rather than left as a promise. GAP-080 recorded why
+-- removed in 0138's pass rather than left as a promise. GAP-080 recorded why
 -- finishing it was not a UI task: no table, no RPC, no rules.
 --
 -- Each assertion pins a rule that is derived from the schema rather than

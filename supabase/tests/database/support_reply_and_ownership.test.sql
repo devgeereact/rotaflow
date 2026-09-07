@@ -1,5 +1,5 @@
 -- =====================================================================
--- support_reply_and_ownership.test.sql — GAP-104 and GAP-105 (0146)
+-- support_reply_and_ownership.test.sql — GAP-111 and GAP-112 (0148)
 --
 -- ## Why this is its own file
 --
@@ -13,12 +13,12 @@
 -- everything below is seeded as the superuser BEFORE the role switch, and the
 -- switch happens once, immediately before the first assertion.
 --
--- ## GAP-104 — a support reply notified nobody
+-- ## GAP-111 — a support reply notified nobody
 --
 -- The tenant-visible thread on `/app/help` was the only delivery: no Edge
 -- Function handles a support message and no trigger enqueued one, so a
 -- customer learned that platform staff had answered by opening the case again.
--- `0146` enqueues to `notification_outbox`, which pg_cron has drained every
+-- `0148` enqueues to `notification_outbox`, which pg_cron has drained every
 -- minute since `0069` — no deploy, the path `0132` already uses.
 --
 -- 1 to 3 pin the three halves of "narrow on purpose": a public platform reply
@@ -29,7 +29,7 @@
 -- joins the queue that drains, which is the same claim and the same limit
 -- `announcement_delivery.test.sql` records for announcements (❓-007).
 --
--- ## GAP-105 — a support session could create an owner
+-- ## GAP-112 — a support session could create an owner
 --
 -- `memberships_write` is `has_org_role(org_id, ['owner'])`, and since `0028`
 -- `has_org_role` ends with `or has_support_access(p_org, true)`. So a platform
@@ -37,14 +37,14 @@
 -- directly, bypassing `transfer_ownership` and its promote-and-demote in one
 -- transaction, and leaving the organisation with two owners.
 --
--- 4 to 6 are the decision `0146` took: a session may ACT as an owner and may
+-- 4 to 6 are the decision `0148` took: a session may ACT as an owner and may
 -- not CREATE one. 5 and 6 are the other half of the assertion — a guard that
 -- refuses everybody is not a guard, so support must still manage lesser roles
 -- and a real owner must still be able to hand ownership on.
 --
 -- ## Shown to fail on the real defect
 --
--- With `0146` reverted: 1 fails (nothing is queued), and 4 fails (the session
+-- With `0148` reverted: 1 fails (nothing is queued), and 4 fails (the session
 -- successfully sets `role = 'owner'`).
 --
 -- pgTAP, run via `supabase test db`.

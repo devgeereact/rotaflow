@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0137_the_first_owner_can_be_invited_again.sql — restoring the bootstrap
+-- 0139_the_first_owner_can_be_invited_again.sql — restoring the bootstrap
 -- branch `0126` dropped
 --
 -- ## The regression
@@ -196,7 +196,7 @@ revoke all on function public.create_invite(uuid, text, text, uuid, uuid) from p
 grant execute on function public.create_invite(uuid, text, text, uuid, uuid) to authenticated;
 
 comment on function public.create_invite(uuid, text, text, uuid, uuid) is
-  'Creates an invitation. Owners and managers of the organisation, plus the 0052 bootstrap: a platform owner or administrator inviting the FIRST owner into an organisation with no memberships. Restored by 0137 after 0126 dropped it.';
+  'Creates an invitation. Owners and managers of the organisation, plus the 0052 bootstrap: a platform owner or administrator inviting the FIRST owner into an organisation with no memberships. Restored by 0139 after 0126 dropped it.';
 
 -- ---------- invites_select --------------------------------------------
 --
@@ -217,7 +217,7 @@ create policy invites_select on public.invites
   );
 
 comment on policy invites_select on public.invites is
-  'Owners and managers of the organisation, plus a platform administrator reading the first-owner invitation for an organisation nobody has joined yet (0137). send-invite reads under the caller''s JWT, so without this branch it answers 404 for an invitation it just created.';
+  'Owners and managers of the organisation, plus a platform administrator reading the first-owner invitation for an organisation nobody has joined yet (0139). send-invite reads under the caller''s JWT, so without this branch it answers 404 for an invitation it just created.';
 
 -- ---------- record_invite_send ----------------------------------------
 --

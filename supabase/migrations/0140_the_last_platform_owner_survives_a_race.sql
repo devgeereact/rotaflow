@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0138_the_last_platform_owner_survives_a_race.sql
+-- 0140_the_last_platform_owner_survives_a_race.sql
 --
 -- ## The defect
 --
@@ -71,7 +71,7 @@ begin
 
   -- Lock the live owner set, THEN count it. Without the lock two concurrent
   -- revocations both read two owners, both pass, and both commit against
-  -- different rows, leaving none (0138).
+  -- different rows, leaving none (0140).
   perform 1 from public.platform_admins
    where role = 'platform_owner' and revoked_at is null
      for update;
@@ -159,6 +159,6 @@ revoke all on function public.grant_platform_role(uuid, text) from public, anon;
 grant execute on function public.grant_platform_role(uuid, text) to authenticated;
 
 comment on function public.revoke_platform_role(uuid) is
-  'Revokes a platform grant. Platform owners only. Locks the live owner set before counting it, so two concurrent revocations cannot both pass the last-owner guard (0138).';
+  'Revokes a platform grant. Platform owners only. Locks the live owner set before counting it, so two concurrent revocations cannot both pass the last-owner guard (0140).';
 comment on function public.grant_platform_role(uuid, text) is
-  'Grants or changes a platform role. Platform owners only. Same lock as revoke: demoting the last owner empties the set just as revoking them does (0138).';
+  'Grants or changes a platform role. Platform owners only. Same lock as revoke: demoting the last owner empties the set just as revoking them does (0140).';

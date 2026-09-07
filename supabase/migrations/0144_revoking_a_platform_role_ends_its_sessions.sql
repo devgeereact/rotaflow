@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0142_revoking_a_platform_role_ends_its_sessions.sql
+-- 0144_revoking_a_platform_role_ends_its_sessions.sql
 --
 -- ## The defect
 --
@@ -59,8 +59,8 @@
 --
 -- ## Rollback
 --
--- Restore `has_support_access` from `0141` and `revoke_platform_role` from
--- `0138`. Sessions already revoked by this stay revoked, which is the safe
+-- Restore `has_support_access` from `0143` and `revoke_platform_role` from
+-- `0140`. Sessions already revoked by this stay revoked, which is the safe
 -- direction.
 -- =====================================================================
 
@@ -86,12 +86,12 @@ as $$
        -- 0028 it decides something.
        and (not p_write or s.scope = 'read_write')
        -- The customer still consents. Re-read per query, so withdrawing it
-       -- ends a live session immediately rather than at its expiry (0141).
+       -- ends a live session immediately rather than at its expiry (0143).
        and o.support_access_allowed
        -- And the holder is still platform staff. Without this, revoking
        -- somebody's platform role left them owner-equivalent inside every
        -- tenant they were in, while locked out of the console that could have
-       -- ended it (0142). The grant is read directly rather than through
+       -- ended it (0144). The grant is read directly rather than through
        -- is_platform_operational(), which carries the MFA condition: a session
        -- must not blink out because an `aal` claim changed between requests.
        and exists (
@@ -103,7 +103,7 @@ as $$
 $$;
 
 comment on function public.has_support_access(uuid, boolean) is
-  'Whether the caller holds a live support session for this organisation at the scope asked for, the customer still consents (0141), and the caller is still platform staff (0142). All three re-read per query, so revoking any of them ends an open session at once.';
+  'Whether the caller holds a live support session for this organisation at the scope asked for, the customer still consents (0143), and the caller is still platform staff (0144). All three re-read per query, so revoking any of them ends an open session at once.';
 
 create or replace function public.revoke_platform_role(p_user uuid)
 returns void
@@ -122,7 +122,7 @@ begin
 
   -- Lock the live owner set, THEN count it. Without the lock two concurrent
   -- revocations both read two owners, both pass, and both commit against
-  -- different rows, leaving none (0138).
+  -- different rows, leaving none (0140).
   perform 1 from public.platform_admins
    where role = 'platform_owner' and revoked_at is null
      for update;
@@ -183,4 +183,4 @@ revoke all on function public.revoke_platform_role(uuid) from public, anon;
 grant execute on function public.revoke_platform_role(uuid) to authenticated;
 
 comment on function public.revoke_platform_role(uuid) is
-  'Revokes a platform grant and ends any support session it was holding, in one transaction. Platform owners only. Locks the live owner set before counting it (0138); closes open sessions and audits how many (0142).';
+  'Revokes a platform grant and ends any support session it was holding, in one transaction. Platform owners only. Locks the live owner set before counting it (0140); closes open sessions and audits how many (0144).';

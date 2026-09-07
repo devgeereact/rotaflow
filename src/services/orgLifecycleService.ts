@@ -126,7 +126,7 @@ const EXPORTED_TABLES = [
   'subscriptions',
   'invoices',
   // A credit is money the customer is owed back against an invoice they
-  // hold, so it belongs in their export beside the invoice itself (0147).
+  // hold, so it belongs in their export beside the invoice itself (0149).
   'invoice_credits',
 ] as const;
 
