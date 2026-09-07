@@ -59,6 +59,52 @@ export interface GroundingResult {
   suspectNames: string[];
 }
 
+export interface ApprovedLeaveWindow {
+  staff_profile_id: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface UnavailabilityWindow {
+  staff_profile_id: string;
+  weekday: number | null;
+  date: string | null;
+  recurring: boolean;
+}
+
+/** Deterministic guard for the two date rules a model must never arbitrate. */
+export function suggestionDateBlock(
+  staffProfileId: string,
+  date: string,
+  leave: readonly ApprovedLeaveWindow[],
+  availability: readonly UnavailabilityWindow[],
+): 'leave' | 'unavailable' | null {
+  if (
+    leave.some(
+      (entry) =>
+        entry.staff_profile_id === staffProfileId &&
+        entry.start_date <= date &&
+        entry.end_date >= date,
+    )
+  ) {
+    return 'leave';
+  }
+
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  if (
+    availability.some(
+      (entry) =>
+        entry.staff_profile_id === staffProfileId &&
+        (entry.date === date ||
+          (entry.recurring && entry.date === null && entry.weekday === weekday)),
+    )
+  ) {
+    return 'unavailable';
+  }
+
+  return null;
+}
+
 const MONTHS = [
   'january',
   'february',

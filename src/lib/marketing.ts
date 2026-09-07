@@ -293,8 +293,8 @@ export const CAPABILITIES: readonly Stat[] = [
   },
   {
     value: 'UK',
-    label: 'Built for UK employment',
-    detail: 'UK dates, terminology, working-time rest rules and GDPR obligations.',
+    label: 'UK-first scheduling',
+    detail: 'UK dates, terminology, bank holidays and working-time rest warnings.',
   },
 ] as const;
 

@@ -38,7 +38,8 @@ export function InstallPrompt(): JSX.Element | null {
           Install this app
         </p>
         <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          Loads faster and works offline. It installs from the browser.
+          Opens quickly and queues clock, leave and swap changes offline. It installs from
+          the browser.
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">

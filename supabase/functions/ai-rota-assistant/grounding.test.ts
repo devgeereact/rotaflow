@@ -3,6 +3,7 @@ import {
   checkAnnouncementGrounding,
   extractDates,
   extractNameCandidates,
+  suggestionDateBlock,
 } from './grounding';
 
 /**
@@ -159,5 +160,39 @@ describe('checkAnnouncementGrounding', () => {
     // With no period to compare against, the date is ungrounded — which is the
     // safe direction: it refuses rather than passing a date it cannot check.
     expect(result.ungroundedDates).toEqual(['2027-03-03']);
+  });
+});
+
+describe('suggestionDateBlock', () => {
+  it('blocks an inclusive approved-leave date', () => {
+    expect(
+      suggestionDateBlock(
+        'staff-1',
+        '2027-03-04',
+        [
+          {
+            staff_profile_id: 'staff-1',
+            start_date: '2027-03-04',
+            end_date: '2027-03-06',
+          },
+        ],
+        [],
+      ),
+    ).toBe('leave');
+  });
+
+  it('blocks one-off and recurring unavailability for that person only', () => {
+    const rows = [
+      {
+        staff_profile_id: 'staff-1',
+        weekday: null,
+        date: '2027-03-04',
+        recurring: false,
+      },
+      { staff_profile_id: 'staff-1', weekday: 5, date: null, recurring: true },
+    ];
+    expect(suggestionDateBlock('staff-1', '2027-03-04', [], rows)).toBe('unavailable');
+    expect(suggestionDateBlock('staff-1', '2027-03-05', [], rows)).toBe('unavailable');
+    expect(suggestionDateBlock('staff-2', '2027-03-04', [], rows)).toBeNull();
   });
 });

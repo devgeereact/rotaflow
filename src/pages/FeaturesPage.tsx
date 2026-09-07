@@ -22,7 +22,7 @@ const WORKFLOW = [
     title: 'Draft the week on a staff-by-day grid',
     body: 'Drag shifts onto the grid or auto-fill from last week. RotaFlow flags double-bookings, rest-period breaches, unavailability and missing qualifications while you build, with running labour hours and estimated cost as you go.',
     points: [
-      'Weekly and daily views, per location and department',
+      'Weekly view, filtered by location and department',
       'Copy the previous week, or clear and start again',
       'Reusable shift types with their own colours',
       'Open shifts left unassigned and visible as gaps',
@@ -80,7 +80,7 @@ const WORKFLOW = [
       'Filter by period, location and department',
       'CSV export from any report',
       'Compliance and qualification expiry alerts',
-      'Per-location performance comparison',
+      'Labour hours and cost by location',
     ],
   },
 ];
@@ -92,7 +92,7 @@ const PLATFORM = [
   },
   {
     title: 'Works offline',
-    body: 'The whole interface is cached. Clock-ins, leave requests and swaps queue on the device and sync when a connection returns.',
+    body: 'The app shell opens offline. Clock-ins, leave requests and swap offers queue on the device and sync when a connection returns; other workspace data needs a connection.',
   },
   {
     title: 'Multi-tenant by design',
