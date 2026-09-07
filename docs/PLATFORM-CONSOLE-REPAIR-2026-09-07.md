@@ -159,10 +159,15 @@ everything else renders.
 
 Stated plainly, because a report that omits this reads as though everything was.
 
-- **No authenticated platform-admin runtime test.** Everything visual was driven through
-  `/admin-preview`, which mounts the real components and answers Supabase from fixtures.
-  That proves the components, not that a real administrator's JWT reaches these RPCs.
-  GAP-082.
+- **The authenticated platform-admin spec is written but has not run green.**
+  `e2e/platform-console.spec.ts` seeds a platform owner and thirty tenants, signs in
+  through the real form, and asserts the count against the match set, a search finding a
+  tenant beyond the first page, page two, and `platform_finance` meeting a refusal. It is
+  wired into `e2e-authenticated`. It could not be executed on this machine: Vite's
+  `loadEnv` lets `.env` overwrite the process env, so the browser signs in against
+  production while the fixture seeds localhost — `Invalid login credentials`. Running it
+  locally needs `.env` moved aside; the recipe is in the spec's own header. Production was
+  checked afterwards and holds no `e2e-%@example.test` account. GAP-082.
 - **No production volumes.** Production holds no tenant. Every truncation defect fixed
   here was demonstrated against a synthetic 60-record fixture, not observed.
 - **No real delivery.** No email or push has been watched arriving. `0132` proves the
