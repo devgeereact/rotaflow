@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0140_consent_is_the_customers_and_it_ends_a_session.sql
+-- 0141_consent_is_the_customers_and_it_ends_a_session.sql
 --
 -- `organisations.support_access_allowed` is the customer's consent to platform
 -- staff opening their data. Two things were wrong with it, and together they
@@ -55,7 +55,7 @@
 -- It does not need to be. Every read and write inside a tenant goes through
 -- `is_org_member` or `has_org_role`, both of which end at `has_support_access`.
 -- Putting the check in the one function they share is what makes it impossible
--- to add a policy later that forgets it — the mistake `0122` and `0135` are
+-- to add a policy later that forgets it — the mistake `0122` and `0136` are
 -- both records of.
 --
 -- ## Rollback
@@ -87,13 +87,13 @@ as $$
        and (not p_write or s.scope = 'read_write')
        -- And the customer's consent is re-read on every query rather than
        -- only when the session was requested, so withdrawing it ends a live
-       -- session immediately instead of at its natural expiry (0140).
+       -- session immediately instead of at its natural expiry (0141).
        and o.support_access_allowed
   );
 $$;
 
 comment on function public.has_support_access(uuid, boolean) is
-  'Whether the caller holds a live support session for this organisation, at the scope asked for, AND the customer still consents. Re-read per query, so withdrawing consent closes open sessions at once (0140).';
+  'Whether the caller holds a live support session for this organisation, at the scope asked for, AND the customer still consents. Re-read per query, so withdrawing consent closes open sessions at once (0141).';
 
 create or replace function public.set_org_support_access(
   p_org     uuid,
@@ -135,4 +135,4 @@ revoke all on function public.set_org_support_access(uuid, boolean) from public,
 grant execute on function public.set_org_support_access(uuid, boolean) to authenticated;
 
 comment on function public.set_org_support_access(uuid, boolean) is
-  'The customer''s consent to platform support opening their data. Organisation owners only, tested against memberships directly so no support session or platform role can set it (0140). Audited to both sides.';
+  'The customer''s consent to platform support opening their data. Organisation owners only, tested against memberships directly so no support session or platform role can set it (0141). Audited to both sides.';

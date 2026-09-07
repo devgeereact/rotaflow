@@ -466,7 +466,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
                 "Nothing is queued or running" for ever regardless of the real
                 backlog. It now reads the notification outbox, which is the only
                 background queue the product has, counted in the database by
-                `platform_queue_depths()` (0138). */}
+                `platform_queue_depths()` (0139). */}
             <Panel title="Notification queue">
               {queuesFailed ? (
                 <p className="text-sm text-danger-ink dark:text-danger-ink-dark">

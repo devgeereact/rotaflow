@@ -139,7 +139,7 @@ export interface QueueDepth {
  *
  * ## Counted in the database
  *
- * Through `platform_queue_depths()` (`0138`) rather than select-and-group.
+ * Through `platform_queue_depths()` (`0139`) rather than select-and-group.
  * Grouping in the browser would have carried the truncation bug `0130`-`0134`
  * spent five migrations removing: above `db.max_rows` the browser would group a
  * capped page and report it as the estate's queue depth.

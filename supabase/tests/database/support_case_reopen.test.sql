@@ -1,6 +1,6 @@
 -- =====================================================================
 -- support_case_reopen.test.sql — a resolved, rated case can be reopened
--- (0024's CHECK, replaced by 0139)
+-- (0024's CHECK, replaced by 0140)
 --
 -- ## The defect
 --
@@ -12,7 +12,7 @@
 --
 -- ## Shown to fail on the real defect
 --
--- With `0139` reverted, assertion 1 fails with
+-- With `0140` reverted, assertion 1 fails with
 -- `new row for relation "support_cases" violates check constraint
 -- "support_cases_csat_after_resolution"`.
 --

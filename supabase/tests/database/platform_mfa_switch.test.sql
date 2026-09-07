@@ -1,6 +1,6 @@
 -- =====================================================================
 -- platform_mfa_switch.test.sql — the second-factor switch has one writer
--- (0142)
+-- (0143)
 --
 -- ## The defect
 --
@@ -20,9 +20,9 @@
 --
 -- ## Shown to fail on the real defect
 --
--- With `0142` reverted, assertion 2 fails: the direct update succeeds.
+-- With `0143` reverted, assertion 2 fails: the direct update succeeds.
 --
--- The first attempt at `0142` revoked the COLUMN grant only, which is a no-op
+-- The first attempt at `0143` revoked the COLUMN grant only, which is a no-op
 -- while the table grant stands, and this test caught it — the bypass was still
 -- open on the re-run.
 --

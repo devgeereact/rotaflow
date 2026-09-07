@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0135_a_finance_role_reads_billing_not_people.sql — what `0122` missed
+-- 0136_a_finance_role_reads_billing_not_people.sql — what `0122` missed
 -- (docs/SAAS.md GAP-053, reopened)
 --
 -- ## The gap
@@ -100,7 +100,7 @@ create policy gdpr_requests_select on public.gdpr_requests
   );
 
 comment on policy gdpr_requests_select on public.gdpr_requests is
-  'Operational platform staff, or the owner of the organisation a request names. Finance is excluded: a DSAR register is the data subject''s name, email and outcome note, which is not billing state (0135).';
+  'Operational platform staff, or the owner of the organisation a request names. Finance is excluded: a DSAR register is the data subject''s name, email and outcome note, which is not billing state (0136).';
 
 -- ---------- Account security facts -----------------------------------
 --
@@ -492,10 +492,10 @@ revoke all on function public.organisation_deletion_preview(uuid) from public, a
 grant execute on function public.organisation_deletion_preview(uuid) to authenticated;
 
 comment on function public.platform_user_auth_facts(uuid) is
-  'Four account security facts for one user, read from auth.users. Operational platform staff only (0135).';
+  'Four account security facts for one user, read from auth.users. Operational platform staff only (0136).';
 comment on function public.platform_auth_facts_summary() is
-  'Estate-wide account security counts. Operational platform staff only (0135).';
+  'Estate-wide account security counts. Operational platform staff only (0136).';
 comment on function public.platform_tenant_counts(uuid) is
-  'Operational counts for one tenant, past RLS. Operational platform staff only — seats are billing state and live in platform_staff_counts (0135).';
+  'Operational counts for one tenant, past RLS. Operational platform staff only — seats are billing state and live in platform_staff_counts (0136).';
 comment on function public.organisation_deletion_preview(uuid) is
-  'What deleting this organisation would destroy. Readable by exactly the roles delete_organisation admits (0135).';
+  'What deleting this organisation would destroy. Readable by exactly the roles delete_organisation admits (0136).';

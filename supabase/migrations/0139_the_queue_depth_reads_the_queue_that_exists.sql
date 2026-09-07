@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0138_the_queue_depth_reads_the_queue_that_exists.sql
+-- 0139_the_queue_depth_reads_the_queue_that_exists.sql
 --
 -- ## The defect
 --
@@ -94,4 +94,4 @@ revoke all on function public.platform_queue_depths() from public, anon;
 grant execute on function public.platform_queue_depths() to authenticated;
 
 comment on function public.platform_queue_depths() is
-  'Depth of the notification outbox by event, counted in the database. Replaces the console read of background_jobs, which has had no writer since Inngest was retired in 0087 and reported an empty queue forever. Operational platform roles only (0138).';
+  'Depth of the notification outbox by event, counted in the database. Replaces the console read of background_jobs, which has had no writer since Inngest was retired in 0087 and reported an empty queue forever. Operational platform roles only (0139).';

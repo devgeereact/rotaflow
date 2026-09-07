@@ -139,22 +139,22 @@ every other reader sees.
 
 ## 4. Migrations, in the order they must apply
 
-`0135` → `0139`, on top of `0130`–`0134`, which have still never been applied
+`0136` → `0140`, on top of `0130`–`0134`, which have still never been applied
 anywhere. Every one is `create or replace` or a policy swap: no table is
 rewritten and no grant is widened beyond `EXECUTE` to `authenticated` on
 functions that refuse the wrong caller before reading anything.
 
 | Migration | What it does                                                                                                                           | Rollback                                                                   |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `0135`    | Nine role-blind guards moved to `is_platform_operational()`; `organisation_deletion_preview` to the roles `delete_organisation` admits | Restore the bodies from `0020`, `0024`, `0027`, `0028`, `0110`             |
-| `0136`    | `create_invite`'s bootstrap branch restored, plus `invites_select` and `record_invite_send`                                            | Re-issue from `0126`, `0006` and `0129`                                    |
-| `0137`    | `for update` on the live owner set before the last-owner count, in grant and revoke                                                    | Re-issue both from `0015`                                                  |
-| `0138`    | `platform_queue_depths()` over `notification_outbox`                                                                                   | `drop function`; `background_jobs` is left in place                        |
-| `0139`    | CSAT CHECK replaced by a trigger; `org_smtp_settings` read widened (with-check untouched)                                              | Re-add the CHECK once no reopened-and-rated row exists; restore the policy |
+| `0136`    | Nine role-blind guards moved to `is_platform_operational()`; `organisation_deletion_preview` to the roles `delete_organisation` admits | Restore the bodies from `0020`, `0024`, `0027`, `0028`, `0110`             |
+| `0137`    | `create_invite`'s bootstrap branch restored, plus `invites_select` and `record_invite_send`                                            | Re-issue from `0126`, `0006` and `0129`                                    |
+| `0138`    | `for update` on the live owner set before the last-owner count, in grant and revoke                                                    | Re-issue both from `0015`                                                  |
+| `0139`    | `platform_queue_depths()` over `notification_outbox`                                                                                   | `drop function`; `background_jobs` is left in place                        |
+| `0140`    | CSAT CHECK replaced by a trigger; `org_smtp_settings` read widened (with-check untouched)                                              | Re-add the CHECK once no reopened-and-rated row exists; restore the policy |
 
 **They must merge with the client, not before or after it.** The console calls
 `platform_queue_depths` and the client stops reading `background_jobs`, so the
-client without `0138` calls a function that does not exist, and `0138` without
+client without `0139` calls a function that does not exist, and `0139` without
 the client changes nothing. This is the constraint GAP-074 already records for
 `0126`–`0128`, and the whole set ships together.
 
@@ -234,7 +234,7 @@ These six were listed here as deliberately left. They were fixed in a follow-up
 commit on the same branch, so this section now records what they were and where
 they went rather than what is outstanding.
 
-**The support-access opt-out was unreachable and unenforced.** `0140`.
+**The support-access opt-out was unreachable and unenforced.** `0141`.
 `organisations.support_access_allowed` was read only by
 `request_support_access`, once, as a precondition; `has_support_access` — the
 function every tenant policy routes through — never read it, so withdrawing
@@ -284,10 +284,10 @@ exist yet.
 
 A follow-up audit of `/admin/users/:id` and `/admin/settings` confirmed three
 defects against the live stack, and the first is the most serious thing this
-whole pass found. None was closed by `0140`.
+whole pass found. None was closed by `0141`.
 
 **Revoking a platform role left the person owner-equivalent inside every tenant
-they were in** (GAP-097, `0141`). `has_support_access` only asked whether the
+they were in** (GAP-097, `0142`). `has_support_access` only asked whether the
 session was live, never whether the holder was still staff. Reproduced through
 the RPC the Remove button calls: the console locks them out and
 `has_org_role(org, ['owner'])` stays true until the session expires — up to a
@@ -328,7 +328,7 @@ the same conflation this pass fixed elsewhere, reached via GAP-098.
   But `require_mfa` also carried a table-level UPDATE grant, so a
   `platform_admin` on `aal1` could set it directly from the ordinary settings
   screen and lock everyone out in one request — a worse hole than the one the
-  note described, reachable by a non-owner. Closed by `0142` (GAP-100), with the
+  note described, reachable by a non-owner. Closed by `0143` (GAP-100), with the
   off switch moved onto the console gate's own refusal screen because that is
   where a locked-out owner ends up.
 
@@ -343,6 +343,6 @@ the same conflation this pass fixed elsewhere, reached via GAP-098.
 - **GAP-081** — the tenant-side announcement surface.
 - **GAP-073** — Stripe test-mode verification, blocked on a credential.
 - **GAP-036** — production still has no backup and no PITR. Unrelated to this
-  work, and larger than all of it. `0137` exists because of it: a race that
+  work, and larger than all of it. `0138` exists because of it: a race that
   empties the owner table is only unrecoverable because there is nothing to
   restore from.

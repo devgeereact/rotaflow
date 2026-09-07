@@ -1,6 +1,6 @@
 -- =====================================================================
 -- invite_bootstrap.test.sql — a platform administrator can invite the FIRST
--- owner into a new organisation (0052, dropped by 0126, restored by 0136)
+-- owner into a new organisation (0052, dropped by 0126, restored by 0137)
 --
 -- ## Why this file exists
 --
@@ -17,7 +17,7 @@
 --
 -- ## Shown to fail on the real defect
 --
--- With `0136` reverted, assertions 1 to 4 fail: `create_invite` raises
+-- With `0137` reverted, assertions 1 to 4 fail: `create_invite` raises
 -- `42501 Only owners and managers can invite people`, and
 -- `admin_create_organisation_with_invite` raises the same from its own line 35.
 --

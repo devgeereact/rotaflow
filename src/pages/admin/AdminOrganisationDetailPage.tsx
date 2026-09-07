@@ -66,7 +66,7 @@ import type {
 /** The tabs that read tenant rows rather than the customer register. */
 // Only `locations` (and its `departments` sub-view) actually routes through
 // `is_org_member()`/`has_org_role()`, the two functions 0028 gated on a
-// session. `integrations` joined it in 0139, which let operational platform
+// session. `integrations` joined it in 0140, which let operational platform
 // staff READ `org_smtp_settings` without one — before that the tab reported
 // every tenant as having no SMTP, because the `security_invoker` view refused
 // the read and the page rendered the refusal as a fact about the customer.
