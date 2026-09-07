@@ -43,6 +43,7 @@ capability's status updates its row in the same PR.
 | How a full QA audit is run               | `docs/Working-Agent.md` — the spec behind the `rotaflow-qa-auditor` agent                     |
 | What the last full audit found           | `docs/QA-AUDIT-REPORT.md` — a dated snapshot (14 Aug 2026), not current state; `docs/SAAS.md` is |
 | What the platform console repair did     | `docs/PLATFORM-CONSOLE-REPAIR-2026-09-07.md` — a dated record of one pass over `/admin/*`: root causes, a route-and-control matrix, migration order, and what was **not** verified |
+| What the console repolish did next       | `docs/PLATFORM-CONSOLE-REPOLISH-2026-09-07.md` — the second pass, over the eight routes the first left unverified. Records six defects found and deliberately not fixed, and why |
 | What the last design review found        | `docs/design-review/2026-09-06-rota-builder.md` — the rota grid on 6 Sep 2026. Five fixes made, three left open. Same rule as above: a dated snapshot, not current state |
 | What actually works without a network    | `docs/OFFLINE-SPEC.md` — per feature, and it is narrower than "offline-first" implies          |
 | Release evidence before a deploy         | `docs/PWA-RELEASE-GATES.md` — recorded statuses, not a checklist to tick from memory           |
