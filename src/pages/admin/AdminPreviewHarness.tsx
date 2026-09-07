@@ -1217,6 +1217,55 @@ const TABLES: Record<string, unknown> = {
       failed_notifications: 0,
     },
   ],
+  // 0134's per-currency billing summary and paged invoice list. Two
+  // currencies on purpose: the mixed-currency banner is a state the console
+  // is now supposed to render, and one nobody could reach in a preview.
+  'rpc/platform_billing_summary': [
+    {
+      currency: 'GBP',
+      mrr_pence: 121800,
+      paying_orgs: 3,
+      collected_month_pence: 98000,
+      collected_prev_month_pence: 91000,
+      outstanding_pence: 34000,
+      past_due_pence: 12900,
+      refunded_month_pence: 4900,
+      open_invoices: 4,
+      past_due_invoices: 1,
+      refunded_invoices: 1,
+    },
+    {
+      currency: 'EUR',
+      mrr_pence: 29900,
+      paying_orgs: 1,
+      collected_month_pence: 29900,
+      collected_prev_month_pence: 29900,
+      outstanding_pence: 0,
+      past_due_pence: 0,
+      refunded_month_pence: 0,
+      open_invoices: 0,
+      past_due_invoices: 0,
+      refunded_invoices: 0,
+    },
+  ],
+  'rpc/platform_invoice_directory': ((args: Record<string, unknown>) => {
+    const limit = Math.min(Math.max(Number(args.p_limit ?? 25), 1), 200);
+    const offset = Math.max(Number(args.p_offset ?? 0), 0);
+    const rows = INVOICES.map((invoice) => ({
+      ...invoice,
+      org_name: ORGANISATIONS.find((org) => org.id === invoice.org_id)?.name ?? null,
+      tax_pence: 0,
+      period_start: invoice.issued_on,
+      period_end: invoice.due_on,
+      failure_reason: null,
+      attempts: invoice.status === 'past_due' ? 2 : 0,
+      provider: 'stripe',
+      provider_ref: `in_preview_${invoice.number}`,
+    }));
+    return rows
+      .slice(offset, offset + limit)
+      .map((row) => ({ ...row, total_count: rows.length }));
+  }) satisfies BodyFixture,
   'rpc/platform_user_facets': [
     {
       total: USER_DIRECTORY_ROWS.length,

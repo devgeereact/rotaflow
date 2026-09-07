@@ -61,7 +61,7 @@ real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
-Recounted 2026-08-31, after eighty-three pull requests landed (#178-#265); the full website and PWA audit of 2026-09-02, the production-readiness pass of 2026-09-04 and the delivery audit of 2026-09-05 and the reliability repairs of 2026-09-05 (RF-02 to RF-14) then took `main` to 133 migrations: the workforce pass of 2026-09-06 — `0127` (the job-title catalogue), `0128` (an audited clock correction) and `0129` (an invitation that records whether it was sent) — and the platform console repair of 2026-09-06: `0130` (the organisations directory as one server query), `0131` (a user directory that searches every membership) `0132` (an announcement that is delivered rather than only written) and `0133` (an overview that counts the estate).
+Recounted 2026-08-31, after eighty-three pull requests landed (#178-#265); the full website and PWA audit of 2026-09-02, the production-readiness pass of 2026-09-04 and the delivery audit of 2026-09-05 and the reliability repairs of 2026-09-05 (RF-02 to RF-14) then took `main` to 134 migrations: the workforce pass of 2026-09-06 — `0127` (the job-title catalogue), `0128` (an audited clock correction) and `0129` (an invitation that records whether it was sent) — and the platform console repair of 2026-09-06: `0130` (the organisations directory as one server query), `0131` (a user directory that searches every membership) `0132` (an announcement that is delivered rather than only written) `0133` (an overview that counts the estate) and `0134` (billing totals counted per currency).
 
 ### What production actually holds, 2026-08-31
 
@@ -89,7 +89,7 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 106   |
+| 🟢 Complete           | 114   |
 | 🟡 Partial            | 0     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
@@ -849,6 +849,89 @@ relationship was found`. Every read of a swap has failed since that migration me
       **Evidence:** `src/lib/consoleFilters.test.ts` (19) · **NOT verified:** the five screens
       holding a single toggle or a sub-list filter, which are deliberately left alone — see the
       closed GAP-078 for why
+- [x] CAP-117 🟢 The platform directories are counted by the database — `/admin/organisations`
+      and `/admin/users` loaded whole tables and filtered, sorted, counted and exported the
+      arrays. PostgREST truncates at `db.max_rows` in silence, so past the cap the total tile
+      was the cap, a search for an older tenant reported "no match", and Export CSV wrote the
+      loaded page under the name of the whole set. `platform_organisation_directory` (`0130`)
+      and `platform_user_directory` (`0131`) filter, sort, page and count under one set of
+      predicates; the facet functions beside them supply the estate-wide tiles and the filter
+      option lists, so a plan or a role only older records hold is still offered. Both are
+      aggregate-only, and owner contact is returned only to an operational platform role.
+      **Evidence:** `supabase/tests/database/platform_directory.test.sql` (24) and
+      `platform_user_directory.test.sql` (14), against 60- and 5-record fixtures ·
+      **NOT verified:** production volumes — production holds no tenant
+
+- [x] CAP-118 🟢 A multi-organisation account is findable — the user search matched
+      `soleOrgName`, which the membership summary set only for an account belonging to
+      exactly one organisation, so the accounts a support case is most often about could not
+      be found by either of their organisations' names. `platform_user_directory` searches
+      every membership and returns one row per account; organisation and role are AND-ed
+      within a single membership, so "owner at Beta" cannot match somebody who owns Alpha and
+      merely belongs to Beta.
+      **Evidence:** `supabase/tests/database/platform_user_directory.test.sql`
+
+- [x] CAP-119 🟢 A platform announcement is composed, scheduled and dispatched — the console
+      disabled its composer with "There is no announcement table to write to" while listing
+      rows from that table. `publish_platform_announcement` also stamped `sent_at` at insert,
+      so every recipient counted as delivered before anything carried anything, and
+      `status = 'scheduled'` was read by no job at all. `0132` queues one dispatch per
+      recipient organisation through `notification_outbox` — the queue that has drained rota
+      publications since `0069` — leaves deliveries visibly queued until reconciliation
+      confirms them, publishes what is due on the minute tick, and adds the cancel path the
+      status value never had.
+      **Evidence:** `supabase/tests/database/announcement_delivery.test.sql` (15) ·
+      **NOT verified:** real email or push arriving on a device. That needs a live
+      environment and sends real messages to real people; see ❓-007
+
+- [x] CAP-120 🟢 The audit log is searched over its whole history — every filter ran against
+      the two hundred most recent events, so looking for something older found nothing and
+      reported it as "no match", which is a sentence about the filter rather than about the
+      window. `searchPlatformAuditLogs` filters, orders, counts and pages in the database,
+      with a period filter and an id tie-break so paging cannot repeat a row. The export walks
+      every matching event and writes its range, its filters and its truncation state into the
+      file's own header.
+      **Evidence:** `src/services/platformService.ts` · driven in the preview harness ·
+      **NOT verified:** behaviour above the API cap against a real audit table
+
+- [x] CAP-121 🟢 Billing totals are summed per currency, over every row — Collected,
+      Outstanding, Past due and Refunds were sums over the three hundred invoices the screen
+      had loaded, printed as platform totals, and every one of them added `amount_pence`
+      across currencies and printed the result with a pound sign. `platform_billing_summary`
+      (`0134`) groups by currency and never converts; the console shows one currency at a
+      time and says which. `platform_invoice_directory` pages the list and resolves the
+      organisation name server-side.
+      **Evidence:** `supabase/tests/database/platform_billing_summary.test.sql` (11)
+
+- [x] CAP-122 🟢 Bulk organisation import — the Import button was disabled with "Bulk import
+      is not built" while `admin_create_organisation_with_invite` (`0051`) had been available
+      since it was written, atomic and exempt from the self-serve rate limit because it writes
+      `created_by = null`. Preview, per-row validation, duplicate detection against the
+      database and against the file, per-row outcome and retry of the refused rows only.
+      Nothing is emailed: fifty invitations is not a fan-out to trigger from a preview screen,
+      so every link is shown and offered as a CSV.
+      **Evidence:** `src/lib/organisationImport.test.ts` (15) · driven in the preview harness ·
+      **NOT verified:** fifty real transactions. The harness answers the creation RPC from a
+      fixture
+
+- [x] CAP-123 🟢 One failing read no longer empties the overview — `/admin` loaded eleven
+      things in a single `Promise.all`, so one refused RPC showed a retry button and nothing
+      else. `Promise.allSettled` now, with each source named, each panel reporting its own
+      unavailability, and every figure rendering an em dash rather than a zero when unread —
+      a zero is a claim, and "no open cases" is what somebody acts on by going home. Growth,
+      churn and the support queue moved to server aggregates (`0133`) rather than being
+      bucketed or counted from bounded lists.
+      **Evidence:** `supabase/tests/database/platform_overview.test.sql` (9) · the preview
+      harness's `?fail=` mode, which is what makes the partial-failure states reviewable
+
+- [x] CAP-124 🟢 No console control is decorative — seven disabled buttons resolved by asking
+      what the database can do. Four now work (audit search and its link, invoice View,
+      support New case, organisation Import); three are removed with their reason stated in
+      the page copy (Integrations "Retry all failed" — no connector has code behind it and
+      `integration_sync_runs` has never had a writer; Feature flags "Create flag" — code
+      checks a key by name; Subscriptions "Discount" — nothing here can price a plan).
+      Invoice "Credit" is removed and its remaining work is named in GAP-080.
+      **Evidence:** each page · driven in the preview harness
 
 ## §5 The recommendation we rejected
 
@@ -1059,6 +1142,9 @@ tracking was re-raised here under this register's own numbering.
 | ~~GAP-077~~ | The organisation setup path is not resumable from persisted state                             | 🟢 **Opened and closed 2026-09-06.** `/onboarding` is a wizard whose progress lives in component state: leaving it and coming back restarts at step 1, and nothing on the dashboard says which of locations, departments, job titles, shift types, minimum cover, staff and a first published rota an organisation still has none of. The pieces all exist and each is reachable and persistent on its own screen; what does not exist is a single view driven by what the database actually holds. This pass added the job-title catalogue to that list without building the view, so the gap is one item wider than it was. The honest status is that setup **works** and is **not guided**. **Next check:** query the seven tables for a new organisation and render the result as the checklist. **Closed by `/app/setup` (CAP-114).** The view is driven by counts, not by a flag; the invitation states `0129` records are what let it say "one never emailed" rather than "three pending". The onboarding wizard is unchanged and still owns the account half — this owns the workforce half.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | P2       |
 | ~~GAP-078~~ | The Platform console has not adopted the filter contract                                      | 🟢 **Opened and closed 2026-09-06.** `src/lib/filters.ts` and `useFilterState` are written to be shared and are proven by 31 assertions and a live journey, but only Team Attendance and the team directory use them. Every `/admin` list still holds its own `useState` filters: no URL state, no chips, no distinction between a failed read and no matches, and its own decision about what an empty select means. Nothing regressed, those screens are exactly as they were, but the workspace and the console now behave differently, which is worse than both behaving the same way badly. **Next check:** convert one admin list and see whether the contract needs anything it does not already have. **Narrowed 2026-09-06 (CAP-116).** `/admin/organisations` and `/admin/users` are converted — the two most-opened lists, and between them they exercise every part of the contract: a select, an enumeration, a multi-select over a many-to-many, and the three-way empty state. Each cost roughly 80 changed lines and no change to the contract itself, which is the useful finding: the remaining eight are mechanical rather than an open design question. **Closed the same day**: `AdminSupportPage`, `AdminSubscriptionsPage` and `AdminAuditPage` followed, which is every list screen in the console. The conversion needed no change to the contract on any of the five, and three of them gained a capability they did not have — support status and priority became multi-selects, so "open or pending" is one filter rather than two visits; "no subscription record" and "platform events only" became linkable option values rather than magic strings inside a predicate. What remains is deliberately out of scope and recorded as such: `AdminGdprPage`, `AdminIncidentsPage` and `AdminSupportAccessPage` hold a single toggle each rather than a filter set, and `AdminOrganisationDetailPage` and `AdminSupportCaseDetailPage` filter a sub-list inside one record. A shared toolbar on any of those would be furniture around one control. | P2       |
 | GAP-079     | The rota canvas is three weeks, not an unbounded planner                                      | 🟡 **Opened 2026-09-06.** `rotaCanvas.ts` makes the grid a continuous axis and loads the previous, current and next week in one query, which is what scrolling back to last week without losing this week needs. It is deliberately bounded there: an unbounded canvas is an unbounded read, and this project has already been bitten by a query that looked complete and was not (BUG-075). Scrolling past the third week still means pressing Next, which re-anchors. Whether three is the right number is a question for somebody building a real rota, and nobody has. **Next check:** watch a manager build a month and see where they reach the edge.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | P3       |
+| GAP-080     | Invoice credits have no backend, no policy and no test credential                             | 🔴 **Opened 2026-09-07.** The billing console's "Credit" button was disabled since it shipped and is now removed rather than left as a promise. Completing it is not a UI task: there is no credit-note table, no RPC that could write one, no documented policy about who may credit what and up to how much, and no `STRIPE_TEST_SECRET_KEY` in the project's secrets to prove any of it against the provider (GAP-073). Named so the work is a decision rather than an omission: a `credit_notes` table carrying amount, currency, reason and actor; an RPC enforcing an eligible invoice status, a remaining-credit ceiling and server-side idempotency; a Stripe credit-note call from an Edge Function; and a test-mode credential. Inventing the policy was refused deliberately — a financial control designed by whoever happened to be implementing the button is the wrong way round.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | P3       |
+| GAP-081     | The in-app announcement reaches an inbox, not a screen of its own                             | 🟡 **Opened 2026-09-07.** `0132` queues a platform announcement through `notification_outbox`, so recipients get a `notifications` row and whatever email or push their organisation has switched on. What still does not exist is a tenant-side surface for `platform_announcements` itself: `mark_announcement_read` has no caller, so `read_at` is never set and the console's read column is permanently zero — which it says, rather than showing a percentage a fixture wrote. The banner that would set it is the missing piece, and it belongs in the tenant app rather than in this console. **Next check:** add the banner, then a read count means something.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | P3       |
+| GAP-082     | Nothing has been driven against a real platform-admin session                                 | 🟡 **Opened 2026-09-07.** Every screen in this pass was verified through `/admin-preview`, which mounts the real components and answers Supabase from fixtures, plus pgTAP against a local database for the RPCs and policies. Neither is an authenticated runtime test: the preview cannot prove that a real platform administrator's JWT reaches these RPCs, and pgTAP proves the function refuses the wrong role rather than that the console handles the refusal. `e2e/` has an authenticated job (`e2e-authenticated`) that signs a real user up; it has no platform-admin fixture, because granting one needs a platform owner to exist first. **Next check:** seed a platform owner in the e2e stack and drive `/admin` end to end.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | P2       |
 | ~~GAP-025~~ | No vertical configuration                                                                     | ⚫ **The owner's decision, not engineering's — stated 2026-08-31 rather than left looking like a backlog item.** Every other row in this register can be settled by reading the code; this one cannot. Configurable verticals means choosing between one product that fits four industries adequately and a configuration surface that fits each well and doubles the states every future feature has to work in. Care is the primary wedge per `docs/PRD.md`, and the honest cheap move is to keep shipping one generic product until a named customer is lost for a reason that is specifically vertical. **Reopens on that**, or on a decision to sell into one vertical exclusively.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | P3       |
 
 ## §8 Hardening register

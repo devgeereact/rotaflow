@@ -3566,6 +3566,57 @@ export type Database = {
           urgent_open_cases: number;
         }[];
       };
+      platform_billing_summary: {
+        Args: never;
+        Returns: {
+          collected_month_pence: number;
+          collected_prev_month_pence: number;
+          currency: string;
+          mrr_pence: number;
+          open_invoices: number;
+          outstanding_pence: number;
+          past_due_invoices: number;
+          past_due_pence: number;
+          paying_orgs: number;
+          refunded_invoices: number;
+          refunded_month_pence: number;
+        }[];
+      };
+      platform_invoice_directory: {
+        Args: {
+          p_currency?: string[];
+          p_direction?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_org?: string[];
+          p_search?: string;
+          p_sort?: string;
+          p_status?: string[];
+          p_to?: string;
+        };
+        Returns: {
+          amount_pence: number;
+          attempts: number;
+          currency: string;
+          due_on: string;
+          failure_reason: string | null;
+          id: string;
+          issued_on: string;
+          number: string;
+          org_id: string;
+          org_name: string | null;
+          paid_at: string | null;
+          period_end: string;
+          period_start: string;
+          provider: string | null;
+          provider_ref: string | null;
+          refunded_at: string | null;
+          status: string;
+          tax_pence: number;
+          total_count: number;
+        }[];
+      };
       platform_organisation_directory: {
         Args: {
           p_created_from?: string;

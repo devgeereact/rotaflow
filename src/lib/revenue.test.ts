@@ -5,6 +5,7 @@ import {
   churnRate,
   collectedByMonth,
   collectedInMonth,
+  currenciesPresent,
   monthKey,
   monthlyRecurringPence,
   monthsOfPaidHistory,
@@ -14,6 +15,8 @@ import {
   refundedInMonth,
   revenueByPlan,
   revenueChurnForMonth,
+  singleCurrency,
+  sumByCurrency,
   type InvoiceLike,
   type SubscriptionLike,
 } from '@/lib/revenue';
@@ -396,5 +399,45 @@ describe('revenueChurnForMonth', () => {
     // Lost in March = the one canceled Mar 15 = 29900, despite its current
     // status now reading 'canceled' rather than 'active'.
     expect(result).toBe(Math.round((29900 / 42800) * 1000) / 10);
+  });
+});
+
+describe('currency, before any total is printed', () => {
+  const row = (
+    currency: string | null,
+    pence = 100,
+  ): { amount_pence: number; currency: string | null } => ({
+    amount_pence: pence,
+    currency,
+  });
+
+  it('treats a missing currency as the column default rather than as another one', () => {
+    // `subscriptions.currency` and `invoices.currency` both default to GBP, so
+    // a null means GBP; counting it as a separate currency would refuse to
+    // print a total for a perfectly ordinary set of rows.
+    expect(currenciesPresent([row(null), row('GBP')])).toEqual(['GBP']);
+    expect(singleCurrency([row(null), row('GBP')])).toBe('GBP');
+  });
+
+  it('normalises case, because ISO 4217 is upper case and Stripe is not always', () => {
+    expect(currenciesPresent([row('gbp'), row('GBP')])).toEqual(['GBP']);
+  });
+
+  it('returns null the moment two currencies are present', () => {
+    // £100 + €100 is not 200 of anything, and formatMoney would print it with
+    // a pound sign. The caller has to stop showing one number.
+    expect(singleCurrency([row('GBP'), row('EUR')])).toBeNull();
+  });
+
+  it('splits the total per currency rather than converting', () => {
+    expect(sumByCurrency([row('GBP', 500), row('EUR', 300), row('GBP', 250)])).toEqual([
+      { currency: 'GBP', pence: 750 },
+      { currency: 'EUR', pence: 300 },
+    ]);
+  });
+
+  it('calls an empty set the default currency, since there is nothing to be wrong about', () => {
+    expect(singleCurrency([])).toBe('GBP');
+    expect(sumByCurrency([])).toEqual([]);
   });
 });

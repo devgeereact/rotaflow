@@ -16,6 +16,8 @@ export interface InvoiceLike {
   paid_at: string | null;
   refunded_at: string | null;
   org_id: string;
+  /** ISO 4217. Optional on the type only because older fixtures omit it. */
+  currency?: string | null;
 }
 
 export interface SubscriptionLike {
@@ -25,6 +27,68 @@ export interface SubscriptionLike {
   price_pence: number | null;
   started_at: string;
   canceled_at: string | null;
+  currency?: string | null;
+}
+
+/**
+ * Every currency present in a set of rows.
+ *
+ * ## Why this exists
+ *
+ * Every function below adds `amount_pence` to `amount_pence`. That is correct
+ * for one currency and nonsense for two: £100 plus €100 is not 200 of
+ * anything, and the result would be printed with a pound sign because
+ * `formatMoney` defaults to GBP. Today every row on this deployment is GBP —
+ * the column defaults to it and nothing has ever written otherwise — so the
+ * arithmetic happens to be right, and it is right by accident.
+ *
+ * Rather than introduce exchange rates, which are a product decision with a
+ * rate source and a date behind it, the screens ask this what they are adding
+ * up and say so. More than one currency means the total is not shown as one
+ * number.
+ *
+ * A row with no currency recorded is treated as the default rather than as a
+ * separate currency, because that is what the column default means.
+ */
+export function currenciesPresent(
+  rows: readonly { currency?: string | null }[],
+  fallback = 'GBP',
+): string[] {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    seen.add((row.currency ?? fallback).toUpperCase());
+  }
+  return [...seen].sort();
+}
+
+/**
+ * The single currency these rows are in, or `null` when they are mixed.
+ *
+ * `null` is the caller's signal to stop printing one total. An empty set is
+ * the fallback: nothing to add up cannot be the wrong currency.
+ */
+export function singleCurrency(
+  rows: readonly { currency?: string | null }[],
+  fallback = 'GBP',
+): string | null {
+  if (rows.length === 0) return fallback;
+  const present = currenciesPresent(rows, fallback);
+  return present.length === 1 ? (present[0] ?? fallback) : null;
+}
+
+/** Totals split by currency, for the case where one number would be a lie. */
+export function sumByCurrency(
+  rows: readonly { amount_pence: number; currency?: string | null }[],
+  fallback = 'GBP',
+): { currency: string; pence: number }[] {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const currency = (row.currency ?? fallback).toUpperCase();
+    totals.set(currency, (totals.get(currency) ?? 0) + row.amount_pence);
+  }
+  return [...totals]
+    .map(([currency, pence]) => ({ currency, pence }))
+    .sort((a, b) => b.pence - a.pence);
 }
 
 /** `YYYY-MM` for a date-or-timestamp string, compared as text everywhere below. */
