@@ -184,7 +184,7 @@ export function StepAbout({
               ))}
             </Select>
             <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-              This will set your compliance and localisation.
+              This sets regional defaults such as dates and bank holidays.
             </p>
           </div>
 

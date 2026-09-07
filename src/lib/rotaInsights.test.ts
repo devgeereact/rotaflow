@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeRotaInsights,
+  staffDateBlockReason,
   suggestCoverForShift,
   summariseInsights,
   type RotaInsightInput,
@@ -373,6 +374,43 @@ describe('computeRotaInsights', () => {
       input({ shifts: [open, late, early], staff: [person] }),
     );
     expect(found[0]?.severity).toBe('critical');
+  });
+});
+
+describe('staffDateBlockReason', () => {
+  it('blocks approved leave and recurring unavailability before a suggestion is written', () => {
+    expect(
+      staffDateBlockReason(
+        'p-1',
+        '2026-08-19',
+        [
+          {
+            staff_profile_id: 'p-1',
+            start_date: '2026-08-19',
+            end_date: '2026-08-19',
+            status: 'approved',
+          } as LeaveRequest,
+        ],
+        [],
+      ),
+    ).toBe('leave');
+
+    expect(
+      staffDateBlockReason(
+        'p-1',
+        '2026-08-19',
+        [],
+        [
+          {
+            staff_profile_id: 'p-1',
+            weekday: 3,
+            date: null,
+            status: 'unavailable',
+            recurring: true,
+          } as Availability,
+        ],
+      ),
+    ).toBe('unavailable');
   });
 });
 

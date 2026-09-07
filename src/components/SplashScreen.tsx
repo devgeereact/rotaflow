@@ -13,7 +13,7 @@ interface SplashFeature {
 const FEATURES: SplashFeature[] = [
   { icon: Calendar, label: 'Smart Scheduling' },
   { icon: Users, label: 'Happy Teams' },
-  { icon: ShieldCheck, label: 'Compliant & Secure' },
+  { icon: ShieldCheck, label: 'Role-based Access' },
   { icon: BarChart3, label: 'Data Driven' },
 ];
 
@@ -79,7 +79,7 @@ export function SplashScreen({
             />
           </div>
           <p className="mt-5 text-lg text-ink-soft dark:text-content-muted-dark">
-            {online ? message : "You're offline. Showing your cached rota."}
+            {online ? message : "You're offline. Some workspace data may be unavailable."}
           </p>
         </div>
       </main>

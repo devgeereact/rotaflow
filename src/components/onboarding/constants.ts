@@ -76,9 +76,8 @@ export interface PlanOption {
 }
 
 /**
- * Yearly is billed as ten months, "save 2 months" in the design.
- * No charge is taken anywhere: selecting a plan only sets a column. Billing is
- * the final phase of the roadmap (PRD §5, Phase 2. Subscription billing).
+ * Monthly prices and limits match the public plan catalogue and database rows.
+ * Selecting a plan records the choice; payment happens later in Settings.
  */
 export const PLANS: PlanOption[] = [
   {
@@ -87,7 +86,7 @@ export const PLANS: PlanOption[] = [
     tagline: 'Perfect for small teams getting organised.',
     monthly: 29,
     staffLimit: 'Up to 15 staff',
-    features: ['Rota builder', 'Basic reports', 'Leave management', 'Email support'],
+    features: ['Rota builder', 'Published schedules', 'Leave and swaps', 'CSV export'],
   },
   {
     value: 'professional',
@@ -97,10 +96,10 @@ export const PLANS: PlanOption[] = [
     staffLimit: 'Up to 60 staff',
     features: [
       'Everything in Starter',
-      'Advanced reports',
+      'Reports across every site',
       'Availability management',
       'Swap management',
-      'Priority email support',
+      'Timesheets and payroll export',
     ],
     popular: true,
   },
@@ -112,10 +111,10 @@ export const PLANS: PlanOption[] = [
     staffLimit: 'Up to 200 staff',
     features: [
       'Everything in Professional',
-      'Advanced analytics',
+      'Audit trail and retention policy',
       'Overtime management',
       'Multiple locations',
-      'Phone & email support',
+      'Email support',
     ],
   },
   {
@@ -126,10 +125,9 @@ export const PLANS: PlanOption[] = [
     staffLimit: 'Unlimited staff',
     features: [
       'Everything in Business',
-      'Custom integrations',
-      'Dedicated account manager',
-      'SLA & uptime guarantee',
-      'Priority support',
+      'Unlimited locations and staff',
+      'Timesheet export shaped for your payroll provider',
+      'Onboarding and migration support',
     ],
   },
 ];

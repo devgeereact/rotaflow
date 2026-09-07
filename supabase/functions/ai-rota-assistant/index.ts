@@ -43,7 +43,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { reportEdgeError } from '../_shared/sentry.ts';
-import { checkAnnouncementGrounding } from './grounding.ts';
+import { checkAnnouncementGrounding, suggestionDateBlock } from './grounding.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 // Set per-request at the top of the `Deno.serve` handler below, once the
@@ -403,15 +403,7 @@ Deno.serve(async (req: Request) => {
       data: { user: requester },
     } = await supabase.auth.getUser();
 
-    const [
-      { data: org },
-      { data: staff },
-      { data: shiftTypes },
-      { data: existingShifts },
-      { data: leave },
-      { data: availability },
-      { data: locations },
-    ] = await Promise.all([
+    const results = await Promise.all([
       supabase.from('organisations').select('name').eq('id', orgId).single(),
       supabase
         .from('staff_profiles')
@@ -450,6 +442,33 @@ Deno.serve(async (req: Request) => {
         .eq('status', 'unavailable'),
       supabase.from('locations').select('id, name, timezone').eq('org_id', orgId),
     ]);
+    const contextError = results.find((result) => result.error)?.error;
+    if (contextError) {
+      console.error('AI grounding query failed', contextError);
+      return jsonResponse(
+        {
+          error:
+            'The assistant could not verify the rota, leave and availability data. Please try again shortly.',
+        },
+        503,
+      );
+    }
+    const [
+      orgResult,
+      staffResult,
+      shiftTypeResult,
+      shiftResult,
+      leaveResult,
+      availabilityResult,
+      locationResult,
+    ] = results;
+    const org = orgResult.data;
+    const staff = staffResult.data;
+    const shiftTypes = shiftTypeResult.data;
+    const existingShifts = shiftResult.data;
+    const leave = leaveResult.data;
+    const availability = availabilityResult.data;
+    const locations = locationResult.data;
 
     if (!staff || staff.length === 0) {
       return jsonResponse({
@@ -785,6 +804,8 @@ Deno.serve(async (req: Request) => {
     let droppedUnknown = 0;
     let droppedOutOfPeriod = 0;
     let droppedOverlapping = 0;
+    let droppedLeave = 0;
+    let droppedUnavailable = 0;
     let retimed = 0;
 
     const raw = ((parsed.suggestions as RawSuggestion[] | undefined) ?? [])
@@ -801,6 +822,21 @@ Deno.serve(async (req: Request) => {
       }
       if (s.date! < periodStart || s.date! > periodEnd) {
         droppedOutOfPeriod += 1;
+        continue;
+      }
+
+      const dateBlock = suggestionDateBlock(
+        s.staffProfileId!,
+        s.date!,
+        leave ?? [],
+        availability ?? [],
+      );
+      if (dateBlock === 'leave') {
+        droppedLeave += 1;
+        continue;
+      }
+      if (dateBlock === 'unavailable') {
+        droppedUnavailable += 1;
         continue;
       }
 
@@ -859,6 +895,12 @@ Deno.serve(async (req: Request) => {
         `${droppedOverlapping} dropped for clashing with a shift that person already has.`,
       );
     }
+    if (droppedLeave > 0) {
+      notes.push(`${droppedLeave} dropped because that person is on approved leave.`);
+    }
+    if (droppedUnavailable > 0) {
+      notes.push(`${droppedUnavailable} dropped because that person is unavailable.`);
+    }
     if (droppedOutOfPeriod > 0) {
       notes.push(`${droppedOutOfPeriod} dropped for falling outside the period.`);
     }
@@ -886,6 +928,8 @@ Deno.serve(async (req: Request) => {
       droppedUnknown,
       droppedOutOfPeriod,
       droppedOverlapping,
+      droppedLeave,
+      droppedUnavailable,
       retimed,
     });
     return jsonResponse({

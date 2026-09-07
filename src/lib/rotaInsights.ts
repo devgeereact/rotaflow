@@ -152,6 +152,34 @@ function unavailableOn(entry: Availability, dateIso: string): boolean {
   return entry.recurring && entry.weekday === weekdayOf(dateIso);
 }
 
+/** Recheck the hard date blockers immediately before any suggested shift is written. */
+export function staffDateBlockReason(
+  staffProfileId: string,
+  dateIso: string,
+  leave: readonly LeaveRequest[],
+  availability: readonly Availability[],
+): 'leave' | 'unavailable' | null {
+  if (
+    leave.some(
+      (entry) =>
+        entry.staff_profile_id === staffProfileId &&
+        entry.status === 'approved' &&
+        leaveCovers(entry, dateIso),
+    )
+  ) {
+    return 'leave';
+  }
+  if (
+    availability.some(
+      (entry) =>
+        entry.staff_profile_id === staffProfileId && unavailableOn(entry, dateIso),
+    )
+  ) {
+    return 'unavailable';
+  }
+  return null;
+}
+
 function overlaps(a: Shift, b: Shift): boolean {
   return (
     new Date(a.starts_at) < new Date(b.ends_at) &&

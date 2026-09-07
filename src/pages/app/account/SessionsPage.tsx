@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { reportError } from '@/lib/sentry';
+import { clearTenantState } from '@/lib/session';
 import {
   listMySessions,
   revokeMyOtherSessions,
@@ -137,6 +138,13 @@ export function SessionsPage(): JSX.Element {
       reportError(err, { area: 'account-sessions:sign-out-all' });
       showError('Could not sign out everywhere. Please try again.');
     } finally {
+      // This path calls Supabase directly because it needs the explicit global
+      // scope. Match AuthProvider's shared-device teardown even when the
+      // network request fails, so the outgoing tenant's cached data cannot be
+      // served to the next person who signs in on this device.
+      await clearTenantState().catch((err: unknown) =>
+        reportError(err, { area: 'account-sessions:clear-tenant-state' }),
+      );
       setWorking(false);
     }
   }, [confirm, showError, showSuccess]);
