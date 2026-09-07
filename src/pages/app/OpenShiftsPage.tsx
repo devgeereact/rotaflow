@@ -197,7 +197,18 @@ export function OpenShiftsPage(): JSX.Element {
                   {shift.clashesWithMine ? (
                     <>
                       <Badge tone="warning">Clashes with your rota</Badge>
-                      <Button variant="secondary" disabled>
+                      {/* The reason is on the control, not only in the badge
+                          beside it. A disabled button is not focusable, so a
+                          keyboard user never lands on it to ask why, and a
+                          pointer user hovering the thing they cannot press
+                          got nothing. Every other unavailable control in this
+                          product states its reason this way — see the five in
+                          the platform console. */}
+                      <Button
+                        variant="secondary"
+                        disabled
+                        title="This shift overlaps one you are already rostered for"
+                      >
                         Take it
                       </Button>
                     </>
