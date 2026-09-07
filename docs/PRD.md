@@ -31,14 +31,14 @@ with minimal industry-specific customisation.
 
 ## 3. Goals & success metrics
 
-| Area          | Target                                                           |
-| ------------- | ---------------------------------------------------------------- |
-| Time to rota  | A manager builds a full week's rota in **< 10 minutes**          |
-| Performance   | Lighthouse ≥ 95 (Performance, A11y, Best Practices, PWA)         |
+| Area          | Target                                                                                                                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Time to rota  | A manager builds a full week's rota in **< 10 minutes**                                                                                                                                                                        |
+| Performance   | Lighthouse ≥ 95 (Performance, A11y, Best Practices, PWA)                                                                                                                                                                       |
 | Offline       | Staff can open the app and see their shifts with **no** network — **not met**: `docs/OFFLINE-SPEC.md` §2 classes the rota view, my shifts and clock history as network required. What ships is queued writes, not cached reads |
-| Sync          | Offline actions (clock-in, leave request) reconcile on reconnect |
-| Reliability   | 100% of unhandled errors captured in Sentry                      |
-| Tenant safety | Zero cross-tenant data access (enforced by RLS on every table)   |
+| Sync          | Offline actions (clock-in, leave request) reconcile on reconnect                                                                                                                                                               |
+| Reliability   | 100% of unhandled errors captured in Sentry                                                                                                                                                                                    |
+| Tenant safety | Zero cross-tenant data access (enforced by RLS on every table)                                                                                                                                                                 |
 
 ## 4. Roles & permissions (drives PRD + Supabase RLS)
 
