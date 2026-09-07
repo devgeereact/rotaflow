@@ -298,7 +298,24 @@ export function LeavePage(): JSX.Element {
 
   const handleRequest = useCallback(
     async (draft: LeaveRequestDraft): Promise<void> => {
-      if (!orgId || !myProfile) return;
+      if (!orgId) return;
+      // BUG-024, re-tested 2026-09-07 under GAP-115. A member with no
+      // `staff_profiles` row in the active organisation used to get a silent
+      // `return` here: the form submitted, nothing happened, and no reason was
+      // given. Leave attaches to a staff record, so there is genuinely nothing
+      // to write — but that is a fact to tell them, not to swallow.
+      //
+      // Deliberately not the page-level `NoStaffProfileNotice` that
+      // `/app/attendance` and `/app/availability` use. This screen is also the
+      // manager's approval queue, and a manager without a staff record of their
+      // own can still legitimately approve everyone else's leave. Blanking the
+      // page would take that away to fix a message.
+      if (!myProfile) {
+        showError(
+          'Leave attaches to a staff record, and this account has none in this organisation. Ask an owner or manager to add you to the team, then request again.',
+        );
+        return;
+      }
       try {
         const input = {
           org_id: orgId,
