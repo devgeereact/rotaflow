@@ -1,4 +1,4 @@
-import { defineConfig, type PluginOption } from 'vite';
+import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import checker from 'vite-plugin-checker';
@@ -43,14 +43,36 @@ const sentryRelease = resolveSentryRelease();
  *     never populated in the first place. A test written against the old
  *     pattern would have passed while proving nothing.
  *
- * So the origin comes from the same variable the client is built with, and the
- * hosted wildcard remains the fallback for a build with no `.env` (CI does
- * exactly that). Only the ORIGIN is interpolated, and it is escaped, so a
+ * So the origin comes from the same variable the client is built with — read
+ * through `ENV` above as well as `process.env`, because a `.env` file reaches
+ * only the first of those — and the hosted wildcard remains the fallback for a
+ * build with neither (CI does exactly that). Only the ORIGIN is interpolated, and it is escaped, so a
  * malformed variable cannot widen the pattern into one that matches
  * somebody else's host.
  */
+/**
+ * The `VITE_*` variables as this build will actually see them.
+ *
+ * `process.env` alone is not enough and shipping proved it. Vite's `loadEnv`
+ * reads the `.env` files into `import.meta.env` for the CLIENT bundle; it does
+ * not put them in `process.env`, so config code that reads `process.env`
+ * sees a value only when somebody EXPORTED it into the shell first. The
+ * deploy of 7 September 2026 was built from a `.env`, so
+ * `supabaseRestPattern` below fell back to the hosted wildcard and the
+ * derived pattern it exists to produce was never used. Nothing broke —
+ * production is on `*.supabase.co` and the wildcard matches it — but the
+ * capability was inert, which is worse than absent because it had already
+ * been written down as working.
+ *
+ * `NODE_ENV` for the mode, because this is module scope and Vite's own `mode`
+ * is only available in the function form of `defineConfig`; converting the
+ * whole config to that form to read one variable is a large diff for no gain.
+ * The shell still wins where it is set, which is what the e2e runs rely on.
+ */
+const ENV = loadEnv(process.env['NODE_ENV'] ?? 'production', process.cwd(), 'VITE_');
+
 function supabaseRestPattern(): RegExp {
-  const configured = process.env['VITE_SUPABASE_URL'];
+  const configured = process.env['VITE_SUPABASE_URL'] ?? ENV['VITE_SUPABASE_URL'];
   if (!configured) return /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i;
   try {
     const origin = new URL(configured).origin;
