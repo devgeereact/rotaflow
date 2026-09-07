@@ -55,7 +55,7 @@
 -- =====================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ---------------------------------------------------------------------
 -- 1. Every column the client writes is actually writable.
@@ -140,6 +140,34 @@ select is(
   ),
   '',
   'anon holds no write privilege on any table in public'
+);
+
+-- ---------- 5. a table whose only guard is a missing policy ------------
+--
+-- `platform_admins`, `subscriptions` and `audit_logs` carried full
+-- INSERT/UPDATE/DELETE to `authenticated` from `0056`, admitted by no write
+-- policy at all. Nothing was exploitable — `0015` states the design as "the
+-- absence of a policy is the control" — but it is one added policy away from a
+-- hole, on the three tables where that would matter most: the platform role
+-- grants `0138` and `0142` spent two migrations protecting, the subscription
+-- plan and Stripe customer, and an audit log that is supposed to be
+-- append-only.
+--
+-- This is the same shape `platform_settings.require_mfa` had before `0143`,
+-- where a policy DID exist and the wide grant turned into a real bypass. The
+-- assertion exists so the next grant fails CI rather than waiting for an audit
+-- to notice.
+select is(
+  (
+    select coalesce(string_agg(distinct table_name, ', ' order by table_name), '')
+      from information_schema.role_table_grants
+     where table_schema = 'public'
+       and grantee = 'authenticated'
+       and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+       and table_name in ('platform_admins', 'subscriptions', 'audit_logs')
+  ),
+  '',
+  'authenticated holds no direct write on platform_admins, subscriptions or audit_logs'
 );
 
 select * from finish();

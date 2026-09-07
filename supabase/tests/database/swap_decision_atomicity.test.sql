@@ -29,7 +29,7 @@
 -- =====================================================================
 
 begin;
-select plan(16);
+select plan(17);
 
 -- ---------- fixtures --------------------------------------------------
 insert into auth.users (
@@ -227,6 +227,31 @@ select is(
   (select id from public.staff_profiles where first_name = 'Ana'),
   'and the shift stays exactly where it was'
 );
+
+-- ---------- 17-18. the function is the ONLY way to approve ------------
+--
+-- `decide_shift_swap` exists because approving a swap must lock both rows,
+-- refuse an archived rota, and reassign the shift. Two RLS policies let a
+-- client write the status directly and skip all of it:
+-- `shift_swaps_write`'s owner/manager branch carried no status restriction at
+-- all, and `shift_swaps_requester_finalize` named `approved` outright. Either
+-- produced a swap every screen reports as approved with both people still
+-- holding the shifts they started with. Nothing in the app takes that path,
+-- which is what made it worth closing: a second door nobody walks through is
+-- a door nobody is watching. Closed by 0144.
+
+-- `second` is still 'accepted' at this point, asserted immediately above:
+-- exactly the state the bypass needed. This session is the manager.
+select throws_ok(
+  $$ update public.shift_swaps set status = 'approved' where note = 'second' $$,
+  '42501',
+  'new row violates row-level security policy for table "shift_swaps"',
+  'a manager cannot approve a swap by writing the status directly'
+);
+
+-- No companion "and the status is unchanged" assertion: by this point in the
+-- file `second` has been moved on by the transitions above, so it would be
+-- asserting the fixture rather than the refusal. The throw is the claim.
 
 select * from finish();
 rollback;
