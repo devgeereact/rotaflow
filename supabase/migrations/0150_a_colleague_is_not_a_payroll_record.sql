@@ -109,5 +109,51 @@ grant select on public.staff_profiles_visible to authenticated;
 -- Not a destructive change in the sense the safety gate means: no data
 -- is dropped and no privilege is granted. It REMOVES an over-broad
 -- read, which is the direction this repository wants to travel.
-revoke select (payroll_id, start_date, phone, email, holiday_allowance)
-  on public.staff_profiles from authenticated;
+--
+-- ## Why this is a whole-table revoke and a re-grant, not a column revoke
+--
+-- `0056` granted `select` on the TABLE. A column-level revoke cannot
+-- subtract from a table-level grant: PostgreSQL keeps the two sets of
+-- privileges separately, the table grant continues to answer for every
+-- column, and the statement reports success while changing nothing.
+-- Proven on a local instance before this was written:
+--
+--   begin;
+--   revoke select (payroll_id) on public.staff_profiles from authenticated;
+--   select has_column_privilege('authenticated','public.staff_profiles',
+--                               'payroll_id','SELECT');   -- => t
+--   rollback;
+--
+-- So the table-level read is removed first, and the fifteen columns a
+-- colleague may legitimately see are granted back one by one. `insert`,
+-- `update` and `delete` stay at table level and are untouched: this is
+-- a change to what may be READ.
+--
+-- The cost of a column grant is that it does not cover a column added
+-- later — the class of defect that made onboarding step 2 a 403 for
+-- every new customer until `0023` was found. That cost is paid on
+-- purpose here and it is not left to memory:
+-- `staff_profiles_column_accountability` in
+-- `supabase/tests/database/staff_profile_column_visibility.test.sql`
+-- fails the moment a column exists that is neither granted below nor
+-- masked by the view above, so the next person to add one has to say
+-- which of the two it is.
+revoke select on public.staff_profiles from authenticated;
+
+grant select (
+  id,
+  org_id,
+  user_id,
+  first_name,
+  last_name,
+  job_title,
+  job_title_id,
+  department_id,
+  contract_type,
+  weekly_hours,
+  skills,
+  photo_url,
+  active,
+  created_at,
+  updated_at
+) on public.staff_profiles to authenticated;

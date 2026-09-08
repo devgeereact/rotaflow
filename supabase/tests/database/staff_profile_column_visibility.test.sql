@@ -46,7 +46,7 @@
 -- =====================================================================
 
 begin;
-select plan(17);
+select plan(19);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
@@ -211,6 +211,40 @@ select is(
     where org_id = 'd0000000-0000-0000-0000-000000000001'),
   0,
   'an owner of another tenant reads no rows through the view at all');
+
+-- ---------- every column is accounted for, now and later ---------------
+-- A column grant does not cover a column added after it. So the next
+-- person to add one to `staff_profiles` must decide which side of the
+-- line it falls on, and this fails until they do: a column is either
+-- readable by `authenticated` on the base table, or masked by
+-- `staff_profiles_visible`. There is no third state, and silence is
+-- not one of them.
+reset role;
+
+select is(
+  (select array_agg(c.attname::text order by c.attname)
+     from pg_attribute c
+    where c.attrelid = 'public.staff_profiles'::regclass
+      and c.attnum > 0
+      and not c.attisdropped
+      and not has_column_privilege('authenticated', c.attrelid, c.attnum, 'SELECT')),
+  array['email', 'holiday_allowance', 'payroll_id', 'phone', 'start_date'],
+  'exactly the five personal columns are unreadable on the base table');
+
+select is(
+  (select count(*)::int
+     from pg_attribute c
+    where c.attrelid = 'public.staff_profiles'::regclass
+      and c.attnum > 0
+      and not c.attisdropped
+      and c.attname::text not in (
+        select a.attname::text
+          from pg_attribute a
+         where a.attrelid = 'public.staff_profiles_visible'::regclass
+           and a.attnum > 0
+           and not a.attisdropped)),
+  0,
+  'no column of staff_profiles is missing from the view that replaced it');
 
 select * from finish();
 rollback;
