@@ -1,10 +1,31 @@
 import { supabase } from '@/lib/supabase';
 import type { StaffProfile, StaffProfileInsert, StaffProfileUpdate } from '@/types';
 
+/**
+ * Reads go through `staff_profiles_visible`, writes go to `staff_profiles`.
+ *
+ * `0150` closed GAP-117: any member of an organisation could ask PostgREST for
+ * a colleague's `payroll_id`, `email`, `phone`, `start_date` and
+ * `holiday_allowance`, because `staff_profiles_select` admits every member and
+ * column privileges are granted per ROLE — a manager and a cleaner are both
+ * `authenticated`, so the grant could not tell them apart.
+ *
+ * Those five columns are now revoked from `authenticated` on the base table.
+ * The view returns them only to an owner or manager of that organisation, or
+ * on the reader's own record, and nulls them otherwise. So `select('*')`
+ * against `staff_profiles` would now FAIL rather than leak, which is the point:
+ * the mistake is loud instead of quiet.
+ *
+ * Writes are unaffected — the column UPDATE grants are unchanged — but a
+ * `RETURNING *` needs read privilege on what it returns, so the three write
+ * paths below insert or update, then read the row back through the view.
+ */
+const READ_VIEW = 'staff_profiles_visible' as const;
+
 /** Active staff for an org, used to give the rota assistant real people to schedule. */
 export async function listActiveStaff(orgId: string): Promise<StaffProfile[]> {
   const { data, error } = await supabase
-    .from('staff_profiles')
+    .from(READ_VIEW)
     .select('*')
     .eq('org_id', orgId)
     .eq('active', true)
@@ -23,7 +44,7 @@ export async function listStaff(
   orgId: string,
   opts: ListStaffOptions = {},
 ): Promise<StaffProfile[]> {
-  let query = supabase.from('staff_profiles').select('*').eq('org_id', orgId);
+  let query = supabase.from(READ_VIEW).select('*').eq('org_id', orgId);
   if (!opts.includeInactive) query = query.eq('active', true);
 
   const { data, error } = await query.order('first_name', { ascending: true });
@@ -43,7 +64,7 @@ export async function getMyStaffProfile(
   userId: string,
 ): Promise<StaffProfile | null> {
   const { data, error } = await supabase
-    .from('staff_profiles')
+    .from(READ_VIEW)
     .select('*')
     .eq('org_id', orgId)
     .eq('user_id', userId)
@@ -55,7 +76,7 @@ export async function getMyStaffProfile(
 
 export async function getStaffProfile(id: string): Promise<StaffProfile | null> {
   const { data, error } = await supabase
-    .from('staff_profiles')
+    .from(READ_VIEW)
     .select('*')
     .eq('id', id)
     .maybeSingle();
@@ -67,29 +88,34 @@ export async function getStaffProfile(id: string): Promise<StaffProfile | null> 
 export async function createStaffProfile(
   input: StaffProfileInsert,
 ): Promise<StaffProfile> {
+  // `RETURNING *` would ask for the five columns `0150` revoked, so the write
+  // returns its id and the row is read back through the view. One extra round
+  // trip, and the alternative is a service that only works for readers who do
+  // not need the fix.
   const { data, error } = await supabase
     .from('staff_profiles')
     .insert(input)
-    .select('*')
+    .select('id')
     .single();
 
   if (error) throw error;
-  return data;
+  const created = await getStaffProfile(data.id);
+  if (!created) throw new Error('Staff record was created but could not be read back.');
+  return created;
 }
 
 export async function updateStaffProfile(
   id: string,
   patch: StaffProfileUpdate,
 ): Promise<StaffProfile> {
-  const { data, error } = await supabase
-    .from('staff_profiles')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
+  // Same reason as `createStaffProfile`: read the row back through the view
+  // rather than returning columns this role may no longer select.
+  const { error } = await supabase.from('staff_profiles').update(patch).eq('id', id);
 
   if (error) throw error;
-  return data;
+  const updated = await getStaffProfile(id);
+  if (!updated) throw new Error('Staff record was updated but could not be read back.');
+  return updated;
 }
 
 /** Soft-delete: staff_profiles.active gates rota/AI-assistant visibility. */
@@ -122,10 +148,21 @@ export async function createStaffProfiles(
   const { data, error } = await supabase
     .from('staff_profiles')
     .insert(rows as StaffProfileInsert[])
-    .select('*');
+    .select('id');
 
   if (error) throw error;
-  return data ?? [];
+  const ids = (data ?? []).map((r) => r.id);
+  if (ids.length === 0) return [];
+
+  // Read back through the view, for the reason given on `createStaffProfile`.
+  const { data: created, error: readError } = await supabase
+    .from(READ_VIEW)
+    .select('*')
+    .in('id', ids)
+    .order('first_name', { ascending: true });
+
+  if (readError) throw readError;
+  return created ?? [];
 }
 
 /**

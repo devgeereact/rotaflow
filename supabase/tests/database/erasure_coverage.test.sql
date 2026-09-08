@@ -101,6 +101,13 @@ select set_config(
 select public.anonymize_staff_member(
   'b8000000-0000-0000-0000-000000000001', 'b8200000-0000-0000-0000-000000000001');
 
+-- The call above had to be made as the manager, because that is who erases
+-- somebody. The assertions below are a different question: they ask what is
+-- STORED, not what a role may read. Since `0150`, `authenticated` has no
+-- select on `staff_profiles.email` at all, so asking as that role would fail
+-- on privilege before it could tell us whether the erasure worked.
+reset role;
+
 -- ── the bug ───────────────────────────────────────────────────────────
 
 select is(
