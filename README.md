@@ -45,21 +45,21 @@ is actually built** — the capability register is the honest, per-feature statu
 
 ## Tech stack
 
-| Layer           | Choice                           | Why                                                                                                                             |
-| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Framework       | React 18 + Vite 6                | Fast HMR, tiny hashed bundles                                                                                                   |
-| Language        | TypeScript (strict)              | Safety enforced in CI                                                                                                           |
-| Styling         | Tailwind CSS (NativeWind-ready)  | Utility-first, portable to Expo later                                                                                           |
-| PWA             | `vite-plugin-pwa` (Workbox)      | Precached app shell + runtime caching                                                                                           |
-| Auth + DB       | Supabase (PostgreSQL + RLS)      | Managed Postgres, row-level security                                                                                            |
-| Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                  |
-| AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                            |
-| Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                      |
+| Layer           | Choice                           | Why                                                                                                                                                                                                                                 |
+| --------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework       | React 18 + Vite 6                | Fast HMR, tiny hashed bundles                                                                                                                                                                                                       |
+| Language        | TypeScript (strict)              | Safety enforced in CI                                                                                                                                                                                                               |
+| Styling         | Tailwind CSS (NativeWind-ready)  | Utility-first, portable to Expo later                                                                                                                                                                                               |
+| PWA             | `vite-plugin-pwa` (Workbox)      | Precached app shell + runtime caching                                                                                                                                                                                               |
+| Auth + DB       | Supabase (PostgreSQL + RLS)      | Managed Postgres, row-level security                                                                                                                                                                                                |
+| Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                                                                                                                      |
+| AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                                                                                                                                |
+| Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                                                                                                                          |
 | Background jobs | `pg_cron` + `pg_net` in Postgres | Four jobs: notification outbox drain (every minute), nightly retention (02:15), health probe (every 5 minutes) and scheduled alerts (`0093`, every 15 minutes). Inngest is fully retired (`0087`): no function, no key, no dispatch |
-| Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                       |
-| Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                   |
-| AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                               |
-| Hosting         | cPanel (static `dist/`)          | Low cost, no server runtime                                                                                                     |
+| Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                                                                                                                           |
+| Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                                                                                                                       |
+| AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                                                                                                                                   |
+| Hosting         | cPanel (static `dist/`)          | Low cost, no server runtime                                                                                                                                                                                                         |
 
 ---
 
@@ -92,7 +92,7 @@ supabase/migrations/0002_rotaflow.sql
 supabase/migrations/0111_erasure_misses_email.sql   # whatever the last one is today
 ```
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 150, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 151, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
 whole ledger.

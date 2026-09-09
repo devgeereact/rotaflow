@@ -1,0 +1,60 @@
+-- =====================================================================
+-- 0151_the_staff_view_does_not_hoist.sql — correcting a claim `0150`
+-- made about its own plan, in the only place a correction belongs
+--
+-- ## What `0150` said, and what the planner does
+--
+-- `0150` introduced `staff_profiles_visible` with this comment:
+--
+--   "`is_org_member` and `has_org_role` are called once per row. Both are
+--    STABLE, so the planner may hoist them, but the `select` wrapper makes
+--    that certain rather than hopeful — the same reasoning as `0136` and
+--    `0137`."
+--
+-- The plan says otherwise. `explain (verbose, costs off)` on the view as
+-- `authenticated`, filtered to one organisation:
+--
+--   Index Scan using staff_profiles_payroll_id_org_unique on staff_profiles sp
+--     Filter: (SubPlan 1)
+--     SubPlan 1
+--       ->  Result
+--             Output: is_org_member(sp.org_id)
+--
+-- A plain `SubPlan`, not the `hashed SubPlan` with `loops=1` that `0136`
+-- records as its win condition. Both helpers take `sp.org_id` — a column
+-- of the row being tested — so neither can be hoisted out of the row
+-- filter. That is precisely what `0136` and `0137` exist to teach, which
+-- makes citing them for the opposite claim the worst part of the error:
+-- a reader who trusted it would carry the wrong rule to the next table.
+--
+-- The `cross join lateral` does not help either. The planner flattens it
+-- and repeats `has_org_role(sp.org_id, …) OR sp.id =
+-- my_staff_profile_id(sp.org_id)` once per masked column — five times in
+-- the output list — so a row costs five of those calls for a manager, and
+-- up to ten for somebody who is not one.
+--
+-- ## Why the view is not being converted
+--
+-- `GAP-089` settled this rule after `0137` measured 5.6x at the database
+-- and nothing at all end to end: **convert a table when a bulk read of it
+-- is measured predicate-bound, not because it matches the pattern.** A
+-- staff list is tens of rows, not the 50,000 that made `clock_events`
+-- worth `0136`. If a screen ever reads staff profiles in bulk, measure it
+-- with `scripts/load-test-workforce.mjs` first, then use the
+-- `my_managed_org_ids()` set form.
+--
+-- ## Why this is a migration and not an edit to `0150`
+--
+-- `0150` has run in production. `npm run check:migrations` refuses a
+-- modified migration, and it is right to: editing one changes what a
+-- rebuilt database becomes without changing the database that already
+-- ran it, and the two then disagree with nothing to show for it. The
+-- attempt to fix the comment in place is what taught this branch that.
+--
+-- So the correction goes where a rebuilt database and production will
+-- both end up holding it — the view's own COMMENT, which is data rather
+-- than history.
+-- =====================================================================
+
+comment on view public.staff_profiles_visible is
+  'staff_profiles with payroll_id, start_date, phone, email and holiday_allowance nulled unless the reader manages that organisation or the row is their own. Definer-rights: the WHERE clause carries the tenancy check. See 0150 and docs/SAAS.md GAP-117. PERFORMANCE (0151, correcting 0150): the membership checks are NOT hoisted — both take sp.org_id, a column of the row, so the plan is a plain per-row SubPlan and the masking expression repeats once per masked column. Left that way on purpose per GAP-089; measure before converting.';
