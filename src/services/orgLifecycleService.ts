@@ -188,6 +188,33 @@ export interface OrganisationExport {
 }
 
 /**
+ * Where a table is READ from, when that is not the table itself.
+ *
+ * `0150` revoked `select` on `staff_profiles.payroll_id`, `start_date`,
+ * `phone`, `email` and `holiday_allowance` from `authenticated`, so
+ * `select('*')` on the base table is now refused outright — 42501, for
+ * everyone, owner included, because column privileges are held per role and
+ * not per person. The loop below caught that error and listed the table under
+ * `omitted`, which meant every export shipped with an EMPTY staff table and a
+ * footnote. A workforce product's export without its workforce is not a
+ * portability answer.
+ *
+ * So the staff rows come from `staff_profiles_visible`, the view `0150` added.
+ * The export screen is owner-only (`SettingsOrganisationPage` renders
+ * `OwnerOnlyNotice` for anyone else), and the view returns all five columns
+ * unmasked to an owner or manager of that organisation, so the file holds the
+ * same rows it held before `0150`. The output key stays `staff_profiles`: the
+ * customer's file should not change shape because of where we read it.
+ *
+ * Read this as the general rule, not a special case. When a base table stops
+ * granting `select` on every column, the loop below needs the same branch for
+ * it — otherwise the export loses it quietly. It is a branch rather than a
+ * lookup table because the generated client types tables and views as
+ * separate overloads of `from`, and a union of the two satisfies neither.
+ */
+const STAFF_READ_VIEW = 'staff_profiles_visible' as const;
+
+/**
  * Everything RotaFlow holds for one organisation, as one JSON file.
  *
  * Read through the caller's own session, so RLS decides what comes back: an
@@ -208,7 +235,10 @@ export async function exportOrganisationData(orgId: string): Promise<Organisatio
   const omitted: { table: string; reason: string }[] = [];
 
   for (const table of EXPORTED_TABLES) {
-    const { data, error } = await supabase.from(table).select('*').eq('org_id', orgId);
+    const { data, error } =
+      table === 'staff_profiles'
+        ? await supabase.from(STAFF_READ_VIEW).select('*').eq('org_id', orgId)
+        : await supabase.from(table).select('*').eq('org_id', orgId);
     if (error) {
       tables[table] = [];
       omitted.push({ table, reason: error.message });
@@ -224,6 +254,7 @@ export async function exportOrganisationData(orgId: string): Promise<Organisatio
     omitted,
     notes: [
       'Every row scoped to this organisation, read with your own permissions. A table you cannot read is listed under "omitted" with the reason, rather than left out silently.',
+      'Staff records are read through `staff_profiles_visible`. Payroll id, start date, phone, email and holiday allowance are readable only by an owner or manager of this organisation, or by the person the record is about, so they are present in an export an owner runs and would be blank in one run by anybody else.',
       'Files themselves are not included. `documents` records the URL of each uploaded file, held by ImageKit; download anything you need to keep before deleting the organisation.',
       "Staff accounts are not included. A person's RotaFlow login can belong to more than one organisation, so it is not this organisation's to export. Their employment record with you is in `staff_profiles` and the tables around it.",
       "Audit rows survive the organisation being deleted, by design: an audit trail a tenant deletion erases is not an audit trail. They are kept with the organisation's name and no longer linked to it.",

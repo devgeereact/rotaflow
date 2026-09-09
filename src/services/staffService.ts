@@ -22,6 +22,9 @@ import type { StaffProfile, StaffProfileInsert, StaffProfileUpdate } from '@/typ
  */
 const READ_VIEW = 'staff_profiles_visible' as const;
 
+/** Ids per read-back request. 100 UUIDs is ~3.8 KB of query string. */
+const READ_BACK_CHUNK = 100;
+
 /** Active staff for an org, used to give the rota assistant real people to schedule. */
 export async function listActiveStaff(orgId: string): Promise<StaffProfile[]> {
   const { data, error } = await supabase
@@ -109,10 +112,22 @@ export async function updateStaffProfile(
   patch: StaffProfileUpdate,
 ): Promise<StaffProfile> {
   // Same reason as `createStaffProfile`: read the row back through the view
-  // rather than returning columns this role may no longer select.
-  const { error } = await supabase.from('staff_profiles').update(patch).eq('id', id);
+  // rather than returning columns this role may no longer select. `id` is
+  // still granted, so the write can return it — and it has to, because an
+  // update that matches nothing is not an error in PostgREST. Without this the
+  // only symptom of a wrong id was the read-back finding no row, reported as
+  // "could not be read back", which reads like a permissions fault.
+  const { data: matched, error } = await supabase
+    .from('staff_profiles')
+    .update(patch)
+    .eq('id', id)
+    .select('id');
 
   if (error) throw error;
+  if (!matched || matched.length === 0) {
+    throw new Error('No staff record with that id in an organisation you can write to.');
+  }
+
   const updated = await getStaffProfile(id);
   if (!updated) throw new Error('Staff record was updated but could not be read back.');
   return updated;
@@ -155,14 +170,23 @@ export async function createStaffProfiles(
   if (ids.length === 0) return [];
 
   // Read back through the view, for the reason given on `createStaffProfile`.
-  const { data: created, error: readError } = await supabase
-    .from(READ_VIEW)
-    .select('*')
-    .in('id', ids)
-    .order('first_name', { ascending: true });
+  //
+  // In chunks, because the read-back is a GET and every id goes in the query
+  // string: sixty is about 2.3 KB and fine, but this path exists to import a
+  // whole team at once and a few hundred would reach the proxy's URL limit,
+  // where the symptom is a 414 on an import that already wrote every row.
+  const created: StaffProfile[] = [];
+  for (let i = 0; i < ids.length; i += READ_BACK_CHUNK) {
+    const { data: chunk, error: readError } = await supabase
+      .from(READ_VIEW)
+      .select('*')
+      .in('id', ids.slice(i, i + READ_BACK_CHUNK));
 
-  if (readError) throw readError;
-  return created ?? [];
+    if (readError) throw readError;
+    created.push(...(chunk ?? []));
+  }
+
+  return created.sort((a, b) => a.first_name.localeCompare(b.first_name));
 }
 
 /**
