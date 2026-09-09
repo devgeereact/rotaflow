@@ -59,11 +59,28 @@
 -- is the only thing standing between one tenant and another here.
 -- =====================================================================
 
--- `is_org_member` and `has_org_role` are called once per row. Both are
--- STABLE, so the planner may hoist them, but the `select` wrapper makes
--- that certain rather than hopeful — the same reasoning as `0136` and
--- `0137`, where a per-row membership check was the whole cost of the
--- query.
+-- `is_org_member` and `has_org_role` run once per row, and CANNOT be
+-- hoisted. This comment said the opposite until the plan was read.
+--
+--   Filter: (SubPlan 1)
+--   SubPlan 1 -> Result  Output: is_org_member(sp.org_id)
+--
+-- A plain `SubPlan`, not the `hashed SubPlan` with `loops=1` that `0136`
+-- records as the win condition. Both helpers take `sp.org_id`, a column of
+-- the row being tested, so they land in the row filter — which is exactly
+-- what `0136` and `0137` were written to teach, and citing them for the
+-- opposite claim was the mistake. The lateral does not help either: the
+-- planner flattens it and repeats the `has_org_role(...) OR sp.id =
+-- my_staff_profile_id(...)` expression once per masked column, five times
+-- in the output list.
+--
+-- Left as it is, on purpose. `GAP-089` settled the rule after `0137`
+-- measured 5.6x at the database and nothing end to end: convert a table
+-- when a bulk read of it is predicate-bound, not because it matches the
+-- pattern. A staff list is tens of rows, not the 50,000 that made
+-- `clock_events` worth converting. If a screen ever reads staff in bulk,
+-- measure it first, then use the `my_managed_org_ids()` set form from
+-- `0136`.
 create or replace view public.staff_profiles_visible as
 select
   sp.id,
