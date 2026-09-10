@@ -96,6 +96,7 @@ import {
 import { ShiftTypeManagerModal } from '@/components/rota/ShiftTypeManagerModal';
 import { RotaAssistantPanel } from '@/components/rota/RotaAssistantPanel';
 import { MobileDisclosure } from '@/components/ui/MobileDisclosure';
+import { describeTimeRange } from '@/lib/timeRange';
 import type {
   Availability,
   Department,
@@ -1133,7 +1134,7 @@ export function RotaBuilderPage(): JSX.Element {
       void (async () => {
         const ok = await confirm({
           title: 'Remove this shift?',
-          message: `${startTime}, ${endTime} on ${when} for ${who} will be deleted. This cannot be undone.`,
+          message: `${describeTimeRange(startTime, endTime)} on ${when} for ${who} will be deleted. This cannot be undone.`,
           confirmLabel: 'Remove shift',
           tone: 'danger',
         });

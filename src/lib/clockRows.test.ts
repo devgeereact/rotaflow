@@ -273,8 +273,8 @@ describe('buildThisWeekRows', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       dateLabel: 'Thu 14 May',
-      plannedLabel: '09:00, 17:00',
-      actualLabel: '09:00, 17:03',
+      plannedLabel: '09:00–17:00',
+      actualLabel: '09:00–17:03',
       paidLabel: '8h 03m',
     });
   });

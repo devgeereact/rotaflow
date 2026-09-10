@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { paletteToken20ForColour } from '@/lib/shiftPalette';
+import { formatTimeRange } from '@/lib/timeRange';
 
 interface PreviewShiftChipProps {
   label: string;
@@ -26,7 +27,7 @@ export function PreviewShiftChip({
     >
       <span className="block truncate">{label}</span>
       <span className="block font-mono text-[10px]">
-        {startTime}, {endTime}
+        {formatTimeRange(startTime, endTime, { overnight: 'compact' })}
       </span>
     </div>
   );

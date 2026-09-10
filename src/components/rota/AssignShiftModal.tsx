@@ -9,6 +9,7 @@ import { fromIsoInTimezone, formatDayLabel } from '@/lib/rotaGrid';
 import { isShiftClashError } from '@/lib/shiftConflicts';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
+import { formatTimeRange } from '@/lib/timeRange';
 
 export interface AssignShiftFormValues {
   staffProfileId: string | null;
@@ -234,7 +235,13 @@ export function AssignShiftModal({
                     </span>
                     {t.default_start && t.default_end && (
                       <span className="block text-xs text-content-muted dark:text-content-muted-dark">
-                        {t.default_start.slice(0, 5)}, {t.default_end.slice(0, 5)}
+                        {formatTimeRange(
+                          t.default_start.slice(0, 5),
+                          t.default_end.slice(0, 5),
+                          {
+                            overnight: 'compact',
+                          },
+                        )}
                       </span>
                     )}
                   </span>
