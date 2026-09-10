@@ -14,6 +14,7 @@ import {
 import { reportError } from '@/lib/sentry';
 import { useConfirm } from '@/hooks/useConfirm';
 import type { ShiftType } from '@/types';
+import { formatTimeRange } from '@/lib/timeRange';
 
 interface ShiftTypeManagerModalProps {
   open: boolean;
@@ -156,7 +157,13 @@ export function ShiftTypeManagerModal({
                   </span>
                   {type.default_start && type.default_end && (
                     <span className="font-mono text-xs text-content-muted dark:text-content-muted-dark">
-                      {type.default_start}, {type.default_end}
+                      {formatTimeRange(
+                        type.default_start.slice(0, 5),
+                        type.default_end.slice(0, 5),
+                        {
+                          overnight: 'compact',
+                        },
+                      )}
                     </span>
                   )}
                 </span>

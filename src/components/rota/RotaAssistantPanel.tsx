@@ -31,6 +31,7 @@ import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgAvailability } from '@/services/availabilityService';
 import { listExpiringDocuments } from '@/services/documentService';
 import { reportError } from '@/lib/sentry';
+import { formatTimeRange } from '@/lib/timeRange';
 import type {
   Availability,
   LeaveRequest,
@@ -626,7 +627,8 @@ export function RotaAssistantPanel({
                   {suggestions.map((s, i) => (
                     <li key={i}>
                       {s.staffName} · {formatDayLabel(s.date).weekday}{' '}
-                      {formatDayLabel(s.date).day} · {s.startTime}, {s.endTime}
+                      {formatDayLabel(s.date).day} ·{' '}
+                      {formatTimeRange(s.startTime, s.endTime, { overnight: 'compact' })}
                       {s.shiftTypeName ? ` · ${s.shiftTypeName}` : ''}
                     </li>
                   ))}

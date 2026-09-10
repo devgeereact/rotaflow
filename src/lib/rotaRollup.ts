@@ -82,3 +82,42 @@ export function rotaWeekStatus(overlapping: RotaScope[]): RotaWeekStatus {
 export function isWeekPublished(overlapping: RotaScope[]): boolean {
   return rotaWeekStatus(overlapping) === 'published';
 }
+
+/** The minimum shape `dropSupersededShifts` reads off a shift row. */
+export interface ShiftVersion {
+  rota_id: string | null;
+  rota?: { status?: string | null; supersedes_rota_id?: string | null } | null;
+}
+
+/**
+ * One version of a week, never two.
+ *
+ * A manager amending a published week gets a second rota for the same scope:
+ * `begin_rota_revision` copies every shift into a draft that carries
+ * `supersedes_rota_id`, and the published version stays exactly as it is so
+ * staff keep working to it. That is the right database shape, and it means a
+ * draft-inclusive read (`publishedOnly: false`) returns **both copies** of
+ * every shift in that week.
+ *
+ * It is not a display nicety. `/app/timesheets` reads the week draft-inclusive
+ * and is the screen payroll is signed off from: with an amendment open it
+ * showed every person twice, doubled "planned" hours, and doubled the
+ * awaiting-approval count. The manager dashboard's cover chart and the
+ * manager's day on `/app/schedule` read the same way.
+ *
+ * The amendment is the version being worked on, so it wins and the rota it
+ * supersedes drops out. A published-only read never needs this: the draft is
+ * already filtered out there, which is exactly what keeps staff on the
+ * published version.
+ */
+export function dropSupersededShifts<T extends ShiftVersion>(rows: T[]): T[] {
+  const superseded = new Set<string>();
+  for (const row of rows) {
+    const supersedes = row.rota?.supersedes_rota_id;
+    // Only a live amendment supersedes anything. An archived predecessor is
+    // history and is not in a draft-inclusive read to begin with.
+    if (supersedes && row.rota?.status === 'draft') superseded.add(supersedes);
+  }
+  if (superseded.size === 0) return rows;
+  return rows.filter((row) => row.rota_id === null || !superseded.has(row.rota_id));
+}

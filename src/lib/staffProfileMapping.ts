@@ -10,6 +10,7 @@
 import { differenceInMinutes, format, isSameMonth } from 'date-fns';
 import { roleCodeFor } from '@/lib/staffDirectoryMapping';
 import { formatLeaveRange, leaveDayCount, leaveTypeKey } from '@/lib/leaveRows';
+import { formatTimeRange } from '@/lib/timeRange';
 import type {
   Department,
   EmergencyContact,
@@ -94,7 +95,9 @@ function toUpcoming(shift: Shift, today: Date, locationName: string): UpcomingSh
       isSameMonth(starts, today) && starts.getDate() === today.getDate()
         ? `Today, ${format(starts, 'd MMM')}`
         : format(starts, 'EEE, d MMM'),
-    timeLabel: `${format(starts, 'HH:mm')}, ${format(ends, 'HH:mm')}`,
+    timeLabel: formatTimeRange(format(starts, 'HH:mm'), format(ends, 'HH:mm'), {
+      overnight: 'compact',
+    }),
     typeName: hour < 12 ? 'Morning Shift' : hour < 18 ? 'Evening Shift' : 'Night Shift',
     typeTone: hour < 12 ? 'morning' : hour < 18 ? 'evening' : 'night',
     locationName,

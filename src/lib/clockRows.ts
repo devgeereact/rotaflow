@@ -485,13 +485,21 @@ export function buildThisWeekRows(
       return {
         id: shift.id,
         dateLabel: format(start, 'EEE d MMM'),
-        plannedLabel: `${format(start, 'HH:mm')}, ${format(new Date(shift.ends_at), 'HH:mm')}`,
+        plannedLabel: formatTimeRange(
+          format(start, 'HH:mm'),
+          format(new Date(shift.ends_at), 'HH:mm'),
+          { overnight: 'compact' },
+        ),
+        // Still a range, even when the clock-out is missing: `09:00–…` says
+        // the shift is open, where `09:00, -` reads as two values.
         actualLabel: segment
-          ? `${format(new Date(segment.clockIn.event_at), 'HH:mm')}, ${
+          ? formatTimeRange(
+              format(new Date(segment.clockIn.event_at), 'HH:mm'),
               segment.clockOut
                 ? format(new Date(segment.clockOut.event_at), 'HH:mm')
-                : '-'
-            }`
+                : '…',
+              { overnight: 'compact' },
+            )
           : '-',
         paidLabel: segment ? formatHm(segment.minutes) : '-',
       };
