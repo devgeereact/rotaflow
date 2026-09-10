@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { fetchAllPages } from '@/lib/pagination';
+import { dropSupersededShifts } from '@/lib/rotaRollup';
 import type { Shift, ShiftInsert, ShiftUpdate } from '@/types';
 
 /** Bulk-insert shifts (e.g. accepted AI rota suggestions) into a draft rota. */
@@ -77,7 +78,7 @@ export async function listShiftsForPeriod(query: PeriodShiftQuery): Promise<Shif
   const rows = await fetchAllPages(async (from, to) => {
     let request = supabase
       .from('shifts')
-      .select('*, rota:rotas(status)')
+      .select('*, rota:rotas(status, supersedes_rota_id)')
       .eq('org_id', query.orgId)
       .gte('starts_at', query.fromIso)
       .lt('starts_at', query.toIso)
@@ -97,7 +98,12 @@ export async function listShiftsForPeriod(query: PeriodShiftQuery): Promise<Shif
 
   const published = query.publishedOnly !== false;
 
-  return rows
+  // A draft-inclusive read returns an amendment AND the published week it
+  // supersedes, which is two copies of the same shift. `dropSupersededShifts`
+  // keeps the version being worked on. See its docstring.
+  const versioned = published ? rows : dropSupersededShifts(rows);
+
+  return versioned
     .filter((row) => {
       if (!published) return true;
       const rota = (row as { rota?: { status?: string } | null }).rota;
@@ -137,7 +143,7 @@ export async function listShiftsOverlapping(
   const rows = await fetchAllPages(async (from, to) => {
     let request = supabase
       .from('shifts')
-      .select('*, rota:rotas(status)')
+      .select('*, rota:rotas(status, supersedes_rota_id)')
       .eq('org_id', query.orgId)
       .lt('starts_at', query.toIso)
       .gt('ends_at', query.fromIso)
@@ -157,7 +163,11 @@ export async function listShiftsOverlapping(
 
   const published = query.publishedOnly !== false;
 
-  return rows
+  // Same rule as `listShiftsForPeriod`: one version of a week, not an
+  // amendment stacked on the published rota it supersedes.
+  const versioned = published ? rows : dropSupersededShifts(rows);
+
+  return versioned
     .filter((row) => {
       if (!published) return true;
       const rota = (row as { rota?: { status?: string } | null }).rota;
