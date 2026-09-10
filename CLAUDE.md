@@ -28,25 +28,25 @@ capability's status updates its row in the same PR.
 
 ## Also in `docs/`, when the task touches it
 
-| Need                                    | File                                                                                        |
-| --------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Is this screen built, partial or absent  | `docs/SCREENS.md` — every design mapped against the real route table in `src/App.tsx`         |
-| Who is actually working right now        | `src/lib/attendance.ts` — the state machine behind `/app/attendance` and the operations dashboard. Roster arithmetic is not attendance; read its header before adding a count |
-| One filter, one contract                 | `src/lib/filters.ts` and `src/hooks/useFilterState.ts` — every new filterable table adopts these rather than growing its own `useState`                                        |
-| Does the built screen match its design   | `docs/LOOP.md` — the `/loop` design-match prompt, driven against `localhost:5042`             |
-| The design references themselves         | `docs/design/*.png` — 1920-wide designs exported at ~87%; measure the scale before resizing type |
-| Organisation section reference           | `docs/ORGANISATION_WORKSPACE.html` — the sole reference for the Organisation workspace         |
-| Platform (Super Admin) console reference | `docs/PLATFORM_CONSOLE.html`                                                                  |
-| Positioning, tone, naming                | `docs/BRAND.md`                                                                               |
-| Retention, erasure, GDPR, subprocessors  | `docs/DATA_LIFECYCLE.md` — technical record, not the published Privacy Notice                 |
-| Metrics and the event taxonomy           | `docs/OBSERVABILITY.md` — what computes each success metric, and whether that data exists yet  |
-| How a full QA audit is run               | `docs/Working-Agent.md` — the spec behind the `rotaflow-qa-auditor` agent                     |
-| What the last full audit found           | `docs/QA-AUDIT-REPORT.md` — a dated snapshot (14 Aug 2026), not current state; `docs/SAAS.md` is |
+| Need                                     | File                                                                                                                                                                               |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is this screen built, partial or absent  | `docs/SCREENS.md` — every design mapped against the real route table in `src/App.tsx`                                                                                              |
+| Who is actually working right now        | `src/lib/attendance.ts` — the state machine behind `/app/attendance` and the operations dashboard. Roster arithmetic is not attendance; read its header before adding a count      |
+| One filter, one contract                 | `src/lib/filters.ts` and `src/hooks/useFilterState.ts` — every new filterable table adopts these rather than growing its own `useState`                                            |
+| Does the built screen match its design   | `docs/LOOP.md` — the `/loop` design-match prompt, driven against `localhost:5042`                                                                                                  |
+| The design references themselves         | `docs/design/*.png` — 1920-wide designs exported at ~87%; measure the scale before resizing type                                                                                   |
+| Organisation section reference           | `docs/ORGANISATION_WORKSPACE.html` — the sole reference for the Organisation workspace                                                                                             |
+| Platform (Super Admin) console reference | `docs/PLATFORM_CONSOLE.html`                                                                                                                                                       |
+| Positioning, tone, naming                | `docs/BRAND.md`                                                                                                                                                                    |
+| Retention, erasure, GDPR, subprocessors  | `docs/DATA_LIFECYCLE.md` — technical record, not the published Privacy Notice                                                                                                      |
+| Metrics and the event taxonomy           | `docs/OBSERVABILITY.md` — what computes each success metric, and whether that data exists yet                                                                                      |
+| How a full QA audit is run               | `docs/Working-Agent.md` — the spec behind the `rotaflow-qa-auditor` agent                                                                                                          |
+| What the last full audit found           | `docs/QA-AUDIT-REPORT.md` — a dated snapshot (14 Aug 2026), not current state; `docs/SAAS.md` is                                                                                   |
 | What the platform console repair did     | `docs/PLATFORM-CONSOLE-REPAIR-2026-09-07.md` — a dated record of one pass over `/admin/*`: root causes, a route-and-control matrix, migration order, and what was **not** verified |
-| What the console repolish did next       | `docs/PLATFORM-CONSOLE-REPOLISH-2026-09-07.md` — the second pass, over the eight routes the first left unverified. Records six defects found and deliberately not fixed, and why |
-| What the last design review found        | `docs/design-review/2026-09-06-rota-builder.md` — the rota grid on 6 Sep 2026. Five fixes made, three left open. Same rule as above: a dated snapshot, not current state |
-| What actually works without a network    | `docs/OFFLINE-SPEC.md` — per feature, and it is narrower than "offline-first" implies          |
-| Release evidence before a deploy         | `docs/PWA-RELEASE-GATES.md` — recorded statuses, not a checklist to tick from memory           |
+| What the console repolish did next       | `docs/PLATFORM-CONSOLE-REPOLISH-2026-09-07.md` — the second pass, over the eight routes the first left unverified. Records six defects found and deliberately not fixed, and why   |
+| What the last design review found        | `docs/design-review/2026-09-06-rota-builder.md` — the rota grid on 6 Sep 2026. Five fixes made, three left open. Same rule as above: a dated snapshot, not current state           |
+| What actually works without a network    | `docs/OFFLINE-SPEC.md` — per feature, and it is narrower than "offline-first" implies                                                                                              |
+| Release evidence before a deploy         | `docs/PWA-RELEASE-GATES.md` — recorded statuses, not a checklist to tick from memory                                                                                               |
 
 `docs/DESIGN_EXPLORATION.md` is a **rejected** proposal kept as a record of the
 decision. `docs/DESIGN.md` is the enforced source of truth; do not implement from
@@ -89,16 +89,16 @@ migrations reach it by merging a PR, which is a slower path on purpose.
 
 ## Commands
 
-| Task                | Command                                                                                                                                                                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dev server          | `npm run dev` — port **5042**, `strictPort`. The port is duplicated into `playwright.config.ts`, the Supabase redirect allowlist and the Edge Function CORS list, so changing it is never a one-file edit                       |
-| Build               | `npm run build` (`tsc --noEmit`, then `vite build`). It must succeed with **no `.env`** — CI has none, and a missing `VITE_*` var has to degrade, not throw                                                                     |
-| One test file       | `npx vitest run src/lib/hours.test.ts`                                                                                                                                                                                       |
-| One test by name    | `npx vitest run -t 'overnight'`                                                                                                                                                                                              |
-| Watch tests         | `npm run test:watch`                                                                                                                                                                                                         |
-| One e2e spec        | `npx playwright test e2e/marketing.spec.ts` — Playwright starts `npm run dev` itself, against dev (not `dist/`) because the `-preview` routes it uses are `import.meta.env.DEV`-only                                           |
-| Lint one path       | `npx eslint src/pages/Rota.tsx`                                                                                                                                                                                              |
-| pgTAP               | `supabase start && supabase test db && supabase stop` — **needs Docker**. Without it this gate cannot run locally at all, so an RLS regression reaches CI unseen                                                               |
+| Task             | Command                                                                                                                                                                                                                                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dev server       | `npm run dev` — port **5042**, `strictPort`. The port is duplicated into `playwright.config.ts`, the Supabase redirect allowlist and the Edge Function CORS list, so changing it is never a one-file edit                                                                                                                                |
+| Build            | `npm run build` (`tsc --noEmit`, then `vite build`). It must succeed with **no `.env`** — CI has none, and a missing `VITE_*` var has to degrade, not throw                                                                                                                                                                              |
+| One test file    | `npx vitest run src/lib/hours.test.ts`                                                                                                                                                                                                                                                                                                   |
+| One test by name | `npx vitest run -t 'overnight'`                                                                                                                                                                                                                                                                                                          |
+| Watch tests      | `npm run test:watch`                                                                                                                                                                                                                                                                                                                     |
+| One e2e spec     | `npx playwright test e2e/marketing.spec.ts` — Playwright starts `npm run dev` itself, against dev (not `dist/`) because the `-preview` routes it uses are `import.meta.env.DEV`-only                                                                                                                                                     |
+| Lint one path    | `npx eslint src/pages/Rota.tsx`                                                                                                                                                                                                                                                                                                          |
+| pgTAP            | `supabase start && supabase test db && supabase stop` — **needs Docker**. Without it this gate cannot run locally at all, so an RLS regression reaches CI unseen. **Reset first**: `supabase db reset && supabase test db`, because the suite is not idempotent and rows left by an e2e run fail assertions that count over whole tables |
 
 **Two timezones, deliberately.** `vitest.config.ts` pins `TZ=Europe/London` (DST
 exists, and a day-arithmetic bug on a clock-change date is invisible in UTC);
@@ -111,7 +111,7 @@ old sentence: on Node 20 anything constructing a Supabase client at module
 scope died on the missing native `WebSocket`, and this file recorded that as
 the reason pure logic stays in `src/lib`. Node 22 has `WebSocket`, so nothing
 crashes any more. **`src/lib/moduleBoundaries.test.ts` states the rule on
-purpose**: no module under `src/lib` may take a *runtime* import from
+purpose**: no module under `src/lib` may take a _runtime_ import from
 `src/services` or `@/lib/supabase`. Type-only imports are fine, being erased
 before anything runs. The crash was never much of a guard anyway — it never
 caught `lib/reportsCatalogue.ts`, which imports four fetch functions and is
@@ -206,12 +206,15 @@ Every one of these runs in CI and blocks a merge:
 | `npm run check:migrations` | destructive SQL without a `-- SAFETY(...)` declaration                                                                                                                            |
 | `npm run check:docs`       | counts written into prose that no longer match the tree                                                                                                                           |
 | `npm run check:export`     | a tenant table added to the schema but left out of the organisation data export                                                                                                   |
-| `npx playwright test`      | 40 screens rendered and scanned for WCAG basics                                                                                                                                   |
+| `npx playwright test`      | 42 screens rendered and scanned for WCAG basics                                                                                                                                   |
 | `supabase test db`         | pgTAP, the only gate that can catch an RLS regression                                                                                                                             |
 
 `ci.yml` runs these as **six** jobs, not one: `verify` (everything up to
 `check:export`, plus `npm audit --audit-level=high`), `e2e`, `e2e-authenticated`
-(boots a local Supabase stack and signs a real user up), `db-tests` (the pgTAP
+(boots a local Supabase stack, signs a real user up, and since 2026-09-10 also
+signs in as a **staff** member — every other authenticated spec signs in as the
+person who founded the organisation, so the staff branch of `/app/dashboard` was
+reached by nothing and was crashing; see GAP-118), `db-tests` (the pgTAP
 run), `edge-types` (a pinned Deno 2.9.5 typecheck of all eight Edge entry
 points, added 2026-09-05) and `scheduled-checks` (which reads whether
 `backup.yml` and `auth-config.yml` have ever succeeded and annotates the pull
