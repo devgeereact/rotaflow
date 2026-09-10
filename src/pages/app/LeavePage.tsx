@@ -12,6 +12,7 @@ import { listDepartments } from '@/services/locationService';
 import {
   cancelLeaveRequest,
   createLeaveRequest,
+  isDoubleBookedLeave,
   listMyLeaveRequests,
   listOrgLeaveRequests,
   reviewLeaveRequest,
@@ -351,6 +352,12 @@ export function LeavePage(): JSX.Element {
           showSuccess('Leave request submitted.');
         }
       } catch (err) {
+        // A refusal, not a fault: `0152` will refuse this every time, so
+        // "please try again" would be an instruction to keep failing.
+        if (isDoubleBookedLeave(err)) {
+          showError(err.message);
+          return;
+        }
         reportError(err, { area: 'leave:request' });
         showError('Could not submit that request. Please try again.');
       }
@@ -383,6 +390,10 @@ export function LeavePage(): JSX.Element {
         setRequests((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
         showSuccess('Leave request approved.');
       } catch (err) {
+        if (isDoubleBookedLeave(err)) {
+          showError(err.message);
+          return;
+        }
         reportError(err, { area: 'leave:approve' });
         showError('Could not approve that request.');
       }
