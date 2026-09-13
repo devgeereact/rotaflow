@@ -284,14 +284,44 @@ Motion was a dependency until 2026-08-31 and was never imported by anything.
 - Interactive targets ≥ **44×44px**. Staff use this one-handed on phones. This is
   a stronger product rule than WCAG 2.2 AA's 24px minimum, which has exceptions
   this product does not want to rely on. Icon-only controls use
-  `ui/IconButton` (44×44 by default); its `sm` size is 36px and is for a control
-  inside a dense table row only, never for a page or dialog action.
+  `ui/IconButton` (44×44 by default); its `sm` size is 36px.
+
+  **36px is allowed in exactly two places**, and nowhere else. A control inside a
+  dense table row, where 44 changes the row height and therefore the screen; and
+  a control in a dense horizontal group where 44 would push the group onto a
+  second line — a tab strip (`ui/PanelTabs`), a segmented period switcher, a row
+  of filter chips, a sortable column header. Never a page action, a dialog
+  action, or anything a person is expected to hit while walking.
+
+  This second case was written down on 2026-09-10, after a sweep measured every
+  control in the product and found tab strips at 34px, chips at 30, sortable
+  headers at 17 and a mobile navigation trigger at 32. None of those numbers
+  came from a rule; they were each decided once, locally, and nothing said what
+  the floor was. They are 36 now.
+
+  **Where the visible shape must stay small, expand the hit area rather than the
+  control.** An absolutely-positioned `::after` (`after:absolute after:-inset-*
+after:content-['']`) enlarges what a finger can hit without moving a pixel.
+  `ui/Toggle` uses it to be 44 tall while still looking like a 24px switch, and
+  the rota chip's delete × uses it to reach 32 without covering a quarter of the
+  chip it sits on — which a 44px target genuinely would, and it would delete
+  shifts people meant to open. That chip is the one place in the product under
+  36, and it is under it deliberately: the shift editor carries a full-size
+  **Remove** for anyone who wants the unhurried path.
+
+  **Inline text links in prose or a footer list are exempt**, as WCAG's own
+  target-size criterion exempts them. A 44px-tall "Privacy" in a footer column
+  of ten links would be a worse page, not a better one.
+
 - **A horizontally scrolling area must be reachable and must say it scrolls.**
   `overflow-x-auto` on a bare `div` is draggable with a pointer and completely
   unreachable with a keyboard, and it gives no sign that anything is off screen.
   Use `ui/ScrollRegion`: a labelled `role="region"` with `tabIndex={0}`, plus an
   edge fade and a line naming the gesture, both shown only while the content
-  actually overflows. `ui/DataTable` carries the same treatment internally.
+  actually overflows. **`ui/DataTable` renders through `ScrollRegion`** — it
+  hand-rolled the `role="region"` and the `tabIndex` and skipped the cue until
+  2026-09-10, so nine platform-console tables scrolled in complete silence
+  while this line claimed otherwise. One scroller, one contract.
 - **A dialog has exactly one control called Close.** The backdrop is a pointer
   affordance, `aria-hidden` and not focusable; Escape and the Close button are
   the accessible ways out. A dialog also locks background scrolling, takes its
