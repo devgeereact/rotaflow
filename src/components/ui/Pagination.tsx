@@ -56,7 +56,7 @@ export function Pagination({
   if (pageCount <= 1 && total <= to) return null;
 
   const button =
-    'inline-flex h-9 items-center gap-1 rounded-lg border border-surface-border px-2.5 text-sm font-medium text-content transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-45 dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark';
+    'inline-flex h-11 items-center gap-1 rounded-lg border border-surface-border px-3 text-sm font-medium text-content transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-45 dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark';
 
   return (
     <nav

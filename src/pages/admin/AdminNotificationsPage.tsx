@@ -439,8 +439,12 @@ export function AdminNotificationsPage(): JSX.Element {
                     'w-[6%]',
                     'w-[10%]',
                     'w-[13%]',
-                  ].map((w) => (
-                    <col key={w} className={w} />
+                  ].map((w, i) => (
+                    // Keyed by position, not by the width class: two columns
+                    // that happen to share a width are two different columns,
+                    // and React was warning about duplicate keys on every
+                    // render of this table.
+                    <col key={i} className={w} />
                   ))}
                 </colgroup>
                 <thead>

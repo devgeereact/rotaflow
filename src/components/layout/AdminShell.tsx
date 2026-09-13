@@ -350,7 +350,9 @@ export function AdminShell(): JSX.Element {
               onClick={() => setMobileOpen(true)}
               aria-label="Open platform navigation"
               aria-expanded={mobileOpen}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger md:hidden"
+              // 44px: on a phone this is the only way to reach any other
+              // console screen, and it was a 32px square.
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger md:hidden"
             >
               <Menu size={18} aria-hidden="true" />
             </button>
@@ -380,7 +382,7 @@ export function AdminShell(): JSX.Element {
                 <button
                   type="button"
                   onClick={refresh}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-surface-border bg-surface px-2.5 py-1.5 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-surface-border bg-surface px-3 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
                 >
                   <RefreshCw size={14} aria-hidden="true" />
                   Refresh
@@ -388,7 +390,7 @@ export function AdminShell(): JSX.Element {
               ) : null}
               <Link
                 to="/admin/support-access"
-                className="inline-flex items-center rounded-lg border border-surface-border bg-surface px-2.5 py-1.5 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                className="inline-flex min-h-11 items-center rounded-lg border border-surface-border bg-surface px-3 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
               >
                 Request support access
               </Link>

@@ -28,8 +28,10 @@ const CONTROL =
   'focus-within:ring-2 focus-within:ring-primary ' +
   'dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark';
 
+// `h-full` so the control a person actually clicks is the 44px box drawn
+// around it (docs/DESIGN.md §5), not the 20px line of text inside it.
 const SELECT =
-  'w-full appearance-none bg-transparent pr-5 text-sm font-semibold text-content outline-none dark:text-content-dark';
+  'h-full w-full appearance-none bg-transparent pr-5 text-sm font-semibold text-content outline-none dark:text-content-dark';
 
 /** Scope controls between the tabs and the report table. */
 export function ReportsFilterBar({
