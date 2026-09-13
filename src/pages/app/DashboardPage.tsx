@@ -318,8 +318,16 @@ export function DashboardPage(): JSX.Element {
         setLoadFailed(true);
         showError('Could not load the dashboard. Please try again.');
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        // Guarded like every other write in this function, and it was the one
+        // that was not. A superseded load — the organisation changed, or the
+        // user did — returns early at its token check, leaving `overview`
+        // null, and then cleared `loading` anyway. The staff branch rendered
+        // that null and took the whole screen to the error boundary
+        // (docs/SAAS.md BUG-104).
+        if (token === requestToken.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [orgId, user, isManager, locationId, operationalToday, showError],
@@ -469,10 +477,20 @@ export function DashboardPage(): JSX.Element {
     );
   }
 
+  // Belt and braces with the token guard above, and the honest version of the
+  // `overview!` that used to be here: a non-null assertion does not make a
+  // value non-null, it only removes the compiler's objection to it being null.
+  // A staff member sees the same "Loading…" a manager would rather than a
+  // white screen, and the `loadFailed` branch above still owns real failures.
+  if (!overview) {
+    return <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>;
+  }
+
   return (
     <StaffDashboard
       firstName={firstName}
-      overview={overview!}
+      overview={overview}
+      timezone={timezone}
       myWeek={myWeek}
       myUpcoming={myUpcoming}
       leaveRemaining={leaveRemaining}
