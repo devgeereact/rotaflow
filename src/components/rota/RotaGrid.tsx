@@ -320,6 +320,10 @@ export function RotaGrid({
         {spans.map((span) => (
           <div
             key={span.startDate}
+            // The builder opens on the anchor week, which sits in the middle
+            // of a three-week canvas. `RotaBuilderPage` finds it by this
+            // attribute rather than by counting columns.
+            data-rota-anchor-week={span.isCurrent ? 'true' : undefined}
             style={{ gridColumn: `span ${span.length}` }}
             className={cn(
               'truncate border-l border-surface-border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-content-muted',
@@ -346,6 +350,7 @@ export function RotaGrid({
         style={{ gridTemplateColumns: template }}
       >
         <div
+          data-rota-staff-col="true"
           className={cn(
             'px-2 text-xs font-semibold text-content-muted dark:text-content-muted-dark',
             ROTA_STICKY_STAFF_COL,

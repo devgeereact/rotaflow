@@ -219,6 +219,15 @@ export function ShiftChip({
           title="Remove shift"
           className={cn(
             'absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full',
+            // The visible dot stays 20px, but the tappable area is 32px: an
+            // absolutely-positioned `::after` adds 6px on every side without
+            // moving anything. Not the product's usual 44 — this control sits
+            // on the corner of a ~110x44 chip, and a 44px target would cover a
+            // quarter of the chip and delete a shift somebody meant to open.
+            // The full-size Remove in the shift editor is the unhurried path;
+            // this is the pointer shortcut, and it now clears WCAG 2.2 AA's
+            // 24px minimum rather than sitting under it at 20.
+            "after:absolute after:-inset-1.5 after:content-['']",
             'border border-surface-border bg-surface text-content-muted shadow-sm',
             'hover:border-danger hover:bg-danger hover:text-white',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger',
