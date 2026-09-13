@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { LogIn, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
-import { timeRange, timeAgo, hoursLabel } from '@/components/dashboard/dashboardFormat';
+import {
+  timeRange,
+  timeAgo,
+  hoursLabel,
+  greeting,
+} from '@/components/dashboard/dashboardFormat';
 import type {
   DashboardOverview,
   MyWeekSummary,
@@ -22,6 +28,17 @@ export interface StaffDashboardProps {
    * else here, so this stays a pure view driven by `DashboardPage`'s data,
    * not a second place that queries Supabase. */
   openSwaps: number;
+  /**
+   * The reporting zone `DashboardPage` already resolved, rather than whichever
+   * location happens to sort first.
+   *
+   * This was `overview.locations[0]?.timezone`, which was wrong twice. It is
+   * not the organisation's zone and not the shift's, so an organisation whose
+   * first site sits in another one read every shift an hour or five out. And
+   * it was the first thing this component touched, so a null `overview` — see
+   * BUG-104 — became a crash before anything rendered.
+   */
+  timezone: string;
 }
 
 /**
@@ -39,18 +56,18 @@ export function StaffDashboard({
   leaveRemaining,
   holidayAllowance,
   openSwaps,
+  timezone,
 }: StaffDashboardProps): JSX.Element {
-  const timezone = overview.locations[0]?.timezone ?? 'Europe/London';
-
   return (
     <div className="max-w-[1600px]">
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div>
           <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-            Good morning{firstName ? `, ${firstName}` : ''}
+            {greeting(new Date(), timezone)}
+            {firstName ? `, ${firstName}` : ''}
           </h1>
           <p className="text-content-muted dark:text-content-muted-dark">
-            {format(new Date(), 'EEEE d MMMM')}
+            {format(toZonedTime(new Date(), timezone), 'EEEE d MMMM')}
           </p>
         </div>
         <div className="ml-auto">

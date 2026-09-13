@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertCircle, Download, FileUp, Info, Plus, SearchX, Users } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Button } from '@/components/ui/Button';
@@ -125,13 +126,14 @@ export function TeamDirectoryView({
         <Info size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
         <span>
           Add Staff creates a staff record. Giving someone a sign-in lives in{' '}
-          <a
-            href="/app/settings"
+          <Link
+            to="/app/settings/permissions"
             className="font-semibold text-primary-ink underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
           >
             Settings → Permissions
-          </a>
-          .
+          </Link>
+          . Rostered hours and the on-shift figures count published rotas only, so a week
+          still in draft reads as zero here.
         </span>
       </p>
 
