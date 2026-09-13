@@ -5,7 +5,12 @@ import { LogIn, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
-import { timeRange, timeAgo, hoursLabel } from '@/components/dashboard/dashboardFormat';
+import {
+  timeRange,
+  timeAgo,
+  hoursLabel,
+  greeting,
+} from '@/components/dashboard/dashboardFormat';
 import { formatTimeRange } from '@/lib/timeRange';
 import type {
   DashboardOverview,
@@ -56,10 +61,11 @@ export function StaffDashboard({
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div>
           <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-            Good morning{firstName ? `, ${firstName}` : ''}
+            {greeting(new Date(), timezone)}
+            {firstName ? `, ${firstName}` : ''}
           </h1>
           <p className="text-content-muted dark:text-content-muted-dark">
-            {format(new Date(), 'EEEE d MMMM')}
+            {format(toZonedTime(new Date(), timezone), 'EEEE d MMMM')}
           </p>
         </div>
         <div className="ml-auto">

@@ -96,7 +96,9 @@ export function ReportsTable({
                       ? `Remove ${row.name} from favourites`
                       : `Add ${row.name} to favourites`
                   }
-                  className="grid h-7 w-7 place-items-center rounded-lg transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
+                  // 36px is `IconButton`'s `sm`, the size docs/DESIGN.md §5
+                  // allows inside a dense table row. This was 28.
+                  className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
                 >
                   <Star
                     size={18}
@@ -113,7 +115,12 @@ export function ReportsTable({
               <td className="px-2 py-3.5">
                 <div className="flex items-center gap-3">
                   <ReportIcon icon={row.icon} tone={REPORT_CATEGORY_TONE[row.category]} />
-                  <span className="min-w-0 truncate text-[0.78rem] font-semibold text-content dark:text-content-dark">
+                  {/* Wraps rather than truncates: the column is 19.5% of a
+                      928px table, so "Scheduled Rota Report" and "Staff
+                      Availability Report" both ended in an ellipsis while the
+                      description beside them had room to spare. A report's
+                      name is how the row is identified. */}
+                  <span className="min-w-0 break-words text-[0.78rem] font-semibold text-content dark:text-content-dark">
                     {row.name}
                   </span>
                 </div>

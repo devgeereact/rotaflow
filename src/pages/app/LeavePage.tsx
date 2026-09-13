@@ -237,10 +237,18 @@ export function LeavePage(): JSX.Element {
     const teamFraction = teamEntitlementUsedFraction(staff, requests, today);
     return {
       awaitingDecision: awaiting.count,
+      // "oldest 0 days" is what a request made this morning read as. Zero is
+      // the commonest value on this tile, not an edge case, and it is the one
+      // the plural rule never covered.
       oldestPendingLabel:
         awaiting.oldestPendingDays != null
-          ? `oldest ${awaiting.oldestPendingDays} ${awaiting.oldestPendingDays === 1 ? 'day' : 'days'}`
+          ? awaiting.oldestPendingDays === 0
+            ? 'oldest: today'
+            : `oldest: ${awaiting.oldestPendingDays} ${awaiting.oldestPendingDays === 1 ? 'day' : 'days'}`
           : null,
+      // Nothing has been kept waiting on the day it arrived, so the tile is
+      // only coloured once something actually has been.
+      oldestPendingOverdue: (awaiting.oldestPendingDays ?? 0) > 0,
       approvedNext30Days: countApprovedOverlapping(requests, today, 30),
       sicknessDaysThisMonth: sumSicknessDaysInMonth(requests, today),
       coverRiskLabel: coverRisk

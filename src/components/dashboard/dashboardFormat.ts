@@ -35,3 +35,24 @@ export function hoursLabel(value: number): string {
   const rounded = Math.round(value * 10) / 10;
   return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)}h`;
 }
+
+/**
+ * The greeting at the top of a staff member's dashboard, in the organisation's
+ * own timezone.
+ *
+ * It said "Good morning" at every hour of the day until 2026-09-11. This is a
+ * product for people who work nights: a care assistant opening the app at the
+ * start of a 22:00 shift was told good morning by their employer's software,
+ * which is the kind of small wrongness that tells somebody nobody thought
+ * about them.
+ *
+ * The boundaries are the ordinary English ones — afternoon from noon, evening
+ * from 18:00 — and the small hours are "evening" rather than a fourth phrase,
+ * because "good night" reads as a farewell to somebody arriving for work.
+ */
+export function greeting(now: Date, timezone: string): string {
+  const hour = Number(format(toZonedTime(now, timezone), 'H'));
+  if (hour >= 12 && hour < 18) return 'Good afternoon';
+  if (hour >= 18 || hour < 5) return 'Good evening';
+  return 'Good morning';
+}

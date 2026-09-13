@@ -30,7 +30,7 @@ export function RecentActivityCard({
           <button
             type="button"
             onClick={onViewAll}
-            className="rounded text-sm font-semibold text-primary-ink dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="inline-flex min-h-11 items-center rounded text-sm font-semibold text-primary-ink dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             View All
           </button>

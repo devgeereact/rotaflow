@@ -64,7 +64,12 @@ export function PanelTabs<T extends string>({
           aria-selected={item.value === active}
           onClick={() => onChange(item.value)}
           className={cn(
-            '-mb-px whitespace-nowrap border-b-2 pb-3 text-sm font-semibold transition-colors',
+            // `min-h-9` is `IconButton`'s `sm`, the compact size
+            // docs/DESIGN.md §5 allows for a control in a dense horizontal
+            // group. A tab strip was 34px, which is under it and under nothing
+            // in particular — no rule said 34.
+            'inline-flex min-h-9 items-center whitespace-nowrap',
+            '-mb-px border-b-2 pb-3 text-sm font-semibold transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
             item.value === active
               ? 'border-primary text-primary-ink dark:text-primary-ink-dark'

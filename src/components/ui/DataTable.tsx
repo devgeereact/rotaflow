@@ -1,6 +1,7 @@
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 export interface DataTableSort<Key extends string = string> {
   key: Key;
@@ -66,8 +67,12 @@ const ALIGN = {
  * row. Small caps in the muted tone let the eye skip past them to the figures,
  * which is what a header row is for. docs/DESIGN.md caption scale.
  */
+// `min-h-9` on the sortable variant: a column header is a real control and a
+// 17px-tall one is under WCAG 2.2 AA's 24px floor. 36px is the compact size
+// docs/DESIGN.md §5 allows inside a dense table, and the header row already
+// has the padding to absorb it.
 const HEAD_LABEL =
-  'inline-flex items-center gap-1.5 whitespace-nowrap text-[0.69rem] font-semibold uppercase tracking-[0.06em] text-content-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark';
+  'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap text-[0.69rem] font-semibold uppercase tracking-[0.06em] text-content-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark';
 
 /**
  * The shared sortable table.
@@ -115,28 +120,17 @@ export function DataTable<Row, Key extends string = string>({
   };
 
   return (
-    // Focusable, named and announced as a region: WCAG 2.2 Level A, 2.1.1
-    // Keyboard (docs/SAAS.md GAP-070). A pointer user drags a horizontally
-    // scrolling table sideways; a keyboard user has no way to scroll a plain
-    // `div` at all, so on a narrow viewport every column past the fold was
-    // simply unreadable — including Thursday and Friday on the rota grid,
-    // which is `min-w-[860px]`.
+    // `ScrollRegion` owns the whole horizontal-scroll contract: the focusable
+    // `role="region"` with the caption as its accessible name (WCAG 2.2 Level
+    // A, 2.1.1 Keyboard — docs/SAAS.md GAP-070), *and* the measured overflow
+    // cue and edge fade.
     //
-    // `tabIndex={0}` is what makes the arrow keys work. `role="region"` plus
-    // the caption as its accessible name is what stops that new tab stop
-    // being an unlabelled mystery to a screen-reader user, and is the pairing
-    // the technique (SCR34 / ARIA a11y practices) actually calls for.
-    <div
-      className={cn('overflow-x-auto', className)}
-      // A scrollable region is the documented exception to the rule below: it
-      // is not interactive, and it must still be reachable, which is why that
-      // rule's own `roles` option lists `region`. Removing this would satisfy
-      // the linter by restoring the barrier.
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-      tabIndex={0}
-      role="region"
-      aria-label={caption}
-    >
+    // This component used to hand-roll the first half and skip the second, so
+    // every `DataTable` wide enough to scroll did so silently: nine screens
+    // with columns off the right-hand edge and nothing on the page saying so.
+    // docs/DESIGN.md said `DataTable` "carries the same treatment internally",
+    // which was half true and is now simply true.
+    <ScrollRegion label={caption} className={className}>
       <table className={cn('w-full table-fixed border-collapse', tableClassName)}>
         <caption className="sr-only">{caption}</caption>
         <colgroup>
@@ -261,6 +255,6 @@ export function DataTable<Row, Key extends string = string>({
           )}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

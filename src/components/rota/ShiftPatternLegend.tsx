@@ -67,7 +67,9 @@ export function ShiftPatternLegend({
         onClick={() => onSelect('all')}
         aria-pressed={activeId === 'all'}
         className={cn(
-          'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+          // 36px, the compact size in docs/DESIGN.md §5. These filter chips
+          // were 30px tall, which no rule allowed.
+          'inline-flex min-h-9 items-center rounded-lg border px-2.5 text-xs font-medium transition-colors',
           activeId === 'all'
             ? 'border-primary bg-primary/10 text-primary-ink dark:text-primary-ink-dark'
             : 'border-surface-border text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:text-content-dark',
@@ -90,7 +92,7 @@ export function ShiftPatternLegend({
             aria-pressed={active}
             title={[type.name, patternRange(type)].filter(Boolean).join(' · ')}
             className={cn(
-              'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+              'flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors',
               active
                 ? 'border-primary bg-primary/10 text-primary-ink dark:text-primary-ink-dark'
                 : count === 0

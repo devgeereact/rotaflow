@@ -251,7 +251,9 @@ export function BarChart({
         onClick={() => setShowTable((v) => !v)}
         aria-expanded={showTable}
         aria-controls={tableId}
-        className="mt-2 text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+        // `min-h-11` is the product's 44px target (docs/DESIGN.md §5); this was
+        // a 16px-tall line of text. It had no focus ring either.
+        className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-primary-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
       >
         {showTable ? 'Hide figures' : 'Show figures'}
       </button>

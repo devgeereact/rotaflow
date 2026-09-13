@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { StepCard } from '@/components/onboarding/StepCard';
+import { IconButton } from '@/components/ui/IconButton';
 import {
   COUNTRIES,
   INDUSTRIES,
@@ -241,15 +242,24 @@ export function StepAbout({
                 later.
               </p>
             </div>
-            <Button
-              size="sm"
-              className="shrink-0 bg-brand hover:bg-brand/90 dark:bg-brand"
-              onClick={addLocation}
-              type="button"
-            >
-              <Plus size={16} aria-hidden="true" className="mr-1" />
-              Add location
-            </Button>
+            {/* Only once the first site has a name, and never styled as the
+                step's primary action. A blank primary location already opens
+                as an editor directly below this panel, so a prominent "Add
+                location" button beside it offered a second way to do the thing
+                that was already on screen, and adding a second blank row was
+                the only thing it actually did. */}
+            {values.locations[0]?.name.trim() ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="shrink-0"
+                onClick={addLocation}
+                type="button"
+              >
+                <Plus size={16} aria-hidden="true" className="mr-1" />
+                Add another location
+              </Button>
+            ) : null}
           </div>
 
           <div className="space-y-3">
@@ -302,7 +312,14 @@ export function StepAbout({
                           Remove
                         </Button>
                       )}
-                      <Button size="sm" onClick={() => setEditingIndex(null)}>
+                      {/* Secondary: this closes an inline editor, it does not
+                          advance the wizard. Continue is the step's one
+                          primary action. */}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditingIndex(null)}
+                      >
                         <Check size={14} aria-hidden="true" className="mr-1" />
                         Done
                       </Button>
@@ -339,23 +356,24 @@ export function StepAbout({
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      aria-label={`Edit ${location.name}`}
+                    {/* 44px, not 36: docs/DESIGN.md §5 allows the smaller size
+                        inside a dense table row, and this is a card on a
+                        full-page form. */}
+                    <IconButton
+                      icon={Pencil}
+                      label={`Edit ${location.name}`}
                       onClick={() => setEditingIndex(index)}
-                      className="grid h-9 w-9 place-items-center rounded-lg border border-surface-border text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
-                    >
-                      <Pencil size={15} aria-hidden="true" />
-                    </button>
+                      iconSize={16}
+                      className="border border-surface-border text-content-muted hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                    />
                     {!isPrimary && (
-                      <button
-                        type="button"
-                        aria-label={`Remove ${location.name}`}
+                      <IconButton
+                        icon={Trash2}
+                        label={`Remove ${location.name}`}
                         onClick={() => removeLocation(index)}
-                        className="grid h-9 w-9 place-items-center rounded-lg border border-surface-border text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
-                      >
-                        <Trash2 size={15} aria-hidden="true" />
-                      </button>
+                        iconSize={16}
+                        className="border border-surface-border text-content-muted hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                      />
                     )}
                   </div>
                 </div>
