@@ -59,7 +59,6 @@ export function OnboardingPreviewPage(): JSX.Element {
   const [createValues, setCreateValues] = useState<CreateOrgValues>({
     name: 'Sunnyvale Care Group',
     slug: 'sunnyvale-care',
-    industry: 'Care home / residential care',
     size: '1-25',
   });
   const [aboutValues, setAboutValues] = useState<AboutValues>({

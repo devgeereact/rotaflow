@@ -291,7 +291,8 @@ export function StepInviteTeam({
               <div className="text-sm text-content-muted dark:text-content-muted-dark">
                 <p className="font-medium text-ink dark:text-content-dark">About roles</p>
                 <p className="text-brand dark:text-brand-light">
-                  You can change roles and permissions later from Settings &gt; Team.
+                  You can change roles and permissions later from Settings &gt;
+                  Permissions.
                 </p>
               </div>
             </div>
