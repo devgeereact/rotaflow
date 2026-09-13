@@ -148,9 +148,13 @@ test.describe('a staff member on their own dashboard', () => {
     // The staff branch, not the operations board: an owner or manager gets
     // "Operations" here, so this heading is what says the right dashboard
     // rendered for the right role.
-    await expect(page.getByRole('heading', { name: /Good morning/ })).toBeVisible({
-      timeout: 60_000,
-    });
+    //
+    // Any of the three greetings, not "Good morning": the heading follows the
+    // organisation's clock since BUG-105, so pinning one phrase made this spec
+    // pass only between 05:00 and noon. It asserted the hour, not the role.
+    await expect(
+      page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ }),
+    ).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('heading', { name: 'Your next shifts' })).toBeVisible();
     await expect(page.getByText('Something went wrong')).toHaveCount(0);
 
