@@ -1,10 +1,17 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { LogIn, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
-import { timeRange, timeAgo, hoursLabel } from '@/components/dashboard/dashboardFormat';
+import {
+  timeRange,
+  timeAgo,
+  hoursLabel,
+  greeting,
+} from '@/components/dashboard/dashboardFormat';
+import { formatTimeRange } from '@/lib/timeRange';
 import type {
   DashboardOverview,
   MyWeekSummary,
@@ -22,6 +29,14 @@ export interface StaffDashboardProps {
    * else here, so this stays a pure view driven by `DashboardPage`'s data,
    * not a second place that queries Supabase. */
   openSwaps: number;
+  /**
+   * The reporting timezone `DashboardPage` already resolved, rather than
+   * whichever location happens to sort first. `overview.locations[0]` was
+   * neither the organisation's zone nor the shift's, so an organisation whose
+   * first location sits in a different zone read every shift an hour or five
+   * out.
+   */
+  timezone: string;
 }
 
 /**
@@ -39,18 +54,18 @@ export function StaffDashboard({
   leaveRemaining,
   holidayAllowance,
   openSwaps,
+  timezone,
 }: StaffDashboardProps): JSX.Element {
-  const timezone = overview.locations[0]?.timezone ?? 'Europe/London';
-
   return (
     <div className="max-w-[1600px]">
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div>
           <h1 className="font-display text-page-title font-semibold text-content dark:text-content-dark">
-            Good morning{firstName ? `, ${firstName}` : ''}
+            {greeting(new Date(), timezone)}
+            {firstName ? `, ${firstName}` : ''}
           </h1>
           <p className="text-content-muted dark:text-content-muted-dark">
-            {format(new Date(), 'EEEE d MMMM')}
+            {format(toZonedTime(new Date(), timezone), 'EEEE d MMMM')}
           </p>
         </div>
         <div className="ml-auto">
@@ -120,7 +135,17 @@ export function StaffDashboard({
                         {group.shiftTypeName}
                       </p>
                       <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
-                        {format(new Date(group.startsAt), 'EEE d MMM')} · {start}, {end} ·{' '}
+                        {/* The day in the LOCATION's clock, like the two times
+                            beside it. `format(new Date(...))` read the
+                            browser's zone, so a late shift showed the right
+                            hours against the wrong date for anyone working
+                            away from the site's timezone — the same defect
+                            `ManagerSchedule` records. */}
+                        {format(
+                          toZonedTime(new Date(group.startsAt), timezone),
+                          'EEE d MMM',
+                        )}{' '}
+                        · {formatTimeRange(start, end, { overnight: 'compact' })} ·{' '}
                         {group.locationName}
                       </p>
                     </div>

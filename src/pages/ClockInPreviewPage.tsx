@@ -43,6 +43,7 @@ export function ClockInPreviewPage(): JSX.Element {
         clockTime={DEMO_CLOCK_TIME}
         clockDateLabel={DEMO_CLOCK_DATE}
         windowLabel={DEMO_WINDOW_LABEL}
+        windowOpen
         online={true}
         thisWeekRows={DEMO_THIS_WEEK_ROWS}
         activity={DEMO_ACTIVITY}

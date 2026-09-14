@@ -10,6 +10,7 @@ import { useNavBadgeCounts } from '@/hooks/useNavBadgeCounts';
 import { SidebarOrgSwitcher } from '@/components/layout/SidebarOrgSwitcher';
 import { SidebarFooter } from '@/components/layout/SidebarFooter';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
+import { IconButton } from '@/components/ui/IconButton';
 import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { BRAND } from '@/lib/brand';
@@ -193,19 +194,14 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
             without scrolling past every row below it — the one control on this
             rail someone reaches for on nearly every session.
           */}
-          <button
-            type="button"
+          <IconButton
             onClick={toggleCollapsed}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            icon={collapsed ? PanelLeftOpen : PanelLeftClose}
+            label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="shrink-0 rounded-lg p-1.5 text-content-muted transition-colors hover:bg-primary-wash hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark"
-          >
-            {collapsed ? (
-              <PanelLeftOpen size={18} aria-hidden="true" />
-            ) : (
-              <PanelLeftClose size={18} aria-hidden="true" />
-            )}
-          </button>
+            iconSize={18}
+            className="shrink-0 text-content-muted hover:bg-primary-wash hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark"
+          />
         </div>
 
         <SidebarOrgSwitcher collapsed={collapsed} />

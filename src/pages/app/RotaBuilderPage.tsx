@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
   PointerSensor,
@@ -16,12 +17,15 @@ import {
   ChevronRight,
   ClipboardCopy,
   ClipboardPaste,
+  MapPin,
   Plus,
   Printer,
   Search,
+  SearchX,
   Settings2,
   Sparkles,
   Trash2,
+  Users,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -76,6 +80,8 @@ import { findClashingShift, ShiftClashError } from '@/lib/shiftConflicts';
 import { computeRotaInsights } from '@/lib/rotaInsights';
 import { PublicationStatus } from '@/components/rota/PublicationStatus';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
+import { IconButton } from '@/components/ui/IconButton';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 /** Anchor for the "Review issues" link in `PublicationStatus`. */
 const CONFLICTS_PANEL_ID = 'rota-conflicts';
@@ -96,6 +102,7 @@ import {
 import { ShiftTypeManagerModal } from '@/components/rota/ShiftTypeManagerModal';
 import { RotaAssistantPanel } from '@/components/rota/RotaAssistantPanel';
 import { MobileDisclosure } from '@/components/ui/MobileDisclosure';
+import { describeTimeRange } from '@/lib/timeRange';
 import type {
   Availability,
   Department,
@@ -190,6 +197,7 @@ export function RotaBuilderPage(): JSX.Element {
   const hasAiAssistant = hasFeature('ai_rota_assistant');
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
+  const navigate = useNavigate();
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -696,6 +704,45 @@ export function RotaBuilderPage(): JSX.Element {
     hideEmptyStaff,
   ]);
 
+  const hasGrid = groups.length > 0;
+
+  /**
+   * The grid opens on the week the toolbar is talking about.
+   *
+   * The canvas is three weeks wide with the anchor week in the middle
+   * (`rotaCanvas.ts`), and a scrolling element starts at `scrollLeft: 0` — so
+   * the builder opened showing *last* week, with "Publish (n changes)" and the
+   * blocking-issue count both describing a week that was off the right edge.
+   * On a new organisation that is a screen of empty cells.
+   *
+   * Aligned by the anchor week's own header cell rather than by column
+   * arithmetic, so it stays correct if `WEEKS_BEFORE` or the column widths
+   * change. The pinned staff column is subtracted because it floats over the
+   * left edge of the viewport and would otherwise cover Monday.
+   */
+  const gridViewportRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = gridViewportRef.current;
+    if (!viewport || loading || !hasGrid) return;
+    // One frame, so the grid has been laid out and the widths are real.
+    const frame = requestAnimationFrame(() => {
+      const anchor = viewport.querySelector('[data-rota-anchor-week]');
+      const staffCol = viewport.querySelector('[data-rota-staff-col]');
+      if (!anchor) return;
+      const offset =
+        anchor.getBoundingClientRect().left -
+        viewport.getBoundingClientRect().left -
+        (staffCol?.getBoundingClientRect().width ?? 0);
+      // Instant, not smooth: this is where the view starts, not a movement
+      // the reader is meant to follow.
+      viewport.scrollLeft += offset;
+    });
+    return () => cancelAnimationFrame(frame);
+    // `hasGrid` and not `groups`: the alignment is for a grid that has just
+    // appeared, not for every filter change. A manager who has scrolled to
+    // next week and then narrows by department should stay where they were.
+  }, [weekStart, loading, hasGrid]);
+
   /**
    * Staff (matching the current department/job-title/search filters) with no
    * shift anywhere in the org this week, regardless of the location filter —
@@ -1133,7 +1180,7 @@ export function RotaBuilderPage(): JSX.Element {
       void (async () => {
         const ok = await confirm({
           title: 'Remove this shift?',
-          message: `${startTime}, ${endTime} on ${when} for ${who} will be deleted. This cannot be undone.`,
+          message: `${describeTimeRange(startTime, endTime)} on ${when} for ${who} will be deleted. This cannot be undone.`,
           confirmLabel: 'Remove shift',
           tone: 'danger',
         });
@@ -1828,12 +1875,33 @@ export function RotaBuilderPage(): JSX.Element {
   }
 
   if (locations.length === 0 && !orgDataLoading) {
+    // Keeps the page's own title, and turns "See the Locations page" from an
+    // instruction into the button it was describing. This branch is what a
+    // brand-new organisation sees first, and it was a bare sentence in a card
+    // with no heading and nothing to press.
     return (
-      <Card>
-        <p className="text-content-muted dark:text-content-muted-dark">
-          Add a location before building a rota. See the Locations page.
-        </p>
-      </Card>
+      <div>
+        <WorkspaceHeader
+          title="Rota Builder"
+          subtitle="Shifts are rostered at a site, so there is nowhere to put them yet."
+        />
+        <Card>
+          <EmptyState
+            icon={MapPin}
+            title="Add a site before building a rota"
+            description="A rota is built per site. Add the first one and this screen fills in."
+            action={
+              <Button
+                onClick={() => {
+                  void navigate('/app/locations');
+                }}
+              >
+                Go to Locations
+              </Button>
+            }
+          />
+        </Card>
+      </div>
     );
   }
 
@@ -1857,11 +1925,9 @@ export function RotaBuilderPage(): JSX.Element {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search staff, skills, shifts…"
-        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+        aria-label="Search this rota by staff, skill or shift"
+        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-3 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
       />
-      <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-        ⌘ K
-      </kbd>
     </>
   );
 
@@ -1884,28 +1950,29 @@ export function RotaBuilderPage(): JSX.Element {
         />
 
         {/* ---- Toolbar: date nav, view tabs, settings, publish ---- */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 sm:mb-4">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button
-              type="button"
+            {/* A period stepper is the case docs/DESIGN.md §5 names for
+                `IconButton`'s 44px default. These were hand-rolled 30x30
+                controls with no focus ring. */}
+            <IconButton
               onClick={() =>
                 setWeekStart((d) => getMonday(addDays(new Date(`${d}T00:00:00`), -7)))
               }
-              aria-label="Previous week"
-              className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
+              icon={ChevronLeft}
+              label="Previous week"
+              iconSize={18}
+              className="border border-surface-border text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+            />
+            <IconButton
               onClick={() =>
                 setWeekStart((d) => getMonday(addDays(new Date(`${d}T00:00:00`), 7)))
               }
-              aria-label="Next week"
-              className="rounded-lg border border-surface-border p-1.5 text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
-            >
-              <ChevronRight size={16} />
-            </button>
+              icon={ChevronRight}
+              label="Next week"
+              iconSize={18}
+              className="border border-surface-border text-content-muted hover:text-content dark:border-surface-border-dark dark:text-content-muted-dark"
+            />
             <Button
               size="sm"
               variant="secondary"
@@ -2022,9 +2089,12 @@ export function RotaBuilderPage(): JSX.Element {
                 type="button"
                 aria-label="Publish options"
                 onClick={() => setPublishMenuOpen((v) => !v)}
-                className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg hover:bg-primary/90"
+                // `w-11` (44px): this was a 31px-wide sliver beside a full
+                // Publish button, and it is the only way to reach Publish
+                // without notifying, or to schedule one.
+                className="w-11 shrink-0 rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <ChevronDown size={14} />
+                <ChevronDown size={16} aria-hidden="true" className="mx-auto" />
               </button>
               {publishMenuOpen && (
                 <div className="absolute right-0 top-full z-10 mt-1 w-64 rounded-xl border border-surface-border bg-surface p-1 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark">
@@ -2089,7 +2159,7 @@ export function RotaBuilderPage(): JSX.Element {
             filters collapse behind one chip that keeps the applied count
             visible. Everything stays reachable; nothing is hidden without
             being counted. */}
-        <div className="mb-4 flex flex-wrap items-start gap-3">
+        <div className="mb-3 flex flex-wrap items-start gap-3 sm:mb-4">
           <MobileDisclosure
             breakpoint="xl"
             variant="inline"
@@ -2283,10 +2353,48 @@ export function RotaBuilderPage(): JSX.Element {
         ) : (
           <Card className="min-w-0 overflow-hidden p-4 sm:p-5">
             {groups.length === 0 ? (
-              <p className="text-content-muted dark:text-content-muted-dark">
-                No staff rostered for this filter yet. Select a single location above to
-                see its full team.
-              </p>
+              /* Three different reasons produce no rows, and they have three
+                 different next actions. This was one sentence blaming "this
+                 filter" — shown to a brand-new organisation that has never
+                 added anybody and has set no filter, and to one whose staff
+                 simply are not rostered anywhere yet. In the all-locations
+                 view a person only appears once they already have a shift
+                 somewhere, so a first rota cannot be started from it at all:
+                 the way in is to pick a site, and that is now a button rather
+                 than an instruction. */
+              staff.length === 0 ? (
+                <EmptyState
+                  icon={Users}
+                  title="Nobody on the team yet"
+                  description="A rota is built from people. Add the team first, then come back and give them shifts."
+                  action={
+                    <Button
+                      onClick={() => {
+                        void navigate('/app/team');
+                      }}
+                    >
+                      Go to Team
+                    </Button>
+                  }
+                />
+              ) : locationFilter === 'all' && locations.length > 0 ? (
+                <EmptyState
+                  icon={MapPin}
+                  title="Nobody is rostered at any site this week"
+                  description="Every site at once shows only people who already have a shift. Choose one site to see its whole team and start assigning."
+                  action={
+                    <Button onClick={() => setLocationFilter(locations[0]?.id ?? 'all')}>
+                      Show {locations[0]?.name ?? 'the first site'}
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={SearchX}
+                  title="No staff match these filters"
+                  description="Nobody at this site matches the filters you have applied."
+                />
+              )
             ) : (
               /* A bare `overflow-x-auto` is draggable with a pointer and
                  completely unreachable with a keyboard, and on a laptop the
@@ -2298,7 +2406,11 @@ export function RotaBuilderPage(): JSX.Element {
                  the header would pin to the top of the window and float over
                  the toolbar. A local viewport also keeps the scroll where the
                  grid is, which is what the design guide asks for. */
-              <ScrollRegion label="Rota grid" viewportClassName="max-h-[70vh]">
+              <ScrollRegion
+                label="Rota grid"
+                viewportClassName="max-h-[70vh]"
+                viewportRef={gridViewportRef}
+              >
                 <RotaGrid
                   dates={gridDates}
                   anchorWeekStart={weekStart}

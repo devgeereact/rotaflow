@@ -6,6 +6,47 @@ import type { LeaveRequest, LeaveRequestInsert } from '@/types';
  * target to replay a queued 'leave' item against. This phase adds the reads
  * and the approve/reject actions the screen itself needs.
  */
+
+/**
+ * `0152`'s exclusion constraint, said in a sentence.
+ *
+ * One person may hold one live booking per day (GAP-123). The database
+ * refuses a second with SQLSTATE `23P01`, whose own message names an index
+ * and is no use to anybody. These two replace it — one for the person
+ * asking, one for the manager deciding — and are the only two ways a caller
+ * meets that constraint.
+ *
+ * The `code` is carried onto the replacement deliberately. `classifyFailure`
+ * reads it to decide whether an offline write should be retried or
+ * dead-lettered, and a bare `Error` with no code falls through to its
+ * `transient` default — which would queue a permanently-refused request and
+ * replay it forever.
+ */
+const OVERLAP_ON_REQUEST =
+  'Those dates overlap leave you have already asked for. Withdraw the other request first, or choose different dates.';
+
+const OVERLAP_ON_REVIEW =
+  'Approving this would double-book days this person already has off. Decline or withdraw the other request first.';
+
+/**
+ * True when the database refused this write because the days are already
+ * booked, rather than because something went wrong.
+ *
+ * A screen needs to tell those apart: this one has a sentence worth showing
+ * and is not a fault, so it is neither reported to Sentry nor hidden behind
+ * "please try again", which would invite the person to retry something that
+ * will be refused every time.
+ */
+export function isDoubleBookedLeave(error: unknown): error is Error {
+  return error instanceof Error && (error as { code?: unknown }).code === '23P01';
+}
+
+function withOverlapMessage(error: unknown, message: string): unknown {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code !== '23P01') return error;
+  return Object.assign(new Error(message), { code, cause: error });
+}
+
 export async function createLeaveRequest(
   input: LeaveRequestInsert,
 ): Promise<LeaveRequest> {
@@ -14,7 +55,7 @@ export async function createLeaveRequest(
     .insert(input)
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw withOverlapMessage(error, OVERLAP_ON_REQUEST);
   return data;
 }
 
@@ -88,7 +129,7 @@ export async function reviewLeaveRequest(
     .eq('status', 'pending')
     .select('*')
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw withOverlapMessage(error, OVERLAP_ON_REVIEW);
   return data;
 }
 

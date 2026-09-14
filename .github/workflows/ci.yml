@@ -298,13 +298,14 @@ jobs:
           echo "::add-mask::${SERVICE_ROLE_KEY}"
           echo "E2E_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}" >> "$GITHUB_ENV"
 
-      - name: Sign up, create an organisation, and run the workforce
+      - name: Sign up, create an organisation, run the workforce, and land a staff member
         env:
           E2E_LIVE_SUPABASE: '1'
         run: |
           npx playwright test e2e/authenticated-loop.spec.ts \
             e2e/owner-workforce.spec.ts \
-            e2e/platform-console.spec.ts
+            e2e/platform-console.spec.ts \
+            e2e/staff-dashboard.spec.ts
 
       - uses: actions/upload-artifact@v7
         if: failure()

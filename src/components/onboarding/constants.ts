@@ -56,10 +56,10 @@ export const TIMEZONES = [
 ] as const;
 
 export const WORKING_WEEKS = [
-  { value: 'mon-sun', label: 'Monday. Sunday' },
-  { value: 'mon-fri', label: 'Monday. Friday' },
-  { value: 'sun-sat', label: 'Sunday. Saturday' },
-  { value: 'sat-fri', label: 'Saturday. Friday' },
+  { value: 'mon-sun', label: 'Monday to Sunday' },
+  { value: 'mon-fri', label: 'Monday to Friday' },
+  { value: 'sun-sat', label: 'Sunday to Saturday' },
+  { value: 'sat-fri', label: 'Saturday to Friday' },
 ] as const;
 
 export type BillingPeriod = 'monthly' | 'yearly';

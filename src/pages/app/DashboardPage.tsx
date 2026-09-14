@@ -318,8 +318,16 @@ export function DashboardPage(): JSX.Element {
         setLoadFailed(true);
         showError('Could not load the dashboard. Please try again.');
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        // Only the newest request owns these flags. A superseded run reaching
+        // its `finally` used to clear `loading` while the live request was
+        // still fetching, which rendered the dashboard with `overview` still
+        // null — a crash on the staff branch, and an empty board on the
+        // manager one. The token check is what makes "loading" mean the
+        // request whose answer will actually be shown.
+        if (token === requestToken.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [orgId, user, isManager, locationId, operationalToday, showError],
@@ -469,15 +477,24 @@ export function DashboardPage(): JSX.Element {
     );
   }
 
+  // Not `overview!`. The assertion was the second half of the crash above:
+  // it told the compiler a value was present that the render could genuinely
+  // reach as null, so nothing flagged it. A staff member sees the loading
+  // line for the moment the live request is still in flight.
+  if (!overview) {
+    return <p className="text-content-muted dark:text-content-muted-dark">Loading…</p>;
+  }
+
   return (
     <StaffDashboard
       firstName={firstName}
-      overview={overview!}
+      overview={overview}
       myWeek={myWeek}
       myUpcoming={myUpcoming}
       leaveRemaining={leaveRemaining}
       holidayAllowance={holidayAllowance}
       openSwaps={badges.swaps}
+      timezone={timezone}
     />
   );
 }

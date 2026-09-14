@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { describeTimeRange } from '@/lib/timeRange';
 import type {
   Availability,
   StaffDocument,
@@ -253,7 +254,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
       // covered from the people already on the roster, so it escalates.
       severity: daysAway <= 7 ? 'critical' : 'warning',
       title: `${group.length} unfilled ${type?.name ?? 'shift'}${group.length > 1 ? 's' : ''} · ${dayLabel(date)}`,
-      detail: `${localTime(first.starts_at, firstTz)}, ${localTime(first.ends_at, firstTz)} at ${location?.name ?? 'an unnamed site'}. Nobody is assigned${daysAway <= 7 ? ' and it starts within the week' : ''}.`,
+      detail: `${describeTimeRange(localTime(first.starts_at, firstTz), localTime(first.ends_at, firstTz))} at ${location?.name ?? 'an unnamed site'}. Nobody is assigned${daysAway <= 7 ? ' and it starts within the week' : ''}.`,
       date,
       staffProfileId: null,
       shiftId: first.id,
@@ -356,7 +357,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
         kind: 'leave_clash',
         severity: 'critical',
         title: `${name} is on approved leave but rostered`,
-        detail: `${dayLabel(date)} · ${localTime(shift.starts_at, shiftTz)}, ${localTime(shift.ends_at, shiftTz)}. Approved ${clash.type} runs ${dayLabel(clash.start_date)} to ${dayLabel(clash.end_date)}.`,
+        detail: `${dayLabel(date)} · ${describeTimeRange(localTime(shift.starts_at, shiftTz), localTime(shift.ends_at, shiftTz))}. Approved ${clash.type} runs ${dayLabel(clash.start_date)} to ${dayLabel(clash.end_date)}.`,
         date,
         staffProfileId,
         shiftId: shift.id,
@@ -376,7 +377,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
         kind: 'unavailable',
         severity: 'warning',
         title: `${name} is marked unavailable`,
-        detail: `Rostered ${dayLabel(date)} · ${localTime(shift.starts_at, shiftTz)}, ${localTime(shift.ends_at, shiftTz)}, against their declared availability.`,
+        detail: `Rostered ${dayLabel(date)} · ${describeTimeRange(localTime(shift.starts_at, shiftTz), localTime(shift.ends_at, shiftTz))}, against their declared availability.`,
         date,
         staffProfileId,
         shiftId: shift.id,
@@ -396,7 +397,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
           kind: 'double_booked',
           severity: 'critical',
           title: `${name} is double-booked`,
-          detail: `${dayLabel(date)} · ${localTime(a.starts_at, aTz)}, ${localTime(a.ends_at, aTz)} overlaps ${localTime(b.starts_at, timezoneFor(b))}, ${localTime(b.ends_at, timezoneFor(b))}. One of the two needs reassigning.`,
+          detail: `${dayLabel(date)} · ${describeTimeRange(localTime(a.starts_at, aTz), localTime(a.ends_at, aTz))} overlaps ${describeTimeRange(localTime(b.starts_at, timezoneFor(b)), localTime(b.ends_at, timezoneFor(b)))}. One of the two needs reassigning.`,
           date,
           staffProfileId,
           shiftId: b.id,

@@ -57,7 +57,12 @@ export function NoticeSections({
 
           {section.evidence !== undefined && (
             <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
-              Checkable in: <span className="font-mono text-xs">{section.evidence}</span>
+              {/* `break-words` because these are file paths with no spaces in
+                  them: a 260px `supabase/functions/create-checkout-session…`
+                  pushed the whole page wider than a 390px phone and the body
+                  scrolled sideways. */}
+              Checkable in:{' '}
+              <span className="break-words font-mono text-xs">{section.evidence}</span>
             </p>
           )}
         </section>

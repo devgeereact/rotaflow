@@ -131,4 +131,120 @@ test.describe('the authenticated loop', () => {
 
     expect(errors, 'uncaught errors during signup and org creation').toEqual([]);
   });
+
+  test('the rota builder opens on the week its toolbar is describing', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const stamp = Date.now();
+    const email = `e2e-rota-${stamp}@example.test`;
+    const password = `E2e-${stamp}-Passw0rd`;
+
+    // The consent banner is `fixed bottom-0` and covers the page until it is
+    // answered, so the grid this test measures is never reachable without it.
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem(
+          'rotaflow:consent',
+          JSON.stringify({
+            version: 1,
+            preferences: true,
+            diagnostics: false,
+            decidedAt: new Date().toISOString(),
+          }),
+        );
+      } catch {
+        /* not this test's subject */
+      }
+    });
+
+    await page.goto('/signup');
+    await page.getByLabel('First name').fill('Rota');
+    await page.getByLabel('Last name').fill('Opener');
+    await page.getByLabel('Work email address').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await page.waitForURL(/\/onboarding/, { timeout: 60_000 });
+
+    await page.getByLabel('Organisation name').fill(`E2E Rota ${stamp}`);
+    const create = page.getByRole('button', { name: /continue/i });
+    await expect(create).toBeEnabled({ timeout: 30_000 });
+    await create.click();
+    await expect(
+      page.getByRole('heading', { name: 'About your organisation', exact: true }),
+    ).toBeVisible({ timeout: 60_000 });
+
+    // A primary location, because the builder refuses to draw a grid for an
+    // organisation with nowhere to work.
+    await page.getByLabel('Primary location name').fill('E2E House');
+    await page.getByRole('button', { name: /^done$/i }).click();
+
+    // The rest of the wizard, because `/app/*` sends an organisation with
+    // onboarding still open back to `/onboarding`.
+    await page.getByRole('button', { name: /^continue$/i }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Invite your team', exact: true }),
+    ).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: /skip for now/i }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Choose your plan', exact: true }),
+    ).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: /^continue$/i }).click();
+    await page.getByRole('button', { name: /go to dashboard/i }).click();
+    await page.waitForURL(/\/app\//, { timeout: 60_000 });
+
+    // One person, because the grid draws rows and there is nothing to
+    // measure against an organisation with nobody in it.
+    await page.goto('/app/team');
+    await page
+      .getByRole('button', { name: /add staff/i })
+      .first()
+      .click();
+    await page.getByLabel('First name').fill('Ada');
+    await page.getByLabel('Last name').fill('Nkemdirim');
+    await page
+      .getByRole('button', { name: /^(save|add staff|create)/i })
+      .last()
+      .click();
+    await expect(page.getByRole('link', { name: 'Ada Nkemdirim' })).toBeVisible({
+      timeout: 60_000,
+    });
+
+    await page.goto('/app/rota');
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Rota Builder' }),
+    ).toBeVisible({ timeout: 60_000 });
+
+    // Every-site-at-once shows only people who already have a shift, so a
+    // first rota is started by choosing one. The empty state offers that as a
+    // button; using it is also what proves the button does what it says.
+    await page.getByRole('button', { name: /^Show / }).click();
+
+    const region = page.getByRole('region', { name: 'Rota grid' });
+    await expect(region).toBeVisible({ timeout: 60_000 });
+
+    // The canvas is three weeks wide with the anchor week in the middle
+    // (`rotaCanvas.ts`), and a scrolling element starts at `scrollLeft: 0`.
+    // Until this was fixed the builder opened showing the *previous* week:
+    // "Publish (n changes)" and the blocking-issue count both described a week
+    // that was off the right-hand edge, and on a new organisation that is a
+    // screen of empty cells.
+    //
+    // Asserted by geometry rather than by a scrollLeft number, because the
+    // number depends on column widths and would have to be rewritten whenever
+    // they change. What matters is that the anchor week is the part on screen.
+    const anchor = region.locator('[data-rota-anchor-week]');
+    await expect(anchor).toHaveCount(1);
+
+    const anchorBox = (await anchor.boundingBox())!;
+    const regionBox = (await region.boundingBox())!;
+    const staffColWidth =
+      (await region.locator('[data-rota-staff-col]').boundingBox())?.width ?? 0;
+
+    // Its left edge sits just past the pinned staff column, not off screen to
+    // the right, and not scrolled away to the left.
+    expect(anchorBox.x).toBeGreaterThanOrEqual(regionBox.x - 2);
+    expect(anchorBox.x).toBeLessThanOrEqual(regionBox.x + staffColWidth + 4);
+  });
 });

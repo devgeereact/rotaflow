@@ -226,8 +226,8 @@ export function ReportsAnalyticsCard({
 
         {hourGroups.length === 0 && shiftGroups.length === 0 ? (
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            No clock events or shifts fall in {rangeLabel.toLowerCase()}. Pick a wider
-            range, or check the rota has been published.
+            No clock events or published shifts fall in {rangeLabel.toLowerCase()}. Pick a
+            wider range, or check the rota has been published.
           </p>
         ) : (
           <div className="grid gap-6 lg:grid-cols-2">
@@ -255,8 +255,13 @@ export function ReportsAnalyticsCard({
               <h3 className="mb-1 text-sm font-semibold text-content dark:text-content-dark">
                 Shifts scheduled per day
               </h3>
+              {/* `getShiftReportRows` asks for `publishedOnly: true`, so this
+                  counts published shifts and nothing else. The caption used to
+                  say "every shift on the rota", which made a week of draft
+                  shifts read as a week with no shifts at all. */}
               <p className="mb-3 text-xs text-content-muted dark:text-content-muted-dark">
-                Every shift on the rota, assigned or still open.
+                Every published shift, assigned or still open. A week still in draft is
+                not counted here.
               </p>
               {shiftGroups.length > 0 ? (
                 <BarChart
@@ -266,7 +271,7 @@ export function ReportsAnalyticsCard({
                 />
               ) : (
                 <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                  No shifts in this range.
+                  No published shifts in this range.
                 </p>
               )}
             </div>

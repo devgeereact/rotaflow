@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildApprovalQueue, type SwapForQueue } from '@/lib/approvalQueue';
+import {
+  buildApprovalQueue,
+  type SwapForQueue,
+  swapAwaitsManager,
+} from '@/lib/approvalQueue';
 import type { LeaveRequest, OvertimeRequest, StaffProfile } from '@/types';
 
 /**
@@ -137,5 +141,55 @@ describe('buildApprovalQueue', () => {
       leave: [leave({ created_at: '2026-09-30T09:00:00Z' })],
     });
     expect(rows[0]?.waitingDays).toBe(0);
+  });
+});
+
+/**
+ * The dashboard's "Pending approvals" tile links straight to `/app/approvals`,
+ * so it has to count this same set. It used to count `status === 'pending'`
+ * instead — the set waiting on a COLLEAGUE — which both inflated the tile with
+ * rows the manager could not clear and hid every swap that was genuinely
+ * waiting on them. Pinned here because the rule now has one definition and two
+ * callers.
+ */
+describe('swapAwaitsManager', () => {
+  const base = {
+    id: 's1',
+    requested_by: 'staff-1',
+    created_at: '2026-09-01T09:00:00Z',
+  };
+
+  it('is false while a named colleague has not answered', () => {
+    expect(
+      swapAwaitsManager({
+        ...base,
+        status: 'pending',
+        target_staff_profile_id: 'staff-2',
+      }),
+    ).toBe(false);
+  });
+
+  it('is true for an open offer nobody has taken', () => {
+    expect(
+      swapAwaitsManager({ ...base, status: 'pending', target_staff_profile_id: null }),
+    ).toBe(true);
+  });
+
+  it('is true once the colleague has accepted', () => {
+    expect(
+      swapAwaitsManager({
+        ...base,
+        status: 'accepted',
+        target_staff_profile_id: 'staff-2',
+      }),
+    ).toBe(true);
+  });
+
+  it('is false for anything already decided', () => {
+    for (const status of ['approved', 'rejected', 'cancelled'] as const) {
+      expect(swapAwaitsManager({ ...base, status, target_staff_profile_id: null })).toBe(
+        false,
+      );
+    }
   });
 });

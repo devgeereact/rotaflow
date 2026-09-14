@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { formatTimeRange } from '@/lib/timeRange';
 import type { Availability } from '@/types';
 
 /** Monday-first display order; the schema itself stores `weekday` in
@@ -23,7 +24,10 @@ export interface WeeklyPatternDay {
 }
 
 function noteForTimes(startTime: string | null, endTime: string | null): string | null {
-  if (startTime && endTime) return `${startTime.slice(0, 5)}, ${endTime.slice(0, 5)}`;
+  if (startTime && endTime)
+    return formatTimeRange(startTime.slice(0, 5), endTime.slice(0, 5), {
+      overnight: 'compact',
+    });
   if (startTime) return `From ${startTime.slice(0, 5)}`;
   if (endTime) return `Until ${endTime.slice(0, 5)}`;
   return null;
@@ -74,7 +78,7 @@ function availabilityLabel(entry: Availability): string {
   if (entry.start_time && !entry.end_time)
     return `Available from ${entry.start_time.slice(0, 5)}`;
   if (entry.start_time && entry.end_time) {
-    return `Available ${entry.start_time.slice(0, 5)}, ${entry.end_time.slice(0, 5)}`;
+    return `Available ${formatTimeRange(entry.start_time.slice(0, 5), entry.end_time.slice(0, 5), { overnight: 'compact' })}`;
   }
   return 'Available all day';
 }

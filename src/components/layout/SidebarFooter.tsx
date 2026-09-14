@@ -6,6 +6,7 @@ import { useOrg } from '@/hooks/useOrg';
 import { useWorkMode } from '@/hooks/useWorkMode';
 import { footerNavItemsForRole } from '@/lib/sidebarNav';
 import { cn } from '@/lib/utils';
+import { IconButton } from '@/components/ui/IconButton';
 import type { WorkMode } from '@/lib/workMode';
 
 function initialsFor(label: string): string {
@@ -83,17 +84,16 @@ function AccountMenu({
 
   return (
     <div ref={rootRef} className="relative shrink-0">
-      <button
-        type="button"
+      <IconButton
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Account options"
+        icon={MoreVertical}
+        label="Account options"
         title="Account options"
-        className="rounded-lg p-1.5 text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
-      >
-        <MoreVertical size={16} aria-hidden="true" />
-      </button>
+        iconSize={18}
+        className="text-content-muted hover:bg-primary-wash hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark"
+      />
 
       {open && (
         <div

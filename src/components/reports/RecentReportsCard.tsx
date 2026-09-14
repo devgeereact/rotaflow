@@ -43,7 +43,10 @@ export function RecentReportsCard({
           <button
             type="button"
             onClick={onViewAll}
-            className="rounded-lg text-[0.78rem] font-semibold text-primary dark:text-primary-ink-dark transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            // `text-primary` is a FILL and measures 4.08:1 as small text: the ink
+            // pair is the text colour (docs/DESIGN.md §5). And a 19px-tall
+            // control was under WCAG 2.2 AA's own 24px floor.
+            className="inline-flex min-h-11 items-center rounded-lg text-[0.78rem] font-semibold text-primary-ink transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
           >
             View all
           </button>

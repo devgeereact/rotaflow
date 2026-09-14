@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { cn } from '@/lib/utils';
 
 interface ScrollRegionProps {
@@ -15,6 +22,13 @@ interface ScrollRegionProps {
    * do this for their "Show figures" toggle.
    */
   id?: string;
+  /**
+   * The scrolling element itself, for a caller that has to set `scrollLeft` —
+   * the rota grid opens on the week the toolbar is talking about, which is in
+   * the middle of a three-week canvas. Read-only from the region's side; it
+   * still owns the overflow measurement.
+   */
+  viewportRef?: RefObject<HTMLDivElement>;
 }
 
 /**
@@ -46,8 +60,10 @@ export function ScrollRegion({
   className,
   viewportClassName,
   id,
+  viewportRef,
 }: ScrollRegionProps): JSX.Element {
-  const ref = useRef<HTMLDivElement>(null);
+  const ownRef = useRef<HTMLDivElement>(null);
+  const ref = viewportRef ?? ownRef;
   const [overflowing, setOverflowing] = useState(false);
   const [atEnd, setAtEnd] = useState(false);
 
@@ -57,7 +73,10 @@ export function ScrollRegion({
     const over = el.scrollWidth > el.clientWidth + 1;
     setOverflowing(over);
     setAtEnd(!over || el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
-  }, []);
+    // `ref` is either the caller's object or this component's own; both are
+    // stable for the life of the region, and it is a dependency only because
+    // which of the two it is is decided at render.
+  }, [ref]);
 
   useEffect(() => {
     const el = ref.current;
@@ -66,11 +85,18 @@ export function ScrollRegion({
     // `ResizeObserver` catches the viewport changing AND the content changing,
     // which a window `resize` listener does not: a filter that removes rows can
     // change the widest cell.
+    //
+    // Guarded because it is not everywhere: jsdom has none, so every component
+    // test that rendered a table through this threw `ResizeObserver is not
+    // defined` before the assertions ran. The one-off `measure()` above still
+    // happened, so the region is correct on first paint and simply stops
+    // re-measuring — the same behaviour as a browser without the API.
+    if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     for (const child of Array.from(el.children)) observer.observe(child);
     return () => observer.disconnect();
-  }, [measure, children]);
+  }, [measure, children, ref]);
 
   return (
     <div id={id} className={cn('relative', className)}>

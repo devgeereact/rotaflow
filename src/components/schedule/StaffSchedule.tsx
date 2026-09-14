@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import type { Location, Shift, ShiftType } from '@/types';
+import { formatTimeRange } from '@/lib/timeRange';
 
 export interface StaffScheduleProps {
   /** e.g. "4 August 2026", the Monday of the week shown. */
@@ -72,7 +73,7 @@ function buildDays(
       id: shift.id,
       colour: shift.colour ?? type?.colour ?? null,
       typeName: type?.name ?? 'Shift',
-      timeLabel: `${start}, ${end}`,
+      timeLabel: formatTimeRange(start, end, { overnight: 'compact' }),
       locationName: location?.name ?? 'No location',
       hours: hoursLabel(shiftNetMinutes(shift) / 60),
     });

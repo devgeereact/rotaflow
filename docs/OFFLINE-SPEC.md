@@ -36,12 +36,12 @@ GEE OS classes are `offline read`, `offline write`, `offline queue`,
 | ----------------------------------------- | ----------------- | -------------------------------------------------------------------------------------- |
 | App shell, boot, install, update prompt   | offline read      | 166 precache entries, `vite.config.ts:111`; `src/App.tsx:84`                           |
 | Marketing pages, legal pages              | offline read      | static React, precached chunks, `navigateFallback: index.html` `vite.config.ts:113`    |
-| Clock in / clock out, including GPS       | **offline queue** | `src/pages/app/ClockInPage.tsx:314-358`, replay `src/services/syncQueue.ts:38`         |
-| Leave request (staff submitting)          | **offline queue** | `src/pages/app/LeavePage.tsx:312-316`                                                  |
-| Shift swap request or offer (staff)       | **offline queue** | `src/pages/app/SwapsPage.tsx:209-213`                                                  |
+| Clock in / clock out, including GPS       | **offline queue** | `src/pages/app/ClockInPage.tsx:339-368`, replay `src/services/syncQueue.ts:38`         |
+| Leave request (staff submitting)          | **offline queue** | `src/pages/app/LeavePage.tsx:339-344`                                                  |
+| Shift swap request or offer (staff)       | **offline queue** | `src/pages/app/SwapsPage.tsx:217-221`                                                  |
 | Rota view, my shifts, clock history       | network required  | no application cache; only the shared 5 minute SW cache, `vite.config.ts:128-138`      |
 | Rota builder and publish                  | network required  | `publish_rota` is an RPC and is not queued, `src/components/FailedWritesNotice.tsx:16` |
-| Leave, swap and overtime approvals        | network required  | no `enqueue` on any review path, `src/pages/app/LeavePage.tsx:341,366`                 |
+| Leave, swap and overtime approvals        | network required  | no `enqueue` on any review path, `src/pages/app/LeavePage.tsx:379,408`                 |
 | Announcements                             | network required  | direct service reads, nothing cached or queued                                         |
 | Notifications list, web push subscription | network required  | `src/hooks/useWebPush.ts:76,108`                                                       |
 | Reports, timesheets, CSV export           | network required  | generated from live reads                                                              |
@@ -66,6 +66,12 @@ migration. `src/services/syncQueue.ts` replays it.
   and let the queue continue; transient ones stop the flush and wait for the next
   reconnect; five attempts exhausts a write. SQLSTATE classes `08/40/53/57/58`,
   HTTP 408/425/429 and 5xx are transient.
+  Since `0152` a leave request booked offline over days the person already has
+  off comes back as `23P01`, which is class `23` and therefore permanent — so it
+  dead-letters into the notice below with the sentence
+  `src/services/leaveService.ts` gives it, rather than being replayed forever or
+  landing as a second booking. That is the one conflict this queue can now
+  detect: the write is refused by a constraint, not merged.
 - **Nothing is silently discarded.** A dead-lettered write surfaces in
   `src/components/FailedWritesNotice.tsx` with Retry and Discard, on all three
   screens that can queue. This satisfies the engine's hardest rule, that user

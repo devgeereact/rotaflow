@@ -6,7 +6,11 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
-import { listOrgLeaveRequests, reviewLeaveRequest } from '@/services/leaveService';
+import {
+  isDoubleBookedLeave,
+  listOrgLeaveRequests,
+  reviewLeaveRequest,
+} from '@/services/leaveService';
 import { decideShiftSwap, listOrgShiftSwaps } from '@/services/swapService';
 import {
   listOrgOvertimeRequests,
@@ -166,8 +170,14 @@ export function ApprovalsPage(): JSX.Element {
           }
         }
       } catch (err) {
-        reportError(err, { area: `approvals:${row.kind}` });
-        showError('That decision could not be recorded.');
+        // `0152` refusing a double-booking is a decision the manager has to
+        // make, not an error to report — see `isDoubleBookedLeave`.
+        if (isDoubleBookedLeave(err)) {
+          showError(err.message);
+        } else {
+          reportError(err, { area: `approvals:${row.kind}` });
+          showError('That decision could not be recorded.');
+        }
       } finally {
         setDeciding(null);
         setReloadKey((k) => k + 1);

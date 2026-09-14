@@ -1,4 +1,6 @@
 import { format, isToday, isYesterday } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { formatTimeRange } from '@/lib/timeRange';
 import { toDisplayStatus } from '@/lib/swapRows';
 import type { ShiftSwapWithShift } from '@/services/swapService';
 import type { SwapParty, SwapRow } from '@/lib/swapRows';
@@ -21,6 +23,17 @@ export interface SwapMappingContext {
    * `handleFinalize`.
    */
   swapApprovalRequired: boolean;
+}
+
+/**
+ * A shift instant in its own location's timezone.
+ *
+ * Falls back to the viewer's zone only when the shift has no location, which
+ * is the one case where there is nothing better to use.
+ */
+function shiftZoned(iso: string, location: Location | undefined): Date {
+  const when = new Date(iso);
+  return location?.timezone ? toZonedTime(when, location.timezone) : when;
 }
 
 /**
@@ -122,11 +135,21 @@ export function toSwapRow(
     toStaffId: swap.target_staff_profile_id,
     shift: shift
       ? {
-          dateLabel: format(new Date(shift.starts_at), 'EEE d MMM yyyy'),
-          timeLabel: `${format(new Date(shift.starts_at), 'HH:mm')}, ${format(
-            new Date(shift.ends_at),
-            'HH:mm',
-          )}`,
+          // In the SITE's clock, not the browser's. `format(new Date(...))`
+          // read whatever zone the viewer's laptop was set to, so a manager
+          // covering a London home from another timezone was shown the wrong
+          // hours — and, for a late shift, the wrong day — on the card they
+          // decide from. `ManagerSchedule` records the same defect.
+          dateLabel: format(shiftZoned(shift.starts_at, location), 'EEE d MMM yyyy'),
+          // `formatTimeRange` rather than a template literal: this wrote
+          // `15:00, 23:00`, which reads as two separate times, and
+          // `src/lib/timeRange.ts` exists to keep one spelling of a range
+          // across every screen that shows a shift.
+          timeLabel: formatTimeRange(
+            format(shiftZoned(shift.starts_at, location), 'HH:mm'),
+            format(shiftZoned(shift.ends_at, location), 'HH:mm'),
+            { overnight: 'compact' },
+          ),
           locationName: location?.name ?? null,
         }
       : null,
