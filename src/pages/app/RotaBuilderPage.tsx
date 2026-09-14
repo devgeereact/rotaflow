@@ -1950,7 +1950,7 @@ export function RotaBuilderPage(): JSX.Element {
         />
 
         {/* ---- Toolbar: date nav, view tabs, settings, publish ---- */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 sm:mb-4">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* A period stepper is the case docs/DESIGN.md §5 names for
                 `IconButton`'s 44px default. These were hand-rolled 30x30
@@ -2159,7 +2159,7 @@ export function RotaBuilderPage(): JSX.Element {
             filters collapse behind one chip that keeps the applied count
             visible. Everything stays reachable; nothing is hidden without
             being counted. */}
-        <div className="mb-4 flex flex-wrap items-start gap-3">
+        <div className="mb-3 flex flex-wrap items-start gap-3 sm:mb-4">
           <MobileDisclosure
             breakpoint="xl"
             variant="inline"
