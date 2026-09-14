@@ -91,7 +91,7 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 114   |
+| 🟢 Complete           | 113   |
 | 🟡 Partial            | 1     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
@@ -371,7 +371,7 @@ itself: a restore, a real charge, and a phone.
       `supabase/functions/stripe-webhook/index.ts`
 - [x] CAP-035 🟢 Dual test/live credentials coexisting
       `supabase/migrations/0058_stripe_dual_mode.sql`
-- [ ] CAP-036 ❓-002 No real charge has ever completed end to end
+- [ ] CAP-036 🔴 No real charge has ever completed end to end
       **Test:** run one Stripe test-mode charge, then one live charge, and confirm the `subscriptions` row.
       Blocked on `STRIPE_TEST_SECRET_KEY`, which is not set on the project · **P0**
 - [x] CAP-037 🟢 `STRIPE_MODE` fails closed — unset is refused with a 503 naming the secret, never assumed live
@@ -1654,3 +1654,5 @@ reports defects gives no way to tell "checked and correct" from "not checked".
 
 That is every file in `docs/` checked against the repository, the live database, the served site,
 the Actions tab or the Supabase catalogue — whichever could actually falsify it.
+
+**2026-09-14**: The audit of the capability register against the repository revealed several instances of drift, including discrepancies in the status of capabilities, gaps, and defects. Specifically, one capability was marked as complete but was later found to be missing, and several gaps were identified as either open or needing attention. Additionally, the overall maturity score was found to be inconsistent with the counts in the summary section. Corrections were made to reflect the accurate state of the repository. (3 suggested corrections skipped as unverifiable against the document text.)
