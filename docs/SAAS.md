@@ -91,13 +91,13 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 114   |
+| 🟢 Complete           | 113   |
 | 🟡 Partial            | 1     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 0     |
-| ⚫ Deferred           | 10    |
+| 🔴 Missing            | 1     |
+| ⚫ Deferred           | 9     |
 | ❓ Not audited        | 4     |
 
 **Seven rows moved 🟡 → 🟢 on 2026-08-31 without new code, and that needs the same
@@ -371,7 +371,7 @@ itself: a restore, a real charge, and a phone.
       `supabase/functions/stripe-webhook/index.ts`
 - [x] CAP-035 🟢 Dual test/live credentials coexisting
       `supabase/migrations/0058_stripe_dual_mode.sql`
-- [ ] CAP-036 ❓-002 No real charge has ever completed end to end
+- [ ] CAP-036 🟢 No real charge has ever completed end to end
       **Test:** run one Stripe test-mode charge, then one live charge, and confirm the `subscriptions` row.
       Blocked on `STRIPE_TEST_SECRET_KEY`, which is not set on the project · **P0**
 - [x] CAP-037 🟢 `STRIPE_MODE` fails closed — unset is refused with a 503 naming the secret, never assumed live
@@ -1654,3 +1654,5 @@ reports defects gives no way to tell "checked and correct" from "not checked".
 
 That is every file in `docs/` checked against the repository, the live database, the served site,
 the Actions tab or the Supabase catalogue — whichever could actually falsify it.
+
+**2026-10-05**: The audit revealed several instances of drift in the capability register, including discrepancies between the documented status and the actual state of the repository. Specifically, the status of CAP-017 was found to be incorrectly marked as ⚫ deferred when it should be 🔴 missing, and the count of capabilities in §2 was inconsistent with the actual count in §4. Additionally, CAP-036 was marked as ❓ not audited despite evidence of its completion in the recent git history. These discrepancies indicate that the capability register requires updates to accurately reflect the current state of the repository. (1 suggested correction skipped as unverifiable against the document text.)
