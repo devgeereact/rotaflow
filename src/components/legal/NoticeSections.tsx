@@ -62,7 +62,9 @@ export function NoticeSections({
                   pushed the whole page wider than a 390px phone and the body
                   scrolled sideways. */}
               Checkable in:{' '}
-              <span className="wrap-break-word font-mono text-xs">{section.evidence}</span>
+              <span className="wrap-break-word font-mono text-xs">
+                {section.evidence}
+              </span>
             </p>
           )}
         </section>
