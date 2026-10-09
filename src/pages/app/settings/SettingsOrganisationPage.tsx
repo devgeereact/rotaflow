@@ -720,7 +720,7 @@ export function SettingsOrganisationPage(): JSX.Element {
       />
 
       {/* Sticky so the Save control is reachable without scrolling back up. This page is two screens tall on a laptop. */}
-      <div className="sticky bottom-0 -mx-1 flex justify-end gap-3 border-t border-surface-border bg-background/90 px-1 py-4 backdrop-blur dark:border-surface-border-dark dark:bg-background-dark/90">
+      <div className="sticky bottom-0 -mx-1 flex justify-end gap-3 border-t border-surface-border bg-background/90 px-1 py-4 backdrop-blur-sm dark:border-surface-border-dark dark:bg-background-dark/90">
         <Button onClick={() => void handleSave()} disabled={saving || !name.trim()}>
           {saving ? 'Saving…' : 'Save changes'}
         </Button>

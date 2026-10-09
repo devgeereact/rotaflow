@@ -137,8 +137,8 @@ export function GlobalSearch({
         onClick={() => setOpen(true)}
         className={
           variant === 'rail'
-            ? 'flex h-9 w-full items-center gap-2 rounded-xl border border-surface-border bg-surface px-2.5 text-[13px] text-content-muted hover:border-primary hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:text-content-dark'
-            : 'flex h-10 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark'
+            ? 'flex h-9 w-full items-center gap-2 rounded-xl border border-surface-border bg-surface px-2.5 text-[13px] text-content-muted hover:border-primary hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:text-content-dark'
+            : 'flex h-10 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content-muted hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark'
         }
       >
         <Search
@@ -201,13 +201,13 @@ export function GlobalSearch({
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onInputKeyDown}
                 placeholder="Search screens and actions…"
-                className="h-14 flex-1 bg-transparent text-content outline-none placeholder:text-content-muted dark:text-content-dark"
+                className="h-14 flex-1 bg-transparent text-content outline-hidden placeholder:text-content-muted dark:text-content-dark"
               />
               <button
                 type="button"
                 onClick={close}
                 aria-label="Close search"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
               >
                 <X size={16} aria-hidden="true" />
               </button>

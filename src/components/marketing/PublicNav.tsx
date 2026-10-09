@@ -71,7 +71,7 @@ export function PublicNav(): JSX.Element {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-surface-border bg-surface/80 backdrop-blur dark:border-surface-border-dark dark:bg-surface-dark/80">
+    <header className="sticky top-0 z-30 border-b border-surface-border bg-surface/80 backdrop-blur-sm dark:border-surface-border-dark dark:bg-surface-dark/80">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <BrandMark label={null} className="h-8 w-8" />
@@ -87,7 +87,7 @@ export function PublicNav(): JSX.Element {
               to={to}
               className={({ isActive }) =>
                 cn(
-                  'rounded text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'rounded text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
                   isActive
                     ? 'text-primary dark:text-primary-ink-dark'
                     : 'text-content-muted hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark',
@@ -108,7 +108,7 @@ export function PublicNav(): JSX.Element {
             <>
               <Link
                 to="/login"
-                className="hidden rounded text-sm font-medium text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:block dark:text-content-muted-dark dark:hover:text-content-dark"
+                className="hidden rounded text-sm font-medium text-content-muted hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary sm:block dark:text-content-muted-dark dark:hover:text-content-dark"
               >
                 Log in
               </Link>
@@ -123,7 +123,7 @@ export function PublicNav(): JSX.Element {
             onClick={() => setOpen(true)}
             aria-label="Open menu"
             aria-expanded={open}
-            className="grid h-11 w-11 place-items-center rounded-xl border border-surface-border text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden dark:border-surface-border-dark dark:text-content-dark"
+            className="grid h-11 w-11 place-items-center rounded-xl border border-surface-border text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary lg:hidden dark:border-surface-border-dark dark:text-content-dark"
           >
             <Menu size={20} aria-hidden="true" />
           </button>
@@ -156,7 +156,7 @@ export function PublicNav(): JSX.Element {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close menu"
-                className="grid h-11 w-11 place-items-center rounded-xl text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                className="grid h-11 w-11 place-items-center rounded-xl text-content-muted hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
               >
                 <X size={20} aria-hidden="true" />
               </button>
@@ -169,7 +169,7 @@ export function PublicNav(): JSX.Element {
                   to={to}
                   className={({ isActive }) =>
                     cn(
-                      'rounded-xl px-3 py-3 text-base font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                      'rounded-xl px-3 py-3 text-base font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
                       isActive
                         ? 'bg-primary/10 text-primary dark:text-primary-ink-dark'
                         : 'text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark',

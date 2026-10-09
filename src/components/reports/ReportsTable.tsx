@@ -27,7 +27,7 @@ const HEAD_CELL =
 
 const ACTION =
   'grid h-9 w-9 place-items-center rounded-lg border border-surface-border transition-colors hover:bg-surface-subtle ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40 ' +
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40 ' +
   'dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark';
 
 /** The report catalogue, one row per report (docs/design/Reports-Dashboard.png). */
@@ -50,7 +50,7 @@ export function ReportsTable({
 
   return (
     <ScrollRegion label="Report results">
-      <table className="w-full min-w-[58rem] table-fixed border-collapse">
+      <table className="w-full min-w-232 table-fixed border-collapse">
         <thead>
           <tr className="border-b border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
             <th scope="col" className="w-[4.5%] px-2 py-4">
@@ -98,7 +98,7 @@ export function ReportsTable({
                   }
                   // 36px is `IconButton`'s `sm`, the size docs/DESIGN.md §5
                   // allows inside a dense table row. This was 28.
-                  className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
+                  className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
                 >
                   <Star
                     size={18}
@@ -120,7 +120,7 @@ export function ReportsTable({
                       Availability Report" both ended in an ellipsis while the
                       description beside them had room to spare. A report's
                       name is how the row is identified. */}
-                  <span className="min-w-0 break-words text-[0.78rem] font-semibold text-content dark:text-content-dark">
+                  <span className="min-w-0 wrap-break-word text-[0.78rem] font-semibold text-content dark:text-content-dark">
                     {row.name}
                   </span>
                 </div>

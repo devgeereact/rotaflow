@@ -123,7 +123,7 @@ export function DelegationSection({
       description="Lend managerial approvals to a colleague for a set period."
     >
       {canDelegate && (
-        <div className="mb-5 grid gap-4 sm:grid-cols-[1fr,1fr,auto] sm:items-end">
+        <div className="mb-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <div>
             <Label htmlFor="delegate-to">Who is covering</Label>
             <Select

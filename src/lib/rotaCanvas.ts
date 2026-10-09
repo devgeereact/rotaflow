@@ -149,7 +149,7 @@ export function isInAnchorWeek(date: string, anchorWeekStart: string): boolean {
  *
  * That is the real cause of the design review's F6, which read it as "the
  * column is simply too narrow for what it pins". With `truncate` the symptom
- * was an ellipsis after eight characters; with `break-words` it became a
+ * was an ellipsis after eight characters; with `wrap-break-word` it became a
  * tower of one letter per line, several hundred pixels tall, because text in
  * a zero-width box wraps at every character. Neither is the bug — the
  * collapsing track is.

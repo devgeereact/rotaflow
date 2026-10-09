@@ -29,7 +29,7 @@ export function WorkInformationCard({
         <button
           type="button"
           onClick={onEdit}
-          className="flex h-7 items-center gap-1.5 rounded-lg border border-surface-border px-2 text-xs font-medium text-content-muted transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+          className="flex h-7 items-center gap-1.5 rounded-lg border border-surface-border px-2 text-xs font-medium text-content-muted transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
         >
           <Pencil size={12} aria-hidden="true" />
           Edit

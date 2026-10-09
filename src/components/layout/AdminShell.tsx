@@ -28,7 +28,7 @@ const LINK_INACTIVE =
 const LINK_ACTIVE = 'bg-primary text-primary-fg';
 
 const EYEBROW =
-  'text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-content-muted dark:text-content-muted-dark';
+  'text-[0.625rem] font-semibold uppercase tracking-widest text-content-muted dark:text-content-muted-dark';
 
 /**
  * Which deployment this is.
@@ -352,7 +352,7 @@ export function AdminShell(): JSX.Element {
               aria-expanded={mobileOpen}
               // 44px: on a phone this is the only way to reach any other
               // console screen, and it was a 32px square.
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger md:hidden"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-danger md:hidden"
             >
               <Menu size={18} aria-hidden="true" />
             </button>
@@ -362,7 +362,7 @@ export function AdminShell(): JSX.Element {
             </p>
           </div>
 
-          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border bg-background/90 px-4 py-2.5 backdrop-blur lg:px-6 dark:border-surface-border-dark dark:bg-background-dark/90">
+          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border bg-background/90 px-4 py-2.5 backdrop-blur-sm lg:px-6 dark:border-surface-border-dark dark:bg-background-dark/90">
             <p className="flex min-w-0 items-center gap-1.5 truncate text-[0.78rem] text-content-muted dark:text-content-muted-dark">
               Platform Console
               {crumb ? (
@@ -382,7 +382,7 @@ export function AdminShell(): JSX.Element {
                 <button
                   type="button"
                   onClick={refresh}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-surface-border bg-surface px-3 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-surface-border bg-surface px-3 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
                 >
                   <RefreshCw size={14} aria-hidden="true" />
                   Refresh
@@ -390,7 +390,7 @@ export function AdminShell(): JSX.Element {
               ) : null}
               <Link
                 to="/admin/support-access"
-                className="inline-flex min-h-11 items-center rounded-lg border border-surface-border bg-surface px-3 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+                className="inline-flex min-h-11 items-center rounded-lg border border-surface-border bg-surface px-3 text-xs font-medium text-content shadow-sm transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
               >
                 Request support access
               </Link>

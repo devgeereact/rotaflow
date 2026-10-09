@@ -490,7 +490,7 @@ export function AdminSettingsPage(): JSX.Element {
             </Callout>
             <Panel
               title="Platform identity"
-              bodyClassName="grid gap-4 p-4 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]"
+              bodyClassName="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]"
             >
               <Field
                 id="platform-name"

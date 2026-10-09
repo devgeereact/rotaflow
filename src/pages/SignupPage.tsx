@@ -249,7 +249,7 @@ export function SignupPage(): JSX.Element {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="grid h-11 w-11 place-items-center rounded-lg text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-content-muted hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -302,7 +302,7 @@ export function SignupPage(): JSX.Element {
           type="button"
           disabled={busy}
           onClick={() => void handleMagicLink()}
-          className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-primary-ink dark:text-primary-ink-dark transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-border bg-surface text-sm font-medium text-primary-ink dark:text-primary-ink-dark transition-transform duration-150 ease-in-out active:scale-[0.98] hover:scale-[1.02] hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark"
         >
           <Mail size={18} aria-hidden="true" />
           Sign up with magic link

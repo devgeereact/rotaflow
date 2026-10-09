@@ -53,7 +53,7 @@ export function PublicFooter(): JSX.Element {
                   <li key={`${heading}-${label}`}>
                     <Link
                       to={to}
-                      className="rounded text-sm text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                      className="rounded text-sm text-content-muted hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
                     >
                       {label}
                     </Link>
@@ -64,7 +64,7 @@ export function PublicFooter(): JSX.Element {
                     <button
                       type="button"
                       onClick={reopen}
-                      className="rounded text-left text-sm text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+                      className="rounded text-left text-sm text-content-muted hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
                     >
                       Cookie preferences
                     </button>
@@ -83,7 +83,7 @@ export function PublicFooter(): JSX.Element {
             RotaFlow is in active development. See{' '}
             <Link
               to="/resources"
-              className="rounded underline underline-offset-2 hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-content-dark"
+              className="rounded underline underline-offset-2 hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-content-dark"
             >
               what is built today
             </Link>

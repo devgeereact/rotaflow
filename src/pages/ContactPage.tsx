@@ -197,7 +197,7 @@ export function ContactPage(): JSX.Element {
                   send there and it reaches us. If nothing opened, email us directly at{' '}
                   <a
                     href={`mailto:${CONTACT_EMAIL}`}
-                    className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     {CONTACT_EMAIL}
                   </a>
@@ -334,7 +334,7 @@ export function ContactPage(): JSX.Element {
                     aria-invalid={errors.message ? true : undefined}
                     aria-describedby={errors.message ? 'message-error' : undefined}
                     className={cn(
-                      'w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none',
+                      'w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden',
                       'placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary',
                       'dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark',
                       errors.message && 'border-danger focus-visible:ring-danger',
@@ -382,7 +382,7 @@ export function ContactPage(): JSX.Element {
                 Prefer your own email client? Write to{' '}
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
-                  className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {CONTACT_EMAIL}
                 </a>

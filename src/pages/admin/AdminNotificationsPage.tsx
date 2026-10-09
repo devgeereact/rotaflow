@@ -426,7 +426,7 @@ export function AdminNotificationsPage(): JSX.Element {
                 component instead also gets the visible overflow cue, which is
                 the half of the problem a tab stop alone does not solve. */}
             <ScrollRegion label="Platform announcements">
-              <table className="w-full min-w-[68rem] table-fixed border-collapse text-sm">
+              <table className="w-full min-w-272 table-fixed border-collapse text-sm">
                 <caption className="sr-only">Platform announcements</caption>
                 <colgroup>
                   {[

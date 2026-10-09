@@ -26,7 +26,7 @@
  * quietly reusing a colour: two occupations sharing a swatch is worse than a
  * blocked form, because nothing on screen says the colour has stopped meaning
  * one thing. Extending the palette is a deliberate change here and in
- * `tailwind.config.ts` together, with the contrast and colour-vision
+ * the `@theme` block in `src/index.css` together, with the contrast and colour-vision
  * measurements redone. `docs/DESIGN.md` §2b records how.
  */
 

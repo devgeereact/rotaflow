@@ -113,7 +113,7 @@ export function StepChoosePlan({
                 <h3 className="font-display text-lg font-bold text-content dark:text-content-dark">
                   {option.name}
                 </h3>
-                <p className="mb-4 min-h-[2.5rem] text-sm text-content-muted dark:text-content-muted-dark">
+                <p className="mb-4 min-h-10 text-sm text-content-muted dark:text-content-muted-dark">
                   {option.tagline}
                 </p>
 

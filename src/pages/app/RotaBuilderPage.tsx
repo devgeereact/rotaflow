@@ -1926,7 +1926,7 @@ export function RotaBuilderPage(): JSX.Element {
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search staff, skills, shifts…"
         aria-label="Search this rota by staff, skill or shift"
-        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-3 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-3 text-sm text-content outline-hidden focus-visible:ring-2 focus-visible:ring-primary sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
       />
     </>
   );
@@ -2092,7 +2092,7 @@ export function RotaBuilderPage(): JSX.Element {
                 // `w-11` (44px): this was a 31px-wide sliver beside a full
                 // Publish button, and it is the only way to reach Publish
                 // without notifying, or to schedule one.
-                className="w-11 shrink-0 rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="w-11 shrink-0 rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <ChevronDown size={16} aria-hidden="true" className="mx-auto" />
               </button>
@@ -2453,7 +2453,7 @@ export function RotaBuilderPage(): JSX.Element {
             : 'All changes saved'}
         </div>
 
-        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+        <div className="mt-4 grid gap-4 grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
           {/* `tabIndex={-1}` so the "Review issues" link above moves focus
               here as well as scrolling, which is the half of an in-page jump
               that keyboard and screen-reader users actually need. */}

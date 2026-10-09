@@ -576,7 +576,7 @@ export function RotaAssistantPanel({
             </label>
             <textarea
               id="assistant-prompt"
-              className="w-full rounded-xl border border-surface-border bg-background px-4 py-3 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+              className="w-full rounded-xl border border-surface-border bg-background px-4 py-3 text-content outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
               rows={3}
               placeholder="e.g. Cover Saturday and Sunday nights with two people who can do lates."
               value={prompt}

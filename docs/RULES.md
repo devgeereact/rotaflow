@@ -40,7 +40,7 @@ codebase will drift from, and several below had.
 
 ## 4. Styling
 
-- Tailwind / NativeWind utilities **only**. Tokens from `tailwind.config.ts`.
+- Tailwind / NativeWind utilities **only**. Tokens from the `@theme` block in `src/index.css`.
 - **No** `.css`/`.module.css`, no CSS-in-JS. Avoid inline `style={{}}` — the
   exception is a genuinely computed value a utility class cannot express (a chart
   bar's height, a progress width). Sixteen such uses exist; anything else belongs

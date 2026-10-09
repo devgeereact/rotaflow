@@ -45,7 +45,7 @@ export function ReportsOverviewCard({
             value={range}
             onChange={(event) => onRangeChange(event.target.value)}
             aria-label="Overview period"
-            className="h-full w-full appearance-none bg-transparent pr-4 text-[0.8rem] font-semibold text-content outline-none dark:text-content-dark"
+            className="h-full w-full appearance-none bg-transparent pr-4 text-[0.8rem] font-semibold text-content outline-hidden dark:text-content-dark"
           >
             {ranges.map((option) => (
               <option key={option.value} value={option.value}>
@@ -76,7 +76,7 @@ export function ReportsOverviewCard({
             }))}
             centreValue={String(total)}
             centreLabel="Reports"
-            className="h-[8.125rem] w-[8.125rem]"
+            className="h-32.5 w-32.5"
           />
 
           <ul className="min-w-0 flex-1 space-y-2.5">

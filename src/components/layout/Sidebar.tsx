@@ -166,7 +166,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
         className={cn(
           'hidden h-full shrink-0 flex-col border-r border-surface-border bg-surface-subtle transition-[width] duration-200 md:flex',
           'dark:border-surface-border-dark dark:bg-surface-subtle-dark',
-          collapsed ? 'w-[4.5rem]' : 'w-64',
+          collapsed ? 'w-18' : 'w-64',
         )}
       >
         <div

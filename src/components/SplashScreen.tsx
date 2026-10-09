@@ -49,7 +49,7 @@ export function SplashScreen({
         <Link
           to="/"
           aria-label="RotaFlow home"
-          className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background dark:focus-visible:ring-offset-background-dark"
+          className="rounded-2xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background dark:focus-visible:ring-offset-background-dark"
         >
           <BrandMark label={null} className="h-40 w-40 sm:h-52 sm:w-52 lg:h-66 lg:w-66" />
         </Link>

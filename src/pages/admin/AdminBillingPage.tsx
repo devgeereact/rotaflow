@@ -326,7 +326,7 @@ export function AdminBillingPage(): JSX.Element {
                 aria-label="Currency"
                 value={derived.shownCurrency}
                 onChange={(event) => setCurrency(event.target.value)}
-                className="h-11 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+                className="h-11 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
               >
                 {derived.currencies.map((code) => (
                   <option key={code} value={code}>

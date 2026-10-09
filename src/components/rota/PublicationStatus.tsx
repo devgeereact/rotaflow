@@ -98,7 +98,7 @@ export function PublicationStatus({
           {issuesAnchorId && (
             <a
               href={`#${issuesAnchorId}`}
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-primary-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
             >
               Review issues
               <ArrowRight size={16} aria-hidden="true" />

@@ -7,7 +7,7 @@
  * hostname under it. For a product sold on looking organised, that is the
  * first impression most people get before they ever load the site.
  *
- * Generated rather than drawn so it stays in step with `tailwind.config.ts`
+ * Generated rather than drawn so it stays in step with the `@theme` tokens in `src/index.css`
  * and `src/lib/brand.ts`, and so the next person can change the words without
  * opening a design tool. Playwright is already a dev dependency for the e2e
  * suite; nothing new is installed for this.
@@ -25,7 +25,7 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, 'public/og-image.png');
 
-// Kept in step with tailwind.config.ts by hand. A build-time import would
+// Kept in step with src/index.css by hand. A build-time import would
 // drag PostCSS in for nothing.
 const PRIMARY = '#3B6FE0'; // primary.DEFAULT — the rule under the card
 const BRAND = '#0C60F8'; // brand.DEFAULT — the logo tile
