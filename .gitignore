@@ -86,3 +86,8 @@ graphify-out/
 
 # Codex local tool config — machine-specific MCP endpoint, never shared
 .codex/
+
+# Local environment files may contain credentials. Keep only the example public.
+.env
+.env.*
+!.env.example
