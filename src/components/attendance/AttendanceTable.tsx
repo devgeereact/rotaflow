@@ -91,7 +91,7 @@ export function AttendanceTable({
             <button
               type="button"
               onClick={() => onOpen(row)}
-              className="w-full rounded-xl border border-surface-border p-3 text-left hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
+              className="w-full rounded-xl border border-surface-border p-3 text-left hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark"
             >
               <div className="mb-1.5 flex items-start justify-between gap-2">
                 <span className="min-w-0">
@@ -150,7 +150,7 @@ export function AttendanceTable({
       </ul>
 
       <ScrollRegion label="Attendance table" className="hidden lg:block">
-        <table className="w-full min-w-[62rem] border-collapse">
+        <table className="w-full min-w-248 border-collapse">
           <caption className="sr-only">
             Attendance for the selected period, one row per rostered shift.
           </caption>
@@ -251,7 +251,7 @@ export function AttendanceTable({
                   <button
                     type="button"
                     onClick={() => onOpen(row)}
-                    className="rounded-lg px-2 py-1 text-sm font-medium text-primary-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+                    className="rounded-lg px-2 py-1 text-sm font-medium text-primary-ink hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
                   >
                     Review
                     <span className="sr-only"> {row.name}</span>

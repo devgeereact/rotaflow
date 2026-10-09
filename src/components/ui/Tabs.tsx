@@ -68,7 +68,7 @@ export function Tabs({ items, label, className }: TabsProps): JSX.Element {
                   'inline-block border-b-2 px-1 pb-3 pt-1 text-sm transition-colors',
                   // Focus ring on the link itself, not the underline, so it is
                   // visible against both the active and inactive states.
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                   isActive
                     ? 'border-primary font-semibold text-primary dark:text-primary-ink-dark'
                     : 'border-transparent font-medium text-content-muted hover:border-surface-border hover:text-content dark:text-content-muted-dark dark:hover:border-surface-border-dark dark:hover:text-content-dark',

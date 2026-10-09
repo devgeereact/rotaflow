@@ -63,7 +63,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
           'inline-flex shrink-0 items-center justify-center rounded-lg',
           'text-content-muted hover:bg-surface-subtle hover:text-content',
           'dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark dark:hover:text-content-dark',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
           'disabled:cursor-not-allowed disabled:opacity-40',
           CONTROL_MOTION,
           box,

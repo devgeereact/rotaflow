@@ -106,7 +106,7 @@ export function StatTile({
     compact ? 'px-3 py-2.5 sm:px-3.5 sm:py-3.5' : 'px-3.5 py-3.5',
     'dark:border-surface-border-dark dark:bg-surface-dark',
     to &&
-      'transition-colors duration-control motion-reduce:transition-none hover:border-primary/45 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+      'transition-colors duration-control motion-reduce:transition-none hover:border-primary/45 hover:shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
     className,
   );
 

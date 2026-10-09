@@ -119,7 +119,7 @@ describe('the column template', () => {
     // minimum and the staff column absorbed the shortfall: measured at 49px
     // in Chromium, leaving the name element a client width of ZERO. With
     // `truncate` that showed as an ellipsis after eight characters; with
-    // `break-words` it became a tower of one letter per line, because text in
+    // `wrap-break-word` it became a tower of one letter per line, because text in
     // a zero-width box wraps at every character. The truncation was the
     // symptom both times; the collapsing track was the defect.
     //

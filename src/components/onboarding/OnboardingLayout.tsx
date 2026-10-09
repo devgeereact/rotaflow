@@ -132,7 +132,7 @@ export function OnboardingLayout({
                     <span
                       aria-hidden="true"
                       className={cn(
-                        'absolute left-[0.9375rem] top-8 h-[calc(100%-2rem)] w-px',
+                        'absolute left-3.75 top-8 h-[calc(100%-2rem)] w-px',
                         done
                           ? 'bg-success'
                           : active

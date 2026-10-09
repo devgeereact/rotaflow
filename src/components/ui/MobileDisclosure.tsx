@@ -82,7 +82,7 @@ export function MobileDisclosure({
     <details open={defaultOpen} className={cn('group', className)}>
       <summary
         className={cn(
-          'flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-lg border border-surface-border bg-surface text-sm font-semibold text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark',
+          'flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-lg border border-surface-border bg-surface text-sm font-semibold text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark',
           variant === 'inline' ? 'w-auto px-3 py-2' : 'px-4 py-3',
         )}
       >

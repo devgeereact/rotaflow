@@ -100,7 +100,7 @@ export function SettingsAuditPage(): JSX.Element {
           />
         ) : (
           <ScrollRegion label="Audit log">
-            <table className="w-full min-w-[40rem] text-sm">
+            <table className="w-full min-w-160 text-sm">
               <thead>
                 <tr className="border-b border-surface-border text-left dark:border-surface-border-dark">
                   <th className="pb-3 font-medium text-content-muted dark:text-content-muted-dark">

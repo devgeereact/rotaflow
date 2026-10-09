@@ -127,7 +127,7 @@ export function TeamDirectoryView({
           Add Staff creates a staff record. Giving someone a sign-in lives in{' '}
           <a
             href="/app/settings"
-            className="font-semibold text-primary-ink underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+            className="font-semibold text-primary-ink underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
           >
             Settings → Permissions
           </a>

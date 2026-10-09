@@ -98,7 +98,7 @@ export function ScrollRegion({
             aria-hidden="true"
             className={cn(
               'pointer-events-none absolute inset-y-0 right-0 w-6 rounded-r-lg',
-              'bg-gradient-to-l from-surface to-transparent dark:from-surface-dark',
+              'bg-linear-to-l from-surface to-transparent dark:from-surface-dark',
               'transition-opacity duration-control motion-reduce:transition-none',
               atEnd && 'opacity-0',
             )}

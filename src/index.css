@@ -1,6 +1,276 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: #f5f7fa;
+  --color-background-dark: #0b1220;
+
+  --color-surface: #ffffff;
+  --color-surface-dark: #111a2e;
+  --color-surface-subtle: #fafbfc;
+  --color-surface-subtle-dark: #15203a;
+  --color-surface-border: #e3e6ea;
+  --color-surface-border-dark: #22304d;
+  --color-surface-rail: #fafbfc;
+  --color-surface-rail-dark: #0e1729;
+
+  --color-divider: #f2f4f6;
+  --color-divider-dark: #1b2740;
+
+  --color-primary: #3b6fe0;
+  --color-primary-fg: #ffffff;
+  --color-primary-wash: #eef3fd;
+  --color-primary-wash-dark: #182848;
+  --color-primary-ink: #2f5bc0;
+  --color-primary-ink-dark: #769ae9;
+
+  --color-brand: #0c60f8;
+  --color-brand-deep: #0a55de;
+  --color-brand-light: #4c8cfb;
+  --color-brand-pale: #87b4fa;
+  --color-brand-mist: #c9dcfb;
+  --color-brand-wash: #e5eaf4;
+  --color-brand-faint: #5275ca;
+
+  --color-ink: #0d1934;
+  --color-ink-muted: #3e4a6e;
+  --color-ink-soft: #5a6684;
+
+  --color-secondary: #6b7280;
+  --color-secondary-dark: #94a3b8;
+
+  --color-success: #1ea06b;
+  --color-success-wash: #e7f5ee;
+  --color-success-wash-dark: #102a21;
+  --color-success-ink: #12724e;
+  --color-success-ink-dark: #35aa7a;
+
+  --color-clock: #05833c;
+  --color-clock-tint: #d6f4e1;
+  --color-clock-fg: #0a5522;
+  --color-clock-wash: #edfaf2;
+
+  --color-warning: #e0a030;
+  --color-warning-wash: #fbf2e1;
+  --color-warning-wash-dark: #2c2416;
+  --color-warning-ink: #7a5410;
+  --color-warning-ink-dark: #e0a030;
+
+  --color-danger: #d94a3a;
+  --color-danger-wash: #faeae7;
+  --color-danger-wash-dark: #2e1a17;
+  --color-danger-ink: #b23a2c;
+  --color-danger-ink-dark: #e48075;
+
+  --color-info: #388fd4;
+  --color-info-wash: #e8f2fa;
+  --color-info-wash-dark: #12253a;
+  --color-info-ink: #1b5e8e;
+  --color-info-ink-dark: #56a0da;
+
+  --color-content: #16191f;
+  --color-content-dark: #f8fafc;
+  --color-content-muted: #6b7280;
+  --color-content-muted-dark: #94a3b8;
+
+  --color-avail-free: #f3fbf5;
+  --color-avail-free-fg: #1c8056;
+  --color-avail-free-dark: #0f2e20;
+  --color-avail-free-fg-dark: #6ee7a8;
+  --color-avail-partial: #fef8ec;
+  --color-avail-partial-fg: #a55f1a;
+  --color-avail-partial-dark: #332714;
+  --color-avail-partial-fg-dark: #f5be72;
+  --color-avail-off: #feefef;
+  --color-avail-off-fg: #ce302a;
+  --color-avail-off-dark: #361b1b;
+  --color-avail-off-fg-dark: #fca5a5;
+  --color-avail-pref: #f3f7fe;
+  --color-avail-pref-fg: #3055e8;
+  --color-avail-pref-dark: #16224a;
+  --color-avail-pref-fg-dark: #9db8fd;
+
+  --color-role-indigo: #3749c8;
+  --color-role-indigo-wash: #f1f2fa;
+  --color-role-indigo-ink: #2f40bb;
+  --color-role-indigo-deep: #14172e;
+  --color-role-indigo-ink-dark: #707cd4;
+  --color-role-sky: #29a6c8;
+  --color-role-sky-wash: #f0f8fa;
+  --color-role-sky-ink: #1a7993;
+  --color-role-sky-deep: #122a31;
+  --color-role-sky-ink-dark: #50bbd7;
+  --color-role-teal: #4bddab;
+  --color-role-teal-wash: #f0fbf7;
+  --color-role-teal-ink: #15805c;
+  --color-role-teal-deep: #113126;
+  --color-role-teal-ink-dark: #4fd9aa;
+  --color-role-moss: #3a954c;
+  --color-role-moss-wash: #f2f9f3;
+  --color-role-moss-ink: #2f7e3f;
+  --color-role-moss-deep: #172b1b;
+  --color-role-moss-ink-dark: #68c079;
+  --color-role-olive: #8fc05a;
+  --color-role-olive-wash: #f5f9f2;
+  --color-role-olive-ink: #567b2c;
+  --color-role-olive-deep: #222c17;
+  --color-role-olive-ink-dark: #96c266;
+  --color-role-amber: #cfb936;
+  --color-role-amber-wash: #faf9f1;
+  --color-role-amber-ink: #7f711c;
+  --color-role-amber-deep: #2f2b13;
+  --color-role-amber-ink-dark: #d2c155;
+  --color-role-clay: #c27726;
+  --color-role-clay-wash: #fbf6f0;
+  --color-role-clay-ink: #a0611c;
+  --color-role-clay-deep: #312212;
+  --color-role-clay-ink-dark: #d89750;
+  --color-role-rose: #d04c7e;
+  --color-role-rose-wash: #faf1f4;
+  --color-role-rose-ink: #bd2d63;
+  --color-role-rose-deep: #2f141e;
+  --color-role-rose-ink-dark: #d15f8a;
+  --color-role-magenta: #94279a;
+  --color-role-magenta-wash: #f9f1fa;
+  --color-role-magenta-ink: #b72bbf;
+  --color-role-magenta-deep: #2e132f;
+  --color-role-magenta-ink-dark: #ca57d1;
+  --color-role-violet: #925bcd;
+  --color-role-violet-wash: #f5f1f9;
+  --color-role-violet-ink: #7333b7;
+  --color-role-violet-deep: #21152e;
+  --color-role-violet-ink-dark: #9d6ed0;
+  --color-role-slate: #4b5571;
+  --color-role-slate-wash: #f4f5f7;
+  --color-role-slate-ink: #5d6a8e;
+  --color-role-slate-deep: #1d1f26;
+  --color-role-slate-ink-dark: #808aa8;
+  --color-role-cocoa: #6e4a49;
+  --color-role-cocoa-wash: #f7f4f4;
+  --color-role-cocoa-ink: #8e5e5c;
+  --color-role-cocoa-deep: #261d1c;
+  --color-role-cocoa-ink-dark: #a9807f;
+
+  --color-shift-clay: #e28273;
+  --color-shift-amber: #c69a45;
+  --color-shift-moss: #86ac6a;
+  --color-shift-teal: #4fb39a;
+  --color-shift-sky: #56aacd;
+  --color-shift-indigo: #6ca0eb;
+  --color-shift-violet: #c48fd6;
+  --color-shift-rose: #e888ab;
+
+  --color-shift-tint-clay: #fdf3f1;
+  --color-shift-tint-clay-fg: #b0432f;
+  --color-shift-tint-amber: #fdf7ec;
+  --color-shift-tint-amber-fg: #8a6320;
+  --color-shift-tint-moss: #f1fbf5;
+  --color-shift-tint-moss-fg: #12714c;
+  --color-shift-tint-teal: #effaf7;
+  --color-shift-tint-teal-fg: #10705e;
+  --color-shift-tint-sky: #eff7fc;
+  --color-shift-tint-sky-fg: #1a6b8e;
+  --color-shift-tint-indigo: #f3f7fe;
+  --color-shift-tint-indigo-fg: #1b3fd4;
+  --color-shift-tint-violet: #f8f5fe;
+  --color-shift-tint-violet-fg: #5535c4;
+  --color-shift-tint-rose: #fdf3f7;
+  --color-shift-tint-rose-fg: #ae3a62;
+
+  --color-leave-annual: #7c3aed;
+  --color-leave-annual-wash: #f5f1fe;
+  --color-leave-annual-deep: #2a1d45;
+  --color-leave-sick: #12874c;
+  --color-leave-sick-wash: #ecf8f1;
+  --color-leave-sick-deep: #12301f;
+  --color-leave-personal: #2563eb;
+  --color-leave-personal-wash: #f1f6fe;
+  --color-leave-personal-deep: #16224a;
+  --color-leave-carer: #f97316;
+  --color-leave-carer-wash: #fef8ee;
+  --color-leave-carer-deep: #352a14;
+  --color-leave-other: #8a93a8;
+  --color-leave-other-wash: #f1f4fb;
+  --color-leave-other-deep: #1b2740;
+
+  --color-shift-deep-clay: #3a211c;
+  --color-shift-deep-amber: #352a14;
+  --color-shift-deep-moss: #12301f;
+  --color-shift-deep-teal: #0f2e28;
+  --color-shift-deep-sky: #122a36;
+  --color-shift-deep-indigo: #16224a;
+  --color-shift-deep-violet: #2a1d45;
+  --color-shift-deep-rose: #381b27;
+
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-display: Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --text-page-title: 2rem;
+  --text-page-title--line-height: 2.5rem;
+  --text-page-title-mobile: 1.5rem;
+  --text-page-title-mobile--line-height: 2rem;
+  --text-section-heading: 1.5rem;
+  --text-section-heading--line-height: 2rem;
+  --text-card-heading: 1rem;
+  --text-card-heading--line-height: 1.5rem;
+  --text-wordmark: 7.375rem;
+  --text-wordmark--line-height: 1;
+  --text-wordmark--letter-spacing: -0.026em;
+
+  --transition-duration-press: 100ms;
+  --transition-duration-control: 140ms;
+  --transition-duration-overlay: 180ms;
+  --transition-duration-entrance: 300ms;
+
+  --spacing-66: 16.625rem;
+
+  --tracking-lockup: 0.0625em;
+
+  --radius-sm: 0.5rem;
+  --radius: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.5rem;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --animate-fade-up: fade-up 300ms ease-out both;
+
+  @keyframes fade-up {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 @layer base {
   /*

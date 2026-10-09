@@ -196,7 +196,7 @@ export function OperationsDashboard({
             <button
               type="button"
               onClick={onRefresh}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-4 text-sm font-medium text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-4 text-sm font-medium text-content hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
             >
               <RefreshCw
                 size={15}

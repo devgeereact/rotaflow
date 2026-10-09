@@ -125,7 +125,7 @@ export function SettingsNotificationsPage(): JSX.Element {
         description="What your organisation notifies staff about, and how. Individuals can override these in their own preferences."
       >
         <ScrollRegion label="Notification settings">
-          <table className="w-full min-w-[34rem] text-sm">
+          <table className="w-full min-w-136 text-sm">
             <thead>
               <tr className="border-b border-surface-border text-left dark:border-surface-border-dark">
                 <th className="pb-3 font-medium text-content-muted dark:text-content-muted-dark">

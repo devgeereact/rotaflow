@@ -345,7 +345,7 @@ export function HelpPage(): JSX.Element {
               onChange={(e) => setFeedback(e.target.value)}
               rows={3}
               placeholder="Tell us what's on your mind…"
-              className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+              className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
             />
             <Button
               className="mt-3"
@@ -382,7 +382,7 @@ export function HelpPage(): JSX.Element {
                     type="button"
                     onClick={() => toggleCase(row.id)}
                     aria-expanded={expanded}
-                    className="flex w-full flex-wrap items-center gap-2.5 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="flex w-full flex-wrap items-center gap-2.5 p-4 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <span className="font-mono text-xs text-content-muted dark:text-content-muted-dark">
                       {row.reference}
@@ -450,7 +450,7 @@ export function HelpPage(): JSX.Element {
                             value={reply}
                             onChange={(e) => setReply(e.target.value)}
                             rows={3}
-                            className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+                            className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
                           />
                           <div className="mt-2 flex justify-end">
                             <Button
@@ -484,7 +484,7 @@ export function HelpPage(): JSX.Element {
                                   onClick={() => void handleRate(row.id, score)}
                                   aria-label={`Rate ${score} out of 5`}
                                   aria-pressed={row.csat === score}
-                                  className="grid h-11 w-11 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                                  className="grid h-11 w-11 place-items-center rounded-lg text-content-muted hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
                                 >
                                   {/* Fill is `warning`, stroke is
                                       `warning-ink`. `warning.DEFAULT` is
@@ -536,7 +536,7 @@ export function HelpPage(): JSX.Element {
             <li key={to}>
               <Link
                 to={to}
-                className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+                className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
               >
                 {label}
               </Link>
@@ -562,7 +562,7 @@ export function HelpPage(): JSX.Element {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={5}
-              className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+              className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
             />
           </div>
           <div className="flex justify-end gap-2">

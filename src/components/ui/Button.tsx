@@ -102,7 +102,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         CONTROL_MOTION,
         'active:scale-[0.98] hover:scale-[1.02]',
         'motion-reduce:hover:scale-100 motion-reduce:active:scale-100',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
         // A disabled button must *look* disabled and must still be hoverable.
         //
         // `pointer-events-none` was doing real damage: a disabled `<button>`

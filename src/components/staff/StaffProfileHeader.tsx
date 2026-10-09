@@ -16,7 +16,7 @@ interface StaffProfileHeaderProps {
 
 const ACTION =
   'flex h-10 items-center gap-2 rounded-xl border border-surface-border bg-surface px-4 text-sm font-semibold ' +
-  'transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
+  'transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ' +
   'dark:border-surface-border-dark dark:bg-surface-dark dark:hover:bg-surface-subtle-dark';
 
 /** Breadcrumb, name, status and the three profile actions (docs/design/Staff-Profile.png). */
@@ -36,7 +36,7 @@ export function StaffProfileHeader({
           <ChevronLeft size={14} aria-hidden="true" />
           <Link
             to={backTo}
-            className="rounded font-medium hover:text-primary dark:text-primary-ink-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="rounded font-medium hover:text-primary dark:text-primary-ink-dark focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
           >
             Staff
           </Link>
@@ -77,7 +77,7 @@ export function StaffProfileHeader({
         <button
           type="button"
           onClick={onMessage}
-          className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Mail size={16} aria-hidden="true" />
           Message Staff

@@ -231,7 +231,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
         <AdminLoading variant="tiles" rows={3} />
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(19rem,1fr))]">
+          <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(19rem,1fr))]">
             {flags.map((flag) => {
               const change = lastChanges.get(flag.key);
               const targeted = targets.get(flag.key) ?? 0;

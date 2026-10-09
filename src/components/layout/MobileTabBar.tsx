@@ -107,7 +107,7 @@ export function MobileTabBar({ onOpenMore }: MobileTabBarProps): JSX.Element | n
               // 56px tall plus the safe-area inset clears the 44px touch
               // minimum with room for the label.
               'flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
               isActive
                 ? 'text-primary dark:text-primary-ink-dark'
                 : 'text-content-muted dark:text-content-muted-dark',
@@ -127,7 +127,7 @@ export function MobileTabBar({ onOpenMore }: MobileTabBarProps): JSX.Element | n
         type="button"
         onClick={onOpenMore}
         aria-label="More navigation"
-        className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-content-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:text-content-muted-dark"
+        className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-content-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:text-content-muted-dark"
       >
         <MoreHorizontal size={20} aria-hidden="true" />
         More

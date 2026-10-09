@@ -203,7 +203,7 @@ export function StepInviteTeam({
                 }}
                 rows={2}
                 placeholder="Enter email addresses"
-                className="w-full resize-y rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+                className="w-full resize-y rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
               />
               <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
                 Add one or more email addresses, separated by commas, then press Enter.

@@ -79,7 +79,7 @@ export function AppShell(): JSX.Element {
      * block and collapse control. Sits below the fold with no way to reach it.
      * `dvh` tracks the visible height as the browser chrome moves.
      */
-    <div className="flex h-[100dvh] overflow-hidden bg-background dark:bg-background-dark">
+    <div className="flex h-dvh overflow-hidden bg-background dark:bg-background-dark">
       <SkipLink />
       {/* Renders nothing. Replay belongs to being signed in, not to which
           screen is open — see the component for what RF-06 was. */}
@@ -99,7 +99,7 @@ export function AppShell(): JSX.Element {
           id="main-content"
           tabIndex={-1}
           // `pb-20`/`md:pb-8` as before, plus room for the consent banner. The
-          // shell is `h-[100dvh] overflow-hidden` and `main` is what scrolls, so
+          // shell is `h-dvh overflow-hidden` and `main` is what scrolls, so
           // the `body` padding in index.css never applies here — a signed-in
           // person who has not answered yet would have the banner sitting on
           // their last table row.

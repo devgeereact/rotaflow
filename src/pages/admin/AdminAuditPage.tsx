@@ -501,7 +501,7 @@ export function AdminAuditPage(): JSX.Element {
               rows={rows}
               rowKey={(entry) => entry.id}
               emptyMessage="No event matches these filters, across the whole history."
-              tableClassName="min-w-[70rem]"
+              tableClassName="min-w-280"
             />
 
             {page && (

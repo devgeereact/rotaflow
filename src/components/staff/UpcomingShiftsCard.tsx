@@ -75,7 +75,7 @@ export function UpcomingShiftsCard({
               type="button"
               aria-label={`Actions for ${shift.dateLabel} shift`}
               onClick={() => onShiftActions(shift.id)}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-surface-border bg-surface text-content-muted transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-surface-border bg-surface text-content-muted transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
             >
               <MoreVertical size={16} aria-hidden="true" />
             </button>

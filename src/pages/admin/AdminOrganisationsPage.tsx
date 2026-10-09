@@ -659,7 +659,7 @@ export function AdminOrganisationsPage(): JSX.Element {
               sort={tableSort}
               onSortChange={onSortChange}
               emptyMessage="No organisation matches these filters."
-              tableClassName="min-w-[72rem]"
+              tableClassName="min-w-6xl"
             />
 
             {page && (

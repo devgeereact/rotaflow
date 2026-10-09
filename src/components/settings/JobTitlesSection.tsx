@@ -268,7 +268,7 @@ export function JobTitlesSection({
                                     }
                                     onClick={() => void handleRecolour(title, swatch.id)}
                                     className={cn(
-                                      'h-5 w-5 rounded-full ring-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                                      'h-5 w-5 rounded-full ring-offset-1 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
                                       swatch.accentClass,
                                       mine &&
                                         'ring-2 ring-content dark:ring-content-dark',
@@ -369,7 +369,7 @@ export function JobTitlesSection({
                         }
                         onClick={() => setColour(swatch.id)}
                         className={cn(
-                          'h-6 w-6 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                          'h-6 w-6 rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
                           swatch.accentClass,
                           chosen === swatch.id &&
                             'ring-2 ring-content dark:ring-content-dark',
@@ -429,7 +429,7 @@ export function JobTitlesSection({
                     onManagedByChange(e.target.checked ? 'managers' : 'owner')
                   }
                   aria-describedby="job-titles-managed-by-hint"
-                  className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+                  className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
                 />
                 <span>
                   <label

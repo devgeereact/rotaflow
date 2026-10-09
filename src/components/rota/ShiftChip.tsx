@@ -221,7 +221,7 @@ export function ShiftChip({
             'absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full',
             'border border-surface-border bg-surface text-content-muted shadow-sm',
             'hover:border-danger hover:bg-danger hover:text-white',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger',
+            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-danger',
             'dark:border-surface-border-dark dark:bg-surface-dark',
             // Hidden until hover or keyboard focus on pointer devices; always
             // shown where hovering is not possible.

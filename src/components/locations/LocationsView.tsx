@@ -78,7 +78,7 @@ export function LocationsView({
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(20rem,1fr))]">
+        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(20rem,1fr))]">
           {rows.map((row) => (
             <Card key={row.id} className="flex flex-col gap-3">
               <div className="flex items-start gap-3">

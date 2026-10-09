@@ -41,7 +41,7 @@ export function MeterRows({ rows, caption, className }: MeterRowsProps): JSX.Ele
           <tr key={row.label}>
             <th
               scope="row"
-              className="w-[9.5rem] py-[7px] pr-2.5 text-left text-sm font-normal leading-snug text-content-muted dark:text-content-muted-dark"
+              className="w-38 py-[7px] pr-2.5 text-left text-sm font-normal leading-snug text-content-muted dark:text-content-muted-dark"
             >
               {row.label}
             </th>
