@@ -32,7 +32,6 @@
     "src",
     "vite.config.ts",
     "vitest.config.ts",
-    "tailwind.config.ts",
     "e2e",
     "playwright.config.ts"
   ]

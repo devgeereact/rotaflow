@@ -141,7 +141,7 @@ export function Modal({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="relative z-10 w-full max-w-lg animate-fade-up rounded-2xl border border-surface-border bg-surface p-6 shadow-lg outline-none motion-reduce:animate-none dark:border-surface-border-dark dark:bg-surface-dark"
+        className="relative z-10 w-full max-w-lg animate-fade-up rounded-2xl border border-surface-border bg-surface p-6 shadow-lg outline-hidden motion-reduce:animate-none dark:border-surface-border-dark dark:bg-surface-dark"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2

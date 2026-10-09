@@ -83,7 +83,7 @@ export function ConsentBanner(): JSX.Element | null {
             id="consent-heading"
             ref={headingRef}
             tabIndex={-1}
-            className="font-semibold text-content focus-visible:outline-none dark:text-content-dark"
+            className="font-semibold text-content focus-visible:outline-hidden dark:text-content-dark"
           >
             What may this browser keep?
           </h2>
@@ -109,7 +109,7 @@ export function ConsentBanner(): JSX.Element | null {
           </Button>
           <Link
             to="/legal/cookies"
-            className="rounded text-sm font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+            className="rounded text-sm font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
           >
             Read the Cookie Notice
           </Link>

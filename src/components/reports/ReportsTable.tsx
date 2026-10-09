@@ -27,7 +27,7 @@ const HEAD_CELL =
 
 const ACTION =
   'grid h-9 w-9 place-items-center rounded-lg border border-surface-border transition-colors hover:bg-surface-subtle ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40 ' +
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40 ' +
   'dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark';
 
 /** The report catalogue, one row per report (docs/design/Reports-Dashboard.png). */
@@ -50,7 +50,7 @@ export function ReportsTable({
 
   return (
     <ScrollRegion label="Report results">
-      <table className="w-full min-w-[58rem] table-fixed border-collapse">
+      <table className="w-full min-w-232 table-fixed border-collapse">
         <thead>
           <tr className="border-b border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
             <th scope="col" className="w-[4.5%] px-2 py-4">
@@ -96,7 +96,7 @@ export function ReportsTable({
                       ? `Remove ${row.name} from favourites`
                       : `Add ${row.name} to favourites`
                   }
-                  className="grid h-7 w-7 place-items-center rounded-lg transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
+                  className="grid h-7 w-7 place-items-center rounded-lg transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
                 >
                   <Star
                     size={18}

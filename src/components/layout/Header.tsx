@@ -34,7 +34,7 @@ export function Header(): JSX.Element {
   // `shrink-0` below: the header is a flex child of AppShell's fixed-height
   // column, so without it the browser compresses it as the content region grows.
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-surface-border bg-surface/90 px-4 backdrop-blur md:px-6 dark:border-surface-border-dark dark:bg-surface-dark/90">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-surface-border bg-surface/90 px-4 backdrop-blur-sm md:px-6 dark:border-surface-border-dark dark:bg-surface-dark/90">
       <Link to="/app/dashboard" className="flex shrink-0 items-center gap-2 md:hidden">
         <BrandMark label={null} className="h-8 w-8" />
         <span className="font-display text-base font-bold text-content dark:text-content-dark">

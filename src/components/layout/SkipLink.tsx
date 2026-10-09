@@ -22,7 +22,7 @@ export function SkipLink(): JSX.Element {
   return (
     <a
       href="#main-content"
-      className="sr-only rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+      className="sr-only rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-2"
     >
       Skip to main content
     </a>

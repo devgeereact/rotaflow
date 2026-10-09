@@ -1857,7 +1857,7 @@ export function RotaBuilderPage(): JSX.Element {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search staff, skills, shifts…"
-        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-hidden focus-visible:ring-2 focus-visible:ring-primary sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
       />
       <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
         ⌘ K
@@ -2341,7 +2341,7 @@ export function RotaBuilderPage(): JSX.Element {
             : 'All changes saved'}
         </div>
 
-        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+        <div className="mt-4 grid gap-4 grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
           {/* `tabIndex={-1}` so the "Review issues" link above moves focus
               here as well as scrolling, which is the half of an in-page jump
               that keyboard and screen-reader users actually need. */}

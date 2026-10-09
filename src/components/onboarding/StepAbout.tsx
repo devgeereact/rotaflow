@@ -343,7 +343,7 @@ export function StepAbout({
                       type="button"
                       aria-label={`Edit ${location.name}`}
                       onClick={() => setEditingIndex(index)}
-                      className="grid h-9 w-9 place-items-center rounded-lg border border-surface-border text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                      className="grid h-9 w-9 place-items-center rounded-lg border border-surface-border text-content-muted hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
                     >
                       <Pencil size={15} aria-hidden="true" />
                     </button>
@@ -352,7 +352,7 @@ export function StepAbout({
                         type="button"
                         aria-label={`Remove ${location.name}`}
                         onClick={() => removeLocation(index)}
-                        className="grid h-9 w-9 place-items-center rounded-lg border border-surface-border text-content-muted hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
+                        className="grid h-9 w-9 place-items-center rounded-lg border border-surface-border text-content-muted hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-content-muted-dark dark:hover:bg-surface-subtle-dark"
                       >
                         <Trash2 size={15} aria-hidden="true" />
                       </button>

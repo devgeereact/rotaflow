@@ -113,13 +113,13 @@ export function AppBootScreen({
           <Link
             to="/"
             aria-label="RotaFlow home"
-            className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
           >
             <BrandMark label={null} className="h-12 w-12" />
           </Link>
           <Link
             to="/"
-            className="font-display text-2xl font-bold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
+            className="font-display text-2xl font-bold text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
           >
             Rota<span className="text-brand dark:text-brand-light">Flow</span>
           </Link>
@@ -220,7 +220,7 @@ export function AppBootScreen({
                   className="absolute -left-3 top-1 hidden h-16 w-px bg-surface-border lg:block dark:bg-surface-border-dark"
                 />
               )}
-              <span className="grid h-[3.125rem] w-[3.125rem] shrink-0 place-items-center rounded-full bg-brand-wash text-brand dark:bg-brand-deep/20 dark:text-brand-light">
+              <span className="grid h-12.5 w-12.5 shrink-0 place-items-center rounded-full bg-brand-wash text-brand dark:bg-brand-deep/20 dark:text-brand-light">
                 <Icon size={22} aria-hidden="true" />
               </span>
               <div>

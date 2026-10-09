@@ -194,7 +194,7 @@ export function SettingsRolesPage(): JSX.Element {
         description="Customise how each role is named across RotaFlow. Labels change wording only, not what someone can do."
       >
         <ScrollRegion label="Roles and permissions">
-          <table className="w-full min-w-[36rem] text-sm">
+          <table className="w-full min-w-xl text-sm">
             <thead>
               <tr className="border-b border-surface-border text-left dark:border-surface-border-dark">
                 <th className="pb-3 font-medium text-content-muted dark:text-content-muted-dark">

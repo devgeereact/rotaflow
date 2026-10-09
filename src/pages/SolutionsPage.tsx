@@ -114,7 +114,7 @@ export function SolutionsPage(): JSX.Element {
             almost certainly fits —{' '}
             <Link
               to="/contact"
-              className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
             >
               tell us how you schedule
             </Link>

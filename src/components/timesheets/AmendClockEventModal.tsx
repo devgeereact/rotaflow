@@ -143,7 +143,7 @@ export function AmendClockEventModal({
               value={clockInTime}
               onChange={(e) => setClockInTime(e.target.value)}
               onBlur={() => setTouched(true)}
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             />
           </Field>
           <Field label="Clock out">
@@ -152,7 +152,7 @@ export function AmendClockEventModal({
               value={clockOutTime}
               onChange={(e) => setClockOutTime(e.target.value)}
               onBlur={() => setTouched(true)}
-              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+              className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             />
           </Field>
         </div>
@@ -182,7 +182,7 @@ export function AmendClockEventModal({
             onChange={(e) => setReason(e.target.value)}
             onBlur={() => setTouched(true)}
             rows={3}
-            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             placeholder="e.g. Forgot to clock out, confirmed with them they left at 17:00."
           />
         </Field>

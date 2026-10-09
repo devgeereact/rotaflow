@@ -17,7 +17,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <input
         ref={ref}
         className={cn(
-          'w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none',
+          'w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden',
           'placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary',
           'dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark',
           Icon && 'pl-10',

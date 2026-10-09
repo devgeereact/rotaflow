@@ -64,7 +64,7 @@ export function DeclineLeaveModal({
             onChange={(e) => setReason(e.target.value)}
             onBlur={() => setTouched(true)}
             rows={3}
-            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             placeholder="e.g. Two other team members are already off that week."
           />
         </Field>

@@ -164,12 +164,12 @@ Build the **`<SCREEN>`** screen so it visually matches `<REF>` as closely as pos
    implicit `any`, explicit return types on functions/hooks; import app code with
    `@/…`; keep components small and typed (SDK setup in `src/lib`, data calls in
    `src/services`, reusable logic in `src/hooks`).
-2. **Tokens already exist. Use them, don't invent.** `tailwind.config.ts` and
+2. **Tokens already exist. Use them, don't invent.** The `@theme` block in `src/index.css` and
    `docs/DESIGN.md` define the full palette, spacing, radii, shadows, and type scale.
    Every value you use must be a token class (`bg-primary`, `text-content`,
    `rounded-2xl`, `shadow`, etc.), no raw hex, no arbitrary `p-[13px]`, no inline
    `style={{}}`. If the design system PNG needs a value that isn't a token yet, add it
-   to `tailwind.config.ts` and note it as inferred in this screen's log.
+   to the `@theme` block in `src/index.css` and note it as inferred in this screen's log.
 3. Icons are `lucide-react` only, no ad-hoc SVGs, no second icon set.
 4. Reuse/extend primitives in `src/components/ui` (`Button`, `Card`, etc.) instead of
    duplicating styles inline; add a new primitive there if the reference needs one

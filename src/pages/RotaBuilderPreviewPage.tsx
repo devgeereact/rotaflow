@@ -430,7 +430,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
       />
       <input
         placeholder="Search staff, skills, shifts…"
-        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-none sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+        className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-hidden sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
       />
       <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
         ⌘ K
