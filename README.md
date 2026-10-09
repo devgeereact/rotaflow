@@ -212,7 +212,6 @@ rotaflow/
 ├── .agent/               # GEE OS routing contract + the task-contract template
 ├── index.html            # app entry + font preconnect
 ├── vite.config.ts        # build + PWA/Workbox config
-├── tailwind.config.ts    # design tokens (see docs/DESIGN.md)
 ├── docs/                 # SAAS (the register), PRD, DESIGN, ARCHITECTURE, SCHEMA, RULES, HOOKS
 ├── public/               # manifest icons, offline.html, robots.txt
 ├── supabase/

@@ -47,6 +47,6 @@ screen or an implemented capability in `docs/SCREENS.md` and `docs/PRD.md`.
 Retain the established light-first system: composed blue actions, navy ink,
 calm neutral surfaces, and semantic status colours that are always paired with
 text or an icon. The `BrandMark` is the only product mark implementation;
-`tailwind.config.ts` and `docs/DESIGN.md` remain the source of truth for visual
+The `@theme` block in `src/index.css` and `docs/DESIGN.md` remain the source of truth for visual
 tokens. A rebrand must use those tokens rather than introducing raw colours or
 parallel logos.

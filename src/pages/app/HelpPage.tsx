@@ -488,7 +488,7 @@ export function HelpPage(): JSX.Element {
                                 >
                                   {/* Fill is `warning`, stroke is
                                       `warning-ink`. `warning.DEFAULT` is
-                                      2.27:1 on white — tailwind.config.ts says
+                                      2.27:1 on white — src/index.css says
                                       so in its own comment — and a control
                                       carrying meaning needs 3:1 under WCAG
                                       1.4.11, so the shape is drawn in the ink
