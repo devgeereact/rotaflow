@@ -63,7 +63,7 @@ export function AuthSplitLayout({
             </div>
           </div>
 
-          <h1 className="mb-5 font-display text-4xl font-bold leading-tight text-ink dark:text-content-dark xl:text-5xl">
+          <h1 className="mb-5 font-display text-4xl font-bold leading-tight text-ink dark:text-content-dark xl:text-5xl xl:leading-none">
             {headline}
             <br />
             <span className="text-brand dark:text-brand-light">{headlineAccent}</span>

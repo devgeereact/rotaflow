@@ -272,6 +272,18 @@
   }
 }
 
+/*
+  Tailwind CSS v4 dropped v3's `cursor: pointer` on buttons in favour of the
+  browser default. Every control here was designed and tested with the
+  pointer, so keep it rather than let clickable things stop looking it.
+*/
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 @layer base {
   /*
    * Self-hosted webfonts. See public/fonts/README.md.
