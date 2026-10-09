@@ -29,7 +29,7 @@ const CONTROL =
   'dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark';
 
 const SELECT =
-  'w-full appearance-none bg-transparent pr-5 text-sm font-semibold text-content outline-none dark:text-content-dark';
+  'w-full appearance-none bg-transparent pr-5 text-sm font-semibold text-content outline-hidden dark:text-content-dark';
 
 /** Scope controls between the tabs and the report table. */
 export function ReportsFilterBar({
@@ -56,7 +56,7 @@ export function ReportsFilterBar({
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search reports..."
           aria-label="Search reports"
-          className="min-w-0 flex-1 bg-transparent font-medium text-content outline-none placeholder:text-content-muted dark:text-content-dark dark:placeholder:text-content-muted-dark"
+          className="min-w-0 flex-1 bg-transparent font-medium text-content outline-hidden placeholder:text-content-muted dark:text-content-dark dark:placeholder:text-content-muted-dark"
         />
         <Search
           size={16}
@@ -135,7 +135,7 @@ export function ReportsFilterBar({
           type="checkbox"
           checked={favouritesOnly}
           onChange={(event) => onFavouritesOnlyChange(event.target.checked)}
-          className="h-4 w-4 rounded border-surface-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+          className="h-4 w-4 rounded border-surface-border accent-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
         />
         Favourites only
       </label>

@@ -32,10 +32,10 @@ updates:
     #
     # The first run of this config proved the point: it opened PRs for
     # TypeScript 5 -> 7, Tailwind 3 -> 4 and eslint-plugin-react-hooks 5 -> 7.
-    # Tailwind 4 alone replaces the config format, and tailwind.config.ts now
-    # carries the whole design system plus the brand tokens; merging that PR
-    # does not upgrade the project, it breaks the build and leaves someone to
-    # reconstruct the design system from a diff.
+    # Tailwind 4 alone replaced the config format, and the design system plus
+    # the brand tokens lived in tailwind.config.ts; merging that PR would not
+    # have upgraded the project. It was done by hand on 2026-10-09 (tokens now
+    # in src/index.css). The same holds for Tailwind 5: a migration, not a bump.
     #
     # Scope is deliberately narrow. Majors for *runtime* dependencies
     # (@supabase/supabase-js, @sentry/react, react-router-dom, date-fns…) still
@@ -103,7 +103,7 @@ updates:
       - dependency-name: vite-plugin-pwa
         update-types: ['version-update:semver-major']
       # tailwind-merge's major track is coupled to Tailwind's: v2 = Tailwind 3,
-      # v3 = Tailwind 4.0-4.3 ("if you use Tailwind v3, use tailwind-merge
+      # v3 = Tailwind 4 (this project since 2026-10-09) ("if you use Tailwind v3, use tailwind-merge
       # v2.6.0". Its own README). This is a *runtime* dependency, so the rule
       # above would normally let its majors through; the exception is here
       # because the failure mode is silent.
@@ -113,8 +113,9 @@ updates:
       # exports the same `twMerge` with the same signature. It would simply
       # resolve conflicting classes against a v4 class table at runtime, so
       # `cn()` starts returning the wrong winner in arbitrary places across the
-      # app, with no error anywhere. Re-allow this only in the same PR that
-      # moves the project to Tailwind 4.
+      # app, with no error anywhere. The project moved to Tailwind 4 and
+      # tailwind-merge 3 together; keep this rule so tailwind-merge 4 waits for
+      # the same PR that moves Tailwind to 5.
       - dependency-name: tailwind-merge
         update-types: ['version-update:semver-major']
     commit-message:

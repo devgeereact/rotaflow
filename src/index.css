@@ -1,6 +1,611 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* app canvas (light) */
+  --color-background: #f5f7fa;
+  /* app canvas (dark) */
+  --color-background-dark: #0b1220;
+
+  /* cards, sheets, rota cells (light) */
+  --color-surface: #ffffff;
+  /* cards, sheets, rota cells (dark) */
+  --color-surface-dark: #111a2e;
+  /* nested panels, hover fills (light) */
+  --color-surface-subtle: #fafbfc;
+  /* nested panels, hover fills (dark) */
+  --color-surface-subtle-dark: #15203a;
+  /* card/control outlines (light) */
+  --color-surface-border: #e3e6ea;
+  /* card/control outlines (dark) */
+  --color-surface-border-dark: #22304d;
+  /*
+    Navigation rail. Light is `subtle`; dark deliberately is not —
+    `subtle-dark` (#15203A) is a *raised* panel and reads as a card
+    floating over the canvas, where a rail should sit behind it. This
+    value falls between `background-dark` and `surface-dark` so the
+    rail recedes and the content column comes forward. Named
+    separately so restyling the rail never restyles every nested
+    panel. From docs/PLATFORM_CONSOLE.html.
+  */
+  --color-surface-rail: #fafbfc;
+  --color-surface-rail-dark: #0e1729;
+
+  /* subtle in-list separators (light) */
+  --color-divider: #f2f4f6;
+  /* subtle in-list separators (dark) */
+  --color-divider-dark: #1b2740;
+
+  /* brand blue — CTAs, active state, links */
+  --color-primary: #3b6fe0;
+  /* text/icons on a solid primary fill */
+  --color-primary-fg: #ffffff;
+  /*
+    Opaque hover/selected fill, for the same reason the status washes
+    are opaque: `primary/10` over a card and over the canvas are two
+    different colours, so a hovered row changed shade depending on
+    what it sat on. From docs/PLATFORM_CONSOLE.html.
+  */
+  --color-primary-wash: #eef3fd;
+  --color-primary-wash-dark: #182848;
+  /*
+    `DEFAULT` set as body text on `surface`/`background`/`surface-subtle`
+    reads at 4.08-4.46:1 — under the 4.5:1 AA minimum, confirmed by axe
+    across every `text-primary` link on the public site 2026-08-13. Too
+    close to see with the eye, real under a contrast meter. `DEFAULT`
+    stays unchanged (it is correct as a *fill*, paired with `fg`, and is
+    read elsewhere in the app this session did not touch — changing it
+    would ripple into screens this session never rendered to check).
+    This is additive: a slightly darker value for exactly the
+    link/body-text case, same hue. Not yet applied outside the public
+    marketing/legal/about pages fixed this session; the same
+    `text-primary`-as-link pattern likely exists in authenticated `/app`
+    screens too and needs the same swap as part of the sitewide
+    design-system contrast pass (`docs/SAAS.md`).
+  */
+  --color-primary-ink: #2f5bc0;
+  /*
+    The dark-side counterpart, and the reason it has to exist
+    (docs/SAAS.md GAP-032). `ink` solves "this colour is too light
+    against white". Dark mode has the mirror problem — the same
+    `DEFAULT` is too DARK against a #111A2E surface, at 3.74:1 — and
+    for a while the app answered it with `dark:text-primary`, which
+    does not clear the line either. Worse, an `ink` class with no
+    `dark:` pairing carried #2F5BC0 straight into dark mode at 2.5:1.
+
+    Derived by mixing `DEFAULT` toward white until the value clears
+    5:1 against EVERY dark surface in the system — canvas #0B1220,
+    surface #111A2E, subtle, divider, and each `wash-dark` — not just
+    the common one. The washes are the constraint: #182848 is the
+    lightest ground any of this text sits on, and a value tuned to the
+    canvas alone fails there.
+
+    The pattern is `text-{tone}-ink dark:text-{tone}-ink-dark`, used
+    uniformly. `warning` needs no lightening at all (its `DEFAULT` is
+    already 6.44:1 on the darkest ground) but still gets the token, so
+    the rule has no exception for somebody to apply wrongly.
+  */
+  --color-primary-ink-dark: #769ae9;
+
+  /*
+    Vivid marketing blue + navy ink ramp, sampled from
+    docs/design/splash-screen.png (and matching signin/dashboard renders).
+    The brand-expression surfaces — logo mark, wordmark, splash waves —
+    run hotter and cooler than the muted product `primary`/`content`
+    tokens. Kept as a separate namespace so restyling the splash never
+    silently restyles the rota grid. See docs/design/.loop/splash-log.md.
+  */
+  /* logo tile, "Flow", progress fill, feature icons */
+  --color-brand: #0c60f8;
+  /* deepest wave stop */
+  --color-brand-deep: #0a55de;
+  /* logo accent square, mid wave */
+  --color-brand-light: #4c8cfb;
+  /* bottom-centre wave */
+  --color-brand-pale: #87b4fa;
+  /* palest blue wave */
+  --color-brand-mist: #c9dcfb;
+  /* progress track, hairline rules */
+  --color-brand-wash: #e5eaf4;
+  /*
+    Pending-stage icon/ring tint on docs/design/appboot.png — sampled
+    directly (not a `brand` opacity blend; alpha-over-white lands
+    much lighter than this). See docs/design/.loop/appboot-log.md.
+  */
+  --color-brand-faint: #5275ca;
+
+  /* wordmark "Rota", feature labels */
+  --color-ink: #0d1934;
+  /* splash subtitle */
+  --color-ink-muted: #3e4a6e;
+  /* status pill, "Loading…" caption */
+  --color-ink-soft: #5a6684;
+
+  /* secondary icons/labels (light) */
+  --color-secondary: #6b7280;
+  /* secondary icons/labels (dark) */
+  --color-secondary-dark: #94a3b8;
+
+  /*
+    Status colours for rota states (used with text/icon, never colour
+    alone). Same hex in both themes — must stay recognisable regardless
+    of mode.
+
+    Each carries a `wash` / `wash-dark` pair: the surface a status pill,
+    callout or feed icon sits on. These are NOT `success/10` and cannot
+    be — an alpha of the solid hue over `background` and the same alpha
+    over `surface` land on two different colours, so a pill drifted every
+    time it moved between a card and the canvas. The washes are opaque,
+    so a pill reads identically wherever it is placed, and the dark pair
+    is a separate value rather than an inversion (a light wash on
+    `surface-dark` blows out). Sampled from the platform console
+    reference, docs/PLATFORM_CONSOLE.html.
+  */
+  /* published / valid / confirmed / available */
+  --color-success: #1ea06b;
+  --color-success-wash: #e7f5ee;
+  --color-success-wash-dark: #102a21;
+  /*
+    See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
+    text on white reads 3.33:1, under the 4.5:1 AA minimum.
+  */
+  --color-success-ink: #12724e;
+  --color-success-ink-dark: #35aa7a;
+
+  /*
+    Attendance green — the Clock In CTA, its "ready" ring, and the
+    on-shift status washes in docs/design/clockin.png. Sampled off that PNG:
+    it runs markedly deeper than `success` (#1EA06B), which reads too
+    mint next to a solid fill at this size. Kept as its own namespace so
+    restyling attendance never shifts every "published" chip in the rota.
+    See docs/design/.loop/clockin-log.md.
+  */
+  /*
+    #068D41 in the reference. White on it is 4.29 : 1, which fails AA
+    for the button label it exists to carry — the one control on the
+    clock-in screen. Darkened the minimum that clears the line with
+    margin (4.86 : 1); at this delta the fill is indistinguishable
+    from the reference beside it, and the alternative was a signature
+    control that fails the gate. Same reasoning as the `ink` tokens.
+    CTA fill + ready ring stroke
+  */
+  --color-clock: #05833c;
+  /* status badge wash (Starts in / Day Shift / Upcoming) */
+  --color-clock-tint: #d6f4e1;
+  /* ink on `tint` */
+  --color-clock-fg: #0a5522;
+  /* larger panel wash (Attendance "On Track") */
+  --color-clock-wash: #edfaf2;
+
+  /* pending / needs attention / expiring */
+  --color-warning: #e0a030;
+  --color-warning-wash: #fbf2e1;
+  --color-warning-wash-dark: #2c2416;
+  /*
+    See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
+    text on white reads 2.27:1, the worst of the three status inks
+    against the 4.5:1 AA minimum.
+  */
+  --color-warning-ink: #7a5410;
+  /*
+    Unchanged from `DEFAULT`: amber is already 6.44:1 on the
+    darkest ground here. The token exists so the rule stays uniform.
+  */
+  --color-warning-ink-dark: #e0a030;
+
+  /* conflict / rejected / absent / error */
+  --color-danger: #d94a3a;
+  --color-danger-wash: #faeae7;
+  --color-danger-wash-dark: #2e1a17;
+  /*
+    See `primary.ink` — same gap, same fix. `DEFAULT` as small caption
+    text on white reads 4.2:1, under the 4.5:1 AA minimum.
+  */
+  --color-danger-ink: #b23a2c;
+  --color-danger-ink-dark: #e48075;
+
+  /* informational / neutral status */
+  --color-info: #388fd4;
+  --color-info-wash: #e8f2fa;
+  --color-info-wash-dark: #12253a;
+  /*
+    The one status family that had no `ink`, which only showed up when
+    a `Badge tone="info"` finally landed on a public page where the
+    axe gate runs. `DEFAULT` on `wash` is 3.06:1; this is 6.09:1.
+  */
+  --color-info-ink: #1b5e8e;
+  --color-info-ink-dark: #56a0da;
+
+  /* headings, body (light) */
+  --color-content: #16191f;
+  /* headings, body (dark) */
+  --color-content-dark: #f8fafc;
+  /* captions, hints (light) */
+  --color-content-muted: #6b7280;
+  /* captions, hints (dark) */
+  --color-content-muted-dark: #94a3b8;
+
+  /*
+    Availability matrix cell washes (docs/design/Availability.png). Four
+    states, each a pale fill + its own readable ink, following the same
+    `-fg` pairing `shift-tint` already uses. The fills are sampled off
+    the PNG rather than derived: they sit at different effective
+    opacities (the green wash is much lighter than the amber), so a
+    single `success/10`-style rule cannot reproduce the set.
+
+    The INKS are deliberately NOT the sampled values. Measured against
+    their own wash, the reference's inks land at 4.11 / 3.53 / 4.17 : 1 —
+    under the 4.5:1 DESIGN.md §5 requires, on the densest text on the
+    screen. Each `-fg` is the sampled hue darkened just far enough to
+    clear 4.5 (now 4.67 / 4.67 / 4.61); at 12px the shift is not visible
+    side by side. `-fg-dark` are brightened for the dark washes, where
+    the light inks measured 2.6–3.9 : 1. See docs/design/.loop/availability-log.md.
+  */
+  --color-avail-free: #f3fbf5;
+  --color-avail-free-fg: #1c8056;
+  --color-avail-free-dark: #0f2e20;
+  --color-avail-free-fg-dark: #6ee7a8;
+  --color-avail-partial: #fef8ec;
+  --color-avail-partial-fg: #a55f1a;
+  --color-avail-partial-dark: #332714;
+  --color-avail-partial-fg-dark: #f5be72;
+  --color-avail-off: #feefef;
+  --color-avail-off-fg: #ce302a;
+  --color-avail-off-dark: #361b1b;
+  --color-avail-off-fg-dark: #fca5a5;
+  --color-avail-pref: #f3f7fe;
+  --color-avail-pref-fg: #3055e8;
+  --color-avail-pref-dark: #16224a;
+  --color-avail-pref-fg-dark: #9db8fd;
+
+  /*
+    Job-title palette (12) — docs/DESIGN.md §2b.
+
+    A SEPARATE family from `shift`, and the separation is the point. A
+    chip on the rota can carry two facts at once: what kind of shift it
+    is (`shift`/`shift-tint`, per-tenant configurable) and what the
+    person does (`role`, per-tenant catalogue). Two colour systems on
+    one chip with one legend is unreadable, so each has its own family,
+    its own legend and its own text code — colour is never the only
+    identifier for either.
+
+    Generated rather than sampled, then measured. Twelve hues optimised
+    for pairwise separation under normal vision AND under simulated
+    protanopia, deuteranopia and tritanopia: the worst pair in any of
+    the four is ΔE(Lab) 16.4 (magenta/cocoa under tritanopia). An
+    earlier hand-picked set had magenta and slate at ΔE 4 under
+    deuteranopia — indistinguishable — which is why this one was solved
+    for rather than chosen by eye.
+
+    Every `-ink` on its `-wash` and every `-ink-dark` on its `-deep`
+    measures at least 4.60:1, so a job-title badge carries body-weight
+    text in both themes. The `-deep` washes exist for the same reason
+    `leave-*-deep` does: the light washes are near-white and blow out on
+    `background-dark`.
+  */
+  --color-role-indigo: #3749c8;
+  --color-role-indigo-wash: #f1f2fa;
+  --color-role-indigo-ink: #2f40bb;
+  --color-role-indigo-deep: #14172e;
+  --color-role-indigo-ink-dark: #707cd4;
+  --color-role-sky: #29a6c8;
+  --color-role-sky-wash: #f0f8fa;
+  --color-role-sky-ink: #1a7993;
+  --color-role-sky-deep: #122a31;
+  --color-role-sky-ink-dark: #50bbd7;
+  --color-role-teal: #4bddab;
+  --color-role-teal-wash: #f0fbf7;
+  --color-role-teal-ink: #15805c;
+  --color-role-teal-deep: #113126;
+  --color-role-teal-ink-dark: #4fd9aa;
+  --color-role-moss: #3a954c;
+  --color-role-moss-wash: #f2f9f3;
+  --color-role-moss-ink: #2f7e3f;
+  --color-role-moss-deep: #172b1b;
+  --color-role-moss-ink-dark: #68c079;
+  --color-role-olive: #8fc05a;
+  --color-role-olive-wash: #f5f9f2;
+  --color-role-olive-ink: #567b2c;
+  --color-role-olive-deep: #222c17;
+  --color-role-olive-ink-dark: #96c266;
+  --color-role-amber: #cfb936;
+  --color-role-amber-wash: #faf9f1;
+  --color-role-amber-ink: #7f711c;
+  --color-role-amber-deep: #2f2b13;
+  --color-role-amber-ink-dark: #d2c155;
+  --color-role-clay: #c27726;
+  --color-role-clay-wash: #fbf6f0;
+  --color-role-clay-ink: #a0611c;
+  --color-role-clay-deep: #312212;
+  --color-role-clay-ink-dark: #d89750;
+  --color-role-rose: #d04c7e;
+  --color-role-rose-wash: #faf1f4;
+  --color-role-rose-ink: #bd2d63;
+  --color-role-rose-deep: #2f141e;
+  --color-role-rose-ink-dark: #d15f8a;
+  --color-role-magenta: #94279a;
+  --color-role-magenta-wash: #f9f1fa;
+  --color-role-magenta-ink: #b72bbf;
+  --color-role-magenta-deep: #2e132f;
+  --color-role-magenta-ink-dark: #ca57d1;
+  --color-role-violet: #925bcd;
+  --color-role-violet-wash: #f5f1f9;
+  --color-role-violet-ink: #7333b7;
+  --color-role-violet-deep: #21152e;
+  --color-role-violet-ink-dark: #9d6ed0;
+  --color-role-slate: #4b5571;
+  --color-role-slate-wash: #f4f5f7;
+  --color-role-slate-ink: #5d6a8e;
+  --color-role-slate-deep: #1d1f26;
+  --color-role-slate-ink-dark: #808aa8;
+  --color-role-cocoa: #6e4a49;
+  --color-role-cocoa-wash: #f7f4f4;
+  --color-role-cocoa-ink: #8e5e5c;
+  --color-role-cocoa-deep: #261d1c;
+  --color-role-cocoa-ink-dark: #a9807f;
+
+  /*
+    Shift-type chip palette (8) — see docs/DESIGN.md §2. Same in both
+    themes; org shift_types.colour should be seeded from these.
+  */
+  --color-shift-clay: #e28273;
+  --color-shift-amber: #c69a45;
+  --color-shift-moss: #86ac6a;
+  --color-shift-teal: #4fb39a;
+  --color-shift-sky: #56aacd;
+  --color-shift-indigo: #6ca0eb;
+  --color-shift-violet: #c48fd6;
+  --color-shift-rose: #e888ab;
+
+  /*
+    Tinted counterpart to `shift` — the rota-grid chip in
+    docs/design/Rota-Builder.png is a pale wash with saturated ink, NOT the
+    solid `shift` fill (that stays the Schedule screen's chip style).
+    A plain `/10` of the solid swatch lands too grey-olive to match, so
+    the three swatches the reference actually shows — moss (Morning),
+    violet (Evening), indigo (Night) — are sampled straight off the PNG.
+    The other five are interpolated to the same lightness/chroma so the
+    set stays coherent. See docs/design/.loop/rota-log.md.
+  */
+  --color-shift-tint-clay: #fdf3f1;
+  --color-shift-tint-clay-fg: #b0432f;
+  --color-shift-tint-amber: #fdf7ec;
+  --color-shift-tint-amber-fg: #8a6320;
+  /* sampled */
+  --color-shift-tint-moss: #f1fbf5;
+  /* sampled */
+  --color-shift-tint-moss-fg: #12714c;
+  --color-shift-tint-teal: #effaf7;
+  --color-shift-tint-teal-fg: #10705e;
+  --color-shift-tint-sky: #eff7fc;
+  --color-shift-tint-sky-fg: #1a6b8e;
+  /* sampled */
+  --color-shift-tint-indigo: #f3f7fe;
+  /* sampled */
+  --color-shift-tint-indigo-fg: #1b3fd4;
+  /* sampled */
+  --color-shift-tint-violet: #f8f5fe;
+  /* sampled */
+  --color-shift-tint-violet-fg: #5535c4;
+  --color-shift-tint-rose: #fdf3f7;
+  --color-shift-tint-rose-fg: #ae3a62;
+
+  /*
+    Leave-type palette — the chips, balance meters, icon tiles and donut
+    arcs on docs/design/Leave.png. Sampled off that PNG.
+
+    Deliberately NOT `shift-tint`: that palette is the rota grid's, and
+    `shift_types.colour` is per-org configurable, so a tenant recolouring
+    its Night shift must not recolour Sick Leave. Leave types are a fixed,
+    product-level set. The washes land within a couple of points of the
+    `shift-tint` family so the two read as one system; the inks are the
+    reference's, which run brighter — Carer's especially (a true orange,
+    where `shift-tint.amber-fg` is a brown-gold that reads as "expiring").
+
+    `-deep` is the dark-mode wash: the light washes are near-white and
+    would blow out on `background-dark`.
+  */
+  --color-leave-annual: #7c3aed;
+  --color-leave-annual-wash: #f5f1fe;
+  --color-leave-annual-deep: #2a1d45;
+  --color-leave-sick: #12874c;
+  --color-leave-sick-wash: #ecf8f1;
+  --color-leave-sick-deep: #12301f;
+  --color-leave-personal: #2563eb;
+  --color-leave-personal-wash: #f1f6fe;
+  --color-leave-personal-deep: #16224a;
+  --color-leave-carer: #f97316;
+  --color-leave-carer-wash: #fef8ee;
+  --color-leave-carer-deep: #352a14;
+  --color-leave-other: #8a93a8;
+  --color-leave-other-wash: #f1f4fb;
+  --color-leave-other-deep: #1b2740;
+
+  /*
+    Dark-mode chip washes — the tints above are near-white and would
+    blow out on the dark canvas. Same hue, pulled down to sit just above
+    `surface-dark`.
+  */
+  --color-shift-deep-clay: #3a211c;
+  --color-shift-deep-amber: #352a14;
+  --color-shift-deep-moss: #12301f;
+  --color-shift-deep-teal: #0f2e28;
+  --color-shift-deep-sky: #122a36;
+  --color-shift-deep-indigo: #16224a;
+  --color-shift-deep-violet: #2a1d45;
+  --color-shift-deep-rose: #381b27;
+
+  /*
+    "Inter Variable" per docs/DESIGN.md — the full variable weight range
+    (100..900). Self-hosted from /fonts since 2026-09-03 (see
+    public/fonts/README.md); the family name is still "Inter", which is
+    what Google served it under too, so nothing here changed with the
+    move.
+  */
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-display: Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /*
+    Custom type scale from docs/DESIGN.md §2 (size/line-height).
+    32/40
+  */
+  --text-page-title: 2rem;
+  --text-page-title--line-height: 2.5rem;
+  /*
+    The same role at phone width. 32/40 is a desktop measure: on a
+    390px canvas a two-word title plus a pair of action buttons cannot
+    share a line, and the title block is what loses, so "Team" rendered
+    as "Tea". Shrinking the type is not the fix for the overflow (the
+    header stacks below `sm` for that), but 32px is oversized for the
+    column it now owns. 24/32 is the same semibold weight and the same
+    tracking, one step down the existing scale.
+
+    Applied as `text-page-title-mobile sm:text-page-title` by the two
+    header components, never by a page.
+    24/32
+  */
+  --text-page-title-mobile: 1.5rem;
+  --text-page-title-mobile--line-height: 2rem;
+  /* 24/32 */
+  --text-section-heading: 1.5rem;
+  --text-section-heading--line-height: 2rem;
+  /* 16/24 */
+  --text-card-heading: 1rem;
+  --text-card-heading--line-height: 1.5rem;
+  /*
+    Splash/marketing lockup only — 120/120, tight tracking, measured off
+    docs/design/splash-screen.png. Not part of the product type scale.
+  */
+  --text-wordmark: 7.375rem;
+  --text-wordmark--line-height: 1;
+  --text-wordmark--letter-spacing: -0.026em;
+
+  /*
+    v3 line heights, as fixed lengths. v4 ships these as ratios, and a ratio
+    is inherited as a ratio: a `text-[0.72rem]` badge inside `text-sm` copy
+    went from v3's 20px line to 16.5px, and every pill, avatar and table row
+    built that way lost 2 to 4px. Fixed lengths inherit as lengths, exactly
+    as every screen here was designed and tested.
+  */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  /*
+    Centralised motion durations (docs/DESIGN.md §4). Before these, a
+    duration was a number typed at the call site — `duration-150` on
+    Button, `duration-200` on a menu, nothing at all on a dialog — so
+    "how fast does this product move" had no answer and no way to
+    change.
+
+    Four values, named for what they are attached to rather than for
+    their length, so a new control picks the role and inherits the
+    number:
+  */
+  --transition-duration-press: 100ms;
+  /* hover/focus colour on any control, row or link */
+  --transition-duration-control: 140ms;
+  /* a menu, popover, dropdown or dialog appearing */
+  --transition-duration-overlay: 180ms;
+  /* the existing `animate-fade-up` page entrance */
+  --transition-duration-entrance: 300ms;
+
+  /*
+    266px — the splash logo mark at its reference size; sits between
+    Tailwind's w-64 (256) and w-72 (288).
+  */
+  --spacing-66: 16.625rem;
+
+  /*
+    Splash subtitle caps — measured at 0.0625em on
+    docs/design/splash-screen.png, between Tailwind's `wider` and `widest`.
+  */
+  --tracking-lockup: 0.0625em;
+
+  /*
+    One radius for the whole product: 0.5rem (8px), everywhere
+    (owner's decision, 2026-08-05 — first sections only, then all of it).
+
+    Every named size resolves to the same value, so `rounded-sm`,
+    `rounded-lg` and `rounded-2xl` are interchangeable and no screen can
+    drift by picking a different one. Prefer `rounded-lg` in new code;
+    the others are kept as aliases so the ~350 existing usages did not
+    all have to be rewritten to say the same thing.
+
+    `rounded-full` is deliberately NOT redefined. It is a *shape*, not a
+    radius — avatars, status dots and pills are round because they are
+    round, and flattening them to 8px would turn every avatar into a
+    square and every status dot into a tile.
+  */
+  --radius-sm: 0.5rem;
+  --radius: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.5rem;
+
+  /*
+    Elevation levels from docs/DESIGN.md §2 — override the Tailwind
+    defaults so `shadow-sm` / `shadow` / `shadow-lg` match the reference.
+    level 1
+  */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  /* level 2 */
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  /* level 3 */
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --animate-fade-up: fade-up 300ms ease-out both;
+
+  @keyframes fade-up {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/*
+  Tailwind CSS v4 dropped v3's `cursor: pointer` on buttons in favour of the
+  browser default. Every control here was designed and tested with the
+  pointer, so keep it rather than let clickable things stop looking it.
+*/
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 @layer base {
   /*

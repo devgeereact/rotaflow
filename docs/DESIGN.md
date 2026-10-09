@@ -2,7 +2,7 @@
 
 > Source of truth: `docs/design/designsystem.png`, `docs/design/rotaflowui.png`,
 > `docs/design/signin.png`, `docs/design/splash-screen.png`. This document and
-> `tailwind.config.ts` are the enforced, code-level expression of those
+> the `@theme` block in `src/index.css` are the enforced, code-level expression of those
 > references. **Every future screen, component, or asset must match this
 > document, never invent a colour, size, or radius outside it.**
 >
@@ -17,7 +17,7 @@
 > here**, which is the point: a review document that keeps its own copy of the
 > rules becomes a second source of truth and then drifts. There is one canonical
 > design guide in this repository and it is this file, paired with
-> `tailwind.config.ts`.
+> the `@theme` block in `src/index.css`.
 
 ## 1. Aesthetic direction
 
@@ -38,7 +38,7 @@ alongside light ones, don't defer them.
 
 ## 2. Design tokens
 
-These are the tokens this document defines. `tailwind.config.ts` is the runtime source
+These are the tokens this document defines. The `@theme` block in `src/index.css` is the runtime source
 of truth and currently carries more than are listed here — `primary.ink`, `success.ink`,
 `warning.ink`, `danger.ink`, `brand.*`, `ink.*`, `clock.*`, `avail.*`, `shift-tint.*`,
 `leave.*`, `shift-deep.*`, plus wordmark type and lockup spacing. Read the config when
@@ -152,7 +152,7 @@ no colour in a production build while looking perfect in dev.
 offered no colour and wears the neutral labelled fallback; the database refuses
 a duplicate outright. Two occupations sharing a swatch is worse than a blocked
 form, because nothing on screen says the colour has stopped meaning one thing.
-Extending the palette is a deliberate change here and in `tailwind.config.ts`
+Extending the palette is a deliberate change here and in `src/index.css`
 together, with the contrast and colour-vision measurements redone.
 
 **A palette entry is a category label.** It is not a permission, not an
@@ -191,7 +191,7 @@ times, hours, and payroll figures so columns align.
 
 ### Shadows (elevation)
 
-`shadow-sm` / `shadow` / `shadow-lg` are overridden in `tailwind.config.ts` to
+`shadow-sm` / `shadow` / `shadow-lg` are overridden in `src/index.css` (`--shadow-sm`, `--shadow`, `--shadow-lg`) to
 match the reference exactly. Use the stock Tailwind class names, don't invent
 new ones.
 
@@ -210,7 +210,7 @@ featured/empty-state icons. Icon-only controls require `aria-label`.
 
 ## 4. Motion
 
-**Durations are named, not typed.** `tailwind.config.ts` carries four, and a new
+**Durations are named, not typed.** `src/index.css` carries four, and a new
 control picks the role rather than a number:
 
 | Token               | Value | For                                                  |

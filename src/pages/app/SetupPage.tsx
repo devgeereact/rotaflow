@@ -99,7 +99,7 @@ function StepRow({
             can go back down, and a person reading this wants to go and look. */}
         <Link
           to={step.to}
-          className="inline-flex h-9 items-center rounded-xl border border-surface-border px-3 text-sm font-medium text-primary-ink hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-primary-ink-dark dark:hover:bg-surface-subtle-dark"
+          className="inline-flex h-9 items-center rounded-xl border border-surface-border px-3 text-sm font-medium text-primary-ink hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:text-primary-ink-dark dark:hover:bg-surface-subtle-dark"
         >
           {step.status === 'done' ? 'Review' : 'Open'}
           <span className="sr-only"> {step.title}</span>

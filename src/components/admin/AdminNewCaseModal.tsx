@@ -180,7 +180,7 @@ export function AdminNewCaseModal({
             onChange={(e) => setBody(e.target.value)}
             rows={5}
             placeholder="In their words where you have them. This becomes the first message on the case."
-            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
           />
         </div>
 

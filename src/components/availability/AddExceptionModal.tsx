@@ -63,7 +63,7 @@ export function AddExceptionModal({
             min={TODAY}
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
           />
         </div>
 

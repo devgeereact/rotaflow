@@ -13,7 +13,7 @@ import type { TeamRow, TeamTodayStatus } from '@/lib/teamRows';
 const PROFILE_LINK_CLASS = cn(
   'inline-flex h-9 items-center justify-center rounded-xl px-3 text-sm font-semibold',
   'border border-surface-border bg-surface text-content hover:bg-surface-subtle',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
   'dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark',
 );
 
@@ -85,7 +85,7 @@ export function TeamRowsTable({
               <div className="min-w-0 flex-1">
                 <Link
                   to={`/app/team/${row.id}`}
-                  className="block font-semibold text-content hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
+                  className="block font-semibold text-content hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
                 >
                   {row.firstName} {row.lastName}
                 </Link>
@@ -198,7 +198,7 @@ export function TeamRowsTable({
                     <div className="min-w-0">
                       <Link
                         to={`/app/team/${row.id}`}
-                        className="truncate font-medium text-content hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
+                        className="truncate font-medium text-content hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
                       >
                         {row.firstName} {row.lastName}
                       </Link>

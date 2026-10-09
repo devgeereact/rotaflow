@@ -304,7 +304,7 @@ export function ResourcesPage(): JSX.Element {
             <li key={`${date}-${summary}`} className="relative">
               <span
                 aria-hidden="true"
-                className="absolute -left-[1.6rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary"
+                className="absolute left-[-1.6rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary"
               />
               <time
                 dateTime={date}
@@ -349,7 +349,7 @@ export function ResourcesPage(): JSX.Element {
               is no ticket queue and no chatbot, just{' '}
               <Link
                 to="/contact"
-                className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               >
                 get in touch
               </Link>{' '}

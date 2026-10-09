@@ -67,7 +67,7 @@ const ALIGN = {
  * which is what a header row is for. docs/DESIGN.md caption scale.
  */
 const HEAD_LABEL =
-  'inline-flex items-center gap-1.5 whitespace-nowrap text-[0.69rem] font-semibold uppercase tracking-[0.06em] text-content-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark';
+  'inline-flex items-center gap-1.5 whitespace-nowrap text-[0.69rem] font-semibold uppercase tracking-[0.06em] text-content-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark';
 
 /**
  * The shared sortable table.
@@ -237,7 +237,7 @@ export function DataTable<Row, Key extends string = string>({
                   className={cn(
                     'border-b border-divider last:border-0 dark:border-divider-dark',
                     onRowClick &&
-                      'cursor-pointer transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:hover:bg-surface-subtle-dark',
+                      'cursor-pointer transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:hover:bg-surface-subtle-dark',
                     selectedKey === key && 'bg-primary-wash dark:bg-primary-wash-dark',
                   )}
                 >

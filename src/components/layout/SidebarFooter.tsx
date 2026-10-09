@@ -18,7 +18,7 @@ function initialsFor(label: string): string {
 }
 
 const MENU_ITEM =
-  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark';
+  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark';
 
 /**
  * The small "..." trigger next to the profile card holding Settings/My
@@ -90,7 +90,7 @@ function AccountMenu({
         aria-expanded={open}
         aria-label="Account options"
         title="Account options"
-        className="rounded-lg p-1.5 text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
+        className="rounded-lg p-1.5 text-content-muted hover:bg-primary-wash hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
       >
         <MoreVertical size={16} aria-hidden="true" />
       </button>
@@ -209,7 +209,7 @@ export function SidebarFooter({
           to="/app/account"
           onClick={onNavigate}
           title={`${displayName}. Your profile`}
-          className="flex items-center justify-center rounded-xl px-0 py-2 hover:bg-primary-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex items-center justify-center rounded-xl px-0 py-2 hover:bg-primary-wash focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
             {initialsFor(displayName)}
@@ -226,7 +226,7 @@ export function SidebarFooter({
         <Link
           to="/app/account"
           onClick={onNavigate}
-          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-primary-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-primary-wash focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
             {initialsFor(displayName)}

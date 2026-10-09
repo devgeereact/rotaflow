@@ -246,7 +246,7 @@ export function AdminAnnouncementComposer({
             onChange={(e) => setBody(e.target.value)}
             rows={5}
             placeholder="What is happening, when, and what it means for the customer."
-            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
           />
         </div>
 

@@ -36,7 +36,7 @@ export interface FilterBarProps {
 }
 
 const SELECT_CLASS =
-  'h-11 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark';
+  'h-11 rounded-xl border border-surface-border bg-surface px-3 text-sm text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark';
 
 /**
  * One toolbar for every filterable table.
@@ -93,7 +93,7 @@ export function FilterBar({
           placeholder={searchPlaceholder}
           value={filterValue(filters, searchDimensionId)}
           onChange={(event) => onSetValue(searchDimensionId, event.target.value)}
-          wrapperClassName="min-w-[12rem] flex-1 sm:max-w-xs"
+          wrapperClassName="min-w-48 flex-1 sm:max-w-xs"
         />
 
         {selectable.map((dimension) => {
@@ -155,7 +155,7 @@ export function FilterBar({
                 onClick={() => onClearOne(chip.dimensionId, chip.value)}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border border-surface-border bg-surface-subtle px-2.5 py-1 text-xs font-medium text-content',
-                  'hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'hover:bg-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
                   'dark:border-surface-border-dark dark:bg-surface-subtle-dark dark:text-content-dark',
                 )}
               >

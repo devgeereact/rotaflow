@@ -126,7 +126,9 @@ and they pass.
   `.htaccess` composition). No server runtime of any kind on the origin.
 - **TypeScript strict.** No implicit `any`; explicit return types on functions
   and hooks.
-- **Styling:** NativeWind / Tailwind classes, tokens from `tailwind.config.ts`.
+- **Styling:** NativeWind / Tailwind classes, tokens from the `@theme`
+  block in `src/index.css` (Tailwind 4 since 2026-10-09; there is no
+  `tailwind.config.ts`).
 - **Offloaded systems:** Supabase (Auth/DB + RLS + Edge Functions — the only
   server compute, see `supabase/functions/`), ImageKit (media), Sentry
   (monitoring), OpenRouter (AI, called only from an Edge Function — key never

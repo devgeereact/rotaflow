@@ -71,7 +71,7 @@ export function LoadingState({
         return (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: count }, (_, i) => (
-              <Skeleton key={i} className="h-[6.5rem] w-full rounded-xl" />
+              <Skeleton key={i} className="h-26 w-full rounded-xl" />
             ))}
           </div>
         );

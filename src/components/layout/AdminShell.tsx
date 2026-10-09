@@ -28,7 +28,7 @@ const LINK_INACTIVE =
 const LINK_ACTIVE = 'bg-primary text-primary-fg';
 
 const EYEBROW =
-  'text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-content-muted dark:text-content-muted-dark';
+  'text-[0.625rem] font-semibold uppercase tracking-widest text-content-muted dark:text-content-muted-dark';
 
 /**
  * Which deployment this is.
@@ -350,7 +350,7 @@ export function AdminShell(): JSX.Element {
               onClick={() => setMobileOpen(true)}
               aria-label="Open platform navigation"
               aria-expanded={mobileOpen}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger md:hidden"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-danger md:hidden"
             >
               <Menu size={18} aria-hidden="true" />
             </button>
@@ -360,7 +360,7 @@ export function AdminShell(): JSX.Element {
             </p>
           </div>
 
-          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border bg-background/90 px-4 py-2.5 backdrop-blur lg:px-6 dark:border-surface-border-dark dark:bg-background-dark/90">
+          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border bg-background/90 px-4 py-2.5 backdrop-blur-sm lg:px-6 dark:border-surface-border-dark dark:bg-background-dark/90">
             <p className="flex min-w-0 items-center gap-1.5 truncate text-[0.78rem] text-content-muted dark:text-content-muted-dark">
               Platform Console
               {crumb ? (

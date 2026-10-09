@@ -609,7 +609,7 @@ export function AdminUsersPage(): JSX.Element {
               sort={tableSort}
               onSortChange={onSortChange}
               emptyMessage="No account matches these filters."
-              tableClassName="min-w-[64rem]"
+              tableClassName="min-w-5xl"
             />
 
             {page && (

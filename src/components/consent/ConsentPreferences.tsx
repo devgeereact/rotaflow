@@ -142,14 +142,14 @@ export function ConsentPreferences(): JSX.Element | null {
           More detail is on the{' '}
           <Link
             to="/legal/cookies"
-            className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+            className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
           >
             Cookie Notice
           </Link>{' '}
           and the{' '}
           <Link
             to="/legal/privacy"
-            className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+            className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
           >
             Privacy Notice
           </Link>

@@ -403,7 +403,7 @@ export function SettingsPoliciesPage(): JSX.Element {
       </Card>
 
       {canEdit && (
-        <div className="sticky bottom-0 -mx-1 flex justify-end border-t border-surface-border bg-background/90 px-1 py-4 backdrop-blur dark:border-surface-border-dark dark:bg-background-dark/90">
+        <div className="sticky bottom-0 -mx-1 flex justify-end border-t border-surface-border bg-background/90 px-1 py-4 backdrop-blur-sm dark:border-surface-border-dark dark:bg-background-dark/90">
           <Button onClick={() => void handleSave()} disabled={saving}>
             {saving ? 'Saving…' : 'Save policies'}
           </Button>

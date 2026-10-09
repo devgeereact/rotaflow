@@ -44,7 +44,7 @@ export function HomePage(): JSX.Element {
           <p className="mb-5 inline-block rounded-full border border-surface-border bg-surface px-3.5 py-1.5 text-sm text-content-muted dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark">
             {HERO.eyebrow}
           </p>
-          <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-content sm:text-5xl md:text-6xl dark:text-content-dark">
+          <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-content sm:text-5xl sm:leading-none md:text-6xl dark:text-content-dark">
             {HERO.headline.map((line, i) => (
               <span key={line} className="block">
                 {i === HERO.headline.length - 1 ? (

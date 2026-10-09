@@ -340,7 +340,7 @@ export function RotaGrid({
           // Pinned to the top of the grid's own viewport, below the week row.
           // Date columns are unreadable once the names above them have
           // scrolled away, and a rota is 40 rows long in a real organisation.
-          'sticky top-[1.75rem] z-20 border-b border-surface-border bg-surface pb-3',
+          'sticky top-7 z-20 border-b border-surface-border bg-surface pb-3',
           'dark:border-surface-border-dark dark:bg-surface-dark',
         )}
         style={{ gridTemplateColumns: template }}

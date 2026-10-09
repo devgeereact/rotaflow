@@ -251,7 +251,7 @@ export function AnnouncementComposerModal({
             onChange={(event) => setBody(event.target.value)}
             rows={5}
             placeholder="Details for your team…"
-            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            className="w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
           />
         </div>
         <label className="flex items-center gap-2 text-sm text-content dark:text-content-dark">

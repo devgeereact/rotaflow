@@ -95,7 +95,7 @@ export function SidebarOrgSwitcher({
               switchOrg(m.orgId);
               setOpen(false);
             }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:text-content-dark dark:hover:bg-surface-subtle-dark"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:text-content-dark dark:hover:bg-surface-subtle-dark"
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate">{m.orgName}</span>
@@ -129,7 +129,7 @@ export function SidebarOrgSwitcher({
           className={cn(
             'grid h-10 w-10 place-items-center rounded-xl bg-brand text-sm font-bold text-primary-fg',
             canSwitch &&
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
             !canSwitch && 'cursor-default',
           )}
         >
@@ -158,7 +158,7 @@ export function SidebarOrgSwitcher({
           'flex w-full items-center gap-2.5 rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-left',
           'dark:border-surface-border-dark dark:bg-surface-dark',
           canSwitch &&
-            'hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark',
+            'hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark',
           !canSwitch && 'cursor-default',
         )}
       >

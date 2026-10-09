@@ -82,7 +82,7 @@ export function SuspendOrgModal({
             required
             aria-describedby={showError ? 'suspend-reason-error' : undefined}
             aria-invalid={showError}
-            className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
+            className="mt-1 w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark"
             placeholder="e.g. Payment failed three times; account on hold pending contact."
           />
           {showError ? (
