@@ -439,8 +439,11 @@ export function AdminNotificationsPage(): JSX.Element {
                     'w-[6%]',
                     'w-[10%]',
                     'w-[13%]',
-                  ].map((w) => (
-                    <col key={w} className={w} />
+                  ].map((w, i) => (
+                    // Keyed by index, not `w`: the widths repeat (two at 6%),
+                    // so the value collides and React drops a column. Same
+                    // fix, and the same reason, as `AdminSupportPage`.
+                    <col key={i} className={w} />
                   ))}
                 </colgroup>
                 <thead>

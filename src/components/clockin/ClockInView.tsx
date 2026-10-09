@@ -53,6 +53,8 @@ export interface ClockInViewProps {
   clockTime: string;
   clockDateLabel: string;
   windowLabel: string;
+  /** True while the clock-in window for the current shift is actually open. */
+  windowOpen: boolean;
   onPrimaryAction?: () => void;
   onSecondaryAction?: () => void;
   /** The manual fallback, present only once the device has failed to supply a position. */
@@ -117,6 +119,7 @@ export function ClockInView({
   clockTime,
   clockDateLabel,
   windowLabel,
+  windowOpen,
   onPrimaryAction,
   onSecondaryAction,
   tertiaryActionLabel,
@@ -172,6 +175,7 @@ export function ClockInView({
                 clockTime={clockTime}
                 dateLabel={clockDateLabel}
                 windowLabel={windowLabel}
+                windowOpen={windowOpen}
                 onPrimary={onPrimaryAction}
                 onSecondary={onSecondaryAction}
                 tertiaryLabel={tertiaryActionLabel}

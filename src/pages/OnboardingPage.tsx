@@ -336,7 +336,6 @@ export function OnboardingPage(): JSX.Element {
   const [createValues, setCreateValues] = useState<CreateOrgValues>({
     name: '',
     slug: '',
-    industry: '',
     size: '1-25',
   });
   const [aboutValues, setAboutValues] = useState<AboutValues>({
@@ -472,11 +471,9 @@ export function OnboardingPage(): JSX.Element {
         await updateOrganisation(orgId, {
           name: createValues.name.trim(),
           slug: createValues.slug.trim(),
-          industry: createValues.industry.trim() || null,
         });
         await mergeOrgSettings(orgId, { size: createValues.size });
         await refresh();
-        setAboutValues((v) => ({ ...v, industry: createValues.industry || v.industry }));
         setStep(2);
       } catch (err) {
         reportError(err, { area: 'onboarding:update-org' });
@@ -498,7 +495,6 @@ export function OnboardingPage(): JSX.Element {
         {
           name: createValues.name.trim(),
           slug: createValues.slug.trim(),
-          industry: createValues.industry.trim() || null,
           settings: { size: createValues.size },
         },
         user.id,
@@ -507,7 +503,6 @@ export function OnboardingPage(): JSX.Element {
       clearOnboardingDraft();
       await refresh();
       switchOrg(org.id);
-      setAboutValues((v) => ({ ...v, industry: createValues.industry || v.industry }));
       setStep(2);
     } catch (err) {
       reportError(err, { area: 'onboarding:create-org' });

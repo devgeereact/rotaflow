@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import {
   CalendarCheck,
@@ -18,6 +18,8 @@ import {
   getMonday,
   getWeekDates,
 } from '@/lib/rotaGrid';
+import { canvasDates } from '@/lib/rotaCanvas';
+import { IconButton } from '@/components/ui/IconButton';
 import { computeRotaInsights } from '@/lib/rotaInsights';
 
 function formatWeekRange(dates: string[]): string {
@@ -350,11 +352,37 @@ const DEFAULT_TZ = 'Europe/London';
  * wired to any service call.
  */
 export function RotaBuilderPreviewPage(): JSX.Element {
-  // The preview stays one week wide on purpose: it exists for a screenshot
-  // of the chips and the density, and three weeks of columns would make every
-  // one of them narrower than the real screen ever shows them.
+  // The preview draws the same three-week canvas the product does
+  // (`rotaCanvas.ts`), for the reason the harness exists at all: a reviewer
+  // looking at `/app-preview/rota` has to be looking at the real screen.
+  //
+  // It was one week wide until 2026-09-10, on the stated grounds that three
+  // weeks would squeeze the columns. They do not: `rotaGridTemplate` sizes
+  // them `minmax(6.5rem,1fr)`, so a wider canvas scrolls rather than shrinks
+  // — and the one-week version hid the defect that the grid opened on the
+  // wrong week, because with seven columns there was no wrong week to open on.
   const weekStart = useMemo(() => getMonday(now), []);
+  /** The anchor week's own seven dates, for anything scoped to one week. */
   const dates = useMemo(() => getWeekDates(weekStart), [weekStart]);
+  /** Every column drawn. */
+  const gridDates = useMemo(() => canvasDates(weekStart), [weekStart]);
+
+  /** Opens on the anchor week, exactly as `RotaBuilderPage` does. */
+  const gridViewportRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = gridViewportRef.current;
+    if (!viewport) return;
+    const frame = requestAnimationFrame(() => {
+      const anchor = viewport.querySelector('[data-rota-anchor-week]');
+      const staffCol = viewport.querySelector('[data-rota-staff-col]');
+      if (!anchor) return;
+      viewport.scrollLeft +=
+        anchor.getBoundingClientRect().left -
+        viewport.getBoundingClientRect().left -
+        (staffCol?.getBoundingClientRect().width ?? 0);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [weekStart]);
   // Held in state, not a module constant, so the keyboard move actually moves
   // something here. The design loop screenshots the initial arrangement either
   // way; what this buys is a harness where the move can be driven and asserted
@@ -464,20 +492,21 @@ export function RotaBuilderPreviewPage(): JSX.Element {
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                aria-label="Previous week"
-                className="rounded-lg border border-surface-border p-1.5 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                type="button"
-                aria-label="Next week"
-                className="rounded-lg border border-surface-border p-1.5 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
-              >
-                <ChevronRight size={16} />
-              </button>
+              {/* Same 44px steppers as the live toolbar. The harness exists so
+                  a reviewer sees the real screen; a 30x30 control here was a
+                  difference nobody asked for. */}
+              <IconButton
+                icon={ChevronLeft}
+                label="Previous week"
+                iconSize={18}
+                className="border border-surface-border text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
+              />
+              <IconButton
+                icon={ChevronRight}
+                label="Next week"
+                iconSize={18}
+                className="border border-surface-border text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
+              />
               <Button size="sm" variant="secondary">
                 Today
               </Button>
@@ -518,7 +547,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                       key={tab}
                       type="button"
                       className={cn(
-                        'rounded-lg px-3 py-1.5 text-sm font-medium',
+                        'inline-flex min-h-9 items-center rounded-lg px-3 text-sm font-medium',
                         tab === 'Week'
                           ? 'bg-primary text-white'
                           : 'text-content-muted dark:text-content-muted-dark',
@@ -528,13 +557,12 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  aria-label="Manage shift types"
-                  className="rounded-xl border border-surface-border p-2 text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
-                >
-                  <Settings2 size={16} />
-                </button>
+                <IconButton
+                  icon={Settings2}
+                  label="Manage shift types"
+                  iconSize={18}
+                  className="border border-surface-border text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
+                />
               </MobileDisclosure>
               <div className="flex">
                 <Button size="sm" className="rounded-r-none">
@@ -543,9 +571,9 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                 <button
                   type="button"
                   aria-label="Publish options"
-                  className="rounded-r-xl border-l border-primary-fg/20 bg-primary px-2 text-primary-fg"
+                  className="w-11 shrink-0 rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg"
                 >
-                  <ChevronDown size={14} />
+                  <ChevronDown size={16} aria-hidden="true" className="mx-auto" />
                 </button>
               </div>
             </div>
@@ -608,9 +636,13 @@ export function RotaBuilderPreviewPage(): JSX.Element {
           </div>
 
           <Card className="min-w-0 overflow-hidden p-4 sm:p-5">
-            <ScrollRegion label="Rota grid" viewportClassName="max-h-[70vh]">
+            <ScrollRegion
+              label="Rota grid"
+              viewportClassName="max-h-[70vh]"
+              viewportRef={gridViewportRef}
+            >
               <RotaGrid
-                dates={dates}
+                dates={gridDates}
                 anchorWeekStart={weekStart}
                 groups={groups}
                 shiftMapByLocation={shiftMapByLocation}

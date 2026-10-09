@@ -48,6 +48,38 @@ test.beforeEach(async ({ page }) => {
   ).toBeVisible();
 });
 
+test.describe('the week the grid opens on', () => {
+  /**
+   * The canvas is three weeks wide with the anchor week in the middle
+   * (`rotaCanvas.ts`), and a scrolling element starts at `scrollLeft: 0`. So
+   * the builder opened showing the *previous* week: "Publish (n changes)" and
+   * the blocking-issue count both described a week that was off the right-hand
+   * edge, and on a new organisation that is a screen of empty cells.
+   *
+   * Asserted by geometry rather than by a `scrollLeft` number, which depends on
+   * column widths and would have to be rewritten whenever they change.
+   */
+  test('opens on the anchor week, not the one before it', async ({ page }) => {
+    const region = page.getByRole('region', { name: 'Rota grid' });
+    const anchor = region.locator('[data-rota-anchor-week]');
+    await expect(anchor).toHaveCount(1);
+
+    // The canvas really is wider than one week, or the assertion below passes
+    // for the wrong reason.
+    expect(await region.evaluate((el) => el.scrollWidth)).toBeGreaterThan(
+      await region.evaluate((el) => el.clientWidth),
+    );
+
+    const anchorBox = (await anchor.boundingBox())!;
+    const regionBox = (await region.boundingBox())!;
+    const staffColWidth =
+      (await region.locator('[data-rota-staff-col]').boundingBox())?.width ?? 0;
+
+    expect(anchorBox.x).toBeGreaterThanOrEqual(regionBox.x - 2);
+    expect(anchorBox.x).toBeLessThanOrEqual(regionBox.x + staffColWidth + 4);
+  });
+});
+
 test.describe('pinned columns', () => {
   test('the staff name stays put while the grid scrolls sideways', async ({ page }) => {
     const region = page.getByRole('region', { name: 'Rota grid' });

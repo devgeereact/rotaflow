@@ -132,7 +132,8 @@ export function LeavePreviewPage(): JSX.Element {
           onStatusFilterChange={setStatusFilter}
           tiles={{
             awaitingDecision: 2,
-            oldestPendingLabel: 'oldest 16 days',
+            oldestPendingLabel: 'oldest: 16 days',
+            oldestPendingOverdue: true,
             approvedNext30Days: 7,
             sicknessDaysThisMonth: 4,
             coverRiskLabel: 'Aug 25-29',

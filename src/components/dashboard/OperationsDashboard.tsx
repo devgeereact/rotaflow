@@ -438,49 +438,81 @@ export function OperationsDashboard({
             towards the minimum before publishing. It is not an attendance figure and
             never matches the tiles above.
           </p>
-          <div className="grid h-[200px] grid-cols-7 gap-2">
-            {(weekly?.coverByDate ?? []).map((entry) => {
-              const short = entry.onShift < entry.required;
-              return (
-                <div
-                  key={entry.date}
-                  className="flex h-full flex-col items-center gap-1.5"
-                >
-                  <div className="relative flex w-full flex-1 items-end border-b border-surface-border dark:border-surface-border-dark">
-                    <span
-                      className="absolute left-0 right-0 border-t border-dashed border-warning"
-                      style={{
-                        bottom: `${Math.min(100, (entry.required / maxCover) * 100)}%`,
-                      }}
-                      aria-hidden="true"
-                    />
-                    <span
-                      className={cn(
-                        'w-full rounded-t-lg',
-                        short ? 'bg-danger' : 'bg-primary',
-                      )}
-                      style={{
-                        height: `${Math.min(100, (entry.onShift / maxCover) * 100)}%`,
-                      }}
-                    />
-                  </div>
+          {/* An empty `coverByDate` used to render the 200px grid with no
+              children: a blank box under a heading, which reads as a chart
+              that failed rather than a week nobody is rostered on yet. */}
+          {(weekly?.coverByDate ?? []).length === 0 ? (
+            <p className="flex h-[200px] items-center justify-center rounded-lg bg-surface-subtle px-4 text-center text-sm text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
+              {weekly === null
+                ? 'Loading this week…'
+                : 'Nobody is rostered this week yet, so there is nothing to measure against the minimum.'}
+            </p>
+          ) : (
+            <>
+              <div className="grid h-[200px] grid-cols-7 gap-2">
+                {(weekly?.coverByDate ?? []).map((entry) => {
+                  const short = entry.onShift < entry.required;
+                  return (
+                    <div
+                      key={entry.date}
+                      className="flex h-full flex-col items-center gap-1.5"
+                    >
+                      <div className="relative flex w-full flex-1 items-end border-b border-surface-border dark:border-surface-border-dark">
+                        <span
+                          className="absolute left-0 right-0 border-t border-dashed border-warning"
+                          style={{
+                            bottom: `${Math.min(100, (entry.required / maxCover) * 100)}%`,
+                          }}
+                          aria-hidden="true"
+                        />
+                        <span
+                          className={cn(
+                            'w-full rounded-t-lg',
+                            short ? 'bg-danger' : 'bg-primary',
+                          )}
+                          style={{
+                            height: `${Math.min(100, (entry.onShift / maxCover) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <span
+                        className={cn(
+                          'font-mono text-xs font-semibold',
+                          short
+                            ? 'text-danger-ink dark:text-danger-ink-dark'
+                            : 'text-content dark:text-content-dark',
+                        )}
+                      >
+                        {entry.onShift}
+                      </span>
+                      <span className="text-[11px] text-content-muted dark:text-content-muted-dark">
+                        {format(new Date(`${entry.date}T00:00:00`), 'EEE')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* The bars carry two facts by colour alone otherwise: which days
+              are short, and where the minimum sits. Both need words. */}
+              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-content-muted dark:text-content-muted-dark">
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="h-2 w-3 rounded-sm bg-primary" />
+                  At or above the minimum
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="h-2 w-3 rounded-sm bg-danger" />
+                  Below the minimum
+                </span>
+                <span className="flex items-center gap-1.5">
                   <span
-                    className={cn(
-                      'font-mono text-xs font-semibold',
-                      short
-                        ? 'text-danger-ink dark:text-danger-ink-dark'
-                        : 'text-content dark:text-content-dark',
-                    )}
-                  >
-                    {entry.onShift}
-                  </span>
-                  <span className="text-[11px] text-content-muted dark:text-content-muted-dark">
-                    {format(new Date(`${entry.date}T00:00:00`), 'EEE')}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                    aria-hidden="true"
+                    className="h-0 w-3 border-t border-dashed border-warning"
+                  />
+                  Minimum cover for that day
+                </span>
+              </p>
+            </>
+          )}
         </Card>
 
         <div className="grid gap-6">

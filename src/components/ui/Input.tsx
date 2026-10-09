@@ -21,7 +21,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           'placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary',
           'dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark',
           Icon && 'pl-10',
-          endAdornment && 'pr-10',
+          // 48px: the adornment is a 44x44 control (docs/DESIGN.md §5) sat 4px
+          // in from the edge, and text must not run underneath it.
+          endAdornment && 'pr-12',
           className,
         )}
         {...props}
@@ -41,7 +43,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         {field}
         {endAdornment && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">{endAdornment}</div>
+          <div className="absolute right-1 top-1/2 -translate-y-1/2">{endAdornment}</div>
         )}
       </div>
     );

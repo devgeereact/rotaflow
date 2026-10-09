@@ -18,6 +18,8 @@ import { shiftNetMinutes } from '@/lib/rotaInsights';
 import { findMissedClockIns } from '@/lib/clockInAlerts';
 import { resolvePeriod, stepPeriod } from '@/lib/schedulePeriod';
 import { rotaWeekStatus } from '@/lib/rotaRollup';
+import { formatLeaveRange } from '@/lib/leaveRows';
+import { swapAwaitsManager } from '@/lib/approvalQueue';
 import type {
   Announcement,
   Location,
@@ -122,12 +124,19 @@ export async function getPendingRequests(
       kind: 'leave',
       staffName: staffName(r.staff_profile_id),
       detail: `${r.type} leave`,
-      dateLabel: `${r.start_date}, ${r.end_date}`,
+      // `formatLeaveRange`, not two raw ISO dates joined by a comma: this
+      // tile read `2026-09-21, 2026-09-25`, which is the database's spelling
+      // rather than a person's.
+      dateLabel: formatLeaveRange(r.start_date, r.end_date),
       createdAt: r.created_at,
     }));
 
+  // The same rule the `/app/approvals` queue uses, and for the same reason:
+  // this tile links straight to that page, so counting a different set makes
+  // the number wrong. `pending` with a named colleague is waiting on the
+  // COLLEAGUE, and `accepted` is the one waiting on this manager.
   const swapRows: PendingRequest[] = swaps
-    .filter((r) => r.status === 'pending')
+    .filter((r) => swapAwaitsManager(r))
     .map((r) => ({
       id: r.id,
       kind: 'swap',

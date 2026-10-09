@@ -72,7 +72,14 @@ export function OnboardingLayout({
 
       <div className="relative mx-auto grid max-w-[1600px] gap-8 px-6 py-8 md:px-10 lg:grid-cols-[minmax(0,20rem)_minmax(0,17rem)_minmax(0,1fr)]">
         {/* ---- Brand panel ---- */}
-        <aside className="relative hidden lg:block">
+        {/* `pb-[52%]` reserves the illustration's own height. Both
+            illustrations are `absolute bottom-0 w-full` on a 460x240 viewBox,
+            so they are 52% of the column tall — and on the longest panel (step
+            3's four features under a two-line headline) the last feature was
+            being drawn over the figures. Percentage padding resolves against
+            the width, which is exactly what the SVG's height does too, so the
+            reservation stays right at every column width. */}
+        <aside className="relative hidden pb-[52%] lg:block">
           <OnboardingWave />
           {illustration}
 

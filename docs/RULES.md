@@ -106,6 +106,14 @@ codebase will drift from, and several below had.
   bug**. `leave_requests.status` and `shift_swaps.status` both accept `'cancelled'`.
 - **Times & timezones:** store timestamps as `timestamptz` (UTC); shift times display
   in the location's timezone. Use `font-mono` for times/hours so columns align.
+  `format(new Date(iso), 'HH:mm')` reads the **browser's** zone, which is the wrong
+  answer for anybody working away from the site — convert with `toZonedTime` first.
+- **A time range is written in one place.** `src/lib/timeRange.ts` owns the
+  separator and the overnight marker: `formatTimeRange` for a label,
+  `describeTimeRange` inside a sentence or an `aria-label`. Never build one from a
+  template literal — eleven screens had drifted to `07:00, 15:00`, which reads as
+  two separate times and carries no `(+1 day)` on a night shift (GAP-121).
+  `timeRange.test.ts` scans the tree for the twelfth.
 - **Offline writes go through the outbox.** Clock-ins, leave requests and swap
   requests use `services/syncQueue` (never a raw insert that silently fails offline).
   Swap and leave responses are review actions and require a network connection.

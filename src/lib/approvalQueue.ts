@@ -42,6 +42,27 @@ export interface ApprovalRow {
   to: string;
 }
 
+/**
+ * Whether a swap is waiting on a MANAGER rather than on a colleague.
+ *
+ * Exported because the dashboard's "Pending approvals" tile links to
+ * `/app/approvals` and has to count the same set. It did not: the tile counted
+ * `status === 'pending'`, which is the set waiting on a colleague, and missed
+ * every `accepted` swap — the ones actually waiting on a decision. The number
+ * on the tile was therefore wrong in both directions, and the page it linked
+ * to disagreed with it.
+ *
+ * A swap `pending` WITH a named colleague is waiting on that colleague. Without
+ * a target it is an open offer, which a manager can decide; `accepted` means
+ * both people have agreed and it is waiting on the final approval.
+ */
+export function swapAwaitsManager(swap: SwapForQueue): boolean {
+  return (
+    swap.status === 'accepted' ||
+    (swap.status === 'pending' && swap.target_staff_profile_id === null)
+  );
+}
+
 function nameOf(staff: readonly StaffProfile[], id: string | null): string {
   const person = staff.find((s) => s.id === id);
   // A request outlives the staff record it came from — somebody can leave
@@ -102,16 +123,11 @@ export function buildApprovalQueue(input: {
   }
 
   for (const swap of swaps) {
-    // A swap `pending` WITH a named colleague is waiting on that colleague,
-    // not on a manager. Listing it here would put a row in the queue that the
-    // person reading it cannot clear, and a queue with rows you cannot clear
-    // stops being read. Without a target it is an open offer, which a manager
-    // can decide; `accepted` means both people have agreed and it is waiting
-    // on the final approval. Those two are the manager's.
-    const waitingOnManager =
-      swap.status === 'accepted' ||
-      (swap.status === 'pending' && swap.target_staff_profile_id === null);
-    if (!waitingOnManager) continue;
+    // Listing a swap the manager cannot clear would put a row in the queue
+    // that the person reading it cannot act on, and a queue with rows you
+    // cannot clear stops being read. `swapAwaitsManager` is the rule, shared
+    // with the dashboard tile that links here.
+    if (!swapAwaitsManager(swap)) continue;
 
     rows.push({
       id: swap.id,

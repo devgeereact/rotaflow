@@ -18,8 +18,10 @@ import type { LeaveStatus } from '@/lib/leaveRows';
 
 export interface ManagerLeaveTiles {
   awaitingDecision: number;
-  /** "oldest 16 days", null when the queue is empty. */
+  /** "oldest: 16 days", or "oldest: today"; null when the queue is empty. */
   oldestPendingLabel: string | null;
+  /** True once the oldest request has been waiting a full day or more. */
+  oldestPendingOverdue: boolean;
   approvedNext30Days: number;
   sicknessDaysThisMonth: number;
   /** "Aug 25-29", or "Clear" when no cover clash was found in the lookahead window. */
@@ -92,7 +94,17 @@ export function ManagerLeave({
           value={tiles.awaitingDecision}
           hint={
             tiles.oldestPendingLabel && (
-              <span className="text-danger">{tiles.oldestPendingLabel}</span>
+              // The ink pair, both halves: `text-danger` is a FILL and
+              // measures under 4.5:1 as small text (docs/DESIGN.md §5).
+              <span
+                className={
+                  tiles.oldestPendingOverdue
+                    ? 'text-danger-ink dark:text-danger-ink-dark'
+                    : undefined
+                }
+              >
+                {tiles.oldestPendingLabel}
+              </span>
             )
           }
         />

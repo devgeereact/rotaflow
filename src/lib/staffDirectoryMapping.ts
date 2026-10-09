@@ -8,6 +8,7 @@
  */
 
 import { format } from 'date-fns';
+import { formatTimeRange } from '@/lib/timeRange';
 import type {
   Availability,
   Department,
@@ -183,7 +184,13 @@ export function buildWeek(entries: Availability[], weekStart: Date): Availabilit
       weekday: format(day, 'EEE'),
       date: format(day, 'd MMM'),
       timeLabel: working
-        ? `${working.start_time!.slice(0, 5)}, ${working.end_time!.slice(0, 5)}`
+        ? formatTimeRange(
+            working.start_time!.slice(0, 5),
+            working.end_time!.slice(0, 5),
+            {
+              overnight: 'compact',
+            },
+          )
         : null,
       tone: working ? 'default' : 'off',
     };

@@ -48,7 +48,11 @@ const STAGES: Record<ClockStage, StageCopy> = {
   },
 };
 
-/** Ring stroke and status dot: green on shift, amber on break, grey when done. */
+/**
+ * Ring stroke and status dot: green on shift, amber on break, grey when done
+ * — and grey, not green, while `ready` is only "ready" in the sense that
+ * nothing is running. See `windowOpen`.
+ */
 const RING: Record<ClockStage, { border: string; dot: string }> = {
   ready: { border: 'border-clock', dot: 'bg-clock' },
   working: { border: 'border-clock', dot: 'bg-clock' },
@@ -65,6 +69,13 @@ interface ClockActionPaneProps {
   clockTime: string;
   dateLabel: string;
   windowLabel: string;
+  /**
+   * Whether the clock-in window is open. `stage` alone said `ready` for
+   * "No shift scheduled", "Opens at 07:00" and "Shift has ended" alike, so the
+   * ring and its status dot were drawn in the on-shift green next to words
+   * saying there was nothing to clock in to.
+   */
+  windowOpen: boolean;
   onPrimary?: () => void;
   onSecondary?: () => void;
   /**
@@ -104,6 +115,7 @@ export function ClockActionPane({
   clockTime,
   dateLabel,
   windowLabel,
+  windowOpen,
   onPrimary,
   onSecondary,
   tertiaryLabel,
@@ -113,7 +125,9 @@ export function ClockActionPane({
   children,
 }: ClockActionPaneProps): JSX.Element {
   const copy = STAGES[stage];
-  const ring = RING[stage];
+  // `ready` with a closed window is not a green state: nothing is scheduled,
+  // or the window has not opened, or the shift has already ended.
+  const ring = stage === 'ready' && !windowOpen ? RING.done : RING[stage];
   const PrimaryIcon = copy.primaryIcon;
   const SecondaryIcon = copy.secondaryIcon;
 

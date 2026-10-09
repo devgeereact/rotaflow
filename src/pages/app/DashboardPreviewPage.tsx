@@ -358,6 +358,7 @@ export function DashboardPreviewPage(): JSX.Element {
           leaveRemaining={11}
           holidayAllowance={28}
           openSwaps={2}
+          timezone="Europe/London"
         />
       ) : (
         <OperationsDashboard

@@ -9,6 +9,7 @@ import { Panel } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
 import type { WeeklyRosterSummary } from '@/services/dashboardService';
 import type { LeaveRequest, Location, Shift, ShiftType, StaffProfile } from '@/types';
+import { formatTimeRange } from '@/lib/timeRange';
 
 export interface ManagerScheduleProps {
   todayLabel: string;
@@ -83,7 +84,7 @@ function groupBySite(
       name: `${person.first_name} ${person.last_name}`,
       colour: shift.colour ?? type?.colour ?? null,
       typeName: type?.name ?? 'Shift',
-      timeLabel: `${start}, ${end}`,
+      timeLabel: formatTimeRange(start, end, { overnight: 'compact' }),
     });
     byLocation.set(location.id, list);
   }

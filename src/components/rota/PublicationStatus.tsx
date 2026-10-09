@@ -68,7 +68,7 @@ export function PublicationStatus({
     state === 'published' ? 'success' : state === 'amending' ? 'info' : 'neutral';
 
   return (
-    <div className="mb-4">
+    <div className="mb-3 sm:mb-4">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={tone} dot>
           {STATE_LABEL[state]}

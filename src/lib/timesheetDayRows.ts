@@ -3,6 +3,7 @@ import { totalWorkedMinutes, type WorkedSegment } from '@/lib/hours';
 import { fromIsoInTimezone } from '@/lib/rotaGrid';
 import { shiftNetMinutes } from '@/lib/rotaInsights';
 import type { Location, Shift } from '@/types';
+import { formatTimeRange } from '@/lib/timeRange';
 
 export type TimesheetDayStatus = 'complete' | 'late' | 'on_shift' | 'absent';
 
@@ -75,7 +76,7 @@ export function buildTimesheetDayRows(
         : fallbackTimezone;
       const { time: startTime } = fromIsoInTimezone(shift.starts_at, timezone);
       const { time: endTime } = fromIsoInTimezone(shift.ends_at, timezone);
-      const plannedLabel = `${startTime}, ${endTime}`;
+      const plannedLabel = formatTimeRange(startTime, endTime, { overnight: 'compact' });
       const scheduledMinutes = shiftNetMinutes(shift);
 
       const segment = pickSegmentForShift(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dedupeRotasByScope,
+  dropSupersededShifts,
   isWeekPublished,
   rotaWeekStatus,
   type RotaScope,
@@ -162,5 +163,65 @@ describe('isWeekPublished', () => {
 
   it('agrees with rotaWeekStatus on the orphan-draft case', () => {
     expect(isWeekPublished([rota('published'), rota('draft')])).toBe(true);
+  });
+});
+
+/**
+ * The defect this closes: `/app/timesheets` reads the week draft-inclusive,
+ * so while an amendment was open it listed every person twice, doubled the
+ * planned hours and doubled the awaiting-approval count — on the screen
+ * payroll is signed off from. `/app/schedule` and the dashboard's cover chart
+ * read the same way.
+ */
+describe('dropSupersededShifts', () => {
+  const shift = (
+    id: string,
+    rotaId: string | null,
+    status: string | null,
+    supersedes: string | null = null,
+  ): {
+    id: string;
+    rota_id: string | null;
+    rota: { status: string | null; supersedes_rota_id: string | null } | null;
+  } => ({
+    id,
+    rota_id: rotaId,
+    rota: status === null ? null : { status, supersedes_rota_id: supersedes },
+  });
+
+  it('keeps the amendment and drops the published week it supersedes', () => {
+    const rows = [
+      shift('a', 'published-1', 'published'),
+      shift('b', 'draft-1', 'draft', 'published-1'),
+    ];
+    expect(dropSupersededShifts(rows).map((r) => r.id)).toEqual(['b']);
+  });
+
+  it('leaves a plain draft week alone — it supersedes nothing', () => {
+    const rows = [shift('a', 'draft-2', 'draft'), shift('b', 'draft-2', 'draft')];
+    expect(dropSupersededShifts(rows).map((r) => r.id)).toEqual(['a', 'b']);
+  });
+
+  it('leaves a published week alone when no amendment is open', () => {
+    const rows = [shift('a', 'published-1', 'published')];
+    expect(dropSupersededShifts(rows).map((r) => r.id)).toEqual(['a']);
+  });
+
+  it('drops only the week that was amended, not every published week', () => {
+    const rows = [
+      shift('a', 'published-1', 'published'),
+      shift('b', 'draft-1', 'draft', 'published-1'),
+      shift('c', 'published-2', 'published'),
+    ];
+    expect(dropSupersededShifts(rows).map((r) => r.id)).toEqual(['b', 'c']);
+  });
+
+  it('never drops a shift that belongs to no rota', () => {
+    const rows = [
+      shift('a', null, null),
+      shift('b', 'published-1', 'published'),
+      shift('c', 'draft-1', 'draft', 'published-1'),
+    ];
+    expect(dropSupersededShifts(rows).map((r) => r.id)).toEqual(['a', 'c']);
   });
 });

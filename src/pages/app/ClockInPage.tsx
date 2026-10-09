@@ -532,6 +532,7 @@ export function ClockInPage(): JSX.Element {
         clockTime={format(now, 'HH:mm:ss')}
         clockDateLabel={format(now, 'EEEE, d MMM yyyy')}
         windowLabel={view.window.label}
+        windowOpen={view.window.within}
         onPrimaryAction={onPrimary}
         onSecondaryAction={onSecondary}
         tertiaryActionLabel={manualFallback?.label}

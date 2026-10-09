@@ -1,27 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Briefcase,
-  Building2,
-  ArrowRight,
-  Check,
-  Info,
-  Loader2,
-  Users,
-} from 'lucide-react';
+import { Building2, ArrowRight, Check, Info, Loader2, Users } from 'lucide-react';
 import { isSlugAvailable, slugify } from '@/services/orgService';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { Select } from '@/components/ui/Select';
 import { StepCard } from '@/components/onboarding/StepCard';
-import { INDUSTRIES, ORG_SIZES } from '@/components/onboarding/constants';
+import { ORG_SIZES } from '@/components/onboarding/constants';
 
+/**
+ * Industry is deliberately not here. It is asked once, on step 2, beside the
+ * country and timezone it belongs with and with the hint that explains what it
+ * is for. Until 2026-09-10 the same field was on both steps, pre-filled on the
+ * second from the first, so the wizard appeared to have forgotten an answer
+ * given one screen earlier.
+ */
 export interface CreateOrgValues {
   name: string;
   slug: string;
-  industry: string;
   size: string;
 }
 
@@ -195,23 +192,6 @@ export function StepCreateOrg({
               </span>
             )}
           </p>
-        </div>
-
-        <div>
-          <Label htmlFor="org-industry">Primary industry</Label>
-          <Select
-            id="org-industry"
-            icon={Briefcase}
-            value={values.industry}
-            onChange={(e) => onChange({ industry: e.target.value })}
-          >
-            <option value="">Select your industry</option>
-            {INDUSTRIES.map((i) => (
-              <option key={i} value={i}>
-                {i}
-              </option>
-            ))}
-          </Select>
         </div>
 
         <fieldset>
