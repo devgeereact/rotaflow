@@ -219,6 +219,22 @@
   --text-wordmark--line-height: 1;
   --text-wordmark--letter-spacing: -0.026em;
 
+  /*
+    v3 line heights, as fixed lengths. v4 ships these as ratios, and a ratio
+    is inherited as a ratio: a `text-[0.72rem]` badge inside `text-sm` copy
+    went from v3's 20px line to 16.5px, and every pill, avatar and table row
+    built that way lost 2 to 4px. Fixed lengths inherit as lengths, exactly
+    as every screen here was designed and tested.
+  */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
   --transition-duration-press: 100ms;
   --transition-duration-control: 140ms;
   --transition-duration-overlay: 180ms;
