@@ -8,8 +8,10 @@ node_modules/
 .env.*.local
 
 # Demo/seed account credentials — real, working logins on the live Supabase
-# project (see supabase/seed/README.md). Never publish this file.
+# project (see supabase/seed/README.md). Never publish this file. The glob
+# form survives the file being recreated or moved into any docs subfolder.
 docs/ACCOUNTS.md
+**/ACCOUNTS.md
 
 # Build & PWA outputs
 dist/
@@ -42,9 +44,11 @@ Thumbs.db
 # `design/` was moved under `docs/` without `git mv`, which silently unignored
 # 45 MB of scratch — including a Chrome user-data-dir holding Cookies and
 # Login Data — in a public repo. Both paths are listed so the rename cannot
-# reopen the hole.
+# reopen the hole. Any `.loop/` anywhere under docs/ is ignored as well, so a
+# future docs reorganisation cannot reopen it either.
 design/.loop/
 docs/design/.loop/
+docs/**/.loop/
 
 # Claude Code local state. `worktrees/` in particular is where agent sessions
 # check out isolated copies of this repo — it was 84 MB of nested checkouts
