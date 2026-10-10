@@ -1,0 +1,86 @@
+# RotaFlow Plans 2026: the road to a sellable product
+
+Review date: 10 October 2026. Status: **APPROVED by the owner on 10 October 2026** (all recommendations D1 to D13). Second revision. Owner-only actions (trade mark search, token rotation, paid plan, legal review, VAT) remain with the owner.
+
+This folder is a temporary approval pack. It does not replace [SAAS.md](../00-foundation/SAAS.md), it changes no capability status, and it authorises no code, deployment, account creation, publishing or payment. Once the owner approves it, the approved decisions move into the canonical documents ([10-GOVERNANCE-ALIGNMENT.md](10-GOVERNANCE-ALIGNMENT.md) explains how), and the folder is deleted.
+
+## What changed in this revision
+
+The first revision (written earlier on 10 October) was careful but abstract, and it had not been checked against the code. This revision keeps its structure and its sound judgements. It also:
+
+- re-verified every concrete claim against source, CI run history and the live site, and corrected four claims that were wrong (see [01](01-EVIDENCE-AND-DRIFT.md));
+- adds findings the first pack missed, including a **double-billing path in Checkout**, a **free-forever loophole** in the plan fallback, a **broken Auth-settings check** that has failed every week since 14 September, a **name collision** with two same-category products, and **seven settings that save but do nothing**;
+- names the screens, files and lines for each fix, so each work package can start without re-auditing;
+- adds a bounded feature list ([09](09-NEW-FEATURES.md)), a single design guide for app, console and website ([04](04-DESIGN-AND-EXPERIENCE.md)), a content model that links the platform console to the website ([06](06-WEBSITE-AND-CONTENT.md)), and a governance alignment plan ([10](10-GOVERNANCE-ALIGNMENT.md)).
+
+The original files are backed up outside the repository. Nothing they said was discarded without a reason recorded in [01](01-EVIDENCE-AND-DRIFT.md).
+
+## The short version
+
+RotaFlow is further along than most products at this stage. On 10 October 2026, all seven local gates pass, including 1,240 unit tests across 79 files. There are 151 migrations, RLS on every table, 145 `SECURITY DEFINER` functions all pinned to a search path, signed and idempotent Stripe webhooks, an allowlisted CORS policy and a nightly encrypted backup that has succeeded every night since 5 September. The marketing copy is unusually honest, with no invented logos, numbers or testimonials.
+
+What stands between this and selling to companies is not missing features. It is ten specific things:
+
+| #   | Blocker                                                                                                             | Why it matters to a buyer                                                 | Plan                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1   | A second Checkout can create a second Stripe subscription and orphan the first                                      | Customers could be charged twice                                          | [03](03-PLATFORM-AND-BILLING.md) B1            |
+| 2   | An organisation that never pays keeps Starter limits indefinitely                                                   | Revenue leak, and the pricing FAQ says the opposite                       | [03](03-PLATFORM-AND-BILLING.md) B3            |
+| 3   | Staff documents (DBS, right to work) are pasted public links                                                        | Criminal-record and immigration data the product cannot protect or delete | [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S2 |
+| 4   | `emergency_contacts.medical_notes` collects third-party health data                                                 | Article 9 special-category data without a recorded legal basis            | [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S1 |
+| 5   | Platform admins can read every tenant, and MFA cannot be switched on because sign-in has no second-factor step      | The highest-privilege surface has one factor                              | [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S5 |
+| 6   | The Auth-settings check has failed with `401` for four weeks, and nothing pages a person when anything fails        | Problems are found by customers first                                     | [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S7 |
+| 7   | Recovery has only been rehearsed into plain Postgres. PITR is off. Backups live only as GitHub artifacts            | A bad day could lose up to 24 hours or more                               | [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S6 |
+| 8   | Terms and Privacy are visible drafts. No DPA. No ICO registration (GAP-059)                                         | Care, security and NHS-adjacent buyers will stop at procurement           | [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S8 |
+| 9   | Seven organisation settings save but change nothing, and the rota uses hard-coded limits                            | A manager who sets "10 hours rest" still gets warnings at 11              | [02](02-ORGANISATION-AND-STAFF.md) §4          |
+| 10  | "RotaFlow" is also an iPhone rota app on rotaflow.app, and `@rotaflow` is taken on Instagram, Facebook and LinkedIn | Search confusion, and possible trade mark risk                            | [07](07-SOCIAL-PROFILES-AND-COMMUNITY.md) §1   |
+
+Everything else in this pack is polish: consistency, clarity, mobile comfort and a website that sells. That polish matters, but it comes after these ten.
+
+**Current release assessment: PARTIAL.** The source and local gates support a substantial, coherent product. The deployed state, the payment lifecycle with real money, recovery into a real Supabase project, and real-device offline behaviour are **NOT TESTED**.
+
+## Read in this order
+
+| Document                                                                      | What it answers                                                                            |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [01, evidence and drift](01-EVIDENCE-AND-DRIFT.md)                            | What was checked, what is true today, where documents and code disagree                    |
+| [02, organisation and staff](02-ORGANISATION-AND-STAFF.md)                    | Every org and staff screen: what works, what is broken, the fix, mobile                    |
+| [03, platform and billing](03-PLATFORM-AND-BILLING.md)                        | Super Admin console, support access, Stripe, plans, trials, invoices                       |
+| [04, design and experience](04-DESIGN-AND-EXPERIENCE.md)                      | One design guide for app, console, website and content editor                              |
+| [05, security, privacy and operations](05-SECURITY-PRIVACY-AND-OPERATIONS.md) | Sensitive data, MFA, recovery, monitoring, legal, offline                                  |
+| [06, website and content](06-WEBSITE-AND-CONTENT.md)                          | Positioning, page-by-page rewrite, SEO, forms, and the CMS-to-website link                 |
+| [07, brand and social](07-SOCIAL-PROFILES-AND-COMMUNITY.md)                   | Name decision, Instagram, Facebook, LinkedIn, TikTok, WhatsApp Community                   |
+| [08, delivery and release](08-DELIVERY-AND-GOVERNANCE.md)                     | Phased roadmap, work packages, acceptance gates, pilot                                     |
+| [09, new features](09-NEW-FEATURES.md)                                        | What to add, what already exists, what to refuse                                           |
+| [10, governance alignment](10-GOVERNANCE-ALIGNMENT.md)                        | Rules, agents, hooks, memory, READMEs and CI in one consistent shape; retiring this folder |
+
+## How to read the evidence labels
+
+| Label        | Meaning                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| VERIFIED     | Seen in source, a command result or a live page on 10 Oct 2026, with a file and line or a run ID |
+| CONTRADICTED | A document says one thing, and the source or run history shows another                           |
+| INFERRED     | Follows from what was read, but the exact behaviour was not executed                             |
+| UNKNOWN      | Cannot be settled from the repository. The check that would settle it is named                   |
+| NOT TESTED   | A check that exists or should exist, and was not run in this review                              |
+
+## Decisions only the owner can make
+
+Every row below changes what the plan builds. Record the decision in this table during review, so approvals stay in one place.
+
+| #   | Decision                            | Recommendation                                                                                                                                                                                                                      | Owner decision       |
+| --- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| D1  | Product name                        | Run a UKIPO search in classes 9 and 42 first. If a live conflicting mark exists, rename before any public launch spend. If not, keep RotaFlow and use one suffixed handle everywhere ([07](07-SOCIAL-PROFILES-AND-COMMUNITY.md) §1) | Approved 10 Oct 2026 |
+| D2  | Trial and free tier                 | 30-day trial, no card, then a paid plan or read-only. No free-forever tier ([03](03-PLATFORM-AND-BILLING.md) B3)                                                                                                                    | Approved 10 Oct 2026 |
+| D3  | Prices and VAT                      | Keep the four plans. Show "ex VAT" once VAT registration is settled. Add annual billing at 2 months free ([03](03-PLATFORM-AND-BILLING.md) B2)                                                                                      | Approved 10 Oct 2026 |
+| D4  | Staff documents                     | Private Supabase Storage with signed links. Until it ships, stop accepting DBS and right-to-work links ([05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S2)                                                                             | Approved 10 Oct 2026 |
+| D5  | Medical notes on emergency contacts | Remove the field and purge existing values after export to the owner                                                                                                                                                                | Approved 10 Oct 2026 |
+| D6  | Supabase plan, PITR and RPO/RTO     | Move to a paid plan with PITR before the first paying customer. Target RPO 15 minutes, RTO 4 hours                                                                                                                                  | Approved 10 Oct 2026 |
+| D7  | Legal identity                      | Decide sole trader or limited company before Terms are finalised. A limited company is the usual expectation of B2B buyers                                                                                                          | Approved 10 Oct 2026 |
+| D8  | Support access consent              | Change the default to off, and ask the customer per support case ([03](03-PLATFORM-AND-BILLING.md) A4)                                                                                                                              | Approved 10 Oct 2026 |
+| D9  | Website content editor              | Build the small platform-console Content section in phase 3, not before ([06](06-WEBSITE-AND-CONTENT.md) §6)                                                                                                                        | Approved 10 Oct 2026 |
+| D10 | Marketing typeface                  | Allow one display face for website headings only, so the site stops looking like a template ([04](04-DESIGN-AND-EXPERIENCE.md) §2)                                                                                                  | Approved 10 Oct 2026 |
+| D11 | Social programme                    | LinkedIn first. Instagram and Facebook as supporting channels. TikTok after 20 recorded demos exist. WhatsApp Community only for pilot customers                                                                                    | Approved 10 Oct 2026 |
+| D12 | Pilot scope                         | 3 to 5 UK organisations, up to 60 staff each, in two sectors (care plus one other)                                                                                                                                                  | Approved 10 Oct 2026 |
+| D13 | Consolidation and folder deletion   | Approve each canonical move, then delete this folder ([10](10-GOVERNANCE-ALIGNMENT.md) §6)                                                                                                                                          | Approved 10 Oct 2026 |
+
+The owner can approve individual work packages without approving the whole pack. Approving this pack does not authorise deploying, charging a card, changing production access, creating or publishing social profiles, or deleting this folder.
