@@ -30,7 +30,7 @@ const PRINCIPLES = [
   },
   {
     title: 'Say what is not built',
-    body: 'The features list only carries what works today, the pricing page says billing is not live, and this site publishes a build-status page. Overstating a pre-launch product buys one signup and loses the customer.',
+    body: 'The features list only carries what works today, and this site publishes a build-status page. Overstating a pre-launch product buys one signup and loses the customer.',
   },
 ];
 
@@ -72,8 +72,8 @@ export function AboutPage(): JSX.Element {
             </strong>{' '}
             for a specific reason. The people who use it most are not at a desk. They are
             on a ward, on a shop floor, or in a stairwell with no signal. RotaFlow
-            installs to a phone without an app store, and keeps working when the
-            connection does not.
+            installs to a phone without an app store, and a clock-in, leave request or
+            swap request made with no signal waits on the phone until the signal returns.
           </p>
         </div>
       </section>

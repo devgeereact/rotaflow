@@ -1,4 +1,4 @@
-import { CAPABILITIES, TRACTION } from '@/lib/marketing';
+import { TRACTION } from '@/lib/marketing';
 
 /**
  * The "platform statistics" band.
@@ -9,23 +9,23 @@ import { CAPABILITIES, TRACTION } from '@/lib/marketing';
  * place on the page to publish a false factual claim. See `src/lib/marketing.ts`
  * for the full reasoning.
  *
- * So it renders `TRACTION` when real figures exist and `CAPABILITIES`. Product
- * facts checkable against the repository, until they do. The switch is
- * automatic: fill `TRACTION` and this band changes with no edit here.
+ * So it renders `TRACTION` when real figures exist and nothing until they do.
+ * It used to fall back to a capability band ("Offline", "Multi-site", "UK"),
+ * which read as a stats band with no numbers in it and was removed on
+ * 2026-10-11. Fill `TRACTION` and this band appears with no edit here.
  */
-export function StatsBand(): JSX.Element {
-  const showingTraction = TRACTION.length > 0;
-  const stats = showingTraction ? TRACTION : CAPABILITIES;
+export function StatsBand(): JSX.Element | null {
+  if (TRACTION.length === 0) return null;
 
   return (
     <section className="border-y border-surface-border bg-surface py-16 dark:border-surface-border-dark dark:bg-surface-dark">
       <div className="mx-auto max-w-6xl px-6">
         <h2 className="mb-10 text-center font-display text-2xl font-bold text-content md:text-3xl dark:text-content-dark">
-          {showingTraction ? 'RotaFlow by the numbers' : 'What RotaFlow gives you'}
+          RotaFlow by the numbers
         </h2>
 
         <dl className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map(({ value, label, detail }) => (
+          {TRACTION.map(({ value, label, detail }) => (
             <div key={label} className="text-center">
               <dt className="sr-only">{label}</dt>
               <dd>

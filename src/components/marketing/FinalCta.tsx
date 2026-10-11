@@ -17,7 +17,7 @@ interface FinalCtaProps {
  * that opens nothing is worse than one that reaches a form somebody reads.
  */
 export function FinalCta({
-  heading = 'Ready to simplify your scheduling?',
+  heading = 'See your own rota in RotaFlow.',
   body = 'Create your organisation, add a location, and build your first rota today.',
 }: FinalCtaProps): JSX.Element {
   const { user } = useSupabaseAuth();

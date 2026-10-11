@@ -83,8 +83,14 @@ export const CONTACT_EMAIL = 'support@rotaflow.space';
 
 export const HERO = {
   eyebrow: 'UK-first workforce scheduling',
-  headline: ['Every shift covered.', 'Every team aligned.', 'Even offline.'],
-  body: 'Build dependable rotas, give staff a clear view of their work, and keep attendance moving when the connection drops.',
+  /**
+   * One line, not three. The previous three-line headline ended "Even
+   * offline.", which overclaimed: only clock-ins, leave requests and swap
+   * requests queue on the device without a signal
+   * (docs/ARCHITECTURE.md#offline-and-pwa).
+   */
+  headline: 'Rotas your team can actually follow.',
+  body: 'Plan and publish shifts across your sites, handle leave and swap requests in one place, and see who has clocked in, from any phone.',
   /**
    * The three trust points under the hero CTAs. These are product facts
    * reflecting what happens at signup: no card capture in the signup flow
@@ -114,12 +120,12 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
   {
     icon: Users,
     title: 'Staff management',
-    body: 'One directory for every person across every site. Roles, departments, contracted hours, qualifications, documents and emergency contacts.',
+    body: 'One directory for every person across every site. Roles, departments, contracted hours, qualifications, document links and emergency contacts.',
   },
   {
     icon: Clock3,
     title: 'Time and attendance',
-    body: 'Clock in and out with GPS verification. No signal on the ward or the shop floor? The entry queues on the device and syncs itself when the connection returns.',
+    body: 'Clock in and out with GPS verification. No signal on the ward or the shop floor? The clock-in waits on the phone and sends when the signal returns.',
   },
   {
     icon: Repeat2,
@@ -129,7 +135,10 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
   {
     icon: Sparkles,
     title: 'AI-assisted rota building',
-    body: 'Describe the cover you need in plain language and get a first-pass rota to review and adjust. It proposes; you decide.',
+    // The plan note mirrors the `ai_rota_assistant` entitlement, granted to
+    // Business and Enterprise only (supabase/migrations/0030, line 41) and
+    // enforced server-side (0074). Change both together or neither.
+    body: 'Describe the cover you need in plain language and get a first-pass rota to review and adjust. It proposes; you decide. Available on the Business and Enterprise plans.',
   },
   {
     icon: BarChart3,
@@ -192,11 +201,11 @@ export const SECTORS: readonly Sector[] = [
   {
     icon: Stethoscope,
     name: 'Healthcare and care homes',
-    body: 'Cover every floor around the clock without breaching rest rules or running a shift short.',
+    body: 'Plan cover for every floor around the clock, with rest-rule warnings and gaps shown before you publish.',
     points: [
       'Night, early and late cover across floors',
       'Qualification and DBS expiry visible on the rota',
-      'Minimum rest periods enforced between shifts',
+      'Minimum rest warnings between shifts',
     ],
   },
   {
@@ -212,7 +221,7 @@ export const SECTORS: readonly Sector[] = [
   {
     icon: ShoppingBag,
     name: 'Retail',
-    body: 'Schedule several stores from one place and keep every one covered at peak.',
+    body: 'Schedule several stores from one place and see the gaps at peak before you publish.',
     points: [
       'Multi-store rotas from a single organisation',
       'Availability collected before the rota is built',
@@ -242,7 +251,7 @@ export const SECTORS: readonly Sector[] = [
   {
     icon: Wrench,
     name: 'Facilities management',
-    body: 'Move mobile teams between contracts and keep every site staffed to its requirement.',
+    body: 'Move mobile teams between contracts and check each site against its staffing requirement.',
     points: [
       'Staff shared across multiple sites',
       'Per-site staffing requirements',
@@ -261,42 +270,16 @@ export interface Stat {
  * Traction figures. User counts, organisation counts, uptime.
  *
  * **Deliberately empty.** RotaFlow has not launched, so every one of these
- * numbers would be invented. `StatsBand` renders `CAPABILITIES` instead while
- * this is empty, and switches to traction the moment it is filled.
+ * numbers would be invented. `StatsBand` renders nothing while this is empty
+ * and appears on the homepage the moment it is filled. The capability band
+ * that used to stand in for it ("Offline", "Multi-site", "UK") was removed on
+ * 2026-10-11: it looked like a stats band with no numbers in it.
  *
  * When filling it: each figure needs a source you could show an auditor.
  * "Active users" means users active in a stated window, counted by a stated
  * query. "Uptime" means measured by a named monitor over a stated period.
  */
 export const TRACTION: readonly Stat[] = [] as const;
-
-/**
- * What the stats band shows until real traction exists. Every figure here is a
- * property of the shipped product and is checkable against the repository,
- * they are capability claims, not performance claims.
- */
-export const CAPABILITIES: readonly Stat[] = [
-  {
-    value: '6',
-    label: 'Sectors supported',
-    detail: 'Healthcare, hospitality, retail, education, security and facilities.',
-  },
-  {
-    value: 'Offline',
-    label: 'Clock-in that still works',
-    detail: 'Attendance queues on the device with no signal and syncs on reconnect.',
-  },
-  {
-    value: 'Multi-site',
-    label: 'Locations per organisation',
-    detail: 'Each with its own departments, operating hours and timezone.',
-  },
-  {
-    value: 'UK',
-    label: 'UK-first scheduling',
-    detail: 'UK dates, terminology, bank holidays and working-time rest warnings.',
-  },
-] as const;
 
 export interface Reason {
   title: string;
@@ -305,8 +288,10 @@ export interface Reason {
 
 export const WHY_ROTAFLOW: readonly Reason[] = [
   {
-    title: 'Save time every week',
-    body: 'Copy last week forward, auto-fill the gaps, and publish. What took an afternoon in a spreadsheet takes minutes.',
+    // No time saving is quoted here: none has been measured
+    // (docs/DESIGN-SYSTEM.md#brand-and-voice, evidence boundary). Add a figure only once the pilot has measured one.
+    title: 'See gaps before you publish',
+    body: 'Copy last week forward, auto-fill the gaps, and check coverage per day and department before the rota goes out.',
   },
   {
     title: 'Reduce scheduling errors',
@@ -317,8 +302,13 @@ export const WHY_ROTAFLOW: readonly Reason[] = [
     body: 'Published rotas, announcements and swap responses reach everyone in one place, instead of a WhatsApp group and a printed notice board.',
   },
   {
-    title: 'Maintain compliance',
-    body: 'Rest periods, contracted hours, qualification expiry and an auditable attendance record, visible before any of them becomes a problem.',
+    // Not "compliance": the rota warns, it does not certify. "Rest-period",
+    // not "rest-break": the check is the 11-hour gap between shifts
+    // (`rotaInsights.ts`, rest_breach); nothing checks breaks within a shift.
+    // The 48-hour figure is the week total the rota grid turns red
+    // (`RotaGridRow.tsx`, STATUTORY_WEEKLY_MINUTES).
+    title: 'Rest-period and 48-hour warnings',
+    body: 'Rest-period and 48-hour warnings on the rota, qualification expiry in view, and a record of every clock-in.',
   },
   {
     title: 'Increase workforce visibility',
@@ -468,8 +458,8 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
     heading: 'Resources',
     links: [
-      { label: 'Getting started', to: '/resources' },
-      { label: 'Product updates', to: '/resources' },
+      { label: 'Getting started', to: '/resources#getting-started' },
+      { label: 'Product updates', to: '/resources#product-updates' },
       { label: 'Support', to: '/contact' },
     ],
   },

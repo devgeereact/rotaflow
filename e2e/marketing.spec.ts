@@ -8,7 +8,7 @@ import { trackConsoleErrors } from './support/console-errors';
  * here on day one of a new browser.
  */
 const PUBLIC_PAGES = [
-  { path: '/', heading: /scheduling|shift/i },
+  { path: '/', heading: /rotas your team can actually follow/i },
   { path: '/features', heading: /features|build/i },
   { path: '/pricing', heading: /pricing/i },
   { path: '/solutions', heading: /solutions|sector/i },

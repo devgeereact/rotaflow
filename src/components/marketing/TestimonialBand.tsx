@@ -4,8 +4,8 @@ import { TESTIMONIALS } from '@/lib/marketing';
 const COMMITMENTS = [
   {
     icon: WifiOff,
-    title: 'Works without a signal',
-    body: 'Clock-ins, leave requests and swaps queue on the device and sync when the connection returns. Nothing is lost in a basement or a stairwell.',
+    title: 'Three things work without a signal',
+    body: 'Clock-ins, leave and swap requests wait on the phone until the signal returns. A clock-in recorded in a basement sends when the phone finds a signal.',
   },
   {
     icon: Lock,
@@ -14,8 +14,8 @@ const COMMITMENTS = [
   },
   {
     icon: ShieldCheck,
-    title: 'Built for UK obligations',
-    body: 'UK dates, employment terminology and working-time rest rules, with per-person GDPR export and anonymisation built in from the start.',
+    title: 'Rest-period and 48-hour warnings',
+    body: 'Rest-period and 48-hour warnings on the rota, and a record of every clock-in. UK dates and terminology, with per-person data export and anonymisation.',
   },
   {
     icon: FlaskConical,

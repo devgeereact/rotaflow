@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   BookOpen,
   CalendarDays,
@@ -79,7 +80,7 @@ const GUIDES: readonly Guide[] = [
     body: 'From clock-in to an approved timesheet.',
     steps: [
       'Staff clock in and out on their phone, GPS-verified',
-      'Entries made with no signal queue and sync automatically',
+      'A clock-in made with no signal waits on the phone and sends when it returns',
       'Review the week. Scheduled against worked, with variance',
       'Approve, or request a correction on anything flagged',
     ],
@@ -95,18 +96,18 @@ interface StatusGroup {
 const BUILD_STATUS: readonly StatusGroup[] = [
   {
     state: 'built',
-    heading: 'Built and in use today',
+    heading: 'Available today',
     items: [
       'Rota builder with drag-and-drop, conflicts and publishing',
       'Published schedules. Day, week, month and agenda views',
-      'Staff directory, profiles, qualifications and documents',
+      'Staff directory, profiles, qualifications and document links',
       'Availability, leave requests and shift swaps',
-      'GPS clock-in with an offline queue',
+      'GPS clock-in',
       'Timesheets computed from real clock events',
       'Reports with CSV export',
       'Announcements, locations and departments',
       'Organisation settings, permissions, policies and audit trail',
-      'Installable PWA with offline support',
+      'Installable app: clock-ins, leave and swap requests wait on the phone until the signal returns',
     ],
   },
   {
@@ -193,6 +194,15 @@ function formatUpdateDate(iso: string): string {
 }
 
 export function ResourcesPage(): JSX.Element {
+  const { hash } = useLocation();
+
+  // The footer links to `#getting-started` and `#product-updates`. React
+  // Router does not scroll to a hash on its own, so do it here.
+  useEffect(() => {
+    if (!hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash]);
+
   return (
     <MarketingLayout title="Resources">
       <PageHero
@@ -201,7 +211,7 @@ export function ResourcesPage(): JSX.Element {
         body="RotaFlow is in active development. These are the guides for setting it up, and a straight answer on what the product does and does not do today."
       />
 
-      <section className="mx-auto max-w-6xl px-6 py-20">
+      <section id="getting-started" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
             <BookOpen size={20} aria-hidden="true" />
@@ -286,7 +296,7 @@ export function ResourcesPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-6 py-20">
+      <section id="product-updates" className="mx-auto max-w-3xl scroll-mt-20 px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
             <Megaphone size={20} aria-hidden="true" />
@@ -332,8 +342,9 @@ export function ResourcesPage(): JSX.Element {
             <p className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
               There is no app store download. Open RotaFlow in Safari on iOS or Chrome on
               Android, then choose <em>Add to Home Screen</em>, or accept the install
-              prompt the app offers. It then opens full-screen like any other app and
-              keeps working without a connection.
+              prompt the app offers. It then opens full-screen like any other app.
+              Clock-ins, leave and swap requests made with no signal wait on the phone
+              until the signal returns; everything else needs a connection.
             </p>
           </Card>
 

@@ -139,7 +139,9 @@ function routeTable(): string[] {
 const ROUTES = routeTable();
 
 function isRoutable(target: string): boolean {
-  const wanted = target.replace(/\/$/, '');
+  // A footer link may carry an in-page anchor (`/resources#product-updates`);
+  // the route is what has to exist.
+  const wanted = (target.split('#')[0] ?? '').replace(/\/$/, '');
   return ROUTES.some((route) => {
     const declared = route.replace(/\/$/, '');
     if (declared === '*') return false;
@@ -459,7 +461,8 @@ describe('public route metadata', () => {
   it('every internal public footer link carries metadata', () => {
     const described = new Set(PUBLIC_ROUTES.map((route) => route.path));
     const internal = FOOTER_COLUMNS.flatMap((column) => column.links)
-      .map((link) => link.to)
+      // An in-page anchor shares its page's metadata.
+      .map((link) => link.to.split('#')[0] ?? link.to)
       // The footer also points into the app and out to mail; neither belongs
       // in a sitemap, and neither is reachable logged out.
       .filter(
