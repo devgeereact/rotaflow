@@ -977,6 +977,10 @@ relationship was found`. Every read of a swap has failed since that migration me
       `integration_sync_runs` has never had a writer; Feature flags "Create flag" — code
       checks a key by name; Subscriptions "Discount" — nothing here can price a plan).
       Invoice "Credit" is removed and its remaining work is named in GAP-080.
+      **2026-10-11:** Subscriptions "Change plan" is removed too (it only opened the organisation, where no
+      plan control exists; the customer changes plan in their Stripe Billing Portal), and Platform settings
+      hides its General and Maintenance fields, which saved values nothing reads. Only the second-factor
+      switch, the retention facts and the administrator grants remain
       **Evidence:** each page · driven in the preview harness
 
 ## §5 The recommendation we rejected

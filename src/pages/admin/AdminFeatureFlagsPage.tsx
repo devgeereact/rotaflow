@@ -36,15 +36,14 @@ interface Capability {
  * ## The two real switches
  *
  * `platform_settings` is a single-row table holding, among the identity fields,
- * `registration_enabled` and `maintenance_mode`. Those are genuine feature
- * flags: persisted, platform-wide, and read by the app at runtime. They were
- * missing from this screen entirely, which is how a feature-flag page ended up
- * claiming nothing could be toggled while two toggles sat one table away.
+ * `registration_enabled` and `maintenance_mode`. Both are persisted and
+ * platform-wide, and neither is read by anything: no sign-up path checks
+ * `registration_enabled`, and no screen renders a maintenance banner. An
+ * earlier version of this comment, and of the panel below, said otherwise.
  *
- * They are shown here and changed in Platform Settings. One field, one write
- * path: `maintenance_mode` and `maintenance_message` are meaningless apart,
- * turning the platform off without saying why is not a state worth offering, * so the pair is edited together where the message lives, and this screen
- * reports and links rather than growing a second writer.
+ * So they are reported here as recorded values, not as switches, and Platform
+ * Settings no longer offers controls for them. The values stay in the table
+ * for the day something consumes them.
  *
  * ## Why per-tenant flags still are not here
  *
@@ -347,18 +346,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
             })}
           </div>
 
-          <Panel
-            title="Platform switches"
-            actions={
-              <Link
-                to="/admin/settings"
-                className="text-xs font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
-              >
-                Change in settings
-              </Link>
-            }
-            flush
-          >
+          <Panel title="Platform switches" flush>
             {settings === null ? (
               <p className="px-4 py-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
                 No platform settings row exists yet, so both switches are at their
@@ -372,8 +360,8 @@ export function AdminFeatureFlagsPage(): JSX.Element {
                       Self-service registration
                     </p>
                     <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                      When closed, the sign-up route refuses new organisations. Existing
-                      customers are unaffected.
+                      Recorded only. Nothing checks it, so sign-up stays open whatever it
+                      says.
                     </p>
                   </div>
                   <Badge tone={settings.registration_enabled ? 'success' : 'neutral'} dot>
@@ -386,9 +374,7 @@ export function AdminFeatureFlagsPage(): JSX.Element {
                       Maintenance mode
                     </p>
                     <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                      {settings.maintenance_message
-                        ? `Message: “${settings.maintenance_message}”`
-                        : 'No message set. Turning this on with nothing to say leaves customers guessing.'}
+                      Recorded only. No screen shows a maintenance banner yet.
                     </p>
                   </div>
                   <Badge tone={settings.maintenance_mode ? 'warning' : 'success'} dot>
@@ -398,9 +384,8 @@ export function AdminFeatureFlagsPage(): JSX.Element {
               </ul>
             )}
             <p className="border-t border-divider px-4 py-2.5 text-xs text-content-muted dark:border-divider-dark dark:text-content-muted-dark">
-              Read-only here on purpose. Maintenance mode and its message are only
-              meaningful together, so the pair is edited in one place rather than through
-              two writers that can disagree.
+              Read-only. Neither value has a consumer, so neither is editable in the
+              console until one does.
             </p>
           </Panel>
 
