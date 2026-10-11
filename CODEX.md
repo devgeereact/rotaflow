@@ -12,14 +12,14 @@ duplicates either; it exists only to map the shared contract onto Codex.
 | Routing: mode, workflows, MCP   | `.agent/PROJECT.yml`                                            |
 | This task's scope and authority | `.agent/CURRENT-TASK.md`, when present                          |
 | What exists and what does not   | `docs/SAAS.md` — the register, and the only place status is set |
-| How work is routed here         | `docs/GEE-OS.md`                                                |
+| How work is routed here         | `docs/README.md#how-gee-os-is-applied`                          |
 | The GEE OS package itself       | `~/.agents/gee-os` on this machine, or `$gee-os` if you have it |
 
 ## What differs from Claude Code
 
 - **Subagents.** `.claude/agents/` is Claude Code's mechanism and Codex cannot
   load it. Two agents are defined there: `gee-os` (the router, whose whole
-  content is `docs/GEE-OS.md` plus the loop) and `rotaflow-qa-auditor` (whose
+  content is `docs/README.md#how-gee-os-is-applied` plus the loop) and `rotaflow-qa-auditor` (whose
   methodology is `qa/README.md`). Both are readable as plain documents —
   follow them directly rather than trying to dispatch them.
 - **Skills.** The gstack skills named in `.agent/PROJECT.yml` as specialists are

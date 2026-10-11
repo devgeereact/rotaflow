@@ -153,7 +153,7 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
  * (`AuthSplitLayout`). Was hardcoded identically in both pages until it was
  * found here, still claiming "Compliant & Secure — Stay compliant with
  * confidence": an unsubstantiated compliance claim on a public,
- * unauthenticated page, exactly what `docs/BRAND.md`'s evidence boundary and
+ * unauthenticated page, exactly what `docs/DESIGN-SYSTEM.md#brand-and-voice`'s evidence boundary and
  * the transformation plan's legal guardrail both forbid. These four instead
  * name what the product actually does, matching `PRODUCT_BENEFITS`' standard.
  */

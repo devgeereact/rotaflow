@@ -12,7 +12,7 @@
 #
 # What this file is NOT: a second source of truth. Every project fact lives in
 # docs/SAAS.md and the reference documents it links. Nothing below restates a
-# rule that CLAUDE.md or docs/RULES.md already carries. See docs/GEE-OS.md for
+# rule that CLAUDE.md or docs/RULES.md already carries. See docs/README.md#how-gee-os-is-applied for
 # the adoption record, the conflicts it resolves and the parts deliberately
 # left out.
 
@@ -45,7 +45,7 @@ exclusions:
   - 'modes: BOOK, FICTION, NONFICTION, ACADEMIC, LEARNING, EDITING'
   - 'workflows: NEW-PROJECT-BOOTSTRAP, NEW-APPLICATION, BOOK-CREATION'
   - 'workflows: PROJECT-RECOVERY' # the codebase is coherent; recovery is not the frame
-  - 'templates/new-project' # would create a sixth plan of record; see docs/GEE-OS.md
+  - 'templates/new-project' # would create a sixth plan of record; see docs/README.md#how-gee-os-is-applied
   - 'systems/website' # this is an application with a marketing surface, not a website
   - 'audits/WEBSITE-LAUNCH' # superseded by the PWA gate
 
@@ -57,7 +57,7 @@ sources_of_truth:
   coding_standards: 'docs/RULES.md'
   architecture: 'docs/ARCHITECTURE.md'
   data_and_rls: 'docs/DATA-MODEL.md'
-  offline_behaviour: 'docs/OFFLINE-SPEC.md'
+  offline_behaviour: 'docs/ARCHITECTURE.md#offline-and-pwa'
   release_evidence: 'qa/LAUNCH-CHECKLIST.md'
   deployment: 'docs/DEPLOYMENT.md'
   retention_and_gdpr: 'docs/SECURITY.md'

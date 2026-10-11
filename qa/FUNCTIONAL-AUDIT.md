@@ -1,4 +1,25 @@
-# RotaFlow — Website and PWA Production Audit
+# Functional audit
+
+What a full pass over the product found, one dated section per pass. This file
+owns the audit evidence; it does not own status. `docs/SAAS.md` is the plan of
+record, and every defect worth tracking has a row there. Read each section as a
+snapshot of the commit it names, not as current state.
+
+The method behind a full pass, and the CI table, are in `qa/README.md`.
+
+| Pass                                                                                        | Dated            | Scope                                                            |
+| ------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------- |
+| [Website and PWA production audit](#website-and-pwa-production-audit-2-to-3-september-2026) | 2 to 3 Sep 2026  | Public site, PWA, schema, CI. Its Appendix A is the 14 Aug audit |
+| [Rota builder design review](#rota-builder-design-review-6-september-2026)                  | 6 Sep 2026       | The rota grid, its keyboard path and responsive behaviour        |
+| [Platform console repair](#platform-console-repair-7-september-2026)                        | 7 Sep 2026       | `/admin/*`, first pass                                           |
+| [Platform console repolish](#platform-console-repolish-7-september-2026)                    | 7 Sep 2026       | `/admin/*`, the eight routes the first pass left unverified      |
+| [Full UX pass](#full-ux-pass-9-to-11-september-2026)                                        | 9 to 11 Sep 2026 | Every route, three widths, four roles                            |
+
+Review screenshots cited below live in `docs/design/review/`.
+
+## Website and PWA production audit, 2 to 3 September 2026
+
+Formerly `docs/QA-AUDIT-REPORT.md`. Kept as written, including Appendix A, the 14 August 2026 audit.
 
 **Auditor:** Claude Opus 5, driven by the owner's Website Audit and PWA Audit standards
 **Date:** 2026-09-02 into 2026-09-03
@@ -17,7 +38,7 @@ defect worth tracking today gets a row in that register instead.
 
 ---
 
-## How this audit was run
+### How this audit was run
 
 The standard it was run against is explicit about the order, and it was followed:
 
@@ -46,7 +67,7 @@ non-negotiable rule.
 
 ---
 
-## 1. Executive summary
+### 1. Executive summary
 
 The code is in materially better shape than the 2026-08-14 audit found it. That audit
 scored 22/100 and was blocked at the first step: a new customer could not create an
@@ -84,9 +105,9 @@ review changes.
 
 ---
 
-## 2. Release decision
+### 2. Release decision
 
-# NOT READY FOR PRODUCTION
+#### NOT READY FOR PRODUCTION
 
 Not because of the code. Because of three things the standard treats as release
 blockers and none of which can be closed inside this repository:
@@ -110,7 +131,7 @@ Stripe key mode. That is roughly an hour of the owner's time and no engineering.
 
 ---
 
-## 3. Score
+### 3. Score
 
 Scored per the standard's eighteen categories. A category is scored on what was
 verified, not on what the code appears to do.
@@ -142,11 +163,11 @@ The single score doing the damage is the one that cannot be fixed with code.
 
 ---
 
-## 4. Findings
+### 4. Findings
 
 Ordered by severity. Each carries the evidence it was found with.
 
-### P0 — release blockers
+#### P0 — release blockers
 
 **P0-1 · No backups of production, and no restore has ever been performed**
 _(GAP-001 / CAP-095, previously recorded, re-verified)_
@@ -159,7 +180,7 @@ Not fixable here: the secrets are the owner's to mint.
 `backup.yml` and `auth-config.yml` are the only two checks that read live state no pull
 request can change, and neither has ever completed. **VERIFIED.** Not fixable here.
 
-### P1 — high
+#### P1 — high
 
 **P1-1 · A database rebuilt from this repository's migrations does not work**
 _(GAP-038 — FIXED, #279)_
@@ -272,7 +293,7 @@ Still open, and still the owner's: the key is _publishable_, so nothing was disc
 was not meant to be public — but a live client key on a product that has never completed a
 charge is a commercial decision, not a code one. CAP-036 stays ❓.
 
-### P2 — medium
+#### P2 — medium
 
 **P2-1 · The public site had no sitemap, canonicals or social cards** _(GAP-043 — FIXED, #284)_
 `sitemap.xml` did not exist, and `/sitemap.xml` answered **200 with `index.html`** via the
@@ -342,7 +363,7 @@ GAP-003 closed on 2026-08-30; and `HARDEN-010` was used for two different rows. 
 that contradicts itself is the failure it exists to prevent, because the halves are read
 months apart. **VERIFIED** by reading it end to end; fixed.
 
-### P3 — low
+#### P3 — low
 
 **P3-1 · `0107` buckets days in UTC where every other migration uses Europe/London** _(open)_
 `0107_repeat_rota_weeks.sql` uses `coalesce(l.timezone, 'UTC')`; `0080`, `0083`, `0093` and
@@ -385,7 +406,7 @@ cannot describe different things.
 
 ---
 
-## 5. What was verified and found correct
+### 5. What was verified and found correct
 
 A good-news result is a finding too, and several of these were the ones most worth
 checking.
@@ -423,7 +444,7 @@ were each fetched and confirmed to be real files rather than SPA fallbacks.
 
 ---
 
-## 6. Website report
+### 6. Website report
 
 **Conversion — NEEDS ATTENTION, improved.** One primary CTA ("Join the beta"), consistent
 across the site, with no competing primary. Pricing is visible without a form. The two
@@ -455,7 +476,7 @@ test now needs a generator before it needs a run.
 
 ---
 
-## 7. PWA report
+### 7. PWA report
 
 The standard asks for installability and offline capability to be assessed separately, and
 they land differently.
@@ -490,12 +511,12 @@ timeout and a five-minute TTL, and both tenant-scoped caches are purged on sign-
 
 ---
 
-## 8. The fix process, start to finish
+### 8. The fix process, start to finish
 
 Thirteen findings closed across eight pull requests, stacked in the order they must merge.
 Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
 
-### #279 — `fix(db): grant EXECUTE in the migration history, not from the image`
+#### #279 — `fix(db): grant EXECUTE in the migration history, not from the image`
 
 - **Problem.** A database rebuilt from `supabase/migrations` refuses every row to every
   signed-in user.
@@ -516,7 +537,7 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   `is_org_member` from `authenticated` reports that function by name.
 - **Result.** Fixed and verified.
 
-### #280 — `fix(security): put the draft/published boundary in the database`
+#### #280 — `fix(security): put the draft/published boundary in the database`
 
 - **Problem.** A staff member could read draft and amended rotas and their shifts.
 - **Root cause.** `rotas_select`/`shifts_select` were membership-only; the boundary was a
@@ -533,7 +554,7 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
 - **Result.** Fixed and verified. One deliberate behaviour change: a staff member in a
   multi-site organisation no longer sees "draft" because another site is still drafting.
 
-### #281 — `fix(attendance): refuse a duplicate clock-in in the database`
+#### #281 — `fix(attendance): refuse a duplicate clock-in in the database`
 
 - **Problem.** Three consecutive clock-ins accepted; an orphan clock-out accepted.
 - **Root cause.** The state machine that prevented it was `clockStage()` in the browser.
@@ -551,7 +572,7 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   / 379 assertions, PASS. 811 unit tests.
 - **Result.** Fixed and verified.
 
-### #282 — `fix(offline): queue a leave or swap request that fails while "online"`
+#### #282 — `fix(offline): queue a leave or swap request that fails while "online"`
 
 - **Problem.** A transient failure on leave or swaps dropped the work and could duplicate it.
 - **Root cause.** Both queued only on `!navigator.onLine`, and neither minted an idempotency
@@ -563,7 +584,7 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   not queued. 815 unit tests.
 - **Result.** Fixed and verified.
 
-### #283 — `fix(offline): the outbox belongs to a user, not to a device`
+#### #283 — `fix(offline): the outbox belongs to a user, not to a device`
 
 - **Problem.** On a shared device the next person to sign in replayed, or destroyed, the
   previous person's queued writes.
@@ -576,7 +597,7 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   claimed. 819 unit tests.
 - **Result.** Fixed and verified.
 
-### #284 — `fix(seo): give the public site a sitemap, canonicals and a link preview`
+#### #284 — `fix(seo): give the public site a sitemap, canonicals and a link preview`
 
 - **Problem.** No sitemap, no canonicals, no social cards, one title for sixteen pages, five
   pages with no title, a dead-end 404.
@@ -592,7 +613,7 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   on a regex built by escaping a path — was correct and is fixed by resolving the expected URL
   instead.
 
-### #285 — `fix(pwa): let people dismiss the install banner, and actually check for updates`
+#### #285 — `fix(pwa): let people dismiss the install banner, and actually check for updates`
 
 - **Problem.** Undismissable banner on the marketing pages; silent registration failures;
   no update check for a session that never navigates.
@@ -604,7 +625,7 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   unrelated to the code. 845 unit tests, 76 e2e.
 - **Result.** Fixed and verified.
 
-### #287 — `fix(auth): Enter did not submit any of the four auth screens`
+#### #287 — `fix(auth): Enter did not submit any of the four auth screens`
 
 - **Problem.** Enter did nothing on `/login`, `/signup`, `/forgot-password` or
   `/reset-password`.
@@ -617,13 +638,13 @@ Every one is green on `verify`, `e2e`, `e2e-authenticated` and `db-tests`.
   test would submit real credentials against whatever project the run points at. 80 e2e.
 - **Result.** Fixed and verified.
 
-### #285 also carries — `docs: three contradictions in the register`
+#### #285 also carries — `docs: three contradictions in the register`
 
 Feature flags, required checks, and a duplicated `HARDEN-010`. Corrected.
 
 ---
 
-## 9. Regression results
+### 9. Regression results
 
 Run against the top of the stack, after every change:
 
@@ -650,7 +671,7 @@ No regression was found in the manager paths: `rota_revisions`, `minimum_cover`,
 
 ---
 
-## 10. Remaining risks
+### 10. Remaining risks
 
 **Not fixed, deliberately:**
 
@@ -678,7 +699,7 @@ should be given a review pass then.
 
 ---
 
-## 11. Recommended order
+### 11. Recommended order
 
 1. Mint `SUPABASE_DB_URL`, `BACKUP_PASSPHRASE` and `SUPABASE_ACCESS_TOKEN`, and watch
    `backup.yml` go green. Then restore that dump into a scratch project and open the app
@@ -692,7 +713,7 @@ should be given a review pass then.
 
 ---
 
-## Appendix A — the 2026-08-14 audit, preserved
+### Appendix A — the 2026-08-14 audit, preserved
 
 Kept verbatim because `docs/SAAS.md` §6 states that BUG-001 to BUG-042 "deliberately have no
 rows here — the two sequences collide" and that this file "is a dated record of testing
@@ -704,7 +725,7 @@ open when it was written and this audit did not re-test them.
 
 ---
 
-### RotaFlow — Full QA / E2E / CRUD / Production-Readiness Audit
+#### RotaFlow — Full QA / E2E / CRUD / Production-Readiness Audit
 
 **Auditor:** rotaflow-qa-auditor (autonomous agent)
 **Date:** 2026-08-14
@@ -728,14 +749,14 @@ open when it was written and this audit did not re-test them.
 > (BUG-002 onboarding-draft-lost-on-refresh, BUG-004 Platform Console
 > fabricated data) were **not** part of the P0 and remain open at last check —
 > see **`docs/SAAS.md`** for current per-feature status — it became the single plan of
-> record on 2026-08-29 and this line pointed at `docs/PRODUCT-SPEC.md`/`docs/LOOP.md` until 2026-08-31. **No
+> record on 2026-08-29 and this line pointed at `docs/PRODUCT-SPEC.md`/`docs/UX-SPEC.md#design-match-loop` until 2026-08-31. **No
 > regression test exists yet** for the org-creation-by-a-zero-membership-user
 > path this report's own recommended fix (§16) called for — this bug can
 > recur silently. The rest of this report is a point-in-time snapshot from
 > 2026-08-14 and should not be read as reflecting the current NOT READY /
 > 22-100 verdict.
 
-#### 1. Executive Summary
+##### 1. Executive Summary
 
 **Overall status: NOT READY.**
 **Quality score: 22 / 100.**
@@ -750,7 +771,7 @@ What _was_ reachable is, encouragingly, solid: the marketing site, sign-up flow 
 
 ---
 
-#### 2. Test Coverage
+##### 2. Test Coverage
 
 | Area                                 | Coverage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -766,7 +787,7 @@ What _was_ reachable is, encouragingly, solid: the marketing site, sign-up flow 
 | Destructive/high-consequence actions | **BLOCKED — UPSTREAM P0** (no staff, rota, or org to act on).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Recovery testing                     | Partial — recovery from a _failed org-creation_ was tested repeatedly (deterministic failure, no corrupted state, no orphaned rows — confirmed via DB). Mid-publish/mid-clock-in recovery **BLOCKED**.                                                                                                                                                                                                                                                                                                                                          |
 | Error/empty/loading states           | Partial — sign-up and onboarding error/loading states checked and are good. Rest **BLOCKED**.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| UI/UX vs `docs/DESIGN-SYSTEM.md`            | Partial — spot-checked on reachable screens only; no obvious token violations seen.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| UI/UX vs `docs/DESIGN-SYSTEM.md`     | Partial — spot-checked on reachable screens only; no obvious token violations seen.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Responsive                           | Partial — landing page checked at mobile/tablet/desktop (375/768/1280), no horizontal overflow found. Rota builder / schedule / clock-in (the highest-risk mobile surfaces per the brief) **BLOCKED**.                                                                                                                                                                                                                                                                                                                                          |
 | Accessibility                        | Not independently re-run — memory indicates existing Playwright+axe CI coverage for 13 public pages at 0 violations; authenticated app screens **BLOCKED**, so the "extend the same rigor" ask could not be completed this session.                                                                                                                                                                                                                                                                                                             |
 | Performance                          | Partial — page-load and route-transition times observed as fast (<200ms typical) on all reachable screens; the 100-staff/500-shift rota-builder stress scenario **BLOCKED**.                                                                                                                                                                                                                                                                                                                                                                    |
@@ -781,7 +802,7 @@ What _was_ reachable is, encouragingly, solid: the marketing site, sign-up flow 
 
 ---
 
-#### 3. Bug Summary
+##### 3. Bug Summary
 
 | Severity              | Count | IDs                 |
 | --------------------- | ----- | ------------------- |
@@ -795,9 +816,9 @@ No P1s were _found_, but that is largely because BUG-001 prevented the entire su
 
 ---
 
-#### 4. Critical Findings
+##### 4. Critical Findings
 
-##### BUG-001 — P0 — New organisation creation is completely and permanently broken
+###### BUG-001 — P0 — New organisation creation is completely and permanently broken
 
 - **Area:** Onboarding / Organisation service (`src/services/orgService.ts`, `src/pages/OnboardingPage.tsx`)
 - **Feature:** Step 1 of onboarding — "Create your organisation"
@@ -848,28 +869,28 @@ No P1s were _found_, but that is largely because BUG-001 prevented the entire su
   Ship as a new migration (do not hand-edit `0031`), and add a regression test that specifically exercises `insert ... select().single()` as a freshly-authenticated user with zero memberships — the exact shape of test that would have caught this the moment `0031` was written.
 - **Regression test:** Sign up a new user, confirm email, attempt organisation creation through the onboarding UI, assert step advances to "About your organisation" and the org row exists with the creator as an active owner. Add this as an automated E2E test given how easily this specific regression slipped back in once already.
 
-##### BUG-004 — P2 (SUSPECTED) — Platform Console "Total organisations" figure does not match the database
+###### BUG-004 — P2 (SUSPECTED) — Platform Console "Total organisations" figure does not match the database
 
 - **Area:** Platform Console → Overview (`/admin-preview`, and presumably the authenticated `/app/platform` overview it mirrors)
 - Console showed **"Total organisations: 6"**; a direct read-only count against `public.organisations` in the same live project returned **3**.
 - Not root-caused (out of time-box) — could be a stale/cached demo figure, a different counting basis (e.g., including soft-deleted or a differently-scoped table), or a genuine query bug in `src/lib/adminOverviewDemo.ts` (a file the console's own footer explicitly names as the source of its placeholder figures — churn and system-health history are labelled placeholder there, but the organisation count is claimed as "real"). Flagged as **SUSPECTED**, not confirmed, and reported via the DEV-only preview harness rather than an authenticated session, which is itself a caveat on this finding.
 - **Recommended action:** Verify the overview query's source and whether it's reading a stale materialized view, a cached snapshot, or double-counting.
 
-##### BUG-002 — P3 — Onboarding step 1 form values are lost on refresh
+###### BUG-002 — P3 — Onboarding step 1 form values are lost on refresh
 
 - Refreshing `/onboarding` while on step 1 resets Organisation name / industry / size to blank, rather than restoring the in-progress draft. Minor, but combined with BUG-001 it means a user who refreshes while troubleshooting the "Could not create the organisation" error has to retype everything on every attempt.
 
-##### BUG-005 — P3 — No client-side duplicate-tab / stale-session guard observed on the stuck onboarding screen
+###### BUG-005 — P3 — No client-side duplicate-tab / stale-session guard observed on the stuck onboarding screen
 
 - Not a discovered failure so much as an untested risk: because organisation creation never succeeds, the "two managers/two tabs" class of race conditions this audit is meant to probe (Phase 7, "Test case generation") could not be exercised at all. Recorded here as a coverage gap rather than a confirmed defect — re-test once BUG-001 is fixed.
 
-##### BUG-003 — P4 (SUSPECTED) — Unexplained console `401` during the auth/onboarding flow
+###### BUG-003 — P4 (SUSPECTED) — Unexplained console `401` during the auth/onboarding flow
 
 - One `Failed to load resource: the server responded with a status of 401 ()` was logged in the browser console during the session, timestamped between the email-confirmation redirect and the first organisation-creation attempt. It did not visibly break anything (no user-facing error, no stuck UI beyond BUG-001 itself), and was not reliably isolated to a specific request given the volume of background calls onboarding makes. Reported as **SUSPECTED** per the audit's instructions for a suspected-but-not-conclusively-reproduced issue; worth a look at whatever fires immediately after PKCE email-confirmation redirect, in case of a benign token-not-yet-refreshed race.
 
 ---
 
-#### 5. CRUD Completeness
+##### 5. CRUD Completeness
 
 Per the audit's rule, seed/demo data is never accepted as evidence of CRUD, and nothing here is marked PASS without an actual UI demonstration.
 
@@ -905,7 +926,7 @@ Per the audit's rule, seed/demo data is never accepted as evidence of CRUD, and 
 
 ---
 
-#### 6. Screen-by-Screen Report
+##### 6. Screen-by-Screen Report
 
 | Screen                                                                                                                                                       | Route                                        | Result                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -922,7 +943,7 @@ Per the audit's rule, seed/demo data is never accepted as evidence of CRUD, and 
 
 ---
 
-#### 7. End-to-End Workflow Report
+##### 7. End-to-End Workflow Report
 
 | Workflow                                 | Result                                                  |
 | ---------------------------------------- | ------------------------------------------------------- |
@@ -942,19 +963,19 @@ Per the audit's rule, seed/demo data is never accepted as evidence of CRUD, and 
 
 ---
 
-#### 8. Live Rota Safety
+##### 8. Live Rota Safety
 
 Could not be assessed — there is no rota, because there is no organisation. This section cannot respond PASS to any of the brief's specific questions (safe publish, draft-vs-published clarity, unpublish/correct, recovery from interrupted publish, stale-data risk) and none should be inferred as safe from the code alone. **BLOCKED — UPSTREAM P0.** Recommend this be the first thing re-tested once BUG-001 ships a fix, given the brief's own framing of this as "the highest-risk workflow in the product."
 
 ---
 
-#### 9. Offline Report
+##### 9. Offline Report
 
 **BLOCKED — BY DESIGN IN THIS ENVIRONMENT, not a defect.** `vite.config.ts` explicitly sets `VitePWA({ devOptions: { enabled: false } })`, with a comment noting it can be flipped on to debug the service worker in dev. Confirmed 0 active service worker registrations against `navigator.serviceWorker.getRegistrations()`. Testing offline queueing, sync-on-reconnect, and duplicate-action prevention requires a production build (`npm run build` + serve `dist/`), which was outside this session's scope given the instruction to test against the running dev server. **Recommend a follow-up audit pass specifically against a built artifact** — this is the single largest gap in this report's coverage of the brief.
 
 ---
 
-#### 10. Security Report
+##### 10. Security Report
 
 - **Multi-tenant isolation verdict: NOT DETERMINED — BLOCKED.** The single most critical test in the entire brief (Org A vs Org B cross-tenant access) could not run because Org A itself could never be created. This is not a pass and must not be read as one. It needs to be the **first** thing re-tested the moment BUG-001 is fixed, given how existentially important tenant isolation is for RotaFlow's model.
 - **Route guarding:** PASS on what was testable — an authenticated, org-less user hitting `/app/dashboard` directly was correctly bounced back to `/onboarding`, not shown a broken or partial view. No privilege-escalation or IDOR surface was reachable to test beyond this, since nothing exists yet to escalate into.
@@ -965,25 +986,25 @@ Could not be assessed — there is no rota, because there is no organisation. Th
 
 ---
 
-#### 11. Performance Report
+##### 11. Performance Report
 
 Limited by scope. On all reachable screens: initial paint and route transitions were fast (dev-server HMR aside, typically sub-200ms for API calls per the network log), no duplicate network calls were observed on the sign-up/onboarding flow, and no obvious N+1 pattern was visible in the request log (the onboarding page issues a small, flat set of GETs for profile/memberships/platform-role, not a fan-out). The brief's specific stress scenario (100+ staff, 500+ shifts in the rota builder) is **BLOCKED — UPSTREAM P0** and unassessed.
 
 ---
 
-#### 12. Accessibility Report
+##### 12. Accessibility Report
 
 Not independently re-run this session. Per project memory, Playwright + axe-core CI coverage already exists for the 13 public marketing pages at 0 contrast violations. The brief specifically asks to "extend the same rigor to authenticated app screens" — that could not be done, since none of the authenticated app screens beyond the stuck onboarding step were reachable. Spot-checked onboarding step 1 by eye only: form fields have visible labels, the disabled-state Continue button is visually distinguished, and the password-strength checklist pairs each requirement with text (not colour alone). No formal axe run was performed against it.
 
 ---
 
-#### 13. UX/UI Report
+##### 13. UX/UI Report
 
 On the screens that were reachable, the implementation reads as consistent with a considered design system: consistent button/input radii and spacing, a real password-strength component (not just a strength bar), clear step indicators in the onboarding stepper, and error messaging that explains what happened without technical leakage. No obvious `docs/DESIGN-SYSTEM.md` token violations were spotted on the reachable surface. The one concrete UX issue found (BUG-002 — form values lost on refresh) is minor on its own, but stings more than it should because BUG-001 forces repeated retries through the same form.
 
 ---
 
-#### 14. Feature Gap Report
+##### 14. Feature Gap Report
 
 Derived from the full route table in `src/App.tsx` (35+ routes) and the landing page's own "built and working today, not a roadmap" claims, cross-referenced against what could actually be exercised:
 
@@ -999,7 +1020,7 @@ Derived from the full route table in `src/App.tsx` (35+ routes) and the landing 
 
 ---
 
-#### 15. Seed Data Audit
+##### 15. Seed Data Audit
 
 - The shared Supabase project (`vwqqbdvlskngrqrejzxi`) currently contains **3 pre-existing organisations** (confirmed via a read-only `count(*)` against `public.organisations`), consistent with project memory's note that 3 real `is_demo`-mis-flagged orgs remain after the earlier demo-dataset teardown.
 - **None of these were read for content, used as a substitute for CRUD evidence, or relied upon anywhere in this report's PASS/FAIL claims.** They were referenced only for the aggregate count used in root-causing BUG-001/BUG-004 and appear, unmodified, in the Platform Console preview.
@@ -1009,7 +1030,7 @@ Derived from the full route table in `src/App.tsx` (35+ routes) and the landing 
 
 ---
 
-#### 16. Recommended Priority Order
+##### 16. Recommended Priority Order
 
 1. **Fix BUG-001 immediately.** This is a one-migration fix with an exact, already-drafted SQL statement (§4). Ship it as a new migration, not a hand-edit of `0031`. This unblocks literally everything else in this report.
 2. **Add a regression test for organisation bootstrap** (sign up → confirm → create org → assert step 2 reached and an active owner membership exists) so this specific class of RLS regression — which has now happened once already — cannot silently reoccur when the `organisations_select` policy is touched again (e.g., for a future Platform Console feature).
@@ -1022,10 +1043,1032 @@ Derived from the full route table in `src/App.tsx` (35+ routes) and the landing 
 
 ---
 
-#### 17. Release Decision
+##### 17. Release Decision
 
-### **NO-GO**
+#### **NO-GO**
 
 One unresolved P0 (BUG-001) makes the product unusable for its primary purpose — a new customer cannot create an organisation, full stop, on every attempt, with a fully diagnosed and 100%-reproducible root cause. Per the audit's non-negotiable rule, this alone forecloses any GO or GO WITH CONDITIONS recommendation, independent of the fact that the P0 also structurally prevented verifying the P1-critical workflows (rota publish, clock-in, multi-tenant isolation) this session was supposed to prioritize.
 
 The good news, and the reason this is a NO-GO rather than a deeper indictment of the product: the fix is narrow, precisely located, and already drafted in §4. Everything observed _around_ the blocker — sign-up UX, email verification, error messaging, route guarding, RLS engineering discipline in the wider migration history — suggests a codebase that is close to ready, not far from it. Fix BUG-001, re-run Phase 5/7/Multi-Tenant Security against a working organisation, and this verdict should move quickly.
+
+## Rota builder design review, 6 September 2026
+
+Merged from `docs/design-review/2026-09-06-rota-builder.md` on 11 October 2026.
+
+A dated snapshot, not current state. It records what the rota grid looked like on
+`design/responsive-motion-and-rota-keyboard` at `bd88b15`, what was wrong with it,
+and which of those things were fixed in the same pass. `docs/SAAS.md` remains the
+plan of record; nothing here changes a capability's status.
+
+- **Reviewed:** `http://localhost:5042/rota-builder-preview`, the DEV preview harness
+- **Scope:** the branch's headline work. The rota grid, its keyboard path, its
+  responsive behaviour. The `SetupPage` work uncommitted at the time was excluded.
+- **Fixes:** four commits on `design/review-fixes`, branched from `bd88b15`
+- **Evidence:** `rota-builder-before.png`, `rota-builder-after.png`,
+  `rota-builder-mobile.png`, in this directory
+
+### Why the review ran in a worktree
+
+The main checkout was being written concurrently by another agent: the changed-file
+count went from 13 to 20 between two consecutive `git status` calls, and
+`docs/SAAS.md` had been touched ten seconds before it was read. Committing there
+would have captured unfinished work belonging to that session, so the review ran
+against a clean worktree at the branch's HEAD and the main checkout was left alone.
+
+This is the shared-working-directory hazard the repo has hit before. Check
+`git status` twice, a few seconds apart, before assuming a dirty tree is yours.
+
+### First impression
+
+The grid reads as a dense, calm operations tool rather than a dashboard, which is
+what `docs/DESIGN-SYSTEM.md` §1 asks for. Hierarchy is honest: the eye goes to the week
+axis, then the shift chips, then Publish. The staff column pins, the header pins,
+and the multi-week axis carries a `w/c` grouping label, which is what makes
+twenty-one date columns navigable rather than countable.
+
+The keyboard work is careful and its reasoning is written down. `KeyboardSensor`
+was removed from dnd-kit with a stated reason (25px increments that address no
+cell, and a fight with the chip's own Enter handler), the `M` shortcut is exposed
+through `aria-keyshortcuts` and also stated in visible text, and the move is
+narrated through an `aria-live` region naming both the person and the day.
+
+What let it down was smaller and more literal: an empty cell drew the wrong
+character, and the fixture every reviewer judges this screen against computed
+impossible numbers.
+
+### Findings
+
+#### F1. Every empty cell drew a comma. HIGH. Fixed
+
+`src/components/rota/RotaGridCell.tsx`
+
+The block's own comment reads "An empty cell shows a muted en-dash rather than
+blank space, matching docs/design/Rota-Builder.png". The code rendered
+`<span aria-hidden="true">, </span>`. Twenty-five cells on the preview week each
+drew a stray comma. The intent was recorded; only the glyph was wrong.
+
+#### F2. Night shifts computed as 0h. HIGH. Fixed
+
+`src/pages/RotaBuilderPreviewPage.tsx`
+
+`mkShift` stamped `starts_at` and `ends_at` on the same date, so a `23:00-07:00`
+shift ended eight hours before it began. `shiftNetMinutes` clamps a negative
+elapsed time to zero, so the grid showed Daniel Lee and Olivia Garcia as `0h`
+against a `37.5h` contract while drawing their two and four night shifts in the
+same row. They now read `15h` and `30h`, being 7.5 net hours each after the
+30-minute break.
+
+The keyboard move handler had the same shape and would have collapsed a correct
+overnight shift the moment it was moved. That path is the reason this branch
+exists. It now carries the shift's own duration to the target day rather than
+rebuilding both ends on it.
+
+**The broken fixture was suppressing a real rule.** With `ends_at` in the past,
+the unfilled Sunday night shift fell out of the `upcoming` filter, so
+`open_shift` in `src/lib/rotaInsights.ts` never fired. With correct timestamps
+the screen shows "1 issue blocks publication" and rings that chip. Confirmed by
+reverting the file (banner absent), reloading, and restoring it (banner returns).
+The warning is right: an unfilled night shift starting within the week is a
+critical blocker by design.
+
+The general lesson is worth keeping. A broken preview fixture does not only look
+wrong. It silently disables the production rule engine running on top of it, and
+the screen still looks plausible.
+
+#### F3. The empty cell's affordance failed every contrast threshold. HIGH. Fixed
+
+`src/components/rota/RotaGridCell.tsx`
+
+`text-content-muted/50` composites to `rgb(181,185,192)` on the white cell, which
+is **1.97:1**. That is below the 4.5:1 text threshold and below the 3:1 non-text
+threshold. The cell carries `border-transparent` until hover, so that dash was
+the whole visual signal that a 148x50 target could be clicked. Dropping the
+opacity modifier and keeping the token gives **4.83:1**.
+
+Measured composited, not declared. Reading `rgba(107, 114, 128, 0.5)` as though
+it were opaque gives 4.83:1 and would have passed the finding by. Any contrast
+check on a Tailwind opacity modifier has to composite over the effective
+background first.
+
+#### F4. The grid announced the move but never the position. MEDIUM. Fixed
+
+`src/components/rota/ShiftChip.tsx`, `RotaGridCell.tsx`, `RotaGridRow.tsx`
+
+The move flow was well covered; the resting state was not. The date header
+carries `aria-hidden="true"` and the staff column is a sibling of the cells
+rather than an ancestor, so neither reaches a chip through the accessibility
+tree. Tabbing the grid read twenty-five shifts all called "07:00-15:00 Morning"
+and twenty-five buttons all called "Add shift". On a screen whose stated purpose
+is working without a mouse, you could move a shift without knowing which one you
+were on.
+
+Each cell now derives its position once and hands it to both. A chip reads
+"Sarah Johnson, Mon 31 Aug, 07:00 to 15:00, Morning"; an empty cell reads "Add a
+shift. Sarah Johnson, Thu 3 Sep". Overnight shifts pick up "the next day" from
+the existing `describeTimeRange`, matching the `+1` the chip already draws.
+
+#### F7. Every chip state ring was invisible in dark mode. HIGH. Fixed
+
+`src/components/rota/ShiftChip.tsx`
+
+Found by the `/qa` pass on 7 September, not by the design review, because the
+review only looked at light. Four states lost their colour in dark: the live
+edge, selection, the moving ring, and the conflict ring that the grid legend and
+the publication banner both point at. A rota could say "1 issue blocks
+publication" while the offending chip looked identical to its neighbours.
+
+`paletteTintForColour` returns a class string ending in
+`dark:ring-shift-<hue>/25`. `cn` is tailwind-merge, so it correctly drops the
+tint's _plain_ ring in favour of the state's. A `dark:` ring is a different merge
+group, so it survives, and then outranks a plain ring under `.dark` on
+specificity. None of the four state rings carried a `dark:` variant, so there was
+nothing to outrank the tint. Each now repeats itself as a `dark:` variant.
+
+Measured on the conflicted chip: `rgba(108,160,235,0.25)`, the Night tint,
+before; `rgb(217,74,58)`, `danger.DEFAULT`, after. Selection now paints
+`rgb(59,111,224)`. Light mode measured before and after and unchanged.
+
+`jobTitlePalette` is the only other tint carrying `dark:ring-*`. `JobTitleBadge`
+layers no state ring over it and `JobTitlesSection`'s swatch already pairs
+`ring-content dark:ring-content-dark`, so `ShiftChip` was the only instance.
+
+**The general rule.** Any state ring layered over a palette tint has to repeat
+itself as a `dark:` variant, and the only way to check is to read
+`getComputedStyle(el).boxShadow` in both themes. Reading the class list tells you
+nothing, because the class that loses is still in it.
+
+### Open. Not fixed
+
+#### F5. The keyboard hint sits below the fold. MEDIUM
+
+`src/components/rota/RotaGrid.tsx`
+
+The hint "select one and press M to move it with the arrow keys" renders at
+y=1046 on a 900px viewport, below the entire grid. Its own comment reads "A
+keyboard shortcut nobody is told about is a keyboard shortcut nobody has", and
+then places it where a user has to scroll past every row to find it.
+`aria-keyshortcuts` covers assistive tech. Sighted keyboard users are who this
+text is for, and they are the ones who will not see it.
+
+Worth trying: beside the grid toolbar, or surfaced on chip focus.
+
+#### F6. Every staff name truncates on mobile. MEDIUM
+
+At 375px the pinned staff column cuts "Sarah Jo...", "Michael ...", "Emily
+Da...", "James ...", "Olivia G...", and every job title to "Senior Nur..." or
+"Care Assis...". Two people sharing a forename cannot be told apart. The
+horizontal-scroll hint and the sticky column are both right; the column is simply
+too narrow for what it pins.
+
+Left alone deliberately: the pinned width interacts with `rotaGridTemplate` and
+the sticky offsets at every breakpoint, which is a layout change with real
+regression risk rather than a styling one.
+
+Also at 375px, roughly 430px of the 812px viewport is chrome before the first row
+of data: search, date nav, view switcher, Publish, draft badge, Filters,
+Auto-assign, Actions.
+
+#### F8. Reports scrolls the page sideways on a phone. MEDIUM
+
+`src/components/reports/ReportsView.tsx:171`
+
+Also from the `/qa` pass. At 375px `/reports-preview` gives a
+`documentElement.scrollWidth` of 377 against a 375 client width. Every other
+route measured 0 overflow. The leak is a `div.flex items-center gap-5 pb-2.5`
+whose min-content is 353 inside a 327 grid track: a grid item defaults to
+`min-width: auto`, so it refuses to shrink below its content and pushes the body.
+
+The candidates are `flex-wrap` on that row or `min-w-0` on the track, and the
+choice changes the layout at every breakpoint on a screen neither pass otherwise
+reviewed.
+
+### Corrected during the review
+
+An early reading flagged the hour totals as carrying a stray space, "37. 5h".
+That was wrong. The text content is exactly `37.5h`; the gap is JetBrains Mono's
+advance width on the period, which is what a monospace figure column is for.
+Recorded because the finding was nearly filed.
+
+### Evidence
+
+| Check                                                                  | Result                     |
+| ---------------------------------------------------------------------- | -------------------------- |
+| `npx tsc --noEmit`                                                     | PASS                       |
+| `npx eslint` on the four changed files, `--max-warnings 0`             | PASS                       |
+| `npx prettier --check` on the four changed files                       | PASS                       |
+| `npm test`                                                             | PASS. 1115 tests, 65 files |
+| Contrast, measured in-browser with alpha compositing, before and after | PASS                       |
+| Accessible names read back from the live DOM, before and after         | PASS                       |
+
+### Not verified
+
+- `supabase test db` (pgTAP). Needs Docker. NOT TESTED
+- `npx playwright test`. NOT TESTED
+- `npm run check:bundle`, `check:docs`, `check:export`. NOT TESTED
+- Dark mode. Every fix uses paired `dark:` tokens, but no dark screenshot was
+  taken. NOT TESTED
+- Real assistive technology. The accessible names were read from the DOM, which
+  is not the same as hearing them announced. NOT TESTED
+- Every screen other than the rota builder. NOT TESTED
+
+## Platform console repair, 7 September 2026
+
+Merged from `docs/PLATFORM-CONSOLE-REPAIR-2026-09-07.md` on 11 October 2026.
+
+A dated record of one pass over `/admin/*`, not a plan. `docs/SAAS.md` remains the
+capability register and is where the statuses live; this exists so the next person can
+see what was looked at, what was changed, what was proved and what was left.
+
+Branch `platform/console-repair`, seven commits from `44e6259`, 58 files, +9,107 / -1,349.
+
+---
+
+### 1. What was actually wrong
+
+Six defects, in the order they matter.
+
+**The console could not see past PostgREST's row cap, and never said so.**
+`/admin/organisations`, `/admin/users`, `/admin/audit` and `/admin/billing` each loaded
+whole tables and then filtered, sorted, counted and exported the arrays that came back.
+Supabase caps a response at `db.max_rows` in silence. Above the cap the total tile is the
+cap, a search for an older record reports "no match" — a sentence about the filter rather
+than about the truncation — and Export CSV writes the loaded page under the name of the
+whole set. None of it is visible on this deployment, which has no tenant; all of it
+becomes visible on the day it matters and not before.
+
+**A multi-organisation account was unfindable.** `summariseMembershipsByUser()` set
+`soleOrgName` only when an account belonged to exactly one organisation, and the user
+search matched that field. So the accounts a support case is most often about could not
+be found by either of their organisations' names.
+
+**A published announcement was recorded as delivered before anything sent it.**
+`publish_platform_announcement` (`0025`) stamped `sent_at` on every delivery row at
+insert, against its own migration's header. Nothing ever sent them: fan-out was deferred
+to an Edge Function that was never written, while `notification_outbox` had been draining
+rota publications through `send-notification` every minute since `0069`. And
+`status = 'scheduled'` was read by no job at all — storing a time is not scheduling.
+
+**The console had never been told about `0122`.** That migration put eight tables holding
+operational tenant data behind `is_platform_operational()`, excluding `platform_finance`.
+The nav and the route table still offered Users, Support Centre, Support Access,
+Incidents, Integrations and Audit Logs to that role, where RLS filters rather than raises
+— so each rendered as an empty table rather than as a refusal, which reads as a broken
+product rather than as a boundary.
+
+**One failing read emptied the whole overview.** Eleven sources in a single
+`Promise.all`. A refused RPC or one 500 on invoices showed a retry button and nothing
+else.
+
+**Seven controls were disabled, and four of them were wrong about the backend.** Audit
+"Save filter", invoice "View" and "Credit", support "New case", organisation "Import",
+integrations "Retry all failed", flags "Create flag", subscriptions "Discount".
+
+---
+
+### 2. Route and control coverage
+
+Every `/admin` route was opened, and every control classified. `working` means driven in
+the preview harness or asserted in pgTAP; `unavailable` means removed with the reason in
+the page copy.
+
+| Route                      | Controls                                                                                                | Verdict                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `/admin`                   | Period select, Export report, 6 tiles, growth chart, plan mix, health, system health, activity, support | **Working.** Tiles and chart from server aggregates (`0133`); partial failure named per panel                                |
+| `/admin/organisations`     | Search, 6 filters, 9 sortable columns, pagination, Export, Import, Add organisation                     | **Working.** All server-side (`0130`). Import built this pass                                                                |
+| `/admin/organisations/:id` | 8 tabs, lifecycle actions, re-invite                                                                    | **Not changed this pass.** Health tone corrected to match the list; the rest is untouched and unverified here                |
+| `/admin/users`             | Search, 3 filters, sortable columns, pagination, Export, Grant/Revoke                                   | **Working.** Server-side (`0131`). Last-administrator guard now reads the estate, not the page                               |
+| `/admin/users/:id`         | Profile, memberships, auth facts, role grant                                                            | **Not changed this pass**                                                                                                    |
+| `/admin/subscriptions`     | Filters, seat usage, Change plan                                                                        | **Working.** "Discount" removed — nothing here can price a plan                                                              |
+| `/admin/billing`           | Currency select, Export, 6 money tiles, trend, plan mix, invoice list, View                             | **Working.** Totals per currency over every row (`0134`); list paged. "Credit" removed → GAP-080                             |
+| `/admin/support`           | Filters, SLA tiles, New case                                                                            | **Working.** New case built this pass, on `open_support_case`'s existing platform branch                                     |
+| `/admin/support/:id`       | Status, assignment, reply, internal note                                                                | **Not changed this pass**                                                                                                    |
+| `/admin/support-access`    | Request, revoke, active sessions                                                                        | **Not changed this pass**                                                                                                    |
+| `/admin/incidents`         | Create, update, resolve                                                                                 | **Not changed this pass**                                                                                                    |
+| `/admin/integrations`      | Connector table, per-org status                                                                         | **Working.** "Retry all failed" removed — no connector has code behind it and `integration_sync_runs` has never had a writer |
+| `/admin/notifications`     | New announcement, 4 filters, pagination, Publish, Cancel, delivery split                                | **Working.** Composer, scheduler and dispatch built this pass (`0132`)                                                       |
+| `/admin/audit`             | Search, 3 filters, pagination, Copy link, Export CSV                                                    | **Working.** Whole-history search; "Save filter" replaced by a real bookmarkable link                                        |
+| `/admin/gdpr`              | Request list, status, actions                                                                           | **Not changed this pass**                                                                                                    |
+| `/admin/feature-flags`     | Toggles, rollout percentage                                                                             | **Working.** "Create flag" removed — code checks a key by name                                                               |
+| `/admin/settings`          | Editable settings, administrator roster                                                                 | **Not changed this pass**                                                                                                    |
+
+Six routes are marked **not changed**. They were read, and nothing in them was found that
+this pass's contract covered; they are not claimed as verified.
+
+---
+
+### 3. Migrations, in the order they must apply
+
+`0130` → `0134`. Every one is additive: new functions, one nullable column, no table
+rewritten, no policy loosened, no grant widened beyond `EXECUTE` to `authenticated` on
+functions that refuse the wrong caller before reading anything.
+
+| Migration | What it adds                                                                                                                                                                     | Rollback                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `0130`    | `platform_health_band`, `platform_organisation_directory`, `platform_organisation_facets`                                                                                        | `drop function` on the three                                      |
+| `0131`    | `platform_user_directory`, `platform_user_facets`                                                                                                                                | `drop function` on the two                                        |
+| `0132`    | `platform_announcement_deliveries.outbox_id`; rewrites `publish_platform_announcement`; adds cancel, reconcile, due-publisher and the `rotaflow-announcement-scheduler` cron job | `cron.unschedule`, restore `0025`'s publish body, drop the column |
+| `0133`    | `platform_growth`, `platform_operations_summary`                                                                                                                                 | `drop function` on the two                                        |
+| `0134`    | `platform_billing_summary`, `platform_invoice_directory`                                                                                                                         | `drop function` on the two                                        |
+
+**They must merge with the client, not before or after it.** The console calls all of
+them; merging the client alone gives `PGRST202` on every directory read. This is the same
+constraint GAP-074 records for `0126`–`0128`, which this branch also carries, so the whole
+set ships together.
+
+**`0130` was amended after it was written** — `active_24h` and `archived_band` were added
+to its facets function — rather than superseded by a later migration. It has never been
+applied anywhere: nothing on this branch has merged, and migrations reach production by
+merging. Amending an unapplied migration is cheaper than a `create or replace` that has to
+drop a return type.
+
+**`0132` starts a cron job.** It runs every minute alongside the existing outbox drain and
+does nothing when nothing is due.
+
+---
+
+### 4. Evidence
+
+| Gate                       | Result                                           |
+| -------------------------- | ------------------------------------------------ |
+| `npm run typecheck`        | pass                                             |
+| `npm run lint`             | pass, zero warnings                              |
+| `npm run format:check`     | pass                                             |
+| `npm test`                 | **1,185 passed**, 69 files (was 1,139 / 66)      |
+| `npm run build`            | pass                                             |
+| `npm run check:bundle`     | pass — 644.7 KiB of 700 KiB, no DEV page shipped |
+| `npm run check:migrations` | pass                                             |
+| `npm run check:docs`       | pass — 128 capability rows, migration count 134  |
+| `npm run check:export`     | pass                                             |
+| `npx playwright test`      | **116 passed**, 2 skipped                        |
+| `supabase test db`         | **560 assertions**, 60 files (was 487 / 55)      |
+
+New pgTAP files, and what each would catch:
+
+- `platform_directory.test.sql` (24) — `total_count` against a 60-tenant fixture, a search
+  that finds a tenant beyond the first page, stable paging over an equal-valued sort, and
+  that `platform_finance` can neither read nor search by an owner email.
+- `platform_user_directory.test.sql` (14) — a two-organisation account found by either
+  name and returned once; organisation AND role satisfied by one membership.
+- `announcement_delivery.test.sql` (15) — two reachable organisations left **queued** and
+  zero delivered; the unreachable one a recorded failure; one outbox row each; the
+  scheduler publishing a due announcement; only reconciliation moving a delivery to sent.
+- `platform_overview.test.sql` (9) — month boundaries, and a requested-but-active
+  cancellation not counted as churn.
+- `platform_billing_summary.test.sql` (11) — two currencies producing two rows rather than
+  one sum.
+
+New unit files: `serverPage.test.ts` (15), `organisationDirectory.test.ts` (10),
+`organisationImport.test.ts` (15), plus 5 currency assertions in `revenue.test.ts`.
+
+Screens driven in `/admin-preview` at 1440×900 and 390×844, light and dark: the
+organisations directory paging 1–25 of 34 and finding "Northgate" through a multi-org
+account, the announcement composer previewing its audience, the billing console switching
+GBP → EUR, the audit page paging a server-counted result, the import modal returning three
+distinct verdicts for a three-row file, and the overview at
+`?fail=rpc/platform_operations_summary,rpc/platform_growth` naming both failures while
+everything else renders.
+
+---
+
+### 5. What was NOT verified
+
+Stated plainly, because a report that omits this reads as though everything was.
+
+- **The authenticated platform-admin spec ran green** — 2 passed, and it left 30
+  organisations, one "Zulu Care Homes" and a promoted grant behind, which is the evidence
+  the bodies executed. GAP-082 closed. It took four attempts, and the failure was worth
+  keeping: `reuseExistingServer: !CI` meant a dev server left running from an earlier
+  suite run was reused, started against a different Supabase — so the fixture seeded one
+  instance and the browser signed in to another, and the only symptom was `Invalid login
+credentials`. On a developer's machine the other instance is production. The config
+  refuses to reuse a server on a live run now, and the spec asserts the origin the app
+  actually calls.
+- **No production volumes.** Production holds no tenant. Every truncation defect fixed
+  here was demonstrated against a synthetic 60-record fixture, not observed.
+- **No real delivery.** No email or push has been watched arriving. `0132` proves the
+  announcement joins the queue that drains; it proves nothing about the last mile, which
+  is the same gap `docs/SAAS.md` ❓-007 already records.
+- **No Stripe call of any kind.** `STRIPE_TEST_SECRET_KEY` is still absent (GAP-073). No
+  charge, no credit, no webhook was sent.
+- **No bulk creation against a database.** The import's parse, duplicate detection and
+  per-row reporting are tested; the harness answers the creation RPC from a fixture, so
+  fifty real transactions are unproven.
+- **Six `/admin` routes were not changed and are not claimed as verified** — organisation
+  detail, user detail, support case detail, support access, incidents, GDPR, settings.
+- **`supabase test db` needs Docker**, which was started for this work. CI's
+  `e2e-authenticated` and `db-tests` jobs run against their own stack; a green local run
+  is a strong signal, not the same run.
+
+---
+
+### 6. Remaining blockers
+
+- **GAP-080** — invoice credits: no table, no policy, no RPC, no test credential. Named
+  rather than half-built.
+- **GAP-081** — the tenant-side announcement surface, which is why the read column is
+  permanently zero and says so.
+- **GAP-082** — no authenticated platform-admin end-to-end test.
+- **GAP-073** — Stripe test-mode verification, still blocked on a credential.
+- **GAP-036** — production still has no backup and no PITR. Unrelated to this work and
+  larger than all of it.
+
+## Platform console repolish, 7 September 2026
+
+Merged from `docs/PLATFORM-CONSOLE-REPOLISH-2026-09-07.md` on 11 October 2026.
+
+A dated record of a second pass over `/admin/*`, made the same day as
+`qa/FUNCTIONAL-AUDIT.md#platform-console-repair-7-september-2026` and picking up exactly where that
+one stopped. `docs/SAAS.md` remains the capability register and is where the
+statuses live; this exists so the next person can see what was looked at, what
+changed, what was proved, and what was not.
+
+Branch `platform/console-repolish-2026-09-07`, from `9d94b83`. 23 files,
++2,255 / −149.
+
+---
+
+### 1. The brief was already out of date, and saying so is the first finding
+
+The request that started this work quoted a source review of 5 September at
+`42ec2ce`, with seven findings: unpaginated directory reads, a user search that
+could not find a multi-organisation account, audit search over a capped window,
+an announcement composer disabled against a table that exists, and four
+misleading disabled controls.
+
+**All seven were closed before this pass began**, by PR #300 (`268895e`) and
+#302 (`9d94b83`), which merged after that review was written. Re-validating
+rather than implementing from the brief is what made the rest of this pass
+possible; building to it would have rewritten working code.
+
+What the earlier pass did leave is stated plainly in its own §2: seven routes
+marked **"Not changed this pass"** and explicitly not claimed as verified, plus
+the platform health page, which its coverage matrix never listed at all. Those
+eight routes are this pass's scope.
+
+---
+
+### 2. One root cause under most of it
+
+`is_platform_admin()` reads a single boolean on `profiles`. It is true for all
+four platform roles and says nothing about which one. `0122` fixed that
+blindness across eight **tables** on 5 September and closed GAP-053.
+
+It enumerated those tables by hand. The query it needed is:
+
+```sql
+select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public'
+   and p.prosrc ilike '%is_platform_admin()%'
+   and p.prosrc not ilike '%has_platform_role%';
+```
+
+That returns nine more objects, every one still open to `platform_finance` — a
+role documented in `src/lib/platformRoles.ts` as "Subscriptions and billing
+state only. No operational tenant data".
+
+Two statements inside `0122`'s own header are wrong as a result. It says
+`platform_user_auth_facts` "does not exist in this schema; nothing was done
+about it because there is nothing to do". It has existed since `0027`, it reads
+`auth.users`, and finance could call it for any account on the platform.
+
+**The lesson is the query, not the list.** A hand-written enumeration is a list
+of what somebody remembered.
+
+---
+
+### 3. What was wrong, in the order it matters
+
+**A finance role could read the DSAR register.** `gdpr_requests_select` named
+all four roles. Subject names, subject emails, extension reasons, outcome notes.
+`/admin/gdpr` is also one of only two admin routes with no `RequirePlatformRole`,
+and `src/lib/adminNav.ts` recorded that omission as something to fix "together
+with the policy" — which had never happened.
+
+**A finance role could write into a support case.** `reply_to_support_case`
+decided the author's side with `is_platform_admin()`. `0122` had removed
+finance's read of `support_cases`, so it could not open a case — and could still
+post into one with a known id, rendering to the customer as **Platform**, and
+could flag the message `is_internal`. `0116` named roles for three write paths
+and missed this one.
+
+**Admin-assisted organisation creation was dead.** `0126` rewrote
+`create_invite` to add `p_department`/`p_location`, rebuilt both guards from the
+`0006` text, and silently dropped the bootstrap exception `0052` had added. The
+word "bootstrap" does not appear in `0126`. Since a new organisation has no
+members, nobody can hold `owner`, so the guard cannot be satisfied:
+
+```
+ERROR:  Only owners and managers can invite people
+CONTEXT: PL/pgSQL function create_invite(uuid,text,text,uuid,uuid) line 13
+```
+
+`admin_create_organisation_with_invite` calls `create_invite(…, 'owner')`
+internally, so the whole sales-led path failed with it, not just the re-invite
+control on the organisation detail page.
+
+**The last platform owner could be raced to zero.** The guard was an unlocked
+`count(*)`. Two owners revoking each other both read two owners, both passed,
+and both updated different rows, so nothing conflicted. Verified with two
+sessions: `OWNERS REMAINING: 0`. There is no way back from inside the product —
+`grant_platform_role`, `revoke_platform_role` and `set_platform_mfa_required`
+all require being a platform owner — on an instance with no backup (GAP-036).
+
+**The queue-depth tile read a table with no writer.** `background_jobs` has
+zero rows, no triggers, and no function in `public` referencing it; its only
+writer was Inngest, retired in `0087`. The tile read "0 queued" and the panel
+"Nothing is queued or running", permanently, on the one screen whose job is to
+say whether work is stuck. The preview harness had the inverse fixture — 48 rows
+across four invented queues — which is why nobody noticed: the only place anyone
+looked at it, it had data.
+
+**A rated case could not be reopened.** `set_support_case_status` cleared
+`resolved_at`; `support_cases_csat_after_resolution` required it whenever `csat`
+was set. So the one case nobody could reopen was the one the customer had been
+happy enough to rate, and the operator got a bare `23514`.
+
+**The organisation detail route was the way around the boundary.** No
+`RequirePlatformRole`, and RLS **filters rather than raises**, so a finance
+administrator read the organisation, got working counts, and saw "This
+organisation has no members", an empty Audit tab, and a Users tile of 0 beside a
+real Locations count. The comment explaining why the Users tab needed no session
+said memberships were "reopened to any platform admin by 0031" — untrue since
+`0122`, and the reasoning defect that produced the gap.
+
+**The Integrations tab asserted a fact it had been refused.**
+`org_smtp_settings_safe` is `security_invoker`, so the base policy applied:
+owner-only, which for a platform administrator means a `read_write` support
+session. A `platform_owner` with no session read 0 rows for a tenant with SMTP
+configured, and the tab rendered "This organisation has not configured its own
+SMTP."
+
+**Three statements in the console's own honesty panel were false**, plus one on
+the GDPR board. Detailed in GAP-096.
+
+**A browser's own failure was recorded as a platform outage.** Every probe
+collapsed each failure mode to `down` and the page wrote it to
+`platform_health_samples`. Realtime has no scheduled probe (`0076` covers
+database, auth and REST only), so its uptime comes entirely from console
+samples: one administrator's blocked websocket permanently lowered the figure
+every other reader sees.
+
+---
+
+### 4. Migrations, in the order they must apply
+
+`0138` → `0142`, on top of `0130`–`0134`, which have still never been applied
+anywhere. Every one is `create or replace` or a policy swap: no table is
+rewritten and no grant is widened beyond `EXECUTE` to `authenticated` on
+functions that refuse the wrong caller before reading anything.
+
+| Migration | What it does                                                                                                                           | Rollback                                                                   |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `0138`    | Nine role-blind guards moved to `is_platform_operational()`; `organisation_deletion_preview` to the roles `delete_organisation` admits | Restore the bodies from `0020`, `0024`, `0027`, `0028`, `0110`             |
+| `0139`    | `create_invite`'s bootstrap branch restored, plus `invites_select` and `record_invite_send`                                            | Re-issue from `0126`, `0006` and `0129`                                    |
+| `0140`    | `for update` on the live owner set before the last-owner count, in grant and revoke                                                    | Re-issue both from `0015`                                                  |
+| `0141`    | `platform_queue_depths()` over `notification_outbox`                                                                                   | `drop function`; `background_jobs` is left in place                        |
+| `0142`    | CSAT CHECK replaced by a trigger; `org_smtp_settings` read widened (with-check untouched)                                              | Re-add the CHECK once no reopened-and-rated row exists; restore the policy |
+
+**They must merge with the client, not before or after it.** The console calls
+`platform_queue_depths` and the client stops reading `background_jobs`, so the
+client without `0141` calls a function that does not exist, and `0141` without
+the client changes nothing. This is the constraint GAP-074 already records for
+`0126`–`0128`, and the whole set ships together.
+
+---
+
+### 5. Evidence
+
+| Gate                       | Result                                                                     |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `npm run typecheck`        | PASS                                                                       |
+| `npm run lint`             | PASS, zero warnings                                                        |
+| `npm run format:check`     | PASS                                                                       |
+| `npm test`                 | **1,220 passed**, 72 files (was 1,207 / 71)                                |
+| `npm run build`            | PASS, with no `.env`                                                       |
+| `npm run check:bundle`     | PASS — 645.6 KiB of 700 KiB, no DEV page shipped                           |
+| `npm run check:migrations` | PASS                                                                       |
+| `npm run check:docs`       | PASS — migration count corrected 134 → 139 in three files                  |
+| `npm run check:export`     | PASS                                                                       |
+| `npx playwright test`      | **116 passed**, 4 skipped, 0 contrast violations in both themes            |
+| `supabase test db`         | **589 assertions**, 63 files (was 560 / 60), on a database rebuilt in full |
+
+New pgTAP, and what each would catch:
+
+- `platform_finance_boundary.test.sql` (16) — finance refused the DSAR register,
+  both auth-fact functions, tenant counts, SLA state, a case reply, an internal
+  note and the deletion preview; support still doing its job through every one;
+  finance keeping seats and organisations.
+- `invite_bootstrap.test.sql` (8) — the full round trip for a platform admin on
+  a member-less organisation, and that the exception closes the moment the
+  organisation has any member, does not extend to `platform_support`, and does
+  not cover the manager role.
+- `support_case_reopen.test.sql` (5) — a rated case reopening with its rating
+  intact, and a rating still refused on a case that was never resolved, on both
+  the update and the insert path.
+
+New unit tests: `organisationTabs.test.ts` (7), six `classifyProbeFailure` cases
+in `platformHealth.test.ts`.
+
+Screens driven in `/admin-preview` at 1440×900, light and dark: the GDPR board
+(the contradictory statutory label, and the unreachable In progress / Awaiting
+information states), the health page before and after (a fabricated 135-failed
+queue, then a real notification queue with per-service failure detail and last
+observation), and the organisation detail Data and Integrations tabs showing the
+corrected copy.
+
+---
+
+### 6. What was NOT verified
+
+Stated plainly, because a report that omits this reads as though everything was.
+
+- **No finance-role session in a browser.** The preview harness signs in as a
+  Platform Owner and has no role switch, so every UI consequence of the role
+  boundary is asserted through pure functions and pgTAP, not seen. This is
+  precisely why the tab gate was extracted to `src/lib/organisationTabs.ts`.
+- **No production query of any kind.** Every `[db-verified]` claim here is
+  against the local stack, built from the same migration history. The
+  `create_invite` regression in particular should be confirmed against
+  production before its urgency is sized.
+- **The two-session owner race is not in pgTAP**, which is single-session. It was
+  verified by hand with two psql connections and is recorded here as the
+  evidence. A regression would not be caught by CI.
+- **No Stripe call, no real communication, no credit or refund.** GAP-073 is
+  still blocked on a test credential.
+- **No production volumes.** Production holds no tenant; every truncation
+  argument is reasoned from the code's own stated contract about `db.max_rows`,
+  which was not measured against the hosted project.
+- **Six defects the audits found are recorded and not fixed** — see §7.
+- **`supabase test db` needs Docker**, started for this work. CI's
+  `db-tests` and `e2e-authenticated` run against their own stack.
+
+---
+
+### 7. Found, recorded, then fixed
+
+These six were listed here as deliberately left. They were fixed in a follow-up
+commit on the same branch, so this section now records what they were and where
+they went rather than what is outstanding.
+
+**The support-access opt-out was unreachable and unenforced.** `0143`.
+`organisations.support_access_allowed` was read only by
+`request_support_access`, once, as a precondition; `has_support_access` — the
+function every tenant policy routes through — never read it, so withdrawing
+consent did nothing to a session already open. And because `has_org_role` ends
+at `has_support_access`, the holder of a `read_write` session satisfied
+`set_org_support_access`'s owner branch and could switch that consent back on.
+The flag now sits inside `has_support_access` (re-read per query, so withdrawal
+closes every live session at once) and the setter tests `memberships` directly
+with no platform branch. It also had no caller at all: built on the customer's
+own settings screen, with live sessions listed beneath it.
+`support_access_consent.test.sql`, 7 assertions.
+
+**GDPR requests could not reach two of their five statuses.**
+`set_gdpr_request_status` always accepted all five and requires a note only for
+`completed` and `refused`; the board offered Close and Extend. Both unreachable
+states already had badge tones defined, so the register rendered states nothing
+could produce. Start work and Awaiting information are now row actions.
+
+**Incidents had no status transitions, filters or pagination.**
+`add_incident_update` and `listIncidentUpdates` both existed with no caller, so
+`identified` and `monitoring` were unreachable and an incident went from
+declared straight to resolved. A timeline modal reads and writes it, with the
+status moving in the same statement. Filters adopt the shared contract, and "no
+matches" is a different sentence from "no incident has been declared".
+
+**Three lists truncated silently.** The organisation detail page read the
+platform-wide GDPR list capped at 200 and filtered it in the browser — ordered
+by deadline ascending, so this tenant's newest requests were dropped first,
+under a heading claiming none had been raised. Same shape for support sessions.
+Both are scoped in the query now. The GDPR board carries the server's exact
+count and says when it is showing a subset; the organisation audit tab says
+"showing the most recent 100 of N".
+
+**`/admin/settings` had dead fields.** `platform_settings` has 28 columns and
+exactly one, `require_mfa`, drives anything. The page says so once at the top,
+and the maintenance callout stops describing a banner no code renders — wiring
+it needs a policy decision first, because that table is readable by platform
+administrators only.
+
+**The preview harness leaked out of itself.** Console screens link to
+`/admin/...`, so following a row from `/admin-preview` bounced the reviewer to
+sign-in. Fixed inside the harness with a capture-phase click handler rather than
+by editing 18 links in production components, so it covers links that do not
+exist yet.
+
+#### Three more, found after those fixes
+
+A follow-up audit of `/admin/users/:id` and `/admin/settings` confirmed three
+defects against the live stack, and the first is the most serious thing this
+whole pass found. None was closed by `0143`.
+
+**Revoking a platform role left the person owner-equivalent inside every tenant
+they were in** (GAP-104, `0144`). `has_support_access` only asked whether the
+session was live, never whether the holder was still staff. Reproduced through
+the RPC the Remove button calls: the console locks them out and
+`has_org_role(org, ['owner'])` stays true until the session expires — up to a
+day. They keep owner-equivalent read and write on the customer's data and are
+locked out of the only screen that could end it. The confirm dialog promised
+the opposite in as many words.
+
+**An `aal1` session was admitted to a console that then read nothing**
+(GAP-105). The route gated on the raw `profiles` flag while every policy behind
+it uses `is_platform_admin()`, which also carries `0102`'s MFA condition. With
+`require_mfa` on, a genuine administrator got in and saw empty tables, a
+profile reading "no such account", and an administrators roster collapsed to
+themselves — from which `ownerCount` was then computed, so the last-owner guard
+ran on false data.
+
+**A permission-denied read rendered as "no such account"** (GAP-106), which is
+the same conflation this pass fixed elsewhere, reached via GAP-105.
+
+#### Still not verified, after those fixes
+
+- **The consent control is not seen rendered.** It is on an authenticated screen
+  with no preview route, so it is proved by pgTAP and typecheck only.
+- **The GDPR truncation notice cannot fire in the harness**, whose fixture
+  derives its count from the page length. That the count is real was checked
+  against PostgREST directly: `Content-Range: 0-2/7` for a three-row page over
+  seven rows.
+- **Wiring the maintenance banner is a decision, not a repair**, and is left.
+- **Neither `/admin/users/:id` nor `/admin/settings` was seen rendered.** Both
+  audits were source inspection plus live SQL; the UI verdicts are read off the
+  JSX. `/admin/settings` has no preview-harness route.
+- **The MFA path was exercised in SQL, not in a browser.** `require_mfa` was
+  never switched on against a real session.
+
+  The claim that first sat here — that turning it on "would lock every
+  administrator out" — was investigated and is **half wrong**, in both
+  directions. `set_platform_mfa_required` refuses to turn it on from a session
+  that is not already `aal2`, so the RPC could never have caused the lockout.
+  But `require_mfa` also carried a table-level UPDATE grant, so a
+  `platform_admin` on `aal1` could set it directly from the ordinary settings
+  screen and lock everyone out in one request — a worse hole than the one the
+  note described, reachable by a non-owner. Closed by `0145` (GAP-107), with the
+  off switch moved onto the console gate's own refusal screen because that is
+  where a locked-out owner ends up.
+
+  **Still true and still not fixed:** the sign-in form has no MFA challenge, so
+  no session can reach `aal2`. The requirement therefore cannot be turned on by
+  anybody now, which is safe but means the feature is inert. Building enrolment
+  and a challenge is a capability, not a repair, and is not attempted here.
+
+### 8. Remaining blockers, unchanged
+
+- **GAP-080** — invoice credits: no table, no policy, no RPC, no test credential.
+- **GAP-081** — the tenant-side announcement surface.
+- **GAP-073** — Stripe test-mode verification, blocked on a credential.
+- **GAP-036** — production still has no backup and no PITR. Unrelated to this
+  work, and larger than all of it. `0140` exists because of it: a race that
+  empties the owner table is only unrecoverable because there is nothing to
+  restore from.
+
+## Full UX pass, 9 to 11 September 2026
+
+Merged from `docs/design-review/2026-09-10-full-ux-pass.md` on 11 October 2026.
+
+A dated snapshot, not current state. It records what the application looked like at
+`07156ea` (`origin/main`), what was wrong with it, what was fixed in the same pass,
+and what was deliberately left. `docs/SAAS.md` remains the plan of record; the
+defects closed here have rows there (BUG-088 to BUG-105 and GAP-124; BUG-104 was dropped as a duplicate of the verification pass's GAP-118).
+
+- **Reviewed:** every route in `src/App.tsx` except the ones listed under
+  "What was not covered", driven in a real browser at 390px, 834px and 1440px, in
+  both themes on the changed screens
+- **Environment:** an isolated worktree, an isolated local Supabase stack on ports
+  55521/55522, and a synthetic organisation (25 staff, 126 shifts across two sites,
+  seven leave requests, deliberately long names). No production system was reached
+  at any point, which was verified rather than assumed: every account the pass
+  created was found in the local database afterwards.
+- **Roles exercised:** owner, manager, staff, platform owner. Each signed in for
+  real; none was simulated through a preview route.
+- **Evidence:** `2026-09-10-rota-opens-on-anchor-week.png`,
+  `2026-09-10-rota-no-site-empty-state.png`,
+  `2026-09-10-onboarding-invite-step.png`, in this directory
+
+### Why the pass ran in a worktree, again
+
+Same reason as the 6 September review, and the hazard is now routine rather than
+notable: another session held the main checkout, twice stopped the shared local
+Supabase stack mid-run, and committed three changes to its local `main` while this
+was in flight. The pass therefore ran on its own branch, against its own Supabase
+stack on its own ports, and touched nothing in the main checkout.
+
+One consequence is recorded honestly below: a blocker was found in a file that
+session was actively editing, and it was left alone rather than fixed twice.
+
+### What the product gets right
+
+Worth stating, because most of this document is defects. The design system is real
+and it is enforced: tokens rather than hex, one radius, `IconButton`, `EmptyState`,
+`ScrollRegion`, `Field` and `Modal` genuinely owning their contracts. The modal
+contract was spot-checked end to end and needed nothing — labelled by its heading,
+scroll-locked, focus trapped, one control called Close, Escape working, focus
+returned to the trigger chip.
+
+The defects that follow are almost never styling. They are screens that opened on
+the wrong data, empty states that blamed the reader, and copy that claimed things
+the backend does not do.
+
+### Fixed
+
+#### The rota builder opened on the previous week
+
+The canvas is three weeks wide with the anchor week in the middle (`rotaCanvas.ts`)
+and a scrolling element starts at `scrollLeft: 0`, so the builder opened showing
+_last_ week. Measured: `scrollLeft` 0, the anchor week's first column at x=1221 in
+a 1062px viewport. "Publish (126 changes)" and "1 issue blocks publication" both
+described a week that was off the right-hand edge, and on a new organisation that
+is a screen of empty cells.
+
+`RotaBuilderPage` now aligns the viewport to the anchor week's own header cell when
+the grid appears and whenever the week changes, subtracting the pinned staff column
+so Monday is not underneath it. Aligned by geometry, not by column arithmetic, so it
+survives a change to `WEEKS_BEFORE` or the column widths.
+
+#### The preview harness had been hiding it
+
+`/app-preview/rota` drew one week, not the canvas, on the stated grounds that three
+weeks would squeeze the columns. They do not: `rotaGridTemplate` sizes them
+`minmax(6.5rem,1fr)`, so a wider canvas scrolls rather than shrinks. The harness
+exists so a reviewer sees the real screen, and with seven columns there was no wrong
+week to open on — the defect above could not have been found there. The preview now
+draws the same canvas and opens the same way, and `e2e/rota-grid.spec.ts` asserts it
+on every pull request rather than only in the live-Supabase job.
+
+#### Three empty states that told the reader the wrong thing
+
+- **No site.** A brand-new organisation opening the builder got a bare sentence in a
+  card, no page heading, and "See the Locations page" as an instruction rather than a
+  link. It now keeps its title and offers **Go to Locations**.
+- **No rows in the all-sites view.** The all-sites view lists only people who already
+  have a shift somewhere, so a first rota cannot be started from it — and the copy
+  blamed "this filter" to an organisation that had set none. Three cases now: nobody
+  on the team yet (**Go to Team**), nobody rostered anywhere yet (**Show \<site\>**,
+  which selects it), and a genuine filter miss.
+- **The dashboard's cover chart.** An empty `coverByDate` rendered the 200px grid with
+  no children: a blank box under a heading, indistinguishable from a chart that failed.
+
+#### Colour carrying meaning on its own
+
+The cover chart drew "short of the minimum" as a red bar and a red number, with an
+unexplained dashed line for the minimum itself. A three-part text legend now names
+all three, per §5's rule that a status colour is never the only identifier.
+
+The clock-in ring was green whenever the stage was `ready`, which includes "No shift
+scheduled", "Opens at 07:00" and "Shift has ended" — the on-shift green next to words
+saying there was nothing to clock in to. The ring now follows whether the window is
+actually open.
+
+#### Copy that was not true
+
+- `Monday. Sunday`, `Monday. Friday`, `Sunday. Saturday`, `Saturday. Friday`. An
+  em-dash purge had eaten four range labels in the onboarding wizard.
+- "You can change roles and permissions later from Settings > Team." There is no such
+  screen. It is Settings > Permissions.
+- Team showed **Rostered 0.0h** for 25 people who had 126 shifts between them, because
+  the column counts published rotas only and said so nowhere. The dashboard already
+  explained this; Team now does too.
+- Reports said **"No shifts in this range"** under a caption reading "Every shift on
+  the rota, assigned or still open", while `getShiftReportRows` asks for
+  `publishedOnly: true`. A week of draft shifts read as a week with no shifts.
+- The rota search box carried a **⌘ K** hint. ⌘K opens the global command palette;
+  it has never focused that box.
+- Choosing **Professional at £129** and pressing Continue produced no visible change of
+  any kind. The choice is an intent — `organisations.plan` is written by the Stripe
+  webhook — so the organisation runs on the free Starter tier until billing is set up,
+  and the first sign of that was the database refusing a second site several screens
+  later. The step now says so.
+
+#### Onboarding
+
+The step 3 illustration was drawn over the fourth feature's body text: both panel
+illustrations are `absolute bottom-0 w-full` on a 460×240 viewBox, and the longest
+panel's content reached into them. The aside now reserves the illustration's own
+height as `pb-[52%]`, which resolves against the width exactly as the SVG's height
+does.
+
+Industry was asked twice, on step 1 and again on step 2, pre-filled on the second
+from the first — so the wizard appeared to have forgotten an answer given one screen
+earlier. It is asked once, on step 2, beside the country and timezone it belongs
+with. Step 2 also showed a brand-filled **Add location** button beside a primary
+location editor that was already open below it; all that button did was add a second
+blank row. It now appears only once the first site has a name, reads "Add another
+location", and is no longer styled as the step's primary action — which Continue is.
+
+#### The platform console
+
+Inspected for the first time in this pass, as a real `platform_owner`.
+
+- `/admin/billing` scrolled the whole page sideways on a phone, 477px against 390.
+  The invoices panel is a grid item with no `min-w-0`, so it refused to shrink below
+  the table's min-content width and the `ScrollRegion` inside it never got the chance
+  to scroll. This is the same defect class as BUG-085, on a route that pass never
+  reached.
+- The mobile navigation trigger — the only way to reach any other console screen on a
+  phone — was a 32px square.
+- `/admin/notifications` and `/admin/integrations` logged React duplicate-key warnings
+  on every render: a hand-rolled `<colgroup>` keyed by the width class, and two columns
+  sharing a width are still two columns.
+
+#### One shared component that had been lying
+
+`ui/DataTable` hand-rolled its own scroller: the focusable `role="region"` and the
+`tabIndex`, but not the measured overflow cue or the edge fade. So nine platform
+console tables scrolled in complete silence, with columns off the right-hand edge and
+nothing on the page saying so — while `docs/DESIGN-SYSTEM.md` said it "carries the same
+treatment internally". It now renders through `ScrollRegion`. One scroller, one
+contract, and the documentation is true.
+
+That change also surfaced a latent fragility: `ScrollRegion` constructed a
+`ResizeObserver` unguarded, so any component test rendering a table through it threw
+before its assertions ran. It is guarded, and falls back to the single measurement it
+already takes on mount.
+
+#### Hit targets
+
+A sweep measured every control on nineteen routes. Fixed: the sidebar collapse (30px)
+and account menu (28), the password reveal on three screens (28), the rota week
+steppers (30, and no focus ring), the Publish split-button chevron (31px wide),
+report favourite stars (28), the reports filter selects (a 20px select inside a 44px
+box that was not itself clickable), both chart "Show figures" toggles (16px, one with
+no focus ring at all), sortable column headers (17), tab strips (34), the rota
+segmented switcher and filter chips (30–32), admin pagination (30–36), and the mobile
+console navigation trigger (32).
+
+Two controls keep a small visible shape and gained an expanded hit area instead:
+`ui/Toggle` is 44 tall while still looking like a 24px switch, and the rota chip's
+delete × reaches 32 rather than 44 because a 44px target on the corner of a 110×44
+chip would cover a quarter of it and delete shifts people meant to open. The shift
+editor's full-size **Remove** is the unhurried path.
+
+`docs/DESIGN-SYSTEM.md` §5 now states the floor these were measured against, because none of
+those numbers came from a rule — each was decided once, locally.
+
+#### Long content
+
+`/legal/privacy` and `/legal/terms` scrolled sideways at 390px (398px and 413px) on
+unbreakable file paths in the "Checkable in:" lines.
+
+### The one both passes found, and a wrong claim about it
+
+**The staff dashboard crashed to the error boundary.** `TypeError: Cannot read
+properties of null (reading 'locations')` at `StaffDashboard.tsx:43`, on three of
+three loads at every viewport — the screen a staff member lands on first.
+
+`DashboardPage`'s `finally { setLoading(false) }` was the only write in that function
+with no `token !== requestToken.current` guard, so a superseded load — the
+organisation changed, or the user did — returned early at its own token check leaving
+`overview` null, then cleared `loading` anyway. `overview={overview!}` rendered that
+null, and a non-null assertion removes the compiler's objection to a null rather than
+the null.
+
+**The other session got there first, and this document said otherwise for two days.**
+It was left alone on the 10th because that session was editing the file. On the 11th
+this pass checked whether their committed work closed it, looked at `main`, found the
+old code, and recorded that it did not. `main` was the wrong ref: their work was on
+`fix/verification-pass-2026-09-10`, and `a1ca604` — committed 10 September at 08:10,
+before this pass looked — fixes it the same way, with a token-guarded `finally`, a
+real null check and the same `timezone` prop. It also carries
+`e2e/staff-dashboard.spec.ts`, which seeds a staff account and signs in as one in the
+`e2e-authenticated` job. That is better coverage than anything this pass added for it,
+and it is the version kept on merge.
+
+The check that produced the wrong claim cost nothing and would have caught it:
+compare against the branch, not against `main`, when the question is what another
+branch contains.
+
+What survives from this side is the independent reproduction — on a clean stack, as a
+real staff member with a real membership, confirming the defect was in the product
+rather than in one machine's state — the unit tests below, and one defect the other
+pass did not see:
+
+**And one found while verifying it.** The staff dashboard greeted everyone "Good
+morning" at every hour of the day, with the date beside it formatted in the browser's
+timezone rather than the organisation's. This is a product for people who work
+nights. `greeting(now, timezone)` now lives in `dashboardFormat.ts` with unit tests
+covering the 22:00 shift start, a cross-timezone instant and a clock-change date.
+
+### Left alone on purpose
+
+- **Inline text links** in prose and footer lists stay at their text height. WCAG's
+  own target-size criterion exempts them, and a 44px-tall "Privacy" in a column of ten
+  would be a worse page.
+- **`Button size="sm"` at 36px** in dense table rows and toolbars. That is the
+  documented compact size, now with a written rule behind it.
+- **The all-sites rota view listing only rostered people.** It is a summary of what is
+  rostered, which is a defensible design; what was wrong was the empty state, and that
+  is fixed.
+
+### What was not covered
+
+- **`supabase test db` (pgTAP) and the two Supabase CI jobs.** Not run.
+- **Real devices.** Everything was measured in headless Chromium at three viewport
+  widths. No iOS or Android hardware, and no real touch input.
+- **Screen readers.** The accessible names, roles, focus order and dialog behaviour
+  were asserted programmatically. Nobody listened to a screen reader read these
+  screens, so no claim is made about how they sound.
+- **`/admin/*` detail routes** behind a row — organisation detail, user detail, support
+  case detail — were reached only through their list screens, not exercised in full.
+- **Email, Stripe checkout, push notifications, and anything that leaves the machine.**
+  Not triggered.

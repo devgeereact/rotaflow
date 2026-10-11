@@ -1,4 +1,68 @@
-# GEE OS in this repository
+# RotaFlow documentation
+
+This is the single index for the repository's documents. It owns two things: the
+map of which document owns which fact, and the record of how GEE OS is applied
+here. Every other document links back to this map instead of keeping its own.
+
+The layout is the GEE OS **Standard application** profile
+(`~/.agents/gee-os/templates/DOCUMENTATION-PROFILES.md`), adopted on 10 October 2026. It replaced a numbered-folder layout (`docs/00-foundation/` to
+`docs/09-release/`) that was proposed on branch `docs/gee-os-blueprint-layout`
+and never merged. Paths moved on 11 October 2026; the old-to-new map is in
+`CHANGELOG.md`.
+
+## Fact | Owning document
+
+One fact, one home. When two documents could answer a question, the one named
+here wins, and the other should link to it rather than restate it.
+
+| Fact                                                                                 | Owning document                                                                  |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Read order and harness-neutral agent rules                                           | `AGENTS.md`                                                                      |
+| Project constraints, commands, multi-tenancy guardrails (the file Claude Code loads) | `CLAUDE.md`                                                                      |
+| Codex mapping                                                                        | `CODEX.md`                                                                       |
+| GEE OS routing: mode, workflows, specialists, sources of truth                       | `.agent/PROJECT.yml`                                                             |
+| MCP position: what may be read, what needs authority                                 | `.agent/MCP-PROFILE.yml`                                                         |
+| Capability status, gaps, bugs, priorities, Phase 2 list. The plan of record          | `docs/SAAS.md`                                                                   |
+| Coding, tenancy and secret rules in full                                             | `docs/RULES.md`                                                                  |
+| Product scope, roles, phases, success metrics, event taxonomy                        | `docs/PRODUCT-SPEC.md`                                                           |
+| Topology, folder layout, routing, state, offline behaviour, hook contracts           | `docs/ARCHITECTURE.md`                                                           |
+| Tables, RLS, grants, triggers, indexes, migration policy                             | `docs/DATA-MODEL.md`                                                             |
+| Edge Function and RPC contracts: auth model, inputs, outputs                         | `docs/API-SPEC.md`                                                               |
+| Backup, residency, retention, erasure, incident response, privacy data map           | `docs/SECURITY.md`                                                               |
+| Tokens, components, motion, layout, brand and voice                                  | `docs/DESIGN-SYSTEM.md`                                                          |
+| Which screens are built and which match their design; the design-match loop prompt   | `docs/UX-SPEC.md`                                                                |
+| Accessibility rules and what the published statement claims                          | `docs/ACCESSIBILITY.md`                                                          |
+| Notification outbox, channels, cron jobs, web push                                   | `docs/NOTIFICATIONS-SPEC.md`                                                     |
+| Deploy, rollback, recovery, alert owners                                             | `docs/DEPLOYMENT.md`                                                             |
+| Design references (PNG mockups, two HTML references, review screenshots)             | `docs/design/`                                                                   |
+| How a QA audit is run; CI jobs and scheduled workflows (one table)                   | `qa/README.md`                                                                   |
+| Dated functional audit, console repair passes and design reviews                     | `qa/FUNCTIONAL-AUDIT.md`                                                         |
+| Dated security and privacy audit, and the next-audit checklist                       | `qa/SECURITY-AUDIT.md`                                                           |
+| Accessibility, performance and regression evidence                                   | `qa/ACCESSIBILITY-AUDIT.md`, `qa/PERFORMANCE-AUDIT.md`, `qa/REGRESSION-AUDIT.md` |
+| Release gates and the recorded release decision                                      | `qa/LAUNCH-CHECKLIST.md`                                                         |
+| What changed, per merged pull request                                                | `CHANGELOG.md`                                                                   |
+| Limitations a customer can see today                                                 | `KNOWN-ISSUES.md`                                                                |
+| The approved 2026 plan pack, until it is retired                                     | `docs/Plans 2026/` (temporary; see its `10-GOVERNANCE-ALIGNMENT.md` §6)          |
+
+`docs/ACCOUNTS.md` also exists on the owner's machine. It is gitignored on purpose,
+because it holds a live production credential and this repository is public. It is
+never cited, copied or committed.
+
+## Doc-sync rule
+
+A change that alters a fact updates that fact's owning document, from the table
+above, in the same pull request. A change to a capability's status updates its row
+in `docs/SAAS.md`. A merged pull request adds one entry to `CHANGELOG.md`. A change
+that creates or removes a limitation a customer can see updates `KNOWN-ISSUES.md`.
+The rule in full, with what counts as a fact, is in `AGENTS.md`.
+
+Some of this is checked by machine rather than trusted: `npm run check:docs`
+compares counts written into prose with the tree, and `scripts/plan-drift-audit.mjs`
+reads the register against the code once a week. The rest is review.
+
+## How GEE OS is applied
+
+RotaFlow adopted GEE OS on 4 September 2026 and its Standard documentation profile on 10 October 2026. Merged from `docs/GEE-OS.md` on 11 October 2026; the adoption record below is that file's, updated where the Standard profile changed a decision.
 
 RotaFlow adopts GEE OS as of 4 September 2026. `.agent/PROJECT.yml` is the
 adoption; this file is the record of what that means here, what it deliberately
@@ -12,7 +76,7 @@ evidence standard that Claude Code, Codex and any other agent reading
 `AGENTS.md` can follow identically. Its own rule is that adoption is explicit,
 so nothing changed here merely because the package existed.
 
-## Why adopt it at all
+### Why adopt it at all
 
 This repository already has more process than most: a capability register that
 is the single plan of record, ten CI gates, a QA auditor agent with its own
@@ -38,7 +102,7 @@ GEE OS contributes exactly three things this repository lacked:
 Everything else it offers, this project already had, and duplicating it would
 have made the second copy the one that drifts.
 
-## The loop, scaled to this repository
+### The loop, scaled to this repository
 
 The GEE Loop is `GROUND → ROUTE → CONTRACT → INSPECT → PLAN → ACT → PROVE →
 SYNCHRONISE → LEARN → CONTINUE OR CLOSE`. Its depth scales with risk, and in a
@@ -57,26 +121,26 @@ The one rule that carries most of the value: **discussion, review and diagnosis
 do not authorise edits.** Being asked what is wrong with something is not being
 asked to change it.
 
-## Routing
+### Routing
 
 One primary mode per task. The default is `EXISTING-APPLICATION`, which is the
 mode for improving a live system without losing behaviour that already works.
 
-| Request                             | Mode                 | Workflow                                                  |
-| ----------------------------------- | -------------------- | --------------------------------------------------------- |
-| Change something that already works | Existing Application | `workflows/CHANGE-SAFETY.md`                              |
-| Build an approved capability        | Build                | `workflows/CHANGE-SAFETY.md`                              |
-| A defect with a clear reproduction  | Debug                | Defect workflow in `EXISTING-APP-ENGINE.md`               |
-| A failure nobody understands yet    | Debug                | `/investigate`, then the defect workflow                  |
-| Review code or a screen             | Audit                | `/review`; audit does not authorise fixes                 |
-| A full QA pass                      | Audit                | `rotaflow-qa-auditor`, spec in `qa/README.md`    |
+| Request                             | Mode                 | Workflow                                               |
+| ----------------------------------- | -------------------- | ------------------------------------------------------ |
+| Change something that already works | Existing Application | `workflows/CHANGE-SAFETY.md`                           |
+| Build an approved capability        | Build                | `workflows/CHANGE-SAFETY.md`                           |
+| A defect with a clear reproduction  | Debug                | Defect workflow in `EXISTING-APP-ENGINE.md`            |
+| A failure nobody understands yet    | Debug                | `/investigate`, then the defect workflow               |
+| Review code or a screen             | Audit                | `/review`; audit does not authorise fixes              |
+| A full QA pass                      | Audit                | `rotaflow-qa-auditor`, spec in `qa/README.md`          |
 | Prepare a deploy                    | Release              | `workflows/RELEASE-GATE.md` + `qa/LAUNCH-CHECKLIST.md` |
-| Explore an idea                     | Brainstorm           | None. No edits.                                           |
+| Explore an idea                     | Brainstorm           | None. No edits.                                        |
 
 Load one mode file and one workflow. Loading the whole package into a task is
 the failure GEE OS exists to prevent.
 
-## The task contract
+### The task contract
 
 Before work that changes anything, write this down. It belongs in the session,
 not in the repository: a contract that survives the task it governed becomes
@@ -97,7 +161,7 @@ it does not authorise deploying, editing a Supabase secret, or applying a
 migration to production, and none of those become authorised because the task
 turned out to be harder than expected.
 
-## Evidence
+### Evidence
 
 GEE OS uses `PASS`, `FAIL`, `PARTIAL`, `NOT APPLICABLE`, `NOT TESTED` and
 `BLOCKED`. This repository already had a status vocabulary for capabilities, in
@@ -123,7 +187,7 @@ gathered, what was not verified, remaining risks, recommended next action. The
 fourth item is the one that gets dropped, and it is the one that matters most,
 because a report with no "not verified" section is read as though everything was.
 
-## Conflicts settled at adoption
+### Conflicts settled at adoption
 
 **1. `AGENTS.md` versus `CLAUDE.md`.** The GEE template makes `AGENTS.md` the
 shared project contract and `CLAUDE.md` a thin adapter. This repository had gone
@@ -153,20 +217,21 @@ themselves, which outranks this file.
 habit here has been to find and fix in one motion. Where that is wanted, the task
 contract says so explicitly.
 
-## The files, and what each is for
+### The files, and what each is for
 
 | File                              | Role                                                                           | Tracked |
 | --------------------------------- | ------------------------------------------------------------------------------ | ------- |
 | `AGENTS.md`                       | Entry point for every harness. Read order and harness-neutral rules. No facts. | yes     |
 | `CLAUDE.md`                       | The project directives. Canonical for every project fact.                      | yes     |
 | `CODEX.md`                        | Codex mapping: where things are, and what differs from Claude Code.            | yes     |
-| `.agent/PROJECT.yml`              | The adoption and routing contract: mode, workflows, exclusions, MCP position.  | yes     |
+| `.agent/PROJECT.yml`              | The adoption and routing contract: mode, workflows, exclusions, doc profile.   | yes     |
+| `.agent/MCP-PROFILE.yml`          | The MCP position, moved out of `PROJECT.yml` on 7 October 2026.                | yes     |
 | `.agent/CURRENT-TASK.template.md` | The task contract to copy at the start of work.                                | yes     |
 | `.agent/CURRENT-TASK.md`          | This task's contract. **Gitignored** — it must not outlive its task.           | no      |
 | `.claude/agents/gee-os.md`        | The router as a Claude Code subagent.                                          | yes     |
-| `docs/GEE-OS.md`                  | This file: the adoption record.                                                | yes     |
+| `docs/README.md`                  | This file: the document index and the adoption record.                         | yes     |
 
-## Working with Codex as well as Claude Code
+### Working with Codex as well as Claude Code
 
 Nothing in the adoption is harness-specific, and that was a constraint on the
 design rather than a happy accident. The gates are npm scripts. The register is a
@@ -186,7 +251,7 @@ What actually differs is small enough to list:
   it would have performed.
 - **MCP.** `.codex/config.toml` is gitignored because it holds a machine-specific
   endpoint, so a fresh clone gives Codex no MCP configuration at all. Nothing
-  here depends on that. The MCP position in `.agent/PROJECT.yml` is about
+  here depends on that. The MCP position in `.agent/MCP-PROFILE.yml` is about
   authority, not availability, and it applies to whatever happens to be
   connected.
 
@@ -194,12 +259,16 @@ If a rule appears to apply to only one harness, it is either a mapping, which
 belongs in `CLAUDE.md` or `CODEX.md`, or a mistake, which belongs in a pull
 request.
 
-## Deliberately not adopted
+### Deliberately not adopted
 
 - **`templates/new-project/`**, the Full Product documentation blueprint: 35
   documents across ten numbered directories, plus a `qa/` tree. Scaffolding it
-  would create a sixth plan of record five days after five were merged into
-  `docs/SAAS.md` to stop exactly that. The blueprint is for new projects.
+  would have created a sixth plan of record days after five were merged into
+  `docs/SAAS.md` to stop exactly that. A numbered-folder version was tried on
+  branch `docs/gee-os-blueprint-layout` (7 to 8 October 2026) and never merged.
+  On 10 October 2026 the owner chose the smaller **Standard application** profile
+  instead, and the existing documents were merged into its files rather than
+  scaffolded beside them, so `docs/SAAS.md` stays the only plan of record.
 - **`standards/ENGINEERING-RULES.md`** as a file: its eight rules are cited, not
   copied. `docs/RULES.md` is the enforced standard and several of its rules are
   machine-checked, which the GEE copy would not be.
@@ -208,21 +277,24 @@ request.
   gaps.
 - **`systems/website/`** and the website launch audit: superseded here by the PWA
   gate, which covers the marketing surface as part of the same build.
-- **`KNOWN-ISSUES.md`**, which the Standard profile lists: `docs/SAAS.md` §7 is
-  already that file, with 39 gap rows and a priority column. A second issue list
-  would be a second place to forget to update.
-- **`CHANGELOG.md`**, same profile: nothing would maintain it. The register
-  records what changed and why, and `git log` records the rest. A changelog
-  nobody writes is worse than none, because it reads as though it is current.
+- **Now adopted, 10 October 2026: `KNOWN-ISSUES.md` and `CHANGELOG.md`.** Both
+  were declined at adoption: `KNOWN-ISSUES.md` because `docs/SAAS.md` §7 already
+  tracks every gap, `CHANGELOG.md` because nothing would maintain it. The Standard
+  profile brings both back on narrower terms that answer those objections.
+  `KNOWN-ISSUES.md` lists only limitations a customer can see, each linked to its
+  `docs/SAAS.md` gap ID, so status is still set in one place. `CHANGELOG.md` takes
+  one entry per merged pull request under the doc-sync rule in `AGENTS.md`, so
+  keeping it is part of merging rather than a separate chore.
 - **Copying source prompts into the repository.** GEE OS keeps its originals for
   traceability. They stay there.
 
-## What this changed on day one
+### What this changed on day one
 
 Adoption is a filing exercise unless it produces a fact somebody did not have.
 It produced two, both by asking questions the existing gates never asked:
 
-- `docs/OFFLINE-SPEC.md` now classifies each feature area by what it actually
+- The offline classification, now the "Offline and PWA" section of
+  `docs/ARCHITECTURE.md`, classifies each feature area by what it actually
   does without a network. The product has described itself as offline-first in
   `package.json`, in `CLAUDE.md` and on the marketing site, and no document had
   ever said which features that covers.

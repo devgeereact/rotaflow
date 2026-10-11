@@ -85,7 +85,7 @@ export default defineConfig({
     // reports a different, non-reproducible violation set run to run — not a
     // real bug, a race between the scan and the animation. The app already
     // has (now) a `motion-reduce:` variant on every one of these
-    // (docs/BRAND.md "respect reduced motion"), so forcing it here is
+    // (docs/DESIGN-SYSTEM.md#brand-and-voice "respect reduced motion"), so forcing it here is
     // simultaneously the fix and a real assertion that that variant works.
     contextOptions: { reducedMotion: 'reduce' },
   },

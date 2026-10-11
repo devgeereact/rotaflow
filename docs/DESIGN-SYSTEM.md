@@ -6,10 +6,9 @@
 > references. **Every future screen, component, or asset must match this
 > document, never invent a colour, size, or radius outside it.**
 >
-> A rejected alternative is kept at `docs/DESIGN_EXPLORATION.md` — a 2026-08-13
-> proposal that was **not** adopted. It is linked here so it stops being an
-> orphan nobody can place: read it as a record of a decision taken, not as a
-> direction to follow. This document stays the enforced one.
+> A 2026-08-13 alternative proposal was **rejected**; the record of that decision
+> is the last section of this file, [Rejected exploration](#rejected-exploration).
+> This document stays the enforced one.
 >
 > An external design review dated 2026-09-05 proposed the mobile page-title
 > size, the named motion durations, the responsive header contract and the
@@ -560,3 +559,70 @@ was retired (2026-08-04).
 `public/favicon.svg` and the three `public/icons/*.png` are generated from the
 same geometry, so the browser tab, the installed app and the in-app mark cannot
 drift apart. See `public/icons/README.md` before changing any of them.
+
+## Brand and voice
+
+Positioning, message hierarchy, voice and the evidence boundary for any claim. Merged from `docs/BRAND.md` on 11 October 2026. `src/lib/brand.ts` mirrors it in code.
+
+### Positioning
+
+**RotaFlow is the UK-first, offline-first workforce scheduling platform for
+shift-based organisations.** It gives managers a dependable way to build and
+publish rotas, and gives staff one place to view shifts, manage availability,
+request leave, swap work and record attendance.
+
+The product is for care and healthcare, hospitality, retail, education,
+security and facilities teams that need reliable cover across sites, departments
+and variable shift patterns. The clearest differentiator is operational
+continuity: essential workforce actions, including attendance, do not stop when
+connectivity is poor.
+
+### Message hierarchy
+
+| Level             | Approved message                                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tagline           | **Scheduling certainty for every shift.**                                                                                                           |
+| Value proposition | Build rotas with fewer surprises, keep staff informed, and retain a dependable record of attendance—even when the signal drops.                     |
+| Proof themes      | Offline attendance queue; conflict, availability and rest-gap checks; multi-site scheduling; leave, swaps, timesheets and reporting in one product. |
+| AI position       | AI helps a manager review and draft a rota; the manager stays in control.                                                                           |
+
+### Voice
+
+Clear, calm, practical and accountable. Use plain UK workforce language:
+**rota**, **shift**, **cover**, **site**, **team**, **manager** and **staff**.
+Explain operational outcomes before product mechanics. Prefer “flags a conflict
+before you publish” to vague claims such as “intelligent automation.”
+
+Do not promise compliance, savings, uptime, AI accuracy or staffing outcomes
+that have not been measured. Do not imply that RotaFlow replaces a manager's
+judgement, payroll provider, or employment-law advice.
+
+### Evidence boundary
+
+RotaFlow is pre-launch. It has no verified customer count, testimonials,
+customer logos, uptime record, quantified time saving, or a completed live charge. (Billing itself
+is built — Stripe Checkout, Billing Portal and a signature-verified webhook — but no
+real payment has been taken end to end, so no revenue claim is evidenced.) Public
+copy must not invent any of those. Every product claim should map to a shipped
+screen or an implemented capability in `docs/UX-SPEC.md` and `docs/PRODUCT-SPEC.md`.
+
+### Visual expression
+
+Retain the established light-first system: composed blue actions, navy ink,
+calm neutral surfaces, and semantic status colours that are always paired with
+text or an icon. The `BrandMark` is the only product mark implementation;
+The `@theme` block in `src/index.css` and `docs/DESIGN-SYSTEM.md` remain the source of truth for visual
+tokens. A rebrand must use those tokens rather than introducing raw colours or
+parallel logos.
+
+## Rejected exploration
+
+`docs/DESIGN_EXPLORATION.md`, a proposal from `/design-consultation` dated
+13 August 2026, was **rejected** and was deleted on 11 October 2026 when the
+documents moved to the Standard profile. It researched Deputy and Rotaready,
+proposed an industrial, utilitarian register that evolved the existing tokens
+rather than replacing them, and explicitly declined a typeface swap. It was never
+applied to production. The owner chose not to replace the enforced design system
+until a proposal is validated through `/design-shotgun` and `/design-html`. Its
+full text stays in git history (`git show 4633e87:docs/DESIGN_EXPLORATION.md`). Do
+not implement from it.

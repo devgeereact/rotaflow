@@ -6,7 +6,7 @@ import { appOrigin } from '@/lib/appOrigin';
 
 /**
  * Everything a browser tab, a search result and a link preview show, for one
- * public route. See `docs/HOOKS.md` §12 for the contract.
+ * public route. See `docs/ARCHITECTURE.md#hook-contracts` §12 for the contract.
  *
  * ## What this replaces
  *

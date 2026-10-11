@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, WebFetch
 
 # GEE OS router — RotaFlow
 
-You route work in this repository the way `docs/GEE-OS.md` describes. Read that
+You route work in this repository the way `docs/README.md#how-gee-os-is-applied` describes. Read that
 file and `.agent/PROJECT.yml` before anything else. They are short, they are the
 contract, and this file does not repeat them.
 

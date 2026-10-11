@@ -240,15 +240,15 @@ Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system + folder design
 - [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) — Postgres tables & RLS
 - [`docs/RULES.md`](docs/RULES.md) — coding standards
-- [`docs/HOOKS.md`](docs/HOOKS.md) — custom hook contracts
+- [`docs/ARCHITECTURE.md#hook-contracts`](docs/ARCHITECTURE.md#hook-contracts) — custom hook contracts
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deploy playbook, and the traps that have bitten
 - [`docs/SECURITY.md`](docs/SECURITY.md) — retention, erasure, residency
 - [`docs/UX-SPEC.md`](docs/UX-SPEC.md) — every screen, against its design reference
-- [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) — the success-metric taxonomy and what computes each
+- [`docs/PRODUCT-SPEC.md#metrics-and-events`](docs/PRODUCT-SPEC.md#metrics-and-events) — the success-metric taxonomy and what computes each
 - [`qa/FUNCTIONAL-AUDIT.md`](qa/FUNCTIONAL-AUDIT.md) — dated evidence of the last full audit
-- [`docs/OFFLINE-SPEC.md`](docs/OFFLINE-SPEC.md) — what actually works without a network, feature by feature
+- [`docs/ARCHITECTURE.md#offline-and-pwa`](docs/ARCHITECTURE.md#offline-and-pwa) — what actually works without a network, feature by feature
 - [`qa/LAUNCH-CHECKLIST.md`](qa/LAUNCH-CHECKLIST.md) — the release gate, with recorded statuses and a release decision
-- [`docs/GEE-OS.md`](docs/GEE-OS.md) — how agent work is routed here; `.agent/PROJECT.yml` is the contract
+- [`docs/README.md#how-gee-os-is-applied`](docs/README.md#how-gee-os-is-applied) — how agent work is routed here; `.agent/PROJECT.yml` is the contract
 
 ## License
 

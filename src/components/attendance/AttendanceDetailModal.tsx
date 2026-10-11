@@ -66,7 +66,7 @@ const MIN_REASON = 3;
  *
  * Everything here is what reached the server. A clock-in queued on a phone
  * with no signal is not visible to anybody but that phone
- * (`docs/OFFLINE-SPEC.md`), so the panel says so rather than letting an empty
+ * (`docs/ARCHITECTURE.md#offline-and-pwa`), so the panel says so rather than letting an empty
  * timeline read as proof of absence.
  */
 export function AttendanceDetailModal({

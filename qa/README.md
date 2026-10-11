@@ -156,7 +156,7 @@ Use multiple agents or sub-agents whenever feasible. Recommended parallel workst
 | 7     | Multi-tenant security — org isolation, IDOR, direct-URL access, role/permission boundaries                                                                |
 | 8     | Super Admin / Platform Console — org management, support access, feature flags, GDPR, audit logs                                                          |
 | 9     | Offline / PWA & recovery — service worker, offline queueing, interrupted mutations, sync conflicts                                                        |
-| 10    | UI/UX, accessibility, responsive — against `docs/DESIGN-SYSTEM.md` tokens                                                                                        |
+| 10    | UI/UX, accessibility, responsive — against `docs/DESIGN-SYSTEM.md` tokens                                                                                 |
 | 11    | Performance, console/network audit                                                                                                                        |
 | 12    | Final independent exploratory auditor — deliberately ignores Agents 1–11's conclusions and re-tests blind, then the results are diffed against the others |
 
@@ -431,7 +431,7 @@ Keyboard navigation, tab order, focus states, escape/enter behaviour, form label
 - Broken access control / IDOR (direct object references by ID)
 - Cross-tenant access — see Phase "MULTI-TENANT SECURITY" below, this is the single most critical security surface in a multi-tenant `org_id` + RLS system
 - Privilege escalation (staff reaching manager/owner-only actions via direct URL)
-- `service_role` key never reaching the client or being used where the caller's JWT should be forwarded instead (see `docs/HOOKS.md`/Edge Function conventions)
+- `service_role` key never reaching the client or being used where the caller's JWT should be forwarded instead (see `docs/ARCHITECTURE.md#hook-contracts`/Edge Function conventions)
 - Sensitive data in browser storage or logs
 - Injection via text fields
 - Excessive error detail leaking implementation info

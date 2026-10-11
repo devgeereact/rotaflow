@@ -14,7 +14,7 @@ or anything else that reads this file.
    for the work in front of you. Template at
    `.agent/CURRENT-TASK.template.md`.
 4. The selected GEE OS mode and, only if the task needs an ordered procedure,
-   one workflow. `docs/GEE-OS.md` explains the routing.
+   one workflow. `docs/README.md#how-gee-os-is-applied` explains the routing.
 
 Then apply the GEE Loop: ground, route, contract, inspect, plan, act, prove,
 synchronise, learn, close.

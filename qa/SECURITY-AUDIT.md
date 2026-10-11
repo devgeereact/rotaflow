@@ -2,7 +2,7 @@
 
 A dated snapshot of one project, RotaFlow. `docs/SAAS.md` is what stays current;
 this records what an audit found on one day and what was changed in response.
-The evidence behind it is `docs/PRIVACY-DATA-MAP.md`.
+The evidence behind it is `docs/SECURITY.md#privacy-data-map`.
 
 **Nothing here is legal advice, and nothing here says RotaFlow is compliant.**
 
@@ -30,7 +30,7 @@ own notice denied.
 **A bare "GDPR compliant" badge sat on `/login` and `/signup`** and inside the
 signup funnel — the exact claim `src/lib/marketing.ts` records as having been
 deleted from the adjacent feature list for being unverifiable, under a rule
-`docs/BRAND.md` states outright.
+`docs/DESIGN-SYSTEM.md#brand-and-voice` states outright.
 
 **Nobody creating an account was ever shown a notice.** Sign-up, invitation
 acceptance and the contact form carried no link to either document, and a
@@ -223,7 +223,7 @@ reverted** — a regression test nobody has watched fail is a guess.
 
 ## Owner decisions and legal questions
 
-Listed in full in `docs/PRIVACY-DATA-MAP.md` §8 and §9. The blocking ones:
+Listed in full in `docs/SECURITY.md#privacy-data-map` §8 and §9. The blocking ones:
 
 1. Register with the ICO, or record why registration is not required.
 2. Decide the postal address position, and confirm an email address alone is
