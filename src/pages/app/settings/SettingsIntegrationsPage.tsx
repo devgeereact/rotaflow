@@ -11,7 +11,9 @@ import {
   testOrgSmtpSettings,
   updateOrgSmtpFields,
 } from '@/services/smtpSettingsService';
+import { getOrganisation } from '@/services/orgService';
 import { reportError } from '@/lib/sentry';
+import { FALLBACK_TIMEZONE } from '@/lib/operationalDay';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -36,6 +38,8 @@ export function SettingsIntegrationsPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // The organisation's clock, not the browser's, for the one timestamp here.
+  const [timezone, setTimezone] = useState<string>(FALLBACK_TIMEZONE);
 
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState('587');
@@ -50,6 +54,22 @@ export function SettingsIntegrationsPage(): JSX.Element {
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(
     null,
   );
+
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void getOrganisation(orgId)
+      .then((org) => {
+        if (active && org.timezone) setTimezone(org.timezone);
+      })
+      .catch((err: unknown) => {
+        // Not fatal: the timestamp falls back to the default zone.
+        reportError(err, { area: 'integrations:timezone' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [orgId]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -237,7 +257,15 @@ export function SettingsIntegrationsPage(): JSX.Element {
         {existing?.verified_at ? (
           <p className="mb-4 flex items-center gap-1.5 text-sm text-success-ink dark:text-success-ink-dark">
             <CheckCircle2 size={16} aria-hidden="true" />
-            Verified {new Date(existing.verified_at).toLocaleString()}
+            Verified{' '}
+            {new Date(existing.verified_at).toLocaleString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: timezone,
+            })}
           </p>
         ) : existing ? (
           <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
