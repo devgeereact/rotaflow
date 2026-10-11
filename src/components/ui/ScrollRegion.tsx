@@ -42,7 +42,7 @@ interface ScrollRegionProps {
  * every column past the fold is simply unreachable; and on a phone there is no
  * indication that anything is out there, so the Team directory looked like a
  * two-column table rather than a seven-column one with five columns hidden
- * (`docs/design-review/team-mobile.png`).
+ * (seen at 390px wide; the screenshot was never committed).
  *
  * `DataTable` already solved the first two for itself with `tabIndex={0}` and
  * `role="region"`. This generalises that and adds the missing third: a fade at

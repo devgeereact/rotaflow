@@ -47,8 +47,8 @@ export interface TeamDirectoryViewProps {
  *
  * The reason anybody opens Team is the list of people. Six full-width metric
  * tiles put that list roughly 850px down a 390px screen, below a permanent
- * information card as well
- * (`docs/design-review/team-mobile.png`). The tiles are now `compact` and
+ * information card as well (seen at 390px wide; the screenshot was never
+ * committed). The tiles are now `compact` and
  * two-up on phones, and the permanent callout became one line of help attached
  * to the actions it is about, so the search field is inside the first screen
  * and the first person is just under it.

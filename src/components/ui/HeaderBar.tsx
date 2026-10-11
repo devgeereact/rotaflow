@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils';
  * `text-page-title` is 32/40, a desktop measure. At 390px a two-word title
  * sharing a flex line with two action buttons had nothing left: `Team`
  * rendered as `Tea` and its one-line description wrapped a word at a time
- * (`docs/design-review/team-mobile.png`). Stacking the header fixes the
- * overflow; the step down to 24/32 is because 32px is simply too large for the
+ * (seen on the Team directory; the screenshot was never committed).
+ * Stacking the header fixes the overflow; the step down to 24/32 is because 32px is simply too large for the
  * column the title then owns, not because shrinking type is a way to fit
  * things in. Both are the same weight and family.
  *
