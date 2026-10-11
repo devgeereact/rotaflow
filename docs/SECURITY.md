@@ -493,7 +493,7 @@ could schedule.
 
 ## Privacy data map
 
-Every point where personal data is collected, stored in the browser, sent to a processor, retained and released. Merged from `docs/PRIVACY-DATA-MAP.md` on 11 October 2026. It is dated 4 September 2026 and each row cites where it can be checked; `docs/SAAS.md` stays the register of current status.
+Every point where personal data is collected, stored in the browser, sent to a processor, retained and released. Merged from the deleted `docs/PRIVACY-DATA-MAP.md` on 11 October 2026. It is dated 4 September 2026 and each row cites where it can be checked; `docs/SAAS.md` stays the register of current status.
 
 **Dated 4 September 2026.** A snapshot, like `qa/FUNCTIONAL-AUDIT.md`, not a
 living document — the register in `docs/SAAS.md` is what stays current.

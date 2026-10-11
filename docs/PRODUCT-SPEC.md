@@ -155,7 +155,7 @@ and components.
 
 ## Metrics and events
 
-What computes each success metric in §3, and whether that data exists yet. Merged from `docs/OBSERVABILITY.md` on 11 October 2026; the dated first pass of 13 August 2026 is kept as written, so treat its counts as a snapshot.
+What computes each success metric in §3, and whether that data exists yet. Merged from the deleted `docs/OBSERVABILITY.md` on 11 October 2026; the dated first pass of 13 August 2026 is kept as written, so treat its counts as a snapshot.
 
 **Status:** First pass, 13 August 2026. Answers
 `docs/SAAS.md` ("publish event taxonomy") and

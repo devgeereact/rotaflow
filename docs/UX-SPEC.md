@@ -377,7 +377,7 @@ built. What is left is listed in §7, and it is short.
 
 ## Design-match loop
 
-The `/loop` design-match prompt, driven against `localhost:5042`. Merged from `docs/LOOP.md` on 11 October 2026. §1 to §11 above answer "is the screen built"; this section answers "does it match its mockup".
+The `/loop` design-match prompt, driven against `localhost:5042`. Merged from the deleted `docs/LOOP.md` on 11 October 2026. §1 to §11 above answer "is the screen built"; this section answers "does it match its mockup".
 
 Paste the block under **"The prompt"** into `/loop`. Swap `<SCREEN>` and `<REF>` per
 screen using the tables below.

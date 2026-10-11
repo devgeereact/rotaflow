@@ -36,7 +36,7 @@ export interface TeamDirectoryViewProps {
 }
 
 /**
- * `/app/team` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`).
+ * `/app/team` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`).
  * "Invite a team member" in the reference links out to Settings → Permissions
  * — organisation administration, not day-to-day workforce management, per
  * its own callout — but "Add Staff" opens a real, faster inline form here

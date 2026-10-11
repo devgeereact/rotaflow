@@ -562,7 +562,7 @@ drift apart. See `public/icons/README.md` before changing any of them.
 
 ## Brand and voice
 
-Positioning, message hierarchy, voice and the evidence boundary for any claim. Merged from `docs/BRAND.md` on 11 October 2026. `src/lib/brand.ts` mirrors it in code.
+Positioning, message hierarchy, voice and the evidence boundary for any claim. Merged from the deleted `docs/BRAND.md` on 11 October 2026. `src/lib/brand.ts` mirrors it in code.
 
 ### Positioning
 
@@ -617,7 +617,7 @@ parallel logos.
 
 ## Rejected exploration
 
-`docs/DESIGN_EXPLORATION.md`, a proposal from `/design-consultation` dated
+`docs/DESIGN-SYSTEM.md#rejected-exploration`, a proposal from `/design-consultation` dated
 13 August 2026, was **rejected** and was deleted on 11 October 2026 when the
 documents moved to the Standard profile. It researched Deputy and Rotaready,
 proposed an industrial, utilitarian register that evolved the existing tokens

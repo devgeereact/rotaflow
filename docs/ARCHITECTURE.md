@@ -420,7 +420,7 @@ deliberately not allowed to make.
 
 ## Offline and PWA
 
-What RotaFlow actually does without a network, feature by feature. §5 above is the strategy; this section is the per-feature truth, and it is narrower than "offline-first" implies. Merged from `docs/OFFLINE-SPEC.md` on 11 October 2026; written 4 September 2026 by reading the code, and line numbers it cites are from that date.
+What RotaFlow actually does without a network, feature by feature. §5 above is the strategy; this section is the per-feature truth, and it is narrower than "offline-first" implies. Merged from the deleted `docs/OFFLINE-SPEC.md` on 11 October 2026; written 4 September 2026 by reading the code, and line numbers it cites are from that date.
 
 What RotaFlow actually does without a network, feature by feature, with the
 evidence for each. Written 4 September 2026 by reading the code, not the claims.
@@ -670,7 +670,7 @@ immutable for a year. That is the correct pairing and worth not breaking.
 
 ## Hook contracts
 
-Contracts for every reusable hook in `src/hooks`. Merged from `docs/HOOKS.md` on 11 October 2026. Section numbers below (§1 to §18) are the hook numbers other files cite, as in "Hook contracts §8".
+Contracts for every reusable hook in `src/hooks`. Merged from the deleted `docs/HOOKS.md` on 11 October 2026. Section numbers below (§1 to §18) are the hook numbers other files cite, as in "Hook contracts §8".
 
 Contracts for every reusable hook in `src/hooks`. Signatures here are the source
 of truth. Implementations must match.

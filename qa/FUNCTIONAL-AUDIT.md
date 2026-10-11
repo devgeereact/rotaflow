@@ -19,7 +19,7 @@ Review screenshots cited below live in `docs/design/review/`.
 
 ## Website and PWA production audit, 2 to 3 September 2026
 
-Formerly `docs/QA-AUDIT-REPORT.md`. Kept as written, including Appendix A, the 14 August 2026 audit.
+Formerly `docs/QA-AUDIT-REPORT.md`, renamed on 11 October 2026. Kept as written, including Appendix A, the 14 August 2026 audit.
 
 **Auditor:** Claude Opus 5, driven by the owner's Website Audit and PWA Audit standards
 **Date:** 2026-09-02 into 2026-09-03
@@ -1053,7 +1053,7 @@ The good news, and the reason this is a NO-GO rather than a deeper indictment of
 
 ## Rota builder design review, 6 September 2026
 
-Merged from `docs/design-review/2026-09-06-rota-builder.md` on 11 October 2026.
+Merged from the deleted `docs/design-review/2026-09-06-rota-builder.md` on 11 October 2026.
 
 A dated snapshot, not current state. It records what the rota grid looked like on
 `design/responsive-motion-and-rota-keyboard` at `bd88b15`, what was wrong with it,
@@ -1273,7 +1273,7 @@ Recorded because the finding was nearly filed.
 
 ## Platform console repair, 7 September 2026
 
-Merged from `docs/PLATFORM-CONSOLE-REPAIR-2026-09-07.md` on 11 October 2026.
+Merged from the deleted `docs/PLATFORM-CONSOLE-REPAIR-2026-09-07.md` on 11 October 2026.
 
 A dated record of one pass over `/admin/*`, not a plan. `docs/SAAS.md` remains the
 capability register and is where the statuses live; this exists so the next person can
@@ -1474,7 +1474,7 @@ credentials`. On a developer's machine the other instance is production. The con
 
 ## Platform console repolish, 7 September 2026
 
-Merged from `docs/PLATFORM-CONSOLE-REPOLISH-2026-09-07.md` on 11 October 2026.
+Merged from the deleted `docs/PLATFORM-CONSOLE-REPOLISH-2026-09-07.md` on 11 October 2026.
 
 A dated record of a second pass over `/admin/*`, made the same day as
 `qa/FUNCTIONAL-AUDIT.md#platform-console-repair-7-september-2026` and picking up exactly where that
@@ -1825,7 +1825,7 @@ the same conflation this pass fixed elsewhere, reached via GAP-105.
 
 ## Full UX pass, 9 to 11 September 2026
 
-Merged from `docs/design-review/2026-09-10-full-ux-pass.md` on 11 October 2026.
+Merged from the deleted `docs/design-review/2026-09-10-full-ux-pass.md` on 11 October 2026.
 
 A dated snapshot, not current state. It records what the application looked like at
 `07156ea` (`origin/main`), what was wrong with it, what was fixed in the same pass,

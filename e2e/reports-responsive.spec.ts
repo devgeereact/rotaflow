@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
  *
  * ## What this is for
  *
- * `docs/design/review/2026-09-06-rota-builder.md` F8: at 375px `/reports-preview`
+ * `qa/FUNCTIONAL-AUDIT.md#rota-builder-design-review-6-september-2026` F8: at 375px `/reports-preview`
  * reported a `documentElement.scrollWidth` of 377 against a 375 client width, so
  * the whole PAGE scrolled sideways rather than the one wide thing on it. Every
  * other route measured 0.
