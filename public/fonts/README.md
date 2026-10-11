@@ -30,7 +30,7 @@ sentence.
 | `jetbrains-mono-latin-ext.woff2` | JetBrains Mono | latin-ext | variable, 100–800 |
 
 Both families are variable, so one file per subset covers every weight
-`docs/DESIGN.md` specifies. JetBrains Mono's three declared weights
+`docs/DESIGN-SYSTEM.md` specifies. JetBrains Mono's three declared weights
 (400/500/700) were already being served by Google as one variable file.
 
 Cyrillic, Greek and Vietnamese subsets are deliberately not shipped: this is a

@@ -89,7 +89,7 @@ export function AdminLoading({
  * It was a bare paragraph, so a console screen that could not reach the
  * database looked much like one whose table was legitimately empty. This uses
  * the shared `EmptyState` with a danger icon and a retry, so the four empty
- * situations docs/DESIGN.md §8 names stay distinguishable in the console too.
+ * situations docs/DESIGN-SYSTEM.md §8 names stay distinguishable in the console too.
  */
 export function AdminError({ onRetry }: { onRetry: () => void }): JSX.Element {
   return (

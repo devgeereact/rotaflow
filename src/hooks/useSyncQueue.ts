@@ -34,7 +34,7 @@ export interface UseSyncQueue {
 }
 
 /**
- * Consumer of the IndexedDB write outbox. See docs/HOOKS.md §8 for the
+ * Consumer of the IndexedDB write outbox. See docs/ARCHITECTURE.md#hook-contracts §8 for the
  * approved contract this implements, and services/syncQueue.ts for the replay
  * logic. Used by the clock-in, leave and swap screens.
  *

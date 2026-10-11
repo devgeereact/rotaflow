@@ -1,7 +1,9 @@
 # Hard Coding Rules & Standards
 
-Most of these are enforced by TypeScript, ESLint and CodeRabbit, and PRs that
-violate an enforced rule do not merge. Where a rule is a convention with no lint
+Most of these are enforced by TypeScript, ESLint, Vitest and the CI gates in
+`qa/README.md`, and a pull request that fails a required check does not merge.
+CodeRabbit also reviews pull requests as a GitHub app, but there is no
+`.coderabbit.yaml`, so nothing configures it to check this file specifically. Where a rule is a convention with no lint
 rule behind it, it now says so — a rule the tooling does not check is a rule the
 codebase will drift from, and several below had.
 
@@ -18,15 +20,19 @@ codebase will drift from, and several below had.
 - **Respect the folder map** in `docs/ARCHITECTURE.md`. No new top-level folders
   without updating that doc first.
 - **No import cycles.** Direction is `pages → services → lib`; components use
-  `hooks`/`context`. `lib` imports nothing from `pages`/`components`. _Convention,
-  not lint-enforced — five files currently break it with type-only imports:
-  `clockinDemo`, `reportsDemo`, `settingsTabs`, `swapRows`, `workspaceTabs`._
+  `hooks`/`context`. `lib` imports nothing from `pages`/`components`. _Half
+  enforced:_ `src/lib/moduleBoundaries.test.ts` fails on a runtime import from
+  `src/services` or `@/lib/supabase` into `src/lib` (one allowlisted file,
+  GAP-114). The `pages`/`components` direction is convention only, and four files
+  break it with type-only imports: `clockinDemo`, `reportsDemo`, `settingsTabs`,
+  `swapRows`.
 
 ## 2. TypeScript
 
 - `"strict": true`. **No implicit `any`**, `@typescript-eslint/no-explicit-any`
   is an error.
-- Explicit return types on exported functions and all hooks.
+- Explicit return types on exported functions and all hooks. Enforced by ESLint
+  (`@typescript-eslint/explicit-function-return-type`), not by `tsc`.
 - Prefer `type`/`interface` over inline anonymous shapes for anything reused.
 - Use the `@/` path alias; no deep `../../../` relative imports.
 
@@ -40,8 +46,10 @@ codebase will drift from, and several below had.
 
 ## 4. Styling
 
-- Tailwind / NativeWind utilities **only**. Tokens from the `@theme` block in `src/index.css`.
-- **No** `.css`/`.module.css`, no CSS-in-JS. Avoid inline `style={{}}` — the
+- Tailwind 4 utilities **only**. Tokens from the `@theme` block in `src/index.css`.
+  NativeWind is not a dependency.
+- **No** `.css`/`.module.css` beyond `src/index.css`, which is the Tailwind entry and
+  holds the tokens. No CSS-in-JS. Avoid inline `style={{}}` — the
   exception is a genuinely computed value a utility class cannot express (a chart
   bar's height, a progress width). Sixteen such uses exist; anything else belongs
   in a token. _Not lint-enforced._
@@ -67,10 +75,12 @@ codebase will drift from, and several below had.
 
 - Small, atomic commits; imperative messages (`feat: add install prompt`).
 - Every PR must pass `typecheck` + `lint` (zero warnings) before review.
-- **CodeRabbit only reviews pull requests**. Use branch → PR → merge. Work pushed
-  straight to the default branch is never reviewed.
-- **CodeRabbit** checks: no unused vars/imports, correct RLS scoping, no leaked
-  credentials or unsanitized keys, adherence to this file.
+- **Review happens on pull requests.** Use branch → PR → merge; `main` requires
+  the `verify`, `e2e`, `db-tests` and `e2e-authenticated` checks, and CodeRabbit
+  comments on pull requests only. Work pushed straight to `main` is never reviewed.
+- A pull request that changes behaviour updates the owning document or says
+  `Docs: no impact (the reason, in words)` (`AGENTS.md`, "Documentation stays
+  current").
 
 ## 8. Deploy hygiene (see `docs/DEPLOYMENT.md`)
 
@@ -85,7 +95,7 @@ codebase will drift from, and several below had.
 - **Multi-tenancy is non-negotiable.** Every domain table carries `org_id`. Every
   query and mutation is scoped to the active `org_id` from `OrgContext`, never query
   across tenants from the client. Each new table ships with RLS enabled and
-  membership-scoped policies (see `docs/SCHEMA.md`).
+  membership-scoped policies (see `docs/DATA-MODEL.md`).
 - **RLS is the source of truth for access; role checks in the UI are cosmetic.** Never
   rely on hiding a button for security. The policy must also forbid it.
 - **Never trust client role state for writes.** `usePermissions` gates UI only; the DB

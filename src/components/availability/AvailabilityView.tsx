@@ -33,7 +33,7 @@ export interface AvailabilityViewProps {
 }
 
 /**
- * `/app/availability` (`docs/ORGANISATION_WORKSPACE.html`'s
+ * `/app/availability` (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.availability`): one screen for everyone, not a role split — a
  * manager just gets the extra "Team availability" card alongside their own
  * pattern, same as the reference.

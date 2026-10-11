@@ -78,7 +78,7 @@ const ROWS: LeaveDisplayRow[] = [
  * (`/admin-preview`-style harness). The real `/app/leave` needs a live
  * Supabase session and a seeded organisation, neither of which a screenshot
  * tool has. Renders the real `ManagerLeave`/`StaffLeave` against fixed mock
- * data shaped to match `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.leave`.
+ * data shaped to match `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.leave`.
  * `?role=staff` switches branch.
  */
 export function LeavePreviewPage(): JSX.Element {

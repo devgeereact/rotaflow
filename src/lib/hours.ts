@@ -42,7 +42,7 @@ export interface WorkedSegment {
 /**
  * Pairs a chronological event stream into worked segments (in → out, minus
  * any break in between). There is no `timesheets` automation in the schema
- * (docs/SCHEMA.md. It's a manually-managed aggregate, not trigger-populated),
+ * (docs/DATA-MODEL.md. It's a manually-managed aggregate, not trigger-populated),
  * so this is computed client-side directly from `clock_events` rather than
  * reading a maintained total.
  *

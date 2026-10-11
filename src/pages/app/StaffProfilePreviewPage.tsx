@@ -6,7 +6,7 @@ import type { StaffProfileTab } from '@/lib/staffProfile';
 /**
  * Design-loop preview only. The real profile route needs a Supabase session
  * and a seeded staff record. Reproduces
- * `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.staffDetail` against the
+ * `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.staffDetail` against the
  * fixtures in `src/lib/staffDemo.ts`.
  */
 const VALID_TABS: StaffProfileTab[] = [

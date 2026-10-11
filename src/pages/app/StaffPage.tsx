@@ -127,7 +127,7 @@ function toInsert(orgId: string, values: StaffFormValues): StaffProfileInsert {
 }
 
 /**
- * `/app/team` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`). The
+ * `/app/team` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`). The
  * reference's row actions are just Profile/Message; Message has no real
  * capability behind it (RotaFlow has no direct-messaging feature) so the
  * kebab menu here keeps the directory's existing real management actions

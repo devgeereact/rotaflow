@@ -33,7 +33,7 @@ function noteForTimes(startTime: string | null, endTime: string | null): string 
   return null;
 }
 
-/** The standing weekly pattern (`docs/ORGANISATION_WORKSPACE.html`'s "Your
+/** The standing weekly pattern (`docs/design/ORGANISATION_WORKSPACE.html`'s "Your
  * weekly pattern" card), Monday first, one row per day regardless of
  * whether that day has an entry. */
 export function buildWeeklyPattern(entries: Availability[]): WeeklyPatternDay[] {
@@ -83,7 +83,7 @@ function availabilityLabel(entry: Availability): string {
   return 'Available all day';
 }
 
-/** One-off dated overrides (`docs/ORGANISATION_WORKSPACE.html`'s
+/** One-off dated overrides (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * "Exceptions" card), soonest first. */
 export function buildExceptions(entries: Availability[]): ExceptionRow[] {
   return entries
@@ -104,7 +104,7 @@ export interface TeamAvailabilityRow {
 
 /**
  * Each person's effective availability for one specific date
- * (`docs/ORGANISATION_WORKSPACE.html`'s "Team availability, {day}" card,
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s "Team availability, {day}" card,
  * made real: the reference hardcodes one demo day and one demo exception,
  * this resolves every staff member's actual state for it). A dated
  * exception for `dateIso` wins over the recurring weekday pattern; no entry

@@ -29,7 +29,7 @@ import type {
 } from '@/types';
 
 /**
- * One person's profile (`docs/ORGANISATION_WORKSPACE.html`'s
+ * One person's profile (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.staffDetail`). Skill competency levels and shift ratings the
  * schema does not carry are omitted rather than filled with placeholders.
  */

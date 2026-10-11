@@ -28,8 +28,9 @@ interface SidebarOrgSwitcherProps {
  *
  * ## Why it renders even for a single-organisation user
  *
- * The header's `OrgSwitcher` returns `null` below two memberships, which is
- * right for a control whose only job is switching. This one also answers
+ * The header's `OrgSwitcher` (removed on 11 October 2026, unused) returned
+ * `null` below two memberships, which is right for a control whose only job is
+ * switching. This one also answers
  * "which organisation am I looking at". The question behind every
  * cross-tenant mistake in a multi-tenant product, so it always shows the
  * name, and only becomes interactive when there is somewhere to switch to.

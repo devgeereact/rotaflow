@@ -105,7 +105,7 @@ export function RotaGrid({
   const today = todayIso();
   const totalByDate = new Map(dailyTotals.map((t) => [t.date, t]));
 
-  // Flat, single table (docs/ORGANISATION_WORKSPACE.html's rota screen has no
+  // Flat, single table (docs/design/ORGANISATION_WORKSPACE.html's rota screen has no
   // location grouping — a real org's shifts still live at one location each,
   // so the per-location shiftMap/timezone lookup underneath is unchanged;
   // this just stops rendering location as a visual section.

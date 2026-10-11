@@ -44,10 +44,11 @@ const ROLE_SCOPE: Record<SystemRole, string> = {
  * produces an account whose login no longer matches its profile row.
  *
  * `photo_url` is a pasted link, not a file upload — ImageKit is in the
- * stack for *delivery* (`src/lib/imagekit.ts` builds transformed URLs from
- * a path already in storage), but nothing here signs an upload, which needs
- * a server-side call so the private key never reaches the client. A real
- * "choose a file" control is a separate, larger piece of work; a URL field
+ * stack for *delivery* (the service worker caches `ik.imagekit.io` responses
+ * as `imagekit-media`; no client code builds transformed URLs since the
+ * unused `src/lib/imagekit.ts` helper was removed), but nothing here signs
+ * an upload, which needs a server-side call so the private key never
+ * reaches the client. A real "choose a file" control is a separate, larger piece of work; a URL field
  * is real and honest in the meantime, not a placeholder.
  *
  * Job title, department, contract and hours are read-only here since

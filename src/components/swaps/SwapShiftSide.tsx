@@ -22,7 +22,7 @@ const CHIP_LABEL: Record<SwapShiftSideProps['side'], string> = {
  * (docs/design/Swap-Request.png).
  *
  * The chip is never colour alone: it always carries the words "Giving Away" or
- * "Taking" (docs/DESIGN.md §5).
+ * "Taking" (docs/ACCESSIBILITY.md).
  */
 export function SwapShiftSide({ side, shift }: SwapShiftSideProps): JSX.Element {
   if (!shift) {

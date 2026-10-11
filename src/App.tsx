@@ -449,7 +449,7 @@ export function App(): JSX.Element {
                     needs a Supabase session, an org and seeded rows that the
                     design loop cannot produce, so each preview renders the same
                     component tree against fixed mock data chosen to reproduce
-                    its reference PNG's exact numbers. See docs/LOOP.md.
+                    its reference PNG's exact numbers. See docs/UX-SPEC.md#design-match-loop.
 
                     They shipped to production unguarded until 2026-07-31: all
                     seven answered 200 unauthenticated in production, so

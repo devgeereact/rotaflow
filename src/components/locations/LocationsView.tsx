@@ -21,7 +21,7 @@ export interface LocationsViewProps {
 }
 
 /**
- * `/app/locations` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`):
+ * `/app/locations` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`):
  * a pagehead, four count tiles, and a card grid — one card per site. No
  * table, no filter bar, no side detail panel; the reference's own
  * "Departments" and "Minimum cover" buttons are placeholders (`toast(...)`),

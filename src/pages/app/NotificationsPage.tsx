@@ -29,7 +29,7 @@ import { Card } from '@/components/ui/Card';
 import type { Notification } from '@/types';
 
 /**
- * `notifications.type` is free text (no check constraint, docs/SCHEMA.md §3),
+ * `notifications.type` is free text (no check constraint, docs/DATA-MODEL.md §3),
  * written by whichever database trigger enqueued the row, so this can never
  * be exhaustive. It covers the values `send-notification`'s callers use today,
  * keyed to the same icons the sidebar already uses

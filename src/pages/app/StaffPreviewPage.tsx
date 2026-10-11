@@ -75,7 +75,7 @@ const ROWS: TeamRow[] = [
  * (`/admin-preview`-style harness). The real `/app/team` needs a live
  * Supabase session and a seeded organisation, neither of which a screenshot
  * tool has. Renders the real `TeamDirectoryView` against fixed mock data
- * shaped to match `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`.
+ * shaped to match `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`.
  */
 export function StaffPreviewPage(): JSX.Element {
   const [search, setSearch] = useState('');

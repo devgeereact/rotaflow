@@ -13,7 +13,7 @@ import { PRIMARY_CTA } from '@/lib/marketing';
  * Structured as the day-to-day loop a scheduling manager actually runs, because
  * that is how the product is evaluated: build the rota, publish it, staff
  * respond, hours come back, the numbers are reported. Every step below is a
- * screen that exists. Cross-checked against `docs/SCREENS.md` §2.
+ * screen that exists. Cross-checked against `docs/UX-SPEC.md` §2.
  */
 
 const WORKFLOW = [

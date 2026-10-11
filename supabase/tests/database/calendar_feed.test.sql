@@ -1,7 +1,7 @@
 -- =====================================================================
 -- calendar_feed.test.sql — CAP-063
 --
--- `docs/PRD.md` claimed a calendar subscription; what existed was an ICS
+-- `docs/PRODUCT-SPEC.md` claimed a calendar subscription; what existed was an ICS
 -- file download. A file is a snapshot: import it, have the rota amended,
 -- and the phone shows last week's shifts confidently, with a reminder.
 --

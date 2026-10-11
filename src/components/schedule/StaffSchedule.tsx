@@ -98,7 +98,7 @@ const LINK_BUTTON =
   'inline-flex h-9 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-sm font-semibold text-content transition-transform duration-150 ease-in-out hover:scale-[1.02] hover:bg-surface-subtle active:scale-[0.98] dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark';
 
 /**
- * A staff member's own Schedule (`docs/ORGANISATION_WORKSPACE.html`'s
+ * A staff member's own Schedule (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.schedule` staff branch): the current week, one card per day.
  *
  * Published-only, like the rest of this screen for staff: a draft is the

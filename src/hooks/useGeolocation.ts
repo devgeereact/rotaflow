@@ -15,7 +15,7 @@ export interface UseGeolocation {
 }
 
 /**
- * One-shot device position for GPS clock-in (docs/HOOKS.md §9).
+ * One-shot device position for GPS clock-in (docs/ARCHITECTURE.md#hook-contracts §9).
  *
  * Resolves to null rather than throwing on denial/unavailability, a clock-in
  * screen must always fall back to manual entry, never hard-fail because a

@@ -17,7 +17,7 @@ import { reportError } from '@/lib/sentry';
 import type { ClockEventInsert, LeaveRequestInsert, ShiftSwapInsert } from '@/types';
 
 /**
- * The offline write outbox (ARCHITECTURE.md §4/§6, docs/HOOKS.md §8).
+ * The offline write outbox (ARCHITECTURE.md §4/§6, docs/ARCHITECTURE.md#hook-contracts §8).
  *
  * A write made with no connection is appended here instead of failing. On
  * reconnect (`useSyncQueue`, driven by `useOnlineStatus`), every queued item

@@ -1,5 +1,5 @@
 /**
- * The job-title colour catalogue (docs/DESIGN.md §2b).
+ * The job-title colour catalogue (docs/DESIGN-SYSTEM.md §2b).
  *
  * ## Why a second palette exists
  *
@@ -27,7 +27,7 @@
  * blocked form, because nothing on screen says the colour has stopped meaning
  * one thing. Extending the palette is a deliberate change here and in
  * the `@theme` block in `src/index.css` together, with the contrast and colour-vision
- * measurements redone. `docs/DESIGN.md` §2b records how.
+ * measurements redone. `docs/DESIGN-SYSTEM.md` §2b records how.
  */
 
 export interface JobTitleSwatch {

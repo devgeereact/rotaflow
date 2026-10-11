@@ -1,0 +1,43 @@
+# MCP profile for RotaFlow, in the GEE OS 0.9.0 blueprint shape
+# (~/.agents/gee-os/templates/new-project/.agent/MCP-PROFILE.yml).
+#
+# Drafted 2026-10-07 on an unmerged branch; moved out of the `mcp_profile`
+# block of .agent/PROJECT.yml on main on 2026-10-11.
+# The rules are unchanged; only their home moved. MCP tools supply live
+# evidence. They do not widen authority: availability is not permission, and a
+# read that is routine does not make the matching write routine. See
+# ~/.agents/gee-os/mcp/MCP-SAFETY.md.
+
+policy:
+  default: unavailable-until-confirmed
+  reads: 'permitted: supabase (list_tables, execute_sql SELECT, get_advisors, query_logs), sentry, context7'
+  mutations: 'each one separately authorised by the owner, per task, naming the object'
+  never: 'supabase apply_migration against production from a session; migrations land through a merged PR'
+  environment_check: 'confirm the project ref before any read that could touch a second project'
+
+connections:
+  # A status here is what was last observed, with its date. It is not a promise
+  # that the connection works in the session reading this file. Check first.
+  github:
+    purpose: version-control
+    status: 'gh CLI authenticated as devgeereact, verified 2026-10-07; the GitHub MCP server failed to connect that day, so use gh'
+  database:
+    purpose: data-and-authentication
+    service: supabase
+    status: unknown
+  hosting:
+    purpose: deployment-and-runtime
+    service: 'cPanel, rsync over SSH (docs/DEPLOYMENT.md)'
+    status: 'not an MCP; deploys are manual and outside agent authority'
+  monitoring:
+    purpose: errors-and-observability
+    service: sentry
+    status: 'unknown; the Sentry MCP needed authorisation on 2026-10-07'
+  docs:
+    purpose: library-documentation
+    service: context7
+    status: unknown
+
+notes:
+  - Confirm account, organisation, project and environment before every material action.
+  - Record identifiers and evidence, never credentials.

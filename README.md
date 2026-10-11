@@ -5,75 +5,70 @@
 # RotaFlow
 
 A **multi-tenant, offline-first workforce scheduling PWA**. Organisations build and
-communicate staff rotas in minutes; staff view shifts, clock in, request leave and swap
-shifts from any device. The shell and three write queues work offline; most workspace
-data needs a connection. Runs as a static bundle on **cheap static
-hosting** (Namecheap cPanel / Stellar Plus) with all heavy lifting offloaded to Supabase
-and other managed services. Tenants share one database, isolated by `org_id` + Row Level
-Security.
+communicate staff rotas; staff view shifts, clock in, request leave and swap shifts
+from any device. The shell and three write queues work offline; most workspace data
+needs a connection ([what works offline](docs/ARCHITECTURE.md#offline-and-pwa)). It
+runs as a static bundle on cPanel hosting, with all server work offloaded to Supabase
+and other managed services. Tenants share one database, isolated by `org_id` and Row
+Level Security.
+
+**Every document is indexed in [`docs/README.md`](docs/README.md)**, which names the
+one document that owns each fact. What is actually built is
+[`docs/SAAS.md`](docs/SAAS.md), the capability register. Limitations a customer can
+see today are in [`KNOWN-ISSUES.md`](KNOWN-ISSUES.md); what changed recently is in
+[`CHANGELOG.md`](CHANGELOG.md). Agents start at [`AGENTS.md`](AGENTS.md).
 
 ## What it does
 
-- **Rota builder** — weekly/fortnightly/monthly drag-and-drop grid, reusable shift types
-  (name, colour, default times), copy-previous-week and repeat-forward, conflict
-  detection, colour coding. _(`shift_templates` was a table nothing read; `0096` removed
-  it rather than building a reader — `shift_types` already did the job.)_
-- **Staff app** — installable rota view with an ICS calendar download; clock, leave and
-  swap writes can queue offline.
-- **Availability, leave & overtime** — staff submit, managers approve.
-- **Shift swaps** — request → colleague → manager approval → rota updates.
-- **GPS clock in/out** — GPS + manual, timesheets, hours dashboard. (QR is deferred.)
-- **AI rota assistant** — a manager describes staffing needs in plain English and gets
-  shift suggestions grounded in real staff, skills, availability and existing shifts
-  (OpenRouter, called from a Supabase Edge Function — nothing is invented or written
-  until the manager applies it). See [`docs/ARCHITECTURE.md` §9](docs/ARCHITECTURE.md).
-- **Notifications & announcements** — Web Push + email (SMTP); org/location/department
-  broadcasts. Every notification is written to an outbox **in the same transaction as
-  the event that owes it**, so closing the tab cannot lose one, and drained by
-  `pg_cron`. _(SMS seam reserved, not wired in V1.)_
-- **Reports & payroll export** — hours, absence, overtime; CSV.
-- **Billing** — Stripe Checkout and Billing Portal, with a signature-verified webhook.
-  Four plan tiers. No live charge has been completed end to end yet.
-- **Roles** — Super Admin · Organisation Owner · Manager · Staff, enforced by RLS.
-- **Phase 2** — full AI auto-scheduling (demand forecasting, burnout detection),
-  payroll integrations, analytics and SSO.
+- **Rota builder**: drag-and-drop grid, reusable shift types, copy and repeat weeks,
+  conflict detection, labour cost, and a server-enforced draft, publish and amend
+  lifecycle.
+- **Staff app**: installable rota view with a calendar feed; clock, leave and swap
+  writes can queue offline.
+- **Availability, leave, overtime and shift swaps**: staff submit, managers approve.
+- **GPS clock in and out**, timesheets and team attendance.
+- **AI rota assistant**: deterministic review and cover suggestions that work
+  offline, plus plain-English drafting through OpenRouter from a Supabase Edge
+  Function. Nothing is written until the manager applies it
+  ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §9).
+- **Notifications and announcements**: in-app, email and web push, written to an
+  outbox in the same transaction as the event
+  ([`docs/NOTIFICATIONS-SPEC.md`](docs/NOTIFICATIONS-SPEC.md)). SMS is not built.
+- **Reports and CSV export**.
+- **Billing**: Stripe Checkout and Billing Portal with a signature-verified webhook.
+  No live charge has completed end to end yet.
+- **Roles**: Super Admin, Organisation Owner, Manager and Staff, enforced by RLS.
 
-See [`docs/PRD.md`](docs/PRD.md) for scope, and **[`docs/SAAS.md`](docs/SAAS.md) for what
-is actually built** — the capability register is the honest, per-feature status.
-
----
+What is deliberately later is the Phase 2 list in [`CLAUDE.md`](CLAUDE.md), "Scope
+discipline".
 
 ## Tech stack
 
-| Layer           | Choice                           | Why                                                                                                                                                                                                                                 |
-| --------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework       | React 18 + Vite 6                | Fast HMR, tiny hashed bundles                                                                                                                                                                                                       |
-| Language        | TypeScript (strict)              | Safety enforced in CI                                                                                                                                                                                                               |
-| Styling         | Tailwind CSS (NativeWind-ready)  | Utility-first, portable to Expo later                                                                                                                                                                                               |
-| PWA             | `vite-plugin-pwa` (Workbox)      | Precached app shell + runtime caching                                                                                                                                                                                               |
-| Auth + DB       | Supabase (PostgreSQL + RLS)      | Managed Postgres, row-level security                                                                                                                                                                                                |
-| Server compute  | Supabase Edge Functions          | The only server runtime — RLS-scoped by forwarding the caller's JWT, not a service-role bypass                                                                                                                                      |
-| AI              | OpenRouter (via Edge Function)   | Rota suggestions grounded in real data; key never touches the client                                                                                                                                                                |
-| Media           | ImageKit                         | Real-time image resize/compress over a CDN                                                                                                                                                                                          |
-| Background jobs | `pg_cron` + `pg_net` in Postgres | Four jobs: notification outbox drain (every minute), nightly retention (02:15), health probe (every 5 minutes) and scheduled alerts (`0093`, every 15 minutes). Inngest is fully retired (`0087`): no function, no key, no dispatch |
-| Payments        | Stripe (via Edge Functions)      | Checkout + Billing Portal; secrets never reach the client                                                                                                                                                                           |
-| Monitoring      | Sentry                           | Error + performance tracking with source maps                                                                                                                                                                                       |
-| AI code review  | CodeRabbit                       | PR checks against `docs/RULES.md`                                                                                                                                                                                                   |
-| Hosting         | cPanel (static `dist/`)          | Low cost, no server runtime                                                                                                                                                                                                         |
-
----
+| Layer           | Choice                            | Notes                                                                                                        |
+| --------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Framework       | React 18 and Vite 6               |                                                                                                              |
+| Language        | TypeScript (strict)               | Enforced in CI                                                                                               |
+| Styling         | Tailwind CSS 4                    | Tokens in the `@theme` block of `src/index.css`; there is no `tailwind.config.ts`                            |
+| PWA             | `vite-plugin-pwa` (Workbox)       | Precached app shell, runtime caching, web push via `public/push-sw.js`                                       |
+| Auth and DB     | Supabase (PostgreSQL and RLS)     |                                                                                                              |
+| Server compute  | Supabase Edge Functions           | The only server runtime; contracts in [`docs/API-SPEC.md`](docs/API-SPEC.md)                                 |
+| AI              | OpenRouter, from an Edge Function | The only AI provider; the key never reaches the client                                                       |
+| Background jobs | `pg_cron` and `pg_net`            | Five jobs, listed in [`docs/NOTIFICATIONS-SPEC.md`](docs/NOTIFICATIONS-SPEC.md). Inngest is retired (`0087`) |
+| Payments        | Stripe, from Edge Functions       | Secrets never reach the client                                                                               |
+| Monitoring      | Sentry                            |                                                                                                              |
+| Hosting         | cPanel, static `dist/`            | No server runtime on the origin                                                                              |
 
 ## Quick start
 
 ### 1. Prerequisites
 
-- Node.js **>= 20**
-- npm (or pnpm)
-- [Supabase CLI](https://supabase.com/docs/guides/cli) — needed to deploy any of the
-  eight Edge Functions, to run `supabase db push`, and to run the `db-tests` and
-  `e2e-authenticated` gates locally (both need Docker as well)
+- Node.js **>= 22** (`package.json` engines; CI runs Node 22)
+- npm
+- [Supabase CLI](https://supabase.com/docs/guides/cli), needed to deploy the Edge
+  Functions, to run `supabase db push`, and to run the `db-tests` and
+  `e2e-authenticated` gates locally (both also need Docker)
 
-### 2. Install & configure
+### 2. Install and configure
 
 ```bash
 git clone <your-repo> my-app && cd my-app
@@ -81,175 +76,105 @@ npm install
 cp .env.example .env      # then fill in your keys
 ```
 
+The build must also succeed with no `.env` at all: CI has none, and a missing
+`VITE_*` variable degrades rather than throws.
+
 ### 3. Set up the database
-
-In the Supabase SQL editor, run the migrations **in order**:
-
-```
-supabase/migrations/0001_init.sql
-supabase/migrations/0002_rotaflow.sql
-…
-supabase/migrations/0111_erasure_misses_email.sql   # whatever the last one is today
-```
 
 **Run every file in `supabase/migrations/`, in numeric order** — there are 152, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
-first RLS check. Easier: use the Supabase CLI (`supabase db push`), which applies the
-whole ledger.
+first RLS check. Easier: `supabase db push`, which applies the whole ledger.
 
-Don't hand-count this list: the number above has been wrong twice, because a README
-is the last thing anyone updates. `ls supabase/migrations/*.sql | wc -l` is the answer.
+Don't hand-count this list: `ls supabase/migrations/*.sql | wc -l` is the answer, and
+`npm run check:docs` fails when the figure above drifts.
 
 ### 4. Deploy the AI rota assistant (optional)
-
-The natural-language rota assistant runs as a Supabase Edge Function so its OpenRouter
-key never reaches the browser:
 
 ```bash
 supabase functions deploy ai-rota-assistant --project-ref <your-project-ref>
 supabase secrets set OPENROUTER_API_KEY=... --project-ref <your-project-ref>
 ```
 
-Without this, the feature degrades to a clean "not configured yet" message — nothing
-else in the app depends on it.
-
-**OpenRouter is the only AI provider this project uses.** The weekly plan-drift audit
-(`.github/workflows/plan-drift-audit.yml`) goes through it too, so it needs
-`OPENROUTER_API_KEY` as a **GitHub Actions** secret as well — same variable name, a
-different store from the Supabase secret above. Optionally set an `OPENROUTER_MODEL`
-Actions _variable_ to override the `openai/gpt-4o-mini` default. Without the Actions
-secret the audit does not fail silently; it records a dated `FAILED:` entry in the plan
-doc and turns the run red.
+Without it, the Ask AI tab says it is not configured and nothing else is affected.
+The weekly plan-drift audit also calls OpenRouter, so it needs `OPENROUTER_API_KEY`
+as a **GitHub Actions** secret too: same name, a different store. Edge Functions do
+not deploy on merge; see [`docs/API-SPEC.md`](docs/API-SPEC.md).
 
 ### 5. Develop
 
 ```bash
-npm run dev        # http://localhost:5042  (strictPort — fails loudly if taken)
+npm run dev        # http://localhost:5042  (strictPort: fails loudly if taken)
 ```
 
 ### 6. Verify before shipping
 
 ```bash
-npm run typecheck
-npm run lint
-npm run format:check   # a separate CI gate — green tsc + eslint does not imply this passes
-npm test               # unit suite, pinned to Europe/London (the count is whatever vitest prints — it was written down here as 636 while it was 701)
-npm run build          # emits ./dist
-npm run preview        # smoke-test the production bundle
+npm run typecheck && npm run lint && npm run format:check && npm test
+npm run build && npm run check:bundle
 ```
 
-CI additionally runs a Playwright + axe `e2e` job and a pgTAP `db-tests` job. Neither has
-an npm script; both run from `.github/workflows/ci.yml`.
+The full list of CI jobs and scheduled workflows, and what each one blocks, is one
+table in [`qa/README.md`](qa/README.md).
 
-### 7. Deploy to cPanel
+### 7. Deploy
 
-The server has **no Node** — build locally, ship only the artifacts.
-
-**Target: `https://rotaflow.space`**, its own docroot at `~/rotaflow.space/` on the
-same cPanel account. (RotaFlow ran on a subdomain of a personal domain until
-2026-08-29; that subdomain, its docroot and its DNS have all been removed.)
-
-1. Run `npm run build` (emits `./dist`).
-2. Upload **everything inside `dist/`** plus the repo-root **`.htaccess`** into
-   `~/rotaflow.space/`. The `.htaccess` handles HTTPS, SPA routing, MIME types, and
-   cache/security headers.
-3. Load the site over HTTPS and confirm the install prompt appears.
-
-> ⚠️ The **live** `.htaccess` is the repo file with a Cloudflare origin-lock block
-> prepended on the server. Deploying the repo file alone silently removes that lock
-> and reopens the origin to direct-to-IP requests — see `docs/DEPLOYMENT.md`.
-
-> `VITE_APP_URL` is baked into the bundle at build time and is the auth redirect
-> target, so it must match Supabase → Authentication → URL Configuration (Site URL
-> `https://rotaflow.space`, Redirect URLs `https://rotaflow.space/**`). Rebuild
-> after changing it.
-
-> ⚠️ **Never deploy into a shared docroot** (one that also serves other sites or holds
-> loose `api.php` / `config.php`), and **never mirror-with-delete** without a dry-run
-> first — see **`docs/DEPLOYMENT.md`** for the full, safe playbook (rsync/CI options,
-> exclude lists, backups-outside-the-webroot, and source-map handling).
-
----
+Build locally and ship only `dist/` plus the repo-root `.htaccess` to
+`https://rotaflow.space`. The live `.htaccess` has a Cloudflare origin-lock block
+prepended on the server, so deploying the repo file alone reopens the origin. Read
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) before any deploy: it has the safe
+playbook, the `--keep` flags, rollback and recovery.
 
 ## Available scripts
 
-| Script                     | Does                                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------------- |
-| `npm run dev`              | Start Vite dev server with HMR                                                        |
-| `npm run build`            | Type-check, then build the static PWA to `dist/`                                      |
-| `npm run preview`          | Serve the production build locally                                                    |
-| `npm run typecheck`        | `tsc --noEmit` strict check                                                           |
-| `npm run lint`             | ESLint (zero-warning policy)                                                          |
-| `npm run format`           | Prettier write (covers `docs/**/*.md` too)                                            |
-| `npm run format:check`     | Prettier check — its own CI gate                                                      |
-| `npm test`                 | Vitest unit suite (`src/**` plus pure modules extracted out of Edge Functions)        |
-| `npm run test:watch`       | The same suite, on watch                                                              |
-| `npm run test:coverage`    | Vitest with coverage                                                                  |
-| `npm run lint:fix`         | ESLint with `--fix`                                                                   |
-| `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                                    |
-| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                                  |
-| `npm run check:docs`       | Counts in prose against the tree, and `docs/SAAS.md`'s summary against its rows       |
-| `npm run check:export`     | Every table with an `org_id` is in the organisation export, or excluded with a reason |
+| Script                     | Does                                                                                                                                                                                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run dev`              | Vite dev server on port 5042                                                                                                                                                                                                                                                                                       |
+| `npm run build`            | Type-check, then build the static PWA to `dist/`                                                                                                                                                                                                                                                                   |
+| `npm run preview`          | Serve the production build locally                                                                                                                                                                                                                                                                                 |
+| `npm run typecheck`        | `tsc --noEmit`                                                                                                                                                                                                                                                                                                     |
+| `npm run lint`             | ESLint, zero warnings (also enforces explicit return types)                                                                                                                                                                                                                                                        |
+| `npm run lint:fix`         | ESLint with `--fix`                                                                                                                                                                                                                                                                                                |
+| `npm run format`           | Prettier write over `src/**` and `docs/**/*.md`                                                                                                                                                                                                                                                                    |
+| `npm run format:check`     | Prettier check over `src/**` only. Documentation formatting is not gated in CI                                                                                                                                                                                                                                     |
+| `npm test`                 | Vitest unit suite, pinned to `Europe/London`                                                                                                                                                                                                                                                                       |
+| `npm run test:watch`       | The same, on watch                                                                                                                                                                                                                                                                                                 |
+| `npm run test:coverage`    | Vitest with coverage                                                                                                                                                                                                                                                                                               |
+| `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                                                                                                                                                                                                                                                                 |
+| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                                                                                                                                                                                                                                                               |
+| `npm run check:docs`       | Counts and toolchain facts in prose against the tree, the register summary against its rows, and every relative link or `docs/` and `qa/` path resolves                                                                                                                                                            |
+| `npm run check:export`     | Every table with an `org_id` is in the organisation export, or excluded with a reason                                                                                                                                                                                                                              |
+| `npm run og:image`         | Regenerates `public/og-image.png`, the 1200x630 link-preview card, with Playwright. No arguments. Run it by hand when the card's words or tokens change; the output is committed                                                                                                                                   |
+| `npm run load:test`        | Seeds 20 sites, 250 staff, 10,000 shifts and 50,000 clock events into a **local** stack and times the workforce reads. Needs `API_URL` and `SERVICE_ROLE_KEY` from `supabase status -o env`; refuses any host but `127.0.0.1`, `localhost` or `::1`. Results: [`qa/PERFORMANCE-AUDIT.md`](qa/PERFORMANCE-AUDIT.md) |
 
-Two more run against live state and so are not npm scripts:
-`npx playwright test` (40 screens, WCAG, light and dark) and `supabase test db`
-(pgTAP — the only gate that can catch an RLS regression).
-
-The test count is deliberately not printed here. It was "636" for long enough to
-be wrong, and a number in a README that nothing checks is a number that drifts.
-
----
+Two more run against live services rather than as npm scripts:
+`npx playwright test` (42 screens rendered and scanned for WCAG A and AA) and
+`supabase test db` (pgTAP, the only gate that can catch an RLS regression).
 
 ## Project layout
 
 ```
 rotaflow/
-├── .env.example          # required env vars (copy to .env)
-├── .htaccess             # cPanel: HTTPS, SPA routing, caching
-├── AGENTS.md             # agent entry point, every harness — start here
-├── CLAUDE.md             # the project directives (canonical for project facts)
-├── CODEX.md              # Codex mapping; what differs from Claude Code
-├── .agent/               # GEE OS routing contract + the task-contract template
-├── index.html            # app entry + font preconnect
-├── vite.config.ts        # build + PWA/Workbox config
-├── docs/                 # SAAS (the register), PRD, DESIGN, ARCHITECTURE, SCHEMA, RULES, HOOKS
-├── public/               # manifest icons, offline.html, robots.txt
+├── AGENTS.md            # agent entry point, every harness
+├── CLAUDE.md            # project constraints and commands
+├── CODEX.md             # Codex mapping
+├── CHANGELOG.md         # one entry per merged pull request
+├── KNOWN-ISSUES.md      # limitations a customer can see
+├── .agent/              # GEE OS routing, MCP profile, task-contract template
+├── docs/                # the Standard profile documents; index in docs/README.md
+├── qa/                  # audits, CI table, launch checklist
+├── public/              # icons, fonts, push service worker, robots.txt, og-image.png
+├── scripts/             # CI checks, load test, og-image generator
 ├── supabase/
-│   ├── migrations/       # SQL schema + RLS policies
-│   └── functions/        # Edge Functions (Deno) — e.g. ai-rota-assistant
+│   ├── migrations/      # SQL schema and RLS, applied in order
+│   ├── functions/       # Edge Functions (Deno)
+│   └── tests/database/  # pgTAP
+├── e2e/                 # Playwright
 └── src/
-    ├── assets/           # static assets imported by code
-    ├── components/       # UI (ErrorBoundary, InstallPrompt, ...)
-    ├── context/          # Auth / Theme / Org providers
-    ├── hooks/            # usePWAInstall, useOnlineStatus, useOrg, ...
-    ├── lib/              # SDK clients (supabase, sentry, imagekit, env)
-    ├── pages/            # route views
-    ├── services/         # typed Supabase data access
-    └── types/            # shared + generated DB types
+    ├── components/  context/  hooks/  lib/  pages/  services/  types/
 ```
 
-Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-
----
-
-## Documentation index
-
-- [`docs/SAAS.md`](docs/SAAS.md) — **the capability register: what is built, partial, broken or missing.** Start here
-- [`docs/PRD.md`](docs/PRD.md) — scope, MVP features, success metrics
-- [`docs/DESIGN.md`](docs/DESIGN.md) — visual language & tokens
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system + folder design
-- [`docs/SCHEMA.md`](docs/SCHEMA.md) — Postgres tables & RLS
-- [`docs/RULES.md`](docs/RULES.md) — coding standards
-- [`docs/HOOKS.md`](docs/HOOKS.md) — custom hook contracts
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deploy playbook, and the traps that have bitten
-- [`docs/DATA_LIFECYCLE.md`](docs/DATA_LIFECYCLE.md) — retention, erasure, residency
-- [`docs/SCREENS.md`](docs/SCREENS.md) — every screen, against its design reference
-- [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) — the success-metric taxonomy and what computes each
-- [`docs/QA-AUDIT-REPORT.md`](docs/QA-AUDIT-REPORT.md) — dated evidence of the last full audit
-- [`docs/OFFLINE-SPEC.md`](docs/OFFLINE-SPEC.md) — what actually works without a network, feature by feature
-- [`docs/PWA-RELEASE-GATES.md`](docs/PWA-RELEASE-GATES.md) — the release gate, with recorded statuses and a release decision
-- [`docs/GEE-OS.md`](docs/GEE-OS.md) — how agent work is routed here; `.agent/PROJECT.yml` is the contract
+Full details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## License
 
-MIT — do whatever you want, no warranty.
+MIT. Do whatever you want; no warranty.

@@ -1,5 +1,5 @@
 /**
- * The dashboard's "Needs you" feed (`docs/ORGANISATION_WORKSPACE.html`'s
+ * The dashboard's "Needs you" feed (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.dashboard`) lists a missed clock-in alongside pending leave and
  * swaps. Nothing computed one before this: `ClockInPage.tsx` shows a
  * person their own stage, but nothing told a manager someone else's shift

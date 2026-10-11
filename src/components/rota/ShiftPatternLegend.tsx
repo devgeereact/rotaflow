@@ -67,7 +67,7 @@ export function ShiftPatternLegend({
         onClick={() => onSelect('all')}
         aria-pressed={activeId === 'all'}
         className={cn(
-          // 36px, the compact size in docs/DESIGN.md §5. These filter chips
+          // 36px, the compact size in docs/ACCESSIBILITY.md. These filter chips
           // were 30px tall, which no rule allowed.
           'inline-flex min-h-9 items-center rounded-lg border px-2.5 text-xs font-medium transition-colors',
           activeId === 'all'

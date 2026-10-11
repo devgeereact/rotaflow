@@ -68,3 +68,7 @@ supabase test db           # if RLS, a policy or an RPC changed — needs Docker
 Outcome · changes made · evidence gathered · **what was not verified** · remaining
 risks · recommended next action. The fourth item is the one that gets dropped and
 the one that matters most.
+
+- Docs updated: _each owning document changed, from the table in
+  `docs/README.md`, or one line `Docs: no impact (the reason, in words)`. See
+  "Documentation stays current" in `AGENTS.md`._

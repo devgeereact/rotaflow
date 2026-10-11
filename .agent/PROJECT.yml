@@ -12,7 +12,7 @@
 #
 # What this file is NOT: a second source of truth. Every project fact lives in
 # docs/SAAS.md and the reference documents it links. Nothing below restates a
-# rule that CLAUDE.md or docs/RULES.md already carries. See docs/GEE-OS.md for
+# rule that CLAUDE.md or docs/RULES.md already carries. See docs/README.md#how-gee-os-is-applied for
 # the adoption record, the conflicts it resolves and the parts deliberately
 # left out.
 
@@ -45,28 +45,45 @@ exclusions:
   - 'modes: BOOK, FICTION, NONFICTION, ACADEMIC, LEARNING, EDITING'
   - 'workflows: NEW-PROJECT-BOOTSTRAP, NEW-APPLICATION, BOOK-CREATION'
   - 'workflows: PROJECT-RECOVERY' # the codebase is coherent; recovery is not the frame
-  - 'templates/new-project' # would create a sixth plan of record; see docs/GEE-OS.md
+  # templates/new-project: its placeholder documents are not scaffolded. The
+  # Standard profile's file names were adopted on 2026-10-10 by merging the
+  # existing documents into them; see docs/README.md, How GEE OS is applied.
+  - 'templates/new-project placeholder documents'
   - 'systems/website' # this is an application with a marketing surface, not a website
   - 'audits/WEBSITE-LAUNCH' # superseded by the PWA gate
 
+documentation:
+  # GEE OS documentation profile, adopted 2026-10-10. See
+  # ~/.agents/gee-os/templates/DOCUMENTATION-PROFILES.md.
+  profile: 'standard'
+  index: 'docs/README.md' # the Fact | Owning document table
+  sync_rule: 'AGENTS.md' # Documentation stays current
+
 sources_of_truth:
   # One fact, one home. Where two files could answer a question, the winner is
-  # named here so an agent does not average them.
+  # named here so an agent does not average them. The full map is the table
+  # in docs/README.md; these are the ones an agent reaches for first.
   plan_of_record: 'docs/SAAS.md'
   agent_directives: 'CLAUDE.md' # AGENTS.md is a pointer to it, deliberately
   coding_standards: 'docs/RULES.md'
   architecture: 'docs/ARCHITECTURE.md'
-  data_and_rls: 'docs/SCHEMA.md'
-  offline_behaviour: 'docs/OFFLINE-SPEC.md'
-  release_evidence: 'docs/PWA-RELEASE-GATES.md'
+  data_and_rls: 'docs/DATA-MODEL.md'
+  offline_behaviour: 'docs/ARCHITECTURE.md#offline-and-pwa'
+  hook_contracts: 'docs/ARCHITECTURE.md#hook-contracts'
+  api_contracts: 'docs/API-SPEC.md'
+  notifications: 'docs/NOTIFICATIONS-SPEC.md'
+  screens: 'docs/UX-SPEC.md'
+  design: 'docs/DESIGN-SYSTEM.md'
+  accessibility: 'docs/ACCESSIBILITY.md'
+  ci_and_scheduled_checks: 'qa/README.md'
+  release_evidence: 'qa/LAUNCH-CHECKLIST.md'
   deployment: 'docs/DEPLOYMENT.md'
-  retention_and_gdpr: 'docs/DATA_LIFECYCLE.md'
+  retention_and_gdpr: 'docs/SECURITY.md'
+  known_issues: 'KNOWN-ISSUES.md'
+  changelog: 'CHANGELOG.md'
 
 mcp_profile:
-  # MCP tools supply live evidence. They do not widen authority: availability is
-  # not permission, and a read that is routine does not make the matching write
-  # routine. See ~/.agents/gee-os/mcp/MCP-SAFETY.md.
-  reads: 'permitted — supabase (list_tables, execute_sql SELECT, get_advisors, query_logs), sentry, context7'
-  mutations: 'each one separately authorised by the owner, per task, naming the object'
-  never: 'supabase apply_migration against production from a session; migrations land through a merged PR'
-  environment_check: 'confirm the project ref before any read that could touch a second project'
+  # Moved to its own file on 2026-10-11 (first drafted 2026-10-07), in the
+  # GEE OS blueprint's shape, so the routing contract and the MCP authority
+  # position can change independently. The rules did not change.
+  file: '.agent/MCP-PROFILE.yml'

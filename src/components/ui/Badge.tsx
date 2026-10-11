@@ -27,7 +27,7 @@ interface BadgeProps {
 }
 
 /**
- * Opaque washes, not `success/10`. See docs/DESIGN.md §2. The alpha versions
+ * Opaque washes, not `success/10`. See docs/DESIGN-SYSTEM.md §2. The alpha versions
  * these replace resolved against whatever sat behind them, so the same pill
  * rendered as three different shades across a card, a table row and the canvas.
  */
@@ -69,7 +69,7 @@ const TONES: Record<BadgeTone, string> = {
 /**
  * Small status pill, "Published", "Live", "Pending" and the like.
  *
- * Status is never colour alone (docs/DESIGN.md §5): callers pass a label, and
+ * Status is never colour alone (docs/ACCESSIBILITY.md): callers pass a label, and
  * an icon or `dot` where the reference shows one.
  */
 export function Badge({

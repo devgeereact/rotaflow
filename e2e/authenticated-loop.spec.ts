@@ -27,7 +27,7 @@ import { expect, test } from '@playwright/test';
  *     built around;
  *   * `OrgContext` reading a membership back through RLS as the user.
  *
- * It is also the exact path `docs/QA-AUDIT-REPORT.md` found broken at step 1:
+ * It is also the exact path `qa/FUNCTIONAL-AUDIT.md` found broken at step 1:
  * "a completely new customer cannot get past step 1 of setting up their
  * organisation today". Nothing in CI has been able to catch that recurring.
  *

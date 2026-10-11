@@ -26,7 +26,7 @@ interface CalloutProps {
  * "revenue is not built", and a caveat that reads like body copy is a caveat
  * nobody notices.
  *
- * The washes are the opaque semantic tokens (docs/DESIGN.md §2), not an alpha
+ * The washes are the opaque semantic tokens (docs/DESIGN-SYSTEM.md §2), not an alpha
  * of the solid, so a callout is the same colour on a card as it is on the
  * canvas.
  */

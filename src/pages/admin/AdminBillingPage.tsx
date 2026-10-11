@@ -478,7 +478,7 @@ export function AdminBillingPage(): JSX.Element {
             {/* `min-w-0`: a grid item defaults to `min-width: auto`, so this
                 track refused to shrink below the invoice table's min-content
                 width and pushed the whole page sideways on a phone — 477px
-                against a 390px viewport (docs/DESIGN.md §7). The
+                against a 390px viewport (docs/DESIGN-SYSTEM.md §7). The
                 `ScrollRegion` inside can only scroll what it is allowed to be
                 narrower than. */}
             <Panel className="min-w-0 lg:col-span-2" title="Recent invoices" flush>

@@ -29,14 +29,14 @@ import type { Availability, StaffProfile } from '@/types';
 
 /**
  * `/app/availability`. Real data wiring; see AvailabilityView for the markup
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.availability`).
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.availability`).
  *
  * One screen for everyone rather than a role split: a manager gets the same
  * "your pattern" + "exceptions" cards as anyone else, plus a "Team
  * availability" card. No workspace tab bar to Team/StaffPage.tsx any more —
  * dropped deliberately, matching the reference's own nav (its own sidebar
- * row, no shared tab strip), unlike `teamWorkspaceTabs`'s other half, which
- * still links from Team's own page.
+ * row, no shared tab strip). Team's own page has no tab strip back here
+ * either; the unused `teamWorkspaceTabs` helper that described one is gone.
  */
 export function AvailabilityPage(): JSX.Element {
   const { orgId } = useOrg();

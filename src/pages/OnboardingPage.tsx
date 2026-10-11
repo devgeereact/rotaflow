@@ -392,7 +392,7 @@ export function OnboardingPage(): JSX.Element {
 
   // Restore step 1's draft once, as soon as we know who's typing — a refresh
   // mid-form (e.g. while troubleshooting a "could not create" error, BUG-002
-  // in docs/QA-AUDIT-REPORT.md) must not throw away what was already typed.
+  // in qa/FUNCTIONAL-AUDIT.md) must not throw away what was already typed.
   //
   // Guarded by a ref, not just the `[user, orgId]` deps: `AuthContext`'s
   // `user` is a new object reference on every `onAuthStateChange` fire (token

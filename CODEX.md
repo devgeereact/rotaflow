@@ -9,29 +9,36 @@ duplicates either; it exists only to map the shared contract onto Codex.
 | You need                        | Read                                                            |
 | ------------------------------- | --------------------------------------------------------------- |
 | The project directives          | `CLAUDE.md`                                                     |
-| Routing: mode, workflows, MCP   | `.agent/PROJECT.yml`                                            |
+| Routing: mode, workflows        | `.agent/PROJECT.yml`                                            |
+| MCP position                    | `.agent/MCP-PROFILE.yml`                                        |
 | This task's scope and authority | `.agent/CURRENT-TASK.md`, when present                          |
 | What exists and what does not   | `docs/SAAS.md` — the register, and the only place status is set |
-| How work is routed here         | `docs/GEE-OS.md`                                                |
+| How work is routed here         | `docs/README.md#how-gee-os-is-applied`                          |
+| Which document owns which fact  | `docs/README.md`, "Fact \| Owning document"                     |
 | The GEE OS package itself       | `~/.agents/gee-os` on this machine, or `$gee-os` if you have it |
 
 ## What differs from Claude Code
 
 - **Subagents.** `.claude/agents/` is Claude Code's mechanism and Codex cannot
   load it. Two agents are defined there: `gee-os` (the router, whose whole
-  content is `docs/GEE-OS.md` plus the loop) and `rotaflow-qa-auditor` (whose
-  methodology is `docs/Working-Agent.md`). Both are readable as plain documents —
+  content is `docs/README.md#how-gee-os-is-applied` plus the loop) and `rotaflow-qa-auditor` (whose
+  methodology is `qa/README.md`). Both are readable as plain documents —
   follow them directly rather than trying to dispatch them.
 - **Skills.** The gstack skills named in `.agent/PROJECT.yml` as specialists are
   Claude-side. Where one is unavailable, do the work directly and say in the
   report that the specialist was not used.
 - **MCP.** `.codex/config.toml` is gitignored because it holds a machine-specific
   endpoint, so a fresh clone has no Codex MCP configuration at all. Nothing in
-  this project depends on that; the shared MCP position in `.agent/PROJECT.yml`
+  this project depends on that; the shared MCP position in `.agent/MCP-PROFILE.yml`
   applies whichever servers happen to be connected, and a server being connected
   never authorises a mutation through it.
 - **Commit signing** is configured globally on this machine and applies to Codex
   commits identically.
+
+- **Documentation sync.** The rule is "Documentation stays current" in
+  `AGENTS.md`. Claude Code also gets a `Stop` hook that raises it before a
+  session ends; Codex has no equivalent, so check it yourself before closing.
+  CI's `Docs impact` step applies to both.
 
 ## What is identical
 

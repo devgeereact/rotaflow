@@ -293,7 +293,7 @@ function useCrumbs(items: readonly AdminNavItem[]): string | null {
  *
  * This console used to tint every surface `danger`, so that a screenshot of
  * cross-tenant data could not be mistaken for a tenant's own. It was traded for
- * the reference's treatment (`docs/PLATFORM_CONSOLE.html`): `primary` for
+ * the reference's treatment (`docs/design/PLATFORM_CONSOLE.html`): `primary` for
  * interaction, `danger` reserved for the environment badge and for destructive
  * actions. Spending the alarm colour on *navigation* left nothing louder for
  * "suspend this organisation", and a console that is red all over is a console

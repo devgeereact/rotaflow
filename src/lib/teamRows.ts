@@ -1,5 +1,5 @@
 /**
- * View model for the Team directory (`docs/ORGANISATION_WORKSPACE.html`'s
+ * View model for the Team directory (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.team`). Pure: takes rows plus a reference date and returns
  * pre-formatted strings, never touches the SDK.
  */

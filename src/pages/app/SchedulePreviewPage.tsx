@@ -203,7 +203,7 @@ if (WEEK_DATES[4]) {
  * Design-loop preview only, at `/schedule-preview`. The real `/app/schedule`
  * needs a live Supabase session and a seeded organisation, neither of which a
  * screenshot tool has. Renders the real `ManagerSchedule`/`StaffSchedule`
- * against fixed mock data shaped to match `docs/ORGANISATION_WORKSPACE.html`'s
+ * against fixed mock data shaped to match `docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.schedule`. `?role=staff` switches branch.
  */
 /**

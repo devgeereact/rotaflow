@@ -91,7 +91,7 @@ const ROWS: TimesheetDisplayRow[] = [
  * `/app/timesheets` needs a live Supabase session and a seeded organisation,
  * neither of which a screenshot tool has. Renders the real
  * `ManagerTimesheets`/`StaffTimesheets` against fixed mock data shaped to
- * match `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.timesheets`.
+ * match `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.timesheets`.
  * `?role=staff` switches branch.
  */
 export function TimesheetsPreviewPage(): JSX.Element {

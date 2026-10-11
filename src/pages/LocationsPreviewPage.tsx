@@ -43,7 +43,7 @@ const ROWS: LocationRow[] = [
  * Design-loop preview only. `/app/locations` needs a real Supabase session
  * and a seeded organisation, neither of which a screenshot tool has.
  * Renders the real `LocationsView` against fixed mock data shaped to match
- * `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`.
+ * `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`.
  */
 export function LocationsPreviewPage(): JSX.Element {
   const [rows] = useState(ROWS);

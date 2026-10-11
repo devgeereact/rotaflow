@@ -14,7 +14,7 @@ interface DeclineLeaveModalProps {
 }
 
 /**
- * Collects the mandatory decline reason (`docs/ORGANISATION_WORKSPACE.html`'s
+ * Collects the mandatory decline reason (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * inline "Decline" button, given a reason field here it never draws — a
  * decline with no reason recorded anywhere is worse than one extra dialog).
  * `leave_requests` has no column of its own for it, so the reason is only
@@ -48,7 +48,7 @@ export function DeclineLeaveModal({
             replaced by it: "recorded in the audit trail" is the context that
             makes the length requirement make sense, and it was disappearing
             exactly when the person needed it. `Field` fixes that order for
-            every form (docs/DESIGN.md §6). */}
+            every form (docs/DESIGN-SYSTEM.md §6). */}
         <Field
           label="Reason"
           required

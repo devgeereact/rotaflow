@@ -83,7 +83,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'When an employer uses RotaFlow to schedule its staff, the employer decides what is held and why. They are the controller and we are the processor: we act on their instructions. If you are a member of staff asking why your shifts, your clock-in locations or your leave are recorded, that question belongs to your employer first. We will help them answer it.',
       'When you visit this website, create an account, pay for a subscription, write to support, or send us a crash report, we decide what happens to that information. For those we are the controller, and everything below applies to us directly.',
     ],
-    evidence: 'src/lib/legalFacts.ts (PRIVACY_FACTS), docs/DATA_LIFECYCLE.md',
+    evidence: 'src/lib/legalFacts.ts (PRIVACY_FACTS), docs/SECURITY.md',
   },
   {
     id: 'what-we-collect',
@@ -106,7 +106,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'Notifications: which messages were sent to you and whether they arrived, and if you turn on push notifications, the address your browser gives us for that device.',
     ],
     evidence:
-      'docs/SCHEMA.md, supabase/migrations/0002_rotaflow.sql, src/components/staff/*, src/pages/app/ClockInPage.tsx',
+      'docs/DATA-MODEL.md, supabase/migrations/0002_rotaflow.sql, src/components/staff/*, src/pages/app/ClockInPage.tsx',
   },
   {
     id: 'contact-form',
@@ -148,7 +148,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     outstanding:
       'Holding special category data needs a condition under Article 9 as well as a basis under Article 6, and none has been identified. The document type field is free text, so immigration and criminal-record adjacent information can be entered where nobody planned for it — whether that needs a controlled list rather than a text box is a product decision with a legal edge.',
     evidence:
-      'supabase/migrations/0002_rotaflow.sql, supabase/functions/ai-rota-assistant/index.ts, docs/DATA_LIFECYCLE.md',
+      'supabase/migrations/0002_rotaflow.sql, supabase/functions/ai-rota-assistant/index.ts, docs/SECURITY.md',
   },
   {
     id: 'other-people',
@@ -203,7 +203,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'Every organisation’s data is separated in the database itself rather than by application code, so a query cannot reach another tenant’s rows even if the interface is wrong. The site is served over TLS only, loads no third-party script, and the server refuses requests that do not arrive through the content network. The audit log is append-only, enforced by the database.',
       'One thing should be said plainly rather than omitted: there are no backups and no point-in-time recovery on the production database. That is a cost decision, not an oversight, and it has a consequence for you as well as for us — anything deleted, including anything deleted because you asked, is gone immediately and completely, and cannot be restored by anybody.',
     ],
-    evidence: 'docs/SCHEMA.md §5, docs/DATA_LIFECYCLE.md, .htaccess',
+    evidence: 'docs/DATA-MODEL.md §5, docs/SECURITY.md, .htaccess',
   },
   {
     id: 'rights',

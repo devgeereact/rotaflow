@@ -3,7 +3,7 @@
  *
  * ## Why this is not the rota grid's palette
  *
- * The obvious move was to reuse `shift-*` from `tailwind.config.ts`. The
+ * The obvious move was to reuse `shift-*` from the `@theme` tokens (then `tailwind.config.ts`). The
  * product already has eight named hues and they look right together. Run
  * against the six checks, that set **fails** as a chart palette: clay and
  * violet sit at ΔE 14.1 for *normal* colour vision (below the 15 floor, so

@@ -7,12 +7,13 @@ name: Plan drift audit
 # doing the check by hand: read commits, read files, verify claims, don't
 # just grep for keywords.
 #
-# On success: appends a dated entry to the plan doc and pushes it to the
-# `plan-drift-audit/weekly` branch, with a one-click "open the PR" link in
-# the job summary — never straight to main, matching this project's git
-# safety conventions. (It pushes rather than opening the PR itself because
-# Actions-created PRs need a repo-wide permission this project does not
-# grant; see the publish-branch job.)
+# On success: appends a dated entry to the plan doc, pushes it to the
+# `plan-drift-audit/weekly` branch and opens (or updates) a pull request
+# from that branch to main, so a person reviews and merges it. Never
+# straight to main. Merging matters: `check-staleness` reads the doc on the
+# default branch, so an audit nobody merges looks exactly like no audit.
+# If the repository does not allow Actions to create pull requests, the
+# job warns and falls back to a one-click compare link (see publish-branch).
 # On failure: appends a FAILED marker instead of staying silent, because a
 # missed run must be as visible as a completed one.
 # Staleness: the `check-staleness` job runs independently of whether the
@@ -22,7 +23,11 @@ name: Plan drift audit
 # Two-job split is deliberate, not incidental: `audit` (the AI step) holds
 # only `contents: read` — it is structurally incapable of pushing or opening
 # a PR, even if a future prompt edit told it to. Only `publish-branch`
-# (deterministic, no AI) holds `contents: write`. Least privilege for
+# (deterministic, no AI) holds `contents: write` and `pull-requests: write`.
+# (`audit` used to carry `id-token: write` as well, a leftover from the
+# first version of this workflow, which used an OIDC-authenticated action.
+# Nothing has requested an OIDC token since the move to OpenRouter, so the
+# grant was removed on 2026-10-11 and this comment is now true.) Least privilege for
 # the AI-driven half, same principle as RLS being the enforcement boundary
 # instead of client-side checks elsewhere in this project.
 #
@@ -76,7 +81,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
       audit_ok: ${{ steps.outcome.outputs.ok }}
@@ -197,31 +201,30 @@ jobs:
       - name: Fail the job if the audit did not complete
         if: always() && steps.outcome.outputs.ok != 'true'
         run: |
-          echo "::error::Plan-drift audit did not complete. A FAILED entry has been written to $PLAN_DOC and will appear on the pushed audit branch."
+          echo "::error::Plan-drift audit did not complete. A FAILED entry has been written to $PLAN_DOC and will appear on the audit branch and its pull request."
           exit 1
 
   publish-branch:
-    name: Publish audit branch
+    name: Publish audit branch and pull request
     needs: audit
     # `always()` is load-bearing: without it a failed `audit` job skips this
     # one, which is exactly how the FAILED marker used to get thrown away.
     if: always() && needs.audit.outputs.changed == 'true'
     runs-on: ubuntu-latest
-    # `contents: write` only. This job pushes a branch; it does not open a
-    # pull request, so it does not need `pull-requests: write`.
+    # `contents: write` to push the branch, `pull-requests: write` to open or
+    # update the pull request. No AI runs in this job.
     #
-    # Why not open one: creating a PR from Actions requires the repository
-    # setting "Allow GitHub Actions to create and approve pull requests"
-    # (`can_approve_pull_request_reviews`), which is off here and grants
-    # every workflow in the repo that ability, not just this one. On a public
-    # repo that is a wider grant than one weekly docs job warrants. The first
-    # real run failed on exactly this:
+    # Opening the PR ALSO needs the repository setting "Allow GitHub Actions
+    # to create and approve pull requests". It was off when this workflow
+    # first ran, and that run failed with:
     #   ##[error]GitHub Actions is not permitted to create or approve pull requests.
-    # So the branch is pushed and the job summary carries a one-click link to
-    # open the PR. Same review gate, same visibility, no new permission, and
-    # `main` is still never written directly.
+    # So the PR step does not fail the job when that happens: the branch is
+    # still pushed, the job warns, and the summary carries the compare link.
+    # Turning the setting on is the owner's decision; it applies to every
+    # workflow in the repository, not just this one.
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
 
@@ -243,9 +246,9 @@ jobs:
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          # Force-update a single well-known branch, matching the previous
-          # behaviour (`branch:` + `delete-branch: true`): the newest audit
-          # replaces the last one rather than accumulating branches.
+          # Force-update a single well-known branch: the newest audit replaces
+          # the last one rather than accumulating branches, and an open pull
+          # request from it picks the new commit up automatically.
           git checkout -q -B "$AUDIT_BRANCH"
           git add -- "$PLAN_DOC"
           git commit -q -m 'chore: weekly plan-drift audit'
@@ -254,8 +257,55 @@ jobs:
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           echo "Pushed $AUDIT_BRANCH."
 
+      - name: Open or update the pull request
+        id: pr
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.repository.default_branch || 'main' }}
+          AUDIT_OK: ${{ needs.audit.outputs.audit_ok }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          DAY=$(date -u +%Y-%m-%d)
+          if [ "$AUDIT_OK" = 'true' ]; then
+            TITLE="chore: weekly plan-drift audit ($DAY)"
+          else
+            TITLE="chore: weekly plan-drift audit FAILED ($DAY)"
+          fi
+          BODY="Automated re-audit of $PLAN_DOC from $RUN_URL.
+
+          Review each correction against the code before merging. Merging is what makes this entry visible to the staleness check, which reads the doc on $BASE.
+
+          Evidence: generated by scripts/plan-drift-audit.mjs, which applies a correction only where it matches the document exactly once. NOT TESTED: whether each correction is true. That is the reviewer's job.
+
+          Docs: this pull request is itself the documentation update."
+
+          existing=$(gh pr list --head "$AUDIT_BRANCH" --base "$BASE" --state open \
+            --json number --jq '.[0].number // empty' 2>/dev/null || true)
+
+          if [ -n "$existing" ]; then
+            # The force-push above already put the new commit on this PR.
+            if gh pr edit "$existing" --title "$TITLE" --body "$BODY" >/dev/null; then
+              echo "url=$(gh pr view "$existing" --json url --jq .url)" >> "$GITHUB_OUTPUT"
+              echo "Updated pull request #$existing."
+            else
+              echo "::warning::Pushed $AUDIT_BRANCH, which updates PR #$existing, but could not edit its title or body."
+            fi
+            exit 0
+          fi
+
+          if url=$(gh pr create --base "$BASE" --head "$AUDIT_BRANCH" --title "$TITLE" --body "$BODY"); then
+            echo "url=$url" >> "$GITHUB_OUTPUT"
+            echo "Opened $url"
+          else
+            echo "::warning::Could not open the pull request. Most likely the repository setting 'Allow GitHub Actions to create and approve pull requests' is off. The branch is pushed; open the PR from the link in the job summary."
+          fi
+
       - name: Summarise
         if: always()
+        env:
+          PR_URL: ${{ steps.pr.outputs.url }}
         run: |
           {
             echo "## Weekly plan-drift audit"
@@ -269,9 +319,13 @@ jobs:
             if [ "${{ steps.push.outputs.pushed }}" = 'true' ]; then
               echo "Branch \`$AUDIT_BRANCH\` has been pushed."
               echo
-              echo "**[→ Open the pull request](https://github.com/${{ github.repository }}/compare/${{ github.event.repository.default_branch || 'main' }}...$AUDIT_BRANCH?expand=1)**"
-              echo
-              echo "This workflow deliberately does not open the PR itself — see the job's comment in the workflow file."
+              if [ -n "$PR_URL" ]; then
+                echo "**[→ Review the pull request]($PR_URL)**"
+              else
+                echo "The pull request could not be opened automatically (see the warning in the log)."
+                echo
+                echo "**[→ Open the pull request](https://github.com/${{ github.repository }}/compare/${{ github.event.repository.default_branch || 'main' }}...$AUDIT_BRANCH?expand=1)**"
+              fi
               echo
               echo "> Merging is what makes the log entry visible to the staleness check, which reads the doc on the default branch. Leaving audits unmerged will eventually trip that check."
               echo

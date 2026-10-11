@@ -56,7 +56,7 @@ export interface ManagerTimesheetsProps {
 }
 
 /**
- * The manager's Timesheets (`docs/ORGANISATION_WORKSPACE.html`'s
+ * The manager's Timesheets (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.timesheets` manager branch): today's attendance against the plan,
  * real hours from clock events rather than the rota. "Approve week" and the
  * per-row Approve both approve a *week*, the only grain `timesheets` actually

@@ -43,7 +43,7 @@ function toInsert(orgId: string, values: LocationFormValues): LocationInsert {
 }
 
 /**
- * `/app/locations` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`).
+ * `/app/locations` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`).
  *
  * The reference's own "Departments" and "Minimum cover" card buttons are
  * placeholders (`onclick="toast(...)"`); this app has real screens behind

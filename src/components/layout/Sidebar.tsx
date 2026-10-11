@@ -20,8 +20,8 @@ const LINK_BASE =
 const LINK_INACTIVE =
   'text-content-muted hover:bg-primary-wash hover:text-content dark:text-content-muted-dark dark:hover:text-content-dark';
 // Solid fill, not the earlier soft-tint idiom (`bg-primary/10 text-primary dark:text-primary-ink-dark`):
-// see docs/DESIGN.md §6, "Sidebar nav, active item" for the 2026-08-06 change
-// against `docs/ORGANISATION_WORKSPACE.html`.
+// see docs/DESIGN-SYSTEM.md §6, "Sidebar nav, active item" for the 2026-08-06 change
+// against `docs/design/ORGANISATION_WORKSPACE.html`.
 const LINK_ACTIVE = 'bg-primary text-primary-fg';
 
 function NavList({

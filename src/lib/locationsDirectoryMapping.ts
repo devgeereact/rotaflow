@@ -1,6 +1,6 @@
 /**
  * Maps Supabase rows onto the `/app/locations` view model
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`). Pure
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.locations`). Pure
  * functions, no network, no React, so the real page and the design-loop
  * preview render exactly the same component tree.
  */

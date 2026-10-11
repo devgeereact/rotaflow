@@ -27,7 +27,7 @@
     value falls between `background-dark` and `surface-dark` so the
     rail recedes and the content column comes forward. Named
     separately so restyling the rail never restyles every nested
-    panel. From docs/PLATFORM_CONSOLE.html.
+    panel. From docs/design/PLATFORM_CONSOLE.html.
   */
   --color-surface-rail: #fafbfc;
   --color-surface-rail-dark: #0e1729;
@@ -45,7 +45,7 @@
     Opaque hover/selected fill, for the same reason the status washes
     are opaque: `primary/10` over a card and over the canvas are two
     different colours, so a hovered row changed shade depending on
-    what it sat on. From docs/PLATFORM_CONSOLE.html.
+    what it sat on. From docs/design/PLATFORM_CONSOLE.html.
   */
   --color-primary-wash: #eef3fd;
   --color-primary-wash-dark: #182848;
@@ -140,7 +140,7 @@
     so a pill reads identically wherever it is placed, and the dark pair
     is a separate value rather than an inversion (a light wash on
     `surface-dark` blows out). Sampled from the platform console
-    reference, docs/PLATFORM_CONSOLE.html.
+    reference, docs/design/PLATFORM_CONSOLE.html.
   */
   /* published / valid / confirmed / available */
   --color-success: #1ea06b;
@@ -236,7 +236,7 @@
 
     The INKS are deliberately NOT the sampled values. Measured against
     their own wash, the reference's inks land at 4.11 / 3.53 / 4.17 : 1 —
-    under the 4.5:1 DESIGN.md §5 requires, on the densest text on the
+    under the 4.5:1 DESIGN-SYSTEM.md §5 requires, on the densest text on the
     screen. Each `-fg` is the sampled hue darkened just far enough to
     clear 4.5 (now 4.67 / 4.67 / 4.61); at 12px the shift is not visible
     side by side. `-fg-dark` are brightened for the dark washes, where
@@ -260,7 +260,7 @@
   --color-avail-pref-fg-dark: #9db8fd;
 
   /*
-    Job-title palette (12) — docs/DESIGN.md §2b.
+    Job-title palette (12) — docs/DESIGN-SYSTEM.md §2b.
 
     A SEPARATE family from `shift`, and the separation is the point. A
     chip on the rota can carry two facts at once: what kind of shift it
@@ -346,7 +346,7 @@
   --color-role-cocoa-ink-dark: #a9807f;
 
   /*
-    Shift-type chip palette (8) — see docs/DESIGN.md §2. Same in both
+    Shift-type chip palette (8) — see docs/DESIGN-SYSTEM.md §2. Same in both
     themes; org shift_types.colour should be seeded from these.
   */
   --color-shift-clay: #e28273;
@@ -437,7 +437,7 @@
   --color-shift-deep-rose: #381b27;
 
   /*
-    "Inter Variable" per docs/DESIGN.md — the full variable weight range
+    "Inter Variable" per docs/DESIGN-SYSTEM.md — the full variable weight range
     (100..900). Self-hosted from /fonts since 2026-09-03 (see
     public/fonts/README.md); the family name is still "Inter", which is
     what Google served it under too, so nothing here changed with the
@@ -448,7 +448,7 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /*
-    Custom type scale from docs/DESIGN.md §2 (size/line-height).
+    Custom type scale from docs/DESIGN-SYSTEM.md §2 (size/line-height).
     32/40
   */
   --text-page-title: 2rem;
@@ -499,7 +499,7 @@
   --text-4xl--line-height: 2.5rem;
 
   /*
-    Centralised motion durations (docs/DESIGN.md §4). Before these, a
+    Centralised motion durations (docs/DESIGN-SYSTEM.md §4). Before these, a
     duration was a number typed at the call site — `duration-150` on
     Button, `duration-200` on a menu, nothing at all on a dialog — so
     "how fast does this product move" had no answer and no way to
@@ -553,7 +553,7 @@
   --radius-3xl: 0.5rem;
 
   /*
-    Elevation levels from docs/DESIGN.md §2 — override the Tailwind
+    Elevation levels from docs/DESIGN-SYSTEM.md §2 — override the Tailwind
     defaults so `shadow-sm` / `shadow` / `shadow-lg` match the reference.
     level 1
   */
@@ -619,7 +619,7 @@
    * the fonts moved instead of the sentence.
    *
    * Both families are variable, so one file per subset covers every weight in
-   * docs/DESIGN.md. The unicode-range values are Google's own, copied from the
+   * docs/DESIGN-SYSTEM.md. The unicode-range values are Google's own, copied from the
    * stylesheet it served: they are what lets a browser skip the latin-ext file
    * for text that does not need it, which is most of this site's.
    *

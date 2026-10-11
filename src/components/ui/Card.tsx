@@ -35,7 +35,7 @@ interface PanelProps {
  *
  * `Card` is the bare surface and stays that way. Around fifty screens render
  * one and its `p-6` is what their reference PNGs show. This is the other shape,
- * from `docs/PLATFORM_CONSOLE.html`: a divider-separated header strip with the
+ * from `docs/design/PLATFORM_CONSOLE.html`: a divider-separated header strip with the
  * heading on the left and one control on the right, over a tighter body. It is
  * a separate component rather than more props on `Card` so that neither
  * treatment can drift into the other by accident.

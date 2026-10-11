@@ -300,7 +300,7 @@ function requiredForWeekday(
 
 /**
  * The manager's working week for the Dashboard's cover chart, rota status and
- * hours-by-department cards (`docs/ORGANISATION_WORKSPACE.html`'s "Cover
+ * hours-by-department cards (`docs/design/ORGANISATION_WORKSPACE.html`'s "Cover
  * against minimum" / "Rota status" / "Hours by department").
  *
  * Deliberately draft-inclusive (`publishedOnly: false`): a manager builds the
@@ -452,7 +452,7 @@ export async function loadMyUpcomingShifts(
 
 /**
  * Total rostered hours for each of the last `weeks` weeks, oldest first, for
- * the "Rostered this week" sparkline (`docs/ORGANISATION_WORKSPACE.html`'s
+ * the "Rostered this week" sparkline (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `spark` array). Draft-inclusive like `loadWeeklyRosterSummary`, so this
  * week's still-unpublished shifts count the same way past published ones do.
  *

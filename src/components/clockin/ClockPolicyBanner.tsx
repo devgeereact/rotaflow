@@ -5,7 +5,7 @@ interface ClockPolicyBannerProps {
   body: string;
   /**
    * Omitted on `/app/clock`: the reference's "View Policy" opens a policy
-   * screen that does not exist (docs/LOOP.md lists settings-policy as not
+   * screen that does not exist (docs/UX-SPEC.md#design-match-loop lists settings-policy as not
    * built), and a button that goes nowhere is worse than no button.
    */
   onViewPolicy?: () => void;

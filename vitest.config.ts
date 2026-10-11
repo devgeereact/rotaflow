@@ -51,7 +51,7 @@ export default defineConfig({
     // whole suite for the sake of the handful that need one (CAP-100).
     environment: 'node',
     // `supabase/functions` is Deno and is excluded from typecheck and lint, so
-    // CLAUDE.md's "no automated check stands in for reading those files" holds
+    // CLAUDE.md's rule that reading those files is the only check on behaviour holds
     // for the request handling — it needs Deno, a JWT and OpenRouter. It does
     // not have to hold for pure logic extracted out of one. `grounding.ts`
     // decides whether a manager is shown an invented date; that is worth a
@@ -60,6 +60,9 @@ export default defineConfig({
       'src/**/*.test.ts',
       'src/**/*.test.tsx',
       'supabase/functions/**/*.test.ts',
+      // The decision logic of the repository's own gates (docs impact, the
+      // docs-sync Stop hook). Plain Node, no app imports.
+      'scripts/**/*.test.mjs',
     ],
 
     env: {

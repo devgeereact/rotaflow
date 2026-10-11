@@ -29,7 +29,7 @@ export function PersonalInformationCard({
   onEdit,
 }: PersonalInformationCardProps): JSX.Element {
   // Empty values are dropped, not rendered as em-dashes: several of these
-  // (date of birth, gender) have no column in docs/SCHEMA.md yet.
+  // (date of birth, gender) have no column in docs/DATA-MODEL.md yet.
   const rows: { icon: LucideIcon; label: string; value: string }[] = [
     { icon: Mail, label: 'Email', value: info.email },
     { icon: Phone, label: 'Phone', value: info.phone },

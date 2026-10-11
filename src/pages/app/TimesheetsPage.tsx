@@ -50,7 +50,7 @@ function timezoneFor(shift: Shift, locations: Location[]): string {
 
 /**
  * `/app/timesheets`. Real data wiring; see ManagerTimesheets/StaffTimesheets
- * for the markup (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.timesheets`).
+ * for the markup (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.timesheets`).
  *
  * The table is day-grain — today's shifts against what was actually clocked
  * — but approval only exists at week grain (`timesheets.period_start`/

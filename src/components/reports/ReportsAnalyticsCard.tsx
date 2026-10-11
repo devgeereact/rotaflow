@@ -75,7 +75,7 @@ function BarRows({
  * The tiles and charts `SCREENS.reports` opens with, scoped honestly.
  *
  * Staff cost and Agency spend are in the reference and are deliberately
- * absent: no pay-rate column exists anywhere in the schema (`docs/SCHEMA.md`),
+ * absent: no pay-rate column exists anywhere in the schema (`docs/DATA-MODEL.md`),
  * so a cost figure would be an invented number presented with the authority
  * of a report. Four tiles ship instead of six, all backed by rows the rest
  * of the app already reads and writes — Hours worked reuses the same

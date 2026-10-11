@@ -31,7 +31,7 @@
  * 3. **Absence is never asserted.** The absence of a clock event is
  *    `not_recorded` — a thing to look at — because an unsynchronised offline
  *    clock-in is indistinguishable, from the server, from never having
- *    happened. `docs/OFFLINE-SPEC.md` is explicit that the queue lives on the
+ *    happened. `docs/ARCHITECTURE.md#offline-and-pwa` is explicit that the queue lives on the
  *    device. Only the person's own device knows, so the manager's screen must
  *    say what it does not know rather than accuse.
  * 4. **An event is linked to a shift by evidence, then by proximity, never by

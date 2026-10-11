@@ -170,7 +170,7 @@ const RULES: SwapRule[] = [
  * (`/admin-preview`-style harness). The real `/app/swaps` needs a live
  * Supabase session and a seeded organisation, neither of which a screenshot
  * tool has. Renders the real `SwapsView` against fixed mock data shaped to
- * match `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.swaps`. `?role=staff`
+ * match `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.swaps`. `?role=staff`
  * switches branch.
  */
 export function SwapsPreviewPage(): JSX.Element {

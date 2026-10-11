@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect } from 'react';
 /**
  * How the platform console's topbar Refresh button reaches the screen under it.
  *
- * The console reference (`docs/PLATFORM_CONSOLE.html`) puts Refresh in the
+ * The console reference (`docs/design/PLATFORM_CONSOLE.html`) puts Refresh in the
  * shell, above the page, because every platform screen is a live read of
  * cross-tenant state and "is this still true?" is the question an administrator
  * asks most. But a shell cannot know how to refetch a page it does not own, and

@@ -26,10 +26,9 @@
  * The queries are written out rather than imported from `src/services`,
  * deliberately: those modules construct a browser Supabase client at module
  * scope, and importing one here would build a second client against a second
- * URL. The shape below is asserted against the service source by
- * `scripts/load-test-workforce.test.mjs`'s sibling unit test — see
- * `src/lib/pagination.test.ts` for the arithmetic and
- * `docs/PWA-RELEASE-GATES.md` for where the numbers are recorded.
+ * URL. The page arithmetic it mirrors is tested in
+ * `src/lib/pagination.test.ts`, and `qa/PERFORMANCE-AUDIT.md` is where the
+ * numbers are recorded.
  *
  * Usage:
  *

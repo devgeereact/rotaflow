@@ -96,7 +96,7 @@ export function ReportsTable({
                       ? `Remove ${row.name} from favourites`
                       : `Add ${row.name} to favourites`
                   }
-                  // 36px is `IconButton`'s `sm`, the size docs/DESIGN.md §5
+                  // 36px is `IconButton`'s `sm`, the size docs/ACCESSIBILITY.md
                   // allows inside a dense table row. This was 28.
                   className="grid h-9 w-9 place-items-center rounded-lg transition-colors hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-surface-subtle-dark"
                 >

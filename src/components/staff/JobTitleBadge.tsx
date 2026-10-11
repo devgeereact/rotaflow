@@ -46,7 +46,7 @@ export function JobTitleBadge({
       {/* No `opacity-80` on the code. It read as a subtle de-emphasis and it
           was a contrast failure: on the neutral fallback badge the muted ink
           at 80% measures 3.2:1, under the 4.5:1 text this size needs. The
-          token pairs already carry the intended weight — docs/DESIGN.md §2b. */}
+          token pairs already carry the intended weight — docs/DESIGN-SYSTEM.md §2b. */}
       {showCode && (
         <span aria-hidden="true" className="font-mono text-[10px] font-bold">
           {jobTitleCode(name)}

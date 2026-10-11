@@ -54,7 +54,7 @@ interface SiteGroup {
   people: SitePerson[];
 }
 
-/** `docs/ORGANISATION_WORKSPACE.html`'s per-site "who's on" list. Grouped by
+/** `docs/design/ORGANISATION_WORKSPACE.html`'s per-site "who's on" list. Grouped by
  * the shift's own location, not a staff→site mapping: `staff_profiles` has no
  * location column (see the note in RotaBuilderPage), so a shift's `location_id`
  * is the only honest source for "which site". Only assigned, located shifts
@@ -99,7 +99,7 @@ function groupBySite(
 }
 
 /**
- * The manager's Schedule (`docs/ORGANISATION_WORKSPACE.html`'s
+ * The manager's Schedule (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.schedule` manager branch): who is on, where, right now. Distinct
  * from the Rota Builder, which is where that reality gets changed, and from
  * Team Attendance, which is where the record is reviewed and corrected.

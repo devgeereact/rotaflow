@@ -57,7 +57,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 /**
- * `/app/help` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.help`).
+ * `/app/help` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.help`).
  *
  * Did not exist before this screen: the sidebar's "Help & Support" link sent
  * a signed-in user out of the app shell entirely, to the public marketing
