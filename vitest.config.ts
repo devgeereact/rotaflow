@@ -60,6 +60,9 @@ export default defineConfig({
       'src/**/*.test.ts',
       'src/**/*.test.tsx',
       'supabase/functions/**/*.test.ts',
+      // The decision logic of the repository's own gates (docs impact, the
+      // docs-sync Stop hook). Plain Node, no app imports.
+      'scripts/**/*.test.mjs',
     ],
 
     env: {
