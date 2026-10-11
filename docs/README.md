@@ -5,10 +5,9 @@ map of which document owns which fact, and the record of how GEE OS is applied
 here. Every other document links back to this map instead of keeping its own.
 
 The layout is the GEE OS **Standard application** profile
-(`~/.agents/gee-os/templates/DOCUMENTATION-PROFILES.md`), adopted on 10 October 2026. It replaced a numbered-folder layout (`docs/00-foundation/` to
-`docs/09-release/`) that was proposed on branch `docs/gee-os-blueprint-layout`
-and never merged. Paths moved on 11 October 2026; the old-to-new map is in
-`CHANGELOG.md`.
+(`~/.agents/gee-os/templates/DOCUMENTATION-PROFILES.md`), adopted on 10 October 2026. It replaced a numbered-folder layout (folders 00-foundation to 09-release)
+that was proposed on the branch named docs/gee-os-blueprint-layout and never
+merged. Paths moved on 11 October 2026; the old-to-new map is in `CHANGELOG.md`.
 
 ## Fact | Owning document
 
@@ -50,19 +49,32 @@ never cited, copied or committed.
 
 ## Doc-sync rule
 
-A change that alters a fact updates that fact's owning document, from the table
-above, in the same pull request. A change to a capability's status updates its row
+A change that alters behaviour updates the document that owns the fact, from the
+table above, in the same change. A change to a capability's status updates its row
 in `docs/SAAS.md`. A merged pull request adds one entry to `CHANGELOG.md`. A change
 that creates or removes a limitation a customer can see updates `KNOWN-ISSUES.md`.
-The rule in full, with what counts as a fact, is in `AGENTS.md`.
+When nothing needed to change, the pull request says so in one line,
+`Docs: no impact (the reason, in words)`. The rule in full, including what counts as
+behaviour and what is exempt, is in `AGENTS.md` under "Documentation stays current".
 
-Some of this is checked by machine rather than trusted: `npm run check:docs`
-compares counts written into prose with the tree, and `scripts/plan-drift-audit.mjs`
-reads the register against the code once a week. The rest is review.
+Four things check parts of it, and none can tell whether the right document
+changed:
+
+- **CI's `Docs impact` step** (`scripts/check-docs-impact.mjs`) fails a pull request
+  that changes code without touching a root `*.md`, `docs/` or `qa/` and carries no
+  `Docs: no impact` line.
+- **The Claude Code `Stop` hook** (`scripts/hooks/docs-sync.mjs`, registered in
+  `.claude/settings.json`) raises the same question once before a session ends.
+  Codex has no equivalent; for Codex the `AGENTS.md` rule is the whole of it.
+- **`npm run check:docs`** (`scripts/check-doc-counts.mjs`) compares counts written
+  into prose with the tree, checks the CI job count, Edge Function count and Node
+  version where prose states them, and fails on a relative link or backticked
+  `docs/` or `qa/` path that does not exist.
+- **`scripts/plan-drift-audit.mjs`** reads the register against the code once a week.
 
 ## How GEE OS is applied
 
-RotaFlow adopted GEE OS on 4 September 2026 and its Standard documentation profile on 10 October 2026. Merged from `docs/GEE-OS.md` on 11 October 2026; the adoption record below is that file's, updated where the Standard profile changed a decision.
+RotaFlow adopted GEE OS on 4 September 2026 and its Standard documentation profile on 10 October 2026. Merged from the deleted `docs/GEE-OS.md` on 11 October 2026; the adoption record below is that file's, updated where the Standard profile changed a decision.
 
 RotaFlow adopts GEE OS as of 4 September 2026. `.agent/PROJECT.yml` is the
 adoption; this file is the record of what that means here, what it deliberately
