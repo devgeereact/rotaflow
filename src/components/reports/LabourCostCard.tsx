@@ -3,6 +3,7 @@ import { Banknote, TriangleAlert } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { getLabourCost, type LabourCostRow } from '@/services/payRateService';
 import { reportError } from '@/lib/sentry';
+import { formatMoneyExact } from '@/lib/money';
 
 interface LabourCostCardProps {
   orgId: string | null;
@@ -12,14 +13,6 @@ interface LabourCostCardProps {
   rangeLabel: string;
   /** From Settings → Policies. A paid break is paid time. */
   paidBreaks: boolean;
-}
-
-/** `123456` → `£1,234.56`. */
-function money(pence: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-  }).format(pence / 100);
 }
 
 /**
@@ -107,7 +100,7 @@ export function LabourCostCard({
       ) : (
         <>
           <p className="text-2xl font-semibold text-content dark:text-content-dark">
-            {money(total)}
+            {formatMoneyExact(total)}
           </p>
           <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
             {Math.round(minutes / 60)} rostered hours
@@ -124,7 +117,7 @@ export function LabourCostCard({
                   {row.locationName ?? 'No site'}
                 </span>
                 <span className="font-medium text-content dark:text-content-dark">
-                  {money(row.costPence)}
+                  {formatMoneyExact(row.costPence)}
                 </span>
               </li>
             ))}
