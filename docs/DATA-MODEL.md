@@ -494,46 +494,10 @@ one thing it would add over the query is the opportunity to be wrong.
   `pg_cron`** (never on cPanel). Inngest was the dispatch path until `0087` and
   is no longer used: notifications are enqueued by triggers and drained by
   `pg_cron` + `pg_net`.
-- **`set_org_status(org, status, reason?)`** (`0017`, `security definer`): the only
-  write path that can move an `organisations.status` into `suspended`/`archived`.
-  Gated to a platform owner/admin's own JWT — **except** `auth.uid() is null`
-  (`0051_org_status_service_role.sql`), which lets `supabase/functions/stripe-webhook`
-  call it too: that function runs as `service_role` with no end-user session, since
-  Stripe calls it directly, so it uses this to suspend an organisation once Stripe's
-  dunning (Smart Retries) is exhausted. Every real admin caller has a real
-  `auth.uid()`, so the exception never widens what an authenticated user can do.
 - **`has_support_access(org, write?)`**, and `is_org_member()`/`has_org_role()`
   redefined to consult it (`0028`, `security definer`): see §5 — a platform
   administrator reads/writes tenant data only through an open
   `support_access_sessions` row, not by virtue of the role alone.
-- **`platform_tenant_counts(org)`** (`0028`, `security definer`): the one function
-  that reads _past_ the `0028` gate — returns staff/location/rota/shift counts for
-  an org with no open support session required, gated on `is_platform_admin()`
-  directly. A number, never a row: sizing a tenant doesn't require knowing who's in it.
-- **`consume_org_rate_limit(bucket, org, limit, window)`** (`0089`,
-  `security definer`, `authenticated`): a per-ORGANISATION limiter, alongside
-  `consume_my_rate_limit`'s per-user one. It is the only client-callable
-  limiter that takes its subject as an argument, and it checks `is_org_member`
-  before using it — that check is the entire reason naming a subject is safe
-  here, since a member can only spend an allowance they could spend anyway by
-  making the requests. Buckets are a fixed list (`ai_assistant_org`), because
-  an invented bucket name would be an unlimited private allowance.
-- **`announcement_audience(announcement)`** (`0087`, `security definer`, stable): the
-  user ids an announcement is addressed to, from its own department/location scope.
-  One definition, shared by the publish trigger and the unread reminder — the page
-  used to resolve the audience from its own loaded staff list, so an announcement's
-  reach depended on a client-side cache.
-- **`remind_announcement_unread(announcement)`** (`0087`, `security definer`,
-  owner/manager): enqueues one reminder to everyone in the audience who has no
-  `announcement_reads` row, and returns the count. An RPC rather than a trigger
-  because pressing "Remind unread" changes no row — there is no transition to hang a
-  trigger on. It still commits the outbox row before returning, which is the property
-  that matters.
-- **Notification enqueue triggers** (`0087`): `leave_requests_enqueue_reviewed` and
-  `shift_swaps_enqueue_reviewed` fire when a request moves to `approved`/`rejected`,
-  and `announcements_enqueue_published` when `published_at` first becomes non-null.
-  Each skips the case where the reviewer IS the requester, and an edit to an
-  already-published announcement notifies nobody a second time.
 - **`probe_platform_health()`** (`0076`, `security definer`, `pg_cron` every five
   minutes): writes `platform_health_samples` with `source = 'scheduled'` whether or
   not anyone is looking — the database directly, Auth and REST over `pg_net`. Records
@@ -546,84 +510,20 @@ one thing it would add over the query is the opportunity to be wrong.
   uptime from scheduled samples where they exist (`measured_from`), latency from
   whatever actually timed something (`latency_from`). Averaging a browser round trip
   with an in-region one is what `0027` warned about.
-- **`rate_support_case(case, score, comment?)`** (`0024`, message clarified in
-  `0077`): the requester's satisfaction score for a _resolved_ case, 1-5. Three
-  refusals, all with their own wording since `0077`: not the requester (`42501`),
-  not yet resolved (`22023`), score out of range (`22023` — it used to fall through
-  to the column CHECK and read as `support_cases_csat_check`). Re-rating is allowed
-  deliberately, so a mis-tap is correctable. Called from `/app/help`; it had no
-  caller at all between `0024` and 2026-08-30, which is why `csat` was always null.
-- **`platform_staff_counts()`** (`0078`, `security definer`, platform-admin-only):
-  active staff per organisation across every tenant, aggregate only. This is the
-  population `plans.seat_limit` is enforced on by `enforce_seat_limit()` (`0070`) —
-  the console's Usage bar used **memberships** until 2026-08-30, which is a
-  different and much smaller number because `staff_profiles.user_id` is nullable
-  (BUG-062). Aggregate-only for the reason `platform_location_counts()` gives: since
-  `0028` a platform administrator needs a support session to read tenant rows, so a
-  direct select would return a confident zero for every organisation without one.
 - **`enforce_retention(dry_run?)`** (`0029`, `security definer`, `pg_cron` nightly):
   deletes rows past their `retention_policies.retain_months` window and writes a
   `retention_runs` row. Skips any policy with `retain_months = null` (indefinite —
   `audit_logs`) and skips deleted-tenant cascade entirely (§4.8).
-- **`flag_enabled_for_org(key, org)`** (`0022`): hashes `key` + `org_id` so the same
-  org always lands on the same side of a percentage rollout. Nothing in `src/` calls
-  it directly; the client-facing entry point is **`my_feature_access(org)`** (`0030`),
-  read by `useFeatureAccess`.
-- **`org_has_feature(org, feature)`** (`0030`): a plan entitlement, not a flag —
-  true when `plans.features` lists it. Enforced server-side by
-  `supabase/functions/ai-rota-assistant`, which refuses `ai_rota_assistant` with a
-  403 and `code: 'plan_required'` before reading any tenant data or contacting
-  OpenRouter. The UI gate is a courtesy; this is the control, because the endpoint is
-  reachable with any member's JWT and every call spends money.
-- Both entitlement functions are guarded by `is_org_member` since **`0074`**. They
-  are `security definer`, so RLS does not apply inside them, and before that guard
-  any signed-in user could read which plan tier any organisation was on by passing
-  its id. The predicate is `is_org_member` **alone**: per `0028` that already covers
-  a platform administrator holding an active support-access session, and adding
-  `or is_platform_admin()` would re-open the standing cross-tenant access `0028`
-  exists to close. A non-member gets `false` and an empty set rather than an error,
-  so the refusal does not confirm the organisation exists.
-- Every name in `plans.features` is read by something (`0090`, BUG-064).
-  `ai_rota_assistant` is enforced in the Edge Function that spends the money
-  (`0074`); `advanced_reporting` gates the Reports screen; `gps_clock_in` was
-  **removed from every plan**, because every plan included it and a gate that can
-  never refuse is not a gate. It now resolves to `false`, deliberately: a name that
-  answers "false" fails visibly if somebody wires it up, where one answering "true
-  for everyone" would not.
-- **`advanced_reporting` is enforced in the client, and that is the honest ceiling.**
-  The Reports screen computes every row in the browser from `clock_events` and
-  `staff_profiles` — rows RLS already grants the organisation because they are its
-  own records. There is no server-side report endpoint to refuse, and withholding a
-  customer's own data from them would be a worse product than an unlocked screen. It
-  is packaging, not a control, and the difference matters: `seat_limit` and
-  `location_limit` govern writes and are enforced by triggers (`0070`), and
-  `ai_rota_assistant` spends money per use and is enforced server-side (`0074`).
-- **`admin_create_organisation_with_invite(...)`** (`0052`, `security definer`,
-  platform-admin-only): atomically inserts an organisation with `created_by = null`
-  (so `on_org_created` never fires and no membership row is created), creates its
-  subscription at the negotiated price, and issues the owner invite for the real
-  contact — for the case where a prospect contacted sales directly instead of
-  self-serve signup (`organisations_insert`, `0002`, which requires
-  `auth.uid() = created_by`). The platform admin never holds membership, not even
-  transiently within the transaction.
-- **`create_invite(org, email, role)`** (`0006`; bootstrap exception in `0052`): both
-  of its permission gates now also accept a platform owner/admin inviting the very
-  first `owner` into a genuinely member-less org — the counterpart the admin-created
-  org above needs to actually reach its real owner. Every other caller is unaffected;
-  the exception only fires when no membership row exists yet for that org.
 - **`staff_profiles_auto_link_account()`** (`0053`, trigger, `security definer`,
   before insert/update of `email`/`org_id` on `staff_profiles`): if `email` is set
   and `user_id` is still null, links it to a matching active membership in the same
   org. Never overwrites an existing `user_id`.
-- **`accept_invite(token)`** (`0006`; account-linking added `0053`): now also links
-  any `staff_profiles` row in the invite's org still waiting on that email — the
-  other half of the auto-link trigger above, for whichever order the HR record and
-  the invite acceptance happen in.
-- **`platform_location_counts()`** (`0054`, `security definer`, platform-admin-only):
-  per-org location counts with no open support session required, the same shape as
-  `platform_tenant_counts` above — `locations_select` itself stayed gated behind
-  `is_org_member()` (`0028`)/`0031`'s carve-out never covered it, so a direct count
-  silently read zero for every org without an open session.
+- **Client-callable RPCs** (`set_org_status`, the platform count functions, the
+  rate limiters, `rate_support_case`, the entitlement functions, the invite
+  functions) are contracts, so their behaviour is in `docs/API-SPEC.md`, "RPC
+  contracts". **Notification functions and triggers** (`announcement_audience`,
+  `remind_announcement_unread`, the enqueue triggers) are in
+  `docs/NOTIFICATIONS-SPEC.md`. Both moved there on 11 October 2026.
 
 ## 6a. Rota lifecycle (`0061`) — Draft, Published, Amended
 

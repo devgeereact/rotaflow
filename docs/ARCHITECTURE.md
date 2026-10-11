@@ -347,76 +347,18 @@ project secret. Deploy/redeploy with the Supabase MCP `deploy_edge_function` too
 
 ### 9c. Billing (Stripe)
 
-Three Edge Functions, added with migration `0050`, share `supabase/functions/_shared/stripe.ts`:
-
-- **`create-checkout-session`** — org owner picks a plan on Settings > Billing;
-  runs as the calling user (JWT forwarded, RLS-scoped, owner-role checked
-  against `memberships` directly) and returns a hosted Stripe Checkout URL for
-  a full-page redirect. No Stripe.js on the client.
-- **`create-portal-session`** — same auth pattern, returns a Stripe Billing
-  Portal URL so an owner can manage payment methods / cancel without a
-  custom UI.
-- **`stripe-webhook`** — the one function in this feature that runs as
-  `service_role` (deployed `--no-verify-jwt`), since Stripe calls it directly
-  with no end-user session; authenticated instead by Stripe's own request
-  signature (`STRIPE_WEBHOOK_SECRET`). Handles
-  `checkout.session.completed`, `customer.subscription.updated/deleted`,
-  `invoice.paid`, `invoice.payment_failed` — upserts `subscriptions`
-  (keyed on `org_id`/`(org_id, provider_ref)` since Stripe delivery is
-  at-least-once), writes `invoices` as a second, automated writer alongside
-  the manual platform-finance path, and calls `set_org_status()` (via its
-  `0051` service-role exception, see `DATA-MODEL.md` §6) to suspend an org once
-  Stripe's dunning is exhausted.
-
-Deploy: `supabase functions deploy <name>` (webhook needs `--no-verify-jwt`).
-Secrets: `STRIPE_SECRET_KEY` (shared by all three), `STRIPE_WEBHOOK_SECRET`
-(webhook only, from the Stripe dashboard's endpoint config). After deploying
-the webhook, register its URL in the Stripe dashboard against the five events
-above.
+Three Edge Functions, `create-checkout-session`, `create-portal-session` and
+`stripe-webhook`, added with migration `0050`. Their contracts, secrets and deploy
+steps moved to `docs/API-SPEC.md` ("Billing functions") on 11 October 2026.
 
 ---
 
-## 10. Edge Functions — the whole list
+## 10. Edge Functions
 
-Sections 6 and 9 each describe one of these in the context of the feature it
-serves. This is the inventory, because the set has grown to eight and nothing
-else in the repository lists them in one place.
-
-**`supabase/functions/**` is the only server compute in the product, is Deno,
-and is excluded from `npm run typecheck` and `npm run lint`** (`eslint.config.js`).
-No automated check stands in for reading these by hand.
-
-**They do not deploy on merge.** Migrations do — the Supabase GitHub integration
-applies them, with a lag. Functions are a separate manual
-`supabase functions deploy <name>`. A merged function that nobody deployed is
-the most common way this repository's documentation goes stale, so the deployed
-version of each is recorded in `docs/SAAS.md` §2 with the date it was read.
-
-| Function                  | JWT verified | What it is                                                                                                                                        |
-| ------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ai-rota-assistant`       | yes          | OpenRouter, called with the caller's forwarded JWT so RLS scopes it (§9)                                                                          |
-| `send-notification`       | yes          | Drains `notification_outbox`; email via SMTP, web push via VAPID (§6)                                                                             |
-| `send-invite`             | yes          | The invitation email. Separate from the outbox: an invitee has no account                                                                         |
-| `create-checkout-session` | yes          | Stripe Checkout (§9c)                                                                                                                             |
-| `create-portal-session`   | yes          | Stripe Billing Portal (§9c)                                                                                                                       |
-| `stripe-webhook`          | **no**       | Verifies a Stripe signature instead — a webhook carries no JWT (§9c)                                                                              |
-| `calendar-feed`           | **no**       | A calendar client cannot present a header; the token in the URL is checked by `calendar_feed_shifts`, granted to `service_role` alone             |
-| `test-smtp`               | yes          | Sends one message through an organisation's own SMTP settings, so a wrong password fails on the settings screen rather than silently at send time |
-
-The two with `verify_jwt: false` are deliberate and each has its own boundary
-above. Neither is a gap: Supabase's gateway check would reject the only callers
-those two have.
-
-### The rule about which key they use
-
-A function acting on a user's behalf builds its Supabase client with the
-**caller's forwarded JWT**, so RLS scopes every query for free. `service_role`
-is for genuinely cross-tenant work — a billing webhook, a scheduled drain, a
-feed with no session — and is the exception.
-
-`ai-rota-assistant` is the worked example: the JWT for everything, and
-`service_role` for the single `audit_write` call that `authenticated` is
-deliberately not allowed to make.
+The inventory of every Edge Function, with its auth model, inputs and outputs, and
+the rule about which key each one uses, moved to `docs/API-SPEC.md` on 11 October 2026. The facts that shape the architecture stay here: `supabase/functions/**` is
+the only server compute in the product; it is Deno; and functions do not deploy on
+merge, so the deployed version of each is recorded in `docs/SAAS.md` §2.
 
 ## Offline and PWA
 
