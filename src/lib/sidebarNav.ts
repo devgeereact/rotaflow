@@ -68,9 +68,9 @@ export interface NavOptions {
  *
  * **Rota Builder and Schedule are separate rows**, and so are Team and
  * Availability. An earlier pass merged each pair into one destination with an
- * in-page tab bar (`workspaceTabs.ts`) on the reasoning that building a week
- * and reading the published one were "one workspace, two halves". The
- * organisation workspace reference treats them as two separate journeys with
+ * in-page tab bar (the since-removed `workspaceTabs.ts`) on the reasoning
+ * that building a week and reading the published one were "one workspace,
+ * two halves". The organisation workspace reference treats them as two separate journeys with
  * their own sidebar rows instead: a manager builds the rota far more often
  * than they read the read-only view of it, and burying "Schedule" a click
  * inside "Rota" cost it a place a keyboard-driven user could jump straight to.

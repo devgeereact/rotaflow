@@ -35,8 +35,8 @@ import type { Availability, StaffProfile } from '@/types';
  * "your pattern" + "exceptions" cards as anyone else, plus a "Team
  * availability" card. No workspace tab bar to Team/StaffPage.tsx any more —
  * dropped deliberately, matching the reference's own nav (its own sidebar
- * row, no shared tab strip), unlike `teamWorkspaceTabs`'s other half, which
- * still links from Team's own page.
+ * row, no shared tab strip). Team's own page has no tab strip back here
+ * either; the unused `teamWorkspaceTabs` helper that described one is gone.
  */
 export function AvailabilityPage(): JSX.Element {
   const { orgId } = useOrg();
