@@ -1,4 +1,39 @@
-# Privacy and legal readiness — 4 September 2026
+# Security audit
+
+Dated security and privacy audits, newest first, and the checklist for the next
+one. This file records what an audit found on a day; it does not set status.
+`docs/SAAS.md` is the plan of record, and the standing controls are described in
+`docs/SECURITY.md` (backup, retention, erasure, incident response, privacy data
+map) and `docs/DATA-MODEL.md` §5 (RLS and grants).
+
+## Next audit
+
+Run this list against the code and production, record the result as a new dated
+section above the last one, and update the `docs/SAAS.md` rows it touches.
+
+- [ ] `auth-config.yml` is green again. It has failed with `401 Unauthorized`
+      since 14 September 2026 (GAP-036), so nothing is watching the Supabase Auth
+      settings
+- [ ] A restore from the nightly `backup.yml` dump has been performed and timed,
+      not only the dump taken (`docs/DEPLOYMENT.md`, Recovery)
+- [ ] Platform administrator sign-in challenges for the second factor, not only
+      enrolment (CAP-049)
+- [ ] `supabase test db` passes, including `rls_invariants`, `anon_privileges`,
+      `table_grant_invariants`, `function_grant_invariants` and
+      `definer_functions_check_membership`
+- [ ] Supabase security advisors read, every finding either fixed or recorded
+- [ ] `public/.well-known/security.txt` `Expires` more than 90 days away
+      (`npm run check:docs` warns from 90 days, fails at 30)
+- [ ] No `VITE_*` variable holds a secret, checked by `grep` over a built `dist/`,
+      not by reading the code (`docs/ARCHITECTURE.md` §8)
+- [ ] Every item under "Before publication" in the 4 September 2026 section below
+      either done or still recorded as open
+- [ ] Edge Functions read by hand since the last audit, because typechecking is
+      the only automated check on them (`docs/API-SPEC.md`)
+
+## Privacy and legal readiness, 4 September 2026
+
+Formerly `docs/PRIVACY-READINESS-2026-09-04.md`, renamed on 11 October 2026 and kept as written. Where a line below has since changed, the change is noted in brackets with its date.
 
 A dated snapshot of one project, RotaFlow. `docs/SAAS.md` is what stays current;
 this records what an audit found on one day and what was changed in response.
@@ -8,7 +43,7 @@ The evidence behind it is `docs/SECURITY.md#privacy-data-map`.
 
 ---
 
-## Summary
+### Summary
 
 The repository was further along than a legal audit usually finds. Five legal
 routes already existed, linked from the footer, in the sitemap, covered by
@@ -61,9 +96,9 @@ state, and this document will not pretend otherwise.
 
 ---
 
-## Issues
+### Issues
 
-### P1
+#### P1
 
 **P1-1 — Session replay and performance tracing ran without consent, contrary to the published notice.** _Fixed._
 `src/lib/sentry.ts:14-19`, started at `src/main.tsx:9`. Contradicted
@@ -93,7 +128,7 @@ what it cannot settle.
 **P1-5 — No ICO registration, no published address, no answer on an EU representative.** _Not fixed — owner._
 Recorded as GAP-059. Blocks publication of the notice.
 
-### P2
+#### P2
 
 |      | Issue                                                                                                                                               | Status                                                                     |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -105,13 +140,13 @@ Recorded as GAP-059. Blocks publication of the notice.
 | P2-6 | Uploaded files survive erasure and organisation deletion                                                                                            | Recorded (GAP-056), disclosed, not fixable here                            |
 | P2-7 | No self-service subject access or account deletion for an individual                                                                                | Recorded (GAP-057), disclosed                                              |
 
-### P3
+#### P3
 
 `docs/DATA-MODEL.md` said `notification_deliveries` had no retention policy a week
 after `0092` gave it twelve months — fixed. `src/pages/legal/LegalNotice.tsx`
 became unreferenced once Terms had content — removed.
 
-### Found and recorded, not in scope for this pass
+#### Found and recorded, not in scope for this pass
 
 GAP-058 (emergency contacts and Article 14), GAP-060 (no age field in a product
 scheduling 16- and 17-year-olds), the legacy offline-outbox rows without a
@@ -120,7 +155,7 @@ outbound mail — defensible today because every message is transactional.
 
 ---
 
-## What was built
+### What was built
 
 **Consent.** Three categories: `necessary` (session, active org, onboarding
 draft, offline outbox, the consent record itself), `preferences` (four
@@ -153,7 +188,7 @@ deliberately empty and say what has to be decided.
 
 ---
 
-## Verification
+### Verification
 
 | Check                                                               | Result                                                                                                                                  |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -172,7 +207,7 @@ deliberately empty and say what has to be decided.
 | `supabase test db` (pgTAP)                                          | **NOT TESTED** — needs Docker, unavailable here. No migration was written, so no RLS surface changed                                    |
 | Real Sentry endpoint                                                | **NOT TESTED** — no DSN in this working tree; probed with a DSN pointing at a non-resolving host, which proves the gate, not the vendor |
 
-### The runtime probe, and why it mattered
+#### The runtime probe, and why it mattered
 
 The unit tests assert the Sentry options contain no replay and no tracing. The
 e2e suite asserts the banner behaves. **Neither can see what leaves the
@@ -198,7 +233,7 @@ would ride in on. Fixed with `beforeSend`, re-probed, 9/9.
 That is the finding worth carrying forward: **a test that asserts a hook was
 configured proves nothing about what is transmitted.**
 
-### And the same lesson again, from the other direction
+#### And the same lesson again, from the other direction
 
 The first push of this work failed CI on `e2e-authenticated` — the one job that
 cannot run on this machine, because it needs Docker. The banner is
@@ -221,7 +256,7 @@ reverted** — a regression test nobody has watched fail is a guess.
 
 ---
 
-## Owner decisions and legal questions
+### Owner decisions and legal questions
 
 Listed in full in `docs/SECURITY.md#privacy-data-map` §8 and §9. The blocking ones:
 
@@ -236,7 +271,7 @@ Listed in full in `docs/SECURITY.md#privacy-data-map` §8 and §9. The blocking 
 
 ---
 
-## Before publication
+### Before publication
 
 - [ ] ICO registration settled, number added or absence justified
 - [ ] Operator identity and contact route confirmed
@@ -249,7 +284,7 @@ Listed in full in `docs/SECURITY.md#privacy-data-map` §8 and §9. The blocking 
 - [ ] Commercial terms decided, liability and governing law drafted
 - [ ] GAP-056 closed or permanently disclosed
 - [ ] `LICENSE` given a copyright holder
-- [ ] `docs/SAAS.md` GAP-036 addressed — the backup and auth-config workflows have never once succeeded, so there is still no backup of production
+- [ ] `docs/SAAS.md` GAP-036 addressed — the backup and auth-config workflows have never once succeeded, so there is still no backup of production. (11 October 2026: `backup.yml` has run green nightly since 5 September; `auth-config.yml` succeeded on 5 and 7 September and has failed with 401 since 14 September. See `qa/README.md`.)
 - [ ] `supabase test db` run somewhere with Docker before merging
 
 **Readiness: NOT READY — MATERIAL PRIVACY GAPS REMAIN.** The technical work is

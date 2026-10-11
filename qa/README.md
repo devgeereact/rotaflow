@@ -1,9 +1,69 @@
-# ROTAFLOW — FULL AUTONOMOUS QA, E2E, CRUD & PRODUCTION READINESS AUDIT
+# Quality assurance
+
+This folder holds the evidence that the product works, and this file owns two
+things: **the one table of CI jobs and scheduled workflows** that every other
+document links to, and the method for a full QA audit, which is the specification
+behind the `rotaflow-qa-auditor` agent (`.claude/agents/testing/rotaflow-qa-auditor.md`).
+
+| File                        | Holds                                                                     |
+| --------------------------- | ------------------------------------------------------------------------- |
+| `qa/FUNCTIONAL-AUDIT.md`    | Dated full passes, console repairs and design reviews                     |
+| `qa/SECURITY-AUDIT.md`      | The dated privacy and legal readiness audit, and the next-audit checklist |
+| `qa/ACCESSIBILITY-AUDIT.md` | What the accessibility gates have found and fixed                         |
+| `qa/PERFORMANCE-AUDIT.md`   | Load-test measurements and bundle budgets                                 |
+| `qa/REGRESSION-AUDIT.md`    | Closed defects and the test that guards each one                          |
+| `qa/LAUNCH-CHECKLIST.md`    | Release gates with recorded statuses, and the release decision            |
+
+Status is never set here. `docs/SAAS.md` is the plan of record.
+
+## CI jobs and scheduled workflows
+
+Read from `.github/workflows/` and `gh run list` on 11 October 2026. `ci.yml` runs
+on every pull request and every push to `main`, as **six** jobs. Node 22 in every
+Node job (`package.json` engines `>=22.0.0`; Node 20 is end-of-life and jsdom 30
+needs 22).
+
+| Workflow / job                    | Trigger                    | What it runs                                                                                                                                                                                                                                                                                                 | Blocks a merge?                           | Owner            |
+| --------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | ---------------- |
+| `ci.yml` `verify`                 | PR, push to `main`         | `typecheck`, `lint` (`--max-warnings 0`), `format:check`, `npm test`, `build` with no `.env`, service worker and manifest emitted, `check:bundle`, `check:migrations`, `check:docs`, `check:export`, **`Docs impact`** (PRs only, `scripts/check-docs-impact.mjs`), `npm audit --audit-level=high`. `TZ=UTC` | **Yes**, required by branch protection    | Gideon Akinlotan |
+| `ci.yml` `edge-types`             | PR, push to `main`         | Deno 2.9.5 typecheck of all eight Edge entry points against the committed `deno.lock`                                                                                                                                                                                                                        | **No.** Runs, but is not a required check | Gideon Akinlotan |
+| `ci.yml` `e2e`                    | PR, push to `main`         | `npx playwright test` against the dev server: 42 screens rendered, axe WCAG A and AA (see `docs/ACCESSIBILITY.md`)                                                                                                                                                                                           | As above                                  | Gideon Akinlotan |
+| `ci.yml` `e2e-authenticated`      | PR, push to `main`         | Boots a local Supabase stack, signs a real user up, creates an organisation, runs the workforce and signs in as a staff member (GAP-118). Needs Docker                                                                                                                                                       | As above                                  | Gideon Akinlotan |
+| `ci.yml` `db-tests`               | PR, push to `main`         | `supabase test db`: pgTAP, the only gate that can catch an RLS regression. Needs Docker                                                                                                                                                                                                                      | As above                                  | Gideon Akinlotan |
+| `ci.yml` `scheduled-checks`       | PR, push to `main`         | Reads the last five runs of `backup.yml`, `auth-config.yml`, `plan-drift-audit.yml` and `codeql.yml` and annotates the pull request                                                                                                                                                                          | **No.** It warns and always passes        | Gideon Akinlotan |
+| `backup.yml`                      | Daily 02:40 UTC, manual    | Encrypted `pg_dump` of production                                                                                                                                                                                                                                                                            | No                                        | Gideon Akinlotan |
+| `auth-config.yml`                 | Weekly, Monday             | Supabase Auth settings against the baseline in `scripts/check-auth-config.mjs`                                                                                                                                                                                                                               | No                                        | Gideon Akinlotan |
+| `plan-drift-audit.yml`            | Weekly, Monday             | `scripts/plan-drift-audit.mjs` reads the register against the code through OpenRouter and records drift                                                                                                                                                                                                      | No                                        | Gideon Akinlotan |
+| `codeql.yml`                      | PR, push to `main`, weekly | CodeQL analysis                                                                                                                                                                                                                                                                                              | No                                        | Gideon Akinlotan |
+| `dependabot.yml` (not a workflow) | Weekly                     | npm and GitHub Actions update pull requests. Exempt from `Docs impact`                                                                                                                                                                                                                                       | Not applicable                            | Gideon Akinlotan |
+
+### State of the scheduled workflows, 11 October 2026
+
+| Workflow               | Last run        | State                                                                                                                                                                                          |
+| ---------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backup.yml`           | 10 Oct, success | **Green nightly since 5 September 2026.** One failed manual run that day, then every scheduled run has succeeded. A green dump is not a tested restore: see `docs/DEPLOYMENT.md`, Recovery     |
+| `auth-config.yml`      | 5 Oct, failure  | **Red since 14 September 2026.** Every run since fails with `Could not read the auth config: 401 Unauthorized`, so the token it uses is no longer accepted. Last success 7 September (GAP-036) |
+| `plan-drift-audit.yml` | 5 Oct, failure  | **Red since 14 September 2026.** Its stopped-scheduler check fails because the drift log is stale (35 days on 5 October). Last success 7 September                                             |
+| `codeql.yml`           | 10 Oct, success | Green                                                                                                                                                                                          |
+
+A scheduled workflow fails where nobody is standing: it blocks no merge and marks
+no pull request red. `scheduled-checks` exists so its state at least appears on
+every pull request. Check before trusting any of them:
+`gh run list --workflow=backup.yml --limit 3`.
+
+The two Supabase jobs need Docker and the Supabase CLI, so a green local `verify`
+is a partial signal. Two time zones are deliberate: `vitest.config.ts` pins
+`TZ=Europe/London` so a clock-change bug is visible, and CI pins `TZ=UTC` for the
+build. Do not unify them.
+
+## Full QA audit method
+
+The specification the `rotaflow-qa-auditor` agent follows. Formerly `docs/Working-Agent.md`, renamed on 11 October 2026; its text is unchanged apart from paths, and headings are one level down.
 
 > Wired — `.claude/agents/testing/rotaflow-qa-auditor.md` is the agent this
 > document specifies.
 
-## ROLE
+### ROLE
 
 Act as a Senior QA Engineer, Principal Software Engineer, Product Tester, UX Auditor, Security Tester and Live-Rota Operations Specialist.
 
@@ -114,7 +174,7 @@ This is a high-priority product defect.
 
 ---
 
-## DO NOT CHEAT
+### DO NOT CHEAT
 
 Avoid directly manipulating the database to make a feature seem functional.
 
@@ -126,7 +186,7 @@ Never run this audit against production data. RotaFlow is a pre-launch multi-ten
 
 ---
 
-## TEST FROM ZERO
+### TEST FROM ZERO
 
 Begin with:
 
@@ -141,7 +201,7 @@ Create a completely new test account through the standard sign-up flow, not by i
 
 ---
 
-## TESTING STRATEGY / AGENT WORKSTREAMS
+### TESTING STRATEGY / AGENT WORKSTREAMS
 
 Use multiple agents or sub-agents whenever feasible. Recommended parallel workstreams:
 
@@ -164,7 +224,7 @@ If the platform can't create sub-agents, simulate these workstreams sequentially
 
 ---
 
-## PHASE 1 — APPLICATION STARTUP
+### PHASE 1 — APPLICATION STARTUP
 
 Test:
 
@@ -197,7 +257,7 @@ Intentionally test:
 
 ---
 
-## PHASE 2 — FIRST-RUN EXPERIENCE
+### PHASE 2 — FIRST-RUN EXPERIENCE
 
 Complete sign-up and onboarding as a genuine new user. Don't skip steps unless the app itself offers a skip option.
 
@@ -217,7 +277,7 @@ Verify onboarding state persists after refresh, logout, and re-login.
 
 ---
 
-## PHASE 3 — NAVIGATION AUDIT
+### PHASE 3 — NAVIGATION AUDIT
 
 Visit every screen. Build a navigation inventory: route, title, entry points, exit points, buttons, links, tabs, menus, dropdowns, modals, drawers, forms, search, filters, pagination, sort controls, context menus, keyboard shortcuts.
 
@@ -225,7 +285,7 @@ Test every interactive element. Click anything that looks clickable. Investigate
 
 ---
 
-## PHASE 4 — EVERY BUTTON TEST
+### PHASE 4 — EVERY BUTTON TEST
 
 Systematically test every button, icon button, dropdown, menu item, tab, toggle, checkbox, radio, slider, search field, filter, sort control, pagination control, context menu, modal action, confirmation, cancel, save, delete, edit, duplicate, import, export, upload, download, connect/disconnect (integrations), retry and restore action.
 
@@ -248,7 +308,7 @@ Identify dead buttons, fake buttons, decorative controls pretending to be functi
 
 ---
 
-## PHASE 5 — COMPLETE CRUD AUDIT
+### PHASE 5 — COMPLETE CRUD AUDIT
 
 For every entity, determine whether CRUD is complete through the real UI (not the database).
 
@@ -273,7 +333,7 @@ to mistake for evidence.)
 
 ---
 
-## PHASE 6 — DATABASE / PERSISTENCE TEST
+### PHASE 6 — DATABASE / PERSISTENCE TEST
 
 For every important mutation:
 
@@ -290,7 +350,7 @@ Check whether relationships break when a referenced record is deleted/deactivate
 
 ---
 
-## PHASE 7 — ROTA LIVE OPERATIONS TEST
+### PHASE 7 — ROTA LIVE OPERATIONS TEST
 
 This is the highest-risk workflow in the product — the scheduling equivalent of a live broadcast.
 
@@ -309,7 +369,7 @@ A manager should be able to, end to end, from an empty org:
 11. Approve or adjust timesheets.
 12. Generate and export a report.
 
-### DRAFT vs PUBLISHED
+#### DRAFT vs PUBLISHED
 
 Analogous to a broadcast console's Preview vs Programme — these must never be conflated:
 
@@ -319,7 +379,7 @@ Analogous to a broadcast console's Preview vs Programme — these must never be 
 - Editing an already-published rota: verify affected staff are identified, notified where expected, and the audit trail records the change.
 - Un-publishing (if supported) must be equally explicit and must not silently strand staff with stale data.
 
-### CONFLICT DETECTION TESTING
+#### CONFLICT DETECTION TESTING
 
 Intentionally create invalid scenarios and record whether each is Blocked / Warned / Allowed-incorrectly / Not-detected:
 
@@ -331,7 +391,7 @@ Intentionally create invalid scenarios and record whether each is Blocked / Warn
 - Location conflict (invalid location assignment)
 - Qualification conflict (if qualifications/skills are implemented)
 
-### AI ROTA ASSISTANT TESTING
+#### AI ROTA ASSISTANT TESTING
 
 Analogous to Relay's AI-detection confidence rules — RotaFlow's AI assistant (`supabase/functions/ai-rota-assistant`) must never silently act with more authority than a suggestion:
 
@@ -340,23 +400,23 @@ Analogous to Relay's AI-detection confidence rules — RotaFlow's AI assistant (
 - Test hallucinated suggestions: ask it to schedule a non-existent staff member, an unavailable staff member, or a conflicting shift, and verify the UI does not silently accept the suggestion without validation.
 - Test that accepting a suggestion goes through the same validation/conflict-detection path as a manual edit — no bypass.
 
-### AVAILABILITY, LEAVE, SWAPS, OVERTIME
+#### AVAILABILITY, LEAVE, SWAPS, OVERTIME
 
 Full lifecycle for each: submit → validate → manager review → approve/decline → downstream effects (rota conflict detection, notifications, timesheets, audit trail). Include invalid inputs (overlapping leave, past dates, missing required reason) and multi-staff swap scenarios (accept/decline/cancel, swap involving leave or unavailability).
 
-### CLOCK-IN / CLOCK-OUT & TIMESHEETS
+#### CLOCK-IN / CLOCK-OUT & TIMESHEETS
 
 Test the full state machine: clock in → break start → break end → clock out, plus invalid transitions (clock out without clocking in, double clock-in, two breaks, clock out twice) — verify these are handled safely, not silently accepted or silently dropped.
 
 Manually recompute timesheet totals from raw clock events and compare against the displayed total — do not trust the UI's arithmetic.
 
-### NOTIFICATIONS & ANNOUNCEMENTS
+#### NOTIFICATIONS & ANNOUNCEMENTS
 
 Verify every notification-producing event actually produces a notification, with correct recipient, message, timestamp and deep link. Verify announcements respect target audience and organisation boundaries.
 
 ---
 
-## OFFLINE / PWA TESTING
+### OFFLINE / PWA TESTING
 
 RotaFlow is offline-first. With network disabled:
 
@@ -373,7 +433,7 @@ Do not mark offline support as working merely because an "offline" banner appear
 
 ---
 
-## DESTRUCTIVE / HIGH-CONSEQUENCE ACTIONS TEST
+### DESTRUCTIVE / HIGH-CONSEQUENCE ACTIONS TEST
 
 The scheduling equivalent of a panic/blackout control — these must be fast, obvious, safe from accidental trigger, and fully auditable:
 
@@ -388,7 +448,7 @@ For each: confirm a confirmation step exists, the action actually executes, hist
 
 ---
 
-## RECOVERY TESTING
+### RECOVERY TESTING
 
 Intentionally interrupt the app: refresh mid-save, close tab mid-publish, disconnect network mid-mutation, kill the tab during a clock-in, force a Supabase Edge Function timeout if reproducible.
 
@@ -396,7 +456,7 @@ Verify: no corrupted or half-written state, no stale published rota left inconsi
 
 ---
 
-## ERROR-STATE, EMPTY-STATE & LOADING-STATE TESTING
+### ERROR-STATE, EMPTY-STATE & LOADING-STATE TESTING
 
 For every major workflow, intentionally trigger: empty form submit, invalid input, missing required field, network failure, timeout, server error (5xx), permission denied, deleted-dependency reference (e.g. staff deleted while referenced in a draft rota).
 
@@ -408,25 +468,25 @@ Every non-instant operation must show a loading indicator, skeleton, disabled st
 
 ---
 
-## UI/UX AUDIT
+### UI/UX AUDIT
 
 Compare the implemented application against `docs/DESIGN-SYSTEM.md`'s tokens: typography, colour palette, spacing, radii, cards, buttons, chips, status badges (draft/published, pending/approved/declined, clocked-in/out). Status must never rely on colour alone — pair colour with text/icon. Flag decorative use of a semantic colour (e.g. reusing the "published" colour for something unrelated).
 
 ---
 
-## RESPONSIVE / WINDOW TEST
+### RESPONSIVE / WINDOW TEST
 
 Test desktop (1920×1080, 1440×900, 1280×800), tablet (1024×768, 768×1024), mobile (390×844, 375×812). The rota builder, staff schedule, and clock-in flow are the highest-traffic mobile surfaces — they must remain fully operable, with no horizontal overflow and no disappearing critical controls.
 
 ---
 
-## ACCESSIBILITY
+### ACCESSIBILITY
 
 Keyboard navigation, tab order, focus states, escape/enter behaviour, form labels, error messages, icon-only control names, colour contrast, screen-reader semantics, modal focus trapping. Reference [[e2e_playwright_ci_added]] — axe coverage already exists for 13 public pages; extend the same rigor to authenticated app screens during this audit.
 
 ---
 
-## SECURITY
+### SECURITY
 
 - Broken access control / IDOR (direct object references by ID)
 - Cross-tenant access — see Phase "MULTI-TENANT SECURITY" below, this is the single most critical security surface in a multi-tenant `org_id` + RLS system
@@ -438,25 +498,25 @@ Keyboard navigation, tab order, focus states, escape/enter behaviour, form label
 
 Never perform destructive penetration testing against external infrastructure; stay within the application/test environment.
 
-### MULTI-TENANT SECURITY TEST
+#### MULTI-TENANT SECURITY TEST
 
 Create Organisation A and Organisation B, each with users and records. Attempt to access Org B data from an Org A session via: UI, search, direct URL, query parameters, record IDs, and any accessible API/Edge Function call. Any success here is a **CRITICAL SECURITY DEFECT** — stop and report immediately rather than continuing the broader audit uninterrupted.
 
 ---
 
-## PERFORMANCE
+### PERFORMANCE
 
 Startup time, route-transition latency, rota-builder rendering with realistic volumes (100+ staff, 500+ shifts), search/filter latency, duplicate network calls, memory growth over a long session. Note any silently-N+1 query pattern if observable from the network tab.
 
 ---
 
-## CONSOLE / NETWORK AUDIT
+### CONSOLE / NETWORK AUDIT
 
 Continuously monitor the console: JS errors, React errors, warnings, failed requests, 4xx/5xx responses, failed asset loads, unhandled promise rejections. Classify each as harmless / suspicious / functional / critical — don't dismiss warnings just because the UI looks fine.
 
 ---
 
-## CROSS-SCREEN CONSISTENCY
+### CROSS-SCREEN CONSISTENCY
 
 A feature isn't complete because it works on one screen. Verify propagation, e.g.:
 
@@ -467,7 +527,7 @@ A feature isn't complete because it works on one screen. Verify propagation, e.g
 
 ---
 
-## DATA INTEGRITY
+### DATA INTEGRITY
 
 IDs, relationships, timestamps, ordering, status transitions, references, deletion/archival/restoration, duplicate prevention. Verify no stale UI: delete/archive a record, navigate away and back, confirm it stays deleted/archived.
 
@@ -475,13 +535,13 @@ Pay particular attention to date/time correctness — see [[test_suite_runs_in_e
 
 ---
 
-## FEATURE GAP ANALYSIS
+### FEATURE GAP ANALYSIS
 
 For every advertised feature (per `docs/PRODUCT-SPEC.md`, `docs/UX-SPEC.md`, `docs/DATA-MODEL.md`), classify as: Implemented+Working / Implemented+Broken / Partially Implemented / UI-only / Backend-only / Missing / Blocked-by-external-dependency. Don't assume a feature exists just because its screen is present.
 
 ---
 
-## SEED / DEMO DATA AUDIT
+### SEED / DEMO DATA AUDIT
 
 Mandatory section. Note: the production demo dataset was torn down on 2026-08-14 and every seed script was deleted in `#120` — there is no seeded state to mistake for real state. Production holds one organisation and no attendance history. Verify what is actually present before relying on it.
 
@@ -491,13 +551,13 @@ For every seeded/demo entity encountered: could a real user create the equivalen
 
 ---
 
-## TEST CASE GENERATION
+### TEST CASE GENERATION
 
 Generate additional exploratory tests as you go. For each discovered feature, ask "what would a real manager or staff member do that the developer might not have considered?" Examples: double-clicking Publish, refreshing mid-publish, deleting a staff member referenced in a draft rota, opening the same rota in two tabs, searching while data is still loading, submitting a leave request mid-swap-request, disconnecting mid-clock-in, rapidly toggling availability, two managers editing the same rota simultaneously.
 
 ---
 
-## SEVERITY MODEL
+### SEVERITY MODEL
 
 - **P0 — Blocker/Critical**: data loss, cross-tenant data access, authentication bypass, privilege escalation, application unusable
 - **P1 — High**: core workflow broken (can't publish a rota, can't clock in, leave approval fails), important data not persisted, major permission failure
@@ -507,7 +567,7 @@ Generate additional exploratory tests as you go. For each discovered feature, as
 
 ---
 
-## BUG REPORT FORMAT
+### BUG REPORT FORMAT
 
 ID · Severity · Area · Feature · Environment · User role · Preconditions · Steps to reproduce · Expected result · Actual result · Evidence · Frequency/reproducibility · Likely cause · Impact · Recommended fix · Regression test
 
@@ -529,13 +589,13 @@ Regression test: Create shift, refresh, reopen rota, verify assignment persists.
 
 ---
 
-## FEATURE GAP FORMAT
+### FEATURE GAP FORMAT
 
 ID · Priority · Area · Expected capability · Evidence · Current behaviour · Business impact · Recommended implementation
 
 ---
 
-## CRITICAL SAFETY DISTINCTIONS
+### CRITICAL SAFETY DISTINCTIONS
 
 These distinctions are fundamental to RotaFlow's correctness model and must be explicitly tested, not assumed from visual design:
 
@@ -550,7 +610,7 @@ These distinctions are fundamental to RotaFlow's correctness model and must be e
 
 ---
 
-## NON-NEGOTIABLE RULE
+### NON-NEGOTIABLE RULE
 
 Add this to the agent's system instructions verbatim:
 
@@ -558,7 +618,7 @@ Add this to the agent's system instructions verbatim:
 
 ---
 
-## FINAL AUDIT
+### FINAL AUDIT
 
 Produce one consolidated report (not per-agent fragments):
 
@@ -582,7 +642,7 @@ Produce one consolidated report (not per-agent fragments):
 
 ---
 
-## IMPORTANT TESTING BEHAVIOUR
+### IMPORTANT TESTING BEHAVIOUR
 
 Do not rush. Do not stop after finding obvious bugs. Do not simply click through screens. Do not report "looks good" without evidence. Do not treat visual presence as functionality. Do not treat seed data as CRUD functionality. Do not treat a status colour change alone as a successful operation. Do not treat a successful API response as a successful workflow unless the UI and database both reflect it correctly. Do not hide failures. Do not fix defects during the audit unless explicitly instructed — report first. If something can't be tested (e.g. no second physical device for a hardware-dependent integration), mark it `BLOCKED — EXTERNAL DEPENDENCY` and explain what needs manual verification, never mark it PASS.
 
@@ -590,7 +650,7 @@ If a bug is suspected but not reliably reproducible, report it as `SUSPECTED` wi
 
 ---
 
-## FINAL REQUIREMENT
+### FINAL REQUIREMENT
 
 The final response must be a COMPLETE QA AUDIT, not a short summary.
 

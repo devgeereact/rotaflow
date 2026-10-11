@@ -2002,7 +2002,7 @@ delete × reaches 32 rather than 44 because a 44px target on the corner of a 110
 chip would cover a quarter of it and delete shifts people meant to open. The shift
 editor's full-size **Remove** is the unhurried path.
 
-`docs/DESIGN-SYSTEM.md` §5 now states the floor these were measured against, because none of
+`docs/ACCESSIBILITY.md` now states the floor these were measured against, because none of
 those numbers came from a rule — each was decided once, locally.
 
 #### Long content
