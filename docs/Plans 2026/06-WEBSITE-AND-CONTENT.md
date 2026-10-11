@@ -4,7 +4,7 @@ The website has to make one thing obvious within five seconds: **RotaFlow helps 
 
 ## 1. What exists (VERIFIED, website audit)
 
-- Routes: `/`, `/features`, `/solutions`, `/pricing`, `/resources`, `/about`, `/contact`, five legal pages, and a 404 (`App.tsx:417-444`, `:998`).
+- Routes: `/`, `/features`, `/solutions`, `/pricing`, `/resources`, `/about`, `/contact`, five legal pages, and a 404 (`App.tsx:417-435`, `:998`).
 - Copy lives mainly in `src/lib/marketing.ts` (496 lines), which claims to hold "every word" (`:21`). In fact large blocks are hard-coded in Features, Solutions, Pricing, About, Resources, Contact and several components.
 - No invented logos, stats or testimonials (`TRACTION = []`, `TESTIMONIALS = []`). No gradient text, no emoji. This honesty is an asset. Keep it.
 - No real screenshots. The hero is a hand-coded mock-up with fake data ("Sunnyvale Care Home").
@@ -14,15 +14,15 @@ The website has to make one thing obvious within five seconds: **RotaFlow helps 
 
 ## 2. Why it looks generated, and what changes
 
-| Pattern (evidence)                                                                                        | Change                                                                                                                                        |
-| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Every page opens with the same centred eyebrow, headline and paragraph                                    | Left-aligned hero with a real product screenshot beside it on desktop, below it on phones. Vary layout by what each section says              |
-| The same 44px icon tile inside a card, 11 times. About 10 card grids. 8 identical centred section headers | Use cards only where items are truly parallel. Elsewhere, use annotated screenshots, short numbered steps, or a two-column problem and answer |
-| A "stats band" of non-numbers: "6", "Offline", "Multi-site", "UK" (`marketing.ts:278-298`)                | Remove it. Bring back real numbers only when there are some                                                                                   |
-| Triple-clause slogan hero: "Every shift covered. Every team aligned. Even offline."                       | One plain promise, below                                                                                                                      |
-| Generic closer "Ready to simplify your scheduling?" (`FinalCta.tsx:20`)                                   | "See your own rota in RotaFlow."                                                                                                              |
-| One typeface at stock bold sizes                                                                          | One display face for headings (decision D10)                                                                                                  |
-| No people                                                                                                 | An About page with the founder's name, photo and why they built it. B2B buyers want to know who is behind a product that will hold staff data |
+| Pattern (evidence)                                                                                        | Change                                                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every page opens with the same centred eyebrow, headline and paragraph                                    | Left-aligned hero with a real product screenshot beside it on desktop, below it on phones. Vary layout by what each section says                                                                                                   |
+| The same 44px icon tile inside a card, 11 times. About 10 card grids. 8 identical centred section headers | Use cards only where items are truly parallel. Elsewhere, use annotated screenshots, short numbered steps, or a two-column problem and answer                                                                                      |
+| A "stats band" of non-numbers: "6", "Offline", "Multi-site", "UK" (`marketing.ts:278-299`)                | Remove it. Bring back real numbers only when there are some                                                                                                                                                                        |
+| Triple-clause slogan hero: "Every shift covered. Every team aligned. Even offline."                       | One plain promise, below                                                                                                                                                                                                           |
+| Generic closer "Ready to simplify your scheduling?" (`FinalCta.tsx:20`)                                   | "See your own rota in RotaFlow."                                                                                                                                                                                                   |
+| One typeface at stock bold sizes                                                                          | The Tesla-inspired visual language (decision D10, [04](04-DESIGN-AND-EXPERIENCE.md) §2a): Inter 400 and 500 at large sizes, flat surfaces, full-height sections, at most two calls to action per screen, frosted sticky navigation |
+| No people                                                                                                 | An About page with the founder's name, photo and why they built it. B2B buyers want to know who is behind a product that will hold staff data                                                                                      |
 
 ## 3. Positioning
 
@@ -40,11 +40,11 @@ Claims to remove or rewrite (all VERIFIED in source):
 
 | Current                                                                                                          | Problem                                     | Replacement                                                                     |
 | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------- |
-| "Every shift covered"                                                                                            | Promises a staffing outcome (`BRAND.md:31`) | "See gaps before you publish"                                                   |
+| "Every shift covered" (`marketing.ts:86`)                                                                        | Promises a staffing outcome (`BRAND.md:32`) | "See gaps before you publish"                                                   |
 | "Even offline" / "keep working when the signal drops" (also in the live meta description)                        | Only three actions queue                    | "Clock-ins, leave and swap requests wait on the phone until the signal returns" |
 | "Nothing is lost in a basement or a stairwell" (`TestimonialBand.tsx:8`)                                         | Guarantee                                   | "A clock-in recorded in a basement sends when the phone finds a signal"         |
-| "Save time every week… takes minutes" (`marketing.ts:308-309`) and "about ten minutes" (`SolutionsPage.tsx:128`) | Unmeasured (`BRAND.md:41`)                  | Remove until measured in the pilot                                              |
-| "Maintain compliance", "Built for UK obligations"                                                                | Near-compliance promise                     | "Rest-break and 48-hour warnings on the rota, and a record of every clock-in"   |
+| "Save time every week… takes minutes" (`marketing.ts:308-309`) and "about ten minutes" (`SolutionsPage.tsx:128`) | Unmeasured (`BRAND.md:32,38-39`)            | Remove until measured in the pilot                                              |
+| "Maintain compliance" (`marketing.ts:320`), "Built for UK obligations" (`TestimonialBand.tsx:17`)                | Near-compliance promise                     | "Rest-break and 48-hour warnings on the rota, and a record of every clock-in"   |
 | "Most popular" (`PricingPage.tsx:88`)                                                                            | No customers                                | Remove                                                                          |
 | About: "the pricing page says billing is not live" (`AboutPage.tsx:33`)                                          | Contradicts pricing                         | Remove the sentence                                                             |
 | Resources: "Built and in use today" (`ResourcesPage.tsx:98`)                                                     | No customers yet                            | "Available today"                                                               |
@@ -63,7 +63,9 @@ Claims to remove or rewrite (all VERIFIED in source):
 | Legal            | Privacy, Terms, Cookies, Accessibility, Trust                                                                                                                                                                         | Draft banners removed only after the review in [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S8                   |
 | 404              | Real 404 status                                                                                                                                                                                                       | `.htaccess` returns 404 for unknown paths that are not app routes                                               |
 
-**Imagery.** Three real screenshots with synthetic data, each annotated: the manager rota with one coverage warning, the staff phone with next shift and Clock in, and the approvals inbox. Capture them with Playwright from the DEV preview routes so they are regenerated after every visual change, not hand-edited. One short silent screen recording (under 30 seconds) with captions for the hero, with a still frame for reduced motion.
+**Imagery.** Three real screenshots with synthetic data, each annotated: the manager rota with one coverage warning, the staff phone with next shift and Clock in, and the approvals inbox. Capture them with Playwright from the DEV preview routes so they are regenerated after every visual change, not hand-edited, and show them in CSS device frames (12px media radius). The hero moves only on entrance, through CSS keyframes and one small `IntersectionObserver` hook, never loops, and is static under reduced motion. No new dependency. The earlier idea of a silent screen recording in the hero is dropped in favour of this; a short captioned clip can still live further down a page, with a still frame for reduced motion.
+
+**Visual language (decision D10).** The whole public site follows [04](04-DESIGN-AND-EXPERIENCE.md) §2a: flat, no resting shadows, 4px control radius, Inter 400 and 500, 0.33s colour transitions, full-height sections, at most two calls to action per screen (on the home hero: "Start a 30-day trial" and "Book a 20-minute demo"), and a frosted sticky navigation bar. Brand blue stays `#3B6FE0`. The reference brand is never named and its logo never appears, in copy, metadata, alt text or file names.
 
 **SEO and link previews.** Prerender the public routes at build time (a small Vite step that writes each public route's HTML with its own title, description, canonical and share image). This also fixes link previews on LinkedIn and WhatsApp. Add `Organization` and `SoftwareApplication` JSON-LD with real facts only. One share image per main page. Real 404s.
 
@@ -102,7 +104,7 @@ The owner asked that things like blog posts, social links and forms change in on
 
 `site_settings`: one row: support email, response hours, social links (Instagram, Facebook, LinkedIn, TikTok, WhatsApp Community invite), and an optional site notice (text, link, ends_at).
 
-Both are platform-wide, not tenant data, so they carry no `org_id`. Writes are platform owner and admin only, through RPCs with audit. This must be recorded as a deliberate exception to "every domain table carries `org_id`" in SCHEMA.md and in the RLS invariant test.
+Both are platform-wide, not tenant data, so they carry no `org_id`. Writes are platform owner and admin only, through RPCs with audit. This must be recorded as a deliberate exception to "every domain table carries `org_id`" in DATA-MODEL.md (was SCHEMA.md) and in the RLS invariant test.
 
 ### 6.3 How the website reads it
 
