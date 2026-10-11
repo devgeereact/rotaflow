@@ -426,8 +426,8 @@ export function DashboardPage(): JSX.Element {
     return (
       <Card className="max-w-sm">
         <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
-          Something went wrong loading the dashboard. Nothing is known about today&rsquo;s
-          staffing until this succeeds.
+          We could not load today&rsquo;s dashboard, so today&rsquo;s staffing is not
+          shown. Check your connection and try again.
         </p>
         <Button onClick={() => void load()}>Retry</Button>
       </Card>

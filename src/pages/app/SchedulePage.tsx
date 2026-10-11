@@ -224,7 +224,7 @@ export function SchedulePage(): JSX.Element {
     return (
       <Card className="max-w-sm">
         <p className="mb-4 text-sm text-content-muted dark:text-content-muted-dark">
-          Something went wrong loading the schedule.
+          We could not load this week&rsquo;s rota. Check your connection and try again.
         </p>
         <Button onClick={() => void load()}>Retry</Button>
       </Card>
