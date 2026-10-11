@@ -1,6 +1,7 @@
-import { format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { describeTimeRange } from '@/lib/timeRange';
+import { DEFAULT_POLICIES } from '@/lib/orgPreferences';
 import type {
   Availability,
   StaffDocument,
@@ -32,10 +33,54 @@ import type {
  * WebSocket the runtime does not have.
  */
 
+/**
+ * The organisation's working-time rules the rota warns against, read from
+ * Settings → Policies (`schedulingPolicies` in `orgPreferences`).
+ *
+ * Passed in rather than imported so this file stays free of anything that
+ * touches the network, and so a test can change one and watch the warning
+ * change.
+ */
+export interface RotaLimits {
+  /** Hours between one shift ending and the next starting. */
+  minRestHours: number;
+  /** Weekly hours past which the rota shows a person's total in red. */
+  maxWeeklyHours: number;
+  /** Days in a row a person may be rostered before the rota warns. */
+  maxConsecutiveDays: number;
+}
+
 // The Working Time Regulations 1998 give an adult worker 11 consecutive hours'
-// rest in each 24-hour period. Anything shorter is a real compliance risk, not
-// a style preference, so it is flagged rather than silently scheduled.
-const MIN_REST_HOURS = 11;
+// rest in each 24-hour period and an average 48-hour week. An organisation can
+// change these in Settings → Policies; these are what applies when it has not.
+// The values live in one place, `DEFAULT_POLICIES`, so the rota and the
+// Policies screen cannot disagree about what "unset" means.
+export const DEFAULT_ROTA_LIMITS: RotaLimits = {
+  minRestHours: DEFAULT_POLICIES.minRestHours,
+  maxWeeklyHours: DEFAULT_POLICIES.maxWeeklyHours,
+  maxConsecutiveDays: DEFAULT_POLICIES.maxConsecutiveDays,
+};
+
+export type WeekTotalTone = 'over_limit' | 'over_contract' | 'normal';
+
+/**
+ * How the rota grid's "Week" total is coloured. Red past the organisation's
+ * maximum weekly hours, amber more than 12 hours past the person's contract.
+ */
+export function weekTotalTone(
+  weekMinutes: number,
+  contractMinutes: number,
+  maxWeeklyHours: number = DEFAULT_ROTA_LIMITS.maxWeeklyHours,
+): WeekTotalTone {
+  if (weekMinutes > maxWeeklyHours * 60) return 'over_limit';
+  if (weekMinutes > contractMinutes + 12 * 60) return 'over_contract';
+  return 'normal';
+}
+
+/** Fill any unset limit from the defaults. */
+export function resolveRotaLimits(limits?: Partial<RotaLimits>): RotaLimits {
+  return { ...DEFAULT_ROTA_LIMITS, ...limits };
+}
 /** Contracted hours are a target, not a ceiling, only flag a real overrun. */
 const OVER_CONTRACT_TOLERANCE = 1.25;
 /** A qualification lapsing inside this window needs booking now, not later. */
@@ -49,6 +94,7 @@ export type InsightKind =
   | 'unavailable'
   | 'double_booked'
   | 'rest_breach'
+  | 'consecutive_days'
   | 'over_contract'
   | 'document_expiry'
   | 'under_minimum_cover';
@@ -92,6 +138,8 @@ export interface RotaInsightInput {
   timezone: string;
   /** Injected so every rule agrees on "now" and tests can pin it. */
   now: number;
+  /** The organisation's working-time rules. Unset ones use the defaults. */
+  limits?: Partial<RotaLimits>;
 }
 
 const SEVERITY_RANK: Record<InsightSeverity, number> = {
@@ -188,6 +236,11 @@ function overlaps(a: Shift, b: Shift): boolean {
   );
 }
 
+/** The calendar day after a 'YYYY-MM-DD', DST-safe. */
+function nextDay(dateIso: string): string {
+  return format(addDays(new Date(`${dateIso}T00:00:00`), 1), 'yyyy-MM-dd');
+}
+
 /** ISO Monday-based week key, so weekly hour totals group the way a rota does. */
 function weekKey(iso: string, timezone: string): string {
   const zoned = toZonedTime(new Date(iso), timezone);
@@ -208,6 +261,7 @@ function weekKey(iso: string, timezone: string): string {
 export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
   const { shifts, staff, shiftTypes, locations, leave, availability, documents } = input;
   const { minimumCoverRules = [], coverDates = [], timezone, now } = input;
+  const { minRestHours, maxConsecutiveDays } = resolveRotaLimits(input.limits);
 
   const staffById = new Map(staff.map((s) => [s.id, s]));
   const typeById = new Map(shiftTypes.map((t) => [t.id, t]));
@@ -424,7 +478,7 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
       const restHours =
         (new Date(next.starts_at).getTime() - new Date(previous.ends_at).getTime()) /
         3_600_000;
-      if (restHours < 0 || restHours >= MIN_REST_HOURS) continue;
+      if (restHours < 0 || restHours >= minRestHours) continue;
       const nextTz = timezoneFor(next);
       const previousTz = timezoneFor(previous);
       const date = localDate(next.starts_at, nextTz);
@@ -433,10 +487,49 @@ export function computeRotaInsights(input: RotaInsightInput): RotaInsight[] {
         kind: 'rest_breach',
         severity: 'warning',
         title: `${name} has only ${restHours.toFixed(1)}h rest`,
-        detail: `Off at ${localTime(previous.ends_at, previousTz)} on ${dayLabel(localDate(previous.starts_at, previousTz))}, back at ${localTime(next.starts_at, nextTz)} on ${dayLabel(date)}. The Working Time Regulations expect ${MIN_REST_HOURS}h.`,
+        detail: `Off at ${localTime(previous.ends_at, previousTz)} on ${dayLabel(localDate(previous.starts_at, previousTz))}, back at ${localTime(next.starts_at, nextTz)} on ${dayLabel(date)}. Your policy asks for ${minRestHours}h.`,
         date,
         staffProfileId,
         shiftId: next.id,
+      });
+    }
+
+    // ---- 5b. Too many days in a row ----
+    // Every rostered day counts, past ones included: a run that started last
+    // Thursday is still a run today. Only a run that reaches into the
+    // future is reported, since a past one is beyond a manager's reach.
+    const workedDays = [
+      ...new Set(personShifts.map((s) => localDate(s.starts_at, timezoneFor(s)))),
+    ].sort();
+    const aheadDays = new Set(ahead.map((s) => localDate(s.starts_at, timezoneFor(s))));
+    let runStart = 0;
+    for (let i = 1; i <= workedDays.length; i += 1) {
+      const previousDay = workedDays[i - 1];
+      const day = workedDays[i];
+      if (
+        day !== undefined &&
+        previousDay !== undefined &&
+        day === nextDay(previousDay)
+      ) {
+        continue;
+      }
+      const run = workedDays.slice(runStart, i);
+      runStart = i;
+      if (run.length <= maxConsecutiveDays) continue;
+      if (!run.some((d) => aheadDays.has(d))) continue;
+      const first = run[0] ?? '';
+      const last = run[run.length - 1] ?? first;
+      // The day that tips the run over, which is the shift to move.
+      const overDay = run[maxConsecutiveDays] ?? last;
+      insights.push({
+        id: `consecutive:${staffProfileId}:${first}`,
+        kind: 'consecutive_days',
+        severity: 'warning',
+        title: `${name} is rostered ${run.length} days in a row`,
+        detail: `${dayLabel(first)} to ${dayLabel(last)}. Your policy allows ${maxConsecutiveDays} consecutive days, so ${dayLabel(overDay)} is one too many.`,
+        date: overDay,
+        staffProfileId,
+        shiftId: null,
       });
     }
 
@@ -568,6 +661,8 @@ export interface CoverSuggestionInput {
   leave: LeaveRequest[];
   availability: Availability[];
   timezone: string;
+  /** The organisation's working-time rules. Unset ones use the defaults. */
+  limits?: Partial<RotaLimits>;
 }
 
 /**
@@ -585,6 +680,7 @@ export interface CoverSuggestionInput {
  */
 export function suggestCoverForShift(input: CoverSuggestionInput): CoverCandidate[] {
   const { shift, shifts, staff, leave, availability, timezone } = input;
+  const { minRestHours } = resolveRotaLimits(input.limits);
   const date = localDate(shift.starts_at, timezone);
   const shiftStart = new Date(shift.starts_at).getTime();
   const shiftEnd = new Date(shift.ends_at).getTime();
@@ -698,7 +794,7 @@ export function suggestCoverForShift(input: CoverSuggestionInput): CoverCandidat
           tightestRest = Math.min(tightestRest, (otherStart - shiftEnd) / 3_600_000);
         }
       }
-      if (tightestRest < MIN_REST_HOURS) {
+      if (tightestRest < minRestHours) {
         score -= 30;
         blockers.push(`Only ${tightestRest.toFixed(1)}h rest either side`);
       } else if (Number.isFinite(tightestRest)) {

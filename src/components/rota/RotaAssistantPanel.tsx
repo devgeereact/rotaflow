@@ -18,6 +18,7 @@ import {
   suggestCoverForShift,
   summariseInsights,
   type CoverCandidate,
+  type RotaLimits,
   type RotaInsight,
 } from '@/lib/rotaInsights';
 import { findClashingShift, type ShiftLike } from '@/lib/shiftConflicts';
@@ -57,6 +58,8 @@ interface RotaAssistantPanelProps {
   weekStart: string;
   weekEnd: string;
   timezone: string;
+  /** Settings → Policies working-time rules. Unset ones use the defaults. */
+  limits?: Partial<RotaLimits>;
   /**
    * Where an AI draft would be written. Null until a single location is
    * chosen: a suggestion has to land in one location's rota, and picking one
@@ -121,6 +124,7 @@ export function RotaAssistantPanel({
   weekStart,
   weekEnd,
   timezone,
+  limits,
   applyTarget,
   applyBlockedReason = null,
   onPreview,
@@ -206,8 +210,20 @@ export function RotaAssistantPanel({
         documents,
         timezone,
         now,
+        limits,
       }),
-    [shifts, staff, shiftTypes, locations, leave, availability, documents, timezone, now],
+    [
+      shifts,
+      staff,
+      shiftTypes,
+      locations,
+      leave,
+      availability,
+      documents,
+      timezone,
+      now,
+      limits,
+    ],
   );
 
   const overview = useMemo(
@@ -240,11 +256,12 @@ export function RotaAssistantPanel({
           leave,
           availability,
           timezone,
+          limits,
         }).slice(0, 3),
       );
     }
     return map;
-  }, [openShifts, shifts, staff, leave, availability, timezone]);
+  }, [openShifts, shifts, staff, leave, availability, timezone, limits]);
 
   const typeById = useMemo(() => new Map(shiftTypes.map((t) => [t.id, t])), [shiftTypes]);
   const locationById = useMemo(
