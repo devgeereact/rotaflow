@@ -27,7 +27,7 @@ interface AmendClockEventModalProps {
 
 /**
  * Corrects one person's recorded clock-in/out time for one day
- * (`docs/ORGANISATION_WORKSPACE.html`'s "Amend {name}'s hours?"). Backed by
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s "Amend {name}'s hours?"). Backed by
  * `clockService.updateClockEvent` / `recordClockEvent`, which the caller
  * chooses between per field depending on whether an event already exists —
  * this component only collects the correction.

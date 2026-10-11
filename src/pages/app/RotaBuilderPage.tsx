@@ -618,7 +618,7 @@ export function RotaBuilderPage(): JSX.Element {
     // The search moves inside this disclosure below `sm`, so it has to be
     // counted like the rest. A filter you cannot see and cannot count is a
     // filter you forget you applied, and then the grid is lying to you about
-    // who is rostered (docs/DESIGN.md §7).
+    // who is rostered (docs/DESIGN-SYSTEM.md §7).
     (search.trim() ? 1 : 0) +
     (locationFilter !== 'all' ? 1 : 0) +
     (departmentFilter !== 'all' ? 1 : 0) +
@@ -1952,7 +1952,7 @@ export function RotaBuilderPage(): JSX.Element {
         {/* ---- Toolbar: date nav, view tabs, settings, publish ---- */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 sm:mb-4">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* A period stepper is the case docs/DESIGN.md §5 names for
+            {/* A period stepper is the case docs/DESIGN-SYSTEM.md §5 names for
                 `IconButton`'s 44px default. These were hand-rolled 30x30
                 controls with no focus ring. */}
             <IconButton

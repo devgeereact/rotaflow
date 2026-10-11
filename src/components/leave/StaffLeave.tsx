@@ -47,7 +47,7 @@ export interface StaffLeaveProps {
 }
 
 /**
- * A staff member's own Leave (`docs/ORGANISATION_WORKSPACE.html`'s
+ * A staff member's own Leave (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.leave` staff branch): their entitlement, their requests, and
  * where each has got to. Withdraw is real (`cancelLeaveRequest`), not the
  * reference's toast-only version.

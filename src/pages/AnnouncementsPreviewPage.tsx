@@ -42,7 +42,7 @@ const REACH: ReachRow[] = [
  * (`/admin-preview`-style harness). The real `/app/announcements` needs a
  * live Supabase session and a seeded organisation. Renders the real
  * `AnnouncementsView` against fixed mock data shaped to match
- * `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.announcements`. `?role=staff`
+ * `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.announcements`. `?role=staff`
  * switches branch.
  */
 export function AnnouncementsPreviewPage(): JSX.Element {

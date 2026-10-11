@@ -189,7 +189,7 @@ const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
 
 /**
  * `/admin`. NEW_STRUCTURE §34's platform dashboard, built to the full shape of
- * `docs/PLATFORM_CONSOLE.html`.
+ * `docs/design/PLATFORM_CONSOLE.html`.
  *
  * ## Which figures are real
  *

@@ -149,7 +149,7 @@ Inspected for the first time in this pass, as a real `platform_owner`.
 `ui/DataTable` hand-rolled its own scroller: the focusable `role="region"` and the
 `tabIndex`, but not the measured overflow cue or the edge fade. So nine platform
 console tables scrolled in complete silence, with columns off the right-hand edge and
-nothing on the page saying so — while `docs/DESIGN.md` said it "carries the same
+nothing on the page saying so — while `docs/DESIGN-SYSTEM.md` said it "carries the same
 treatment internally". It now renders through `ScrollRegion`. One scroller, one
 contract, and the documentation is true.
 
@@ -175,7 +175,7 @@ delete × reaches 32 rather than 44 because a 44px target on the corner of a 110
 chip would cover a quarter of it and delete shifts people meant to open. The shift
 editor's full-size **Remove** is the unhurried path.
 
-`docs/DESIGN.md` §5 now states the floor these were measured against, because none of
+`docs/DESIGN-SYSTEM.md` §5 now states the floor these were measured against, because none of
 those numbers came from a rule — each was decided once, locally.
 
 ### Long content

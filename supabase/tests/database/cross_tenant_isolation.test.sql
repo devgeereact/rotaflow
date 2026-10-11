@@ -2,7 +2,7 @@
 -- cross_tenant_isolation.test.sql — the Org A / Org B matrix
 -- (docs/SAAS.md CAP-045, ❓-003)
 --
--- `docs/QA-AUDIT-REPORT.md` called this "the single most critical test
+-- `qa/FUNCTIONAL-AUDIT.md` called this "the single most critical test
 -- in the entire brief" and recorded its verdict as **NOT DETERMINED —
 -- BLOCKED**: Org A could never be created, so cross-tenant access was
 -- never exercised at all. It has stayed unanswered since, and the

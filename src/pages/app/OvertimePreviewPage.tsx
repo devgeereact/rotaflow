@@ -67,7 +67,7 @@ const ROWS: OvertimeRow[] = [
  * (`/admin-preview`-style harness). The real `/app/overtime` needs a live
  * Supabase session and a seeded organisation, neither of which a screenshot
  * tool has. Renders the real `OvertimeView` against fixed mock data shaped
- * to match `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.overtime`.
+ * to match `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.overtime`.
  * `?role=staff` switches branch.
  */
 export function OvertimePreviewPage(): JSX.Element {

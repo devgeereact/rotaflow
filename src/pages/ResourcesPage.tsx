@@ -28,7 +28,7 @@ import { FinalCta } from '@/components/marketing/FinalCta';
  * whether RotaFlow covers their operation is better served by a straight answer
  * than by a feature matrix with every box ticked.
  *
- * Keep `BUILD_STATUS` in step with `docs/SCREENS.md`; it is the same
+ * Keep `BUILD_STATUS` in step with `docs/UX-SPEC.md`; it is the same
  * information, written for a buyer rather than an engineer.
  */
 

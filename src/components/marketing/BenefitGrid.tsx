@@ -9,7 +9,7 @@ interface BenefitGridProps {
 /**
  * The eight product benefits. Content lives in `src/lib/marketing.ts`, which
  * carries the rule: nothing goes in the list that is not built and working
- * today, checked against `docs/SCREENS.md`.
+ * today, checked against `docs/UX-SPEC.md`.
  */
 export function BenefitGrid({
   heading = 'One platform for the whole operation',

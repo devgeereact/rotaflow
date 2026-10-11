@@ -1,11 +1,11 @@
 /**
  * Pure aggregation for `/app/reports`'s dashboard
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.reports`). No network, no
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.reports`). No network, no
  * React — the page fetches rows, this turns them into tiles and bar rows.
  *
  * The reference's six tiles include Staff cost and Agency spend. Neither is
  * backable: nothing in the schema stores an hourly rate or an agency-shift
- * flag (`docs/SCHEMA.md`), and a cost figure built from an invented rate
+ * flag (`docs/DATA-MODEL.md`), and a cost figure built from an invented rate
  * would be worse than no figure — it would look like payroll math. Four real
  * tiles ship instead of six invented ones.
  */

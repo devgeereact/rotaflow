@@ -26,7 +26,7 @@ This is the shared-working-directory hazard the repo has hit before. Check
 ## First impression
 
 The grid reads as a dense, calm operations tool rather than a dashboard, which is
-what `docs/DESIGN.md` §1 asks for. Hierarchy is honest: the eye goes to the week
+what `docs/DESIGN-SYSTEM.md` §1 asks for. Hierarchy is honest: the eye goes to the week
 axis, then the shift chips, then Publish. The staff column pins, the header pins,
 and the multi-week axis carries a `w/c` grouping label, which is what makes
 twenty-one date columns navigable rather than countable.

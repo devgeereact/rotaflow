@@ -104,7 +104,7 @@ const ORG_STATUS_OPTIONS: readonly FilterOption[] = [
  * Subscription status is a different domain from organisation status, and the
  * option labels say so in words rather than relying on the reader to remember
  * which select they are in. An active organisation and an active subscription
- * are not the same fact, and `docs/DESIGN.md` is explicit that two status
+ * are not the same fact, and `docs/DESIGN-SYSTEM.md` is explicit that two status
  * domains keep their text labels for exactly that reason.
  */
 const SUBSCRIPTION_OPTIONS: readonly FilterOption[] = [

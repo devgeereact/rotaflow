@@ -227,7 +227,7 @@ describe('buildCurrentShift', () => {
 
   it('reproduces the reference values', () => {
     // En dash, not a hyphen: `@/lib/timeRange` owns the range separator for
-    // the whole product now (docs/DESIGN.md §2, "Time and figures").
+    // the whole product now (docs/DESIGN-SYSTEM.md §2, "Time and figures").
     expect(info.timeRange).toBe('09:00\u201317:00');
     expect(info.dateLabel).toBe('Today, 14 May 2026');
     expect(info.countdownLabel).toBe('Starts in 12 min');

@@ -11,7 +11,7 @@ import type { Shift, ShiftType, StaffProfile } from '@/types';
 /**
  * The single column template every band of the grid shares. Staff column,
  * seven day columns, then a trailing "Week" hours-total column (matches
- * docs/ORGANISATION_WORKSPACE.html's rota table). The header and the
+ * docs/design/ORGANISATION_WORKSPACE.html's rota table). The header and the
  * daily-totals footer reuse it so all three stay aligned; changing the shape
  * in one place without the others is what knocks the grid out of true.
  */

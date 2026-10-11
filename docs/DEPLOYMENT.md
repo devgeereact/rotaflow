@@ -270,7 +270,7 @@ action that changes that is revoking it at the service that issued it.
 
 ## Rolling back
 
-`docs/PWA-RELEASE-GATES.md` recorded gate 29 ("Rollback documented and feasible") as **FAIL**
+`qa/LAUNCH-CHECKLIST.md` recorded gate 29 ("Rollback documented and feasible") as **FAIL**
 until 2026-09-04, on the accurate grounds that this file described how to deploy and nowhere
 described how to undo one. This is that section. It has been reasoned through against the
 constraints below, and the mechanical part has been exercised — a deploy from a named commit —

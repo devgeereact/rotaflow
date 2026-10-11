@@ -107,7 +107,7 @@ Recorded as GAP-059. Blocks publication of the notice.
 
 ### P3
 
-`docs/SCHEMA.md` said `notification_deliveries` had no retention policy a week
+`docs/DATA-MODEL.md` said `notification_deliveries` had no retention policy a week
 after `0092` gave it twelve months — fixed. `src/pages/legal/LegalNotice.tsx`
 became unreferenced once Terms had content — removed.
 

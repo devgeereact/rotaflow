@@ -122,7 +122,7 @@ Do not manually insert database records via SQL/Supabase Studio unless the test 
 
 Avoid modifying application state via undocumented shortcuts, and do not bypass the UI simply because it's inconvenient. The primary test must realistically represent what a real customer can achieve. Database inspection is for verifying persistence and integrity _after_ the UI workflow, never for making a broken feature appear to pass.
 
-Never run this audit against production data. RotaFlow is a pre-launch multi-tenant SaaS — production is effectively empty — but **measure it, never quote a stored figure**, because a count written into a document is right on the day it is written and wrong every day after (`select count(*) from organisations`) — so treat production as precious anyway — see `docs/SCHEMA.md` for RLS/`org_id` isolation. All destructive/mutating testing happens inside a dedicated QA organisation created for this purpose, or against a local/staging Supabase project. If only production is reachable, stop and flag this before creating any test org, rather than assuming it's safe.
+Never run this audit against production data. RotaFlow is a pre-launch multi-tenant SaaS — production is effectively empty — but **measure it, never quote a stored figure**, because a count written into a document is right on the day it is written and wrong every day after (`select count(*) from organisations`) — so treat production as precious anyway — see `docs/DATA-MODEL.md` for RLS/`org_id` isolation. All destructive/mutating testing happens inside a dedicated QA organisation created for this purpose, or against a local/staging Supabase project. If only production is reachable, stop and flag this before creating any test org, rather than assuming it's safe.
 
 ---
 
@@ -156,7 +156,7 @@ Use multiple agents or sub-agents whenever feasible. Recommended parallel workst
 | 7     | Multi-tenant security — org isolation, IDOR, direct-URL access, role/permission boundaries                                                                |
 | 8     | Super Admin / Platform Console — org management, support access, feature flags, GDPR, audit logs                                                          |
 | 9     | Offline / PWA & recovery — service worker, offline queueing, interrupted mutations, sync conflicts                                                        |
-| 10    | UI/UX, accessibility, responsive — against `docs/DESIGN.md` tokens                                                                                        |
+| 10    | UI/UX, accessibility, responsive — against `docs/DESIGN-SYSTEM.md` tokens                                                                                        |
 | 11    | Performance, console/network audit                                                                                                                        |
 | 12    | Final independent exploratory auditor — deliberately ignores Agents 1–11's conclusions and re-tests blind, then the results are diffed against the others |
 
@@ -286,7 +286,7 @@ For every important mutation:
 
 Additional stress inputs: empty values, null values, very long strings, special characters, unicode, emoji, quotes, boundary dates/times, boundary numbers, rapid double-submit, concurrent updates from two sessions.
 
-Check whether relationships break when a referenced record is deleted/deactivated (see `docs/SCHEMA.md` for FK/RLS shape).
+Check whether relationships break when a referenced record is deleted/deactivated (see `docs/DATA-MODEL.md` for FK/RLS shape).
 
 ---
 
@@ -410,7 +410,7 @@ Every non-instant operation must show a loading indicator, skeleton, disabled st
 
 ## UI/UX AUDIT
 
-Compare the implemented application against `docs/DESIGN.md`'s tokens: typography, colour palette, spacing, radii, cards, buttons, chips, status badges (draft/published, pending/approved/declined, clocked-in/out). Status must never rely on colour alone — pair colour with text/icon. Flag decorative use of a semantic colour (e.g. reusing the "published" colour for something unrelated).
+Compare the implemented application against `docs/DESIGN-SYSTEM.md`'s tokens: typography, colour palette, spacing, radii, cards, buttons, chips, status badges (draft/published, pending/approved/declined, clocked-in/out). Status must never rely on colour alone — pair colour with text/icon. Flag decorative use of a semantic colour (e.g. reusing the "published" colour for something unrelated).
 
 ---
 
@@ -477,7 +477,7 @@ Pay particular attention to date/time correctness — see [[test_suite_runs_in_e
 
 ## FEATURE GAP ANALYSIS
 
-For every advertised feature (per `docs/PRD.md`, `docs/SCREENS.md`, `docs/SCHEMA.md`), classify as: Implemented+Working / Implemented+Broken / Partially Implemented / UI-only / Backend-only / Missing / Blocked-by-external-dependency. Don't assume a feature exists just because its screen is present.
+For every advertised feature (per `docs/PRODUCT-SPEC.md`, `docs/UX-SPEC.md`, `docs/DATA-MODEL.md`), classify as: Implemented+Working / Implemented+Broken / Partially Implemented / UI-only / Backend-only / Missing / Blocked-by-external-dependency. Don't assume a feature exists just because its screen is present.
 
 ---
 

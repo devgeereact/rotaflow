@@ -194,7 +194,7 @@ watched happening; it is the shape of the code and the wording on the screen.
    service worker, the manifest, installation or the update prompt.
 
 None of these are fixed by this file. They are recorded here and in
-`docs/PWA-RELEASE-GATES.md` so that the next release decision has to look at
+`qa/LAUNCH-CHECKLIST.md` so that the next release decision has to look at
 them.
 
 **Re-checked 2026-09-05, and defect 1 above is still true at `main`.** The

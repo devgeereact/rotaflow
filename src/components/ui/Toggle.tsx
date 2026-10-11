@@ -38,7 +38,7 @@ export function Toggle({
         'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
         // The switch stays 44x24, which is what a switch looks like, but the
         // area you can hit is 44x44: an absolutely-positioned `::after` adds
-        // 10px above and below without moving anything (docs/DESIGN.md §5).
+        // 10px above and below without moving anything (docs/DESIGN-SYSTEM.md §5).
         "after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-['']",
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         'disabled:cursor-not-allowed disabled:opacity-50',

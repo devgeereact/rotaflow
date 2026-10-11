@@ -74,7 +74,7 @@ const PANEL_ID = 'reports-panel';
 
 /**
  * `/app/reports`. Leads with the workforce-trends dashboard
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.reports`: tiles, charts,
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.reports`: tiles, charts,
  * hours-by-department and absence-reasons), the same view every manager
  * lands on. The report catalogue — favourites, scheduling, search, per-row
  * run/download, and the overview/recent/shortcuts rail — is real, additive
@@ -167,7 +167,7 @@ export function ReportsView(props: ReportsViewProps): JSX.Element {
         </div>
 
         {/* `min-w-0` because a grid item defaults to `min-width: auto` and so
-            refuses to shrink below its widest child (docs/DESIGN.md §7). This
+            refuses to shrink below its widest child (docs/DESIGN-SYSTEM.md §7). This
             rail's action row has a 128px `shrink-0` button, a 20px gap and a
             `whitespace-nowrap` one: 353px of min-content in a 327px track on a
             375px phone, which pushed `documentElement.scrollWidth` to 377 and

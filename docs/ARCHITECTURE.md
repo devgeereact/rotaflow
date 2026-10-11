@@ -187,7 +187,7 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
   `usePermissions()` derives UI capability flags from the active role. Cosmetic
   gating only, RLS is the real enforcement (see `docs/HOOKS.md` §6-7).
 - **UI/theme state:** `ThemeProvider` (Context), **light by default** (see
-  `docs/DESIGN.md` §1; a deliberate brand choice, not `prefers-color-scheme`),
+  `docs/DESIGN-SYSTEM.md` §1; a deliberate brand choice, not `prefers-color-scheme`),
   with a user override persisted to `localStorage`.
 - **Offline write queue:** clock-ins, leave requests and swap _requests_ made offline are
   written to an IndexedDB outbox (`services/syncQueue`), replayed on reconnect via
@@ -367,7 +367,7 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
   (keyed on `org_id`/`(org_id, provider_ref)` since Stripe delivery is
   at-least-once), writes `invoices` as a second, automated writer alongside
   the manual platform-finance path, and calls `set_org_status()` (via its
-  `0051` service-role exception, see `SCHEMA.md` §6) to suspend an org once
+  `0051` service-role exception, see `DATA-MODEL.md` §6) to suspend an org once
   Stripe's dunning is exhausted.
 
 Deploy: `supabase functions deploy <name>` (webhook needs `--no-verify-jwt`).

@@ -9,7 +9,7 @@ that, not `xcrun simctl`.
 
 ## How to read the status column
 
-`docs/SCREENS.md` answers "does the feature exist". **This file answers "does it
+`docs/UX-SPEC.md` answers "does the feature exist". **This file answers "does it
 match its mockup"**. They are different questions and a screen is regularly ✅ in
 one and not the other.
 
@@ -115,16 +115,16 @@ Two things about the preview routes that have caused re-work:
 | locations-depts     | `/locations-preview/departments`                 | `docs/design/Location-department.png`     | Matched. Second tab of the same workspace. `DepartmentManager` now opens as a dialog, and the live `/app/locations/departments` redirects to `/app/locations` (`src/App.tsx:634`)                                                                                                                                                            |
 | settings-org        | `/app/settings/organisation`                     | `docs/design/SettingsOrganisation.png`    | **Not matched.** `SettingsOrganisationPage` ships, adding the ref's contact block and sites/departments summary to the old flat screen; `/app/settings` redirects here (`src/App.tsx:680`). Industry Pack and Platform Support Access are deliberately not built, both need tables that do not exist                                         |
 | settings-integr     | `/app/settings/integrations`                     | `docs/design/SettingsIntegrations.png`    | **Not matched.** It is a Settings tab now, as the ref shows; the old top-level `/app/integrations` redirects here (`src/App.tsx:676`)                                                                                                                                                                                                        |
-| profile             | `/app/account/profile`                           | `docs/design/ProfileSettings.png`         | **Not matched, partly built**. See `docs/SCREENS.md` §4                                                                                                                                                                                                                                                                                      |
+| profile             | `/app/account/profile`                           | `docs/design/ProfileSettings.png`         | **Not matched, partly built**. See `docs/UX-SPEC.md` §4                                                                                                                                                                                                                                                                                      |
 | profile-prefs       | `/app/account/preferences`                       | `docs/design/profileprefrence.png`        | **Not matched.** `PreferencesPage` ships the preferences that are really stored, `app_settings.theme`, `app_settings.notifications_enabled` and the device's push subscription. The ref's language selector is deliberately absent, there is no i18n layer                                                                                   |
 | settings-policy     | `/app/settings/policies`                         | `docs/design/Settingspolicy.png`          | **Not matched.** `SettingsPoliciesPage` ships the six rules the product actually acts on, stored in `organisations.settings` rather than a policies table. The ref's ~55 policies across 10 categories are a policy engine, not a screen                                                                                                     |
 | settings-audit      | `/app/settings/audit`                            | `docs/design/Settingsaudit.png`           | **Not matched.** `SettingsAuditPage` ships over `audit_logs`, which now has several writers, not only `anonymize_staff_member`: leave declines, clock-event amendments and the AI assistant's `audit_write`                                                                                                                                  |
-| settings-billing    | `/app/settings/billing`                          | `docs/design/Settingsbilling.png`         | **Built, not ref-matched.** Stripe Checkout + Billing Portal wired (`0050`, `SettingsBillingPage.tsx`, `billingCheckoutService.ts`) — not verified against a real completed charge. See `docs/PRD.md` §5/§7                                                                                                                                  |
+| settings-billing    | `/app/settings/billing`                          | `docs/design/Settingsbilling.png`         | **Built, not ref-matched.** Stripe Checkout + Billing Portal wired (`0050`, `SettingsBillingPage.tsx`, `billingCheckoutService.ts`) — not verified against a real completed charge. See `docs/PRODUCT-SPEC.md` §5/§7                                                                                                                                  |
 | settings-notifs     | `/app/settings/notifications`                    | `docs/design/SettingsNotifications.png`   | **Not matched.** `SettingsNotificationsPage` ships org-wide defaults across the three channels the product can deliver (in-app, email, web push). The ref's SMS column and 28-template library are deliberately absent, no provider and no `notification_templates` table. Distinct from `/app/notifications`                                |
 | profile-security    | `/app/account/security`                          | `docs/design/ProfileSecurity.png`         | **Not matched.** `SecurityPage` ships password change and TOTP two-factor (`0102`), and `/app/account/sessions` lists real devices and revokes them (`0100`). Backup codes and trusted devices are still absent, and the ref's 100% "Security check-up" ring is deliberately not built — three of its four ticks cannot be answered honestly |
 
 **Before starting any row whose status says a card or field is deliberately not
-built**, read `docs/SCREENS.md` §3/§4 and the page's own header comment. Several of
+built**, read `docs/UX-SPEC.md` §3/§4 and the page's own header comment. Several of
 those gaps need a migration or a whole subsystem, so a design-match loop alone
 cannot close them.
 
@@ -165,7 +165,7 @@ Build the **`<SCREEN>`** screen so it visually matches `<REF>` as closely as pos
    `@/…`; keep components small and typed (SDK setup in `src/lib`, data calls in
    `src/services`, reusable logic in `src/hooks`).
 2. **Tokens already exist. Use them, don't invent.** The `@theme` block in `src/index.css` and
-   `docs/DESIGN.md` define the full palette, spacing, radii, shadows, and type scale.
+   `docs/DESIGN-SYSTEM.md` define the full palette, spacing, radii, shadows, and type scale.
    Every value you use must be a token class (`bg-primary`, `text-content`,
    `rounded-2xl`, `shadow`, etc.), no raw hex, no arbitrary `p-[13px]`, no inline
    `style={{}}`. If the design system PNG needs a value that isn't a token yet, add it
@@ -175,11 +175,11 @@ Build the **`<SCREEN>`** screen so it visually matches `<REF>` as closely as pos
    duplicating styles inline; add a new primitive there if the reference needs one
    that doesn't exist yet.
 5. The reference image is light-mode only, but every surface still needs a working
-   `dark:` variant per `docs/DESIGN.md` §1. Don't defer dark mode.
+   `dark:` variant per `docs/DESIGN-SYSTEM.md` §1. Don't defer dark mode.
 6. **You may run the dev server for this task.** Start `npm run dev` in the background
    if it isn't already running and reuse it. Do not spawn a second instance.
 7. This is a **static PWA build**, no server runtime. Anything server-side (data,
-   auth) goes through Supabase per `docs/SCHEMA.md` / `docs/ARCHITECTURE.md`; don't
+   auth) goes through Supabase per `docs/DATA-MODEL.md` / `docs/ARCHITECTURE.md`; don't
    invent a backend for a screen that needs real data. Wire it to Supabase or use
    the same demo/mock pattern already used on built screens.
 

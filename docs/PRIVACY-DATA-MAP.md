@@ -1,6 +1,6 @@
 # Privacy data map
 
-**Dated 4 September 2026.** A snapshot, like `docs/QA-AUDIT-REPORT.md`, not a
+**Dated 4 September 2026.** A snapshot, like `qa/FUNCTIONAL-AUDIT.md`, not a
 living document — the register in `docs/SAAS.md` is what stays current.
 
 Built by reading the code, the migrations and the edge functions, not by asking
@@ -25,7 +25,7 @@ not legal advice.
 | Role           | **Controller** for visitors, account holders, billing contacts, support correspondence and crash reports. **Processor** for everything an employer records about its staff |
 | Live data      | None. Production held 0 organisations and 1 user at the last measurement (2026-08-31). Nothing below has been exercised against a real tenant                              |
 | Database       | Supabase Postgres, `eu-west-1` (Ireland)                                                                                                                                   |
-| Backups        | **None.** No backups and no point-in-time recovery, by cost decision (`docs/DATA_LIFECYCLE.md` §1). Every deletion is irreversible                                         |
+| Backups        | **None.** No backups and no point-in-time recovery, by cost decision (`docs/SECURITY.md` §1). Every deletion is irreversible                                         |
 
 ---
 
@@ -225,10 +225,10 @@ right shape for this class of problem.
 | Content security policy | `script-src 'self'`; only Supabase, Sentry EU and ImageKit reachable                                                                    | `.htaccess:158`                                   |
 | Fonts                   | self-hosted since 2026-09-03; previously leaked every visitor IP to Google                                                              | `public/fonts/README.md`                          |
 | Secrets                 | Edge Function secrets and Postgres `vault`; the notification secret is generated in-database and has no second copy                     | `0091`                                            |
-| `smtp_pass`             | excluded from the `authenticated` column grant; clients read `org_smtp_settings_safe`                                                   | `docs/SCHEMA.md`                                  |
+| `smtp_pass`             | excluded from the `authenticated` column grant; clients read `org_smtp_settings_safe`                                                   | `docs/DATA-MODEL.md`                                  |
 | Audit log               | append-only, enforced by trigger, two narrow carve-outs                                                                                 | `0066`                                            |
 | Rate limiting           | on invites and other sensitive paths                                                                                                    | `0085`, `0086`                                    |
-| Backups                 | **none, and no PITR**                                                                                                                   | `docs/DATA_LIFECYCLE.md` §1                       |
+| Backups                 | **none, and no PITR**                                                                                                                   | `docs/SECURITY.md` §1                       |
 | Scheduled checks        | `backup.yml` and `auth-config.yml` have **never succeeded** — the repository holds one secret                                           | GAP-036                                           |
 
 ---

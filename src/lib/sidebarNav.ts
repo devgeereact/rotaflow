@@ -60,7 +60,7 @@ export interface NavOptions {
  * can check every target against the real route table without importing a
  * React tree, and so exporting it does not cost the component fast refresh.
  *
- * ## Order and labels: `docs/ORGANISATION_WORKSPACE.html`
+ * ## Order and labels: `docs/design/ORGANISATION_WORKSPACE.html`
  *
  * Dashboard, Rota Builder, Schedule, Team Attendance, Timesheets, Team
  * Availability, Leave, Shift Swaps, Open Shifts, Overtime, Approvals, Team,

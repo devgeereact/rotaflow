@@ -80,7 +80,7 @@ function statusNoteFor(request: LeaveRequest, viewerId: string | null): string |
 }
 
 /**
- * `/app/leave` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.leave`).
+ * `/app/leave` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.leave`).
  * Staff see their own request history; managers and owners see the whole
  * organisation, its cover risk, and can approve or decline.
  *

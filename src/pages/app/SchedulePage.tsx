@@ -38,7 +38,7 @@ const DEFAULT_TZ = 'Europe/London';
 
 /**
  * `/app/schedule`. Real data wiring; see ManagerSchedule/StaffSchedule for
- * the markup (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.schedule`).
+ * the markup (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.schedule`).
  *
  * A manager sees today, operationally, grouped by site, draft shifts
  * included, since that is who is actually working regardless of whether the

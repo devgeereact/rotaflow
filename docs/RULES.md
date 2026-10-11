@@ -85,7 +85,7 @@ codebase will drift from, and several below had.
 - **Multi-tenancy is non-negotiable.** Every domain table carries `org_id`. Every
   query and mutation is scoped to the active `org_id` from `OrgContext`, never query
   across tenants from the client. Each new table ships with RLS enabled and
-  membership-scoped policies (see `docs/SCHEMA.md`).
+  membership-scoped policies (see `docs/DATA-MODEL.md`).
 - **RLS is the source of truth for access; role checks in the UI are cosmetic.** Never
   rely on hiding a button for security. The policy must also forbid it.
 - **Never trust client role state for writes.** `usePermissions` gates UI only; the DB

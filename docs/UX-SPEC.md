@@ -113,7 +113,7 @@ Same layout-route pattern as §3, at `/app/account`. Every role sees every tab. 
 | ✅     | 404                                                  | `*`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 The platform console (`/admin/*`, 18 screens) also has no mockup PNG. It has its
-own reference, `docs/PLATFORM_CONSOLE.html`, and its own section: **§11**.
+own reference, `docs/design/PLATFORM_CONSOLE.html`, and its own section: **§11**.
 
 ## 6. Navigation. Settled
 
@@ -190,12 +190,12 @@ of who attempted what and when (`0085`). A screen reading either would be a defe
 feature: the second is an audit trail of failed attempts keyed by user id and IP, and
 exposing it would tell one tenant about another.
 
-**They were missing from this section, and from `docs/SCHEMA.md`, until 2026-08-31** —
+**They were missing from this section, and from `docs/DATA-MODEL.md`, until 2026-08-31** —
 along with the `integration_connector_stats` view. The method recorded below is why: it
 greps `src/` and `supabase/` for `from('<table>')`, which finds every table a _client_
 touches and is blind by construction to one no client role can reach. A tool that can only
 see what is reachable will always report the unreachable as absent. Both are now in
-`docs/SCHEMA.md` §4.8 with their grants written down.
+`docs/DATA-MODEL.md` §4.8 with their grants written down.
 
 Do not re-derive this from a memory of the old text: the section named four tables at one
 point, three grew UI, and the fourth was deleted. All four are listed here so the stale
@@ -259,7 +259,7 @@ to sign in rather than told the area exists. Four routes narrow it further with
 `RequirePlatformRole`, because a hidden nav link that still renders when the URL
 is typed is a decoration, not a permission.
 
-Reference for this area is `docs/PLATFORM_CONSOLE.html`, not a PNG. There is no
+Reference for this area is `docs/design/PLATFORM_CONSOLE.html`, not a PNG. There is no
 mockup file for any of these, so none of them appears in the §-counts below.
 
 | Status | Screen              | Route                                  | Note                                                                                                                                           |
@@ -293,7 +293,7 @@ platform-admin session.
 
 ## Reference assets (not screens)
 
-`designsystem.png` (token sheet, source of truth for `docs/DESIGN.md`) ·
+`designsystem.png` (token sheet, source of truth for `docs/DESIGN-SYSTEM.md`) ·
 `rotaflowui.png` (system applied) · `logo.png` / `logo-1.png` / `logo-2.png`.
 
 ## Marketing copy. The standing rule
@@ -339,7 +339,7 @@ Plus, with no mockup file of their own:
   account settings, forgot/reset password, accept invite, the legal pages (five
   routes, in one row), the OAuth callback, permission denied, 404.
 - **18 platform-console screens in §11** (`/admin/*`), referenced by
-  `docs/PLATFORM_CONSOLE.html`.
+  `docs/design/PLATFORM_CONSOLE.html`.
 - **6 designed tabs** specified by the §3/§4 tab bars — Permissions, Roles,
   Connected Accounts, Sessions, API Tokens, Activity. All six built.
 

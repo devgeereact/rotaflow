@@ -1,6 +1,6 @@
 -- =====================================================================
 -- org_creation_bootstrap.test.sql — regression guard for BUG-001
--- (docs/QA-AUDIT-REPORT.md), root-caused and fixed by migrations
+-- (qa/FUNCTIONAL-AUDIT.md), root-caused and fixed by migrations
 -- 0048_restore_org_creation_bootstrap.sql and
 -- 0049_fix_org_bootstrap_correlation.sql.
 --

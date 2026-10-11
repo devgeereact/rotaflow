@@ -38,7 +38,7 @@ Security.
 - **Phase 2** — full AI auto-scheduling (demand forecasting, burnout detection),
   payroll integrations, analytics and SSO.
 
-See [`docs/PRD.md`](docs/PRD.md) for scope, and **[`docs/SAAS.md`](docs/SAAS.md) for what
+See [`docs/PRODUCT-SPEC.md`](docs/PRODUCT-SPEC.md) for scope, and **[`docs/SAAS.md`](docs/SAAS.md) for what
 is actually built** — the capability register is the honest, per-feature status.
 
 ---
@@ -235,19 +235,19 @@ Full details live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ## Documentation index
 
 - [`docs/SAAS.md`](docs/SAAS.md) — **the capability register: what is built, partial, broken or missing.** Start here
-- [`docs/PRD.md`](docs/PRD.md) — scope, MVP features, success metrics
-- [`docs/DESIGN.md`](docs/DESIGN.md) — visual language & tokens
+- [`docs/PRODUCT-SPEC.md`](docs/PRODUCT-SPEC.md) — scope, MVP features, success metrics
+- [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) — visual language & tokens
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system + folder design
-- [`docs/SCHEMA.md`](docs/SCHEMA.md) — Postgres tables & RLS
+- [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) — Postgres tables & RLS
 - [`docs/RULES.md`](docs/RULES.md) — coding standards
 - [`docs/HOOKS.md`](docs/HOOKS.md) — custom hook contracts
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deploy playbook, and the traps that have bitten
-- [`docs/DATA_LIFECYCLE.md`](docs/DATA_LIFECYCLE.md) — retention, erasure, residency
-- [`docs/SCREENS.md`](docs/SCREENS.md) — every screen, against its design reference
+- [`docs/SECURITY.md`](docs/SECURITY.md) — retention, erasure, residency
+- [`docs/UX-SPEC.md`](docs/UX-SPEC.md) — every screen, against its design reference
 - [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) — the success-metric taxonomy and what computes each
-- [`docs/QA-AUDIT-REPORT.md`](docs/QA-AUDIT-REPORT.md) — dated evidence of the last full audit
+- [`qa/FUNCTIONAL-AUDIT.md`](qa/FUNCTIONAL-AUDIT.md) — dated evidence of the last full audit
 - [`docs/OFFLINE-SPEC.md`](docs/OFFLINE-SPEC.md) — what actually works without a network, feature by feature
-- [`docs/PWA-RELEASE-GATES.md`](docs/PWA-RELEASE-GATES.md) — the release gate, with recorded statuses and a release decision
+- [`qa/LAUNCH-CHECKLIST.md`](qa/LAUNCH-CHECKLIST.md) — the release gate, with recorded statuses and a release decision
 - [`docs/GEE-OS.md`](docs/GEE-OS.md) — how agent work is routed here; `.agent/PROJECT.yml` is the contract
 
 ## License

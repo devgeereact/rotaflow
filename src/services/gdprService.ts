@@ -180,7 +180,7 @@ async function listRowsForStaff(
  * Until 2026-08-31 this covered eight datasets and left out **timesheets**,
  * **overtime claims** and, once the table existed, **pay rates** — which is
  * to say: somebody in a dispute about their hours or their money received an
- * export of their shifts and their holidays. `docs/DATA_LIFECYCLE.md`
+ * export of their shifts and their holidays. `docs/SECURITY.md`
  * described it as "eight datasets" as though eight were the whole.
  *
  * `npm run check:export` now fails when a table keyed on `staff_profile_id`

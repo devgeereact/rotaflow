@@ -33,7 +33,7 @@ GEE OS contributes exactly three things this repository lacked:
 2. An **evidence vocabulary** with `NOT TESTED` in it, so an unproved claim has
    somewhere honest to go instead of being rounded up to "done".
 3. A **release gate** that is recorded rather than remembered, in
-   `docs/PWA-RELEASE-GATES.md`.
+   `qa/LAUNCH-CHECKLIST.md`.
 
 Everything else it offers, this project already had, and duplicating it would
 have made the second copy the one that drifts.
@@ -69,8 +69,8 @@ mode for improving a live system without losing behaviour that already works.
 | A defect with a clear reproduction  | Debug                | Defect workflow in `EXISTING-APP-ENGINE.md`               |
 | A failure nobody understands yet    | Debug                | `/investigate`, then the defect workflow                  |
 | Review code or a screen             | Audit                | `/review`; audit does not authorise fixes                 |
-| A full QA pass                      | Audit                | `rotaflow-qa-auditor`, spec in `docs/Working-Agent.md`    |
-| Prepare a deploy                    | Release              | `workflows/RELEASE-GATE.md` + `docs/PWA-RELEASE-GATES.md` |
+| A full QA pass                      | Audit                | `rotaflow-qa-auditor`, spec in `qa/README.md`    |
+| Prepare a deploy                    | Release              | `workflows/RELEASE-GATE.md` + `qa/LAUNCH-CHECKLIST.md` |
 | Explore an idea                     | Brainstorm           | None. No edits.                                           |
 
 Load one mode file and one workflow. Loading the whole package into a task is
@@ -179,7 +179,7 @@ What actually differs is small enough to list:
 - **Subagents.** `.claude/agents/` is Claude Code's mechanism. Codex cannot
   dispatch one, but both agent definitions there are plain Markdown whose content
   is a procedure: `gee-os.md` is the loop, and `rotaflow-qa-auditor.md` defers
-  entirely to `docs/Working-Agent.md`. Codex follows them by reading them.
+  entirely to `qa/README.md`. Codex follows them by reading them.
 - **Skills.** The gstack specialists named in `.agent/PROJECT.yml` are
   Claude-side. Where one is unavailable, do the work directly and record in the
   report that the specialist was not used, rather than quietly skipping the step
@@ -226,7 +226,7 @@ It produced two, both by asking questions the existing gates never asked:
   does without a network. The product has described itself as offline-first in
   `package.json`, in `CLAUDE.md` and on the marketing site, and no document had
   ever said which features that covers.
-- `docs/PWA-RELEASE-GATES.md` records the release evidence, including the lines
+- `qa/LAUNCH-CHECKLIST.md` records the release evidence, including the lines
   that are `FAIL` and `NOT TESTED` today. Some of them were already known and
   written down elsewhere; the gate is the first place they are counted against a
   release decision rather than listed as gaps.

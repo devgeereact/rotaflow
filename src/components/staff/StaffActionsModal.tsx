@@ -22,7 +22,7 @@ interface StaffActionsModalProps {
 /**
  * What the directory's row kebab opens. A sheet rather than an anchored
  * popover: the same control has to work one-handed on a phone, where a
- * floating menu next to a table cell does not (docs/DESIGN.md §5).
+ * floating menu next to a table cell does not (docs/DESIGN-SYSTEM.md §5).
  */
 export function StaffActionsModal({
   open,

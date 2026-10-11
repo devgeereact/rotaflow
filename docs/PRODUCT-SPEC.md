@@ -119,7 +119,7 @@ role membership, never in the client alone.
   configured — checkout is not gated on any plan. What's not yet done: no
   real completed charge has been run through it end-to-end (verified
   2026-08-20 that the code path is correctly wired; see
-  `docs/QA-AUDIT-REPORT.md`). Apple Pay / Google Pay / PayPal remain unbuilt.
+  `qa/FUNCTIONAL-AUDIT.md`). Apple Pay / Google Pay / PayPal remain unbuilt.
 
 ## 6. Non-functional requirements
 

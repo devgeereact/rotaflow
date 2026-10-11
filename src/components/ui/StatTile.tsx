@@ -47,7 +47,7 @@ export interface StatTileProps {
  * The split between them was `tint: string` (raw Tailwind classes passed in)
  * versus `tone: IconTileTone` (a token from the palette). This takes `tone`:
  * a caller that can pass arbitrary classes can put anything on screen,
- * including colours that exist in neither theme, and DESIGN.md's contrast
+ * including colours that exist in neither theme, and DESIGN-SYSTEM.md's contrast
  * rules cannot survive that.
  *
  * `icon` is optional because the platform console's tiles are figures without
@@ -72,7 +72,7 @@ export function StatTile({
         {icon && <IconTile icon={icon} tone={tone} size="sm" />}
         {/* Caption weight, not heading weight. The figure is the thing being
             read; a 14px ink label above it competed with the number it
-            labels. docs/DESIGN.md §2 caption scale. */}
+            labels. docs/DESIGN-SYSTEM.md §2 caption scale. */}
         <p className="text-xs font-medium leading-4 text-content-muted dark:text-content-muted-dark">
           {label}
         </p>

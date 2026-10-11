@@ -129,7 +129,7 @@ export function CurrentShiftPane({
         <div className="mt-auto border-t border-divider pt-6 dark:border-divider-dark">
           {/* The opaque wash token, not `warning/10`: an alpha of the solid
               hue lands on a different colour over a card than over the canvas,
-              so the same reminder read as two shades. docs/DESIGN.md §2. */}
+              so the same reminder read as two shades. docs/DESIGN-SYSTEM.md §2. */}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning-wash px-4 py-3 dark:bg-warning-wash-dark">
             <div className="flex items-start gap-3">
               <TriangleAlert

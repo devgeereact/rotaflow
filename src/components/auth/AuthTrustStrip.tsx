@@ -25,7 +25,7 @@ const CLAIMS = [
  *
  * What replaces it is checkable. The database is in eu-west-1
  * (`src/lib/subprocessors.ts`), and tenants are separated by row-level
- * security rather than by an application filter (`docs/SCHEMA.md` §5). Both
+ * security rather than by an application filter (`docs/DATA-MODEL.md` §5). Both
  * are facts a reader could falsify, which is the whole point.
  */
 export function AuthTrustStrip(): JSX.Element {

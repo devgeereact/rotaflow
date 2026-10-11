@@ -1,5 +1,5 @@
 /**
- * Tile arithmetic for `/app/leave` (`docs/ORGANISATION_WORKSPACE.html`'s
+ * Tile arithmetic for `/app/leave` (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.leave`). Pure: takes rows plus a reference date and returns
  * numbers, never a Date across a render, never an SDK call. Same reason
  * `leaveEntitlement.ts` is pure — a service import drags in `@/lib/supabase`,

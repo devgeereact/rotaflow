@@ -35,7 +35,7 @@ import type { SwapRow } from '@/lib/swapRows';
 import type { Location, Shift, StaffProfile } from '@/types';
 
 /**
- * `/app/swaps` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.swaps`):
+ * `/app/swaps` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.swaps`):
  * request as staff, respond as the targeted colleague or claim an open one,
  * then either that colleague's requester or a manager gives the final word
  * — unless Settings → Policies' "Swap approval" toggle keeps every swap

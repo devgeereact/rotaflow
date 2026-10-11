@@ -2,7 +2,7 @@
 
 **Status: NOT ADOPTED.** Proposal from `/design-consultation`, 2026-08-13, kept as
 a record of the decision rather than a direction. It was never applied to
-production and there is no plan to apply it. `docs/DESIGN.md` remains the enforced source of truth until this
+production and there is no plan to apply it. `docs/DESIGN-SYSTEM.md` remains the enforced source of truth until this
 exploration is validated through `/design-shotgun` and `/design-html` and
 explicitly promoted.
 
@@ -44,7 +44,7 @@ more instrument-panel register than either competitor.
 
 ## Typography
 
-- **Display/Hero:** Inter, 700 — unchanged from `docs/DESIGN.md`.
+- **Display/Hero:** Inter, 700 — unchanged from `docs/DESIGN-SYSTEM.md`.
 - **Body:** Inter, 400 — unchanged.
 - **UI/Labels:** Inter — same as body.
 - **Data/Tables:** JetBrains Mono (tabular-nums) — unchanged.
@@ -61,7 +61,7 @@ more instrument-panel register than either competitor.
   the 20 August plan review confirmed no positioning pivot; see `docs/SAAS.md`).
 - **Primary ink (new):** `#1E3A73` — deeper navy for marketing surfaces and
   higher-confidence UI moments, reducing the pastel-wash-everywhere feel.
-- **Neutrals:** unchanged from `docs/DESIGN.md` (`#F5F7FA` background, `#FFFFFF`
+- **Neutrals:** unchanged from `docs/DESIGN-SYSTEM.md` (`#F5F7FA` background, `#FFFFFF`
   surface, light/dark pairs as documented there).
 - **Semantic:** unchanged — success `#1EA06B`, warning `#E0A030`, danger
   `#D94A3A`, info `#388FD4`.
@@ -69,11 +69,11 @@ more instrument-panel register than either competitor.
   to a featured marketing/brand signature — an authentic, hard-to-copy visual
   asset neither competitor has, since it's real per-org data density, not
   illustration.
-- **Dark mode:** unchanged strategy from `docs/DESIGN.md`.
+- **Dark mode:** unchanged strategy from `docs/DESIGN-SYSTEM.md`.
 
 ## Spacing / Layout / Motion
 
-Unchanged from `docs/DESIGN.md` — this exploration is scoped to aesthetic
+Unchanged from `docs/DESIGN-SYSTEM.md` — this exploration is scoped to aesthetic
 register and colour/typography emphasis, not the underlying system mechanics.
 
 ## Deliberate risks taken
@@ -97,4 +97,4 @@ register and colour/typography emphasis, not the underlying system mechanics.
 | Date       | Decision                                              | Rationale                                                                                                                                                                                         |
 | ---------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-13 | Design exploration created via `/design-consultation` | Researched Deputy/Rotaready, found a differentiation gap (dependability vs. growth-SaaS excitement), proposed industrial/utilitarian register evolving existing tokens rather than replacing them |
-| 2026-08-13 | Shipped as `DESIGN_EXPLORATION.md`, not `DESIGN.md`   | User chose not to replace the live enforced design system until validated through `/design-shotgun` and `/design-html`                                                                            |
+| 2026-08-13 | Shipped as `DESIGN_EXPLORATION.md`, not `DESIGN-SYSTEM.md`   | User chose not to replace the live enforced design system until validated through `/design-shotgun` and `/design-html`                                                                            |

@@ -356,7 +356,7 @@ export function StepAbout({
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    {/* 44px, not 36: docs/DESIGN.md §5 allows the smaller size
+                    {/* 44px, not 36: docs/DESIGN-SYSTEM.md §5 allows the smaller size
                         inside a dense table row, and this is a card on a
                         full-page form. */}
                     <IconButton

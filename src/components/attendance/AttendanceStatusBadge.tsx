@@ -26,7 +26,7 @@ const ICONS: Record<AttendanceStatus, typeof CircleCheck> = {
 /**
  * `attendance.ts` names five tones; `Badge` accepts nine. `neutral` is the
  * ordinary state (rostered, finished) rather than a colour, which is the rule
- * docs/DESIGN.md §5 states: a completed shift is not a success message and a
+ * docs/DESIGN-SYSTEM.md §5 states: a completed shift is not a success message and a
  * draft is not a warning.
  */
 const TONES: Record<AttendanceStatus, BadgeTone> = {

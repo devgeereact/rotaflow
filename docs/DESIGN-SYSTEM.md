@@ -97,14 +97,14 @@ Pair a wash with its solid token as the ink (`bg-danger-wash text-danger`), and
 add `ring-1 ring-inset ring-<token>/30` where the chip needs an edge.
 
 Both these and `surface-rail` / `primary-wash` above come from the platform
-console reference, `docs/PLATFORM_CONSOLE.html`. The interactive artifact the
+console reference, `docs/design/PLATFORM_CONSOLE.html`. The interactive artifact the
 `/admin/*` rebuild is being matched against, screen by screen.
 
 ### Colour. Shift type palette (8)
 
 Used for shift-type chips in the rota grid (`LD`, `WN`, `TW`, `SPL`, `EAR`, `OFF`,
 `TRN`, `ANN` and similar org-defined codes. See `shift_types.colour` in
-`docs/SCHEMA.md`). Same in both themes.
+`docs/DATA-MODEL.md`). Same in both themes.
 
 | Token          | Tailwind class    | Hex       |
 | -------------- | ----------------- | --------- |
@@ -118,7 +118,7 @@ Used for shift-type chips in the rota grid (`LD`, `WN`, `TW`, `SPL`, `EAR`, `OFF
 | `shift-rose`   | `bg-shift-rose`   | `#E888AB` |
 
 An org's `shift_types.colour` should be seeded from this palette (stored as a hex
-string, per `SCHEMA.md`) so every tenant's rota stays visually consistent with the
+string, per `DATA-MODEL.md`) so every tenant's rota stays visually consistent with the
 system even though colours are per-org-configurable.
 
 ### Colour. Job-title palette (12)
@@ -389,7 +389,7 @@ visible when an error appears — "must be at least 8 characters" is what explai
 "Password is too short".
 
 - **Sidebar nav, active item:** solid fill, `bg-primary text-primary-fg`, per
-  `docs/ORGANISATION_WORKSPACE.html`'s `.nav a[aria-current="page"]`
+  `docs/design/ORGANISATION_WORKSPACE.html`'s `.nav a[aria-current="page"]`
   (2026-08-06), the organisation workspace shell reference. Superseded the
   earlier soft-tint idiom (`bg-primary/10 text-primary`, same `bg-X/10 text-X`
   treatment as status badges), which itself had replaced a white pill and a

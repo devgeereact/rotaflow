@@ -19,7 +19,7 @@ export interface AnnouncementsViewProps {
 }
 
 /**
- * `/app/announcements` (`docs/ORGANISATION_WORKSPACE.html`'s
+ * `/app/announcements` (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.announcements`): a card feed with a manager-only "Reach" rail. No
  * table, no tab bar, no CSV export — `createAnnouncement` always sets
  * `published_at` immediately, so the reference's own Scheduled/Drafts tabs

@@ -39,7 +39,7 @@ export interface Permissions {
 
 /**
  * Derives UI capabilities from the active role. Client-side gating only,
- * RLS (SCHEMA.md) is the real enforcement; never rely on this for security.
+ * RLS (DATA-MODEL.md) is the real enforcement; never rely on this for security.
  *
  * The platform capabilities read `platformRole` rather than the
  * `isPlatformAdmin` boolean: the flag says whether someone may act at platform

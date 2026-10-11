@@ -56,11 +56,11 @@ sources_of_truth:
   agent_directives: 'CLAUDE.md' # AGENTS.md is a pointer to it, deliberately
   coding_standards: 'docs/RULES.md'
   architecture: 'docs/ARCHITECTURE.md'
-  data_and_rls: 'docs/SCHEMA.md'
+  data_and_rls: 'docs/DATA-MODEL.md'
   offline_behaviour: 'docs/OFFLINE-SPEC.md'
-  release_evidence: 'docs/PWA-RELEASE-GATES.md'
+  release_evidence: 'qa/LAUNCH-CHECKLIST.md'
   deployment: 'docs/DEPLOYMENT.md'
-  retention_and_gdpr: 'docs/DATA_LIFECYCLE.md'
+  retention_and_gdpr: 'docs/SECURITY.md'
 
 mcp_profile:
   # MCP tools supply live evidence. They do not widen authority: availability is

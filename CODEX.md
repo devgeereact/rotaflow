@@ -20,7 +20,7 @@ duplicates either; it exists only to map the shared contract onto Codex.
 - **Subagents.** `.claude/agents/` is Claude Code's mechanism and Codex cannot
   load it. Two agents are defined there: `gee-os` (the router, whose whole
   content is `docs/GEE-OS.md` plus the loop) and `rotaflow-qa-auditor` (whose
-  methodology is `docs/Working-Agent.md`). Both are readable as plain documents —
+  methodology is `qa/README.md`). Both are readable as plain documents —
   follow them directly rather than trying to dispatch them.
 - **Skills.** The gstack skills named in `.agent/PROJECT.yml` as specialists are
   Claude-side. Where one is unavailable, do the work directly and say in the

@@ -1,6 +1,6 @@
 /**
  * Design-loop fixtures for the Staff Profile preview
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.staffDetail`).
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.staffDetail`).
  *
  * `/app/team/:staffId` needs a real Supabase session and a seeded staff
  * record, so `/staff-preview/:staffId` renders the same components against

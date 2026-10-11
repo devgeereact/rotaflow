@@ -89,7 +89,7 @@ const WIDTHS = [
 
 /**
  * `/admin/support`. The support desk, built to the shape of
- * `docs/PLATFORM_CONSOLE.html`.
+ * `docs/design/PLATFORM_CONSOLE.html`.
  *
  * ## What this screen used to claim, and why it was wrong
  *

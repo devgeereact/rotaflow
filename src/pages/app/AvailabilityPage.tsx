@@ -29,7 +29,7 @@ import type { Availability, StaffProfile } from '@/types';
 
 /**
  * `/app/availability`. Real data wiring; see AvailabilityView for the markup
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.availability`).
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.availability`).
  *
  * One screen for everyone rather than a role split: a manager gets the same
  * "your pattern" + "exceptions" cards as anyone else, plus a "Team

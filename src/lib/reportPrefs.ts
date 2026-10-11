@@ -6,7 +6,7 @@ import { isAllowed } from '@/lib/consent';
  * of the exports they generated here.
  *
  * Deliberately local. There is no `report_runs` or `saved_reports` table in
- * `docs/SCHEMA.md`, and inventing server-side run history to fill the "Last
+ * `docs/DATA-MODEL.md`, and inventing server-side run history to fill the "Last
  * Run" column would be fabricating data. What this does record is true: it is
  * this browser's own record of exports it produced. Best-effort throughout,
  * a blocked or full localStorage degrades to "never run", never to an error.

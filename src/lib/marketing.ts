@@ -40,7 +40,7 @@ import { BRAND } from '@/lib/brand';
  * else has to change.
  *
  * Adding an entry to `PRODUCT_BENEFITS` follows the same rule the feature grid
- * already states. Check it against `docs/SCREENS.md` first. A marketing page
+ * already states. Check it against `docs/UX-SPEC.md` first. A marketing page
  * for a real product must not advertise ahead of the build.
  */
 
@@ -102,7 +102,7 @@ export interface Benefit {
 
 /**
  * The eight product benefits, each mapping to a screen that is built and
- * working today. Verified against `docs/SCREENS.md` §2, not against the PRD's
+ * working today. Verified against `docs/UX-SPEC.md` §2, not against the PRD's
  * full Phase-1 wish list.
  */
 export const PRODUCT_BENEFITS: readonly Benefit[] = [

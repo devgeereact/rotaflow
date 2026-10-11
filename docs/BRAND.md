@@ -40,13 +40,13 @@ customer logos, uptime record, quantified time saving, or a completed live charg
 is built — Stripe Checkout, Billing Portal and a signature-verified webhook — but no
 real payment has been taken end to end, so no revenue claim is evidenced.) Public
 copy must not invent any of those. Every product claim should map to a shipped
-screen or an implemented capability in `docs/SCREENS.md` and `docs/PRD.md`.
+screen or an implemented capability in `docs/UX-SPEC.md` and `docs/PRODUCT-SPEC.md`.
 
 ## Visual expression
 
 Retain the established light-first system: composed blue actions, navy ink,
 calm neutral surfaces, and semantic status colours that are always paired with
 text or an icon. The `BrandMark` is the only product mark implementation;
-The `@theme` block in `src/index.css` and `docs/DESIGN.md` remain the source of truth for visual
+The `@theme` block in `src/index.css` and `docs/DESIGN-SYSTEM.md` remain the source of truth for visual
 tokens. A rebrand must use those tokens rather than introducing raw colours or
 parallel logos.

@@ -40,7 +40,7 @@ export interface StaffDashboardProps {
 }
 
 /**
- * A staff member's home screen (`docs/ORGANISATION_WORKSPACE.html`'s
+ * A staff member's home screen (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.dashboard` staff branch): their own hours and shifts, not the
  * org's numbers. `navItemsForRole`/`RequireRole` already keep a staff member
  * out of manager-only screens; this is the same principle applied to the one

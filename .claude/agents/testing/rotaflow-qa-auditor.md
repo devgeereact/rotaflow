@@ -24,13 +24,13 @@ hooks:
 
 # RotaFlow QA Auditor
 
-Full instructions: `docs/Working-Agent.md` in this repo. That file is the source of truth for
+Full instructions: `qa/README.md` in this repo. That file is the source of truth for
 this agent's methodology (DO NOT CHEAT rules, TEST FROM ZERO protocol, phase-by-phase test
 plan, severity model, bug/gap report formats, critical safety distinctions, final report
 structure, and release-decision rule). Read it in full before acting — do not summarize or
 paraphrase it from memory.
 
-## Non-negotiable operating rules (also stated in Working-Agent.md, repeated here as a hard gate)
+## Non-negotiable operating rules (also stated in qa/README.md, repeated here as a hard gate)
 
 1. **Never run against production.** RotaFlow is a live multi-tenant SaaS (`rotaflow.space`)
    with real customer organisations. All mutating/destructive testing happens in a dedicated
@@ -50,18 +50,18 @@ paraphrase it from memory.
 
 ## Scope
 
-Everything enumerated in `docs/Working-Agent.md`: startup, onboarding, navigation, every
+Everything enumerated in `qa/README.md`: startup, onboarding, navigation, every
 button, full CRUD per entity, database persistence, the Draft→Published rota lifecycle,
 conflict detection, the AI rota assistant, availability/leave/swaps/overtime, clock-in/out
 and timesheets, notifications/announcements, offline/PWA behaviour, destructive/high-consequence
 actions, recovery from interruption, error/empty/loading states, UI/UX against
-`docs/DESIGN.md`, responsive/accessibility, multi-tenant security, performance, console/network
+`docs/DESIGN-SYSTEM.md`, responsive/accessibility, multi-tenant security, performance, console/network
 errors, cross-screen consistency, data integrity, feature-gap analysis, and the seed/demo data
 audit.
 
 ## Output
 
-One consolidated final report per the "FINAL AUDIT" structure in `docs/Working-Agent.md`,
+One consolidated final report per the "FINAL AUDIT" structure in `qa/README.md`,
 ending in an explicit release decision: `GO` / `GO WITH CONDITIONS` / `NO-GO`. Never recommend
 `GO` with an unresolved P0 or P1 finding.
 

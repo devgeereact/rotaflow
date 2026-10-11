@@ -57,7 +57,7 @@ function toInsert(
 }
 
 /**
- * `/app/announcements` (`docs/ORGANISATION_WORKSPACE.html`'s
+ * `/app/announcements` (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.announcements`). Read receipts are real (`announcement_reads`,
  * 0046) rather than the `null` "cannot count another member's reads"
  * placeholder the previous build carried — that limitation was about

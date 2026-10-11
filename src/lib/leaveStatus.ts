@@ -15,7 +15,7 @@ import type { LeaveStatus, LeaveTypeKey } from '@/lib/leaveRows';
  *
  * Every colour here is paired with the status or type spelled out in words
  * wherever it renders. Leave state is never carried by colour alone
- * (docs/DESIGN.md §5).
+ * (docs/DESIGN-SYSTEM.md §5).
  */
 
 /** The reference calls a rejected request "Declined"; the column value is `rejected`. */

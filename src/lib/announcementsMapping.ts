@@ -1,5 +1,5 @@
 /**
- * View model for `/app/announcements` (`docs/ORGANISATION_WORKSPACE.html`'s
+ * View model for `/app/announcements` (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.announcements`). Pure functions, no network, no React, so the
  * real page and the design-loop preview render exactly the same tree.
  */

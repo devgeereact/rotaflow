@@ -10,7 +10,7 @@ import type {
 
 /**
  * Fixtures for `/clockin-preview`. Frozen values matching
- * `docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.clock` (including its frozen
+ * `docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.clock` (including its frozen
  * 08:48:37 clock), so the design loop can screenshot the screen without a
  * Supabase session, a staff profile or a rostered shift. Nothing here reaches
  * the live `/app/clock`, which computes every one of these from real rows via
