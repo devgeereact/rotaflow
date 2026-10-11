@@ -19,10 +19,13 @@ import {
   type Timesheet,
 } from '@/services/timesheetService';
 import { logAuditEvent } from '@/services/auditService';
+import { getOrganisation } from '@/services/orgService';
+import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
 import { pairClockEvents, segmentsStartingWithin, type WorkedSegment } from '@/lib/hours';
 import {
   buildTimesheetDayRows,
   weekTotalsForStaff,
+  minutesOverThreshold,
   payrollCutOffLabel as computePayrollCutOffLabel,
 } from '@/lib/timesheetDayRows';
 import { hoursLabel } from '@/components/dashboard/dashboardFormat';
@@ -173,6 +176,31 @@ export function TimesheetsPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Settings → Policies "Overtime threshold". Read on its own so a failure
+  // leaves the page working on the default rather than blank.
+  const [overtimeThresholdHours, setOvertimeThresholdHours] = useState(
+    DEFAULT_POLICIES.overtimeThresholdHours,
+  );
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const org = await getOrganisation(orgId);
+        if (active) {
+          setOvertimeThresholdHours(
+            schedulingPolicies(org.settings).overtimeThresholdHours,
+          );
+        }
+      } catch (err) {
+        reportError(err, { area: 'timesheets:load-policies' });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId]);
 
   useRealtimeRefresh({
     tables: ['clock_events', 'shifts'],
@@ -561,11 +589,20 @@ export function TimesheetsPage(): JSX.Element {
     : { scheduledMinutes: 0, workedMinutes: 0 };
   const contractedMinutes = (myProfile?.weekly_hours ?? 0) * 60;
   const overtimeMinutes = Math.max(0, myWeekTotals.workedMinutes - contractedMinutes);
+  const overThresholdMinutes = minutesOverThreshold(
+    myWeekTotals.workedMinutes,
+    overtimeThresholdHours,
+  );
 
   return (
     <StaffTimesheets
       rows={rowsForRole}
       hoursThisWeekLabel={hoursLabel(myWeekTotals.workedMinutes / 60)}
+      overThresholdLabel={
+        overThresholdMinutes > 0
+          ? `${hoursLabel(overThresholdMinutes / 60)} over the ${overtimeThresholdHours}h overtime threshold`
+          : null
+      }
       contractedLabel={myProfile?.weekly_hours ? hoursLabel(myProfile.weekly_hours) : '-'}
       overtimeLabel={hoursLabel(overtimeMinutes / 60)}
       payrollCutOff={computePayrollCutOffLabel(now)}

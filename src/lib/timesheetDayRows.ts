@@ -163,6 +163,18 @@ export function weekTotalsForStaff(
   };
 }
 
+/**
+ * Worked minutes past the organisation's overtime threshold (Settings →
+ * Policies), or 0 when under it. A highlight, not a pay calculation: the
+ * Overtime tile still counts time past the person's own contract.
+ */
+export function minutesOverThreshold(
+  workedMinutes: number,
+  thresholdHours: number,
+): number {
+  return Math.max(0, workedMinutes - thresholdHours * 60);
+}
+
 /** The Friday of the week containing `now`, "the payroll cut-off" tile.
  * A fixed Friday cut-off is this org's policy, not a configurable setting —
  * there is nowhere in the schema that stores one. */
