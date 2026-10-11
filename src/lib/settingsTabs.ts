@@ -9,7 +9,7 @@ import type { MembershipRole } from '@/types';
  * against these, and a tab bar that differs by one item between two pages is
  * the kind of thing nobody notices until a customer does.
  *
- * Routes are the intended shape, not all built yet, `docs/SCREENS.md` §3/§4
+ * Routes are the intended shape, not all built yet, `docs/UX-SPEC.md` §3/§4
  * tracks which exist. A tab whose route has no page yet still belongs here, so
  * the bar is complete and the gap is visible rather than silently missing.
  */

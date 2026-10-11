@@ -8,7 +8,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
  * Top bar for the `/app/*` shell. Page-specific chrome (the rota's week nav,
  * a table's filters) lives in the page itself.
  *
- * Matches `docs/ORGANISATION_WORKSPACE.html`'s `.topbar`: breadcrumbs on the
+ * Matches `docs/design/ORGANISATION_WORKSPACE.html`'s `.topbar`: breadcrumbs on the
  * left, notifications on the right. Nothing else.
  *
  * ## Things that used to be here and are not

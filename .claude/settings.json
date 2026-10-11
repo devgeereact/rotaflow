@@ -4,5 +4,18 @@
       "Read(./.env)",
       "Read(./.env.*)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/docs-sync.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

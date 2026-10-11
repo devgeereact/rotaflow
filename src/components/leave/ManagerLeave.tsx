@@ -49,7 +49,7 @@ export interface ManagerLeaveProps {
 }
 
 /**
- * The manager's Leave (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.leave`
+ * The manager's Leave (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.leave`
  * manager branch): requests, entitlement, and the cover consequence of
  * saying yes. Approve is immediate; Decline collects a mandatory reason
  * first (`DeclineLeaveModal`) — the reference's version is a bare button,
@@ -95,7 +95,7 @@ export function ManagerLeave({
           hint={
             tiles.oldestPendingLabel && (
               // The ink pair, both halves: `text-danger` is a FILL and
-              // measures under 4.5:1 as small text (docs/DESIGN.md §5).
+              // measures under 4.5:1 as small text (docs/ACCESSIBILITY.md).
               <span
                 className={
                   tiles.oldestPendingOverdue

@@ -77,7 +77,7 @@ const TEAM_ROWS = [
  * (`/admin-preview`-style harness). The real `/app/availability` needs a
  * live Supabase session and a seeded organisation, neither of which a
  * screenshot tool has. Renders the real `AvailabilityView` against fixed
- * mock data shaped to match `docs/ORGANISATION_WORKSPACE.html`'s
+ * mock data shaped to match `docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.availability`. `?role=staff` drops the "Team availability" card,
  * same as the real page for anyone who isn't a manager.
  */

@@ -34,7 +34,7 @@ export interface SwapsViewProps {
 }
 
 /**
- * `/app/swaps` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.swaps`): a
+ * `/app/swaps` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.swaps`): a
  * pagehead, four count tiles, and a two-column grid — the Requests list and
  * the Rules card. No tabs, filters, pagination, donut or activity rail; the
  * reference does not have them, and this screen is the sole reference now.

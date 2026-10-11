@@ -1223,7 +1223,7 @@ export function AdminOrganisationDetailPage(): JSX.Element {
                   <code>delete_organisation</code> admits an organisation owner or a
                   platform owner or administrator. It is deliberately not duplicated onto
                   this page. What genuinely does not exist is a grace period: the cascade
-                  is immediate, which <code>docs/DATA_LIFECYCLE.md</code> records.
+                  is immediate, which <code>docs/SECURITY.md</code> records.
                 </li>
                 <li>
                   <span className="font-semibold text-content dark:text-content-dark">

@@ -73,7 +73,7 @@ const PAGE_SIZE = 50;
  *
  * ## What it does not claim
  *
- * Everything here is what reached the server. `docs/OFFLINE-SPEC.md` is
+ * Everything here is what reached the server. `docs/ARCHITECTURE.md#offline-and-pwa` is
  * explicit that a queued clock-in lives on the device until it syncs, so an
  * empty row means "not recorded", never "absent", and the wording says so
  * everywhere the count is shown. A dashboard that reports absence it cannot

@@ -6,7 +6,7 @@
 // WHY THIS EXISTS RATHER THAN THE EXISTING DOWNLOAD. `src/lib/ics.ts`
 // produces a file, and a file is a snapshot: import it, have the rota
 // amended, and the phone still shows last week's shifts — confidently, with
-// a reminder. `docs/PRD.md` has claimed a "calendar subscription" throughout;
+// a reminder. `docs/PRODUCT-SPEC.md` has claimed a "calendar subscription" throughout;
 // this is the thing that makes that true. A calendar client re-reads this URL
 // on its own schedule, so an amendment reaches the phone without anybody
 // doing anything.

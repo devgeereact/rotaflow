@@ -4,7 +4,7 @@
  * This is intentionally separate from tenant names: an organisation can name
  * its workspace anything it needs, while this identity remains the platform
  * that schedules its workforce. Claims here are limited to functionality that
- * exists in the shipped product; see docs/BRAND.md for the evidence standard.
+ * exists in the shipped product; see docs/DESIGN-SYSTEM.md#brand-and-voice for the evidence standard.
  */
 export const BRAND = {
   name: 'RotaFlow',

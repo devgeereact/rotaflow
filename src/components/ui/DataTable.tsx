@@ -65,11 +65,11 @@ const ALIGN = {
  * They were `text-sm font-semibold` in ink. The same weight and colour as the
  * data underneath, so on a forty-row table the header row read as just another
  * row. Small caps in the muted tone let the eye skip past them to the figures,
- * which is what a header row is for. docs/DESIGN.md caption scale.
+ * which is what a header row is for. docs/DESIGN-SYSTEM.md caption scale.
  */
 // `min-h-9` on the sortable variant: a column header is a real control and a
 // 17px-tall one is under WCAG 2.2 AA's 24px floor. 36px is the compact size
-// docs/DESIGN.md §5 allows inside a dense table, and the header row already
+// docs/ACCESSIBILITY.md allows inside a dense table, and the header row already
 // has the padding to absorb it.
 const HEAD_LABEL =
   'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap text-[0.69rem] font-semibold uppercase tracking-[0.06em] text-content-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark';
@@ -128,7 +128,7 @@ export function DataTable<Row, Key extends string = string>({
     // This component used to hand-roll the first half and skip the second, so
     // every `DataTable` wide enough to scroll did so silently: nine screens
     // with columns off the right-hand edge and nothing on the page saying so.
-    // docs/DESIGN.md said `DataTable` "carries the same treatment internally",
+    // docs/DESIGN-SYSTEM.md said `DataTable` "carries the same treatment internally",
     // which was half true and is now simply true.
     <ScrollRegion label={caption} className={className}>
       <table className={cn('w-full table-fixed border-collapse', tableClassName)}>

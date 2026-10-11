@@ -1,7 +1,7 @@
 /**
  * Maps Supabase rows onto the Staff Profile view model.
  *
- * Only what the schema actually stores is produced. `docs/SCHEMA.md` has no
+ * Only what the schema actually stores is produced. `docs/DATA-MODEL.md` has no
  * competency levels, qualifications register, shift ratings or per-person
  * activity feed, so those arrays come back empty and `StaffProfileView` drops
  * the cards rather than inventing values. See docs/design/.loop/staff-log.md.

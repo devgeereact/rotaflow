@@ -65,7 +65,7 @@ export function PanelTabs<T extends string>({
           onClick={() => onChange(item.value)}
           className={cn(
             // `min-h-9` is `IconButton`'s `sm`, the compact size
-            // docs/DESIGN.md §5 allows for a control in a dense horizontal
+            // docs/ACCESSIBILITY.md allows for a control in a dense horizontal
             // group. A tab strip was 34px, which is under it and under nothing
             // in particular — no rule said 34.
             'inline-flex min-h-9 items-center whitespace-nowrap',

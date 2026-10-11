@@ -93,7 +93,7 @@ export interface ClockInViewProps {
 }
 
 /**
- * The whole clock-in screen (`docs/ORGANISATION_WORKSPACE.html`'s
+ * The whole clock-in screen (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.clock`): shift + clock action on the left, "Today" and "This
  * week" on the right — the reference's own two cards. Weekly variance,
  * attendance trend, recent activity and help links are real, additive

@@ -270,7 +270,7 @@ action that changes that is revoking it at the service that issued it.
 
 ## Rolling back
 
-`docs/PWA-RELEASE-GATES.md` recorded gate 29 ("Rollback documented and feasible") as **FAIL**
+`qa/LAUNCH-CHECKLIST.md` recorded gate 29 ("Rollback documented and feasible") as **FAIL**
 until 2026-09-04, on the accurate grounds that this file described how to deploy and nowhere
 described how to undo one. This is that section. It has been reasoned through against the
 constraints below, and the mechanical part has been exercised — a deploy from a named commit —
@@ -361,8 +361,17 @@ than an inference from a filename.
 
 ## Recovery: configuring the backup and auth-monitor jobs
 
+**Current state, 11 October 2026** (from `gh run list`): all three secrets were
+set on 5 September. `backup.yml` has succeeded on every scheduled run since, to
+10 October, and a human restore was rehearsed on 7 September (GAP-001).
+`auth-config.yml` succeeded on 5 and 7 September and has failed on every run
+since 14 September with `401 Unauthorized`, so `SUPABASE_ACCESS_TOKEN` needs
+replacing (GAP-036). The table of every scheduled workflow is in `qa/README.md`.
+The rest of this section is the runbook as written on 5 September, still the
+procedure for setting or rotating any of the three secrets.
+
 Written 2026-09-05 for the delivery audit's RF-13. **Neither scheduled workflow
-has ever succeeded** — `.github/workflows/backup.yml` and `auth-config.yml` both
+had ever succeeded** at that date — `.github/workflows/backup.yml` and `auth-config.yml` both
 fail on their first step because the secrets they need do not exist. The
 repository holds one secret, `OPENROUTER_API_KEY`. So there is no backup of
 production, and nothing is watching the Auth settings.
@@ -433,6 +442,21 @@ recover":
   workflow has already proved insufficient: it blocks no merge, marks no pull
   request red, and appears on no screen anyone opens. That is the whole reason
   these two went red for three days unnoticed.
+
+### Alert owners
+
+A scheduled workflow fails where nobody is standing, so each one has a named
+person who acts on a red run. Today that is one person for all of them. GitHub
+emails the account that owns the schedule when a scheduled run fails, if that
+account's notification settings allow it; whether they do has not been checked
+from this repository.
+
+| Workflow               | What a red run means                                              | Owner            | First action                                                                                        |
+| ---------------------- | ----------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
+| `backup.yml`           | Last night's production dump or its restore check failed          | Gideon Akinlotan | `gh run view --log-failed`; treat a backup older than 26 hours as a release blocker                 |
+| `auth-config.yml`      | Supabase Auth settings drifted, or the check cannot read them     | Gideon Akinlotan | A `401` means a new `SUPABASE_ACCESS_TOKEN`; otherwise compare with `scripts/check-auth-config.mjs` |
+| `plan-drift-audit.yml` | The weekly register-against-code audit did not run or found drift | Gideon Akinlotan | Read the drift log at the end of `docs/SAAS.md` and the run log                                     |
+| `codeql.yml`           | A code-scanning finding, or the analysis failed                   | Gideon Akinlotan | Security tab, then a fix or a dismissal with a reason                                               |
 
 ### A standing check before any release
 

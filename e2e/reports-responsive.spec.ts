@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
  *
  * ## What this is for
  *
- * `docs/design-review/2026-09-06-rota-builder.md` F8: at 375px `/reports-preview`
+ * `qa/FUNCTIONAL-AUDIT.md#rota-builder-design-review-6-september-2026` F8: at 375px `/reports-preview`
  * reported a `documentElement.scrollWidth` of 377 against a 375 client width, so
  * the whole PAGE scrolled sideways rather than the one wide thing on it. Every
  * other route measured 0.
@@ -13,7 +13,7 @@ import { expect, test, type Page } from '@playwright/test';
  * The cause was the analytics rail: a grid item defaults to `min-width: auto`,
  * so the 353px min-content of its action row (a 128px `shrink-0` button, a 20px
  * gap, a `whitespace-nowrap` one) refused to fit a 327px track and pushed the
- * body out. `docs/DESIGN.md` §7 has the rule; this is the regression.
+ * body out. `docs/DESIGN-SYSTEM.md` §7 has the rule; this is the regression.
  *
  * ## Why geometry rather than classes
  *

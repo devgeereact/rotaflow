@@ -2,7 +2,7 @@ import type { BadgeTone } from '@/components/ui/Badge';
 import type { ShiftSwap } from '@/types';
 
 /**
- * The states `/app/swaps` shows (`docs/ORGANISATION_WORKSPACE.html`'s
+ * The states `/app/swaps` shows (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.swaps`). Richer than the raw five-value `shift_swaps.status`:
  * whether a colleague was named splits `pending` into `open` (nobody has it
  * yet) and `awaiting_colleague` (someone specific hasn't answered).

@@ -1,5 +1,5 @@
 /**
- * View model for `/app/locations` (`docs/ORGANISATION_WORKSPACE.html`'s
+ * View model for `/app/locations` (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.locations`).
  */
 

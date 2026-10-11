@@ -202,7 +202,7 @@ export interface DataFact {
 /**
  * The privacy statements that are descriptions rather than commitments.
  *
- * Each is checkable: the residency answers come from `docs/DATA_LIFECYCLE.md`
+ * Each is checkable: the residency answers come from `docs/SECURITY.md`
  * §"Where the data is", which was corrected when BUG-056 closed, and the
  * retention answers from the `retention_policies` table the nightly job
  * actually reads.

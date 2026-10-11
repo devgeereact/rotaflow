@@ -52,7 +52,7 @@ export interface OrgContextValue {
    * owner into onboarding, where they can create a duplicate organisation.
    */
   loadFailed: boolean;
-  // Additive beyond docs/HOOKS.md §6. Needed by /onboarding and by any
+  // Additive beyond docs/ARCHITECTURE.md#hook-contracts §6. Needed by /onboarding and by any
   // future "refresh after invite accepted" flow.
   createOrg: (name: string) => Promise<void>;
   refresh: () => Promise<void>;

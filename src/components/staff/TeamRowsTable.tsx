@@ -42,7 +42,7 @@ interface TeamRowsTableProps {
 }
 
 /**
- * The Team directory (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`
+ * The Team directory (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.team`
  * `table()` call): Person/Department/Site/Contract/Rostered/Today/Actions.
  * "Profile" is a real navigation; the reference's "Message" button has no real
  * capability behind it — RotaFlow has no direct-messaging feature — so it is

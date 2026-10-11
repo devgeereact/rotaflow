@@ -1,5 +1,5 @@
 /**
- * The 8-colour shift-type palette (docs/DESIGN.md §2). Shift-type colours are
+ * The 8-colour shift-type palette (docs/DESIGN-SYSTEM.md §2). Shift-type colours are
  * constrained to these swatches only, never a free hex input, so chips can
  * render via a token-class lookup and never touch a raw hex in a component.
  */

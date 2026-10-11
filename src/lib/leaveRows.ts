@@ -1,5 +1,5 @@
 /**
- * Formatting helpers for `/app/leave` (`docs/ORGANISATION_WORKSPACE.html`'s
+ * Formatting helpers for `/app/leave` (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.leave`). Pure: pre-formatted strings from ISO dates, never a
  * timezone-sensitive Date across a render and never a Supabase row.
  */

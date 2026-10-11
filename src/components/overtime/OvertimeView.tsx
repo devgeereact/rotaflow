@@ -63,7 +63,7 @@ export interface OvertimeViewProps {
 }
 
 /**
- * `/app/overtime` (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.overtime`).
+ * `/app/overtime` (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.overtime`).
  * One view for everyone: the reference shows "Raise a claim" to both roles
  * unconditionally and never gates the table's Person column by role, so the
  * My/Team toggle the previous build had is dropped — a manager loses

@@ -57,7 +57,7 @@ function pickSegmentForShift(
 
 /**
  * One row per staff member whose shift has already started today
- * (`docs/ORGANISATION_WORKSPACE.html`'s `SCREENS.timesheets`). A shift later
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s `SCREENS.timesheets`). A shift later
  * today is not yet an attendance question, so `todaysStartedShifts` should
  * already be filtered to `starts_at <= now` before it reaches here — this
  * function has no clock of its own to check that against.

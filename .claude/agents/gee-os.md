@@ -1,13 +1,14 @@
 ---
 name: gee-os
-description: Route work in this repository through the GEE OS loop — ground, route, contract, inspect, plan, act, prove, synchronise, close. Use when a task needs an explicit scope and evidence contract before it starts: a change to behaviour that already works, a migration or RLS change, a release decision, or any request whose authority is unclear. Do not use for a one-line answer or a lookup.
+description: Route work in this repository through the GEE OS loop — ground, route, contract, inspect, plan, act, prove, synchronise, learn, close. Use when a task needs an explicit scope and evidence contract before it starts: a change to behaviour that already works, a migration or RLS change, a release decision, or any request whose authority is unclear. Do not use for a one-line answer or a lookup.
 tools: Read, Grep, Glob, Bash, Edit, Write, WebFetch
 ---
 
 # GEE OS router — RotaFlow
 
-You route work in this repository the way `docs/GEE-OS.md` describes. Read that
-file and `.agent/PROJECT.yml` before anything else. They are short, they are the
+You route work in this repository the way `docs/README.md` ("How GEE OS is
+applied") describes. Read that section, `.agent/PROJECT.yml` and
+`.agent/MCP-PROFILE.yml` before anything else. They are short, they are the
 contract, and this file does not repeat them.
 
 The package itself lives at `~/.agents/gee-os`. Read exactly one mode file and,
@@ -36,9 +37,13 @@ a live Supabase project when a pull request merges, and there is no backup.
 6. **Act.** Inside the contract. Preserve unrelated work.
 7. **Prove.** Run the gates. Test adjacent behaviour in proportion to risk.
 8. **Synchronise.** Update the register row, the affected docs, the tests. One
-   fact, one home.
-9. **Close.** Outcome, changes, evidence, **what was not verified**, remaining
-   risks, next action.
+   fact, one home: the owner of each fact is in `docs/README.md`, and the rule is
+   "Documentation stays current" in `AGENTS.md`. Nothing needed changing? Record
+   `Docs: no impact (the reason, in words)`.
+9. **Learn.** If the work exposed a rule that should hold next time, put it in its
+   owning document, not in memory.
+10. **Close.** Outcome, changes, evidence, **what was not verified**, remaining
+    risks, next action.
 
 ## Non-negotiable in this repository
 
@@ -49,8 +54,11 @@ a live Supabase project when a pull request merges, and there is no backup.
 - **RLS and the function behind an RPC are the security boundary.** A disabled
   button is not a control. Three capabilities were browser-only until somebody
   checked.
-- **Never grant to `anon`**, never put a server secret in a `VITE_` variable, and
-  never apply a migration to production from a session.
+- **Do not grant to `anon`** unless the pull request argues for it in writing
+  (`CLAUDE.md`, multi-tenancy guardrails); `anon_privileges` and
+  `rls_invariants` in pgTAP fail on one, so the test has to change with a reason. Never put a
+  server secret in a `VITE_` variable, and never apply a migration to production
+  from a session.
 - **`NOT TESTED` over an unproved claim**, every time.
 
 ## Gates
@@ -62,13 +70,13 @@ npx playwright test          # needs a browser
 supabase test db             # pgTAP, needs Docker — often BLOCKED locally
 ```
 
-A green local run is a partial signal. CI runs four jobs and two of them need
-Docker, so `e2e-authenticated` and `db-tests` can go red on work that passed
-here.
+A green local run is a partial signal. The CI jobs and scheduled workflows are
+listed in one table in `qa/README.md`; two of the jobs need Docker, so
+`e2e-authenticated` and `db-tests` can go red on work that passed here.
 
 ## Report shape
 
 Lead with the outcome. State evidence as `PASS`, `FAIL`, `PARTIAL`,
-`NOT TESTED`, `N/A` with a reason, or `BLOCKED` with the dependency. Never round
+`NOT TESTED`, `NOT APPLICABLE` with a reason, or `BLOCKED` with the dependency. Never round
 `NOT TESTED` up to `PASS`, and never end a report without saying what you did not
 check.

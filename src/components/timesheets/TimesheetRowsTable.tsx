@@ -37,7 +37,7 @@ const STATUS_TONE: Record<TimesheetDayStatus, BadgeTone> = {
 
 interface TimesheetRowsTableProps {
   rows: TimesheetDisplayRow[];
-  /** Managers get per-row Amend/Approve; staff see "-" (`docs/ORGANISATION_WORKSPACE.html`'s table() for the staff role). */
+  /** Managers get per-row Amend/Approve; staff see "-" (`docs/design/ORGANISATION_WORKSPACE.html`'s table() for the staff role). */
   showActions: boolean;
   onAmend?: (row: TimesheetDisplayRow) => void;
   onApprove?: (row: TimesheetDisplayRow) => void;

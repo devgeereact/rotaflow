@@ -37,7 +37,7 @@ interface PermissionDeniedProps {
  *
  * ## This is presentation, not enforcement
  *
- * Row-level security in Postgres is the real boundary (`docs/SCHEMA.md`), and
+ * Row-level security in Postgres is the real boundary (`docs/DATA-MODEL.md`), and
  * it holds whether or not this screen renders. Hiding a route stops an honest
  * mistake; it stops nothing else, and must never be treated as though it does.
  */

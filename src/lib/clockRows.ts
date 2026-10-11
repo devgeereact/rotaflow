@@ -1,5 +1,5 @@
 /**
- * View model for the clock-in screen (`docs/ORGANISATION_WORKSPACE.html`'s
+ * View model for the clock-in screen (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.clock`).
  *
  * The `src/components/clockin/*` cards are presentational. They render

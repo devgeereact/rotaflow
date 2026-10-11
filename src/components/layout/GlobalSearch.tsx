@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 interface GlobalSearchProps {
   /**
    * `rail` is the full-width, subdued row in the sidebar (see
-   * `docs/ORGANISATION_WORKSPACE.html`'s `.kbar`). Omitted/`compact` is the
+   * `docs/design/ORGANISATION_WORKSPACE.html`'s `.kbar`). Omitted/`compact` is the
    * original pill, kept for any surface that still wants a narrow trigger.
    */
   variant?: 'compact' | 'rail';

@@ -44,8 +44,8 @@ interface PageHeaderProps {
  * Before this component there were 26 hand-rolled `<h1>` blocks across the app
  * and they used **three different sizes for the same role**, `text-2xl` (19
  * of them), `text-3xl` (10) and `text-xl` (4). `docs/design/designsystem.png` names
- * exactly one Page Title style, 32/40 Semibold, and `tailwind.config.ts` has
- * carried a `text-page-title` token for it the whole time. It was used three
+ * exactly one Page Title style, 32/40 Semibold, and the token file (`tailwind.config.ts` then, `@theme` in
+ * `src/index.css` since Tailwind 4) has carried a `text-page-title` token for it the whole time. It was used three
  * times in the entire codebase.
  *
  * That is what "the screens look slightly different from each other" is made

@@ -15,7 +15,7 @@ export interface StaffTimesheetsProps {
 }
 
 /**
- * A staff member's own Timesheets (`docs/ORGANISATION_WORKSPACE.html`'s
+ * A staff member's own Timesheets (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.timesheets` staff branch): their row(s) for today only, no
  * per-row actions — corrections go through their manager.
  */

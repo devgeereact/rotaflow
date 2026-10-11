@@ -23,7 +23,7 @@ interface AddExceptionModalProps {
 const TODAY = format(new Date(), 'yyyy-MM-dd');
 
 /** A one-off date that overrides the standing weekly pattern
- * (`docs/ORGANISATION_WORKSPACE.html`'s "Add an exception"). The three
+ * (`docs/design/ORGANISATION_WORKSPACE.html`'s "Add an exception"). The three
  * choices match the reference exactly; "from midday" is a fixed 12:00
  * rather than a free time picker, same as the reference offers. */
 export function AddExceptionModal({

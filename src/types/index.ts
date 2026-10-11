@@ -9,7 +9,7 @@ export type AppSettingsUpdate = Database['public']['Tables']['app_settings']['Up
 
 export type ThemeMode = 'dark' | 'light';
 
-/** RotaFlow domain rows (see docs/SCHEMA.md). */
+/** RotaFlow domain rows (see docs/DATA-MODEL.md). */
 export type Organisation = Database['public']['Tables']['organisations']['Row'];
 export type OrganisationInsert = Database['public']['Tables']['organisations']['Insert'];
 export type OrganisationUpdate = Database['public']['Tables']['organisations']['Update'];

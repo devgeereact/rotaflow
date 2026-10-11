@@ -16,7 +16,7 @@ const CLAIMS = [
  * architecture". One of them did not. **"GDPR compliant" is not a description
  * of an architecture, it is a compliance claim**, and it is the exact claim
  * `src/lib/marketing.ts` records as having been deleted from the adjacent
- * feature list for being unverifiable, under a rule `docs/BRAND.md` states
+ * feature list for being unverifiable, under a rule `docs/DESIGN-SYSTEM.md#brand-and-voice` states
  * outright: do not promise compliance. It sat on /login and /signup for weeks
  * while the same words were forbidden one file away — and at the same time the
  * app was running session replay against a Cookie Notice that said there was
@@ -25,7 +25,7 @@ const CLAIMS = [
  *
  * What replaces it is checkable. The database is in eu-west-1
  * (`src/lib/subprocessors.ts`), and tenants are separated by row-level
- * security rather than by an application filter (`docs/SCHEMA.md` §5). Both
+ * security rather than by an application filter (`docs/DATA-MODEL.md` §5). Both
  * are facts a reader could falsify, which is the whole point.
  */
 export function AuthTrustStrip(): JSX.Element {

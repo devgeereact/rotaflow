@@ -39,7 +39,7 @@ interface LeaveRowsTableProps {
 }
 
 /**
- * The Leave request table (`docs/ORGANISATION_WORKSPACE.html`'s
+ * The Leave request table (`docs/design/ORGANISATION_WORKSPACE.html`'s
  * `SCREENS.leave` `table()` call), shared by the manager and staff screens —
  * same columns either way, only the Actions column differs by role.
  */
