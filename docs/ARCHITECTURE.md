@@ -51,7 +51,6 @@ src/
 │   ├── env.ts       # validated, typed import.meta.env
 │   ├── supabase.ts  # typed Supabase client
 │   ├── sentry.ts    # Sentry init
-│   ├── imagekit.ts  # ImageKit URL builder
 │   └── utils.ts     # cn() and small helpers
 ├── pages/         # route-level views
 ├── services/      # typed data access over Supabase
@@ -62,10 +61,9 @@ src/
 ```
 
 **Dependency direction:** `pages → services → lib`. Components consume `hooks`
-and `context`. `lib` should import nothing from `pages`/`components`. Five files
+and `context`. `lib` should import nothing from `pages`/`components`. Four files
 currently break that with type-only imports — `clockinDemo`, `reportsDemo`,
-`settingsTabs`, `swapRows`, `workspaceTabs` — a convention that is not
-lint-enforced and not tracked in the register:
+`settingsTabs`, `swapRows` (a fifth, `workspaceTabs`, was deleted on 11 October 2026) — a convention that is not lint-enforced and not tracked in the register:
 
 ```bash
 grep -ln "from '@/pages\|from '@/components" src/lib/*.ts
@@ -727,14 +725,14 @@ export function useSupabaseAuth(): UseSupabaseAuth;
 
 ### 4. `useOptimizedImage` — REMOVED (2026-08-31)
 
-Deleted. It memoised `buildImageKitUrl` and **nothing ever called it** — every
-caller that needs a transformed ImageKit URL uses `src/lib/imagekit.ts`
-directly, which is a pure string builder and needs no React layer to be cheap.
+Deleted. It memoised `buildImageKitUrl` and **nothing ever called it**. The
+builder it wrapped, `src/lib/imagekit.ts`, turned out to have no caller either and
+was deleted on 11 October 2026 (`b123d1d`).
 A documented "approved hook contract" that no component consumes reads as a
 rule about how images must be loaded, when it was only an unused wrapper.
 
-`src/lib/imagekit.ts` and its `ImageTransform` type are unchanged and are the
-supported way to build one.
+Nothing in `src/` builds a transformed ImageKit URL today. `env.imagekitUrlEndpoint`
+stays, because the platform health check reads it.
 
 ### 5. `useInngestDispatch` — REMOVED (0087)
 
