@@ -142,7 +142,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     body: [
       'Two things in the product are special category data under Article 9, and both are named here rather than buried.',
       'The first is the medical notes field on an emergency contact, which is no longer collected or shown but still holds whatever was typed into it before. The second is sickness absence: leave has a type, and one of the types is sick, which makes an absence record a health record about a named person. The leave reason box asks people not to include medical details.',
-      'One deliberate protection is worth stating because it was built for exactly this reason. When a manager uses the AI assistant, staff names, job titles, skills, contracted hours and the dates of approved leave are sent to the model provider so it can draft a rota. The type of leave is deliberately not sent, so an absence cannot be read as sickness by anybody outside the organisation.',
+      'One deliberate protection is worth stating because it was built for exactly this reason. When a manager uses the AI assistant, staff job titles, skills, contracted hours and the dates of approved leave are sent to the model provider so it can draft a rota, with each person identified by a short code such as S1 rather than by name. The type of leave is deliberately not sent, so an absence cannot be read as sickness by anybody outside the organisation.',
     ],
     status: 'legal-review',
     outstanding:
@@ -167,7 +167,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     heading: 'Who else sees it',
     body: [
       'The full list of processors, what each receives, where it operates and how to avoid it where that is possible, is published separately and kept beside the code that proves each row.',
-      'Two of them take information outside the UK and the EU, and only two. Billing identity goes to Stripe in the United States when an organisation subscribes. Staff first and last names, job titles, skills, contracted hours and the dates of approved leave go to OpenRouter in the United States, but only at the moment a manager chooses to use the AI assistant — an organisation that never opens it sends nothing, and the feature is not on the entry plan.',
+      'Two of them take information outside the UK and the EU, and only two. Billing identity goes to Stripe in the United States when an organisation subscribes. Staff job titles, skills, contracted hours and the dates of approved leave, with each person under a short code rather than their name, go to OpenRouter in the United States, but only at the moment a manager chooses to use the AI assistant — an organisation that never opens it sends nothing, and the feature is not on the entry plan.',
       'Everything else is in the UK or the EU: the database and files are in Ireland, error reports go to a European endpoint, images are served from the United Kingdom, and the site itself is hosted in the United Kingdom behind a global content network.',
     ],
     status: 'legal-review',

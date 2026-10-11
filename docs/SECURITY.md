@@ -136,10 +136,10 @@ both must appear in the Privacy Notice and the sub-processor list.** This sectio
 previously claimed the opposite; that claim was wrong and was corrected on
 2026-08-29.
 
-| Processor                                                                          | What leaves the UK/EU                                                                                                                                                                                                                   | Where                                                 |
-| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **OpenRouter** (and the model provider behind it, `openai/gpt-4o-mini` by default) | Staff first and last names, job titles, skills, weekly hours, contract type, plus shift, location and approved-leave **dates** for the week being drafted — assembled into the prompt context. **Leave `type` is not sent** (see below) | `supabase/functions/ai-rota-assistant/index.ts`       |
-| **Stripe**                                                                         | Billing identity for the organisation's owner: email, and whatever Checkout collects                                                                                                                                                    | `supabase/functions/create-checkout-session/index.ts` |
+| Processor                                                                          | What leaves the UK/EU                                                                                                                                                                                                                                                                                                                                                                                                                               | Where                                                 |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **OpenRouter** (and the model provider behind it, `openai/gpt-4o-mini` by default) | Staff job titles, skills, weekly hours, contract type, plus shift, location and approved-leave **dates** for the week being drafted, assembled into the prompt context. Since 2026-10-11 each person is a short alias (`S1`, `S2`), not a name or a staff profile id (plan S3, `ai-rota-assistant/staffAliases.ts`); a name in the manager's own prompt is masked only when it matches exactly one person. **Leave `type` is not sent** (see below) | `supabase/functions/ai-rota-assistant/index.ts`       |
+| **Stripe**                                                                         | Billing identity for the organisation's owner: email, and whatever Checkout collects                                                                                                                                                                                                                                                                                                                                                                | `supabase/functions/create-checkout-session/index.ts` |
 
 ⚠️ **Leave type used to be sent, and should not have been. Corrected 2026-08-30.**
 The prompt carried `approvedLeave[].type` alongside a `staff` array holding real
@@ -612,8 +612,10 @@ beside real names on 2026-08-30.
 prompt is the gate; declining falls back to a manual clock-in recorded as
 manual, so the feature degrades rather than blocks.
 
-**C16 — AI.** Names, job titles, skills, contracted hours and leave _dates_
-leave the UK/EU on a manager's click. The browser never talks to OpenRouter;
+**C16 — AI.** Job titles, skills, contracted hours and leave _dates_ leave the
+UK/EU on a manager's click. Since 2026-10-11 staff are sent as short aliases
+(`S1`, `S2`) and names are restored server-side; a nickname, misspelling or
+shared first name in the manager's own prompt still goes as typed. The browser never talks to OpenRouter;
 the edge function does.
 
 **C23 — calendar feed.** Deployed `--no-verify-jwt`; the token in the query
@@ -664,15 +666,15 @@ exposure for pre-upgrade data.
 Published at `/legal/trust`, generated from `src/lib/subprocessors.ts`. Repeated
 here only where this document adds something.
 
-| Processor                   | What it gets                                            | Where              | Outside UK/EU           |
-| --------------------------- | ------------------------------------------------------- | ------------------ | ----------------------- |
-| Supabase                    | everything the product holds                            | eu-west-1, Ireland | No                      |
-| OpenRouter + model provider | staff names, job titles, skills, hours, leave **dates** | United States      | **Yes**                 |
-| Stripe                      | billing identity of the payer                           | United States      | **Yes**                 |
-| Sentry                      | stack trace, page path, breadcrumbs                     | EU ingest          | No                      |
-| ImageKit                    | uploaded images, including staff photographs            | United Kingdom     | No                      |
-| Namecheap / cPanel          | the site itself, and outbound mail                      | United Kingdom     | No                      |
-| Cloudflare                  | IP address and requested pages of **every visitor**     | global edge        | Not flagged — see below |
+| Processor                   | What it gets                                                          | Where              | Outside UK/EU           |
+| --------------------------- | --------------------------------------------------------------------- | ------------------ | ----------------------- |
+| Supabase                    | everything the product holds                                          | eu-west-1, Ireland | No                      |
+| OpenRouter + model provider | staff aliases (not names), job titles, skills, hours, leave **dates** | United States      | **Yes**                 |
+| Stripe                      | billing identity of the payer                                         | United States      | **Yes**                 |
+| Sentry                      | stack trace, page path, breadcrumbs                                   | EU ingest          | No                      |
+| ImageKit                    | uploaded images, including staff photographs                          | United Kingdom     | No                      |
+| Namecheap / cPanel          | the site itself, and outbound mail                                    | United Kingdom     | No                      |
+| Cloudflare                  | IP address and requested pages of **every visitor**                   | global edge        | Not flagged — see below |
 
 **Cloudflare is the awkward one.** The `outsideUkEu` flag means "personal data
 leaves the UK/EU to reach it", and a proxied request is served by the location

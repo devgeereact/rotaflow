@@ -44,6 +44,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { reportEdgeError } from '../_shared/sentry.ts';
 import { checkAnnouncementGrounding, suggestionDateBlock } from './grounding.ts';
+import { buildStaffAliases } from './staffAliases.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 // Set per-request at the top of the `Deno.serve` handler below, once the
@@ -124,7 +125,8 @@ function extractJson(content: string): unknown {
 // always be traced back to the exact prompt text that produced it — without
 // this, "we changed the prompt last Tuesday" is unverifiable against what a
 // specific manager actually saw generated.
-const PROMPT_VERSION = 1;
+// 2: staff are sent as short aliases (S1, S2...) with no names (plan S3).
+const PROMPT_VERSION = 2;
 
 // ---- Input-side cost ceilings (docs/SAAS.md HARDEN-004) ----------------
 //
@@ -152,7 +154,8 @@ const MAX_CONTEXT_CHARS = 120_000;
 
 const ROTA_SYSTEM_PROMPT = `You are RotaFlow's rota-drafting assistant for a workforce scheduling app. \
 You suggest shifts for a manager based on real staff data. Never invent staff or shift types, only use \
-the ids given in the context.
+the ids given in the context. Staff are identified only by short ids such as S1 and S2. Refer to a person \
+by that id in the summary and reasoning, and never guess at a name.
 
 Hard rules, in priority order. Breaking one makes the whole suggestion useless:
 1. Never schedule someone whose id appears in context.approvedLeave for a date inside that leave.
@@ -187,6 +190,8 @@ staff announcement for a manager, grounded in what is genuinely happening on the
 
 Rules:
 - Use only facts present in the context. Never invent a date, a name, a site or a number.
+- Staff are identified only by short ids such as S1 and S2. To mention a person, write their id exactly \
+(for example "S3 is covering Friday"); it is replaced with their name before anyone reads it.
 - Write in British English, plain and warm, addressed to the whole team. No corporate padding.
 - Two to four sentences in the body. Say what is happening, what the team needs to do, and by when.
 - Set "urgent" true only for genuine time-critical safety or cover matters, never for routine notices.
@@ -479,6 +484,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const staffById = new Map(staff.map((s) => [s.id, s]));
+    // Roster names never leave this function (plan S3, docs/SAAS.md
+    // GAP-064). The model sees S1, S2...; `staffAliases.ts` maps both ways.
+    const aliases = buildStaffAliases(staff);
+    const aliasOf = (staffProfileId: string | null): string | null =>
+      staffProfileId ? (aliases.aliasFor(staffProfileId) ?? null) : null;
     const shiftTypeById = new Map((shiftTypes ?? []).map((t) => [t.id, t]));
     const locationNameById = new Map((locations ?? []).map((l) => [l.id, l.name]));
     const shifts = existingShifts ?? [];
@@ -506,8 +516,7 @@ Deno.serve(async (req: Request) => {
       organisation: org?.name ?? 'this organisation',
       period: { start: periodStart, end: periodEnd },
       staff: staff.map((s) => ({
-        id: s.id,
-        name: `${s.first_name} ${s.last_name}`,
+        id: aliasOf(s.id),
         jobTitle: s.job_title,
         skills: s.skills,
         weeklyHours: s.weekly_hours,
@@ -524,7 +533,7 @@ Deno.serve(async (req: Request) => {
       existingShifts: shifts
         .filter((s) => s.staff_profile_id)
         .map((s) => ({
-          staffProfileId: s.staff_profile_id,
+          staffProfileId: aliasOf(s.staff_profile_id),
           shiftTypeId: s.shift_type_id,
           locationId: s.location_id,
           startsAt: s.starts_at,
@@ -551,12 +560,12 @@ Deno.serve(async (req: Request) => {
       // a date inside that leave", which needs the dates and not the reason.
       // Writing the sub-processor page is what surfaced it.
       approvedLeave: (leave ?? []).map((l) => ({
-        staffProfileId: l.staff_profile_id,
+        staffProfileId: aliasOf(l.staff_profile_id),
         startDate: l.start_date,
         endDate: l.end_date,
       })),
       unavailability: (availability ?? []).map((a) => ({
-        staffProfileId: a.staff_profile_id,
+        staffProfileId: aliasOf(a.staff_profile_id),
         weekday: a.recurring ? a.weekday : null, // 0 = Sunday
         date: a.date,
       })),
@@ -582,7 +591,10 @@ Deno.serve(async (req: Request) => {
         413,
       );
     }
-    const userPrompt = `Context:\n${serialisedContext}\n\nManager's request: "${prompt}"`;
+    // The manager's own words are masked too: a full name, or a first name
+    // only one person has, becomes that person's alias. See staffAliases.ts
+    // for what is deliberately left as typed.
+    const userPrompt = `Context:\n${serialisedContext}\n\nManager's request: "${aliases.maskPrompt(prompt)}"`;
 
     const model = Deno.env.get('OPENROUTER_MODEL') || 'openai/gpt-4o-mini';
 
@@ -685,8 +697,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (task === 'announcement') {
-      const title = typeof parsed.title === 'string' ? parsed.title.trim() : '';
-      const draftBody = typeof parsed.body === 'string' ? parsed.body.trim() : '';
+      // Aliases back to names first, so the grounding check below and the
+      // manager both read the same text.
+      const title =
+        typeof parsed.title === 'string' ? aliases.restoreNames(parsed.title.trim()) : '';
+      const draftBody =
+        typeof parsed.body === 'string' ? aliases.restoreNames(parsed.body.trim()) : '';
       if (!title || !draftBody) {
         return jsonResponse(
           { error: 'The AI assistant returned an announcement with no title or body' },
@@ -755,7 +771,10 @@ Deno.serve(async (req: Request) => {
         title: title.slice(0, 120),
         body: draftBody,
         urgent: parsed.urgent === true,
-        reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : '',
+        reasoning:
+          typeof parsed.reasoning === 'string'
+            ? aliases.restoreNames(parsed.reasoning)
+            : '',
         // Warned, not refused: English capitalises plenty of words that are
         // not names, so this is a prompt to read the draft, not a verdict.
         unverified: grounding.suspectNames,
@@ -815,8 +834,14 @@ Deno.serve(async (req: Request) => {
       );
 
     for (const s of raw) {
-      const staffMember = s.staffProfileId ? staffById.get(s.staffProfileId) : undefined;
-      if (!staffMember) {
+      // The model answers in aliases. Anything that is not one of ours,
+      // including a real UUID it could not have seen, is an unknown person.
+      const staffProfileId =
+        typeof s.staffProfileId === 'string'
+          ? aliases.idFor(s.staffProfileId)
+          : undefined;
+      const staffMember = staffProfileId ? staffById.get(staffProfileId) : undefined;
+      if (!staffProfileId || !staffMember) {
         droppedUnknown += 1;
         continue;
       }
@@ -826,7 +851,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const dateBlock = suggestionDateBlock(
-        s.staffProfileId!,
+        staffProfileId,
         s.date!,
         leave ?? [],
         availability ?? [],
@@ -863,25 +888,25 @@ Deno.serve(async (req: Request) => {
       // A night shift ending "07:15" ends the following morning.
       const end = localMinutes(s.date!, endTime) + (endTime <= startTime ? 1440 : 0);
 
-      const busy = busyByStaff.get(s.staffProfileId!) ?? [];
+      const busy = busyByStaff.get(staffProfileId) ?? [];
       if (busy.some((b) => start < b.end && b.start < end)) {
         droppedOverlapping += 1;
         continue;
       }
 
       accepted.push({
-        staffProfileId: s.staffProfileId!,
+        staffProfileId,
         staffName: `${staffMember.first_name} ${staffMember.last_name}`,
         shiftTypeId: shiftType ? s.shiftTypeId! : null,
         shiftTypeName: shiftType?.name ?? null,
         date: s.date!,
         startTime,
         endTime,
-        reasoning: s.reasoning ?? '',
+        reasoning: aliases.restoreNames(s.reasoning ?? ''),
       });
       // Accepted suggestions become "busy" too, so the next one in the same
       // response cannot double-book the same person.
-      busyByStaff.set(s.staffProfileId!, [...busy, { start, end }]);
+      busyByStaff.set(staffProfileId, [...busy, { start, end }]);
     }
 
     const notes: string[] = [];
@@ -910,7 +935,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const modelSummary = typeof parsed.summary === 'string' ? parsed.summary : '';
+    const modelSummary =
+      typeof parsed.summary === 'string' ? aliases.restoreNames(parsed.summary) : '';
     // This is also the invalid-suggestion-rate measurement
     // `docs/SAAS.md` (AI operations) asks for:
     // `accepted.length` against how many were dropped, and why, per request.

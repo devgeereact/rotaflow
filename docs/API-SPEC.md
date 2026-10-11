@@ -55,6 +55,21 @@ with no session) and is the exception.
 `service_role` for the single `audit_write` call that `authenticated` is
 deliberately not allowed to make. Its data flow is `docs/ARCHITECTURE.md` §9b.
 
+**What it sends to OpenRouter (`PROMPT_VERSION` 2, 2026-10-11, plan S3).** No
+staff name and no staff profile id leaves the function. `staffAliases.ts`
+assigns each active staff member a short alias (`S1`, `S2`...) in staff-id
+order, so the same roster gives the same aliases on every call. The context's
+`staff[].id`, `existingShifts[].staffProfileId`, `approvedLeave[].staffProfileId`
+and `unavailability[].staffProfileId` carry the alias, and `staff[]` has no
+`name` field. The manager's prompt is masked too: a full name, or a first name
+only one person has, becomes that person's alias; a nickname, misspelling or
+shared first name is sent as typed. On the way back, `suggestions[].staffProfileId`
+is mapped from alias to the real id (anything else, including a real UUID, is
+dropped as an unknown person), and aliases in `summary`, `reasoning`, `title`
+and `body` are replaced with full names before the grounding check and the
+response. The response shape to the browser is unchanged. Tested in
+`staffAliases.test.ts`, including that a serialised context holds no name.
+
 ### Billing functions
 
 Three Edge Functions, added with migration `0050`, share `supabase/functions/_shared/stripe.ts`:

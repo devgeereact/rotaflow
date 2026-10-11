@@ -52,7 +52,7 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
     purpose:
       'The optional AI rota assistant. Drafts shift suggestions and announcement text from a manager’s prompt.',
     personalData:
-      'Staff first and last names, job titles, skills, weekly hours and contract type, plus the shifts, locations and leave DATES for the week being drafted. Leave type is deliberately not sent, so an absence cannot be read as sickness.',
+      'Staff job titles, skills, weekly hours and contract type, each person under a short code such as S1 rather than their name, plus the shifts, locations and leave DATES for the week being drafted. Names are put back on our side before the manager sees the draft. A name the manager types into their own request is replaced with its code when it matches exactly one person; anything else typed is sent as written. Leave type is deliberately not sent, so an absence cannot be read as sickness.',
     region: 'United States. The default model is openai/gpt-4o-mini.',
     outsideUkEu: true,
     evidence: 'supabase/functions/ai-rota-assistant/index.ts',
