@@ -556,7 +556,22 @@ export function App(): JSX.Element {
                               path="feature-flags"
                               element={<AdminFeatureFlagsPage />}
                             />
-                            <Route path="gdpr" element={<AdminGdprPage />} />
+                            {/* The DSAR register names data subjects, so it is
+                      operational tenant data: 0138 moved `gdpr_requests_select`
+                      to `is_platform_operational()`, which excludes finance.
+                      Without this gate finance opened the screen and RLS
+                      filtered it to an empty register. */}
+                            <Route
+                              path="gdpr"
+                              element={
+                                <RequirePlatformRole
+                                  allow={PLATFORM_OPERATIONAL_ROLES}
+                                  area="GDPR and data requests"
+                                >
+                                  <AdminGdprPage />
+                                </RequirePlatformRole>
+                              }
+                            />
                             <Route path="settings" element={<AdminSettingsPage />} />
                           </Route>
                           {/* docs/design/staff.png and docs/design/Staff-Profile.png. */}
@@ -819,6 +834,16 @@ export function App(): JSX.Element {
                           path="organisations"
                           element={<AdminOrganisationsPage />}
                         />
+                        {/* No `RequirePlatformRole` here, on purpose, and the
+                      same as the Organisations list above. Every platform role
+                      may open an organisation: finance needs its Subscription
+                      and Usage tabs, and 0122 left `organisations` readable by
+                      finance for that reason. The narrowing is per tab, in
+                      `src/lib/organisationTabs.ts`, which hides the
+                      operational tabs from finance. A route gate listing all
+                      four roles would add nothing except refusing an
+                      administrator whose granular role could not be read,
+                      while the list one click away still let them in. */}
                         <Route
                           path="organisations/:organisationId"
                           element={<AdminOrganisationDetailPage />}
@@ -981,7 +1006,22 @@ export function App(): JSX.Element {
                             </RequirePlatformRole>
                           }
                         />
-                        <Route path="gdpr" element={<AdminGdprPage />} />
+                        {/* The DSAR register names data subjects, so it is
+                      operational tenant data: 0138 moved `gdpr_requests_select`
+                      to `is_platform_operational()`, which excludes finance.
+                      Without this gate finance opened the screen and RLS
+                      filtered it to an empty register. */}
+                        <Route
+                          path="gdpr"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="GDPR and data requests"
+                            >
+                              <AdminGdprPage />
+                            </RequirePlatformRole>
+                          }
+                        />
                         <Route
                           path="feature-flags"
                           element={

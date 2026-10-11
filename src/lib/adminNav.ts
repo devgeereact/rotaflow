@@ -117,13 +117,15 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     to: '/admin/feature-flags',
     roles: ['platform_owner', 'platform_admin'],
   },
-  // Deliberately unrestricted, unlike the console reference, which lists GDPR
-  // as owner/admin only. `/admin/gdpr` carries no `RequirePlatformRole` in the
-  // route table, and hiding a link whose route still renders when typed is a
-  // decoration rather than a permission. The narrowing lands with the screen
-  // itself, where the nav gate, the route gate and the table's
-  // `has_platform_role(...)` policy can be changed together.
-  { label: 'GDPR & Data', icon: ShieldCheck, to: '/admin/gdpr' },
+  // Operational roles only. 0138 moved `gdpr_requests_select` to
+  // `is_platform_operational()`, and the route carries the same gate, so a
+  // finance administrator is neither shown the link nor an empty register.
+  {
+    label: 'GDPR & Data',
+    icon: ShieldCheck,
+    to: '/admin/gdpr',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
+  },
   {
     label: 'Platform Settings',
     icon: Settings,

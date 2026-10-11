@@ -623,9 +623,12 @@ itself: a restore, a real charge, and a phone.
 
 ### Platform administration
 
-- [x] CAP-074 🟢 Platform console — 18 page components under `/admin` and 13 routes narrowed by
-      `RequirePlatformRole`, counted in `src/App.tsx` on 2026-10-11 (this row said 19 and four),
-      all behind `RequirePlatformAdmin`
+- [x] CAP-074 🟢 Platform console — 18 page components under `/admin` and 14 routes narrowed by
+      `RequirePlatformRole`, counted in `src/App.tsx` on 2026-10-11 (this row said 19 and four, then 13;
+      `/admin/gdpr` became the fourteenth, for the operational roles, matching `0138`), all behind
+      `RequirePlatformAdmin`. `/admin/organisations/:id` is deliberately ungated: finance needs its
+      Subscription and Usage tabs, and the operational tabs are gated per role in
+      `src/lib/organisationTabs.ts`
       `src/lib/adminNav.ts`
 - [x] CAP-075 🟢 Incident register
       `supabase/migrations/0021_platform_incidents.sql`
