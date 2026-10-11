@@ -38,6 +38,14 @@ vi.mock('@/hooks/useToast', () => ({
 }));
 vi.mock('@/hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: vi.fn() }) }));
 vi.mock('@/hooks/useRealtimeRefresh', () => ({ useRealtimeRefresh: () => undefined }));
+// The board reads its clock from the organisation. Pinned to a zone that is
+// not the test runner's (Europe/London) so a missing `timeZone` would show.
+vi.mock('@/services/locationService', () => ({
+  listLocations: () => Promise.resolve([]),
+}));
+vi.mock('@/services/orgService', () => ({
+  getOrganisation: () => Promise.resolve({ timezone: 'America/New_York' }),
+}));
 vi.mock('@/services/openShiftService', () => ({
   listOpenShifts: () => listOpenShifts(),
   claimOpenShift: vi.fn(),
@@ -54,9 +62,9 @@ const shift: OpenShift = {
   clashesWithMine: false,
 };
 
-// Load the page's module graph once, outside any test's 5-second budget. The
-// first test used to pay for the cold import itself and timed out on a busy
-// machine; the tests below then get the cached module.
+// The page's first import is cold and pulls a large module graph. On a busy
+// machine it outlasted the 5s per-test budget, and the timed-out render then
+// leaked into the next test. Import it once, up front, with its own budget.
 beforeAll(async () => {
   await import('./OpenShiftsPage');
 }, 60_000);
@@ -111,5 +119,21 @@ describe('the open shifts board', () => {
 
     expect(screen.getByRole('button', { name: 'Take it' })).toBeTruthy();
     expect(screen.queryByText('Needs cover')).toBeNull();
+  });
+
+  it('shows shift times on the organisation clock, not the browser one', async () => {
+    useWorkMode.mockReturnValue({
+      mode: 'my-work',
+      setMode: vi.fn(),
+      canSwitch: true,
+      staffProfileId: 'staff-1',
+      loading: false,
+    });
+
+    await renderPage();
+
+    // 09:00Z to 17:00Z is 05:00 to 13:00 in New York (EDT). The runner is
+    // pinned to Europe/London, where it would read 10:00 to 18:00.
+    expect(await screen.findByText(/05:00.13:00/)).toBeTruthy();
   });
 });

@@ -12,6 +12,9 @@ import {
   type OpenShift,
 } from '@/services/openShiftService';
 import { reportError } from '@/lib/sentry';
+import { FALLBACK_TIMEZONE, resolveReportingTimezone } from '@/lib/operationalDay';
+import { listLocations } from '@/services/locationService';
+import { getOrganisation } from '@/services/orgService';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -75,6 +78,10 @@ export function OpenShiftsPage(): JSX.Element {
   const [failed, setFailed] = useState(false);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Shift times are instants; this is the clock they are read on. The
+  // organisation's, as SchedulePage resolves it, not the browser's: a phone
+  // set to another zone must not move a 09:00 start.
+  const [timezone, setTimezone] = useState<string>(FALLBACK_TIMEZONE);
 
   // Somebody else taking a shift is the event this screen most needs to hear
   // about: the board is a queue several people read at once.
@@ -83,6 +90,27 @@ export function OpenShiftsPage(): JSX.Element {
     scope: { column: 'org_id', value: orgId },
     onChange: () => setReloadKey((k) => k + 1),
   });
+
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const [locs, org] = await Promise.all([
+          listLocations(orgId),
+          getOrganisation(orgId),
+        ]);
+        const reporting = resolveReportingTimezone(locs, null, org?.timezone ?? null);
+        if (active) setTimezone(reporting.timezone || FALLBACK_TIMEZONE);
+      } catch (err) {
+        // Not fatal: the board still lists shifts, on the fallback clock.
+        reportError(err, { area: 'open-shifts:timezone' });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -113,6 +141,7 @@ export function OpenShiftsPage(): JSX.Element {
         month: 'long',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: timezone,
       });
 
       const ok = await confirm({
@@ -143,7 +172,7 @@ export function OpenShiftsPage(): JSX.Element {
         setClaiming(null);
       }
     },
-    [confirm, showError, showSuccess],
+    [confirm, showError, showSuccess, timezone],
   );
 
   return (
@@ -203,6 +232,7 @@ export function OpenShiftsPage(): JSX.Element {
                         weekday: 'short',
                         day: 'numeric',
                         month: 'short',
+                        timeZone: timezone,
                       })}
                     </p>
                     <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-content-muted dark:text-content-muted-dark">
@@ -211,11 +241,13 @@ export function OpenShiftsPage(): JSX.Element {
                         {start.toLocaleTimeString('en-GB', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          timeZone: timezone,
                         })}
                         –
                         {end.toLocaleTimeString('en-GB', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          timeZone: timezone,
                         })}
                         {shift.breakMinutes > 0 && ` · ${shift.breakMinutes} min break`}
                       </span>
