@@ -2,6 +2,14 @@
 
 Work is ordered by dependency and risk, not by calendar. Sizes are relative: **S** is a bounded copy, component or configuration change; **M** spans one journey or a few layers; **L** spans environments, providers or several evidence gates. A size is not a date.
 
+## 0. Status (11 October 2026)
+
+| Item                         | State                                                                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wave 1 packages WP-A to WP-H | Saved as local work-in-progress commits. **Not yet integrated**: no pull request opened, nothing on `main`, nothing deployed. Their acceptance evidence is NOT TESTED until each lands |
+| Documentation restructure    | In progress: moving `docs/` to the GEE OS Standard layout ([10](10-GOVERNANCE-ALIGNMENT.md) §0.1). Line references in this pack cite the files on `main` until it merges               |
+| This pack                    | Committed (`4633e87`) and re-verified against `main` on 11 Oct 2026, after #317 and #330 landed                                                                                        |
+
 ## 1. Phases at a glance
 
 | Phase                     | Goal                                             | Exit                                                                                                              |
@@ -18,12 +26,12 @@ Phases 1 and 3 can overlap where the work does not touch the same files. Do the 
 
 ### Phase 0. Facts (owner and read-only checks)
 
-| ID    | Package                                                                                                                                                                                 | Size | Exit                                          |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------- |
-| P0-01 | Rotate `SUPABASE_ACCESS_TOKEN`, re-run `auth-config.yml`, fix `plan-drift-audit.yml`                                                                                                    | S    | Both green. GitHub failure emails switched on |
-| P0-02 | Read live state: `platform_settings.require_mfa`, deployed Edge Function versions, applied migrations against the repo (GAP-074 `create_invite`), Supabase plan and region, PITR status | S    | Recorded in `DEPLOYMENT.md` with the date     |
-| P0-03 | UKIPO trade mark search (decision D1)                                                                                                                                                   | S    | Decision recorded                             |
-| P0-04 | Owner decisions D2 to D8 recorded in the README                                                                                                                                         | S    | No row left Pending that blocks phase 1       |
+| ID    | Package                                                                                                                                                                                                | Size | Exit                                           |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | ---------------------------------------------- |
+| P0-01 | Rotate `SUPABASE_ACCESS_TOKEN`, re-run `auth-config.yml`, fix `plan-drift-audit.yml`                                                                                                                   | S    | Both green. GitHub failure emails switched on  |
+| P0-02 | Read live state: `platform_settings.require_mfa`, deployed Edge Function versions, applied migrations against the repo (152 on `main`; GAP-074 `create_invite`), Supabase plan and region, PITR status | S    | Recorded in `docs/DEPLOYMENT.md` with the date |
+| P0-03 | UKIPO trade mark search (decision D1)                                                                                                                                                                  | S    | Decision recorded                              |
+| P0-04 | Owner decisions D2 to D8 recorded in the README                                                                                                                                                        | S    | No row left Pending that blocks phase 1        |
 
 ### Phase 1. Safe to hold real data
 
@@ -59,15 +67,16 @@ Phases 1 and 3 can overlap where the work does not touch the same files. Do the 
 
 ### Phase 3. Professional finish
 
-| ID    | Package                                                                                                       | Size       | Exit                                                                |
-| ----- | ------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------- |
-| P3-01 | Design adoption, in the order of [04](04-DESIGN-AND-EXPERIENCE.md) §9                                         | M per step | Ratchet tests in place and falling                                  |
-| P3-02 | `src/lib/format.ts` and migration as screens are touched                                                      | S          | No locale-less formatting                                           |
-| P3-03 | Website rebuild: layout, screenshots, prerender, JSON-LD, real 404 ([06](06-WEBSITE-AND-CONTENT.md) §2 to §4) | L          | Link previews correct on LinkedIn and WhatsApp                      |
-| P3-04 | Content editor and `public-content` function ([06](06-WEBSITE-AND-CONTENT.md) §6)                             | M to L     | A post published in the console appears on the site and in app Help |
-| P3-05 | Social profiles set up ([07](07-SOCIAL-PROFILES-AND-COMMUNITY.md))                                            | S          | Accounts secured, links in `site_settings`                          |
-| P3-06 | Private document storage ([05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S2 phase 2)                             | M          | Lifecycle tests pass                                                |
-| P3-07 | Sidebar grouping tested with two managers ([04](04-DESIGN-AND-EXPERIENCE.md) §6)                              | S          | Shipped only if they find things faster                             |
+| ID    | Package                                                                                                                                                                                               | Size       | Exit                                                                                          |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------- |
+| P3-00 | Visual language tokens (D10, [04](04-DESIGN-AND-EXPERIENCE.md) §2a): import the reference into a scratch path, merge into `docs/DESIGN-SYSTEM.md`, then change the tokens in `src/index.css` `@theme` | M          | Tokens reviewed on the three surfaces in [04](04-DESIGN-AND-EXPERIENCE.md) §9, both themes    |
+| P3-01 | Design adoption, in the order of [04](04-DESIGN-AND-EXPERIENCE.md) §9                                                                                                                                 | M per step | Ratchet tests in place and falling                                                            |
+| P3-02 | `src/lib/format.ts` and migration as screens are touched                                                                                                                                              | S          | No locale-less formatting                                                                     |
+| P3-03 | Website rebuild in the new visual language: layout, Playwright screenshots in device frames, entrance-only hero animation, prerender, JSON-LD, real 404 ([06](06-WEBSITE-AND-CONTENT.md) §2 to §4)    | L          | Link previews correct on LinkedIn and WhatsApp. No Tesla name or logo anywhere in public copy |
+| P3-04 | Content editor and `public-content` function ([06](06-WEBSITE-AND-CONTENT.md) §6)                                                                                                                     | M to L     | A post published in the console appears on the site and in app Help                           |
+| P3-05 | Social profiles set up ([07](07-SOCIAL-PROFILES-AND-COMMUNITY.md))                                                                                                                                    | S          | Accounts secured, links in `site_settings`                                                    |
+| P3-06 | Private document storage ([05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) S2 phase 2)                                                                                                                     | M          | Lifecycle tests pass                                                                          |
+| P3-07 | Sidebar grouping tested with two managers ([04](04-DESIGN-AND-EXPERIENCE.md) §6)                                                                                                                      | S          | Shipped only if they find things faster                                                       |
 
 ### Phase 4. Paid launch
 
@@ -77,7 +86,7 @@ Phases 1 and 3 can overlap where the work does not touch the same files. Do the 
 | P4-02 | Stripe Tax and VAT display (after D3 and VAT registration)                           | S    | Invoice shows net, VAT and gross            |
 | P4-03 | One supervised live payment, separately authorised by the owner                      | S    | Recorded with the expected financial effect |
 | P4-04 | Performance test at 20 sites, 250 staff, 10,000 shifts, 50,000 clock events          | M    | Measured, and the supported size published  |
-| P4-05 | Release checklist from [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) §5 run end to end | S    | Recorded in `PWA-RELEASE-GATES.md`          |
+| P4-05 | Release checklist from [05](05-SECURITY-PRIVACY-AND-OPERATIONS.md) §5 run end to end | S    | Recorded in `qa/LAUNCH-CHECKLIST.md`        |
 
 ## 3. Pilot terms (proposal for the owner)
 
@@ -93,10 +102,10 @@ Phases 1 and 3 can overlap where the work does not touch the same files. Do the 
 3. Migrations backwards-compatible with the previous client.
 4. Rollback and post-release checks written before deploying.
 5. One real clock-in on a real phone after release.
-6. Results recorded in `PWA-RELEASE-GATES.md` with date and version.
+6. Results recorded in `qa/LAUNCH-CHECKLIST.md` (today `docs/PWA-RELEASE-GATES.md`) with date and version.
 
 No release is called "green" on old screenshots or skipped tests.
 
 ## 5. How each package is run
 
-Before starting: write the task contract in `.agent/CURRENT-TASK.md` (outcome, scope, authority, evidence, rollback). Inspect the real path: action, validation, service, RPC or RLS, result, audit, notification. Use current official documentation for Stripe, Supabase and other providers. One cohesive pull request per package. Business-rule changes separate from visual changes. Update the SAAS.md row in the same pull request when a capability's status changes.
+Before starting: write the task contract in `.agent/CURRENT-TASK.md` (outcome, scope, authority, evidence, rollback). Inspect the real path: action, validation, service, RPC or RLS, result, audit, notification. Use current official documentation for Stripe, Supabase and other providers. One cohesive pull request per package. Business-rule changes separate from visual changes. Update the `docs/SAAS.md` row, and any other document the change makes untrue, in the same pull request (the docs-sync rule, [10](10-GOVERNANCE-ALIGNMENT.md) §0.2).
