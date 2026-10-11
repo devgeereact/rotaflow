@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 
@@ -14,23 +14,29 @@ const ENDPOINT = 'https://push.example.test/endpoint-a';
 
 interface FakeSubscription {
   endpoint: string;
-  unsubscribe: ReturnType<typeof vi.fn>;
+  unsubscribe: Mock<() => Promise<boolean>>;
 }
 
 function stubBrowser(subscription: FakeSubscription | null, registered = true): void {
   vi.stubGlobal('navigator', {
     serviceWorker: {
-      getRegistration: vi.fn(async () =>
-        registered
-          ? { pushManager: { getSubscription: vi.fn(async () => subscription) } }
-          : undefined,
+      getRegistration: vi.fn(() =>
+        Promise.resolve(
+          registered
+            ? {
+                pushManager: {
+                  getSubscription: vi.fn(() => Promise.resolve(subscription)),
+                },
+              }
+            : undefined,
+        ),
       ),
     },
   });
 }
 
 function fakeSubscription(): FakeSubscription {
-  return { endpoint: ENDPOINT, unsubscribe: vi.fn(async () => true) };
+  return { endpoint: ENDPOINT, unsubscribe: vi.fn(() => Promise.resolve(true)) };
 }
 
 afterEach(() => {
@@ -42,13 +48,14 @@ describe('releasePushSubscription', () => {
   it('deletes the server row, then unsubscribes the browser', async () => {
     const order: string[] = [];
     const subscription = fakeSubscription();
-    subscription.unsubscribe.mockImplementation(async () => {
+    subscription.unsubscribe.mockImplementation(() => {
       order.push('unsubscribe');
-      return true;
+      return Promise.resolve(true);
     });
     stubBrowser(subscription);
-    const deleteRow = vi.fn(async (endpoint: string) => {
+    const deleteRow = vi.fn((endpoint: string): Promise<void> => {
       order.push(`delete:${endpoint}`);
+      return Promise.resolve();
     });
 
     await releasePushSubscription(deleteRow);
@@ -59,9 +66,7 @@ describe('releasePushSubscription', () => {
   it('still unsubscribes the browser when the row cannot be deleted (offline)', async () => {
     const subscription = fakeSubscription();
     stubBrowser(subscription);
-    const deleteRow = vi.fn(async () => {
-      throw new TypeError('Failed to fetch');
-    });
+    const deleteRow = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')));
 
     await expect(releasePushSubscription(deleteRow)).resolves.toBeUndefined();
 

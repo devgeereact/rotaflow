@@ -219,7 +219,9 @@ function withIdempotencyKey(kind: OutboxKind, payload: unknown): unknown {
  * queued before that release and never flushed can be in this state.
  */
 function belongsTo(record: OutboxRecord, userId: string): boolean {
-  return typeof record.userId === 'string' && record.userId !== '' && record.userId === userId;
+  return (
+    typeof record.userId === 'string' && record.userId !== '' && record.userId === userId
+  );
 }
 
 export async function enqueueWrite(
