@@ -191,7 +191,8 @@ test.describe('the authenticated loop', () => {
       page.getByRole('heading', { name: 'Choose your plan', exact: true }),
     ).toBeVisible({ timeout: 60_000 });
     await page.getByRole('button', { name: /^continue$/i }).click();
-    await page.getByRole('button', { name: /go to dashboard/i }).click();
+    // The finish step offers one primary next step since O6 (2026-10-11).
+    await page.getByRole('button', { name: /build your first rota/i }).click();
     await page.waitForURL(/\/app\//, { timeout: 60_000 });
 
     // One person, because the grid draws rows and there is nothing to
