@@ -71,11 +71,16 @@ values ('c3333333-3333-3333-3333-333333333333', 'platform_admin');
 -- `gps_clock_in` from every plan, Starter's feature array is empty, and an org
 -- with no entitlements at all cannot show that a refusal is a real check
 -- rather than a blanket no.
-insert into public.organisations (id, name, slug, created_by, plan) values
+--
+-- `support_access_allowed` is set explicitly because the session assertion
+-- below needs the customer's consent, and since 0153 a new organisation
+-- starts without it.
+insert into public.organisations
+  (id, name, slug, created_by, plan, support_access_allowed) values
   ('cccccccc-0000-0000-0000-000000000001', 'Org Business', 'org-business-ent',
-   'c1111111-1111-1111-1111-111111111111', 'business'),
+   'c1111111-1111-1111-1111-111111111111', 'business', true),
   ('cccccccc-0000-0000-0000-000000000002', 'Org Professional', 'org-professional-ent',
-   'c2222222-2222-2222-2222-222222222222', 'professional');
+   'c2222222-2222-2222-2222-222222222222', 'professional', true);
 
 -- ---------- the Business owner ---------------------------------------
 set local role authenticated;

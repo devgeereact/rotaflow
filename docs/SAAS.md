@@ -77,7 +77,7 @@ P1 was reachable by any existing check, and both now have one: `e2e/staff-dashbo
 A sixth defect, GAP-123, was a missing rule rather than a broken one — nothing stopped a person
 booking the same days off twice, and the entitlement was then spent twice on days they were absent
 for once. It was recorded as a decision first and closed on the owner's instruction the same day by
-`0152`, the only migration this pass adds, which took `main` to 152 migrations.
+`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) took `main` to 153 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -418,9 +418,12 @@ itself: a restore, a real charge, and a phone.
       `supabase/migrations/0028_support_access_gate.sql`
 - [x] CAP-044 🟢 Support access — a time-boxed session is the actual RLS gate, not a log of intent.
       **What it is not (recorded 2026-10-11):** customer approval per session. The tenant's consent is
-      `organisations.support_access_allowed`, a standing flag that defaults to **true** (`0017`), and
-      the platform administrator opens the time-boxed session themselves
-      `supabase/migrations/0028_support_access_gate.sql`
+      `organisations.support_access_allowed`, a standing flag, and the platform administrator opens the
+      time-boxed session themselves. **Since `0153` (plan decision D8) a new organisation starts with it
+      off**; organisations created earlier kept their value (the old default was on, `0017`). Not built
+      yet: the switch turning itself off when a session ends
+      `supabase/migrations/0028_support_access_gate.sql` · `supabase/migrations/0153_support_access_is_asked_for.sql` ·
+      `supabase/tests/database/support_access_is_asked_for.test.sql` (5 pgTAP assertions, NOT TESTED locally)
 - [x] CAP-045 🟢 Cross-tenant isolation — the org A/org B matrix runs in CI: 20 assertions across every
       tenant table, both write directions, and the org-scoped RPCs, as `authenticated` with real JWT claims
       `supabase/tests/database/cross_tenant_isolation.test.sql` · ❓-003 answered 2026-08-31 #232

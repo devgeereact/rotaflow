@@ -255,7 +255,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 152 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 153 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -488,6 +488,16 @@ than as a sentence in one document — the rest of the loop closed around it on
 2026-08-31, when a target with a clock (`0110`) and a customer-facing reply
 (GAP-012) both landed, and the one remaining hole deserved an id somebody
 could schedule.
+
+**Opening a tenant's data needs the customer's consent first.** Platform
+support reads tenant data only through a time-boxed session
+(`support_access_sessions`, `0019`), and `has_support_access()` re-checks
+`organisations.support_access_allowed` on every read (`0143`), so an owner who
+turns it off ends a live session at once. Since `0153` (plan decision D8) a new
+organisation starts with that consent **off**: support asks in the case thread
+and the owner turns it on. Organisations created before `0153` kept the value
+they held, which for most is the old default of on. The switch does not yet
+turn itself off when a session ends; that part of D8 is not built.
 
 ## Open items, in priority order
 
