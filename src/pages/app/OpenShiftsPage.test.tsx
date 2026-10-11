@@ -3,7 +3,7 @@
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The open-shifts board reads two ways, and the reader's staff profile is
@@ -53,6 +53,13 @@ const shift: OpenShift = {
   notes: null,
   clashesWithMine: false,
 };
+
+// Load the page's module graph once, outside any test's 5-second budget. The
+// first test used to pay for the cold import itself and timed out on a busy
+// machine; the tests below then get the cached module.
+beforeAll(async () => {
+  await import('./OpenShiftsPage');
+}, 60_000);
 
 beforeEach(() => {
   listOpenShifts.mockResolvedValue([shift]);

@@ -3,7 +3,7 @@
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The update toast is the one piece of UI that competes with unsaved work.
@@ -35,6 +35,15 @@ const registerSW = vi.hoisted(() => vi.fn());
 vi.mock('virtual:pwa-register', () => ({ registerSW }));
 
 describe('UpdatePrompt', () => {
+  // Pay the cold transform of the component's import graph once, outside the
+  // first test's 5-second budget (it timed out on a busy machine). The reset
+  // keeps every test on a freshly evaluated module, as before; only the
+  // transform stays cached.
+  beforeAll(async () => {
+    await import('@/components/UpdatePrompt');
+    vi.resetModules();
+  }, 60_000);
+
   beforeEach(() => {
     registerSW.mockReset();
   });
