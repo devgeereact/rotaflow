@@ -141,7 +141,7 @@ list, and an exists/missing verdict for every file path the document cites. You 
 browse the repository — the evidence provided is all you get, so never claim to have
 checked something that is not in it.
 
-The document is docs/SAAS.md. Its structure, which you must audit against:
+The document is ${PLAN_DOC}. Its structure, which you must audit against:
   * "§4 Capability register" — checkbox rows of the form
     "- [ ] CAP-nnn <status emoji> <name>" followed by an indented evidence path.
     The status marks are 🟢 complete, 🟡 partial, 🔴 missing, 🟠 defective,
