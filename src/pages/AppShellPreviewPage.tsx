@@ -35,7 +35,7 @@ import { HelpPage } from '@/pages/app/HelpPage';
  *
  * `?role=owner|manager|staff` switches the stubbed membership role so the
  * rail's role-gated rows (Rota Builder, Team, Locations, Reports, Settings
- * vs My Profile) can be checked for all three without a second login.
+ * vs My account) can be checked for all three without a second login.
  *
  * Gated behind `import.meta.env.DEV` in `App.tsx` exactly like every other
  * preview route, so Rollup drops this module from the production bundle.

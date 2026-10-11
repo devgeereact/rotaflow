@@ -177,7 +177,7 @@ export function navItemsForRole(
 
 /**
  * The rail's second, quieter nav group: account-level destinations rather
- * than workspace ones. A manager gets Settings; staff get My Profile in the
+ * than workspace ones. A manager gets Settings; staff get My account in the
  * same slot, `settingsTabsForRole('staff')` is empty, so a Settings link
  * would land them on a redirect every time. Help & Support is common to both.
  *
@@ -191,7 +191,7 @@ export function footerNavItemsForRole(role: MembershipRole | null): NavItem[] {
   return [
     isManager
       ? { label: 'Settings', icon: Settings, to: '/app/settings' }
-      : { label: 'My Profile', icon: UserCircle, to: '/app/account' },
+      : { label: 'My account', icon: UserCircle, to: '/app/account' },
     { label: 'Help & Support', icon: LifeBuoy, to: '/app/help' },
   ];
 }

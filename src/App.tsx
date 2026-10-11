@@ -234,7 +234,7 @@ const RotaBuilderPage = lazyPage(
 );
 
 /*
- * Settings and My Profile. The fourteen tabbed sections.
+ * Settings and My account. The fourteen tabbed sections.
  *
  * `settingsTabs.ts` has listed these routes since #62 and NOTHING rendered
  * them: the file was imported only by its own unit test, so every tab in the

@@ -254,7 +254,7 @@ describe('navigation targets', () => {
   });
 
   /*
-   * The rail's second, quieter nav group (Settings/My Profile, Help &
+   * The rail's second, quieter nav group (Settings/My account, Help &
    * Support) was never covered here — only the primary sidebar was. It
    * changed shape when Help & Support moved from the public `/contact`
    * page to `/app/help`, exactly the kind of rename this file exists to

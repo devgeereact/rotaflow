@@ -17,7 +17,7 @@ interface TabsProps {
 }
 
 /**
- * The horizontal section switcher used by the Settings and My Profile areas
+ * The horizontal section switcher used by the Settings and My account areas
  * (docs/design/SettingsOrganisation.png, docs/design/ProfileSettings.png).
  *
  * ## Why this is a `<nav>` of links and NOT `role="tablist"`
@@ -38,7 +38,7 @@ interface TabsProps {
  *
  * ## Overflow
  *
- * Settings has eight tabs and My Profile six. They do not fit on a phone, so
+ * Settings has eight tabs and My account six. They do not fit on a phone, so
  * the strip scrolls horizontally rather than wrapping to a second row, a
  * wrapped tab bar reflows the page content under it every time the active item
  * changes line.

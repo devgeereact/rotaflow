@@ -55,9 +55,10 @@ export function SettingsLayout(): JSX.Element {
                 to="/app/account/security"
                 className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
               >
-                Account security
+                My account
               </Link>{' '}
-              has them. Changing your password there ends every other session.
+              has them, under Security. Changing your password there ends every other
+              session.
             </p>
           </>
         }

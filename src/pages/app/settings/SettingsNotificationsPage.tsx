@@ -22,7 +22,7 @@ import { ScrollRegion } from '@/components/ui/ScrollRegion';
  * `/app/settings/notifications`. Design/SettingsNotifications.png.
  *
  * Organisation-wide defaults for which events notify staff, on which channel.
- * Individuals override these under My Profile → Preferences.
+ * Individuals override these under My account → Preferences.
  *
  * ## What is deliberately missing, and why
  *
@@ -54,7 +54,7 @@ import { ScrollRegion } from '@/components/ui/ScrollRegion';
  * reads this matrix out of `organisations.settings.notification_defaults` and
  * narrows the channels it sends on; switching the in-app column off genuinely
  * skips the `notifications` row rather than writing one anyway. Each person's
- * own switch (`app_settings.notifications_enabled`, My Profile → Preferences)
+ * own switch (`app_settings.notifications_enabled`, My account → Preferences)
  * removes them from the send entirely and wins over anything set here.
  *
  * Defaults are permissive on purpose: a malformed settings blob reads as

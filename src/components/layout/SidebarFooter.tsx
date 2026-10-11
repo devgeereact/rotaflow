@@ -208,13 +208,13 @@ export function SidebarFooter({
         <Link
           to="/app/account"
           onClick={onNavigate}
-          title={`${displayName}. Your profile`}
+          title={`${displayName}. My account`}
           className="flex items-center justify-center rounded-xl px-0 py-2 hover:bg-primary-wash focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-fg">
             {initialsFor(displayName)}
           </span>
-          <span className="sr-only">{displayName}. Your profile</span>
+          <span className="sr-only">{displayName}. My account</span>
         </Link>
       </div>
     );
