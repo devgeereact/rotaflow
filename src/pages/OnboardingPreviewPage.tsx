@@ -66,7 +66,6 @@ export function OnboardingPreviewPage(): JSX.Element {
     orgType: 'Private company',
     country: 'United Kingdom',
     timezone: 'Europe/London',
-    workingWeek: 'mon-sun',
     locations: [
       {
         name: 'Sunnyvale Care Centre',

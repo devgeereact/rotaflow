@@ -35,8 +35,10 @@ Checked against the code and the register on 11 October 2026.
 
 - **The rota grid shows three weeks at a time**: the previous, current and next.
   (GAP-079)
-- **The working-week setting chosen in onboarding changes nothing yet.** It is
-  stored and shown, and no screen reads it. (GAP-116)
+- **Weeks always start on Monday.** There is no setting for it. (GAP-116)
+- **The working-time rules on Settings → Policies warn, they do not block.** A
+  manager can still save a rota that breaks minimum rest, maximum weekly hours or
+  maximum consecutive days.
 - **A calendar subscription link never expires** until it is revoked, and the feed
   is not rate-limited. Treat the link as a password. (GAP-052)
 

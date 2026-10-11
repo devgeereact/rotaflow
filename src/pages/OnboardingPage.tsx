@@ -343,7 +343,6 @@ export function OnboardingPage(): JSX.Element {
     orgType: '',
     country: 'United Kingdom',
     timezone: 'Europe/London',
-    workingWeek: 'mon-sun',
     locations: [EMPTY_LOCATION],
   });
   const [staged, setStaged] = useState<StagedInvite[]>([]);
@@ -534,7 +533,6 @@ export function OnboardingPage(): JSX.Element {
         });
         await mergeOrgSettings(orgId, {
           org_type: aboutValues.orgType,
-          working_week: aboutValues.workingWeek,
         });
 
         // RF-11. This used to create every named location unconditionally, so

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, Building2, Calendar, Clock, Globe, Mail, Phone } from 'lucide-react';
+import { Briefcase, Building2, Clock, Globe, Mail, Phone } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
 import {
@@ -19,7 +19,7 @@ import {
 } from '@/services/orgLifecycleService';
 import { listLocations } from '@/services/locationService';
 import { downloadJson } from '@/lib/csv';
-import { CURRENCIES, DATE_FORMATS, orgProfileFields } from '@/lib/orgPreferences';
+import { orgProfileFields, orgProfileSettingsPatch } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -39,7 +39,6 @@ import {
   INDUSTRIES,
   ORG_TYPES,
   TIMEZONES,
-  WORKING_WEEKS,
 } from '@/components/onboarding/constants';
 
 /**
@@ -254,16 +253,10 @@ export function SettingsOrganisationPage(): JSX.Element {
         contact_email: fields.contactEmail.trim() || null,
         contact_phone: fields.phone.trim() || null,
       });
-      await mergeOrgSettings(orgId, {
-        org_type: fields.orgType,
-        working_week: fields.workingWeek,
-        website: fields.website,
-        address_line: fields.addressLine,
-        registration_no: fields.registrationNo,
-        primary_contact: fields.primaryContact,
-        date_format: fields.dateFormat,
-        currency: fields.currency,
-      });
+      // Working week, date format and currency are no longer written: nothing
+      // read them. Their stored values are left where they are
+      // (RETIRED_PROFILE_KEYS in orgPreferences).
+      await mergeOrgSettings(orgId, orgProfileSettingsPatch(fields));
       await refresh();
       showSuccess('Organisation settings saved.');
     } catch (err) {
@@ -564,48 +557,13 @@ export function SettingsOrganisationPage(): JSX.Element {
             </Select>
           </div>
           <div>
-            <Label htmlFor="org-week">Default working week</Label>
-            <Select
-              id="org-week"
-              icon={Calendar}
-              value={fields.workingWeek}
-              onChange={(e) => set('workingWeek', e.target.value)}
-            >
-              {WORKING_WEEKS.map((w) => (
-                <option key={w.value} value={w.value}>
-                  {w.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="org-date-format">Date format</Label>
-            <Select
-              id="org-date-format"
-              icon={Calendar}
-              value={fields.dateFormat}
-              onChange={(e) => set('dateFormat', e.target.value)}
-            >
-              {DATE_FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="org-currency">Currency</Label>
-            <Select
-              id="org-currency"
-              value={fields.currency}
-              onChange={(e) => set('currency', e.target.value)}
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
+            <p className="text-sm font-medium text-content dark:text-content-dark">
+              Weeks start on Monday
+            </p>
+            <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+              Rotas, timesheets and reports all count the week from Monday. Dates are
+              shown in UK format and money in pounds.
+            </p>
           </div>
         </div>
       </SettingsSection>
