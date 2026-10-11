@@ -54,8 +54,12 @@ import {
 } from '../_shared/stripe.ts';
 import {
   decideInvoiceFailure,
+  freshestSubscription,
+  mapSubscriptionStatus,
+  shouldSuspendOnDeleted,
   subscriptionRefOf,
   subscriptionScope,
+  subscriptionUpdatePayload,
 } from './reconcile.ts';
 import type Stripe from 'npm:stripe@17';
 
@@ -64,34 +68,6 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
-}
-
-// subscriptions.status has a check constraint of only
-// ('trialing','active','past_due','canceled') — 0002_rotaflow.sql — but
-// Stripe's real Subscription.Status enum is wider (incomplete,
-// incomplete_expired, unpaid, paused). Map onto the 4 allowed values rather
-// than widen the constraint; a schema change is a separate, controller-gated
-// step, not something this webhook does on its own.
-function mapSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): string {
-  switch (stripeStatus) {
-    case 'active':
-      return 'active';
-    case 'trialing':
-      return 'trialing';
-    case 'past_due':
-    case 'unpaid':
-    case 'incomplete':
-    case 'incomplete_expired':
-      return 'past_due';
-    case 'canceled':
-    case 'paused':
-      return 'canceled';
-    default:
-      // Defensive: TypeScript's exhaustiveness checking on the switch above
-      // already covers every currently-known value, but Stripe's API can
-      // add more over time.
-      return 'past_due';
-  }
 }
 
 async function handleCheckoutCompleted(
@@ -163,16 +139,26 @@ async function resolvePlanCode(
 
 async function handleSubscriptionUpdated(
   supabase: SupabaseClient,
-  subscription: Stripe.Subscription,
+  fromEvent: Stripe.Subscription,
   mode: StripeMode,
 ): Promise<void> {
-  const orgId = subscription.metadata?.org_id;
+  const orgId = fromEvent.metadata?.org_id;
   if (!orgId) {
-    console.error(
-      'customer.subscription.updated missing org_id metadata',
-      subscription.id,
-    );
+    console.error('customer.subscription.updated missing org_id metadata', fromEvent.id);
     return;
+  }
+
+  // Ordering guard. Stripe does not deliver events in order and `created` is
+  // too coarse to sort them by, so write what Stripe holds now rather than
+  // what this (possibly stale) event carried. A throw here is a 500, and
+  // Stripe's retry is the right answer to a failed retrieval: writing the
+  // payload instead would reintroduce the defect. See reconcile.ts.
+  const retrieved = await getStripeClient(mode).subscriptions.retrieve(fromEvent.id);
+  const subscription = freshestSubscription(fromEvent, retrieved);
+  if (!subscription) {
+    throw new Error(
+      `customer.subscription.updated: Stripe returned a different subscription for ${fromEvent.id}`,
+    );
   }
 
   const planCode = await resolvePlanCode(
@@ -189,11 +175,7 @@ async function handleSubscriptionUpdated(
   }
 
   const updatePayload: Record<string, unknown> = {
-    status: mapSubscriptionStatus(subscription.status),
-    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-    canceled_at: subscription.canceled_at
-      ? new Date(subscription.canceled_at * 1000).toISOString()
-      : null,
+    ...subscriptionUpdatePayload(subscription),
   };
   if (planCode) updatePayload.plan = planCode;
 
@@ -220,7 +202,7 @@ async function handleSubscriptionDeleted(
   // canceled_at as when the cancellation happened, not when it landed —
   // rewriting it here would make a churn chart whose past silently moves.
   // Fall back to "now" only in the unlikely case Stripe never set it.
-  const { error } = await supabase
+  const { data: matched, error } = await supabase
     .from('subscriptions')
     .update({
       status: 'canceled',
@@ -229,7 +211,8 @@ async function handleSubscriptionDeleted(
         : new Date().toISOString(),
     })
     .eq('org_id', orgId)
-    .eq('provider_ref', subscription.id);
+    .eq('provider_ref', subscription.id)
+    .select('org_id');
   if (error) throw new Error(`subscriptions cancel failed: ${error.message}`);
 
   // Stripe's own dunning (Smart Retries) exhausts before this event fires;
@@ -240,7 +223,16 @@ async function handleSubscriptionDeleted(
   // the org — set_org_status (Task 7) is the one write path allowed to move
   // an org into 'suspended', and it's called here with the service_role
   // caller this function already runs as.
-  if (subscription.cancellation_details?.reason === 'payment_failed') {
+  //
+  // Ordering guard: a late `deleted` for a subscription this organisation has
+  // since replaced matched no row above, and must not suspend the paying
+  // replacement either. See shouldSuspendOnDeleted in reconcile.ts.
+  if (
+    shouldSuspendOnDeleted(
+      (matched?.length ?? 0) > 0,
+      subscription.cancellation_details?.reason,
+    )
+  ) {
     const { error: statusError } = await supabase.rpc('set_org_status', {
       p_org: orgId,
       p_status: 'suspended',

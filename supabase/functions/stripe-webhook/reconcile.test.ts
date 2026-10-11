@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { decideInvoiceFailure, subscriptionRefOf, subscriptionScope } from './reconcile';
+import {
+  decideInvoiceFailure,
+  freshestSubscription,
+  mapSubscriptionStatus,
+  shouldSuspendOnDeleted,
+  subscriptionRefOf,
+  subscriptionScope,
+  subscriptionUpdatePayload,
+} from './reconcile';
 
 /**
  * RF-04 and RF-05 — Stripe's delivery guarantees, held in a test.
@@ -127,5 +135,91 @@ describe('subscriptionRefOf', () => {
   it('returns null when there is none', () => {
     expect(subscriptionRefOf({ subscription: null })).toBeNull();
     expect(subscriptionRefOf({})).toBeNull();
+  });
+});
+
+describe('customer.subscription.updated ordering', () => {
+  // Stripe does not deliver events in order, and `event.created` is whole
+  // seconds, so it cannot sort them. The handler writes the subscription as
+  // Stripe holds it now, retrieved at processing time, instead of the event's
+  // own copy. https://docs.stripe.com/events/how-events-work#event-ordering
+  const PERIOD_END = 1_790_000_000;
+  const snapshot = (status: string, canceledAt: number | null = null) => ({
+    id: 'sub_1',
+    status,
+    current_period_end: PERIOD_END,
+    canceled_at: canceledAt,
+  });
+
+  it('writes the retrieved state, not a stale payload', () => {
+    // An older `updated` carrying past_due arrives after the card recovered.
+    const current = snapshot('active');
+    const chosen = freshestSubscription(snapshot('past_due'), current);
+    expect(chosen).toBe(current);
+    expect(subscriptionUpdatePayload(current).status).toBe('active');
+  });
+
+  it('does not resurrect a subscription cancelled after the event was sent', () => {
+    const current = snapshot('canceled', PERIOD_END - 86_400);
+    expect(freshestSubscription(snapshot('active'), current)).toBe(current);
+    const payload = subscriptionUpdatePayload(current);
+    expect(payload.status).toBe('canceled');
+    expect(payload.canceled_at).toBe(
+      new Date((PERIOD_END - 86_400) * 1000).toISOString(),
+    );
+  });
+
+  it('declines when retrieval failed or named another subscription', () => {
+    const event = snapshot('active');
+    expect(freshestSubscription(event, null)).toBeNull();
+    expect(freshestSubscription(event, { ...event, id: 'sub_2' })).toBeNull();
+  });
+
+  it('builds the payload in ISO time from Stripe seconds', () => {
+    expect(
+      subscriptionUpdatePayload({
+        id: 'sub_1',
+        status: 'trialing',
+        current_period_end: 0,
+        canceled_at: null,
+      }),
+    ).toEqual({
+      status: 'trialing',
+      current_period_end: '1970-01-01T00:00:00.000Z',
+      canceled_at: null,
+    });
+  });
+});
+
+describe('mapSubscriptionStatus', () => {
+  it.each([
+    ['active', 'active'],
+    ['trialing', 'trialing'],
+    ['past_due', 'past_due'],
+    ['unpaid', 'past_due'],
+    ['incomplete', 'past_due'],
+    ['incomplete_expired', 'past_due'],
+    ['canceled', 'canceled'],
+    ['paused', 'canceled'],
+    ['something_new', 'past_due'],
+  ])('maps %s to %s', (stripe, stored) => {
+    expect(mapSubscriptionStatus(stripe)).toBe(stored);
+  });
+});
+
+describe('customer.subscription.deleted ordering', () => {
+  it('suspends after exhausted dunning on the subscription the organisation holds', () => {
+    expect(shouldSuspendOnDeleted(true, 'payment_failed')).toBe(true);
+  });
+
+  it('does not suspend a paying replacement when a late deleted names the old one', () => {
+    // The cancellation matched no row because provider_ref has moved on.
+    expect(shouldSuspendOnDeleted(false, 'payment_failed')).toBe(false);
+  });
+
+  it('does not suspend on a voluntary cancellation or a dispute', () => {
+    expect(shouldSuspendOnDeleted(true, 'cancellation_requested')).toBe(false);
+    expect(shouldSuspendOnDeleted(true, 'payment_disputed')).toBe(false);
+    expect(shouldSuspendOnDeleted(true, null)).toBe(false);
   });
 });

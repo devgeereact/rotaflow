@@ -88,6 +88,20 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
   `0051` service-role exception, see "RPC contracts" below) to suspend an org once
   Stripe's dunning is exhausted.
 
+  **Event ordering.** Stripe does not deliver events in order, and its
+  documentation says not to order them by `created`
+  (https://docs.stripe.com/webhooks#event-ordering). So
+  `customer.subscription.updated` does not write the event's own copy of the
+  subscription: it retrieves the subscription from Stripe and writes what Stripe
+  holds at processing time, and a stale delivery therefore writes current state.
+  A failed retrieval is a 500, so Stripe retries, rather than a fallback to the
+  stale payload. `customer.subscription.deleted` writes only the row whose
+  `provider_ref` it names, and suspends the organisation only when that write
+  matched a row, so a late `deleted` for a replaced subscription cannot suspend
+  its paying replacement. Both rules are in `stripe-webhook/reconcile.ts`, tested
+  by vitest. No new column was needed. `checkout.session.completed` still
+  upserts on `org_id` without an ordering check (BUG-108).
+
 Deploy: `supabase functions deploy <name>` (webhook needs `--no-verify-jwt`).
 Secrets: `STRIPE_SECRET_KEY` (shared by all three), `STRIPE_WEBHOOK_SECRET`
 (webhook only, from the Stripe dashboard's endpoint config). After deploying
