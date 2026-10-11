@@ -117,7 +117,7 @@ export function OnboardingPreviewPage(): JSX.Element {
       title: 'Choose a plan',
       subtitle: step >= 5 ? 'Professional · Monthly' : 'Select the right plan for you',
     },
-    { number: 5, title: 'All done!', subtitle: "You're ready to go" },
+    { number: 5, title: 'Ready', subtitle: 'Your organisation is ready.' },
   ];
 
   const copy = {
@@ -256,9 +256,9 @@ export function OnboardingPreviewPage(): JSX.Element {
       illustration: undefined,
     },
     5: {
-      headline: "You're all set!",
+      headline: 'Your organisation is ready.',
       headlineAccent: 'Welcome to RotaFlow',
-      intro: 'Your organisation is ready. Three things worth doing first:',
+      intro: 'Three things worth doing first:',
       features: [
         {
           icon: BarChart3,
