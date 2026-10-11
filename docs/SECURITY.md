@@ -655,9 +655,13 @@ safe direction.
 **The offline outbox is deliberately not cleared on sign-out**
 (`src/lib/session.ts:16-27`) — a queued clock-in belongs to the person who made
 it, not to the session. Isolation is by a `userId` ownership filter instead.
-Residual: rows written before that field existed are treated as belonging to
-whoever is signed in (`src/services/syncQueue.ts:211`), which is a shared-device
-exposure for pre-upgrade data.
+Rows written before that field existed belong to nobody since 2026-10-11 (plan
+S4): kept on the device but never replayed, listed or retried
+(`belongsTo` in `src/services/syncQueue.ts`). Residual: such a row, with its GPS
+position, stays in IndexedDB on the device until removed by hand, because there
+is no expiry yet. Sign-out now also deletes this device's `push_subscriptions`
+row and unsubscribes the browser (`releasePushSubscription`,
+`src/lib/session.ts`); a session that ends without a sign-out does not.
 
 ---
 

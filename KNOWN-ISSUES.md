@@ -19,6 +19,14 @@ Checked against the code and the register on 11 October 2026.
 - **A queued action the server later refuses** (for example, a duplicate clock-in)
   is reported on the screen it came from with Retry and Discard, but there is no
   notification to act on later. (GAP-086)
+- **An offline action queued on an older version of the app, before actions were
+  tied to the person who made them, is never sent.** It stays on the device but
+  is not replayed or shown to anyone, because nobody can tell whose it is. Only
+  an action queued before 2 September 2026 and never sent can be in this state.
+  (GAP-042)
+- **If a session ends without signing out** (for example, it expired), the device
+  keeps receiving that person's push notifications until somebody signs in and
+  turns notifications on again. Signing out stops them. (GAP-042)
 
 ## Staff records
 

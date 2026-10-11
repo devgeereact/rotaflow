@@ -202,13 +202,24 @@ function withIdempotencyKey(kind: OutboxKind, payload: unknown): unknown {
  * about an action they never took, while the person who did take it still
  * believes they are clocked in.
  *
- * A record with no `userId` was queued before this field existed. It is
- * claimable by whoever is signed in, deliberately: stranding a clock-in
- * forever is worse than replaying one, and there is no second copy to fall
- * back on.
+ * A record with no `userId` was queued before this field existed, and it
+ * now belongs to nobody (plan S4). It used to be claimable by whoever signed
+ * in next, on the reasoning that stranding a clock-in is worse than replaying
+ * one. On a shared device that reasoning fails exactly the case above: the
+ * next person replays a colleague's GPS clock-in under their own token, or is
+ * shown its failure. Nobody can say whose it is, so nobody is offered it.
+ *
+ * It is quarantined in place, not deleted: it stays in IndexedDB untouched,
+ * never replayed and never listed. That keeps the "nothing is silently
+ * discarded" rule in `docs/ARCHITECTURE.md` ("Offline and PWA") as far as
+ * it can be kept for a write with no owner: the evidence is still on the
+ * device, and removing it
+ * is a separate, deliberate step rather than a side effect of signing in.
+ * The field has been written on every enqueue since GAP-042, so only a write
+ * queued before that release and never flushed can be in this state.
  */
 function belongsTo(record: OutboxRecord, userId: string): boolean {
-  return record.userId === undefined || record.userId === userId;
+  return typeof record.userId === 'string' && record.userId !== '' && record.userId === userId;
 }
 
 export async function enqueueWrite(

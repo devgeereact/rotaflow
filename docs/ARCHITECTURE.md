@@ -466,6 +466,28 @@ migration. `src/services/syncQueue.ts` replays it.
   difference lands as a dead-lettered clock-in. Where Web Locks is unavailable the
   flush proceeds unguarded, which is what shipped before; refusing to send
   somebody's work because a browser API is missing would be worse.
+- **A write belongs to the person who queued it, and a write with no owner
+  belongs to nobody (plan S4, 2026-10-11).** Every record carries `userId`
+  (GAP-042), and `flushQueuedWrites`, `listQueuedWrites`,
+  `listDeadLetteredWrites` and `retryDeadLetteredWrite` match only the signed-in
+  user. A record with no `userId`, or an empty one, was queued before that field
+  existed. It used to be claimable by whoever signed in next, which on a shared
+  phone meant replaying a colleague's GPS clock-in under your own token. It is
+  now quarantined in place: kept in IndexedDB untouched, never replayed, never
+  listed and never retried, so the evidence survives and nobody acts on work
+  that is not theirs. Removing such a record is a separate, deliberate step that
+  does not exist yet (see `KNOWN-ISSUES.md`). The plan's 7-day expiry of dead
+  letters is not built.
+- **Sign-out releases this browser's push subscription (plan S4).**
+  `releasePushSubscription` in `src/lib/session.ts` runs before
+  `supabase.auth.signOut()` in both sign-out paths (`AuthContext.signOut` and
+  "Sign out everywhere" on `SessionsPage`): it deletes the `push_subscriptions`
+  row through `deletePushSubscription` while the session can still pass RLS,
+  then unsubscribes the browser either way. It never throws and gives up after
+  3 seconds, so signing out offline or with no service worker still works. A
+  session that ends any other way (an expired token, a revocation from another
+  device) does not run it: the browser stays subscribed and the row stays until
+  the next subscribe on that device replaces it.
 
 ### What the reading story really is
 

@@ -9,7 +9,8 @@ import {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { clearTenantState } from '@/lib/session';
+import { clearTenantState, releasePushSubscription } from '@/lib/session';
+import { deletePushSubscription } from '@/services/pushSubscriptionService';
 import { reportError } from '@/lib/sentry';
 
 export interface AuthContextValue {
@@ -88,6 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         // Local teardown runs in `finally` on purpose: signing out offline (or
         // against an expired token) rejects here, and leaving the previous
         // user's cached tenant data on a shared device is the worse outcome.
+        //
+        // Push goes first, while the session can still delete its own row
+        // (plan S4). It never throws and gives up after a few seconds.
+        await releasePushSubscription(deletePushSubscription);
         try {
           await supabase.auth.signOut();
         } finally {

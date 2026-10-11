@@ -1,4 +1,5 @@
 import { WORK_MODE_KEY_PREFIX } from '@/lib/workMode';
+import { reportError } from '@/lib/sentry';
 
 /**
  * Client-side teardown that must run whenever a session ends.
@@ -25,7 +26,12 @@ import { WORK_MODE_KEY_PREFIX } from '@/lib/workMode';
  *
  * The shared-device problem it raises is answered by ownership instead: every
  * record carries the id of the user who queued it, and `services/syncQueue.ts`
- * replays and displays only theirs. See `belongsTo` there.
+ * replays and displays only theirs. See `belongsTo` there. A record queued
+ * before that field existed belongs to nobody and is never replayed.
+ *
+ * The browser's push subscription is released separately, by
+ * `releasePushSubscription` below, because its server row can only be
+ * deleted while the session still exists.
  */
 
 /** Runtime cache names. Must match `workbox.runtimeCaching` in vite.config.ts. */
@@ -70,4 +76,69 @@ export async function clearTenantState(): Promise<void> {
 
   if (typeof caches === 'undefined') return;
   await Promise.all(TENANT_CACHE_NAMES.map((name) => caches.delete(name)));
+}
+
+/** Longest a sign-out will wait for push teardown before going ahead without it. */
+export const PUSH_TEARDOWN_TIMEOUT_MS = 3_000;
+
+/**
+ * Stop this browser receiving the outgoing user's push notifications (plan S4).
+ *
+ * A push subscription belongs to the browser, not the account. Left in place
+ * on a shared device, the next person to pick it up is shown the last
+ * person's notifications: their shift changes, their leave decisions.
+ *
+ * Order matters. The server row is deleted first, because RLS only lets its
+ * owner delete it and that is only possible while the session still exists,
+ * so this must run before `supabase.auth.signOut()`. The browser subscription
+ * is then unsubscribed whether or not that worked: with the endpoint dead,
+ * nothing sent to an orphaned row can reach this device anyway.
+ *
+ * Never throws and never holds sign-out up for long: every failure is
+ * reported and swallowed, and the whole thing gives up after `timeoutMs`.
+ * Signing out offline, or with no service worker, has to work.
+ *
+ * `deleteServerRow` is passed in rather than imported, because `src/lib` may
+ * not take a runtime import from `src/services` (`moduleBoundaries.test.ts`).
+ * Callers pass `deletePushSubscription`.
+ */
+export async function releasePushSubscription(
+  deleteServerRow: (endpoint: string) => Promise<void>,
+  timeoutMs: number = PUSH_TEARDOWN_TIMEOUT_MS,
+): Promise<void> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+
+  const teardown = async (): Promise<void> => {
+    // `getRegistration`, not `ready`: `ready` never settles when no worker
+    // is registered, and a sign-out must not wait on that.
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = await registration?.pushManager?.getSubscription();
+    if (!subscription) return;
+
+    try {
+      await deleteServerRow(subscription.endpoint);
+    } catch (err) {
+      reportError(err, { area: 'session:push-row-delete' });
+    }
+    try {
+      await subscription.unsubscribe();
+    } catch (err) {
+      reportError(err, { area: 'session:push-unsubscribe' });
+    }
+  };
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, timeoutMs);
+  });
+  try {
+    await Promise.race([
+      teardown().catch((err: unknown) =>
+        reportError(err, { area: 'session:push-teardown' }),
+      ),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
