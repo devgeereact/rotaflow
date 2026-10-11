@@ -8,7 +8,7 @@ Re-verified on 11 Oct 2026 against `chore/docs-standard-layout` (main at 78f3a4d
 
 ### 0.1 GEE OS Standard profile adopted
 
-The documentation follows the **GEE OS Standard profile**: a flat `docs/` folder with one file per concern, plus a `qa/` folder and two root files. The numbered layout on `docs/gee-os-blueprint-layout` (`d82a2ef`, `docs/00-foundation/` to `docs/09-release/`) is **superseded and will not be merged**. Its useful content is carried across by hand where it is still true on main; nothing is merged from it wholesale.
+The documentation follows the **GEE OS Standard profile**: a flat `docs/` folder with one file per concern, plus a `qa/` folder and two root files. The numbered layout on `docs/gee-os-blueprint-layout` (`d82a2ef`, numbered folders from `00-foundation` to `09-release`) is **superseded and will not be merged**. Its useful content is carried across by hand where it is still true on main; nothing is merged from it wholesale.
 
 | Standard file                            | Takes over (files on main today)                                      |
 | ---------------------------------------- | --------------------------------------------------------------------- |
