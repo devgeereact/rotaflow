@@ -25,6 +25,19 @@ carries the evidence and the query to re-check it.
 
 ## 1. Backup and restore
 
+**Current state, read on 11 October 2026 from `.github/workflows/backup.yml` and
+`gh run list`.** A nightly encrypted `pg_dump` of production runs at 02:40 UTC and
+is kept as a GitHub Actions artifact for 90 days. Each run also has a
+`verify-restore` job that decrypts that night's dump, restores it into a throwaway
+PostgreSQL and asserts the tables and grants came back. The workflow has succeeded
+on every scheduled run from 6 September to 10 October 2026 (first success, by hand,
+5 September). A human restore was rehearsed on 7 September and found the dump was
+missing grants, fixed the same day (GAP-001, GAP-036). What this does **not** give:
+recovery to a moment, which only PITR gives, and a proven restore of Supabase's own
+`auth` and `storage` schemas, which are not in the dump. PITR was last read as off
+on 13 August and has not been re-checked. Recovery steps are in
+`docs/DEPLOYMENT.md`, "Recovery". The paragraphs below are the 13 August record.
+
 **Verified 13 August 2026 via the Supabase Management API**
 (`GET /v1/projects/{ref}/database/backups`): `pitr_enabled: false`,
 `backups: []`. **There are currently zero backups of the production
@@ -713,18 +726,18 @@ right shape for this class of problem.
 
 ### 7. Security controls relevant to privacy
 
-| Control                 | State                                                                                                                                   | Evidence                                          |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Tenant isolation        | Row-level security, not application filtering; CI fails on a table with no RLS, a readable table with no policy, or any grant to `anon` | `supabase/tests/database/rls_invariants.test.sql` |
-| Transport               | TLS only, Cloudflare in front, origin refuses direct requests                                                                           | `.htaccess`                                       |
-| Content security policy | `script-src 'self'`; only Supabase, Sentry EU and ImageKit reachable                                                                    | `.htaccess:158`                                   |
-| Fonts                   | self-hosted since 2026-09-03; previously leaked every visitor IP to Google                                                              | `public/fonts/README.md`                          |
-| Secrets                 | Edge Function secrets and Postgres `vault`; the notification secret is generated in-database and has no second copy                     | `0091`                                            |
-| `smtp_pass`             | excluded from the `authenticated` column grant; clients read `org_smtp_settings_safe`                                                   | `docs/DATA-MODEL.md`                              |
-| Audit log               | append-only, enforced by trigger, two narrow carve-outs                                                                                 | `0066`                                            |
-| Rate limiting           | on invites and other sensitive paths                                                                                                    | `0085`, `0086`                                    |
-| Backups                 | **none, and no PITR**                                                                                                                   | `docs/SECURITY.md` §1                             |
-| Scheduled checks        | `backup.yml` and `auth-config.yml` have **never succeeded** — the repository holds one secret                                           | GAP-036                                           |
+| Control                 | State                                                                                                                                                        | Evidence                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| Tenant isolation        | Row-level security, not application filtering; CI fails on a table with no RLS, a readable table with no policy, or any grant to `anon`                      | `supabase/tests/database/rls_invariants.test.sql` |
+| Transport               | TLS only, Cloudflare in front, origin refuses direct requests                                                                                                | `.htaccess`                                       |
+| Content security policy | `script-src 'self'`; only Supabase, Sentry EU and ImageKit reachable                                                                                         | `.htaccess:158`                                   |
+| Fonts                   | self-hosted since 2026-09-03; previously leaked every visitor IP to Google                                                                                   | `public/fonts/README.md`                          |
+| Secrets                 | Edge Function secrets and Postgres `vault`; the notification secret is generated in-database and has no second copy                                          | `0091`                                            |
+| `smtp_pass`             | excluded from the `authenticated` column grant; clients read `org_smtp_settings_safe`                                                                        | `docs/DATA-MODEL.md`                              |
+| Audit log               | append-only, enforced by trigger, two narrow carve-outs                                                                                                      | `0066`                                            |
+| Rate limiting           | on invites and other sensitive paths                                                                                                                         | `0085`, `0086`                                    |
+| Backups                 | **none, and no PITR** on 4 Sep. Since 5 Sep: a nightly encrypted dump with a restore check, green every night to 10 Oct; PITR still off as last read (§1)    | `docs/SECURITY.md` §1                             |
+| Scheduled checks        | `backup.yml` and `auth-config.yml` had **never succeeded** on 4 Sep. Since: backup green nightly; auth-config green 5 and 7 Sep, red with `401` since 14 Sep | GAP-036                                           |
 
 ---
 

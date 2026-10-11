@@ -271,3 +271,16 @@ Still blocked, unchanged and unaffected by this pass: real email and push
 delivery, a Stripe charge, an installed-PWA run on a real device, and the
 restore-from-backup at the top of the list above. None of them can be settled
 from this repository.
+
+---
+
+## Evidence recorded since, 11 October 2026 (not a release run)
+
+Read from `gh run list` and `.github/workflows/backup.yml` while the documents
+moved to the Standard profile. No gate was re-run, so no status above changes; this
+records evidence the next run should take into account.
+
+| #   | Gate                      | Last recorded   | Evidence, 11 October 2026                                                                                                                                                                                                                                                                                                                                                   |
+| --- | ------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 28  | Backup and recovery exist | FAIL (4 Sep)    | `backup.yml` has succeeded on every scheduled run from 6 September to 10 October 2026, each with a `verify-restore` job that restores the dump into a throwaway PostgreSQL. A human restore was rehearsed on 7 September (GAP-001). Still not proven: a restore into a real Supabase project with its `auth` and `storage` schemas, and PITR, last read as off on 13 August |
+| 27  | Monitoring operational    | PARTIAL (4 Sep) | `auth-config.yml`, which watches the Supabase Auth settings, has failed with `401 Unauthorized` on every run since 14 September (GAP-036). `plan-drift-audit.yml` has also failed since 14 September                                                                                                                                                                        |

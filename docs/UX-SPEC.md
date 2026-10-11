@@ -434,7 +434,7 @@ match _proportions and structure_ at the project's real type scale rather than t
 reference's literal font sizes or container widths.
 
 **The loop has no committed tooling, and this section used to imply otherwise.**
-`docs/design/.loop/` is git-ignored (`.gitignore:47`) and does not exist in a fresh
+`docs/design/.loop/` is git-ignored (`.gitignore`, the `.loop/` lines) and does not exist in a fresh
 clone. The `shot.sh`, `compare.py` and `diff.py` referred to below and in the
 per-screen logs were written during the leave pass and live only in whatever working
 copy produced them; nothing in this repository ships them, and `scripts/` holds
