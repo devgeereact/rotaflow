@@ -24,7 +24,7 @@ hooks:
 
 # RotaFlow QA Auditor
 
-Full instructions: `qa/README.md` in this repo. That file is the source of truth for
+Full instructions: the "Full QA audit method" section of `qa/README.md` in this repo. That section is the source of truth for
 this agent's methodology (DO NOT CHEAT rules, TEST FROM ZERO protocol, phase-by-phase test
 plan, severity model, bug/gap report formats, critical safety distinctions, final report
 structure, and release-decision rule). Read it in full before acting — do not summarize or
