@@ -443,16 +443,28 @@ itself: a restore, a real charge, and a phone.
 - [x] CAP-048 🟢 Predicate execute grants — `PUBLIC` and `anon` execute revoked on every callable
       function except `preview_invite`; trigger functions left, with the reason recorded
       `supabase/migrations/0075_narrow_anon_privileges.sql` · HARDEN-002 · P2
-- [x] CAP-049 🟡 MFA — **enrolment only (corrected 2026-10-11).** The sign-in form has no MFA
-      challenge, so every session is `aal1` (`src/services/platformRoleService.ts` says so), and
-      `require_mfa` cannot be switched on without locking every administrator out of the console's
-      data. What is built: TOTP enrolment on the account screen, and `platform_settings.require_mfa`
-      now decides something: `is_platform_admin()` requires an `aal2` session when it is on, so
-      every console policy enforces it in one place. Turning it **on** is refused from a session
-      that has not itself done MFA — the classic self-lockout — and turning it off is not, on
-      purpose. Set to **off** in `0102`, because off is what was true: the flag had defaulted to
-      on since `0027` with zero enrolled factors anywhere
-      `supabase/migrations/0102_platform_mfa_is_real.sql` · GAP-017 · 11 pgTAP assertions
+- [x] CAP-049 🟡 MFA: **enrolment and a sign-in challenge (challenge added 2026-10-11); not yet
+      exercised with a real authenticator, and `require_mfa` is still off.** After any first factor
+      (password, magic link, OAuth return, or a session restored from storage) `MfaGate`, inside
+      `ProtectedRoute`, reads the assurance level and, when it is `aal1` with `aal2` available, shows
+      "Enter the 6-digit code from your authenticator app" in place of every protected route,
+      `/admin/*` included. A wrong or expired code keeps the person on the step with the field cleared
+      and refocused; more than one verified authenticator offers a choice; Sign out is always there;
+      a level that cannot be read fails closed. It re-checks on every new access token, without
+      unmounting an admitted session on a routine refresh. Decision logic is pure
+      (`src/lib/mfaStep.ts`). TOTP enrolment on the account screen is unchanged, and
+      `platform_settings.require_mfa` decides something: `is_platform_admin()` requires an `aal2`
+      session when it is on, so every console policy enforces it in one place. Turning it **on** is
+      refused from a session that has not itself done MFA (the classic self-lockout) and turning it
+      off is not, on purpose; an owner with no verified factor can still lift it from the console's
+      refusal screen. Set to **off** in `0102`, because off is what was true: the flag had defaulted
+      to on since `0027` with zero enrolled factors anywhere. Still 🟡 until somebody has signed in
+      through the challenge with a real authenticator app and the owner has switched the requirement
+      on from that session. No recovery codes: a person who loses the phone needs support to remove
+      the factor
+      `supabase/migrations/0102_platform_mfa_is_real.sql` · `src/components/auth/MfaGate.tsx` ·
+      `src/lib/mfaStep.test.ts` · `src/components/auth/MfaGate.test.tsx` · GAP-017 · 11 pgTAP
+      assertions
 - [x] CAP-050 🟢 Sessions — `my_sessions()` lists every device on the account with its user agent,
       IP and last use, and `revoke_my_other_sessions()` signs the rest out. The row's "no server-side
       registry" was wrong: `auth.sessions` always had this and nothing read it

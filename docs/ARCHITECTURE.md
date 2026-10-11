@@ -85,7 +85,15 @@ Membership access lives in `orgService` and `platformUserService`; there is no
 - Client-side navigation only. Deep links work because `.htaccess` rewrites any
   unknown path to `index.html`, and Workbox's `navigateFallback` does the same
   offline.
-- `ProtectedRoute` gates authenticated views on Supabase session state.
+- `ProtectedRoute` gates authenticated views on Supabase session state, then
+  hands them to `MfaGate` (`src/components/auth/MfaGate.tsx`). A session at
+  `aal1` that has a verified authenticator is shown the 6-digit code step
+  (`MfaChallenge`) instead of any protected route, `/app/*`, `/onboarding` and
+  `/admin/*` alike, and nothing protected renders until the check has answered.
+  The decision is `src/lib/mfaStep.ts`. Order for the console:
+  `ProtectedRoute` → `MfaGate` → `RequirePlatformAdmin` → `AdminShell`, so the
+  console gate's owner recovery button is reached only by an owner with no
+  verified factor, which is the case it exists for (CAP-049).
 
 ### Information architecture / routes (RotaFlow)
 

@@ -42,9 +42,11 @@ Checked against the code and the register on 11 October 2026.
 
 ## Accounts and security
 
-- **Two-factor sign-in is enrolment only.** You can enrol an authenticator app, but
-  the sign-in form never asks for the code, and an organisation cannot require it.
-  (CAP-049, GAP-017)
+- **Two-factor sign-in is new and an organisation cannot require it.** Once you
+  have enrolled an authenticator app, signing in asks for its 6-digit code before
+  anything opens. There are no backup codes yet: if you lose the device, sign out
+  and contact support to have the old factor removed. An organisation cannot make
+  two-factor sign-in compulsory for its staff. (CAP-049, GAP-017)
 - **No CAPTCHA, and no check against known leaked passwords**, on sign-up and
   sign-in. (GAP-033, GAP-034)
 - **Supabase Auth settings are not being monitored.** The weekly check that compares
