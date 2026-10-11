@@ -11,7 +11,7 @@ export const BRAND = {
   shortName: 'RotaFlow',
   tagline: 'Scheduling certainty for every shift.',
   description:
-    'UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops.',
+    'Plan and publish rotas, handle leave and swaps, and see who has clocked in. Clock-ins, leave and swap requests wait on the phone until the signal returns.',
   positioning:
     'An offline-first workforce scheduling platform for UK organisations that need dependable cover across sites, teams and shift patterns.',
   audience: 'Scheduling managers and frontline teams in UK shift-based organisations.',
@@ -20,5 +20,7 @@ export const BRAND = {
 export const BRAND_CLAIM_GUARDRAILS = {
   isPreLaunch: true,
   hasPublicTraction: false,
-  hasLiveBilling: false,
+  // Stripe Checkout, the Billing Portal and the webhook all ship. No consumer
+  // reads this flag today; it records the fact for whoever adds one.
+  hasLiveBilling: true,
 } as const;

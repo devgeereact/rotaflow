@@ -113,7 +113,7 @@ export function LoginPage(): JSX.Element {
     <AuthSplitLayout
       headline="Scheduling certainty"
       headlineAccent="for every shift."
-      description="Build rotas with fewer surprises, keep staff informed, and keep a dependable attendance record — even when the signal drops."
+      description="Build rotas with fewer surprises, keep staff informed, and keep a record of every clock-in. A clock-in made with no signal waits on the phone until it returns."
       features={AUTH_FEATURES}
     >
       <div className="w-full max-w-2xl animate-fade-up motion-reduce:animate-none rounded-2xl border border-surface-border bg-surface p-9 shadow dark:border-surface-border-dark dark:bg-surface-dark md:p-11">

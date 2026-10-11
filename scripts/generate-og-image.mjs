@@ -94,8 +94,8 @@ const html = `<!doctype html>
       </div>
       <h1>Scheduling certainty for every shift</h1>
       <p>
-        UK-first workforce scheduling for shift-based teams. Rotas, leave, swaps
-        and clock-in that keep working when the signal drops.
+        Plan and publish rotas, handle leave and swap requests, and see who has
+        clocked in, from any phone.
       </p>
     </div>
     <footer>
@@ -106,7 +106,10 @@ const html = `<!doctype html>
 </html>`;
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
+const page = await browser.newPage({
+  viewport: { width: 1200, height: 630 },
+  deviceScaleFactor: 1,
+});
 await page.setContent(html, { waitUntil: 'networkidle' });
 // The webfont has to have painted before the screenshot, or the card ships in
 // the fallback face and the line breaks land somewhere else entirely.

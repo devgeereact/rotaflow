@@ -214,7 +214,7 @@ export default defineConfig({
         name: 'RotaFlow',
         short_name: 'RotaFlow',
         description:
-          'UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance and keep working when the signal drops.',
+          'Plan and publish rotas, handle leave and swaps, and see who has clocked in. Clock-ins, leave and swap requests wait on the phone until the signal returns.',
         theme_color: '#3B6FE0',
         background_color: '#FFFFFF',
         display: 'standalone',
