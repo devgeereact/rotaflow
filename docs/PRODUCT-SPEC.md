@@ -101,7 +101,14 @@ role membership, never in the client alone.
     employer cannot honour (`docs/SAAS.md` CAP-058). The organisation export covers
     33 tables and names the seven it deliberately leaves out.
 
-### Phase 2. Intelligence, enterprise & billing
+### Phase 2. Intelligence and enterprise
+
+The authoritative Phase 2 list is `CLAUDE.md`, "Scope discipline" (SSO and SCIM, a
+public API, outbound webhooks, payroll integrations, per-tenant branding; SMS a
+reserved seam), and each item has a ⚫ row in `docs/SAAS.md`. This section keeps the
+product detail. Two items originally planned here **shipped early** and are marked
+so below: document-expiry alerts and subscription billing. Billing is **not**
+Phase 2 any more.
 
 - AI scheduling / auto-fill, demand forecasting, burnout detection, natural-language
   scheduling ("schedule three nurses for nights next weekend").
@@ -109,11 +116,11 @@ role membership, never in the client alone.
 - Advanced analytics (utilisation, coverage gaps). **Labour cost shipped early**
   (`0104`) — it needed a rate table, not a forecast, and a rota approved without a
   cost is approved against the wrong question.
-- Documents with expiry **automation** — expiry is stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`). Scheduled reminders run every 15 minutes via `pg_cron` and `notification_outbox` (`0093_scheduled_alerts.sql`), notifying owners and managers of missed clock-ins and expiring documents. (DBS, Right to Work, visas, certificates).
+- **Shipped early:** documents with expiry **automation** — expiry is stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`). Scheduled reminders run every 15 minutes via `pg_cron` and `notification_outbox` (`0093_scheduled_alerts.sql`), notifying owners and managers of missed clock-ins and expiring documents. (DBS, Right to Work, visas, certificates).
 - SSO, custom per-tenant branding, open API, advanced compliance.
-- **Subscription billing**. Stripe Checkout + Billing Portal shipped `0050`
+- **Shipped early: subscription billing**. Stripe Checkout + Billing Portal shipped `0050`
   (`create-checkout-session`, `create-portal-session`, `stripe-webhook` — see
-  `ARCHITECTURE.md` §9c): plan gating, invoice sync, dunning-triggered
+  `docs/API-SPEC.md`, "Billing functions"): plan gating, invoice sync, dunning-triggered
   suspension all wired to real `subscriptions`/`invoices` tables, and every
   plan (Starter/Professional/Business/Enterprise) has a real Stripe price
   configured — checkout is not gated on any plan. What's not yet done: no
@@ -129,7 +136,8 @@ role membership, never in the client alone.
 - **Multi-tenant:** single Supabase project; `org_id` on every table; RLS tenant
   isolation is the last line of defence.
 - **Type-safe:** TypeScript strict, no implicit `any`.
-- **Portable UI:** styling stays NativeWind-compatible for a future Expo export.
+- **Portable UI:** plain Tailwind 4 utility classes and typed hooks, so a future Expo
+  shell could reuse the hooks. NativeWind is not a dependency today.
 - **Secure:** only write-scoped / RLS-guarded keys reach the browser; SMTP, payment
   and signing secrets live only in Edge Functions.
 - **Accessible:** WCAG AA contrast, 44px touch targets, visible focus rings; never
@@ -139,8 +147,8 @@ role membership, never in the client alone.
 ## 7. Out of scope (V1)
 
 - Full Super Admin billing console self-serve on every plan, and a real
-  end-to-end-verified live charge (infra is built — see §5's Phase 2 billing
-  entry — but not yet exercised with a real completed payment).
+  end-to-end-verified live charge (infra is built — see §5's billing entry — but
+  not yet exercised with a real completed payment).
 - SMS notifications (schema + channel seam reserved; **not** wired up yet).
 - Payroll integrations, SSO, open API (all Phase 2). **AI scheduling shipped early** —
   `supabase/functions/ai-rota-assistant` plus two deterministic tabs; see
@@ -150,8 +158,8 @@ role membership, never in the client alone.
 ## 8. Future roadmap
 
 Phase 2 (above) → advanced clock-in modes (NFC, WiFi validation, photo verification)
-→ SMS via Twilio → document-expiry automation → Expo/React Native shell reusing hooks
-and components.
+→ SMS via Twilio → Expo/React Native shell reusing hooks and components.
+(Document-expiry automation, once on this list, shipped in `0093`.)
 
 ## Metrics and events
 

@@ -21,7 +21,8 @@ here wins, and the other should link to it rather than restate it.
 | Codex mapping                                                                        | `CODEX.md`                                                                       |
 | GEE OS routing: mode, workflows, specialists, sources of truth                       | `.agent/PROJECT.yml`                                                             |
 | MCP position: what may be read, what needs authority                                 | `.agent/MCP-PROFILE.yml`                                                         |
-| Capability status, gaps, bugs, priorities, Phase 2 list. The plan of record          | `docs/SAAS.md`                                                                   |
+| Capability status, gaps, bugs, priorities. The plan of record                        | `docs/SAAS.md`                                                                   |
+| The Phase 2 list (what is deliberately later)                                        | `CLAUDE.md`, "Scope discipline"; each item has a ⚫ row in `docs/SAAS.md`        |
 | Coding, tenancy and secret rules in full                                             | `docs/RULES.md`                                                                  |
 | Product scope, roles, phases, success metrics, event taxonomy                        | `docs/PRODUCT-SPEC.md`                                                           |
 | Topology, folder layout, routing, state, offline behaviour, hook contracts           | `docs/ARCHITECTURE.md`                                                           |
@@ -277,7 +278,7 @@ request.
   documents across ten numbered directories, plus a `qa/` tree. Scaffolding it
   would have created a sixth plan of record days after five were merged into
   `docs/SAAS.md` to stop exactly that. A numbered-folder version was tried on
-  branch `docs/gee-os-blueprint-layout` (7 to 8 October 2026) and never merged.
+  branch docs/gee-os-blueprint-layout (7 to 8 October 2026) and never merged.
   On 10 October 2026 the owner chose the smaller **Standard application** profile
   instead, and the existing documents were merged into its files rather than
   scaffolded beside them, so `docs/SAAS.md` stays the only plan of record.
