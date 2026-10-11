@@ -562,7 +562,7 @@ data is about, which is not always who typed it.
 | C6  | Staff record (manager-entered)                    | name, job title, department, contract type, weekly hours, holiday allowance, skills, **payroll id**, start date, **phone**, **email**, sites, photo URL | the staff member                                           | scheduling and pay                             | `staff_profiles`                                                           | `src/components/staff/StaffFormModal.tsx`                      |
 | C7  | Own profile                                       | full name, phone, photo URL                                                                                                                             | the staff member                                           | keep the record current                        | `profiles`, `staff_profiles`                                               | `src/pages/app/account/ProfilePage.tsx`                        |
 | C8  | Emergency contacts                                | contact name, relationship, phone, second phone. **Medical notes** no longer collected or shown (2026-10-11); values entered before then remain stored  | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                       | `src/components/staff/EmergencyContactsModal.tsx`              |
-| C9  | Documents                                         | free-text type (DBS, right to work…), name, **URL**, issue and expiry dates                                                                             | the staff member                                           | compliance records                             | `documents`                                                                | `src/components/staff/DocumentsModal.tsx`                      |
+| C9  | Documents                                         | free-text type (no longer suggests DBS or right to work), name or number, **URL**, issue and expiry dates                                               | the staff member                                           | compliance records                             | `documents`                                                                | `src/components/staff/DocumentsModal.tsx`                      |
 | C10 | Pay rates                                         | hourly rate, effective date, note                                                                                                                       | the staff member                                           | labour cost and payroll export                 | `staff_pay_rates`                                                          | `supabase/migrations/0104_pay_rates.sql`                       |
 | C11 | Leave                                             | **type (includes `sick`)**, dates, free-text reason                                                                                                     | the staff member                                           | absence management                             | `leave_requests`                                                           | `src/components/leave/LeaveRequestModal.tsx`                   |
 | C12 | Clock in / out                                    | time, method, **latitude, longitude, accuracy**, location name                                                                                          | the staff member                                           | attendance and pay                             | `clock_events`                                                             | `src/pages/app/ClockInPage.tsx`, `src/hooks/useGeolocation.ts` |
@@ -592,9 +592,15 @@ about. Hard-deleted on erasure. The leave reason field carries a hint not to
 include medical details. **REQUIRES LEGAL REVIEW:** Article 14
 notification duty, and how it divides between employer and processor.
 
-**C9 — documents.** The type is an unconstrained text input whose own
-placeholder suggests DBS and right-to-work, so criminal-record and immigration
-data lands in a column nothing was designed around. It is a _link_, not an
+**C9 — documents.** The type is an unconstrained text input. Until 2026-10-11
+its own placeholder suggested DBS and right-to-work, so criminal-record and
+immigration data landed in a column nothing was designed around by design. Phase
+1 of plan S2 (decision D4) removed that suggestion and changed the copy to
+"Record the document type, number and expiry. Keep the document itself in your
+own HR system." The field is still free text, and existing records are
+untouched, so such data can still be typed in or already be held. The link is
+still required, because `documents.file_url` is `not null` with an `https?://`
+check (`0002`, `0092`); making it optional needs a migration. It is a _link_, not an
 upload: erasure removes the row and cannot remove the file (GAP-056).
 
 **C11 — leave type.** `sick` makes an absence record a health record about a

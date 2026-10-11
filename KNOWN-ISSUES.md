@@ -22,9 +22,11 @@ Checked against the code and the register on 11 October 2026.
 
 ## Staff records
 
-- **Documents and photos are links, not uploads.** A right-to-work document or a
-  staff photo is a web address someone pastes; RotaFlow does not store the file.
-  (GAP-084)
+- **Documents and photos are links, not uploads.** A staff document is recorded
+  as its type, number and expiry, plus a web address pointing at wherever you
+  keep the file; RotaFlow does not store the file, and the screen asks you to
+  keep the document itself in your own HR system. A staff photo is also a pasted
+  web address. The link is currently required on a document. (GAP-084)
 - **Medical notes entered on an emergency contact before 11 October 2026 are
   still stored.** The field is no longer asked for or shown, so those notes cannot
   be seen or edited on screen; deleting the contact removes them, and a person's
