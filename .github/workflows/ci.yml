@@ -259,7 +259,7 @@ jobs:
   # deliberately pure-logic over src/lib with no database at all
   # (vitest.config.ts), and `e2e` deliberately runs with no Supabase session.
   # This is what closes that gap — added after BUG-001
-  # (docs/QA-AUDIT-REPORT.md): a broken `organisations_select` policy made
+  # (qa/FUNCTIONAL-AUDIT.md): a broken `organisations_select` policy made
   # every new organisation fail to create, was fixed twice before
   # (migrations 0003, 0005) and regressed silently a third time (0031) with
   # nothing to catch it. supabase/tests/database/org_creation_bootstrap.test.sql
@@ -281,7 +281,7 @@ jobs:
   # stretch was a genuine defect it found — a transient first load showing a
   # brand-new customer an error card (#227) — not a flake. It is also the only
   # test that proves a customer can sign up at all, which is the exact failure
-  # `docs/QA-AUDIT-REPORT.md` recorded and nothing else in CI could catch.
+  # `qa/FUNCTIONAL-AUDIT.md` recorded and nothing else in CI could catch.
   #
   # If it does start flaking, take it out of the required list rather than
   # weakening its assertions.
