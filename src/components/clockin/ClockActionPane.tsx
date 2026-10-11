@@ -19,31 +19,31 @@ interface StageCopy {
  */
 const STAGES: Record<ClockStage, StageCopy> = {
   ready: {
-    heading: 'Ready to Clock In?',
-    primaryLabel: 'Clock In Now',
+    heading: 'Ready to clock in?',
+    primaryLabel: 'Clock in now',
     primaryIcon: Fingerprint,
-    secondaryLabel: 'Clock In Manually',
+    secondaryLabel: 'Clock in manually',
     secondaryIcon: MapPinOff,
   },
   working: {
-    heading: "You're Clocked In",
-    primaryLabel: 'Clock Out',
+    heading: "You're clocked in",
+    primaryLabel: 'Clock out',
     primaryIcon: LogOut,
-    secondaryLabel: 'Start Break',
+    secondaryLabel: 'Start break',
     secondaryIcon: Coffee,
   },
   break: {
-    heading: "You're On Break",
-    primaryLabel: 'End Break',
+    heading: "You're on break",
+    primaryLabel: 'End break',
     primaryIcon: Play,
-    secondaryLabel: 'Clock Out',
+    secondaryLabel: 'Clock out',
     secondaryIcon: LogOut,
   },
   done: {
-    heading: 'Shift Complete',
-    primaryLabel: 'Clock In Now',
+    heading: 'Shift complete',
+    primaryLabel: 'Clock in now',
     primaryIcon: Fingerprint,
-    secondaryLabel: 'Clock In Manually',
+    secondaryLabel: 'Clock in manually',
     secondaryIcon: MapPinOff,
   },
 };

@@ -88,7 +88,7 @@ export const DEMO_ACTIVITY: ClockActivityEntry[] = [
   {
     id: '1',
     kind: 'out',
-    label: 'Clock Out',
+    label: 'Clock out',
     timeLabel: 'Yesterday, 17:02',
     locationName: HOME,
     durationLabel: '7h 32m',
@@ -96,14 +96,14 @@ export const DEMO_ACTIVITY: ClockActivityEntry[] = [
   {
     id: '2',
     kind: 'in',
-    label: 'Clock In',
+    label: 'Clock in',
     timeLabel: 'Yesterday, 09:00',
     locationName: HOME,
   },
   {
     id: '3',
     kind: 'out',
-    label: 'Clock Out',
+    label: 'Clock out',
     timeLabel: 'Tue, 12 May, 17:01',
     locationName: HOME,
     durationLabel: '7h 31m',
@@ -126,7 +126,7 @@ export const DEMO_ATTENDANCE: AttendanceSummary = {
 };
 
 export const DEMO_HELP: HelpLink[] = [
-  { id: 'policy', icon: ShieldQuestion, label: 'Clock In / Out Policy' },
+  { id: 'policy', icon: ShieldQuestion, label: 'Clock in and out policy' },
   { id: 'trouble', icon: ScanLine, label: 'Troubleshooting' },
   { id: 'support', icon: LifeBuoy, label: 'Contact Support' },
 ];

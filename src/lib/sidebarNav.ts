@@ -170,10 +170,10 @@ export function navItemsForRole(
   // Staff reach Clock In as an ordinary row: it is the screen they open twice
   // a day and it belongs at the top of their list, not in an opt-in group.
   if (!isManager) {
-    items.splice(2, 0, { label: 'Clock In', icon: LogIn, to: '/app/clock' });
+    items.splice(2, 0, { label: 'Clock in', icon: LogIn, to: '/app/clock' });
   } else if (personal) {
     items.push({
-      label: 'Clock In',
+      label: 'Clock in',
       icon: LogIn,
       to: '/app/clock',
       group: 'my-work',

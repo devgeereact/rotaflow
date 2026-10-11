@@ -544,6 +544,25 @@ capability stats band of non-numbers ("6", "Offline", "Multi-site", "UK"). The
 stats band reappears only when `TRACTION` holds real, sourced figures.
 "Rest-break" is deliberately not used: nothing checks breaks within a shift.
 
+### Words in the product
+
+Sentence case, British English, no exclamation marks and no em dashes in UI copy.
+One term for one thing (adopted 2026-10-11, from `docs/Plans 2026/04-DESIGN-AND-EXPERIENCE.md` §8):
+
+| Use                                            | Not                                        |
+| ---------------------------------------------- | ------------------------------------------ |
+| Rota; **My rota** for a staff member's own one | Schedule (as a noun for the plan)          |
+| Clock in, Clock out, Clock in manually         | Clock In, Clock In Now, Punch in           |
+| Swap request, Swap requests                    | Shift swap, Shift swap request             |
+| My account (the `/app/account` area)           | My Profile, Account security, Your profile |
+| Your organisation is ready.                    | You're all set!, All done!                 |
+
+An error says what failed and what to do next. "Something went wrong" says
+neither. Write "We could not load this week's rota. Check your connection and
+try again.", and for a crash caught by `ErrorBoundary`, "This screen could not
+be shown" with a reload. A route, table or enum keeps its name: only the words
+on screen change.
+
 ### Evidence boundary
 
 RotaFlow is pre-launch. It has no verified customer count, testimonials,

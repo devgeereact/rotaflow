@@ -129,7 +129,7 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     icon: Umbrella,
   },
   {
-    label: 'Shift swaps',
+    label: 'Swap requests',
     keywords: 'swap cover exchange request approve',
     to: '/app/swaps',
     group: 'Scheduling',

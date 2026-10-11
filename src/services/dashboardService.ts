@@ -141,7 +141,7 @@ export async function getPendingRequests(
       id: r.id,
       kind: 'swap',
       staffName: staffName(r.requested_by),
-      detail: 'Shift swap',
+      detail: 'Swap request',
       dateLabel: r.shift ? new Date(r.shift.starts_at).toLocaleDateString('en-GB') : '',
       createdAt: r.created_at,
     }));

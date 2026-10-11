@@ -301,7 +301,7 @@ describe('navigation targets', () => {
     expect(management).toContain('/app/attendance');
   });
 
-  it('offers Clock In to an owner who opts into My work, marked as such', () => {
+  it('offers Clock in to an owner who opts into My work, marked as such', () => {
     const personal = navItemsForRole('owner', { mode: 'my-work' });
     const clockIn = personal.find((i) => i.to === '/app/clock');
     expect(clockIn).toBeDefined();
@@ -314,7 +314,15 @@ describe('navigation targets', () => {
     for (const to of management) expect(personal).toContain(to);
   });
 
-  it('gives staff Clock In as an ordinary row, not an opt-in group', () => {
+  it('names the staff rows in sentence case: My rota and Clock in', () => {
+    const labels = navItemsForRole('staff').map((i) => i.label);
+    expect(labels).toContain('My rota');
+    expect(labels).toContain('Clock in');
+    expect(labels).not.toContain('Schedule');
+    expect(labels).not.toContain('Clock In');
+  });
+
+  it('gives staff Clock in as an ordinary row, not an opt-in group', () => {
     const staffNav = navItemsForRole('staff');
     const clockIn = staffNav.find((i) => i.to === '/app/clock');
     expect(clockIn).toBeDefined();
