@@ -10,8 +10,8 @@ import {
  * The first automated test of anything in `supabase/functions`.
  *
  * Those files are Deno and are excluded from `npm run typecheck` and
- * `npm run lint`, and CLAUDE.md says plainly that "no automated check stands
- * in for reading those files". That is still true of the request handling —
+ * `npm run lint`, and CLAUDE.md says plainly that reading them by hand is the
+ * only check on what they do (a Deno typecheck in CI proves only that they compile). That is still true of the request handling —
  * it needs Deno, a JWT and OpenRouter. It does not have to be true of the
  * pure logic, which is why `grounding.ts` is a separate module with no Deno
  * globals in it: the part that decides whether a manager is shown an invented

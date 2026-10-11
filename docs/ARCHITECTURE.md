@@ -57,7 +57,7 @@ src/
 ├── types/         # shared + generated DB types
 ├── App.tsx        # providers + router
 ├── main.tsx       # bootstrap: Sentry, SW registration, render
-└── index.css      # Tailwind layers + base styles
+└── index.css      # Tailwind 4 entry: the @theme tokens and base styles
 ```
 
 **Dependency direction:** `pages → services → lib`. Components consume `hooks`
@@ -208,10 +208,9 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
   - Self-hosted webfonts (`/fonts/`) → `CacheFirst`, excluded from the precache. They were Google Fonts on `StaleWhileRevalidate` until 2026-09-03; see `public/fonts/README.md`.
 - **Updates:** `registerType: 'prompt'` + `skipWaiting: false`. A new SW waits;
   the app shows a "Reload to update" prompt so users are never interrupted.
-- `public/offline.html` is precached but **never served**. It is in `includeAssets`
-  It was removed 5 September 2026 — it had been precached but was never served,
-  since `navigateFallback` is `index.html` and no route or handler referenced it.
-  Precaching an unreachable page meant every visitor downloaded a page no route served.
+- There is no `public/offline.html`. One was removed on 5 September 2026 (GAP-051): it
+  had been precached but was never served, since `navigateFallback` is `index.html` and
+  no route or handler referenced it, so every visitor downloaded a page no route served.
 
 ## 6. Data flow example (publish a rota → notify staff)
 

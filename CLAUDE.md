@@ -42,8 +42,8 @@ the facts. GEE OS was adopted on 4 September 2026 and its Standard documentation
 profile on 10 October 2026. `.agent/PROJECT.yml` is the routing contract,
 `.agent/MCP-PROFILE.yml` the MCP position (reads permitted, each mutation authorised
 per task, no migration applied to production from a session), and `docs/README.md`
-explains both. Four different systems on this machine describe how to sequence
-work; in this repository GEE OS routes.
+explains both. Four systems (GSD, gstack, the superpowers skills and GEE OS)
+describe how to sequence work; in this repository GEE OS routes.
 
 - **Default mode is Existing Application.** Improve a live system without losing
   behaviour that already works. Prefer the focused repair to the rewrite.
