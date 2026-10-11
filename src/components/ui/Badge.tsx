@@ -69,7 +69,7 @@ const TONES: Record<BadgeTone, string> = {
 /**
  * Small status pill, "Published", "Live", "Pending" and the like.
  *
- * Status is never colour alone (docs/DESIGN-SYSTEM.md §5): callers pass a label, and
+ * Status is never colour alone (docs/ACCESSIBILITY.md): callers pass a label, and
  * an icon or `dot` where the reference shows one.
  */
 export function Badge({

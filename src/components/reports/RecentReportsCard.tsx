@@ -44,7 +44,7 @@ export function RecentReportsCard({
             type="button"
             onClick={onViewAll}
             // `text-primary` is a FILL and measures 4.08:1 as small text: the ink
-            // pair is the text colour (docs/DESIGN-SYSTEM.md §5). And a 19px-tall
+            // pair is the text colour (docs/ACCESSIBILITY.md). And a 19px-tall
             // control was under WCAG 2.2 AA's own 24px floor.
             className="inline-flex min-h-11 items-center rounded-lg text-[0.78rem] font-semibold text-primary-ink transition-colors hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
           >

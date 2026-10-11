@@ -176,7 +176,7 @@ test.describe('dialog keyboard flow', () => {
       .getByRole('button', { name: 'Close', exact: true });
     const box = (await close.boundingBox())!;
     // It was `p-1` around an 18px icon: a 26 × 26 target on the control every
-    // dialog depends on. docs/DESIGN-SYSTEM.md §5.
+    // dialog depends on. docs/ACCESSIBILITY.md.
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.height).toBeGreaterThanOrEqual(44);
   });

@@ -58,7 +58,7 @@ export const HEALTH_LABEL: Record<HealthBand, string> = {
  * either choice — a console teaches its colours by repetition, and one that
  * contradicts itself teaches nothing.
  *
- * The rule, from `docs/DESIGN-SYSTEM.md` §5: danger is failure or a stopped account,
+ * The rule, from `docs/ACCESSIBILITY.md`: danger is failure or a stopped account,
  * warning is review, neutral is inactive with no failure implied. So
  * suspension — the state that actually stops a customer using the product —
  * is the only danger; `attention` and `at_risk` are both review and are told

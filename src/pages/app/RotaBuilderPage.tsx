@@ -1952,7 +1952,7 @@ export function RotaBuilderPage(): JSX.Element {
         {/* ---- Toolbar: date nav, view tabs, settings, publish ---- */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 sm:mb-4">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* A period stepper is the case docs/DESIGN-SYSTEM.md §5 names for
+            {/* A period stepper is the case docs/ACCESSIBILITY.md names for
                 `IconButton`'s 44px default. These were hand-rolled 30x30
                 controls with no focus ring. */}
             <IconButton

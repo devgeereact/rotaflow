@@ -69,7 +69,7 @@ const ALIGN = {
  */
 // `min-h-9` on the sortable variant: a column header is a real control and a
 // 17px-tall one is under WCAG 2.2 AA's 24px floor. 36px is the compact size
-// docs/DESIGN-SYSTEM.md §5 allows inside a dense table, and the header row already
+// docs/ACCESSIBILITY.md allows inside a dense table, and the header row already
 // has the padding to absorb it.
 const HEAD_LABEL =
   'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap text-[0.69rem] font-semibold uppercase tracking-[0.06em] text-content-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark';

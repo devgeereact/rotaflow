@@ -40,7 +40,7 @@ const VARIANTS: Record<Variant, string> = {
   // 4.08:1, under the 4.5:1 AA minimum, and `ghost` is the one variant whose
   // colour *is* its label. The dark half was already using the ink pair; the
   // light half was not, which is the exact half-applied pattern
-  // docs/DESIGN-SYSTEM.md §5 warns about.
+  // docs/ACCESSIBILITY.md warns about.
   ghost:
     'bg-transparent text-primary-ink dark:text-primary-ink-dark hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
   success: 'bg-success text-white hover:bg-success/90',

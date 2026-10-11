@@ -255,97 +255,10 @@ Motion was a dependency until 2026-08-31 and was never imported by anything.
 
 ## 5. Accessibility (frontline-critical)
 
-- Contrast ≥ **4.5:1** for text (AA), **verified and gated at zero in both themes**
-  across the 13 public pages and the 26 authenticated screens
-  (`e2e/app-surface.spec.ts`). This line used to claim as much on no evidence:
-  nothing had ever scanned dark mode, and when something did it held ~200
-  violations — more than light mode carried. Both were cleared on 2026-08-30
-  (`docs/SAAS.md` GAP-030, GAP-032).
-- **A status colour becomes text through its ink pair:
-  `text-{tone}-ink dark:text-{tone}-ink-dark`.** Both halves, every time. This
-  covers a form error, a menu item, a chip's label and a link — anywhere the
-  colour is on _words_. It does not cover an icon, which is not text.
-
-  The axe gate reads 0 in both themes and that is not the same as the rule being
-  kept: the gate scans what it can _open_, and 68 uses of a bare fill token as
-  text survived inside dialogs, onboarding steps and error branches that no
-  scan reaches. They were swept on 2026-09-05. When you add a modal, check its
-  error text by hand; nothing automated will. The
-  `DEFAULT` is a FILL — it runs 2.02–4.29:1 as small text on white and 3.15–4.47:1
-  on a dark surface, so neither `text-warning` nor `dark:text-warning` is a text
-  colour. And an `-ink` with no dark pairing is worse than none: the light ink
-  carries into dark mode at 2.5:1, so fixing one theme breaks the other.
-
-- **Muted grey does not go on a tinted panel.** `content-muted` is designed against
-  white and lands 4.23–4.49:1 on the washes — under the line, and a hundredth under
-  is under. Use `text-content` there; the semibold heading above it is what carries
-  the hierarchy.
-- Interactive targets ≥ **44×44px**. Staff use this one-handed on phones. This is
-  a stronger product rule than WCAG 2.2 AA's 24px minimum, which has exceptions
-  this product does not want to rely on. Icon-only controls use
-  `ui/IconButton` (44×44 by default); its `sm` size is 36px.
-
-  **36px is allowed in exactly two places**, and nowhere else. A control inside a
-  dense table row, where 44 changes the row height and therefore the screen; and
-  a control in a dense horizontal group where 44 would push the group onto a
-  second line — a tab strip (`ui/PanelTabs`), a segmented period switcher, a row
-  of filter chips, a sortable column header. Never a page action, a dialog
-  action, or anything a person is expected to hit while walking.
-
-  This second case was written down on 2026-09-10, after a sweep measured every
-  control in the product and found tab strips at 34px, chips at 30, sortable
-  headers at 17 and a mobile navigation trigger at 32. None of those numbers
-  came from a rule; they were each decided once, locally, and nothing said what
-  the floor was. They are 36 now.
-
-  **Where the visible shape must stay small, expand the hit area rather than the
-  control.** An absolutely-positioned `::after` (`after:absolute after:-inset-*
-after:content-['']`) enlarges what a finger can hit without moving a pixel.
-  `ui/Toggle` uses it to be 44 tall while still looking like a 24px switch, and
-  the rota chip's delete × uses it to reach 32 without covering a quarter of the
-  chip it sits on — which a 44px target genuinely would, and it would delete
-  shifts people meant to open. That chip is the one place in the product under
-  36, and it is under it deliberately: the shift editor carries a full-size
-  **Remove** for anyone who wants the unhurried path.
-
-  **Inline text links in prose or a footer list are exempt**, as WCAG's own
-  target-size criterion exempts them. A 44px-tall "Privacy" in a footer column
-  of ten links would be a worse page, not a better one.
-
-- **A horizontally scrolling area must be reachable and must say it scrolls.**
-  `overflow-x-auto` on a bare `div` is draggable with a pointer and completely
-  unreachable with a keyboard, and it gives no sign that anything is off screen.
-  Use `ui/ScrollRegion`: a labelled `role="region"` with `tabIndex={0}`, plus an
-  edge fade and a line naming the gesture, both shown only while the content
-  actually overflows. **`ui/DataTable` renders through `ScrollRegion`** — it
-  hand-rolled the `role="region"` and the `tabIndex` and skipped the cue until
-  2026-09-10, so nine platform-console tables scrolled in complete silence
-  while this line claimed otherwise. One scroller, one contract.
-- **A dialog has exactly one control called Close.** The backdrop is a pointer
-  affordance, `aria-hidden` and not focusable; Escape and the Close button are
-  the accessible ways out. A dialog also locks background scrolling, takes its
-  accessible name from the rendered heading via `aria-labelledby`, and returns
-  focus to whatever opened it.
-- Every focusable element shows a ring: `focus-visible:ring-2 focus-visible:ring-primary`.
-- Images require `alt`; icon-only buttons require `aria-label`.
-- Never convey shift/leave/clock state by colour alone. Pair with icon + text.
-- **Every drag has a keyboard equivalent that addresses the same thing the drag
-  does.** On the rota grid that is `M` on a focused shift, then the arrow keys
-  to choose a person and a day, `Enter` to commit and `Escape` to cancel — the
-  landing cell is ringed, the target is announced through a polite live region,
-  and focus returns to the chip after the move.
-
-  dnd-kit's `KeyboardSensor` was registered and was worse than nothing: it
-  translates by a fixed pixel step that addresses no particular cell, and its
-  Enter/Space activation fired alongside the chip's own click, so pressing
-  Enter both opened the editor and started an unaimable drag. A sensor that
-  technically responds to a key is not a keyboard alternative. Both paths
-  commit through one `moveShiftTo`, so they cannot disagree about clash
-  checking or timezones.
-
-- **Announce a shortcut in two places or it does not exist**: `aria-keyshortcuts`
-  on the control for assistive technology, and a line of visible text for
-  everyone else.
+The accessibility rules every screen follows moved to `docs/ACCESSIBILITY.md` on
+11 October 2026, beside what the published statement at `/legal/accessibility`
+claims and how the automated gate checks it. They still bind every component
+described in this file.
 
 ## 6. Component conventions
 

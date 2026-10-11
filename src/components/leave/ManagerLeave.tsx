@@ -95,7 +95,7 @@ export function ManagerLeave({
           hint={
             tiles.oldestPendingLabel && (
               // The ink pair, both halves: `text-danger` is a FILL and
-              // measures under 4.5:1 as small text (docs/DESIGN-SYSTEM.md §5).
+              // measures under 4.5:1 as small text (docs/ACCESSIBILITY.md).
               <span
                 className={
                   tiles.oldestPendingOverdue

@@ -25,7 +25,7 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const SIZES: Record<IconButtonSize, { box: string; glyph: number }> = {
-  // `h-11 w-11` is 44px exactly — the product target in docs/DESIGN-SYSTEM.md §5,
+  // `h-11 w-11` is 44px exactly — the product target in docs/ACCESSIBILITY.md,
   // which is stricter than WCAG 2.2 AA's 24px minimum on purpose.
   md: { box: 'h-11 w-11', glyph: 20 },
   sm: { box: 'h-9 w-9', glyph: 16 },
