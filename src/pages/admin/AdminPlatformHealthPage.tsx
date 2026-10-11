@@ -26,6 +26,7 @@ import {
 } from '@/lib/platformHealth';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { env } from '@/lib/env';
+import { CHART_TOKENS } from '@/lib/chartPalette';
 
 const ROW_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   operational: 'success',
@@ -391,7 +392,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
                     {service.sparkline.length > 1 && (
                       <Sparkline
                         values={service.sparkline}
-                        colour="#388FD4"
+                        colour={CHART_TOKENS.info}
                         className="mt-0"
                       />
                     )}
@@ -487,7 +488,7 @@ export function AdminPlatformHealthPage(): JSX.Element {
                       q.failed > 0
                         ? `${q.queued} waiting, ${q.failed} abandoned`
                         : `${q.queued} waiting`,
-                    colour: q.failed > 0 ? '#E0A030' : undefined,
+                    colour: q.failed > 0 ? CHART_TOKENS.warning : undefined,
                   }))}
                 />
               )}

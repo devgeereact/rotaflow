@@ -158,6 +158,15 @@ together, with the contrast and colour-vision measurements redone.
 attendance state and not a conflict. Attendance uses the semantic status tokens
 (§ "Colour. Semantic"); shift pattern uses a text code.
 
+### Colour. Chart marks
+
+A chart series takes its colour from `seriesColour()` in `src/lib/chartPalette.ts`.
+A single mark that carries a meaning (a sparkline, a status donut, an overdue bar)
+uses `CHART_TOKENS` from the same file, which copies the semantic tokens from
+`src/index.css` as literals because an SVG presentation attribute needs one.
+`src/lib/chartPalette.test.ts` reads the stylesheet and fails if a copy drifts. No
+page hand-copies a chart hex.
+
 ### Typography
 
 | Role            | Size / line-height | Weight    | Tailwind class                       |

@@ -66,3 +66,29 @@ export function seriesColour(index: number, dark: boolean): string {
   const entry = CHART_SERIES[index % CHART_SERIES.length]!;
   return dark ? entry.dark : entry.light;
 }
+
+/**
+ * Single-colour chart marks that carry a meaning rather than a series identity:
+ * a sparkline, a status donut, an overdue bar.
+ *
+ * These are the brand tokens from `src/index.css`, not new colours. They live
+ * here because SVG `stroke` and `fill` attributes, and the inline swatches the
+ * chart components draw, need a literal colour string, and a `var(--…)` in a
+ * presentation attribute is not reliably honoured. The console pages used to
+ * hand-copy these hex values into each file; `chartPalette.test.ts` fails if
+ * any value here drifts from the stylesheet token it names.
+ */
+export const CHART_TOKENS = {
+  /** `--color-primary` */
+  primary: '#3b6fe0',
+  /** `--color-success` */
+  success: '#1ea06b',
+  /** `--color-warning` */
+  warning: '#e0a030',
+  /** `--color-danger` */
+  danger: '#d94a3a',
+  /** `--color-info` */
+  info: '#388fd4',
+  /** `--color-secondary`, the neutral grey */
+  secondary: '#6b7280',
+} as const;

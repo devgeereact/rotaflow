@@ -41,6 +41,7 @@ import { HEALTH_LABEL } from '@/lib/tenantHealth';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { reportError } from '@/lib/sentry';
 import type { AuditLog, Subscription } from '@/types';
+import { CHART_TOKENS } from '@/lib/chartPalette';
 
 /**
  * What the overview loaded, panel by panel, and which panels could not be.
@@ -174,10 +175,10 @@ const ACTIVITY_TONE: Record<ActivityTone, string> = {
 };
 
 const HEALTH_COLOUR: Record<string, string> = {
-  healthy: '#1EA06B',
-  attention: '#E0A030',
-  at_risk: '#D94A3A',
-  suspended: '#6B7280',
+  healthy: CHART_TOKENS.success,
+  attention: CHART_TOKENS.warning,
+  at_risk: CHART_TOKENS.danger,
+  suspended: CHART_TOKENS.secondary,
 };
 
 const CASE_TONE: Record<string, 'danger' | 'warning' | 'info' | 'neutral'> = {
@@ -487,7 +488,7 @@ export function AdminOverviewPage(): JSX.Element {
                 derived.growth ? (
                   <Sparkline
                     values={derived.growth.map((g) => g.total)}
-                    colour="#1EA06B"
+                    colour={CHART_TOKENS.success}
                   />
                 ) : undefined
               }
@@ -526,7 +527,10 @@ export function AdminOverviewPage(): JSX.Element {
               to="/admin/billing"
               chart={
                 derived.revenueTrend ? (
-                  <Sparkline values={derived.revenueTrend} colour="#E0A030" />
+                  <Sparkline
+                    values={derived.revenueTrend}
+                    colour={CHART_TOKENS.warning}
+                  />
                 ) : undefined
               }
             />
@@ -553,18 +557,18 @@ export function AdminOverviewPage(): JSX.Element {
                       {
                         name: 'Active organisations',
                         values: derived.growth.map((g) => g.total),
-                        colour: '#3B6FE0',
+                        colour: CHART_TOKENS.primary,
                       },
                       {
                         name: 'New organisations',
                         values: derived.growth.map((g) => g.created),
-                        colour: '#1EA06B',
+                        colour: CHART_TOKENS.success,
                         lineOnly: true,
                       },
                       {
                         name: 'Churned',
                         values: derived.churnCounts ?? [],
-                        colour: '#D94A3A',
+                        colour: CHART_TOKENS.danger,
                         lineOnly: true,
                       },
                     ]}

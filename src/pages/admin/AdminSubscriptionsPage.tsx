@@ -48,6 +48,7 @@ import {
   type FilterOption,
 } from '@/lib/filters';
 import type { Organisation, Subscription } from '@/types';
+import { CHART_TOKENS } from '@/lib/chartPalette';
 
 type PaymentState = 'paid' | 'pending' | 'failed';
 
@@ -504,7 +505,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
               to="/admin/billing"
               chart={
                 monthsOfPaidHistory(invoices) >= 3 ? (
-                  <Sparkline values={money.trend} colour="#1EA06B" />
+                  <Sparkline values={money.trend} colour={CHART_TOKENS.success} />
                 ) : undefined
               }
               hint={

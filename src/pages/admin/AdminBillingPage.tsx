@@ -38,6 +38,7 @@ import {
 import { reportError } from '@/lib/sentry';
 import type { Subscription } from '@/types';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
+import { CHART_TOKENS } from '@/lib/chartPalette';
 
 const INVOICE_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   draft: 'neutral',
@@ -58,19 +59,19 @@ const INVOICE_LABEL: Record<string, string> = {
 };
 
 const PLAN_COLOUR: Record<string, string> = {
-  enterprise: '#3B6FE0',
-  business: '#1EA06B',
-  professional: '#388FD4',
-  starter: '#E0A030',
+  enterprise: CHART_TOKENS.primary,
+  business: CHART_TOKENS.success,
+  professional: CHART_TOKENS.info,
+  starter: CHART_TOKENS.warning,
 };
 
 const RENEWAL_COLOUR: Record<string, string> = {
-  overdue: '#D94A3A',
-  week: '#E0A030',
-  month: '#3B6FE0',
-  quarter: '#388FD4',
-  later: '#1EA06B',
-  none: '#6B7280',
+  overdue: CHART_TOKENS.danger,
+  week: CHART_TOKENS.warning,
+  month: CHART_TOKENS.primary,
+  quarter: CHART_TOKENS.info,
+  later: CHART_TOKENS.success,
+  none: CHART_TOKENS.secondary,
 };
 
 /**
@@ -101,13 +102,11 @@ const RENEWAL_COLOUR: Record<string, string> = {
  * A payment provider IS connected: Stripe billing (migration 0050) writes
  * `invoices.provider`/`provider_ref` for real, and `stripe-webhook`
  * (`supabase/functions/stripe-webhook`) suspends an organisation when Stripe's
- * dunning (Smart Retries) actually exhausts — that is real code, on this
- * branch. What is still not here is this *console* driving money through
- * Stripe: there is no Stripe-side credit-note or invoice-lookup call wired
- * into View/Credit below, so those stay disabled — a UI-integration gap, not
- * a "nothing is connected" one. And the dunning-suspension path has not yet
- * been end-to-end verified against a real Stripe Smart Retries exhaustion
- * (the code exists; nobody has watched it fire for real).
+ * dunning (Smart Retries) actually exhausts. What this console does not do is
+ * move money through Stripe. View opens RotaFlow's own invoice record; there
+ * is no Credit action on the row, and `credit_invoice()` (0149) is not yet
+ * called from here. The dunning-suspension path has not been verified against
+ * a real Smart Retries exhaustion: the code exists, nobody has watched it fire.
  */
 export function AdminBillingPage(): JSX.Element {
   const [subscriptions, setSubscriptions] = useState<Subscription[] | null>(null);
@@ -374,7 +373,9 @@ export function AdminBillingPage(): JSX.Element {
               label="MRR"
               value={money(derived.mrr, derived.shownCurrency)}
               hint="Active and past due"
-              chart={<Sparkline values={derived.trendValues} colour="#1EA06B" />}
+              chart={
+                <Sparkline values={derived.trendValues} colour={CHART_TOKENS.success} />
+              }
             />
             <StatTile
               label="ARR"
@@ -444,7 +445,7 @@ export function AdminBillingPage(): JSX.Element {
                   {
                     name: 'Collected',
                     values: derived.trendValues,
-                    colour: '#1EA06B',
+                    colour: CHART_TOKENS.success,
                   },
                 ]}
                 height={250}

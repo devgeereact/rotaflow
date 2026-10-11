@@ -39,6 +39,7 @@ import {
   type AnnouncementRow,
 } from '@/services/platformAnnouncementService';
 import { reportError } from '@/lib/sentry';
+import { CHART_TOKENS } from '@/lib/chartPalette';
 
 /** How many recent rows the summary is drawn from. */
 const WINDOW = 1000;
@@ -657,7 +658,7 @@ export function AdminNotificationsPage(): JSX.Element {
                   rows={summary.byType.slice(0, 8).map((t) => ({
                     label: humaniseKey(t.label),
                     value: t.value,
-                    colour: '#388FD4',
+                    colour: CHART_TOKENS.info,
                   }))}
                 />
               )}
