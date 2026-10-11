@@ -122,7 +122,15 @@ export function navItemsForRole(
     items.push({ label: 'Set up', icon: ListChecks, to: '/app/setup' });
     items.push({ label: 'Rota Builder', icon: CalendarDays, to: '/app/rota' });
   }
-  items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });
+  // Staff have no builder, so the published plan is simply theirs: "My rota",
+  // the same word the phone tab uses. A manager keeps "Schedule" here because
+  // "Rota Builder" sits directly above it and two rows both called Rota would
+  // be worse than one that is not.
+  items.push({
+    label: isManager ? 'Schedule' : 'My rota',
+    icon: CalendarRange,
+    to: '/app/schedule',
+  });
 
   if (isManager) {
     // The management counterpart of Clock In: the attendance record, not a

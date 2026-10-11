@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
+import { REQUEST_SECTIONS } from '@/lib/requestSections';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { PUBLIC_ROUTES } from '@/lib/publicRoutes';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
@@ -172,6 +173,13 @@ describe('navigation targets', () => {
 
   it.each(PROFILE_TABS.map((tab) => [tab.label, tab.to] as const))(
     'Profile tab %s (%s) has a route',
+    (_label, to) => {
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
+
+  it.each(REQUEST_SECTIONS.map((tab) => [tab.label, tab.to] as const))(
+    'Request switch %s (%s) has a route',
     (_label, to) => {
       expect(isRoutable(to)).toBe(true);
     },

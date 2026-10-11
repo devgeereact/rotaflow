@@ -148,12 +148,12 @@ differences from the mockups were decisions:
 
 **Also in the shell:**
 
-| Piece                                                                 | Where                                                                                                                      |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Tagline, org switcher, profile block, Help & Support, collapse toggle | `Sidebar` + `SidebarOrgSwitcher` + `SidebarFooter`. Help & Support points at `/app/help` (§5), not the public contact page |
-| Global search (`⌘K`). Screens and actions, role-filtered              | `GlobalSearch`, catalogue in `src/lib/globalSearch.ts`                                                                     |
-| Mobile bottom tab bar. Home · Schedule · Clock in · Leave · More      | `MobileTabBar`; `More` opens the sidebar drawer                                                                            |
-| Route-level role gate + permission-denied screen                      | `RequireRole`, `PermissionDenied`                                                                                          |
+| Piece                                                                            | Where                                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tagline, org switcher, profile block, Help & Support, collapse toggle            | `Sidebar` + `SidebarOrgSwitcher` + `SidebarFooter`. Help & Support points at `/app/help` (§5), not the public contact page                                                                                     |
+| Global search (`⌘K`). Screens and actions, role-filtered                         | `GlobalSearch`, catalogue in `src/lib/globalSearch.ts`                                                                                                                                                         |
+| Mobile bottom tab bar. Home · Rota (staff: My rota) · Clock in · Requests · More | `MobileTabBar`; `More` opens the sidebar drawer. Requests lands on Leave, and a phone-only switch (Leave · Swaps · Overtime, `RequestsLayout`) at the top of all three screens reaches the other two (O4, O10) |
+| Route-level role gate + permission-denied screen                                 | `RequireRole`, `PermissionDenied`                                                                                                                                                                              |
 
 **Collapsed state** persists in `localStorage` and is read during the initial
 `useState` rather than in an effect, so the page does not jump sideways on load.

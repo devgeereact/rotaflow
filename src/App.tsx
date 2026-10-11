@@ -17,6 +17,7 @@ import {
 } from '@/lib/platformRoles';
 import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
+import { RequestsLayout } from '@/components/layout/RequestsLayout';
 import { WorkModeProvider } from '@/context/WorkModeContext';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
@@ -748,13 +749,17 @@ export function App(): JSX.Element {
                         />
                         <Route path="timesheets" element={<TimesheetsPage />} />
                         <Route path="availability" element={<AvailabilityPage />} />
-                        <Route path="leave" element={<LeavePage />} />
-                        <Route path="swaps" element={<SwapsPage />} />
+                        {/* Leave, Swaps and Overtime share a phone-only switch,
+                      so the "Requests" tab reaches all three. */}
+                        <Route element={<RequestsLayout />}>
+                          <Route path="leave" element={<LeavePage />} />
+                          <Route path="swaps" element={<SwapsPage />} />
+                          {/* Open to every member: a staff member raises their own
+                        overtime here, and the page's Team toggle is what gates
+                        the approval queue behind `canApprove`. */}
+                          <Route path="overtime" element={<OvertimePage />} />
+                        </Route>
                         <Route path="open-shifts" element={<OpenShiftsPage />} />
-                        {/* Open to every member: a staff member raises their own
-                      overtime here, and the page's Team toggle is what gates
-                      the approval queue behind `canApprove`. */}
-                        <Route path="overtime" element={<OvertimePage />} />
                         <Route path="announcements" element={<AnnouncementsPage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="help" element={<HelpPage />} />
