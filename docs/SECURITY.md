@@ -561,7 +561,7 @@ data is about, which is not always who typed it.
 | C5  | Invitations                                       | colleague email, role, location, department                                                                                                             | the invitee                                                | onboard staff                                  | `invites`                                                                  | `src/components/settings/TeamInviteManager.tsx`                |
 | C6  | Staff record (manager-entered)                    | name, job title, department, contract type, weekly hours, holiday allowance, skills, **payroll id**, start date, **phone**, **email**, sites, photo URL | the staff member                                           | scheduling and pay                             | `staff_profiles`                                                           | `src/components/staff/StaffFormModal.tsx`                      |
 | C7  | Own profile                                       | full name, phone, photo URL                                                                                                                             | the staff member                                           | keep the record current                        | `profiles`, `staff_profiles`                                               | `src/pages/app/account/ProfilePage.tsx`                        |
-| C8  | Emergency contacts                                | contact name, relationship, phone, second phone, **medical notes**                                                                                      | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                       | `src/components/staff/EmergencyContactsModal.tsx`              |
+| C8  | Emergency contacts                                | contact name, relationship, phone, second phone. **Medical notes** no longer collected or shown (2026-10-11); values entered before then remain stored  | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                       | `src/components/staff/EmergencyContactsModal.tsx`              |
 | C9  | Documents                                         | free-text type (DBS, right to work…), name, **URL**, issue and expiry dates                                                                             | the staff member                                           | compliance records                             | `documents`                                                                | `src/components/staff/DocumentsModal.tsx`                      |
 | C10 | Pay rates                                         | hourly rate, effective date, note                                                                                                                       | the staff member                                           | labour cost and payroll export                 | `staff_pay_rates`                                                          | `supabase/migrations/0104_pay_rates.sql`                       |
 | C11 | Leave                                             | **type (includes `sick`)**, dates, free-text reason                                                                                                     | the staff member                                           | absence management                             | `leave_requests`                                                           | `src/components/leave/LeaveRequestModal.tsx`                   |
@@ -581,9 +581,15 @@ data is about, which is not always who typed it.
 #### Notes on the ones that carry the most risk
 
 **C8 — emergency contacts.** The only place the product holds data about
-somebody who has no relationship with it at all. `medical_notes` is
-free text prompted with "Allergies, conditions", so it is Article 9 health data
-by design. Hard-deleted on erasure. **REQUIRES LEGAL REVIEW:** Article 14
+somebody who has no relationship with it at all. `medical_notes` was
+free text prompted with "Allergies, conditions", so it was Article 9 health data
+by design. Since 2026-10-11 (GAP-058, plan S1) the product no longer collects or
+shows it: the field is gone from the dialog, the client writes only the named
+columns and reads them by name. The column and any values already in it are
+untouched until an owner-approved purge migration; until then the subject-access
+export still reads `*` and so discloses a stored value to the person it is
+about. Hard-deleted on erasure. The leave reason field carries a hint not to
+include medical details. **REQUIRES LEGAL REVIEW:** Article 14
 notification duty, and how it divides between employer and processor.
 
 **C9 — documents.** The type is an unconstrained text input whose own
@@ -778,8 +784,9 @@ right shape for this class of problem.
 ### 9. REQUIRES LEGAL REVIEW
 
 1. **Every lawful basis.** Proposed in the notice, confirmed by nobody.
-2. **The Article 9 condition** for `emergency_contacts.medical_notes` and for
-   sickness leave.
+2. **The Article 9 condition** for sickness leave, and for the
+   `emergency_contacts.medical_notes` values still stored from before the field
+   was removed (2026-10-11).
 3. **Article 14** and emergency contacts (GAP-058).
 4. **Whether an email address alone satisfies Article 13** for a sole trader.
 5. **Transfer mechanism and risk assessment** for Stripe and OpenRouter.

@@ -184,7 +184,16 @@ export function LeaveRequestModal({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="Family holiday"
+            aria-describedby="leave-reason-hint"
           />
+          {/* GAP-058, plan S1: the reason is free text a manager reads, and a
+              rota has no need to hold anyone's health information. */}
+          <p
+            id="leave-reason-hint"
+            className="mt-1 text-xs text-content-muted dark:text-content-muted-dark"
+          >
+            Please don&rsquo;t include medical details.
+          </p>
         </div>
 
         {offline && (

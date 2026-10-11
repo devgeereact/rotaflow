@@ -95,7 +95,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'Account: your first name, last name and email address, and a password held by our authentication provider, never by us in readable form. Set at sign-up or when you accept an invitation.',
       'Organisation setup: the organisation name, sector, team size, and the name and postal address of each site.',
       'Staff record: name, job title, department, contract type, contracted weekly hours, holiday allowance, skills, payroll identifier, start date, phone number, email address, a photograph if one is added, and which sites you work at.',
-      'Emergency contacts: the name, relationship and phone numbers of somebody you nominate, and a free-text medical notes field described in the product as "allergies, conditions". That is health information, and it is about you and sometimes about the person you nominated.',
+      'Emergency contacts: the name, relationship and phone numbers of somebody you nominate. Earlier versions also had a free-text medical notes field described as "allergies, conditions". The product no longer asks for it or shows it, but anything typed into it before then is still held until it is removed. That is health information, and it is about you and sometimes about the person you nominated.',
       'Documents: a type, a name, dates, and a web address pointing at the file. The type is free text, so right-to-work checks, DBS certificates and visa detail can end up here.',
       'Pay: an hourly rate and an effective date.',
       'Working time: shifts, availability, timesheets, overtime claims and their reasons, shift swaps and any note attached, and leave requests including the type of leave and a free-text reason. Leave type includes sickness.',
@@ -141,7 +141,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     heading: 'Health information and other sensitive detail',
     body: [
       'Two things in the product are special category data under Article 9, and both are named here rather than buried.',
-      'The first is the medical notes field on an emergency contact. The second is sickness absence: leave has a type, and one of the types is sick, which makes an absence record a health record about a named person.',
+      'The first is the medical notes field on an emergency contact, which is no longer collected or shown but still holds whatever was typed into it before. The second is sickness absence: leave has a type, and one of the types is sick, which makes an absence record a health record about a named person. The leave reason box asks people not to include medical details.',
       'One deliberate protection is worth stating because it was built for exactly this reason. When a manager uses the AI assistant, staff names, job titles, skills, contracted hours and the dates of approved leave are sent to the model provider so it can draft a rota. The type of leave is deliberately not sent, so an absence cannot be read as sickness by anybody outside the organisation.',
     ],
     status: 'legal-review',

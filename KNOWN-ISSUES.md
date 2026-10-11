@@ -25,6 +25,11 @@ Checked against the code and the register on 11 October 2026.
 - **Documents and photos are links, not uploads.** A right-to-work document or a
   staff photo is a web address someone pastes; RotaFlow does not store the file.
   (GAP-084)
+- **Medical notes entered on an emergency contact before 11 October 2026 are
+  still stored.** The field is no longer asked for or shown, so those notes cannot
+  be seen or edited on screen; deleting the contact removes them, and a person's
+  data export still includes them. Removing the stored values is a separate,
+  planned change. (GAP-058)
 - **Erasing a person does not delete files hosted elsewhere** that their links
   pointed to. (GAP-056)
 - **A user cannot change their own sign-in email address.** (GAP-085)
