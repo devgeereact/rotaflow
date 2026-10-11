@@ -8,7 +8,8 @@ node_modules/
 .env.*.local
 
 # Demo/seed account credentials — real, working logins on the live Supabase
-# project (see supabase/seed/README.md). Never publish this file. The glob
+# project. The seed scripts that created them were removed in #120, but the
+# accounts and this file may still exist locally. Never publish it. The glob
 # form survives the file being recreated or moved into any docs subfolder.
 docs/ACCOUNTS.md
 **/ACCOUNTS.md
