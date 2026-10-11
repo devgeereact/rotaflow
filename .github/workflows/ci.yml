@@ -28,6 +28,12 @@ jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
+    # `pull-requests: read` only so the Docs impact step can read the current
+    # PR description. Job-level permissions replace the workflow default, so
+    # `contents: read` is restated.
+    permissions:
+      contents: read
+      pull-requests: read
     # Not the author's local zone. RotaFlow resolves shift wall-times through a
     # location's timezone, and the predecessor repo shipped a bug that was invisible
     # on a UK machine and only appeared under UTC. It built the instant from a date
@@ -130,6 +136,36 @@ jobs:
 
       - name: Organisation export covers every tenant table
         run: npm run check:export
+
+      # The drift `check:docs` cannot count: a pull request that changes code
+      # and says nothing about documentation. Fails unless a root *.md, docs/
+      # or qa/ file changed too, or the PR description carries
+      # `Docs: no impact (reason)`. GEE OS LOOP step 8 (Synchronise); see
+      # scripts/check-docs-impact.mjs for the rules and the exemptions.
+      #
+      # The body is read live from the API first, so editing the description
+      # and re-running this job is enough; the event payload is only the
+      # fallback, because it is frozen at the moment the run was triggered.
+      # Both reach the script through env vars, never interpolated into shell:
+      # a PR body is attacker-controlled text on a public repository.
+      - name: Docs impact
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -uo pipefail
+          if live=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.body // ""' 2>/dev/null); then
+            PR_BODY="$live"
+          else
+            echo "::notice::Could not read the live PR body; using the event payload."
+            PR_BODY="$EVENT_PR_BODY"
+          fi
+          export PR_BODY
+          node scripts/check-docs-impact.mjs --base "origin/$BASE_REF"
 
       # High/critical only: low/moderate in a 700-package tree is mostly
       # transitive dev-tooling noise that would make this gate cry wolf and
@@ -388,7 +424,10 @@ jobs:
         run: |
           set -uo pipefail
           status=0
-          for wf in backup.yml auth-config.yml; do
+          # backup.yml and auth-config.yml guard production. plan-drift-audit.yml
+          # keeps docs/SAAS.md honest, and codeql.yml is the weekly security
+          # scan: both are scheduled too, so both fail where nobody is standing.
+          for wf in backup.yml auth-config.yml plan-drift-audit.yml codeql.yml; do
             # `|| true` on the API call: a transient GitHub failure must not be
             # reported as "your backups are broken". No data is the one answer
             # this job does not turn into an alarm.
@@ -407,7 +446,7 @@ jobs:
               echo "::warning file=.github/workflows/$wf::$wf has never run. It is scheduled, so it will not run on this pull request either — check the Actions tab before trusting whatever it protects."
               status=1
             elif [ "$ok" = "0" ]; then
-              echo "::warning file=.github/workflows/$wf::$wf has NEVER succeeded (last run: $last). Its secrets are missing, so the thing it protects is unprotected. docs/SAAS.md GAP-036 lists which. This is a warning rather than a failure because only the repository owner can mint them."
+              echo "::warning file=.github/workflows/$wf::$wf has NEVER succeeded (last run: $last). The most likely cause is a missing secret, so the thing it protects is unprotected. docs/SAAS.md GAP-036 lists which. This is a warning rather than a failure because only the repository owner can mint them."
               status=1
             elif [ "$last" != "success" ]; then
               echo "::warning file=.github/workflows/$wf::$wf last run: $last. It has succeeded before, so this is a regression rather than a missing secret."
@@ -418,7 +457,7 @@ jobs:
           done
 
           if [ "$status" = "0" ]; then
-            echo "Both scheduled gates are armed and green."
+            echo "All scheduled gates are armed and green."
           else
             echo
             echo "The warnings above are visible on this pull request ON PURPOSE."
