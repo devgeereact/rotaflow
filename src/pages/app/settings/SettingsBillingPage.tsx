@@ -9,6 +9,7 @@ import { listLocations } from '@/services/locationService';
 import { orgProfileFields } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
 import {
+  ALREADY_SUBSCRIBED,
   billingStatus,
   entitledPlan,
   planName,
@@ -99,6 +100,15 @@ export function SettingsBillingPage(): JSX.Element {
     try {
       await startCheckout(orgId, planCode);
     } catch (err) {
+      // The organisation already has a subscription that is billing (this
+      // screen may be stale, or open in a second tab). A second Checkout would
+      // create a second Stripe subscription, so the server refuses with a 409
+      // and plan changes go through the portal instead.
+      if (err instanceof Error && err.message === ALREADY_SUBSCRIBED) {
+        setActionPending(null);
+        await handleManageBilling();
+        return;
+      }
       reportError(err, { area: 'settings-billing:checkout' });
       showError(
         err instanceof Error

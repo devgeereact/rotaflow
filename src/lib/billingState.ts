@@ -10,6 +10,14 @@ import { formatMoneyExact } from '@/lib/money';
  * all, telling an owner who had never paid that they were on a trial.
  */
 
+/**
+ * The code `create-checkout-session` returns with its 409 when the
+ * organisation already has a subscription that is billing. The same string is
+ * in `supabase/functions/create-checkout-session/guard.ts`, and its test
+ * asserts the two agree.
+ */
+export const ALREADY_SUBSCRIBED = 'already_subscribed';
+
 export type BillingTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 export interface BillingStatus {

@@ -25,6 +25,7 @@ import {
   stripeModeIsConfigured,
   priceColumn,
 } from '../_shared/stripe.ts';
+import { decideCheckout } from './guard.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -128,10 +129,26 @@ Deno.serve(async (req: Request) => {
 
     const { data: existingSub, error: subError } = await supabase
       .from('subscriptions')
-      .select('stripe_customer_id, stripe_mode')
+      .select('stripe_customer_id, stripe_mode, status, provider_ref')
       .eq('org_id', orgId)
       .maybeSingle();
     if (subError) throw subError;
+
+    // A second Checkout while a subscription is still billing creates a second
+    // Stripe subscription, and the webhook's upsert on org_id orphans the first
+    // while it keeps charging. Plan changes belong in the Billing Portal, so
+    // say so with a code the browser can act on. See guard.ts.
+    const decision = decideCheckout(existingSub, mode);
+    if (!decision.allow) {
+      return jsonResponse(
+        {
+          error: decision.reason,
+          message:
+            'This organisation already has a subscription. Change plan from the billing portal.',
+        },
+        409,
+      );
+    }
 
     // A customer id only exists inside the mode that created it. Reusing a
     // live one in test mode (or vice versa) is a "No such customer" error

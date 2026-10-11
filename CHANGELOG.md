@@ -16,7 +16,8 @@ Dependabot may be grouped into one line per week. The rule sits under
 - **fix(billing): Checkout guard, webhook ordering and an honest billing page.**
   Settings > Billing says "No plan yet" instead of "trialing" when there is no
   subscription, shows the entitled plan and formats prices in the plan currency
-  (BUG-106).
+  (BUG-106). `create-checkout-session` refuses a second Checkout with 409
+  `already_subscribed` and the page opens the Billing Portal instead (BUG-107).
 - **docs: restructure to the GEE OS Standard application profile.** Flat `docs/`
   with one file per concern, a new `qa/` folder, `CHANGELOG.md` and
   `KNOWN-ISSUES.md`. Overlapping documents merged; dated records kept as dated
