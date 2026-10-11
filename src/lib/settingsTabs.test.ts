@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PROFILE_TABS,
   SETTINGS_TABS,
+  defaultSettingsPath,
   profileTabs,
   settingsTabsForRole,
 } from '@/lib/settingsTabs';
@@ -18,13 +19,21 @@ describe('settingsTabsForRole', () => {
     expect(settingsTabsForRole('owner')).toHaveLength(SETTINGS_TABS.length);
   });
 
-  it('hides Billing and Permissions from a manager', () => {
+  it('hides every owner-only section from a manager', () => {
     // Billing spends money; Permissions can grant someone the ability to.
+    // Organisation and Audit render OwnerOnlyNotice to a manager, so showing
+    // the tab only led to a refusal.
     const routes = settingsTabsForRole('manager').map((t) => t.to);
     expect(routes).not.toContain('/app/settings/billing');
     expect(routes).not.toContain('/app/settings/permissions');
-    expect(routes).toContain('/app/settings/organisation');
-    expect(routes).toContain('/app/settings/audit');
+    expect(routes).not.toContain('/app/settings/organisation');
+    expect(routes).not.toContain('/app/settings/audit');
+    expect(routes).toEqual([
+      '/app/settings/roles',
+      '/app/settings/policies',
+      '/app/settings/notifications',
+      '/app/settings/integrations',
+    ]);
   });
 
   it('shows staff nothing at all', () => {
@@ -67,9 +76,30 @@ describe('settingsTabsForRole', () => {
   });
 });
 
+describe('defaultSettingsPath', () => {
+  it('lands an owner on Organisation', () => {
+    expect(defaultSettingsPath('owner')).toBe('/app/settings/organisation');
+  });
+
+  it('lands a manager on the first section they can use, not a refusal', () => {
+    expect(defaultSettingsPath('manager')).toBe('/app/settings/roles');
+  });
+
+  it('has nowhere to land for staff or an unresolved role', () => {
+    expect(defaultSettingsPath('staff')).toBeNull();
+    expect(defaultSettingsPath(null)).toBeNull();
+  });
+});
+
 describe('profileTabs', () => {
-  it('shows every tab. It is the person’s own account', () => {
-    expect(profileTabs()).toHaveLength(PROFILE_TABS.length);
+  it('shows every tab that is not hidden. It is the person’s own account', () => {
+    expect(profileTabs()).toHaveLength(PROFILE_TABS.filter((t) => !t.hidden).length);
+  });
+
+  it('hides API tokens from the bar but keeps its route in the list', () => {
+    // No public API exists yet. The page and route stay so a saved link works.
+    expect(PROFILE_TABS.map((t) => t.to)).toContain('/app/account/tokens');
+    expect(profileTabs().map((t) => t.to)).not.toContain('/app/account/tokens');
   });
 
   it('keeps the designed order', () => {
@@ -81,7 +111,6 @@ describe('profileTabs', () => {
       'Security',
       'Connected Accounts',
       'Sessions',
-      'API Tokens',
       'Activity',
     ]);
   });

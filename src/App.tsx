@@ -277,6 +277,10 @@ const SettingsAuditPage = lazyPage(
   'SettingsAuditPage',
   () => import('@/pages/app/settings/SettingsAuditPage'),
 );
+const SettingsIndexRedirect = lazyPage(
+  'SettingsIndexRedirect',
+  () => import('@/components/layout/SettingsLayout'),
+);
 const ProfileLayout = lazyPage(
   'ProfileLayout',
   () => import('@/components/layout/ProfileLayout'),
@@ -776,7 +780,7 @@ export function App(): JSX.Element {
                           element={<Navigate to="/app/settings/integrations" replace />}
                         />
                         <Route path="settings" element={<SettingsLayout />}>
-                          <Route index element={<Navigate to="organisation" replace />} />
+                          <Route index element={<SettingsIndexRedirect />} />
                           <Route
                             path="organisation"
                             element={<SettingsOrganisationPage />}
