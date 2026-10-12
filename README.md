@@ -81,7 +81,7 @@ The build must also succeed with no `.env` at all: CI has none, and a missing
 
 ### 3. Set up the database
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 155, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 156, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: `supabase db push`, which applies the whole ledger.
 

@@ -77,7 +77,7 @@ P1 was reachable by any existing check, and both now have one: `e2e/staff-dashbo
 A sixth defect, GAP-123, was a missing rule rather than a broken one — nothing stopped a person
 booking the same days off twice, and the entitlement was then spent twice on days they were absent
 for once. It was recorded as a decision first and closed on the owner's instruction the same day by
-`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took `main` to 155 migrations.
+`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took the tree to 155. `0156` (an invoice keeps its Stripe hosted page and PDF links, CAP-127) took `main` to 156 migrations.
 
 ### What production actually holds, 2026-08-31
 
