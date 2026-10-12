@@ -393,6 +393,42 @@ Owner decision D2. There is no free tier.
   `professional`; otherwise the column is left as it was, because the state,
   not the plan column, says the organisation is read-only.
 
+### 4.13 Website enquiries (`0155`)
+
+| Table       | Key columns                                                                                                                                                                                                                                                                | Purpose                                                                                                                                                                                                                     |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enquiries` | `name`, `work_email`, `organisation`, `team_size?` (`1-25`\|`26-100`\|`101-500`\|`500+`), `sector?`, `message` (10 to 5000 characters), `wants_demo`, `marketing_consent` (default false), `status` (`new`\|`replied`\|`demo_booked`\|`closed`), `ip_hash?`, `user_agent?` | One message from the public contact form at `/contact`. Read and triaged in the console's Enquiries inbox (`/admin/enquiries`). Every length and enum is a CHECK, so the table holds the rule as well as the Edge Function. |
+
+**A deliberate exception to "every domain table carries `org_id`".** The
+sender is a prospect, not a member of any organisation, so there is no tenant to
+scope the row to. Inventing one would put prospects' personal data inside a
+boundary a tenant owner can read. It is platform data, guarded like the other
+tables in this section:
+
+- RLS on. `anon` holds **nothing**, and there is no anon INSERT policy. The only
+  writer is `receive_enquiry(...)`, `security definer`, executable by
+  `service_role` alone, called by the `public-enquiry` Edge Function
+  (`docs/API-SPEC.md`). It applies two rate limits through `consume_rate_limit`
+  (`enquiry_ip`, 5 an hour per hashed address; `enquiry_all`, 100 an hour in
+  total) in the same transaction as the insert.
+- `authenticated` holds SELECT on every column except `ip_hash` and
+  `user_agent`, and UPDATE on `status` only. `enquiries_select` and
+  `enquiries_update` are both `is_platform_operational()` (owner, admin or
+  support, with the `0102` MFA gate), so finance and every tenant user read
+  nothing.
+- `ip_hash` is an HMAC-SHA256 of the client address keyed by a server secret,
+  never the address.
+- Kept 24 months from arrival, whatever the status, by the nightly retention
+  job (`enquiries` row in `retention_policies`). The same branch removes the
+  form's `rate_limit_events` rows after a day.
+- Not in the organisation export or the subject-access export: it has neither
+  an `org_id` nor a user key, so `check:export` does not ask for it. A request
+  from a prospect about their own enquiry is handled through the GDPR register
+  by hand (`docs/SECURITY.md`).
+
+`supabase/tests/database/enquiries.test.sql` asserts the privileges, the
+column withholding, the rate limit and who reads what.
+
 ## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions

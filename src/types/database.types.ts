@@ -664,6 +664,57 @@ export type Database = {
           },
         ];
       };
+      enquiries: {
+        Row: {
+          created_at: string;
+          id: string;
+          ip_hash: string | null;
+          marketing_consent: boolean;
+          message: string;
+          name: string;
+          organisation: string;
+          sector: string | null;
+          status: string;
+          team_size: string | null;
+          updated_at: string;
+          user_agent: string | null;
+          wants_demo: boolean;
+          work_email: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          ip_hash?: string | null;
+          marketing_consent?: boolean;
+          message: string;
+          name: string;
+          organisation: string;
+          sector?: string | null;
+          status?: string;
+          team_size?: string | null;
+          updated_at?: string;
+          user_agent?: string | null;
+          wants_demo?: boolean;
+          work_email: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          ip_hash?: string | null;
+          marketing_consent?: boolean;
+          message?: string;
+          name?: string;
+          organisation?: string;
+          sector?: string | null;
+          status?: string;
+          team_size?: string | null;
+          updated_at?: string;
+          user_agent?: string | null;
+          wants_demo?: boolean;
+          work_email?: string;
+        };
+        Relationships: [];
+      };
       feature_flag_changes: {
         Row: {
           actor_id: string | null;
@@ -3490,6 +3541,21 @@ export type Database = {
           p_severity: string;
           p_started_at?: string;
           p_title: string;
+        };
+        Returns: string;
+      };
+      receive_enquiry: {
+        Args: {
+          p_ip_hash: string;
+          p_marketing_consent: boolean;
+          p_message: string;
+          p_name: string;
+          p_organisation: string;
+          p_sector: string;
+          p_team_size: string;
+          p_user_agent: string;
+          p_wants_demo: boolean;
+          p_work_email: string;
         };
         Returns: string;
       };
