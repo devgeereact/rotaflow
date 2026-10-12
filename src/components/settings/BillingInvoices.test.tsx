@@ -44,8 +44,9 @@ describe('BillingInvoices', () => {
 
   it('links to the stored Stripe documents in a new tab without an opener', () => {
     render(<BillingInvoices invoices={[paid]} failed={false} />);
-    const view = screen.getAllByRole('link', { name: /View invoice RF-0001/ })[0];
-    const pdf = screen.getAllByRole('link', { name: /Download invoice RF-0001/ })[0];
+    const [view] = screen.getAllByRole('link', { name: /View invoice RF-0001/ });
+    const [pdf] = screen.getAllByRole('link', { name: /Download invoice RF-0001/ });
+    if (!view || !pdf) throw new Error('both links should render');
     expect(view.getAttribute('href')).toBe(paid.hosted_invoice_url);
     expect(pdf.getAttribute('href')).toBe(paid.invoice_pdf);
     for (const link of [view, pdf]) {
