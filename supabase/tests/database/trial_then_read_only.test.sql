@@ -34,16 +34,20 @@ from (values
   ('7a000000-0000-0000-0000-0000000000a2'::uuid, 'staff-trial@example.test')
 ) as v(id, email);
 
--- ---------- 1. Created by the owner, through the browser's own grant ----
+-- ---------- 1. A new organisation, naming no plan and no trial ---------
+-- Inserted as the database owner so the fixture can fix its id; the
+-- browser cannot send `id`. Neither `plan` nor `trial_ends_at` is given, so
+-- both come from the column defaults, which is what every creation path
+-- gets. plan_is_server_owned.test.sql covers the browser's own insert.
+insert into public.organisations (id, name, slug, created_by)
+values ('7a001000-0000-0000-0000-0000000000a0', 'Trial Care Ltd', 'trial-care',
+        '7a000000-0000-0000-0000-0000000000a1');
+
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
   json_build_object('sub', '7a000000-0000-0000-0000-0000000000a1', 'role', 'authenticated')::text,
   true);
-
-insert into public.organisations (id, name, slug, created_by)
-values ('7a001000-0000-0000-0000-0000000000a0', 'Trial Care Ltd', 'trial-care',
-        '7a000000-0000-0000-0000-0000000000a1');
 
 select is(
   (select plan from public.organisations where id = '7a001000-0000-0000-0000-0000000000a0'),
