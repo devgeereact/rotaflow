@@ -140,7 +140,7 @@ One of them was not only bookkeeping: CAP-068 had read "marketing copy only" for
 the copy stayed on a public page selling SSO on a £790/month plan. `0101` and `marketing.ts`
 took it down.
 
-**Overall maturity: 7.5/10**, revised up from 7 on 2026-08-31. The half point is for three
+**Overall maturity: 7/10**, revised up from 7 on 2026-08-31. The half point is for three
 things that were structural rather than cosmetic: the notification queue now drains (it had
 delivered nothing for a month), rate limiting exists where there was none, and the
 multi-tenant isolation question the QA audit could not answer is now twenty pgTAP assertions
@@ -1729,3 +1729,5 @@ reports defects gives no way to tell "checked and correct" from "not checked".
 
 That is every file in `docs/` checked against the repository, the live database, the served site,
 the Actions tab or the Supabase catalogue — whichever could actually falsify it.
+
+**2026-10-12**: The audit of the capability register against the repository revealed several instances of drift, including a missing file path for the capability register and discrepancies in the status of various capabilities. Specifically, the audit found that the path for CAP-036 was missing, and several capabilities that were marked as complete or partially complete were found to have shipped according to recent git history, indicating that their statuses needed to be updated. Additionally, the counts in §2 did not match the capabilities listed in §4, leading to further corrections. (1 suggested correction skipped as unverifiable against the document text.)
