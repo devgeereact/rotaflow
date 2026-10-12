@@ -11,6 +11,7 @@ import { WhyChooseBand } from '@/components/marketing/WhyChooseBand';
 import { TestimonialBand } from '@/components/marketing/TestimonialBand';
 import { FinalCta } from '@/components/marketing/FinalCta';
 import { HERO, PRIMARY_CTA, TAGLINE } from '@/lib/marketing';
+import { BOOK_DEMO_PATH } from '@/lib/enquiry';
 
 /**
  * `/`. The public marketing homepage.
@@ -67,7 +68,7 @@ export function HomePage(): JSX.Element {
                     <ArrowRight size={18} aria-hidden="true" />
                   </Button>
                 </Link>
-                <Link to="/contact">
+                <Link to={BOOK_DEMO_PATH}>
                   <Button size="lg" variant="secondary">
                     Book a demo
                   </Button>

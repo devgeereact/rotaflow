@@ -211,7 +211,7 @@ export const PRIVACY_FACTS: readonly DataFact[] = [
   {
     question: 'Who is the data about?',
     answer:
-      'People who work for an organisation using RotaFlow: their name, contact details, job title, the shifts they are rostered, the times they clock in and out including a location fix, leave and any documents their employer uploads.',
+      'People who work for an organisation using RotaFlow: their name, contact details, job title, the shifts they are rostered, the times they clock in and out including a location fix, leave and any documents their employer uploads. Separately, anyone who writes to us through the contact form on this website: what they sent, which we hold for ourselves rather than for an employer, and keep for 24 months.',
   },
   {
     question: 'Who decides how it is used?',

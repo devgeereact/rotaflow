@@ -90,6 +90,10 @@ Checked against the code and the register on 11 October 2026.
   per-tenant branding.** These are Phase 2. (CAP-065, CAP-066, CAP-067, CAP-068,
   CAP-032)
 - **No SMS notifications.** In-app, email and web push only. (`docs/SAAS.md` §9)
+- **Demo requests are answered by email.** The contact form records that you would
+  like a demo and we reply to arrange a time; there is no online booking calendar.
+  Until the form's server function is deployed, sending shows our support address
+  instead of a confirmation. (CAP-125)
 - **No live payment has completed end to end yet.** Stripe Checkout and the Billing
   Portal are built and test-mode behaviour is proven, but no real charge is on
   record. (CAP-036)
