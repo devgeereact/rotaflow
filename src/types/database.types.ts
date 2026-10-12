@@ -1762,6 +1762,7 @@ export type Database = {
           suspended_at: string | null;
           suspended_reason: string | null;
           timezone: string;
+          trial_ends_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1784,6 +1785,7 @@ export type Database = {
           suspended_at?: string | null;
           suspended_reason?: string | null;
           timezone?: string;
+          trial_ends_at?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1806,6 +1808,7 @@ export type Database = {
           suspended_at?: string | null;
           suspended_reason?: string | null;
           timezone?: string;
+          trial_ends_at?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -3560,6 +3563,14 @@ export type Database = {
         Returns: {
           feature: string;
           source: string;
+        }[];
+      };
+      my_org_billing_state: {
+        Args: { p_org: string };
+        Returns: {
+          read_only: boolean;
+          state: string;
+          trial_ends_at: string | null;
         }[];
       };
       my_platform_role: { Args: never; Returns: string };

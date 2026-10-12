@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
-import { getSubscription } from '@/services/subscriptionService';
+import { getOrgBillingState, getSubscription } from '@/services/subscriptionService';
 import { listStaff } from '@/services/staffService';
 import { getOrganisation } from '@/services/orgService';
 import { listLocations } from '@/services/locationService';
@@ -12,8 +12,10 @@ import {
   ALREADY_SUBSCRIBED,
   billingStatus,
   entitledPlan,
+  orgStateBadge,
   planName,
   planPriceLabel,
+  type OrgBillingSnapshot,
 } from '@/lib/billingState';
 import {
   listPlans,
@@ -57,6 +59,7 @@ export function SettingsBillingPage(): JSX.Element {
   const [siteCount, setSiteCount] = useState<number | null>(null);
   const [billingContact, setBillingContact] = useState('');
   const [orgPlan, setOrgPlan] = useState<string | null>(null);
+  const [orgState, setOrgState] = useState<OrgBillingSnapshot | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState<string | null>(null);
@@ -67,12 +70,13 @@ export function SettingsBillingPage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        const [sub, staff, sites, org, planList] = await Promise.all([
+        const [sub, staff, sites, org, planList, state] = await Promise.all([
           getSubscription(orgId),
           listStaff(orgId).catch(() => null),
           listLocations(orgId).catch(() => null),
           getOrganisation(orgId).catch(() => null),
           listPlans().catch(() => []),
+          getOrgBillingState(orgId).catch(() => null),
         ]);
         if (!active) return;
         setSubscription(sub);
@@ -81,6 +85,7 @@ export function SettingsBillingPage(): JSX.Element {
         setBillingContact(org ? orgProfileFields(org.settings, org).contactEmail : '');
         setOrgPlan(org?.plan ?? null);
         setPlans(planList);
+        setOrgState(state);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'settings-billing:load' });
@@ -151,7 +156,19 @@ export function SettingsBillingPage(): JSX.Element {
   // heading names the entitled plan from `organisations.plan`, which is what
   // the limits are enforced against, rather than the subscription's own plan.
   const status = subscription?.status ?? null;
-  const badge = billingStatus(subscription, new Date());
+  // The organisation-level state (0154) says what the subscription row cannot:
+  // the free trial has no row at all, and read-only is the absence of
+  // everything. Otherwise the subscription's own status is the answer.
+  const now = new Date();
+  const badge = orgStateBadge(orgState, now) ?? billingStatus(subscription, now);
+  const inFreeTrial = orgState?.state === 'trial';
+  const readOnly = orgState?.readOnly === true;
+  const formatDay = (iso: string): string =>
+    new Date(iso).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   const plan = subscription ? entitledPlan(orgPlan, subscription) : null;
   const subscribedPlanDiffers =
     subscription !== null && plan !== null && plan !== subscription.plan;
@@ -165,7 +182,7 @@ export function SettingsBillingPage(): JSX.Element {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-display text-section-heading font-semibold text-content dark:text-content-dark">
-              {plan ? planName(plan) : 'No plan yet'}
+              {plan ? planName(plan) : inFreeTrial ? 'Free trial' : 'No plan yet'}
             </p>
             <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
               {!subscription
@@ -174,9 +191,12 @@ export function SettingsBillingPage(): JSX.Element {
                   ? `Current period ends ${new Date(subscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
                   : 'No billing period set.'}
             </p>
-            {!subscription && orgPlan && (
+            {!subscription && inFreeTrial && orgPlan && (
               <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
-                Until then, this organisation has {planName(orgPlan)} limits.
+                Your free trial has {planName(orgPlan)} limits
+                {orgState?.trialEndsAt ? ` until ${formatDay(orgState.trialEndsAt)}` : ''}
+                . Choosing a plan now keeps the days you have left: your card is first
+                charged when the trial ends.
               </p>
             )}
             {subscribedPlanDiffers && subscription && plan && (
@@ -196,6 +216,20 @@ export function SettingsBillingPage(): JSX.Element {
 
             It says "at risk", not "will be cancelled": Stripe's dunning
             decides that, and this system does not take the payments. */}
+        {readOnly && (
+          <p
+            className="mt-4 rounded-xl bg-danger-wash px-4 py-3 text-sm text-content dark:bg-danger-wash-dark dark:text-content-dark"
+            role="status"
+          >
+            {subscription?.status === 'canceled'
+              ? 'Your plan has ended, so this organisation is read-only.'
+              : 'Your free trial has ended, so this organisation is read-only.'}{' '}
+            Everyone can still sign in, see and export everything, and staff can still
+            clock in and request leave. Choose a plan below to publish rotas and invite
+            people again.
+          </p>
+        )}
+
         {status === 'past_due' && subscription?.grace_until && (
           <p
             className="mt-4 rounded-xl bg-warning-wash px-4 py-3 text-sm text-content dark:bg-warning-wash-dark dark:text-content-dark"
@@ -300,6 +334,7 @@ export function SettingsBillingPage(): JSX.Element {
             <p className="text-sm text-content-muted dark:text-content-muted-dark">
               Choose a plan to add a payment method and activate billing for this
               organisation.
+              {inFreeTrial && ' Nothing is charged until your free trial ends.'}
             </p>
             {plans.map((p) => (
               <div

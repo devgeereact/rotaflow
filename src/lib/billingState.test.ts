@@ -1,5 +1,63 @@
 import { describe, expect, it } from 'vitest';
-import { billingStatus, entitledPlan, planName, planPriceLabel } from './billingState';
+import {
+  billingStatus,
+  entitledPlan,
+  orgStateBadge,
+  planName,
+  planPriceLabel,
+  READ_ONLY_BANNER,
+  readOnlyErrorMessage,
+  toOrgBillingSnapshot,
+  trialDaysLabel,
+} from './billingState';
+
+describe('trial and read-only (D2, 0154)', () => {
+  const now = new Date('2026-10-10T12:00:00Z');
+
+  it('counts the free trial from the server trial end', () => {
+    expect(trialDaysLabel('2026-11-02T12:00:00Z', now)).toBe('Trial, 23 days left');
+    expect(trialDaysLabel('2026-10-11T09:00:00Z', now)).toBe('Trial, 1 day left');
+    expect(trialDaysLabel('2026-10-10T20:00:00Z', now)).toBe('Trial, ends today');
+    expect(trialDaysLabel('2026-10-01T12:00:00Z', now)).toBeNull();
+    expect(trialDaysLabel(null, now)).toBeNull();
+  });
+
+  it('badges the free trial and read-only, and defers to the subscription otherwise', () => {
+    expect(
+      orgStateBadge(
+        { state: 'trial', trialEndsAt: '2026-11-02T12:00:00Z', readOnly: false },
+        now,
+      ),
+    ).toEqual({ label: 'Trial, 23 days left', tone: 'info' });
+    expect(
+      orgStateBadge({ state: 'read_only', trialEndsAt: null, readOnly: true }, now),
+    ).toEqual({ label: 'Read-only, choose a plan', tone: 'danger' });
+    expect(
+      orgStateBadge({ state: 'active', trialEndsAt: null, readOnly: false }, now),
+    ).toBeNull();
+    expect(orgStateBadge(null, now)).toBeNull();
+  });
+
+  it('never lets an unknown state hide the server read-only flag', () => {
+    const snapshot = toOrgBillingSnapshot({
+      state: 'something_new',
+      trial_ends_at: null,
+      read_only: true,
+    });
+    expect(snapshot.readOnly).toBe(true);
+    expect(orgStateBadge(snapshot, now)?.label).toBe('Read-only, choose a plan');
+  });
+
+  it('shows the server words for a BILL1 refusal and nothing for other errors', () => {
+    expect(
+      readOnlyErrorMessage({ code: 'BILL1', message: 'Your trial has ended.' }),
+    ).toBe('Your trial has ended.');
+    expect(readOnlyErrorMessage({ code: 'BILL1' })).toBe(READ_ONLY_BANNER);
+    expect(readOnlyErrorMessage({ code: '42501', message: 'denied' })).toBeNull();
+    expect(readOnlyErrorMessage(new Error('boom'))).toBeNull();
+    expect(readOnlyErrorMessage(null)).toBeNull();
+  });
+});
 
 const NOW = new Date('2026-10-10T12:00:00Z');
 

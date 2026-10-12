@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { touchOrgActivity } from '@/services/activityService';
 import type { Rota, RotaUpdate } from '@/types';
+import { readOnlyErrorMessage } from '@/lib/billingState';
 
 export interface CreateDraftRotaInput {
   orgId: string;
@@ -291,14 +292,16 @@ export async function getOrCreateRotaForPeriod(
  * cannot satisfy a minimum-cover rule, and the manager needs to know which day
  * and which site.
  *
- * Only the `ROTA*` codes are surfaced. A connection failure or a genuine 500
- * still gets the generic line, because those really are "try again".
+ * Only the `ROTA*` codes, and `BILL1` for a read-only organisation (0154),
+ * are surfaced. A connection failure or a genuine 500 still gets the generic
+ * line, because those really are "try again". Retrying a `BILL1` is not: the
+ * trial has ended, and the message says to choose a plan.
  */
 export function rotaRefusalMessage(err: unknown): string | null {
   const code = (err as { code?: string } | null)?.code;
   const message = (err as { message?: string } | null)?.message;
   if (typeof code === 'string' && /^ROTA\d$/.test(code) && message) return message;
-  return null;
+  return readOnlyErrorMessage(err);
 }
 
 export async function updateRota(id: string, patch: RotaUpdate): Promise<Rota> {
