@@ -35,6 +35,66 @@ persists an explicit user choice; it never silently forces dark from
 surface must still read correctly in both modes. Build dark variants
 alongside light ones, don't defer them.
 
+### Visual language (Tesla-inspired, adopted 2026-10-12)
+
+The owner's decision D10 (`docs/Plans 2026/04-DESIGN-AND-EXPERIENCE.md` §2a)
+adopts a quiet, flat, monochrome-plus-one visual language. The rules below were
+taken from a generated design reference and merged here by hand; the reference
+file itself was read outside the repository and discarded. **Source credit:**
+the "Tesla-inspired" template in VoltAgent's `awesome-design-md` collection,
+fetched with `npx getdesign@latest add tesla`. This section is the only place
+that name appears: no name, logo, wording or asset from it is used in the
+product, on the website or in metadata.
+
+**The rules.**
+
+- **Flat at rest.** No resting shadows, no gradients on UI chrome. A card is
+  separated from the canvas by a surface step and a hairline border. One subtle
+  shadow remains for something that genuinely floats (a menu, a popover, a
+  toast); a dialog sits on a flat translucent overlay instead.
+- **Monochrome plus one.** Neutrals carry the interface: near-black ink
+  `#171A20`, one pewter grey `#5C5E62` for every secondary line, light ash
+  `#F4F4F4` as the canvas, `#D0D1D2` and `#EEEEEE` for borders and dividers.
+  The brand blue (`#3B6FE0`, visually the same as the template's `#3E6AE1`) is
+  the one chromatic colour for action.
+- **Two radii.** 4px on anything pressed or typed into; 12px on a surface that
+  holds things (card, panel, dialog, media frame). `rounded-full` stays a shape.
+- **Two weights.** Inter 400 for body, 500 for headings, labels and buttons.
+  The typeface stays self-hosted Inter: the template's own face is proprietary.
+  Letter-spacing is normal; size carries the hierarchy, not weight.
+- **Colour-only interaction.** Hover and press change a fill, border or text
+  colour over 330ms on `cubic-bezier(0.5, 0, 0, 0.75)`. Nothing scales, lifts
+  or translates on hover.
+- **Few calls to action.** At most two per screen on the website: one primary,
+  one secondary. In the app, one primary per page header (§7).
+- **Frosted sticky navigation** (`bg-frost` with `backdrop-blur`, solid fallback
+  where `backdrop-filter` is unsupported) and a flat grey dialog overlay
+  (`bg-overlay`, `rgba(128,128,128,0.65)`).
+
+**How each surface adopts it.** The website takes all of it; its layouts are
+rebuilt in a later package. The app, staff mobile and platform console take the
+tokens and the shared primitives, and keep what makes a dense work tool usable.
+
+| Area                          | What changed (2026-10-12)                                                                                                       | What stayed                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Neutrals (light)              | Canvas `#F4F4F4`, ink `#171A20`, muted and secondary `#5C5E62`, border `#D0D1D2`, divider `#EEEEEE`                             | Token names; `surface` white; `primary`, `primary-wash`, `primary-ink`              |
+| Neutrals (dark)               | A neutral ramp on `#171A20`: surfaces step lighter (`#202329`, `#272A30`), border `#393C41`, ink `#EEEEEE`, muted `#A2A3A6`     | Dark mode itself, every `-dark` token name                                          |
+| Status                        | Nothing                                                                                                                         | success, warning, danger, info with their `wash`, `wash-dark`, `ink` and `ink-dark` |
+| Radius                        | `rounded-control` 4px, `rounded-card` 12px; `sm` to `xl` alias 4px, `2xl` and `3xl` alias 12px                                  | `rounded-full`                                                                      |
+| Elevation                     | `shadow-2xs` to `shadow-md` resolve to nothing; `shadow-lg` and above are one subtle value                                      | The stock class names                                                               |
+| Motion                        | `duration-control` 330ms with `ease-control`, also the default for a bare `transition-colors`; Button no longer scales on hover | `duration-press`, `-overlay`, `-entrance`; the reduced-motion reset                 |
+| Type                          | Primitive headings, labels and buttons at 500                                                                                   | Inter, the type scale, JetBrains Mono for figures                                   |
+| Touch targets and density     | Nothing                                                                                                                         | 44px controls, the 36px exceptions, dense tables and the compact rota grid          |
+| Pages not built on primitives | Nothing yet: they pick up new token values, not new markup                                                                      | Their own classes, held by the ratchets below until each is restyled                |
+
+**Drift is held, not swept.** `src/lib/designRatchet.test.ts` counts four
+patterns the language rules out (alpha status fills like `bg-danger/10`, a raw
+hex outside a palette file, `hover:scale-`, and `shadow-lg`) and fails if any
+count rises above its 2026-10-12 baseline. Removing one means lowering the
+baseline in the same change. `src/lib/themeContrast.test.ts` computes every
+text token on every neutral surface, and each status ink on its wash, in both
+themes, from the stylesheet itself.
+
 ## 2. Design tokens
 
 These are the tokens this document defines. The `@theme` block in `src/index.css` is the runtime source
@@ -48,20 +108,22 @@ one with a `dark:` variant using the dark column, e.g.
 
 ### Colour. Brand & neutrals
 
-| Token               | Tailwind class                                              | Light hex | Dark hex  | Use                                                                                    |
-| ------------------- | ----------------------------------------------------------- | --------- | --------- | -------------------------------------------------------------------------------------- |
-| Background (canvas) | `bg-background` / `dark:bg-background-dark`                 | `#F5F7FA` | `#0B1220` | App canvas, behind cards                                                               |
-| Surface (default)   | `bg-surface` / `dark:bg-surface-dark`                       | `#FFFFFF` | `#111A2E` | Cards, sheets, panels, rota cells                                                      |
-| Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#FAFBFC` | `#15203A` | Nested panels, hover fills, sidebar                                                    |
-| Surface rail        | `bg-surface-rail` / `dark:bg-surface-rail-dark`             | `#FAFBFC` | `#0E1729` | Navigation rail. Light matches `surface-subtle`; dark deliberately does not. See below |
-| Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#E3E6EA` | `#22304D` | Card/control outlines                                                                  |
-| Divider             | `border-divider` / `dark:border-divider-dark`               | `#F2F4F6` | `#1B2740` | Subtle in-list separators (lighter than border)                                        |
-| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0` | `#3B6FE0` | Brand, CTAs, active state, links                                                       |
-| Primary foreground  | `text-primary-fg`                                           | `#FFFFFF` | `#FFFFFF` | Text/icons on a solid primary fill                                                     |
-| Primary wash        | `bg-primary-wash` / `dark:bg-primary-wash-dark`             | `#EEF3FD` | `#182848` | Hovered/selected rows and nav items, **not** `primary/10`, see below                   |
-| Secondary           | `text-secondary`                                            | `#6B7280` | `#94A3B8` | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name) |
-| Text primary        | `text-content` / `dark:text-content-dark`                   | `#16191F` | `#F8FAFC` | Headings, body                                                                         |
-| Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#6B7280` | `#94A3B8` | Captions, hints, secondary text                                                        |
+| Token               | Tailwind class                                              | Light hex                | Dark hex              | Use                                                                                        |
+| ------------------- | ----------------------------------------------------------- | ------------------------ | --------------------- | ------------------------------------------------------------------------------------------ |
+| Background (canvas) | `bg-background` / `dark:bg-background-dark`                 | `#F4F4F4`                | `#171A20`             | App canvas, behind cards                                                                   |
+| Surface (default)   | `bg-surface` / `dark:bg-surface-dark`                       | `#FFFFFF`                | `#202329`             | Cards, sheets, panels, rota cells                                                          |
+| Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#F4F4F4`                | `#272A30`             | Nested panels, hover fills, sidebar                                                        |
+| Surface rail        | `bg-surface-rail` / `dark:bg-surface-rail-dark`             | `#F4F4F4`                | `#1B1E24`             | Navigation rail. Light matches `surface-subtle`; dark deliberately does not. See below     |
+| Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#D0D1D2`                | `#393C41`             | Card/control outlines                                                                      |
+| Divider             | `border-divider` / `dark:border-divider-dark`               | `#EEEEEE`                | `#2C2F35`             | Subtle in-list separators (lighter than border)                                            |
+| Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0`                | `#3B6FE0`             | Brand, CTAs, active state, links                                                           |
+| Primary foreground  | `text-primary-fg`                                           | `#FFFFFF`                | `#FFFFFF`             | Text/icons on a solid primary fill                                                         |
+| Primary wash        | `bg-primary-wash` / `dark:bg-primary-wash-dark`             | `#EEF3FD`                | `#182848`             | Hovered/selected rows and nav items, **not** `primary/10`, see below                       |
+| Secondary           | `text-secondary`                                            | `#5C5E62`                | `#A2A3A6`             | Secondary icons/labels (same value as content-muted; kept as a distinct semantic name)     |
+| Text primary        | `text-content` / `dark:text-content-dark`                   | `#171A20`                | `#EEEEEE`             | Headings, body                                                                             |
+| Text muted          | `text-content-muted` / `dark:text-content-muted-dark`       | `#5C5E62`                | `#A2A3A6`             | Captions, hints, secondary text                                                            |
+| Overlay             | `bg-overlay` / `dark:bg-overlay-dark`                       | `rgba(128,128,128,0.65)` | `rgba(0,0,0,0.6)`     | Dialog backdrop. Flat, no blur                                                             |
+| Frost               | `bg-frost` / `dark:bg-frost-dark` + `backdrop-blur`         | `rgba(255,255,255,0.75)` | `rgba(23,26,32,0.75)` | A sticky bar over scrolling content; solid fallback where `backdrop-filter` is unsupported |
 
 ### Colour. Semantic (operational status)
 
@@ -169,15 +231,19 @@ page hand-copies a chart hex.
 
 ### Typography
 
-| Role            | Size / line-height | Weight    | Tailwind class                       |
-| --------------- | ------------------ | --------- | ------------------------------------ |
-| Page title      | 32 / 40            | Semibold  | `text-page-title font-semibold`      |
-| Section heading | 24 / 32            | Semibold  | `text-section-heading font-semibold` |
-| Card heading    | 16 / 24            | Semibold  | `text-card-heading font-semibold`    |
-| Body            | 16 / 24            | Regular   | `text-base`                          |
-| Small           | 14 / 20            | Regular   | `text-sm`                            |
-| Caption         | 12 / 16            | Regular   | `text-xs`                            |
-| Code / meta     | 12 / 16            | Monospace | `text-xs font-mono`                  |
+| Role            | Size / line-height | Weight    | Tailwind class                     |
+| --------------- | ------------------ | --------- | ---------------------------------- |
+| Page title      | 32 / 40            | Medium    | `text-page-title font-medium`      |
+| Section heading | 24 / 32            | Medium    | `text-section-heading font-medium` |
+| Card heading    | 16 / 24            | Medium    | `text-card-heading font-medium`    |
+| Body            | 16 / 24            | Regular   | `text-base`                        |
+| Small           | 14 / 20            | Regular   | `text-sm`                          |
+| Caption         | 12 / 16            | Regular   | `text-xs`                          |
+| Code / meta     | 12 / 16            | Monospace | `text-xs font-mono`                |
+
+**Two weights, 400 and 500** (2026-10-12). The shared primitives use them now;
+screens that still carry `font-semibold` or `font-bold` move to `font-medium` as
+each is restyled, not in one sweep.
 
 Font family: **Inter Variable** throughout (`font-sans` / `font-display`, one
 face, no separate display typeface). `font-mono` is **JetBrains Mono**, used for
@@ -187,27 +253,34 @@ times, hours, and payroll figures so columns align.
 
 - Base unit = 4px (Tailwind default: `4px·8px·12px·16px·24px·32px·48px·64px` =
   `1·2·3·4·6·8·12·16`). Prefer `gap-*` / `space-y-*`.
-- Radii: **one value for the whole product, `0.5rem` (8px)** (owner's decision,
-  2026-08-05). Every named size token resolves to it, so `rounded-sm`,
-  `rounded-lg` and `rounded-2xl` are interchangeable; **prefer `rounded-lg`** in
-  new code. The aliases exist only so the ~350 existing usages did not have to be
-  rewritten to say the same thing. Do not add arbitrary radii
-  (`rounded-[10px]`). There were four, and they have been folded in.
-  `rounded-full` is **not** covered by this: it is a shape, not a radius. Avatars,
-  status dots and pills stay round.
-- Lean on `border-surface-border` + subtle surface contrast over heavy shadows.
+- Radii: **two values** (2026-10-12, replacing the single 8px of 2026-08-05).
+  `rounded-control` is **4px**, for anything pressed or typed into: buttons,
+  inputs, selects, chips, icon buttons, small tiles. `rounded-card` is **12px**,
+  for a surface that holds other things: cards, panels, dialogs, media frames.
+  The Tailwind size names stay as aliases so existing usages did not have to be
+  rewritten: `rounded-sm`, `rounded`, `rounded-md`, `rounded-lg` and
+  `rounded-xl` are 4px; `rounded-2xl` and `rounded-3xl` are 12px. **Prefer the
+  two named tokens** in new code. `cn()` knows both names, so a caller's
+  `className` overrides a primitive's radius as it would a stock class. Do not
+  add arbitrary radii (`rounded-[10px]`). `rounded-full` is **not** covered by
+  this: it is a shape, not a radius. Avatars, status dots and pills stay round.
+- Separate with `border-surface-border` and a surface step, never a resting shadow.
 
 ### Shadows (elevation)
 
-`shadow-sm` / `shadow` / `shadow-lg` are overridden in `src/index.css` (`--shadow-sm`, `--shadow`, `--shadow-lg`) to
-match the reference exactly. Use the stock Tailwind class names, don't invent
+Flat at rest (2026-10-12). The stock shadow classes are overridden in
+`src/index.css` so a resting surface casts nothing, and one subtle value is
+left for a layer that genuinely floats. Use the stock class names; don't invent
 new ones.
 
-| Level | Tailwind class     | Spec                          |
-| ----- | ------------------ | ----------------------------- |
-| 1     | `shadow-sm`        | `0 1px 2px rgba(0,0,0,0.05)`  |
-| 2     | `shadow` (default) | `0 4px 12px rgba(0,0,0,0.08)` |
-| 3     | `shadow-lg`        | `0 8px 24px rgba(0,0,0,0.12)` |
+| Level    | Tailwind class                                                | Spec                          | Use                                      |
+| -------- | ------------------------------------------------------------- | ----------------------------- | ---------------------------------------- |
+| Flat     | `shadow-2xs`, `shadow-xs`, `shadow-sm`, `shadow`, `shadow-md` | none (`0 0 #0000`)            | Cards, panels, buttons, anything at rest |
+| Floating | `shadow-lg`, `shadow-xl`, `shadow-2xl`                        | `0 4px 16px rgba(0,0,0,0.08)` | A menu, popover, toast or install prompt |
+
+A dialog is not lifted with a shadow: it sits on the flat `bg-overlay`.
+`shadow-lg` is counted by `src/lib/designRatchet.test.ts`, so a new use on
+something that does not float fails the build.
 
 ## 3. Iconography
 
@@ -224,18 +297,25 @@ control picks the role rather than a number:
 | Token               | Value | For                                                  |
 | ------------------- | ----- | ---------------------------------------------------- |
 | `duration-press`    | 100ms | a button's own press/hover transform                 |
-| `duration-control`  | 140ms | hover/focus colour on any control, row, link or tile |
+| `duration-control`  | 330ms | hover/focus colour on any control, row, link or tile |
 | `duration-overlay`  | 180ms | a menu, popover, dropdown or dialog appearing        |
 | `duration-entrance` | 300ms | the `animate-fade-up` entrance                       |
 
 | Interaction       | Spec                                                          |
 | ----------------- | ------------------------------------------------------------- |
-| Hover (buttons)   | `scale: 1.02`, `duration-control`, `easeInOut`                |
-| Tap               | `scale: 0.98`                                                 |
+| Hover (buttons)   | colour only, `duration-control`, `ease-control`               |
+| Tap               | colour only; no scale                                         |
 | Shift drag/drop   | ghost preview while dragging; stable drop target              |
 | Page/section in   | `animate-fade-up` — an _entrance_, never replayed on refetch  |
 | Sync/save confirm | brief, non-blocking, and only after the write actually landed |
 | Reduced motion    | see below — durations **and** transforms                      |
+
+**One easing curve for state changes.** `ease-control` is
+`cubic-bezier(0.5, 0, 0, 0.75)`, and `src/index.css` also sets it (with 330ms)
+as Tailwind's default, so a bare `transition-colors` moves the same way as the
+primitives. Nothing scales, lifts or translates on hover (2026-10-12); the
+`hover:scale-` uses that remain are counted by `src/lib/designRatchet.test.ts`
+and may only go down.
 
 **Never `transition-all`.** Name the properties that change. There are none in
 the tree today and the count should stay at zero: `transition-all` animates
@@ -248,14 +328,16 @@ transition by hand.
 
 **Reduced motion is two separate jobs.** `src/index.css` collapses every
 _duration_ to ~0 under `prefers-reduced-motion`, which is necessary and not
-sufficient: a `scale(1.02)` with no transition still scales, instantly. The
+sufficient: a `scale(1.02)` with no transition still scales, instantly.
+`Button` no longer scales at all; the rule below still binds anything else
+that transforms. The
 transform has to be removed as well, with
 `motion-reduce:hover:scale-100 motion-reduce:active:scale-100` (or
 `motion-reduce:transform-none`), and every entrance carries
 `motion-reduce:animate-none`. `e2e/responsive-and-motion.spec.ts` asserts both
-halves by measuring the rendered box, and asserts the transform is still there
-when motion _is_ allowed — otherwise the test would pass equally well if the
-effect had simply been deleted.
+halves by measuring the rendered box. With motion allowed it now asserts that
+the Button keeps its size and changes its fill, so the test still fails if the
+hover state is simply deleted.
 
 Do not animate table rows, animate counters, or replay a page entrance after a
 filter or a refetch. Preserve scroll, focus, filters and selection through a
@@ -574,8 +656,8 @@ screen or an implemented capability in `docs/UX-SPEC.md` and `docs/PRODUCT-SPEC.
 
 ### Visual expression
 
-Retain the established light-first system: composed blue actions, navy ink,
-calm neutral surfaces, and semantic status colours that are always paired with
+Retain the established light-first system: one blue for action, near-black ink,
+flat monochrome surfaces (see "Visual language" in §1), and semantic status colours that are always paired with
 text or an icon. The `BrandMark` is the only product mark implementation;
 The `@theme` block in `src/index.css` and `docs/DESIGN-SYSTEM.md` remain the source of truth for visual
 tokens. A rebrand must use those tokens rather than introducing raw colours or

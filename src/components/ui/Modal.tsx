@@ -120,7 +120,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4"
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-overlay p-4 dark:bg-overlay-dark"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -141,12 +141,12 @@ export function Modal({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="relative z-10 w-full max-w-lg animate-fade-up rounded-2xl border border-surface-border bg-surface p-6 shadow-lg outline-hidden motion-reduce:animate-none dark:border-surface-border-dark dark:bg-surface-dark"
+        className="relative z-10 w-full max-w-lg animate-fade-up rounded-card border border-surface-border bg-surface p-6 outline-hidden motion-reduce:animate-none dark:border-surface-border-dark dark:bg-surface-dark"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2
             id={titleId}
-            className="mt-1.5 text-lg font-semibold text-content dark:text-content-dark"
+            className="mt-1.5 text-lg font-medium text-content dark:text-content-dark"
           >
             {title}
           </h2>
@@ -158,7 +158,7 @@ export function Modal({
         {blockedDismiss && (
           <p
             role="status"
-            className="mb-4 flex items-start gap-2 rounded-lg bg-warning-wash px-3 py-2 text-sm text-content dark:bg-warning-wash-dark dark:text-content-dark"
+            className="mb-4 flex items-start gap-2 rounded-control bg-warning-wash px-3 py-2 text-sm text-content dark:bg-warning-wash-dark dark:text-content-dark"
           >
             <AlertTriangle
               size={16}

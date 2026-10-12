@@ -13,6 +13,46 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(billing): invoices in the app (plan F3, CAP-127).** `0156` adds
+  `hosted_invoice_url` and `invoice_pdf` to `invoices`, each constrained to https
+  on `invoice.stripe.com` or `pay.stripe.com`. `stripe-webhook` writes them on
+  `invoice.paid` and `invoice.payment_failed`, retrieving the invoice when the
+  event lacks them. Settings, Billing gains an Invoices section for the owner:
+  the last 12, with date, number, amount, status in words, and View and Download
+  PDF links. Not deployed; the billing contact is not yet sent to Stripe
+  (GAP-128) and stored links expire within 120 days (GAP-129).
+- **feat(design): flat, monochrome tokens and primitives (decision D10).** The
+  neutral and dark ramps move to true neutrals under the same token names
+  (canvas `#F4F4F4`, ink `#171A20`, muted `#5C5E62`; dark canvas `#171A20`).
+  Two radii (4px controls, 12px cards), no resting shadows, 330ms colour-only
+  transitions on one easing curve. Button, Card, Modal, Input, Select, Badge,
+  IconButton and HeaderBar follow; Button no longer scales on hover. Status
+  colours, dark mode, 44px targets and dense tables are unchanged. New tests:
+  `themeContrast.test.ts` (every text token on every surface, both themes) and
+  `designRatchet.test.ts` (alpha status fills, stray hex, hover scale and
+  `shadow-lg` may not rise). Page layouts are not restyled here.
+- **feat(billing): a 30-day trial, then a plan or read-only (decision D2).**
+  `0154` gives every organisation a server-set 30-day trial on Professional
+  limits and removes the free Starter fallback. Without a trial, a paid or
+  trialing subscription or a grace window, rotas, shifts and invites refuse
+  writes with `BILL1`, while clock-in, leave, reads and exports keep working.
+  Checkout passes the trial end to Stripe, and the webhook queues "Your trial
+  ends in 3 days" and "Payment failed" through the outbox. Settings, Billing
+  shows "Trial, N days left", owners and managers of a read-only organisation
+  see a banner, and the onboarding plan step and pricing FAQ state the trial
+  terms (CAP-125, GAP-126, GAP-127).
+
+- **feat: website enquiries are stored, and the console has an Enquiries inbox
+  (CAP-126, Plans 2026 F2).** `/contact` posts to a new public Edge Function,
+  `public-enquiry`, instead of opening a `mailto:` link that reached nobody on a
+  device with no mail client. The function checks the origin, validates every
+  field, ignores a filled honeypot, verifies Cloudflare Turnstile when its secret
+  is set, and stores the row through `receive_enquiry` (`0155`), rate-limited per
+  hashed address and in total. `anon` holds nothing on the new `enquiries` table;
+  operational platform roles triage it at `/admin/enquiries`. Kept 24 months by the
+  nightly retention job. "Book a demo" links tick the demo box. Needs
+  `supabase functions deploy public-enquiry --no-verify-jwt` before it accepts
+  anything (`docs/DEPLOYMENT.md`).
 - **fix(billing): Checkout guard, webhook ordering and an honest billing page.**
   Settings > Billing says "No plan yet" instead of "trialing" when there is no
   subscription, shows the entitled plan and formats prices in the plan currency

@@ -6,6 +6,7 @@ import {
   Building2,
   CreditCard,
   Flag,
+  Inbox,
   KeyRound,
   LayoutDashboard,
   LifeBuoy,
@@ -65,6 +66,14 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: Receipt,
     to: '/admin/billing',
     roles: ['platform_owner', 'platform_admin', 'platform_finance'],
+  },
+  // The website contact form's inbox (0155). Prospects' personal data, so
+  // operational roles only, matching `enquiries_select`.
+  {
+    label: 'Enquiries',
+    icon: Inbox,
+    to: '/admin/enquiries',
+    roles: ['platform_owner', 'platform_admin', 'platform_support'],
   },
   {
     label: 'Support Centre',

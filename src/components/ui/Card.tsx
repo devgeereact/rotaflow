@@ -1,7 +1,13 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-/** Surface container with the standard border + radius tokens. */
+/**
+ * Surface container with the standard border + radius tokens.
+ *
+ * Flat: the card is separated from the canvas by a surface step (white on
+ * light ash, or a lighter grey on the dark canvas) and a hairline border, never
+ * a resting shadow. 12px radius, the card size in docs/DESIGN-SYSTEM.md.
+ */
 export function Card({
   className,
   ...props
@@ -9,7 +15,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-surface-border bg-surface p-6 shadow-sm',
+        'rounded-card border border-surface-border bg-surface p-6',
         'dark:border-surface-border-dark dark:bg-surface-dark',
         className,
       )}
@@ -57,7 +63,7 @@ export function Panel({
       {(title || actions) && (
         <div className="flex flex-wrap items-center gap-2.5 border-b border-divider px-4 py-3.5 dark:border-divider-dark">
           {title && (
-            <h3 className="text-card-heading font-semibold text-content dark:text-content-dark">
+            <h3 className="text-card-heading font-medium text-content dark:text-content-dark">
               {title}
             </h3>
           )}

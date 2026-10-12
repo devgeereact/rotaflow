@@ -34,6 +34,7 @@ Anything added to that page must be true of the code first. Change
 | axe, WCAG 2 A and AA, signed-in screens | 26 screens (11 product previews and 15 platform console previews). Every non-contrast rule must be zero; colour contrast is counted in light and again in dark by toggling the `dark` class, and must be zero in both | `e2e/app-surface.spec.ts`           |
 | Responsive and reduced motion           | Layout at phone widths, and that motion respects `prefers-reduced-motion`                                                                                                                                             | `e2e/responsive-and-motion.spec.ts` |
 | Specific fixes                          | Regressions for defects already fixed                                                                                                                                                                                 | `e2e/a11y-fixes.spec.ts`            |
+| Token contrast                          | Every text token on every neutral surface, and each status ink on its own wash, in light and dark, computed from `src/index.css`                                                                                      | `src/lib/themeContrast.test.ts`     |
 
 All of these run in CI's `e2e` job (see the table in `qa/README.md`). What they do
 not cover: anything inside a dialog, onboarding branch or error state the scan does
@@ -63,10 +64,13 @@ where that has already bitten.
   colour. And an `-ink` with no dark pairing is worse than none: the light ink
   carries into dark mode at 2.5:1, so fixing one theme breaks the other.
 
-- **Muted grey does not go on a tinted panel.** `content-muted` is designed against
-  white and lands 4.23–4.49:1 on the washes — under the line, and a hundredth under
-  is under. Use `text-content` there; the semibold heading above it is what carries
-  the hierarchy.
+- **Muted grey on a tinted panel now passes, and a test keeps it so.** Until
+  2026-10-12 `content-muted` (`#6B7280`) landed 4.23 to 4.49:1 on the status washes,
+  under the line, and was banned there. The neutral ramp adopted that day
+  (`#5C5E62` light, `#A2A3A6` dark) measures 5.56 to 5.84:1 on every light wash
+  and 6.05 to 6.52:1 on every dark one, and `src/lib/themeContrast.test.ts` fails
+  if a token change takes any of those pairs back under 4.5:1. `text-content` is
+  still the better choice for a sentence that matters on a tinted panel.
 - Interactive targets ≥ **44×44px**. Staff use this one-handed on phones. This is
   a stronger product rule than WCAG 2.2 AA's 24px minimum, which has exceptions
   this product does not want to rely on. Icon-only controls use

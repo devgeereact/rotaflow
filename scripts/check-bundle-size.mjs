@@ -143,6 +143,7 @@ const DECLARED_ENV_KEYS = [
   'VITE_SENTRY_DSN',
   'VITE_ENABLE_OAUTH',
   'VITE_VAPID_PUBLIC_KEY',
+  'VITE_TURNSTILE_SITE_KEY',
 ];
 const undeclaredEnvKeys = new Set();
 for (const file of shipped) {

@@ -4,6 +4,7 @@ import { RouteFallback } from '@/components/RouteFallback';
 import { useOrg } from '@/hooks/useOrg';
 import { AppBootScreen } from '@/components/AppBootScreen';
 import { SupportAccessBanner } from '@/components/layout/SupportAccessBanner';
+import { ReadOnlyBanner } from '@/components/layout/ReadOnlyBanner';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileTabBar } from '@/components/layout/MobileTabBar';
 import { Header } from '@/components/layout/Header';
@@ -93,6 +94,9 @@ export function AppShell(): JSX.Element {
         {/* Above the scroll container, not inside it: a customer must not be
             able to scroll away the notice that their data is being viewed. */}
         <SupportAccessBanner />
+        {/* Owners and managers of a read-only organisation (D2, 0154). Above
+            the scroll container for the same reason as the one above. */}
+        <ReadOnlyBanner />
         {/* `pb-20` on mobile clears the fixed tab bar; without it the last row
             of every table sits underneath it and cannot be reached. */}
         <main

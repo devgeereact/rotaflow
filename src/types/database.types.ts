@@ -664,6 +664,57 @@ export type Database = {
           },
         ];
       };
+      enquiries: {
+        Row: {
+          created_at: string;
+          id: string;
+          ip_hash: string | null;
+          marketing_consent: boolean;
+          message: string;
+          name: string;
+          organisation: string;
+          sector: string | null;
+          status: string;
+          team_size: string | null;
+          updated_at: string;
+          user_agent: string | null;
+          wants_demo: boolean;
+          work_email: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          ip_hash?: string | null;
+          marketing_consent?: boolean;
+          message: string;
+          name: string;
+          organisation: string;
+          sector?: string | null;
+          status?: string;
+          team_size?: string | null;
+          updated_at?: string;
+          user_agent?: string | null;
+          wants_demo?: boolean;
+          work_email: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          ip_hash?: string | null;
+          marketing_consent?: boolean;
+          message?: string;
+          name?: string;
+          organisation?: string;
+          sector?: string | null;
+          status?: string;
+          team_size?: string | null;
+          updated_at?: string;
+          user_agent?: string | null;
+          wants_demo?: boolean;
+          work_email?: string;
+        };
+        Relationships: [];
+      };
       feature_flag_changes: {
         Row: {
           actor_id: string | null;
@@ -1194,7 +1245,9 @@ export type Database = {
           currency: string;
           due_on: string;
           failure_reason: string | null;
+          hosted_invoice_url: string | null;
           id: string;
+          invoice_pdf: string | null;
           issued_on: string;
           number: string;
           org_id: string;
@@ -1215,7 +1268,9 @@ export type Database = {
           currency?: string;
           due_on: string;
           failure_reason?: string | null;
+          hosted_invoice_url?: string | null;
           id?: string;
+          invoice_pdf?: string | null;
           issued_on?: string;
           number: string;
           org_id: string;
@@ -1236,7 +1291,9 @@ export type Database = {
           currency?: string;
           due_on?: string;
           failure_reason?: string | null;
+          hosted_invoice_url?: string | null;
           id?: string;
+          invoice_pdf?: string | null;
           issued_on?: string;
           number?: string;
           org_id?: string;
@@ -1762,6 +1819,7 @@ export type Database = {
           suspended_at: string | null;
           suspended_reason: string | null;
           timezone: string;
+          trial_ends_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1784,6 +1842,7 @@ export type Database = {
           suspended_at?: string | null;
           suspended_reason?: string | null;
           timezone?: string;
+          trial_ends_at?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1806,6 +1865,7 @@ export type Database = {
           suspended_at?: string | null;
           suspended_reason?: string | null;
           timezone?: string;
+          trial_ends_at?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -3490,6 +3550,21 @@ export type Database = {
         };
         Returns: string;
       };
+      receive_enquiry: {
+        Args: {
+          p_ip_hash: string;
+          p_marketing_consent: boolean;
+          p_message: string;
+          p_name: string;
+          p_organisation: string;
+          p_sector: string;
+          p_team_size: string;
+          p_user_agent: string;
+          p_wants_demo: boolean;
+          p_work_email: string;
+        };
+        Returns: string;
+      };
       enforce_retention: {
         Args: { p_dry_run?: boolean };
         Returns: {
@@ -3560,6 +3635,14 @@ export type Database = {
         Returns: {
           feature: string;
           source: string;
+        }[];
+      };
+      my_org_billing_state: {
+        Args: { p_org: string };
+        Returns: {
+          read_only: boolean;
+          state: string;
+          trial_ends_at: string | null;
         }[];
       };
       my_platform_role: { Args: never; Returns: string };

@@ -189,6 +189,19 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
   deleted its last reader, because Vite inlines every `VITE_*` variable into
   `import.meta.env` whether code reads it or not. **Retiring a service means
   removing its variable from `.env`, then checking the built bundle.**
+- **The website contact form needs its function deployed** (CAP-126). Until then
+  `/contact` shows the support address on every send. In order:
+  1. `supabase secrets set ENQUIRY_IP_SALT=<a long random string>` (recommended; the
+     function falls back to the service-role key as HMAC key material, and rotating
+     that would reset every rate limit).
+  2. Optional: `supabase secrets set ENQUIRY_NOTIFY_EMAIL=<the inbox to alert>`, which
+     also needs the platform `SMTP_*` secrets. Without it nobody is emailed and
+     `/admin/enquiries` is the only place an enquiry shows.
+  3. `supabase functions deploy public-enquiry --no-verify-jwt`.
+  4. Optional, and **both halves or neither**: `supabase secrets set
+TURNSTILE_SECRET_KEY=...` and `VITE_TURNSTILE_SITE_KEY=...` in the build `.env`,
+     then rebuild. The secret alone refuses every enquiry, because no widget renders
+     to produce a token.
 
 ## The live release tag is the deployed commit, not `main`
 

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Subscription } from '@/types';
+import { toOrgBillingSnapshot, type OrgBillingSnapshot } from '@/lib/billingState';
 
 /**
  * Reader for `subscriptions`.
@@ -26,4 +27,21 @@ export async function getSubscription(orgId: string): Promise<Subscription | nul
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * The organisation's trial and read-only state, for any member (0154).
+ *
+ * Not read from `subscriptions`: that table is owner-only, and a manager is
+ * the person the read-only banner is for. `my_org_billing_state` computes the
+ * state on the server from the clock, so the screen never decides by itself
+ * whether a trial has ended. Null for a non-member or an unknown organisation.
+ */
+export async function getOrgBillingState(
+  orgId: string,
+): Promise<OrgBillingSnapshot | null> {
+  const { data, error } = await supabase.rpc('my_org_billing_state', { p_org: orgId });
+  if (error) throw error;
+  const row = data?.[0];
+  return row ? toOrgBillingSnapshot(row) : null;
 }

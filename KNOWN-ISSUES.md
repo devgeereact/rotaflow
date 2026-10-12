@@ -70,12 +70,38 @@ Checked against the code and the register on 11 October 2026.
   them with the expected baseline has failed since 14 September 2026, so a change to
   sign-in settings would not be noticed automatically. (GAP-036)
 
+## Billing
+
+- **There is no free-forever plan.** A new organisation gets 30 days free with
+  Professional limits. After that, without a plan, the organisation is read-only:
+  everyone can sign in, see and export everything, and staff can clock in and
+  request leave, but rotas cannot be built or published and nobody new can be
+  invited. (CAP-125)
+- **A free trial ends without a reminder email.** The days left are on Settings,
+  Billing, and owners and managers see a banner once it has ended, but nothing is
+  emailed beforehand unless the owner has already chosen a plan through Stripe,
+  in which case Stripe's three-day notice is sent. (GAP-127)
+- **Choosing a plan with less than two days of the trial left starts billing that
+  day.** Stripe does not accept a shorter trial at Checkout. (CAP-125)
+- **Invoice links stop working after a while.** Settings, Billing lists your last
+  12 invoices with links to Stripe's copy, but Stripe expires those links about a
+  month after each invoice is due (never more than 120 days). For an older
+  invoice, open the billing portal from the same screen, which lists every one.
+  An invoice appears in the list once it is paid or a payment has failed, not
+  while it is still being prepared. (CAP-127, GAP-129)
+- **The billing contact shown on Settings, Billing is not sent to Stripe.**
+  Stripe emails receipts and invoices to the address used at checkout. (GAP-128)
+
 ## Product scope
 
 - **No public API, outbound webhooks, payroll integrations, SSO or SCIM, or
   per-tenant branding.** These are Phase 2. (CAP-065, CAP-066, CAP-067, CAP-068,
   CAP-032)
 - **No SMS notifications.** In-app, email and web push only. (`docs/SAAS.md` §9)
+- **Demo requests are answered by email.** The contact form records that you would
+  like a demo and we reply to arrange a time; there is no online booking calendar.
+  Until the form's server function is deployed, sending shows our support address
+  instead of a confirmation. (CAP-126)
 - **No live payment has completed end to end yet.** Stripe Checkout and the Billing
   Portal are built and test-mode behaviour is proven, but no real charge is on
   record. (CAP-036)

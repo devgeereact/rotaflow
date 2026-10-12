@@ -16,13 +16,14 @@ import type { Invoice } from '@/services/billingService';
  * reference. All of that is authorised, already loaded, and answers the
  * question somebody clicks View to ask.
  *
- * What it does NOT do is guess a provider URL. `invoices` has no
- * `hosted_invoice_url` or `invoice_pdf` column, so a link to Stripe could only
- * be assembled from `provider_ref` and a URL shape — which is a guessed
- * address that may 404, may point at the wrong Stripe mode, and would be
- * presented as if it were the customer's invoice. The panel says the hosted
- * copy is not stored, and names the reference so somebody can find it in
- * Stripe themselves.
+ * What it does NOT do is guess a provider URL. Since 0156 `invoices` stores
+ * Stripe's `hosted_invoice_url` and `invoice_pdf` for the customer's own
+ * Billing screen, but the console's rows come from
+ * `platform_invoice_directory`, which does not return them, and the stored
+ * links expire within 120 days anyway. A link assembled from `provider_ref`
+ * and a URL shape would be a guessed address that may 404 or point at the
+ * wrong Stripe mode. The panel names the reference so somebody can find the
+ * invoice in Stripe themselves.
  */
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
@@ -123,10 +124,11 @@ export function AdminInvoiceModal({
           </dl>
 
           <p className="text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
-            This is RotaFlow&rsquo;s own record. The provider&rsquo;s hosted invoice and
-            PDF are not stored here, and this console does not construct a link to them: a
-            URL assembled from the reference above would be a guess, and could point at
-            the wrong Stripe mode. Use the reference to find it in Stripe.
+            This is RotaFlow&rsquo;s own record. The customer sees Stripe&rsquo;s hosted
+            invoice and PDF on their own Billing screen; this console does not show or
+            construct a link to them, because a URL assembled from the reference above
+            would be a guess, and could point at the wrong Stripe mode. Use the reference
+            to find it in Stripe.
           </p>
 
           <div className="flex justify-end">

@@ -1,177 +1,144 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useRef, useState, type FormEvent } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { CheckCircle2, Mail, MessageSquare, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
+import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
-import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
-import { CONTACT_EMAIL, PRIMARY_CTA, SECTORS } from '@/lib/marketing';
+import {
+  TurnstileWidget,
+  type TurnstileHandle,
+} from '@/components/marketing/TurnstileWidget';
+import { CONTACT_EMAIL, PRIMARY_CTA } from '@/lib/marketing';
+import { env } from '@/lib/env';
+import {
+  EMPTY_ENQUIRY,
+  ENQUIRY_SECTOR_OPTIONS,
+  ENQUIRY_TEAM_SIZES,
+  validateEnquiryFields,
+  wantsDemoFromSearch,
+  type EnquiryErrors,
+  type EnquiryFields,
+} from '@/lib/enquiry';
+import { submitEnquiry, type SubmitOutcome } from '@/services/enquiryService';
 import { cn } from '@/lib/utils';
 
 /**
  * `/contact`.
  *
- * ## Why this composes an email rather than posting to an endpoint
+ * ## What happens when somebody presses Send
  *
- * There is no contact table, no form-handling Edge Function and no CRM. The
- * three options were: post nowhere and show a success message anyway, build a
- * public unauthenticated write endpoint, or hand the composed message to the
- * visitor's own mail client.
+ * The form posts to the `public-enquiry` Edge Function, which validates it
+ * again, applies a per-address rate limit and stores it in `enquiries` (0155)
+ * for the platform console's Enquiries inbox. Until October 2026 it opened a
+ * `mailto:` link instead, which reached nobody on a device with no mail client.
  *
- * The first is a lie. The brief's own rule is no dead buttons, and a fake
- * "thanks, we'll be in touch" is the worst kind because the visitor believes
- * it. The second is a public unauthenticated write on a multi-tenant database
- * holding staff PII: it needs rate limiting, spam handling and an RLS policy
- * that lets anon INSERT, which is a meaningful new attack surface for a
- * contact form.
+ * The success message appears only after the server answered 201. Anything
+ * else, including a network failure, shows the support address, so a visitor
+ * is never told a message arrived when it did not.
  *
- * So the form validates properly and then opens a pre-filled message. The
- * address is also shown as plain selectable text, because `mailto:` does
- * nothing useful on a device with no mail client configured, and a visitor who
- * hits that must still be able to reach us.
- *
- * Replace this with a real endpoint when one exists. The validation and the
- * success state are already here and do not need to change.
+ * `?demo=1` (every "Book a demo" link) starts with the demo box ticked.
  */
 
-type Enquiry = 'demo' | 'question' | 'pricing' | 'support';
+type FailureReason = Extract<SubmitOutcome, { ok: false }>['reason'];
 
-const ENQUIRIES: { value: Enquiry; label: string }[] = [
-  { value: 'demo', label: 'Book a demo' },
-  { value: 'question', label: 'A question about the product' },
-  { value: 'pricing', label: 'Pricing or plans' },
-  { value: 'support', label: 'Help with my account' },
-];
+type Phase =
+  | { kind: 'editing' }
+  | { kind: 'sending' }
+  | { kind: 'sent' }
+  | { kind: 'failed'; reason: FailureReason };
 
-interface Fields {
-  name: string;
-  email: string;
-  organisation: string;
-  sector: string;
-  teamSize: string;
-  enquiry: Enquiry;
-  message: string;
-}
+/** The order fields appear in, so a failed submit focuses the first invalid one. */
+const FIELD_ORDER = ['name', 'workEmail', 'organisation', 'message'] as const;
+type CheckedField = (typeof FIELD_ORDER)[number];
 
-const EMPTY: Fields = {
-  name: '',
-  email: '',
-  organisation: '',
-  sector: '',
-  teamSize: '',
-  enquiry: 'demo',
-  message: '',
+const FAILURE_TEXT: Record<FailureReason, string> = {
+  rate_limited: 'We have had a lot of messages from your connection in the last hour.',
+  invalid: 'Something in the form was not accepted.',
+  unavailable: 'Your message did not reach us.',
 };
 
-type Errors = Partial<Record<keyof Fields, string>>;
-
-/**
- * Deliberately permissive: `something@something.tld`. Stricter patterns reject
- * valid addresses (apostrophes, long TLDs, subdomains) and the real check is
- * whether the reply arrives.
- */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * The order the fields appear in, so a failed submit can move focus to the
- * first invalid ONE — the first in the form, not the first the object happens
- * to enumerate. Also the id prefix each one is rendered with.
- */
-const FIELD_ORDER = ['name', 'email', 'organisation', 'message'] as const;
-
-const FIELD_IDS: Record<(typeof FIELD_ORDER)[number], string> = {
-  name: 'contact-name',
-  email: 'contact-email',
-  organisation: 'contact-org',
-  message: 'contact-message',
-};
-
-function validate(fields: Fields): Errors {
-  const errors: Errors = {};
-  if (!fields.name.trim()) errors.name = 'Enter your name.';
-  if (!fields.email.trim()) errors.email = 'Enter your email address.';
-  else if (!EMAIL_PATTERN.test(fields.email.trim()))
-    errors.email = 'That does not look like an email address.';
-  if (!fields.organisation.trim()) errors.organisation = 'Enter your organisation.';
-  if (!fields.message.trim()) errors.message = 'Tell us a little about what you need.';
-  else if (fields.message.trim().length < 10)
-    errors.message = 'A bit more detail helps us give you a useful answer.';
-  return errors;
-}
-
-function composeMailto(fields: Fields): string {
-  const label = ENQUIRIES.find((e) => e.value === fields.enquiry)?.label ?? 'Enquiry';
-  const body = [
-    `Name: ${fields.name}`,
-    `Organisation: ${fields.organisation}`,
-    fields.sector && `Sector: ${fields.sector}`,
-    fields.teamSize && `Team size: ${fields.teamSize}`,
-    '',
-    fields.message,
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
-    `${label}, ${fields.organisation}`,
-  )}&body=${encodeURIComponent(body)}`;
-}
+const textareaClass = cn(
+  'w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden',
+  'placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary',
+  'dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark',
+);
 
 export function ContactPage(): JSX.Element {
-  const [fields, setFields] = useState<Fields>(EMPTY);
-  const [errors, setErrors] = useState<Errors>({});
-  const [sent, setSent] = useState(false);
+  const location = useLocation();
+  const [fields, setFields] = useState<EnquiryFields>(() => ({
+    ...EMPTY_ENQUIRY,
+    wantsDemo: wantsDemoFromSearch(location.search),
+  }));
+  const [errors, setErrors] = useState<EnquiryErrors>({});
+  const [phase, setPhase] = useState<Phase>({ kind: 'editing' });
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstile = useRef<TurnstileHandle>(null);
+  const siteKey = env.turnstileSiteKey;
 
-  const set = <K extends keyof Fields>(key: K, value: Fields[K]): void => {
-    setFields((prev) => ({ ...prev, [key]: value }));
-    // Clear the field's own error as soon as the user edits it. Leaving it up
-    // while they are fixing it reads as though the fix did not register.
-    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+  const refs = {
+    name: useRef<HTMLInputElement>(null),
+    workEmail: useRef<HTMLInputElement>(null),
+    organisation: useRef<HTMLInputElement>(null),
+    message: useRef<HTMLTextAreaElement>(null),
   };
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>): void => {
+  const set = <K extends keyof EnquiryFields>(key: K, value: EnquiryFields[K]): void => {
+    setFields((prev) => ({ ...prev, [key]: value }));
+    // Clear the field's own error as soon as it is edited, so the fix reads
+    // as registered.
+    setErrors((prev) =>
+      key in prev && prev[key as CheckedField] ? { ...prev, [key]: undefined } : prev,
+    );
+  };
+
+  const onSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    const found = validate(fields);
+    if (phase.kind === 'sending') return;
+
+    const found = validateEnquiryFields(fields);
     setErrors(found);
-    if (Object.keys(found).length > 0) {
-      // Focus the first invalid field, chosen from the validation result
-      // rather than from the DOM.
-      //
-      // This used to be `document.querySelector('[aria-invalid="true"]')` in
-      // this same handler, which cannot work: `setErrors` is batched, so on the
-      // first failed submit nothing carries `aria-invalid` yet and the query
-      // returns null — focus never moved, and somebody using a keyboard or a
-      // screen reader was told there were errors and left where they stood. On
-      // later submits it found the PREVIOUS render's first invalid field, which
-      // is worse than not moving.
-      const firstInvalid = FIELD_ORDER.find((key) => found[key] !== undefined);
-      if (firstInvalid) {
-        document.getElementById(FIELD_IDS[firstInvalid])?.focus();
-      }
+    const firstInvalid = FIELD_ORDER.find((key) => found[key] !== undefined);
+    if (firstInvalid) {
+      // Chosen from the validation result, not the DOM: `setErrors` has not
+      // rendered yet, so nothing carries `aria-invalid` at this point.
+      refs[firstInvalid].current?.focus();
       return;
     }
-    window.location.href = composeMailto(fields);
-    setSent(true);
+    if (siteKey && !turnstileToken) {
+      setPhase({ kind: 'failed', reason: 'unavailable' });
+      return;
+    }
+
+    setPhase({ kind: 'sending' });
+    const outcome = await submitEnquiry(fields, siteKey ? turnstileToken : null);
+    if (outcome.ok) {
+      setPhase({ kind: 'sent' });
+      return;
+    }
+    // A Turnstile token is single use, spent or not.
+    if (siteKey) turnstile.current?.reset();
+    setPhase({ kind: 'failed', reason: outcome.reason });
   };
 
-  const fieldError = (key: keyof Fields): JSX.Element | null =>
-    errors[key] ? (
-      <p
-        id={`${key}-error`}
-        role="alert"
-        className="mt-1.5 text-sm text-danger-ink dark:text-danger-ink-dark"
-      >
-        {errors[key]}
-      </p>
-    ) : null;
+  const startAgain = (): void => {
+    setFields({ ...EMPTY_ENQUIRY });
+    setErrors({});
+    setTurnstileToken(null);
+    setPhase({ kind: 'editing' });
+  };
 
-  const inputProps = (key: keyof Fields): Record<string, unknown> => ({
-    'aria-invalid': errors[key] ? true : undefined,
-    'aria-describedby': errors[key] ? `${key}-error` : undefined,
-    className: errors[key] ? 'border-danger focus-visible:ring-danger' : undefined,
-  });
+  const supportLink = (
+    <a
+      href={`mailto:${CONTACT_EMAIL}`}
+      className="rounded font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+    >
+      {CONTACT_EMAIL}
+    </a>
+  );
 
   return (
     <MarketingLayout title="Contact">
@@ -184,33 +151,19 @@ export function ContactPage(): JSX.Element {
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <Card className="p-7 md:p-9">
-            {sent ? (
-              <div className="py-8 text-center">
+            {phase.kind === 'sent' ? (
+              <div className="py-8 text-center" role="status">
                 <span className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-success/10 text-success">
                   <CheckCircle2 size={28} aria-hidden="true" />
                 </span>
                 <h2 className="font-display text-2xl font-bold text-content dark:text-content-dark">
-                  Your message is ready to send
+                  Message sent
                 </h2>
                 <p className="mx-auto mt-3 max-w-md leading-relaxed text-content-muted dark:text-content-muted-dark">
-                  We have opened it in your email app with everything filled in. Press
-                  send there and it reaches us. If nothing opened, email us directly at{' '}
-                  <a
-                    href={`mailto:${CONTACT_EMAIL}`}
-                    className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    {CONTACT_EMAIL}
-                  </a>
-                  .
+                  Thanks, we&rsquo;ve got your message. We reply within one working day.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setSent(false);
-                      setFields(EMPTY);
-                    }}
-                  >
+                  <Button variant="secondary" onClick={startAgain}>
                     Write another message
                   </Button>
                   <Link to="/signup">
@@ -219,7 +172,7 @@ export function ContactPage(): JSX.Element {
                 </div>
               </div>
             ) : (
-              <form onSubmit={onSubmit} noValidate>
+              <form onSubmit={(e) => void onSubmit(e)} noValidate>
                 <h2 className="font-display text-xl font-bold text-content dark:text-content-dark">
                   Send us a message
                 </h2>
@@ -228,136 +181,178 @@ export function ContactPage(): JSX.Element {
                 </p>
 
                 <div className="mt-7 grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="contact-name">Your name *</Label>
+                  <Field label="Your name" required error={errors.name}>
                     <Input
-                      id="contact-name"
+                      ref={refs.name}
                       name="name"
                       autoComplete="name"
+                      maxLength={120}
                       value={fields.name}
                       onChange={(e) => set('name', e.target.value)}
                       placeholder="Alex Morgan"
-                      {...inputProps('name')}
                     />
-                    {fieldError('name')}
-                  </div>
+                  </Field>
 
-                  <div>
-                    <Label htmlFor="contact-email">Work email *</Label>
+                  <Field label="Work email" required error={errors.workEmail}>
                     <Input
-                      id="contact-email"
-                      name="email"
+                      ref={refs.workEmail}
+                      name="workEmail"
                       type="email"
                       autoComplete="email"
-                      value={fields.email}
-                      onChange={(e) => set('email', e.target.value)}
+                      maxLength={254}
+                      value={fields.workEmail}
+                      onChange={(e) => set('workEmail', e.target.value)}
                       placeholder="alex@yourorganisation.co.uk"
-                      {...inputProps('email')}
                     />
-                    {fieldError('email')}
-                  </div>
+                  </Field>
 
-                  <div>
-                    <Label htmlFor="contact-org">Organisation *</Label>
+                  <Field label="Organisation" required error={errors.organisation}>
                     <Input
-                      id="contact-org"
+                      ref={refs.organisation}
                       name="organisation"
                       autoComplete="organization"
+                      maxLength={160}
                       value={fields.organisation}
                       onChange={(e) => set('organisation', e.target.value)}
                       placeholder="Sunnyvale Care Group"
-                      {...inputProps('organisation')}
                     />
-                    {fieldError('organisation')}
-                  </div>
+                  </Field>
 
-                  <div>
-                    <Label htmlFor="contact-size">How many staff?</Label>
+                  <Field label="How many staff?">
                     <Select
-                      id="contact-size"
                       name="teamSize"
                       value={fields.teamSize}
                       onChange={(e) => set('teamSize', e.target.value)}
                     >
                       <option value="">Prefer not to say</option>
-                      <option value="1-25">1-25</option>
-                      <option value="26-100">26-100</option>
-                      <option value="101-500">101-500</option>
-                      <option value="500+">500+</option>
+                      {ENQUIRY_TEAM_SIZES.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
                     </Select>
-                  </div>
+                  </Field>
 
-                  <div>
-                    <Label htmlFor="contact-sector">Sector</Label>
+                  <Field label="Sector" className="sm:col-span-2">
                     <Select
-                      id="contact-sector"
                       name="sector"
                       value={fields.sector}
                       onChange={(e) => set('sector', e.target.value)}
                     >
                       <option value="">Select a sector</option>
-                      {SECTORS.map(({ name }) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                      <option value="Other">Something else</option>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="contact-enquiry">What is this about?</Label>
-                    <Select
-                      id="contact-enquiry"
-                      name="enquiry"
-                      value={fields.enquiry}
-                      onChange={(e) => set('enquiry', e.target.value as Enquiry)}
-                    >
-                      {ENQUIRIES.map(({ value, label }) => (
+                      {ENQUIRY_SECTOR_OPTIONS.map(({ value, label }) => (
                         <option key={value} value={value}>
                           {label}
                         </option>
                       ))}
                     </Select>
-                  </div>
+                  </Field>
                 </div>
 
-                <div className="mt-5">
-                  <Label htmlFor="contact-message">How can we help? *</Label>
+                <Field
+                  label="How can we help?"
+                  required
+                  error={errors.message}
+                  className="mt-5"
+                >
                   <textarea
-                    id="contact-message"
+                    ref={refs.message}
                     name="message"
                     rows={5}
+                    maxLength={5000}
                     value={fields.message}
                     onChange={(e) => set('message', e.target.value)}
                     placeholder="Tell us how you schedule today and what you are trying to fix."
-                    aria-invalid={errors.message ? true : undefined}
-                    aria-describedby={errors.message ? 'message-error' : undefined}
                     className={cn(
-                      'w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden',
-                      'placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary',
-                      'dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark',
+                      textareaClass,
                       errors.message && 'border-danger focus-visible:ring-danger',
                     )}
                   />
-                  {fieldError('message')}
+                </Field>
+
+                <div className="mt-5 space-y-3">
+                  <label className="flex items-start gap-2.5 text-sm text-content dark:text-content-dark">
+                    <input
+                      type="checkbox"
+                      name="wantsDemo"
+                      checked={fields.wantsDemo}
+                      onChange={(e) => set('wantsDemo', e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                    />
+                    <span>I&rsquo;d like a demo</span>
+                  </label>
+                  <label className="flex items-start gap-2.5 text-sm text-content dark:text-content-dark">
+                    <input
+                      type="checkbox"
+                      name="marketingConsent"
+                      checked={fields.marketingConsent}
+                      onChange={(e) => set('marketingConsent', e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                    />
+                    <span>
+                      Send me occasional emails about RotaFlow. Optional: leave it
+                      unticked and we only reply to this message.
+                    </span>
+                  </label>
                 </div>
 
-                <Button type="submit" size="lg" className="mt-7 w-full sm:w-auto">
-                  Send message
+                {/* The honeypot. Off-screen, out of the tab order and hidden
+                    from assistive technology, so a person never meets it; a
+                    form-filling script usually does. The server answers a
+                    filled one exactly like a real message and stores nothing. */}
+                <div
+                  aria-hidden="true"
+                  className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden"
+                >
+                  <label htmlFor="contact-website">Website</label>
+                  <input
+                    id="contact-website"
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={fields.website}
+                    onChange={(e) => set('website', e.target.value)}
+                  />
+                </div>
+
+                {siteKey && (
+                  <TurnstileWidget
+                    ref={turnstile}
+                    siteKey={siteKey}
+                    onToken={setTurnstileToken}
+                  />
+                )}
+
+                {phase.kind === 'failed' && (
+                  <div className="mt-6" role="alert">
+                    <Callout tone="danger" title="Not sent">
+                      <p>
+                        {siteKey && !turnstileToken && phase.reason === 'unavailable'
+                          ? 'The security check has not finished. Wait a moment and try again.'
+                          : FAILURE_TEXT[phase.reason]}{' '}
+                        Please email us at {supportLink} instead, and we will reply from
+                        there.
+                      </p>
+                    </Callout>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="mt-7 w-full sm:w-auto"
+                  disabled={phase.kind === 'sending'}
+                  aria-busy={phase.kind === 'sending' || undefined}
+                >
+                  {phase.kind === 'sending' ? 'Sending…' : 'Send message'}
                 </Button>
 
-                {/* A just-in-time notice, and an unusually easy one to write:
-                    this form is a mailto handoff, so there is genuinely no
-                    server row behind it. Saying that is better for the reader
-                    than a generic "we value your privacy" line, and it is the
-                    kind of claim somebody can check by watching their own
-                    network tab. */}
+                {/* A just-in-time notice: what happens to what is typed here,
+                    stated so it can be checked against the Privacy Notice. */}
                 <p className="mt-4 text-sm text-content-muted dark:text-content-muted-dark">
-                  This opens a message in your own email program — nothing you type here
-                  is stored on our servers, and nothing is sent until you send it
-                  yourself. Once it arrives it is an email in a mailbox, handled as
-                  described in the{' '}
+                  We store your message so we can reply to it, and delete it after 24
+                  months. It is read only by the RotaFlow team, as described in the{' '}
                   <Link
                     to="/legal/privacy"
                     className="font-medium text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
@@ -379,14 +374,7 @@ export function ContactPage(): JSX.Element {
                 Email us directly
               </h2>
               <p className="mt-1.5 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-                Prefer your own email client? Write to{' '}
-                <a
-                  href={`mailto:${CONTACT_EMAIL}`}
-                  className="rounded font-medium text-primary-ink dark:text-primary-ink-dark underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  {CONTACT_EMAIL}
-                </a>
-                .
+                Prefer your own email client? Write to {supportLink}.
               </p>
             </Card>
 

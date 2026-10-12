@@ -3,39 +3,63 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+  /*
+    Neutral ramp: the monochrome visual language adopted 2026-10-12
+    (docs/DESIGN-SYSTEM.md "Visual language"). The token NAMES are the ones
+    every screen already uses; only the values moved, from a cool blue-grey
+    set to true neutrals. Light: white surfaces on a light-ash canvas, a
+    near-black ink with a slight blue undertone, one pewter grey for every
+    secondary line. Dark: the same near-black (#171A20) as the canvas, with
+    surfaces stepping lighter rather than casting shadows.
+
+    Every text token here is checked against every surface it can sit on by
+    `src/lib/themeContrast.test.ts`, which reads this block. Change a value
+    and that test tells you whether 4.5:1 still holds.
+  */
   /* app canvas (light) */
-  --color-background: #f5f7fa;
+  --color-background: #f4f4f4;
   /* app canvas (dark) */
-  --color-background-dark: #0b1220;
+  --color-background-dark: #171a20;
 
   /* cards, sheets, rota cells (light) */
   --color-surface: #ffffff;
   /* cards, sheets, rota cells (dark) */
-  --color-surface-dark: #111a2e;
+  --color-surface-dark: #202329;
   /* nested panels, hover fills (light) */
-  --color-surface-subtle: #fafbfc;
+  --color-surface-subtle: #f4f4f4;
   /* nested panels, hover fills (dark) */
-  --color-surface-subtle-dark: #15203a;
+  --color-surface-subtle-dark: #272a30;
   /* card/control outlines (light) */
-  --color-surface-border: #e3e6ea;
+  --color-surface-border: #d0d1d2;
   /* card/control outlines (dark) */
-  --color-surface-border-dark: #22304d;
+  --color-surface-border-dark: #393c41;
   /*
-    Navigation rail. Light is `subtle`; dark deliberately is not —
-    `subtle-dark` (#15203A) is a *raised* panel and reads as a card
-    floating over the canvas, where a rail should sit behind it. This
-    value falls between `background-dark` and `surface-dark` so the
-    rail recedes and the content column comes forward. Named
-    separately so restyling the rail never restyles every nested
-    panel. From docs/design/PLATFORM_CONSOLE.html.
+    Navigation rail. Light matches `subtle`; dark deliberately does not:
+    `subtle-dark` is a *raised* panel and reads as a card floating over the
+    canvas, where a rail should sit behind it. This value falls between
+    `background-dark` and `surface-dark` so the rail recedes and the content
+    column comes forward. Named separately so restyling the rail never
+    restyles every nested panel. From docs/design/PLATFORM_CONSOLE.html.
   */
-  --color-surface-rail: #fafbfc;
-  --color-surface-rail-dark: #0e1729;
+  --color-surface-rail: #f4f4f4;
+  --color-surface-rail-dark: #1b1e24;
 
   /* subtle in-list separators (light) */
-  --color-divider: #f2f4f6;
+  --color-divider: #eeeeee;
   /* subtle in-list separators (dark) */
-  --color-divider-dark: #1b2740;
+  --color-divider-dark: #2c2f35;
+
+  /*
+    Layering without shadow. A dialog backdrop is a flat translucent grey,
+    not a black scrim, and a sticky bar that floats over content is
+    frosted (a translucent fill plus `backdrop-blur`) rather than lifted.
+    Dark mode needs its own values: a mid-grey veil over a near-black page
+    lightens it, which reads as a fault.
+  */
+  --color-overlay: rgb(128 128 128 / 0.65);
+  --color-overlay-dark: rgb(0 0 0 / 0.6);
+  --color-frost: rgb(255 255 255 / 0.75);
+  --color-frost-dark: rgb(23 26 32 / 0.75);
 
   /* brand blue — CTAs, active state, links */
   --color-primary: #3b6fe0;
@@ -123,9 +147,9 @@
   --color-ink-soft: #5a6684;
 
   /* secondary icons/labels (light) */
-  --color-secondary: #6b7280;
+  --color-secondary: #5c5e62;
   /* secondary icons/labels (dark) */
-  --color-secondary-dark: #94a3b8;
+  --color-secondary-dark: #a2a3a6;
 
   /*
     Status colours for rota states (used with text/icon, never colour
@@ -218,13 +242,13 @@
   --color-info-ink-dark: #56a0da;
 
   /* headings, body (light) */
-  --color-content: #16191f;
+  --color-content: #171a20;
   /* headings, body (dark) */
-  --color-content-dark: #f8fafc;
+  --color-content-dark: #eeeeee;
   /* captions, hints (light) */
-  --color-content-muted: #6b7280;
+  --color-content-muted: #5c5e62;
   /* captions, hints (dark) */
-  --color-content-muted-dark: #94a3b8;
+  --color-content-muted-dark: #a2a3a6;
 
   /*
     Availability matrix cell washes (docs/design/Availability.png). Four
@@ -510,12 +534,26 @@
     number:
   */
   --transition-duration-press: 100ms;
-  /* hover/focus colour on any control, row or link */
-  --transition-duration-control: 140ms;
+  /*
+    hover/focus colour on any control, row or link. 330ms on the
+    `ease-control` curve since 2026-10-12: state changes are colour only
+    (no scale, no lift), and a colour that settles over a third of a
+    second reads as calm where 140ms read as a flicker.
+  */
+  --transition-duration-control: 330ms;
   /* a menu, popover, dropdown or dialog appearing */
   --transition-duration-overlay: 180ms;
   /* the existing `animate-fade-up` page entrance */
   --transition-duration-entrance: 300ms;
+
+  /*
+    The one easing curve for colour and border changes (`ease-control`),
+    and the default for any bare `transition-colors`, so a control that
+    names no timing still moves the way the primitives do.
+  */
+  --ease-control: cubic-bezier(0.5, 0, 0, 0.75);
+  --default-transition-duration: 330ms;
+  --default-transition-timing-function: cubic-bezier(0.5, 0, 0, 0.75);
 
   /*
     266px — the splash logo mark at its reference size; sits between
@@ -530,38 +568,55 @@
   --tracking-lockup: 0.0625em;
 
   /*
-    One radius for the whole product: 0.5rem (8px), everywhere
-    (owner's decision, 2026-08-05 — first sections only, then all of it).
+    Two radii (2026-10-12), replacing the single 8px of 2026-08-05.
 
-    Every named size resolves to the same value, so `rounded-sm`,
-    `rounded-lg` and `rounded-2xl` are interchangeable and no screen can
-    drift by picking a different one. Prefer `rounded-lg` in new code;
-    the others are kept as aliases so the ~350 existing usages did not
-    all have to be rewritten to say the same thing.
+    `rounded-control` (4px) is for anything a person presses or types into:
+    buttons, inputs, selects, chips, icon buttons, tiles inside a card.
+    `rounded-card` (12px) is for a surface that holds other things: cards,
+    panels, dialogs, media frames. A small radius on the control and a
+    larger one on its container is what keeps a dense screen precise
+    without looking sharp.
+
+    The Tailwind size names are kept as aliases so the existing usages did
+    not all have to be rewritten. `sm`, the bare `rounded`, `md`, `lg` and
+    `xl` resolve to the control radius, because across the tree they are
+    overwhelmingly on controls and small tiles; `2xl` and `3xl` resolve to
+    the card radius, because that is what `Card` and `Modal` used. Prefer
+    the two named tokens in new code.
 
     `rounded-full` is deliberately NOT redefined. It is a *shape*, not a
     radius — avatars, status dots and pills are round because they are
-    round, and flattening them to 8px would turn every avatar into a
-    square and every status dot into a tile.
+    round, and flattening them would turn every avatar into a square and
+    every status dot into a tile.
   */
-  --radius-sm: 0.5rem;
-  --radius: 0.5rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.5rem;
-  --radius-2xl: 0.5rem;
-  --radius-3xl: 0.5rem;
+  --radius-control: 0.25rem;
+  --radius-card: 0.75rem;
+  --radius-sm: 0.25rem;
+  --radius: 0.25rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.25rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 0.75rem;
 
   /*
-    Elevation levels from docs/DESIGN-SYSTEM.md §2 — override the Tailwind
-    defaults so `shadow-sm` / `shadow` / `shadow-lg` match the reference.
-    level 1
+    Elevation (2026-10-12). Flat at rest: a card is separated from the
+    canvas by a surface step and a border, not a shadow, so the resting
+    levels resolve to a transparent zero-size shadow (not `none`, which is
+    invalid inside the comma-separated list Tailwind composes with rings).
+    One subtle value remains, at `shadow-lg` and above, for something that
+    genuinely floats over the page: a menu, a popover, a toast. Use the
+    stock class names.
   */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  /* level 2 */
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  /* level 3 */
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  /* the one floating value */
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-2xl: 0 4px 16px rgba(0, 0, 0, 0.08);
 
   --animate-fade-up: fade-up 300ms ease-out both;
 
@@ -690,8 +745,8 @@
     @apply bg-background text-content dark:bg-background-dark dark:text-content-dark font-sans antialiased;
     min-height: 100vh;
     transition:
-      background-color 150ms ease-in-out,
-      color 150ms ease-in-out;
+      background-color 330ms cubic-bezier(0.5, 0, 0, 0.75),
+      color 330ms cubic-bezier(0.5, 0, 0, 0.75);
 
     /*
      * Room for the consent banner, which is `fixed bottom-0` and would

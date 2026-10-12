@@ -32,9 +32,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 // destructive or confirming action in the app hand-rolled its own colours, // 43 elements carrying `bg-danger`/`text-danger` in a className, none of them
 // agreeing on padding, weight or hover.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-primary-fg hover:bg-primary/90',
+  // Hover darkens toward the ink step rather than fading to `primary/90`: an
+  // alpha fill lightens over white, and the visual language here is a colour
+  // shift only, never a lift or a scale.
+  primary: 'bg-primary text-primary-fg hover:bg-primary-ink active:bg-primary-ink',
   secondary:
-    'bg-surface text-content border border-surface-border hover:bg-surface-subtle ' +
+    'bg-surface text-content border-surface-border hover:bg-surface-subtle ' +
     'dark:bg-surface-dark dark:text-content-dark dark:border-surface-border-dark dark:hover:bg-surface-subtle-dark',
   // `text-primary` is a FILL colour: #3B6FE0 as text on `surface` measures
   // 4.08:1, under the 4.5:1 AA minimum, and `ghost` is the one variant whose
@@ -43,16 +46,17 @@ const VARIANTS: Record<Variant, string> = {
   // docs/ACCESSIBILITY.md warns about.
   ghost:
     'bg-transparent text-primary-ink dark:text-primary-ink-dark hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark',
-  success: 'bg-success text-white hover:bg-success/90',
+  success: 'bg-success text-white hover:bg-success-ink active:bg-success-ink',
   // `warning` is the one fill in the set that fails contrast against white at
   // its token value (#E0A030), so its ink is the dark content token rather
   // than white. Same swatch as the reference; readable text on it.
-  warning: 'bg-warning text-content hover:bg-warning/90',
-  danger: 'bg-danger text-white hover:bg-danger/90',
+  warning: 'bg-warning text-content hover:brightness-95 active:brightness-90',
+  danger: 'bg-danger text-white hover:bg-danger-ink active:bg-danger-ink',
   clock:
-    'bg-clock text-primary-fg hover:bg-clock/90 focus-visible:ring-clock focus-visible:ring-offset-2',
+    'bg-clock text-primary-fg hover:bg-clock-fg focus-visible:ring-clock focus-visible:ring-offset-2',
   'danger-outline':
-    'bg-transparent text-danger border border-danger/40 hover:bg-danger/10',
+    'bg-transparent text-danger-ink border-danger/40 hover:bg-danger-wash ' +
+    'dark:text-danger-ink-dark dark:hover:bg-danger-wash-dark',
 };
 
 const SIZES: Record<Size, string> = {
@@ -68,18 +72,19 @@ const SIZES: Record<Size, string> = {
 /**
  * The motion contract shared by every control in the product.
  *
- * Two changes from what Button carried before. `transition-transform` moved to
- * an explicit property list that includes the colours a hover actually
- * changes — the hover fill used to snap while only the scale eased. And the
- * transforms are removed under `prefers-reduced-motion`.
+ * Colour only, since 2026-10-12 (docs/DESIGN-SYSTEM.md "Visual language"). A
+ * control changes its fill, border or text colour on hover and press, over
+ * `duration-control` on the `ease-control` curve; it never scales, lifts or
+ * translates. `transform` left the property list with the `hover:scale-[1.02]`
+ * that needed it, so nothing here can move a control's box.
  *
  * The global rule in `src/index.css` collapses every *duration* to ~0 under
- * that preference, which is necessary and not sufficient: a `scale(1.02)` with
- * no transition still scales, just instantly. `motion-reduce:` is what removes
- * the transform itself. docs/DESIGN-SYSTEM.md §4.
+ * `prefers-reduced-motion`; `motion-reduce:transition-none` says the same
+ * thing locally, and `motion-reduce:transform-none` stays as a guard for any
+ * caller that adds its own transform through `className`.
  */
 export const CONTROL_MOTION =
-  'transition-[transform,background-color,border-color,color,box-shadow] duration-control ease-in-out ' +
+  'transition-[background-color,border-color,color,box-shadow] duration-control ease-control ' +
   'motion-reduce:transition-none motion-reduce:transform-none';
 
 /** Design-system button. Meets the 44px touch-target minimum at md/lg. */
@@ -98,11 +103,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl font-semibold',
+        // 4px radius, weight 500, flat. A 1px transparent border is
+        // reserved on every variant so a bordered and an unbordered button
+        // are the same size, and the focus ring sits on a box that does not
+        // change shape when it appears.
+        'inline-flex items-center justify-center gap-2 rounded-control border border-transparent font-medium',
         CONTROL_MOTION,
-        'active:scale-[0.98] hover:scale-[1.02]',
-        'motion-reduce:hover:scale-100 motion-reduce:active:scale-100',
-        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+        'focus-visible:ring-offset-surface dark:focus-visible:ring-offset-surface-dark',
         // A disabled button must *look* disabled and must still be hoverable.
         //
         // `pointer-events-none` was doing real damage: a disabled `<button>`
@@ -112,12 +120,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         // only other signal. Every "why is nothing happening?" on this app's
         // disabled controls traces back to it.
         //
-        // The opacity is deepened and hover growth suppressed as well: at
-        // `opacity-50` a saturated primary button still reads as clickable,
-        // which is how a disabled Create account button got mistaken for a
-        // broken sign-up.
-        'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100',
-        'disabled:active:scale-100 disabled:saturate-50',
+        // The opacity is deepened as well: at `opacity-50` a saturated
+        // primary button still reads as clickable. That is how a greyed-out
+        // Create account button got mistaken for a broken sign-up.
+        'disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50',
         VARIANTS[variant],
         SIZES[size],
         className,

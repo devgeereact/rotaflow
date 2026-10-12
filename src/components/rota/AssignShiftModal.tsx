@@ -10,6 +10,7 @@ import { isShiftClashError } from '@/lib/shiftConflicts';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import type { Location, Shift, ShiftType, StaffProfile } from '@/types';
 import { formatTimeRange } from '@/lib/timeRange';
+import { readOnlyErrorMessage } from '@/lib/billingState';
 
 export interface AssignShiftFormValues {
   staffProfileId: string | null;
@@ -119,10 +120,12 @@ export function AssignShiftModal({
       // A clash is a decision the manager can act on, so it is worth saying
       // out loud. Anything else stays generic, §45 keeps database errors off
       // the screen.
+      // A read-only organisation (0154) is the other refusal worth saying out
+      // loud: retrying cannot help, choosing a plan can.
       setError(
         isShiftClashError(err)
           ? err.message
-          : 'Could not save this shift. Please try again.',
+          : (readOnlyErrorMessage(err) ?? 'Could not save this shift. Please try again.'),
       );
     } finally {
       setSubmitting(false);

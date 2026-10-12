@@ -27,6 +27,12 @@ interface AppEnv {
    */
   oauthProviders: readonly OAuthProvider[];
   vapidPublicKey: string;
+  /**
+   * Cloudflare Turnstile's public site key for the contact form. Empty means
+   * no widget is rendered. It only works alongside `TURNSTILE_SECRET_KEY` on
+   * the `public-enquiry` function: set both, or neither (docs/API-SPEC.md).
+   */
+  turnstileSiteKey: string;
   isProd: boolean;
   mode: string;
 }
@@ -57,6 +63,7 @@ const RAW = {
   VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
   VITE_ENABLE_OAUTH: import.meta.env.VITE_ENABLE_OAUTH,
   VITE_VAPID_PUBLIC_KEY: import.meta.env.VITE_VAPID_PUBLIC_KEY,
+  VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY,
 };
 
 type EnvKey = keyof typeof RAW;
@@ -107,6 +114,7 @@ export const env: AppEnv = {
   sentryDsn: read('VITE_SENTRY_DSN'),
   oauthProviders: readOAuthProviders(),
   vapidPublicKey: read('VITE_VAPID_PUBLIC_KEY'),
+  turnstileSiteKey: read('VITE_TURNSTILE_SITE_KEY'),
   isProd: import.meta.env.PROD,
   mode: import.meta.env.MODE,
 };

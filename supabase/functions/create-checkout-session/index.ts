@@ -25,7 +25,7 @@ import {
   stripeModeIsConfigured,
   priceColumn,
 } from '../_shared/stripe.ts';
-import { decideCheckout } from './guard.ts';
+import { checkoutTrialEnd, decideCheckout } from './guard.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -159,6 +159,17 @@ Deno.serve(async (req: Request) => {
         ? existingSub.stripe_customer_id
         : null;
 
+    // The organisation's own 30-day trial (0154). Read under the caller's
+    // RLS-scoped client: any member may read their organisation row, and the
+    // column is server-set, so the owner cannot lengthen it here.
+    const { data: org, error: orgError } = await supabase
+      .from('organisations')
+      .select('trial_ends_at')
+      .eq('id', orgId)
+      .maybeSingle();
+    if (orgError) throw orgError;
+    const trialEnd = checkoutTrialEnd(org?.trial_ends_at ?? null, new Date());
+
     const stripe = getStripeClient(mode);
     const origin = req.headers.get('Origin') || 'https://rotaflow.space';
 
@@ -167,7 +178,17 @@ Deno.serve(async (req: Request) => {
       line_items: [{ price: priceId, quantity: 1 }],
       customer: reusableCustomerId || undefined,
       client_reference_id: orgId,
-      subscription_data: { metadata: { org_id: orgId, plan: planCode } },
+      // Inside the trial: the card is collected now and first charged when
+      // the trial ends (subscription_data.trial_end, see guard.ts). The default
+      // `payment_method_collection: 'always'` is kept deliberately. With
+      // 'if_required' Stripe would skip the card during a trial, which is the
+      // no-card trial the database already gives; an owner who reaches
+      // Checkout has chosen to pay, and a card on file is what turns the trial
+      // into a plan without a gap.
+      subscription_data: {
+        metadata: { org_id: orgId, plan: planCode },
+        ...(trialEnd !== null ? { trial_end: trialEnd } : {}),
+      },
       metadata: { org_id: orgId, plan: planCode },
       success_url: `${origin}/app/settings/billing?checkout=success`,
       cancel_url: `${origin}/app/settings/billing?checkout=cancelled`,

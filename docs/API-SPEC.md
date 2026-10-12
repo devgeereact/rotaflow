@@ -1,7 +1,7 @@
 # API specification
 
 RotaFlow has no public API (a Phase 2 item in `docs/SAAS.md` §9). This file owns
-the contracts the product's own client depends on: the eight Supabase Edge
+the contracts the product's own client depends on: the nine Supabase Edge
 Functions and the client-callable Postgres RPCs whose behaviour a caller has to
 know. Tables, RLS policies and triggers are in `docs/DATA-MODEL.md`; the
 notification functions are in `docs/NOTIFICATIONS-SPEC.md`.
@@ -15,7 +15,7 @@ moved from `docs/ARCHITECTURE.md` (§9c and §10), and the RPC text from
 
 `supabase/functions/**` is the only server compute in the product. It is Deno, and
 it is excluded from `npm run typecheck` and `npm run lint` (`eslint.config.js`).
-CI's `edge-types` job typechecks all eight entry points with a pinned Deno 2.9.5
+CI's `edge-types` job typechecks all nine entry points with a pinned Deno 2.9.5
 and the committed `deno.lock`, which proves they compile and nothing more:
 **reading these files is still the only check on what they do**.
 
@@ -29,20 +29,55 @@ Every JSON function answers `OPTIONS` for CORS and returns `{ error: string }` w
 a 4xx or 5xx status on failure. `orgId` is always checked against the caller's
 membership, never trusted.
 
-| Function                  | JWT verified | Caller and auth model                                                                                                                                                                                   | Input                                                                                                                                 | Output on success                                                                                                                                                                                               |
-| ------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ai-rota-assistant`       | yes          | Owner or manager (`has_org_role`), plan entitlement `ai_rota_assistant` (`org_has_feature`, 403 `plan_required`), per-user and per-org rate limits. Caller's JWT; `service_role` only for `audit_write` | `{ orgId, prompt, periodStart, periodEnd, task? }`, dates `YYYY-MM-DD`, `task` is `rota` (default) or `announcement`                  | `rota`: `{ summary, suggestions[] }`, each suggestion validated against the org's real staff and shift types. `announcement`: `{ title, body, urgent, reasoning, ... }`. 503 when `OPENROUTER_API_KEY` is unset |
-| `send-notification`       | yes          | Called only by `dispatch_notification_outbox()`. Presents `x-notification-secret`, compared in the database against `vault` (`verify_notification_secret`, `0091`). `service_role` client               | `{ orgId, userIds[], type, title, body?, channels? }`, `channels` is `push` and/or `email`                                            | `{ ok: true, results, dropped, recorded }`. Recipients not in the org are dropped. 503 when the secret cannot be checked                                                                                        |
-| `send-invite`             | yes          | Signed-in user who can read the invite under RLS. Caller's JWT for the invite; `service_role` only for the organisation's mail credentials                                                              | `{ orgId, inviteId, token }`                                                                                                          | `{ sent: true, email }`. 404 unknown invite, 409 revoked, accepted or expired                                                                                                                                   |
-| `create-checkout-session` | yes          | Organisation owner, checked against `memberships` with `status = 'active'`. Caller's JWT                                                                                                                | `{ orgId, planCode }`                                                                                                                 | `{ url }`, a hosted Stripe Checkout page for a full-page redirect. 409 `{ error: 'already_subscribed' }` while the organisation holds a `trialing`, `active` or `past_due` Stripe subscription in the same mode |
-| `create-portal-session`   | yes          | Organisation owner, as above                                                                                                                                                                            | `{ orgId }`                                                                                                                           | `{ url }`, the Stripe Billing Portal. 404 when the organisation has no Stripe customer yet                                                                                                                      |
-| `stripe-webhook`          | **no**       | Stripe, verified by the `stripe-signature` header against `STRIPE_WEBHOOK_SECRET`. `service_role` client                                                                                                | Stripe events: `checkout.session.completed`, `customer.subscription.updated` and `.deleted`, `invoice.paid`, `invoice.payment_failed` | `{ received: true }`, or `{ received: true, duplicate: true }` for an event already recorded. 400 on a bad signature                                                                                            |
-| `calendar-feed`           | **no**       | A calendar client, which cannot send a header. The `token` query parameter is checked by `calendar_feed_shifts`, granted to `service_role` alone                                                        | `GET ?token=<uuid>`                                                                                                                   | `text/calendar` (iCalendar), `Cache-Control: private, max-age=900`. A bad token or an internal error returns an **empty** calendar with 200, never an error status                                              |
-| `test-smtp`               | yes          | Organisation owner (`has_org_role`). Caller's JWT; `service_role` only to read the SMTP password                                                                                                        | `{ orgId }`                                                                                                                           | `{ ok: true, sentTo }`, or `{ ok: false, error }` with 200 when the mail server refused. 404 when no SMTP settings are saved                                                                                    |
+| Function                  | JWT verified | Caller and auth model                                                                                                                                                                                                                                                                                                                                                                                                                          | Input                                                                                                                                                    | Output on success                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ai-rota-assistant`       | yes          | Owner or manager (`has_org_role`), plan entitlement `ai_rota_assistant` (`org_has_feature`, 403 `plan_required`), per-user and per-org rate limits. Caller's JWT; `service_role` only for `audit_write`                                                                                                                                                                                                                                        | `{ orgId, prompt, periodStart, periodEnd, task? }`, dates `YYYY-MM-DD`, `task` is `rota` (default) or `announcement`                                     | `rota`: `{ summary, suggestions[] }`, each suggestion validated against the org's real staff and shift types. `announcement`: `{ title, body, urgent, reasoning, ... }`. 503 when `OPENROUTER_API_KEY` is unset                                                                                                                                                            |
+| `send-notification`       | yes          | Called only by `dispatch_notification_outbox()`. Presents `x-notification-secret`, compared in the database against `vault` (`verify_notification_secret`, `0091`). `service_role` client                                                                                                                                                                                                                                                      | `{ orgId, userIds[], type, title, body?, channels? }`, `channels` is `push` and/or `email`                                                               | `{ ok: true, results, dropped, recorded }`. Recipients not in the org are dropped. 503 when the secret cannot be checked                                                                                                                                                                                                                                                   |
+| `send-invite`             | yes          | Signed-in user who can read the invite under RLS. Caller's JWT for the invite; `service_role` only for the organisation's mail credentials                                                                                                                                                                                                                                                                                                     | `{ orgId, inviteId, token }`                                                                                                                             | `{ sent: true, email }`. 404 unknown invite, 409 revoked, accepted or expired                                                                                                                                                                                                                                                                                              |
+| `create-checkout-session` | yes          | Organisation owner, checked against `memberships` with `status = 'active'`. Caller's JWT                                                                                                                                                                                                                                                                                                                                                       | `{ orgId, planCode }`                                                                                                                                    | `{ url }`, a hosted Stripe Checkout page for a full-page redirect. 409 `{ error: 'already_subscribed' }` while the organisation holds a `trialing`, `active` or `past_due` Stripe subscription in the same mode. Inside the organisation's own trial, `subscription_data.trial_end` carries its end into Stripe, so the card is first charged when the trial ends (`0154`) |
+| `create-portal-session`   | yes          | Organisation owner, as above                                                                                                                                                                                                                                                                                                                                                                                                                   | `{ orgId }`                                                                                                                                              | `{ url }`, the Stripe Billing Portal. 404 when the organisation has no Stripe customer yet                                                                                                                                                                                                                                                                                 |
+| `stripe-webhook`          | **no**       | Stripe, verified by the `stripe-signature` header against `STRIPE_WEBHOOK_SECRET`. `service_role` client                                                                                                                                                                                                                                                                                                                                       | Stripe events: `checkout.session.completed`, `customer.subscription.updated`, `.deleted` and `.trial_will_end`, `invoice.paid`, `invoice.payment_failed` | `{ received: true }`, or `{ received: true, duplicate: true }` for an event already recorded. 400 on a bad signature                                                                                                                                                                                                                                                       |
+| `calendar-feed`           | **no**       | A calendar client, which cannot send a header. The `token` query parameter is checked by `calendar_feed_shifts`, granted to `service_role` alone                                                                                                                                                                                                                                                                                               | `GET ?token=<uuid>`                                                                                                                                      | `text/calendar` (iCalendar), `Cache-Control: private, max-age=900`. A bad token or an internal error returns an **empty** calendar with 200, never an error status                                                                                                                                                                                                         |
+| `test-smtp`               | yes          | Organisation owner (`has_org_role`). Caller's JWT; `service_role` only to read the SMTP password                                                                                                                                                                                                                                                                                                                                               | `{ orgId }`                                                                                                                                              | `{ ok: true, sentTo }`, or `{ ok: false, error }` with 200 when the mail server refused. 404 when no SMTP settings are saved                                                                                                                                                                                                                                               |
+| `public-enquiry`          | **no**       | Anyone on the public contact form. No session and no JWT check: an `Origin` outside the `_shared/cors.ts` allowlist is refused 403, the body is validated by `validate.ts`, a filled honeypot gets a 201 and is stored nowhere, Cloudflare Turnstile is verified when `TURNSTILE_SECRET_KEY` is set, and `receive_enquiry` rate-limits per HMAC-hashed address (5 an hour) and in total (100 an hour). `service_role` client, for that one RPC | `POST` JSON under 16 KB: `{ name, workEmail, organisation, teamSize?, sector?, message, wantsDemo?, marketingConsent?, website?, turnstileToken? }`      | `201 { ok: true }`. Never echoes input. 400 `{ error: 'invalid', fields }` (names only) or `verification_failed`, 403 `origin_not_allowed`, 405, 413, 415, 429 `rate_limited`, 503 `unavailable`                                                                                                                                                                           |
 
-The two with `verify_jwt: false` are deliberate and each has its own boundary
-above. Neither is a gap: Supabase's gateway check would reject the only callers
-those two have.
+The three with `verify_jwt: false` are deliberate and each has its own boundary
+above. None is a gap: Supabase's gateway check would reject the only callers
+`stripe-webhook` and `calendar-feed` have, and for `public-enquiry` it would
+prove nothing, because its callers are visitors and the anon key it would check
+is public. `public-enquiry` is the only one of the three with a block in
+`supabase/config.toml` (`[functions.public-enquiry] verify_jwt = false`); the
+other two rely on `--no-verify-jwt` at deploy.
+
+### The public enquiry function (`0155`)
+
+Plans 2026, 06 §5 and 09 F2. It replaced a `mailto:` form that reached nobody on
+a device with no mail client. `anon` holds no privilege on `enquiries`; the
+function is the only way in, and the order of its checks is in its header.
+
+- **Rate limit.** Inside `receive_enquiry`, in the same transaction as the
+  insert, through the existing `consume_rate_limit` (`0085`). The subject is an
+  HMAC-SHA256 of the client address keyed by `ENQUIRY_IP_SALT`, falling back to
+  the service-role key behind a fixed label when that secret is unset. The
+  address is `cf-connecting-ip` (set by Cloudflare, in front of hosted Supabase),
+  else the first `x-forwarded-for` entry, else one shared `unknown` subject.
+- **Turnstile.** Optional, and both halves or neither: `TURNSTILE_SECRET_KEY` on
+  the function and `VITE_TURNSTILE_SITE_KEY` in the build. With the secret set
+  and no widget on the page, every enquiry is refused. Verification follows
+  Cloudflare's server-side validation documentation
+  (developers.cloudflare.com/turnstile/get-started/server-side-validation, read
+  2026-10-12): `secret`, `response`, `remoteip` and an `idempotency_key` posted
+  to siteverify, and only `success: true` accepted. A network failure is a
+  refusal.
+- **Notification.** One email to `ENQUIRY_NOTIFY_EMAIL` over the platform SMTP
+  account after the row commits, sent with `EdgeRuntime.waitUntil` so it never
+  delays the response. It carries no text the visitor typed. Not through
+  `notification_outbox`: see `docs/NOTIFICATIONS-SPEC.md`.
+- **Tested.** `validate.ts` by vitest (`validate.test.ts`, 19 tests, including
+  that the form's lists match the function's); the table and limiter by
+  `supabase/tests/database/enquiries.test.sql`. The handler itself (origin
+  refusal, Turnstile, the RPC call) is Deno and was reviewed by hand and
+  `deno check`ed, not executed.
 
 ### The rule about which key they use
 
@@ -88,6 +123,23 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
   belong. The decision is `create-checkout-session/guard.ts`, tested by vitest.
   It reads only the stored row, so two Checkouts opened before the first
   `checkout.session.completed` arrives are not caught (BUG-107).
+
+  **Trial.** Every organisation starts a 30-day trial recorded in
+  `organisations.trial_ends_at` (`0154`). When an owner reaches Checkout
+  inside it, the session passes `subscription_data.trial_end` (Unix seconds)
+  set to that date, so Stripe collects the card now and first charges it when
+  the promised trial ends. Stripe documents the parameter on
+  https://docs.stripe.com/api/checkout/sessions/create and under "Add trial
+  periods" on https://docs.stripe.com/get-started/use-cases/saas-subscriptions,
+  and refuses a Checkout trial less than two days ahead
+  (https://docs.stripe.com/billing/testing), so inside 49 hours, or after the
+  trial, no trial is sent and the customer pays from today.
+  `trial_period_days` is not used because it would start a fresh 30 days.
+  `payment_method_collection` stays at its default, `always`: the no-card
+  trial is the database's, and an owner at Checkout has chosen to pay. The
+  decision is `checkoutTrialEnd` in `guard.ts`, tested by vitest. Checked
+  against the Stripe documentation through Context7 on 12 October 2026.
+
 - **`create-portal-session`** — same auth pattern, returns a Stripe Billing
   Portal URL so an owner can manage payment methods / cancel without a
   custom UI.
@@ -96,7 +148,8 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
   with no end-user session; authenticated instead by Stripe's own request
   signature (`STRIPE_WEBHOOK_SECRET`). Handles
   `checkout.session.completed`, `customer.subscription.updated/deleted`,
-  `invoice.paid`, `invoice.payment_failed` — upserts `subscriptions`
+  `customer.subscription.trial_will_end`, `invoice.paid`,
+  `invoice.payment_failed` — upserts `subscriptions`
   (keyed on `org_id`/`(org_id, provider_ref)` since Stripe delivery is
   at-least-once), writes `invoices` as a second, automated writer alongside
   the manual platform-finance path, and calls `set_org_status()` (via its
@@ -117,11 +170,39 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
   by vitest. No new column was needed. `checkout.session.completed` still
   upserts on `org_id` without an ordering check (BUG-108).
 
-Deploy: `supabase functions deploy <name>` (webhook needs `--no-verify-jwt`).
+  **Trial and payment notices (`0154`, plan F16).** `checkout.session.completed`
+  and `customer.subscription.updated` write `subscriptions.trial_ends_at` from
+  Stripe's `trial_end`. `customer.subscription.trial_will_end`, which Stripe
+  sends three days before a trial ends, queues "Your trial ends in 3 days" to
+  the organisation's active owners through `notification_outbox`.
+  `invoice.payment_failed` queues "Payment failed" once per invoice, also to
+  the owners. Both are written only when the event names the subscription the
+  organisation holds in that mode, and both carry a `dedupe_key`
+  (`stripe:<event>:<mode>:<id>`), so a redelivery queues nothing twice. The
+  rows are built by `trialEndingNotification` and `paymentFailedNotification`
+  in `reconcile.ts`, tested by vitest.
+
+  **Invoice documents (`0156`, plan F3).** `invoice.paid` and
+  `invoice.payment_failed` also write the invoice's `hosted_invoice_url` and
+  `invoice_pdf`. A finalised invoice carries both in the event; when one is
+  missing the handler retrieves the invoice from Stripe (a draft is never
+  retrieved, it has no links). Each URL is kept only if it is https on
+  `invoice.stripe.com` or `pay.stripe.com`, the same rule as the column CHECK,
+  so an unexpected host is dropped with a log line instead of failing the
+  write. A link neither copy carries is left out of the write, never written
+  as null, so a thin redelivery cannot erase a stored link. A failed retrieval
+  is logged and does not fail the event: the payment is the part that matters.
+  The rules are `invoiceDocuments`, `needsDocumentRetrieval` and
+  `documentsToWrite` in `reconcile.ts`, tested by vitest. `invoice.finalized`
+  is not subscribed, so an invoice reaches the owner's list once it is paid or
+  has failed. The webhook endpoint's event list is unchanged.
+
+Deploy: `supabase functions deploy <name>` (`stripe-webhook`, `calendar-feed` and
+`public-enquiry` need `--no-verify-jwt`).
 Secrets: `STRIPE_SECRET_KEY` (shared by all three), `STRIPE_WEBHOOK_SECRET`
 (webhook only, from the Stripe dashboard's endpoint config). After deploying
-the webhook, register its URL in the Stripe dashboard against the five events
-above.
+the webhook, register its URL in the Stripe dashboard against the six events
+above (`customer.subscription.trial_will_end` was added with `0154`).
 
 ## RPC contracts
 
