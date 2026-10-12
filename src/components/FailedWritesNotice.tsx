@@ -6,7 +6,7 @@ import type { DeadLetterRecord } from '@/lib/offlineOutbox';
 const KIND_LABELS: Record<DeadLetterRecord['kind'], string> = {
   clock: 'Clock event',
   leave: 'Leave request',
-  swap: 'Shift swap request',
+  swap: 'Swap request',
   notify: 'Staff notification',
 };
 

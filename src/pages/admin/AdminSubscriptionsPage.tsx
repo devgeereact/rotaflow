@@ -48,6 +48,7 @@ import {
   type FilterOption,
 } from '@/lib/filters';
 import type { Organisation, Subscription } from '@/types';
+import { CHART_TOKENS } from '@/lib/chartPalette';
 
 type PaymentState = 'paid' | 'pending' | 'failed';
 
@@ -68,16 +69,16 @@ function toneFor(status: string): (typeof STATUS_TONE)[keyof typeof STATUS_TONE]
   return STATUS_TONE[status as keyof typeof STATUS_TONE] ?? 'neutral';
 }
 
+/**
+ * The label for a subscription status. Stripe's value is `canceled`, and the
+ * stored value and every filter keep it; only what a reader sees is British.
+ */
+function statusLabel(status: string): string {
+  return status === 'canceled' ? 'Cancelled' : humaniseKey(status);
+}
+
 type SubSortKey =
-  | 'organisation'
-  | 'plan'
-  | 'status'
-  | 'value'
-  | 'period'
-  | 'usage'
-  | 'cycle'
-  | 'payment'
-  | 'actions';
+  'organisation' | 'plan' | 'status' | 'value' | 'period' | 'usage' | 'cycle' | 'payment';
 
 interface Row {
   organisation: Organisation;
@@ -293,7 +294,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         return [
           ...(stats?.statuses ?? []).map((status) => ({
             value: status,
-            label: humaniseKey(status),
+            label: statusLabel(status),
           })),
           { value: NO_SUBSCRIPTION, label: 'No record' },
         ];
@@ -355,7 +356,10 @@ export function AdminSubscriptionsPage(): JSX.Element {
       {
         key: 'organisation',
         label: 'Organisation',
-        width: 'w-[18%]',
+        // Takes the width the "Change plan" column had. That link opened the
+        // organisation, which the name already does, and nothing there changes
+        // a plan: the customer does that in their Stripe Billing Portal.
+        width: 'w-[35%]',
         sortable: true,
         cell: ({ organisation }) => (
           <Link to={`/admin/organisations/${organisation.id}`} className="block min-w-0">
@@ -383,7 +387,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
         cell: ({ subscription }) =>
           subscription ? (
             <Badge tone={toneFor(subscription.status)} dot>
-              {humaniseKey(subscription.status)}
+              {statusLabel(subscription.status)}
             </Badge>
           ) : (
             <span className="text-content-muted dark:text-content-muted-dark">
@@ -461,26 +465,6 @@ export function AdminSubscriptionsPage(): JSX.Element {
           return usage === null ? 'Uncapped' : `${usage}%`;
         },
       },
-      {
-        key: 'actions',
-        label: 'Actions',
-        width: 'w-[17%]',
-        align: 'right',
-        cell: ({ organisation }) => (
-          <span className="flex justify-end gap-1.5">
-            {/* Both lead to the organisation, where a plan change is a
-                confirmed write with the consequences beside it. Nothing on this
-                deployment can price a plan or apply a discount, so acting from
-                the row would be a button that cannot finish. */}
-            <Link
-              to={`/admin/organisations/${organisation.id}`}
-              className="whitespace-nowrap rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-content hover:bg-surface-subtle dark:border-surface-border-dark dark:text-content-dark dark:hover:bg-surface-subtle-dark"
-            >
-              Change plan
-            </Link>
-          </span>
-        ),
-      },
     ],
     [planOf, facts],
   );
@@ -521,7 +505,7 @@ export function AdminSubscriptionsPage(): JSX.Element {
               to="/admin/billing"
               chart={
                 monthsOfPaidHistory(invoices) >= 3 ? (
-                  <Sparkline values={money.trend} colour="#1EA06B" />
+                  <Sparkline values={money.trend} colour={CHART_TOKENS.success} />
                 ) : undefined
               }
               hint={
@@ -561,7 +545,8 @@ export function AdminSubscriptionsPage(): JSX.Element {
             <StatTile
               label="Cancelled"
               value={money.cancelled}
-              hint="Recorded as canceled"
+              // Stripe's status value stays `canceled`; only the label is British.
+              hint="Recorded as cancelled"
             />
             <StatTile
               label="Churn this month"
@@ -610,6 +595,11 @@ export function AdminSubscriptionsPage(): JSX.Element {
               hire was being refused. An uncapped plan reads <strong>Uncapped</strong>{' '}
               rather than 0%. <strong>Cycle</strong> reads &ldquo;Monthly&rdquo; for every
               row because no other billing interval exists anywhere in <code>plans</code>.
+            </p>
+            <p>
+              Nothing on this screen changes a plan. Plan changes happen in the
+              customer&rsquo;s Stripe Billing Portal, and the plan follows the
+              subscription.
             </p>
           </Callout>
 

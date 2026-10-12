@@ -293,9 +293,11 @@ export function AdminSupportAccessPage(): JSX.Element {
           <StatTile
             label="Access turned off"
             value={lockedOut}
+            // Since 0153 a new organisation starts with access off, so this
+            // counts owners who have not said yes, not only owners who said no.
             hint={
               lockedOut > 0
-                ? 'Owners refusing support access'
+                ? 'Ask the owner to turn it on'
                 : 'Every organisation permits it'
             }
           />

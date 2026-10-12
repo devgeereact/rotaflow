@@ -2,7 +2,7 @@ import type { TabItem } from '@/components/ui/Tabs';
 import type { MembershipRole } from '@/types';
 
 /**
- * The Settings and My Profile tab sets, in the order the designs show them
+ * The Settings and My account tab sets, in the order the designs show them
  * (docs/design/SettingsOrganisation.png, docs/design/ProfileSettings.png).
  *
  * Single source of truth on purpose: eleven screens are still to be built
@@ -32,9 +32,27 @@ export const PROFILE_TABS: readonly TabItem[] = [
   // §21's "Connected Accounts", between Security and Sessions as listed there.
   { to: '/app/account/accounts', label: 'Connected Accounts' },
   { to: '/app/account/sessions', label: 'Sessions' },
-  { to: '/app/account/tokens', label: 'API Tokens' },
+  // Hidden until a public API exists: a tab for a feature that does not exist
+  // reads as unfinished. The route and page stay, so a saved link still works.
+  { to: '/app/account/tokens', label: 'API Tokens', hidden: true },
   { to: '/app/account/activity', label: 'Activity' },
 ] as const;
+
+/**
+ * Settings sections only an owner can use.
+ *
+ * Billing spends money and Permissions can grant someone else the ability to.
+ * Organisation and Audit are owner-only on the page itself
+ * (`SettingsOrganisationPage`, `SettingsAuditPage` both render
+ * `OwnerOnlyNotice` to anyone else), so showing a manager either tab only to
+ * refuse them on arrival reads as a broken product rather than a locked door.
+ */
+const OWNER_ONLY_SETTINGS: ReadonlySet<string> = new Set([
+  '/app/settings/organisation',
+  '/app/settings/permissions',
+  '/app/settings/billing',
+  '/app/settings/audit',
+]);
 
 /**
  * Settings tabs visible to a role.
@@ -44,22 +62,33 @@ export const PROFILE_TABS: readonly TabItem[] = [
  * `owner | manager | staff` CHECK, and staff have no business in any of it, so
  * they get nothing rather than a bar full of links that all 403.
  *
- * Owner-only rather than manager-visible: Billing spends money and Permissions
- * can grant someone else the ability to. Everything else is shared with
- * managers. This mirrors the RLS already in `0002_rotaflow.sql`, which is the
- * real boundary. Hiding a tab is presentation, not enforcement, and the server
- * must keep refusing regardless of what the bar shows.
+ * Owners see every tab. Managers see the sections they can actually use:
+ * Roles, Policies, Notifications and Integrations. This mirrors the RLS
+ * already in `0002_rotaflow.sql`, which is the real boundary. Hiding a tab is
+ * presentation, not enforcement, and the server must keep refusing regardless
+ * of what the bar shows.
  */
 export function settingsTabsForRole(role: MembershipRole | null): TabItem[] {
   if (role !== 'owner' && role !== 'manager') return [];
 
-  const ownerOnly = new Set(['/app/settings/billing', '/app/settings/permissions']);
-  return SETTINGS_TABS.filter((tab) => role === 'owner' || !ownerOnly.has(tab.to)).map(
-    (tab) => ({ ...tab }),
-  );
+  return SETTINGS_TABS.filter(
+    (tab) => role === 'owner' || !OWNER_ONLY_SETTINGS.has(tab.to),
+  ).map((tab) => ({ ...tab }));
 }
 
-/** My Profile is a person's own account, so every role sees every tab. */
+/**
+ * Where `/app/settings` itself lands: the first section this role can use.
+ *
+ * It used to be a fixed redirect to Organisation, which is owner-only, so a
+ * manager who opened Settings landed on a refusal. Owners still land on
+ * Organisation. `null` when the role has no Settings sections at all (staff,
+ * or a role not resolved yet), and the layout handles that case.
+ */
+export function defaultSettingsPath(role: MembershipRole | null): string | null {
+  return settingsTabsForRole(role)[0]?.to ?? null;
+}
+
+/** My account is a person's own account, so every role sees every tab. */
 export function profileTabs(): TabItem[] {
-  return PROFILE_TABS.map((tab) => ({ ...tab }));
+  return PROFILE_TABS.filter((tab) => !tab.hidden).map((tab) => ({ ...tab }));
 }

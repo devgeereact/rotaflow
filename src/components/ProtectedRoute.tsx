@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { MfaGate } from '@/components/auth/MfaGate';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { AppBootScreen } from '@/components/AppBootScreen';
 
@@ -17,5 +18,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }): JSX.Eleme
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  return <>{children}</>;
+  // A signed-in session may still owe its second factor (CAP-049). The gate
+  // holds everything protected, the platform console included, until it is
+  // given.
+  return <MfaGate>{children}</MfaGate>;
 }

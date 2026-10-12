@@ -4,11 +4,11 @@ Work is ordered by dependency and risk, not by calendar. Sizes are relative: **S
 
 ## 0. Status (11 October 2026)
 
-| Item                         | State                                                                                                                                                                                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Wave 1 packages WP-A to WP-H | Saved as local work-in-progress commits. **Not yet integrated**: no pull request opened, nothing on `main`, nothing deployed. Their acceptance evidence is NOT TESTED until each lands |
-| Documentation restructure    | In progress: moving `docs/` to the GEE OS Standard layout ([10](10-GOVERNANCE-ALIGNMENT.md) §0.1). Line references in this pack cite the files on `main` until it merges               |
-| This pack                    | Committed (`4633e87`) and re-verified against `main` on 11 Oct 2026, after #317 and #330 landed                                                                                        |
+| Item                         | State                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wave 1 packages WP-A to WP-H | Integrated on branch `feat/plans-2026-wave-1` (11 Oct 2026): WP-A billing guards, WP-B policies wired, WP-C workspace defects O1 to O13, WP-D sensitive data, WP-E console fixes and `0153`, WP-F website claims, WP-G sign-in MFA step. WP-H superseded by #336. All local gates PASS (1,390 tests); Playwright and pgTAP run in CI on the pull request; nothing deployed |
+| Documentation restructure    | Done: merged to `main` in #336 (GEE OS Standard layout, docs-sync rule, cleanup)                                                                                                                                                                                                                                                                                           |
+| This pack                    | Committed (`4633e87`) and re-verified against `main` on 11 Oct 2026, after #317 and #330 landed                                                                                                                                                                                                                                                                            |
 
 ## 1. Phases at a glance
 

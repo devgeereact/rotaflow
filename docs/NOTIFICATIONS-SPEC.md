@@ -51,6 +51,14 @@ subscribes the device and writes `push_subscriptions`. The service worker that
 displays a push is `public/push-sw.js`, imported into the generated Workbox
 service worker through `workbox.importScripts` (BUG-050).
 
+Signing out deliberately releases the device (plan S4, 2026-10-11):
+`releasePushSubscription` in `src/lib/session.ts` deletes this endpoint's
+`push_subscriptions` row and then unsubscribes the browser, before the session
+ends, so the next person to use a shared phone is not shown the last person's
+notifications. It is bounded at 3 seconds and never blocks sign-out. A session
+that expires or is revoked elsewhere does not run it; see
+`docs/ARCHITECTURE.md`, "Offline and PWA".
+
 ## Scheduled jobs
 
 Five `pg_cron` jobs are defined in `supabase/migrations/`. Background work runs

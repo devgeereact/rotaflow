@@ -77,7 +77,13 @@ import {
   shiftCellKey,
 } from '@/lib/rotaGrid';
 import { findClashingShift, ShiftClashError } from '@/lib/shiftConflicts';
-import { computeRotaInsights } from '@/lib/rotaInsights';
+import {
+  computeRotaInsights,
+  DEFAULT_ROTA_LIMITS,
+  type RotaLimits,
+} from '@/lib/rotaInsights';
+import { schedulingPolicies } from '@/lib/orgPreferences';
+import { getOrganisation } from '@/services/orgService';
 import { PublicationStatus } from '@/components/rota/PublicationStatus';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import { IconButton } from '@/components/ui/IconButton';
@@ -250,6 +256,10 @@ export function RotaBuilderPage(): JSX.Element {
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [documents, setDocuments] = useState<StaffDocument[]>([]);
   const [minimumCoverRules, setMinimumCoverRules] = useState<MinimumCoverRule[]>([]);
+  // Settings → Policies: minimum rest, maximum weekly hours and maximum
+  // consecutive days. Until this was read the rota used fixed 11h and 48h and
+  // never checked consecutive days, whatever the organisation had saved.
+  const [rotaLimits, setRotaLimits] = useState<RotaLimits>(DEFAULT_ROTA_LIMITS);
   // One clock for every rule, ticked once a minute. Reading Date.now() inside
   // the memo would make "is this shift in the past" depend on render timing.
   const [insightsNow, setInsightsNow] = useState(() => Date.now());
@@ -357,6 +367,30 @@ export function RotaBuilderPage(): JSX.Element {
       }
     })();
   }, [orgId, reloadKey, showError]);
+
+  // Read on its own rather than inside the load above: a failure here should
+  // leave the rota usable on the default limits, not blank the whole screen.
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const org = await getOrganisation(orgId);
+        if (!active) return;
+        const policies = schedulingPolicies(org.settings);
+        setRotaLimits({
+          minRestHours: policies.minRestHours,
+          maxWeeklyHours: policies.maxWeeklyHours,
+          maxConsecutiveDays: policies.maxConsecutiveDays,
+        });
+      } catch (err) {
+        reportError(err, { area: 'rota:load-policies' });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId, reloadKey]);
 
   /**
    * Rota + shifts for every location, across the whole three-week canvas.
@@ -528,6 +562,7 @@ export function RotaBuilderPage(): JSX.Element {
         coverDates: dates,
         timezone: DEFAULT_TZ,
         now: insightsNow,
+        limits: rotaLimits,
       }),
     [
       shiftsInScope,
@@ -540,6 +575,7 @@ export function RotaBuilderPage(): JSX.Element {
       minimumCoverRules,
       dates,
       insightsNow,
+      rotaLimits,
     ],
   );
 
@@ -2421,6 +2457,7 @@ export function RotaBuilderPage(): JSX.Element {
                   dailyTotals={dailyTotals}
                   selectedShiftId={selectedShiftId}
                   conflictedShiftIds={conflictedShiftIds}
+                  maxWeeklyHours={rotaLimits.maxWeeklyHours}
                   shiftTypeFilter={shiftTypeFilter}
                   onShiftTypeFilterChange={setShiftTypeFilter}
                   onAddShift={(staffProfileId, date, locationId) => {
@@ -2778,6 +2815,7 @@ export function RotaBuilderPage(): JSX.Element {
           weekStart={weekStart}
           weekEnd={weekEnd}
           timezone={autoFillLocation?.timezone ?? DEFAULT_TZ}
+          limits={rotaLimits}
           applyTarget={
             readOnly || !autoFillLocation || !autoFillRota
               ? null

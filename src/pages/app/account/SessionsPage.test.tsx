@@ -9,6 +9,8 @@ const signOut = vi.hoisted(() => vi.fn());
 const clearTenantState = vi.hoisted(() => vi.fn());
 const listMySessions = vi.hoisted(() => vi.fn());
 const confirm = vi.hoisted(() => vi.fn());
+const releasePushSubscription = vi.hoisted(() => vi.fn());
+const deletePushSubscription = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -18,7 +20,8 @@ vi.mock('@/lib/supabase', () => ({
     },
   },
 }));
-vi.mock('@/lib/session', () => ({ clearTenantState }));
+vi.mock('@/lib/session', () => ({ clearTenantState, releasePushSubscription }));
+vi.mock('@/services/pushSubscriptionService', () => ({ deletePushSubscription }));
 vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 vi.mock('@/services/profileService', () => ({
   listMySessions,
@@ -37,6 +40,7 @@ describe('SessionsPage', () => {
     clearTenantState.mockReset().mockResolvedValue(undefined);
     listMySessions.mockReset().mockResolvedValue([]);
     confirm.mockReset().mockResolvedValue(true);
+    releasePushSubscription.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(() => cleanup());
@@ -48,6 +52,19 @@ describe('SessionsPage', () => {
 
     await waitFor(() => expect(signOut).toHaveBeenCalledWith({ scope: 'global' }));
     expect(clearTenantState).toHaveBeenCalledOnce();
+  });
+
+  // Plan S4: the push row can only be deleted while the session still exists.
+  it('releases this device push subscription before signing out', async () => {
+    render(<SessionsPage />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out everywhere' }));
+
+    await waitFor(() => expect(signOut).toHaveBeenCalled());
+    expect(releasePushSubscription).toHaveBeenCalledWith(deletePushSubscription);
+    expect(releasePushSubscription.mock.invocationCallOrder[0]).toBeLessThan(
+      signOut.mock.invocationCallOrder[0]!,
+    );
   });
 
   it('still purges tenant caches when remote sign-out fails', async () => {

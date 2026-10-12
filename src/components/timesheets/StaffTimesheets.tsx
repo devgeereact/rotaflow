@@ -9,6 +9,11 @@ import {
 export interface StaffTimesheetsProps {
   rows: TimesheetDisplayRow[];
   hoursThisWeekLabel: string;
+  /**
+   * Set when this week's worked hours pass the organisation's overtime
+   * threshold, e.g. "2h 30m over the 37.5h overtime threshold". Null otherwise.
+   */
+  overThresholdLabel?: string | null;
   contractedLabel: string;
   overtimeLabel: string;
   payrollCutOff: string;
@@ -22,6 +27,7 @@ export interface StaffTimesheetsProps {
 export function StaffTimesheets({
   rows,
   hoursThisWeekLabel,
+  overThresholdLabel = null,
   contractedLabel,
   overtimeLabel,
   payrollCutOff,
@@ -34,7 +40,17 @@ export function StaffTimesheets({
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Your hours this week" value={hoursThisWeekLabel} />
+        <StatTile
+          label="Your hours this week"
+          value={
+            overThresholdLabel ? (
+              <span className="text-warning">{hoursThisWeekLabel}</span>
+            ) : (
+              hoursThisWeekLabel
+            )
+          }
+          hint={overThresholdLabel}
+        />
         <StatTile label="Contracted" value={contractedLabel} />
         <StatTile label="Overtime" value={overtimeLabel} to="/app/overtime" />
         <StatTile label="Payroll cut-off" value={payrollCutOff} />

@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   CalendarRange,
   LayoutDashboard,
@@ -11,6 +11,7 @@ import {
 import { useOrg } from '@/hooks/useOrg';
 import { useWorkMode } from '@/hooks/useWorkMode';
 import { cn } from '@/lib/utils';
+import { isRequestPath } from '@/lib/requestSections';
 import type { WorkMode } from '@/lib/workMode';
 import type { MembershipRole } from '@/types';
 
@@ -43,21 +44,16 @@ interface TabItem {
  * stable rather than shifting under a user whose role changes.
  */
 /*
- * NEW_STRUCTURE §22's five: Home, Schedule, Clock In, Requests, More.
- * "Requests" lands on Leave because that screen is the requests hub. It holds
- * the leave queue and links the swap queue beside it, so the label describes
- * where it goes rather than overpromising a screen that does not exist.
+ * NEW_STRUCTURE §22's five: Home, Rota, Clock in, Requests, More.
+ * "Requests" lands on Leave. Leave, Swaps and Overtime share a phone-only
+ * switch at the top of each screen (`RequestsLayout`), which is how the other
+ * two are reached from here, and the tab stays highlighted on all three.
  */
 /**
- * The four fixed tabs. The third one differs by what the person is here to
+ * The fixed tabs. The second and third differ by what the person is here to
  * do, which is resolved in `tabsFor` below.
  */
 const HOME: TabItem = { label: 'Home', icon: LayoutDashboard, to: '/app/dashboard' };
-const SCHEDULE: TabItem = {
-  label: 'Schedule',
-  icon: CalendarRange,
-  to: '/app/schedule',
-};
 const REQUESTS: TabItem = { label: 'Requests', icon: Umbrella, to: '/app/leave' };
 
 /**
@@ -70,11 +66,27 @@ const REQUESTS: TabItem = { label: 'Requests', icon: Umbrella, to: '/app/leave' 
  */
 function tabsFor(role: MembershipRole, mode: WorkMode): TabItem[] {
   const managerial = role === 'owner' || role === 'manager';
+  // One word for one thing: the published plan is the rota. Staff read their
+  // own, so it is "My rota"; managers read the whole team's.
+  const rota: TabItem = {
+    label: managerial ? 'Rota' : 'My rota',
+    icon: CalendarRange,
+    to: '/app/schedule',
+  };
   const third: TabItem =
     managerial && mode === 'management'
       ? { label: 'Attendance', icon: ScanFace, to: '/app/attendance' }
-      : { label: 'Clock In', icon: LogIn, to: '/app/clock' };
-  return [HOME, SCHEDULE, third, REQUESTS];
+      : { label: 'Clock in', icon: LogIn, to: '/app/clock' };
+  return [HOME, rota, third, REQUESTS];
+}
+
+/**
+ * The Requests tab points at Leave but stands for all three request screens,
+ * so it stays highlighted on Swaps and Overtime too.
+ */
+function isTabActive(to: string, routeActive: boolean, pathname: string): boolean {
+  if (to === REQUESTS.to) return isRequestPath(pathname);
+  return routeActive;
 }
 
 interface MobileTabBarProps {
@@ -85,6 +97,7 @@ interface MobileTabBarProps {
 export function MobileTabBar({ onOpenMore }: MobileTabBarProps): JSX.Element | null {
   const { role } = useOrg();
   const { mode } = useWorkMode();
+  const { pathname } = useLocation();
 
   // No role means no membership resolved yet; AppShell is showing boot state.
   if (role === null) return null;
@@ -102,21 +115,25 @@ export function MobileTabBar({ onOpenMore }: MobileTabBarProps): JSX.Element | n
         <NavLink
           key={to}
           to={to}
-          className={({ isActive }) =>
+          className={({ isActive: routeActive }) =>
             cn(
               // 56px tall plus the safe-area inset clears the 44px touch
               // minimum with room for the label.
               'flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
-              isActive
+              isTabActive(to, routeActive, pathname)
                 ? 'text-primary dark:text-primary-ink-dark'
                 : 'text-content-muted dark:text-content-muted-dark',
             )
           }
         >
-          {({ isActive }) => (
+          {({ isActive: routeActive }) => (
             <>
-              <Icon size={20} aria-hidden="true" strokeWidth={isActive ? 2.4 : 2} />
+              <Icon
+                size={20}
+                aria-hidden="true"
+                strokeWidth={isTabActive(to, routeActive, pathname) ? 2.4 : 2}
+              />
               {label}
             </>
           )}

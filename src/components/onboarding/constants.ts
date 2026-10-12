@@ -55,13 +55,6 @@ export const TIMEZONES = [
   { value: 'Australia/Sydney', label: '(GMT+11:00) Sydney' },
 ] as const;
 
-export const WORKING_WEEKS = [
-  { value: 'mon-sun', label: 'Monday to Sunday' },
-  { value: 'mon-fri', label: 'Monday to Friday' },
-  { value: 'sun-sat', label: 'Sunday to Saturday' },
-  { value: 'sat-fri', label: 'Saturday to Friday' },
-] as const;
-
 export type BillingPeriod = 'monthly' | 'yearly';
 
 export interface PlanOption {

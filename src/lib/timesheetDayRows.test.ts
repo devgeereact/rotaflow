@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildTimesheetDayRows,
+  minutesOverThreshold,
   payrollCutOffLabel,
   weekTotalsForStaff,
 } from '@/lib/timesheetDayRows';
@@ -248,5 +249,17 @@ describe('payrollCutOffLabel', () => {
     // 2026-08-11 is a Tuesday.
     const label = payrollCutOffLabel(new Date('2026-08-11T12:00:00.000Z'));
     expect(label).toBe('Fri 14 Aug');
+  });
+});
+
+describe('minutesOverThreshold', () => {
+  it('changes with the overtime threshold: 40 hours worked', () => {
+    const worked = 40 * 60;
+    // The default 37.5h threshold highlights 2.5 hours.
+    expect(minutesOverThreshold(worked, 37.5)).toBe(150);
+    // Raise it to 40 and nothing is highlighted.
+    expect(minutesOverThreshold(worked, 40)).toBe(0);
+    // Lower it to 35 and five hours are.
+    expect(minutesOverThreshold(worked, 35)).toBe(300);
   });
 });

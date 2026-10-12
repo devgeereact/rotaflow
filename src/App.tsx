@@ -17,6 +17,7 @@ import {
 } from '@/lib/platformRoles';
 import type { MembershipRole } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
+import { RequestsLayout } from '@/components/layout/RequestsLayout';
 import { WorkModeProvider } from '@/context/WorkModeContext';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
@@ -234,7 +235,7 @@ const RotaBuilderPage = lazyPage(
 );
 
 /*
- * Settings and My Profile. The fourteen tabbed sections.
+ * Settings and My account. The fourteen tabbed sections.
  *
  * `settingsTabs.ts` has listed these routes since #62 and NOTHING rendered
  * them: the file was imported only by its own unit test, so every tab in the
@@ -276,6 +277,10 @@ const SettingsBillingPage = lazyPage(
 const SettingsAuditPage = lazyPage(
   'SettingsAuditPage',
   () => import('@/pages/app/settings/SettingsAuditPage'),
+);
+const SettingsIndexRedirect = lazyPage(
+  'SettingsIndexRedirect',
+  () => import('@/components/layout/SettingsLayout'),
 );
 const ProfileLayout = lazyPage(
   'ProfileLayout',
@@ -556,7 +561,22 @@ export function App(): JSX.Element {
                               path="feature-flags"
                               element={<AdminFeatureFlagsPage />}
                             />
-                            <Route path="gdpr" element={<AdminGdprPage />} />
+                            {/* The DSAR register names data subjects, so it is
+                      operational tenant data: 0138 moved `gdpr_requests_select`
+                      to `is_platform_operational()`, which excludes finance.
+                      Without this gate finance opened the screen and RLS
+                      filtered it to an empty register. */}
+                            <Route
+                              path="gdpr"
+                              element={
+                                <RequirePlatformRole
+                                  allow={PLATFORM_OPERATIONAL_ROLES}
+                                  area="GDPR and data requests"
+                                >
+                                  <AdminGdprPage />
+                                </RequirePlatformRole>
+                              }
+                            />
                             <Route path="settings" element={<AdminSettingsPage />} />
                           </Route>
                           {/* docs/design/staff.png and docs/design/Staff-Profile.png. */}
@@ -729,13 +749,17 @@ export function App(): JSX.Element {
                         />
                         <Route path="timesheets" element={<TimesheetsPage />} />
                         <Route path="availability" element={<AvailabilityPage />} />
-                        <Route path="leave" element={<LeavePage />} />
-                        <Route path="swaps" element={<SwapsPage />} />
+                        {/* Leave, Swaps and Overtime share a phone-only switch,
+                      so the "Requests" tab reaches all three. */}
+                        <Route element={<RequestsLayout />}>
+                          <Route path="leave" element={<LeavePage />} />
+                          <Route path="swaps" element={<SwapsPage />} />
+                          {/* Open to every member: a staff member raises their own
+                        overtime here, and the page's Team toggle is what gates
+                        the approval queue behind `canApprove`. */}
+                          <Route path="overtime" element={<OvertimePage />} />
+                        </Route>
                         <Route path="open-shifts" element={<OpenShiftsPage />} />
-                        {/* Open to every member: a staff member raises their own
-                      overtime here, and the page's Team toggle is what gates
-                      the approval queue behind `canApprove`. */}
-                        <Route path="overtime" element={<OvertimePage />} />
                         <Route path="announcements" element={<AnnouncementsPage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="help" element={<HelpPage />} />
@@ -761,7 +785,7 @@ export function App(): JSX.Element {
                           element={<Navigate to="/app/settings/integrations" replace />}
                         />
                         <Route path="settings" element={<SettingsLayout />}>
-                          <Route index element={<Navigate to="organisation" replace />} />
+                          <Route index element={<SettingsIndexRedirect />} />
                           <Route
                             path="organisation"
                             element={<SettingsOrganisationPage />}
@@ -819,6 +843,16 @@ export function App(): JSX.Element {
                           path="organisations"
                           element={<AdminOrganisationsPage />}
                         />
+                        {/* No `RequirePlatformRole` here, on purpose, and the
+                      same as the Organisations list above. Every platform role
+                      may open an organisation: finance needs its Subscription
+                      and Usage tabs, and 0122 left `organisations` readable by
+                      finance for that reason. The narrowing is per tab, in
+                      `src/lib/organisationTabs.ts`, which hides the
+                      operational tabs from finance. A route gate listing all
+                      four roles would add nothing except refusing an
+                      administrator whose granular role could not be read,
+                      while the list one click away still let them in. */}
                         <Route
                           path="organisations/:organisationId"
                           element={<AdminOrganisationDetailPage />}
@@ -981,7 +1015,22 @@ export function App(): JSX.Element {
                             </RequirePlatformRole>
                           }
                         />
-                        <Route path="gdpr" element={<AdminGdprPage />} />
+                        {/* The DSAR register names data subjects, so it is
+                      operational tenant data: 0138 moved `gdpr_requests_select`
+                      to `is_platform_operational()`, which excludes finance.
+                      Without this gate finance opened the screen and RLS
+                      filtered it to an empty register. */}
+                        <Route
+                          path="gdpr"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="GDPR and data requests"
+                            >
+                              <AdminGdprPage />
+                            </RequirePlatformRole>
+                          }
+                        />
                         <Route
                           path="feature-flags"
                           element={

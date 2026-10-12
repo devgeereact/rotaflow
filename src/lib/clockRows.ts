@@ -170,7 +170,7 @@ export function manualFallbackFor(
   switch (stage) {
     case 'working':
     case 'break':
-      return { type: 'out', label: 'Clock Out Manually' };
+      return { type: 'out', label: 'Clock out manually' };
     // 'ready' and 'done' already offer manual clock-in as the standing
     // second action, so there is nothing extra to surface for them.
     default:
@@ -301,10 +301,10 @@ export function buildCurrentShift(
 }
 
 const ACTIVITY_LABEL: Record<string, string> = {
-  in: 'Clock In',
-  out: 'Clock Out',
-  break_start: 'Break Started',
-  break_end: 'Break Ended',
+  in: 'Clock in',
+  out: 'Clock out',
+  break_start: 'Break started',
+  break_end: 'Break ended',
 };
 
 function activityKind(type: string): ClockActivityEntry['kind'] {

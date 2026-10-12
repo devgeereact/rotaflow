@@ -306,7 +306,7 @@ describe('buildRecentActivity', () => {
     expect(rows.map((r) => r.id)).toEqual(['out-1', 'in-1']);
     expect(rows[0]).toMatchObject({
       kind: 'out',
-      label: 'Clock Out',
+      label: 'Clock out',
       timeLabel: 'Yesterday, 17:02',
       durationLabel: '8h 02m',
     });
@@ -448,7 +448,7 @@ describe('manualFallbackFor', () => {
   it('offers a manual clock-out to someone stuck mid-shift with location denied', () => {
     expect(manualFallbackFor('working', 'denied')).toEqual({
       type: 'out',
-      label: 'Clock Out Manually',
+      label: 'Clock out manually',
     });
   });
 

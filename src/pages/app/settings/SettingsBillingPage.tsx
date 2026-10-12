@@ -9,6 +9,13 @@ import { listLocations } from '@/services/locationService';
 import { orgProfileFields } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
 import {
+  ALREADY_SUBSCRIBED,
+  billingStatus,
+  entitledPlan,
+  planName,
+  planPriceLabel,
+} from '@/lib/billingState';
+import {
   listPlans,
   startCheckout,
   openBillingPortal,
@@ -20,20 +27,6 @@ import { Card } from '@/components/ui/Card';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
 import type { Subscription } from '@/types';
-
-const PLAN_NAMES: Record<string, string> = {
-  starter: 'Starter',
-  professional: 'Professional',
-  business: 'Business',
-  enterprise: 'Enterprise',
-};
-
-const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
-  active: 'success',
-  trialing: 'info',
-  past_due: 'warning',
-  canceled: 'danger',
-};
 
 /**
  * `/app/settings/billing`. Design/Settingsbilling.png.
@@ -63,6 +56,7 @@ export function SettingsBillingPage(): JSX.Element {
   const [staffCount, setStaffCount] = useState<number | null>(null);
   const [siteCount, setSiteCount] = useState<number | null>(null);
   const [billingContact, setBillingContact] = useState('');
+  const [orgPlan, setOrgPlan] = useState<string | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState<string | null>(null);
@@ -85,6 +79,7 @@ export function SettingsBillingPage(): JSX.Element {
         setStaffCount(staff?.length ?? null);
         setSiteCount(sites?.length ?? null);
         setBillingContact(org ? orgProfileFields(org.settings, org).contactEmail : '');
+        setOrgPlan(org?.plan ?? null);
         setPlans(planList);
       } catch (err) {
         if (!active) return;
@@ -105,6 +100,15 @@ export function SettingsBillingPage(): JSX.Element {
     try {
       await startCheckout(orgId, planCode);
     } catch (err) {
+      // The organisation already has a subscription that is billing (this
+      // screen may be stale, or open in a second tab). A second Checkout would
+      // create a second Stripe subscription, so the server refuses with a 409
+      // and plan changes go through the portal instead.
+      if (err instanceof Error && err.message === ALREADY_SUBSCRIBED) {
+        setActionPending(null);
+        await handleManageBilling();
+        return;
+      }
       reportError(err, { area: 'settings-billing:checkout' });
       showError(
         err instanceof Error
@@ -143,8 +147,14 @@ export function SettingsBillingPage(): JSX.Element {
     );
   }
 
-  const plan = subscription?.plan ?? 'starter';
-  const status = subscription?.status ?? 'trialing';
+  // No subscription is "No plan yet", never a trial (B4). With one, the
+  // heading names the entitled plan from `organisations.plan`, which is what
+  // the limits are enforced against, rather than the subscription's own plan.
+  const status = subscription?.status ?? null;
+  const badge = billingStatus(subscription, new Date());
+  const plan = subscription ? entitledPlan(orgPlan, subscription) : null;
+  const subscribedPlanDiffers =
+    subscription !== null && plan !== null && plan !== subscription.plan;
 
   return (
     <div className="space-y-6">
@@ -155,17 +165,28 @@ export function SettingsBillingPage(): JSX.Element {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-display text-section-heading font-semibold text-content dark:text-content-dark">
-              {PLAN_NAMES[plan] ?? plan}
+              {plan ? planName(plan) : 'No plan yet'}
             </p>
             <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
-              {subscription?.current_period_end
-                ? `Current period ends ${new Date(subscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
-                : 'No billing period set.'}
+              {!subscription
+                ? 'Choose a plan below to start billing for this organisation.'
+                : subscription.current_period_end
+                  ? `Current period ends ${new Date(subscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                  : 'No billing period set.'}
             </p>
+            {!subscription && orgPlan && (
+              <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+                Until then, this organisation has {planName(orgPlan)} limits.
+              </p>
+            )}
+            {subscribedPlanDiffers && subscription && plan && (
+              <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+                Subscribed to {planName(subscription.plan)}. Limits currently follow{' '}
+                {planName(plan)}.
+              </p>
+            )}
           </div>
-          <Badge tone={STATUS_TONE[status] ?? 'neutral'}>
-            {status.replace('_', ' ')}
-          </Badge>
+          <Badge tone={badge.tone}>{badge.label}</Badge>
         </div>
 
         {/* A past-due badge on its own is an alarm with no action (CAP-041).
@@ -264,7 +285,7 @@ export function SettingsBillingPage(): JSX.Element {
             {subscription?.status === 'canceled' && (
               <div className="flex items-center justify-between gap-4 rounded-xl border border-divider bg-surface-subtle p-4 dark:border-divider-dark dark:bg-surface-subtle-dark">
                 <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                  Your subscription was canceled. Choose a plan below to resubscribe, or
+                  Your subscription was cancelled. Choose a plan below to resubscribe, or
                   review past invoices in Stripe's billing portal.
                 </p>
                 <Button
@@ -290,7 +311,7 @@ export function SettingsBillingPage(): JSX.Element {
                     {p.name}
                   </p>
                   <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                    £{(p.monthly_price_pence / 100).toFixed(2)} / month
+                    {planPriceLabel(p)}
                   </p>
                 </div>
                 <Button

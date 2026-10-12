@@ -1,8 +1,6 @@
-import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Building2,
-  CalendarDays,
   CheckCircle2,
   MapPin,
   ShieldCheck,
@@ -10,58 +8,29 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { cn } from '@/lib/utils';
 
 interface StepCompleteProps {
   orgName: string;
   planLabel: string;
   locationCount: number;
   inviteCount: number;
-  onFinish: () => void;
+  /**
+   * Marks onboarding complete and leaves the wizard for `to`. Navigation is
+   * the caller's, so the completion stamp and the destination cannot race.
+   */
+  onFinish: (to: string) => void;
 }
 
 /**
- * Destinations that actually exist. docs/design/Onboarding-Complete.png shows
- * "Set up shift types" / "Customise notifications" linking to a shift-types
- * page and a settings page. Neither exists in this app (shift types are
- * configured from a modal inside the rota builder, and there is no settings
- * route yet). Substituted with the two other real setup surfaces
- * (Locations, Staff) rather than link to something that 404s.
+ * One primary next step and one secondary, nothing else.
+ *
+ * This step used to offer four cards, two of which went to `/app/team`, plus
+ * two footer buttons that both went to the dashboard, and none to the setup
+ * checklist. The checklist is the screen that says what is still missing, so
+ * it is the secondary action; building the first rota is the primary one.
  */
-const NEXT_STEPS = [
-  {
-    icon: CalendarDays,
-    tint: 'bg-brand-wash text-brand dark:bg-brand-deep/20 dark:text-brand-light',
-    title: 'Build your first rota',
-    body: 'Create a rota for your team in a few minutes.',
-    to: '/app/rota',
-    cta: 'Go to Rota Builder',
-  },
-  {
-    icon: Users,
-    tint: 'bg-shift-violet/15 text-shift-violet',
-    title: 'Add more team members',
-    body: 'Invite more colleagues to join your organisation.',
-    to: '/app/team',
-    cta: 'Invite team',
-  },
-  {
-    icon: MapPin,
-    tint: 'bg-shift-teal/15 text-shift-teal',
-    title: 'Set up your locations',
-    body: 'Add the sites and departments you schedule across.',
-    to: '/app/locations',
-    cta: 'Manage locations',
-  },
-  {
-    icon: Users,
-    tint: 'bg-shift-amber/20 text-shift-amber',
-    title: 'Add your staff',
-    body: 'Build the staff directory your rotas are assigned to.',
-    to: '/app/team',
-    cta: 'Go to staff',
-  },
-];
+const PRIMARY = { to: '/app/rota', label: 'Build your first rota' } as const;
+const SECONDARY = { to: '/app/setup', label: 'Open setup checklist' } as const;
 
 export function StepComplete({
   orgName,
@@ -113,7 +82,7 @@ export function StepComplete({
           </span>
         </div>
         <h2 className="font-display text-2xl font-bold text-ink dark:text-content-dark">
-          Your organisation is ready!
+          Your organisation is ready.
         </h2>
         <p className="text-content-muted dark:text-content-muted-dark">
           You can now start scheduling and managing your team in RotaFlow.
@@ -158,62 +127,19 @@ export function StepComplete({
         </div>
       </div>
 
-      <div className="mb-8">
-        <h3 className="mb-3 text-sm font-semibold text-ink dark:text-content-dark">
-          Next steps
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {NEXT_STEPS.map(({ icon: Icon, tint, title, body, to, cta }, i) => (
-            <div
-              key={title}
-              className="relative flex flex-col rounded-xl border border-surface-border p-4 dark:border-surface-border-dark"
-            >
-              <span className="absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full bg-surface-subtle text-[0.65rem] font-semibold text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
-                {i + 1}
-              </span>
-              <span
-                className={cn('mb-3 grid h-11 w-11 place-items-center rounded-xl', tint)}
-              >
-                <Icon size={20} aria-hidden="true" />
-              </span>
-              <p className="text-sm font-semibold text-ink dark:text-content-dark">
-                {title}
-              </p>
-              <p className="mb-4 flex-1 text-xs text-content-muted dark:text-content-muted-dark">
-                {body}
-              </p>
-              <Link to={to} onClick={onFinish}>
-                <Button
-                  size="sm"
-                  variant={i === 0 ? 'primary' : 'secondary'}
-                  className={cn(
-                    'w-full',
-                    i === 0 && 'bg-brand hover:bg-brand/90 dark:bg-brand',
-                  )}
-                >
-                  {cta}
-                  <ArrowRight size={14} aria-hidden="true" className="ml-1" />
-                </Button>
-              </Link>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="flex flex-col gap-4 border-t border-surface-border pt-6 dark:border-surface-border-dark sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-content-muted dark:text-content-muted-dark">
-          🎉{' '}
-          <span className="font-medium text-ink dark:text-content-dark">
-            Welcome aboard!
-          </span>{' '}
-          We&rsquo;re excited to help you streamline your workforce scheduling.
+          Start with a rota, or see what is still to set up.
         </p>
-        <div className="flex shrink-0 gap-3">
-          <Button variant="secondary" onClick={onFinish}>
-            Explore dashboard
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
+          <Button variant="secondary" onClick={() => onFinish(SECONDARY.to)}>
+            {SECONDARY.label}
           </Button>
-          <Button className="bg-brand hover:bg-brand/90 dark:bg-brand" onClick={onFinish}>
-            Go to dashboard
+          <Button
+            className="bg-brand hover:bg-brand/90 dark:bg-brand"
+            onClick={() => onFinish(PRIMARY.to)}
+          >
+            {PRIMARY.label}
             <ArrowRight size={16} aria-hidden="true" className="ml-1.5" />
           </Button>
         </div>

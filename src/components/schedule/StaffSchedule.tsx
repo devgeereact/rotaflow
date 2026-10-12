@@ -121,7 +121,7 @@ export function StaffSchedule({
   return (
     <div>
       <WorkspaceHeader
-        title="Your schedule"
+        title="My rota"
         subtitle={`Week commencing ${weekStartLabel}${published ? '' : '. Your manager has not published this week yet'}.`}
         actions={
           <>

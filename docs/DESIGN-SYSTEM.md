@@ -158,6 +158,15 @@ together, with the contrast and colour-vision measurements redone.
 attendance state and not a conflict. Attendance uses the semantic status tokens
 (§ "Colour. Semantic"); shift pattern uses a text code.
 
+### Colour. Chart marks
+
+A chart series takes its colour from `seriesColour()` in `src/lib/chartPalette.ts`.
+A single mark that carries a meaning (a sparkline, a status donut, an overdue bar)
+uses `CHART_TOKENS` from the same file, which copies the semantic tokens from
+`src/index.css` as literals because an SVG presentation attribute needs one.
+`src/lib/chartPalette.test.ts` reads the stylesheet and fails if a copy drifts. No
+page hand-copies a chart hex.
+
 ### Typography
 
 | Role            | Size / line-height | Weight    | Tailwind class                       |
@@ -486,18 +495,19 @@ request leave, swap work and record attendance.
 
 The product is for care and healthcare, hospitality, retail, education,
 security and facilities teams that need reliable cover across sites, departments
-and variable shift patterns. The clearest differentiator is operational
-continuity: essential workforce actions, including attendance, do not stop when
-connectivity is poor.
+and variable shift patterns. The clearest differentiator is that staff work
+from their phone where the signal is poor: three actions (a clock-in, a leave
+request and a swap request) wait on the phone until the signal returns.
+Everything else needs a connection (`docs/ARCHITECTURE.md#offline-and-pwa`).
 
 ### Message hierarchy
 
-| Level             | Approved message                                                                                                                                    |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tagline           | **Scheduling certainty for every shift.**                                                                                                           |
-| Value proposition | Build rotas with fewer surprises, keep staff informed, and retain a dependable record of attendance—even when the signal drops.                     |
-| Proof themes      | Offline attendance queue; conflict, availability and rest-gap checks; multi-site scheduling; leave, swaps, timesheets and reporting in one product. |
-| AI position       | AI helps a manager review and draft a rota; the manager stays in control.                                                                           |
+| Level             | Approved message                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tagline           | **Scheduling certainty for every shift.**                                                                                                                    |
+| Value proposition | Build rotas with fewer surprises, keep staff informed, and keep a record of every clock-in.                                                                  |
+| Proof themes      | Three actions wait on the phone without a signal; conflict, availability and rest-gap checks; multi-site scheduling; leave, swaps, timesheets and reporting. |
+| AI position       | AI helps a manager review and draft a rota; the manager stays in control.                                                                                    |
 
 ### Voice
 
@@ -509,6 +519,49 @@ before you publish” to vague claims such as “intelligent automation.”
 Do not promise compliance, savings, uptime, AI accuracy or staffing outcomes
 that have not been measured. Do not imply that RotaFlow replaces a manager's
 judgement, payroll provider, or employment-law advice.
+
+### Approved website claims
+
+The public site's headline claims, set on 11 October 2026 (work package WP-F,
+`docs/Plans 2026/06-WEBSITE-AND-CONTENT.md` §3). Each is checked against the
+code named beside it. Change the claim and the evidence together.
+
+| Use this                                                                                                                            | Not this                                                              | Evidence                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Rotas your team can actually follow.** (home headline)                                                                            | "Every shift covered. Every team aligned. Even offline."              | `src/lib/marketing.ts` `HERO`                                      |
+| Plan and publish shifts across your sites, handle leave and swap requests in one place, and see who has clocked in, from any phone. |                                                                       | `src/lib/marketing.ts` `HERO`                                      |
+| Clock-ins, leave and swap requests wait on the phone until the signal returns.                                                      | "Works offline", "Even offline", "keep working when the signal drops" | three queued writes, `docs/ARCHITECTURE.md#offline-and-pwa`        |
+| A clock-in recorded in a basement sends when the phone finds a signal.                                                              | "Nothing is lost in a basement or a stairwell."                       | `src/lib/offlineOutbox.ts`, `src/services/syncQueue.ts`            |
+| See gaps before you publish.                                                                                                        | "Every shift covered"                                                 | open-shift and minimum-cover insights, `src/lib/rotaInsights.ts`   |
+| Rest-period and 48-hour warnings on the rota, and a record of every clock-in.                                                       | "Maintain compliance", "Built for UK obligations"                     | `rest_breach` in `rotaInsights.ts`; 48h total in `RotaGridRow.tsx` |
+| AI rota assistant, available on the Business and Enterprise plans.                                                                  | AI listed with no plan                                                | `ai_rota_assistant` entitlement, migrations `0030` and `0074`      |
+| Available today (the Resources build-status list).                                                                                  | "Built and in use today"                                              | there are no customers yet                                         |
+| See your own rota in RotaFlow. (closing call to action)                                                                             | "Ready to simplify your scheduling?"                                  | not a factual claim                                                |
+
+Also removed, and not to return without evidence: any time saving ("takes
+minutes", "about ten minutes"), a "Most popular" plan badge, and the
+capability stats band of non-numbers ("6", "Offline", "Multi-site", "UK"). The
+stats band reappears only when `TRACTION` holds real, sourced figures.
+"Rest-break" is deliberately not used: nothing checks breaks within a shift.
+
+### Words in the product
+
+Sentence case, British English, no exclamation marks and no em dashes in UI copy.
+One term for one thing (adopted 2026-10-11, from `docs/Plans 2026/04-DESIGN-AND-EXPERIENCE.md` §8):
+
+| Use                                            | Not                                        |
+| ---------------------------------------------- | ------------------------------------------ |
+| Rota; **My rota** for a staff member's own one | Schedule (as a noun for the plan)          |
+| Clock in, Clock out, Clock in manually         | Clock In, Clock In Now, Punch in           |
+| Swap request, Swap requests                    | Shift swap, Shift swap request             |
+| My account (the `/app/account` area)           | My Profile, Account security, Your profile |
+| Your organisation is ready.                    | You're all set!, All done!                 |
+
+An error says what failed and what to do next. "Something went wrong" says
+neither. Write "We could not load this week's rota. Check your connection and
+try again.", and for a crash caught by `ErrorBoundary`, "This screen could not
+be shown" with a reload. A route, table or enum keeps its name: only the words
+on screen change.
 
 ### Evidence boundary
 

@@ -26,7 +26,7 @@ interface PanelTabsProps<T extends string> {
  *
  * - **`Tabs`** is a `<nav>` of `NavLink`s, one URL per tab. Use it whenever a
  *   tab is somewhere a person could sensibly link to or refresh into. The
- *   Settings and My Profile areas, and the Locations / Departments workspace.
+ *   Settings and My account areas, and the Locations / Departments workspace.
  * - **`PanelTabs`** (this) is `role="tablist"`, driven by component state. Use
  *   it when the tabs genuinely swap content in place and minting a route for
  *   each would be noise. The sections of the staff profile, and the

@@ -75,19 +75,10 @@ export function PricingPage(): JSX.Element {
               )}
             >
               {/*
-                The badge row is rendered on every card, not just the featured
-                one, an empty span on the others keeps all headings,
-                prices and feature lists on the same baseline. Rendering it
-                only when `featured` pushed the Professional card ~40px down and left
-                the cards visibly misaligned.
+                No "Most popular" badge: RotaFlow has no customers yet, so no
+                plan is popular. Removed 2026-10-11. If a badge returns, render
+                its row on every card so headings stay on one baseline.
               */}
-              <span
-                aria-hidden={!featured}
-                className="mb-4 h-6 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase leading-4 tracking-wide text-primary-ink dark:text-primary-ink-dark empty:bg-transparent"
-              >
-                {featured ? 'Most popular' : ''}
-              </span>
-
               <h2 className="font-display text-xl font-bold text-content dark:text-content-dark">
                 {name}
               </h2>

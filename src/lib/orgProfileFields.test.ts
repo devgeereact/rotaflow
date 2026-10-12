@@ -76,7 +76,6 @@ describe('orgProfileFields', () => {
     expect(fields.industry).toBe('');
     expect(fields.country).toBe('United Kingdom');
     expect(fields.timezone).toBe('Europe/London');
-    expect(fields.workingWeek).toBe('mon-sun');
   });
 
   it('still reads the fields that have no column from settings', () => {

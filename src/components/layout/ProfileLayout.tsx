@@ -6,8 +6,10 @@ import { RouteFallback } from '@/components/RouteFallback';
 import { profileTabs } from '@/lib/settingsTabs';
 
 /**
- * `/app/account/*`. The six-section personal area from
- * `docs/design/ProfileSettings.png`.
+ * `/app/account/*`. "My account", the personal area from
+ * `docs/design/ProfileSettings.png`. Seven routed sections, six of them in the
+ * tab bar: API tokens is hidden until a public API exists (see
+ * `settingsTabs.ts`), though its route still resolves.
  *
  * Every signed-in user has one regardless of role, which is the whole reason
  * it is separate from Settings: Settings is organisation administration and a
@@ -18,9 +20,9 @@ export function ProfileLayout(): JSX.Element {
   return (
     <div>
       <PageHeader
-        title="My Profile"
+        title="My account"
         description="Manage your personal information, preferences and security."
-        below={<Tabs items={profileTabs()} label="Profile sections" />}
+        below={<Tabs items={profileTabs()} label="My account sections" />}
       />
       <Suspense fallback={<RouteFallback />}>
         <Outlet />

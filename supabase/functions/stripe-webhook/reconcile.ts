@@ -122,3 +122,105 @@ export function subscriptionRefOf(invoice: {
   if (typeof sub === 'string') return sub;
   return sub?.id ?? null;
 }
+
+/**
+ * The part of a Stripe Subscription that `customer.subscription.updated`
+ * writes. Timestamps are Unix seconds, as Stripe sends them.
+ */
+export interface SubscriptionSnapshot {
+  id: string;
+  status: string;
+  current_period_end: number;
+  canceled_at: number | null;
+}
+
+/**
+ * Which copy of a subscription `customer.subscription.updated` should write:
+ * the one in the event, or the one just retrieved from Stripe.
+ *
+ * The ordering defect. Stripe does not deliver events in order, so an older
+ * `updated` (say, `past_due` from before the customer's card recovered) could
+ * land after a newer one and overwrite the newer state. Comparing
+ * `event.created` is not a safe fix: Stripe records it in whole seconds, so
+ * distinct events share a timestamp, and its own documentation says not to
+ * use it to order events
+ * (https://docs.stripe.com/events/how-events-work#event-ordering). It
+ * recommends retrieving the object instead, which `handleCheckoutCompleted`
+ * already does.
+ *
+ * So the handler retrieves the subscription and writes what Stripe holds now.
+ * Every delivery, stale or not, then writes current state, and the order they
+ * arrive in stops mattering. No new column is needed.
+ *
+ * A retrieved object for a different id is a bug, not a newer state, and
+ * returns null so the caller declines to write rather than crossing two
+ * subscriptions. A failed retrieval also returns null; the caller throws, so
+ * Stripe retries rather than the stale payload being written.
+ */
+export function freshestSubscription<T extends SubscriptionSnapshot>(
+  fromEvent: T,
+  retrieved: T | null,
+): T | null {
+  if (!retrieved) return null;
+  if (retrieved.id !== fromEvent.id) return null;
+  return retrieved;
+}
+
+// subscriptions.status has a check constraint of only
+// ('trialing','active','past_due','canceled') — 0002_rotaflow.sql — but
+// Stripe's real Subscription.Status enum is wider (incomplete,
+// incomplete_expired, unpaid, paused). Map onto the 4 allowed values rather
+// than widen the constraint; a schema change is a separate, controller-gated
+// step, not something this webhook does on its own.
+export function mapSubscriptionStatus(stripeStatus: string): string {
+  switch (stripeStatus) {
+    case 'active':
+      return 'active';
+    case 'trialing':
+      return 'trialing';
+    case 'past_due':
+    case 'unpaid':
+    case 'incomplete':
+    case 'incomplete_expired':
+      return 'past_due';
+    case 'canceled':
+    case 'paused':
+      return 'canceled';
+    default:
+      // Stripe's API can add statuses over time. Past due warns the owner
+      // without cutting anything off.
+      return 'past_due';
+  }
+}
+
+/** The `subscriptions` columns a subscription update writes, plan aside. */
+export function subscriptionUpdatePayload(sub: SubscriptionSnapshot): {
+  status: string;
+  current_period_end: string;
+  canceled_at: string | null;
+} {
+  return {
+    status: mapSubscriptionStatus(sub.status),
+    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
+  };
+}
+
+/**
+ * Whether `customer.subscription.deleted` may suspend the organisation.
+ *
+ * The cancellation itself is scoped to `(org_id, provider_ref)`, so a late
+ * `deleted` for a subscription the organisation has since replaced matches no
+ * row and changes nothing. The suspension was not scoped: it called
+ * `set_org_status` on `org_id` alone, so an old subscription's exhausted
+ * dunning, delivered after the owner had resubscribed, would suspend an
+ * organisation that is paying. The rule: suspend only when the cancellation
+ * write matched the row the organisation actually holds, and only for the
+ * involuntary reason Stripe reports after dunning runs out.
+ */
+export function shouldSuspendOnDeleted(
+  matchedStoredSubscription: boolean,
+  cancellationReason: string | null | undefined,
+): boolean {
+  return matchedStoredSubscription && cancellationReason === 'payment_failed';
+}

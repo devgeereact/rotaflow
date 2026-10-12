@@ -42,8 +42,9 @@ export async function getMyPlatformRole(): Promise<PlatformRole | null> {
  * on, the session must be `aal2`.
  *
  * The two diverge exactly when it matters. With `require_mfa` on and a session
- * at `aal1` — the only level the sign-in form can currently produce, since it
- * has no MFA challenge — the flag is true and the function is false. The gate
+ * at `aal1` (an administrator with no verified factor; one WITH a factor is
+ * stopped earlier, by `MfaGate`'s sign-in challenge) the flag is true and the
+ * function is false. The gate
  * let the administrator in and every policy behind it then filtered to nothing:
  * the users directory empty, a profile reading "No RotaFlow profile has that
  * identifier", and the administrators roster collapsing to the single row the

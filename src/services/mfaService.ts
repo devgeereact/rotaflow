@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { AssuranceLevels } from '@/lib/mfaStep';
 
 /**
  * Two-factor authentication (CAP-049).
@@ -21,6 +22,8 @@ export interface MfaFactor {
   friendlyName: string | null;
   createdAt: string;
   status: 'verified' | 'unverified';
+  /** `totp`, `phone` or `webauthn`. Only `totp` is ever enrolled from this app. */
+  factorType: string;
 }
 
 /** A started enrolment: what to show, and the id needed to finish it. */
@@ -46,6 +49,7 @@ export async function listMfaFactors(): Promise<MfaFactor[]> {
     friendlyName: factor.friendly_name ?? null,
     createdAt: factor.created_at,
     status: factor.status === 'verified' ? 'verified' : 'unverified',
+    factorType: factor.factor_type,
   }));
 }
 
@@ -119,4 +123,36 @@ export async function sessionIsAal2(): Promise<boolean> {
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (error) throw error;
   return data?.currentLevel === 'aal2';
+}
+
+/**
+ * The session's current and next assurance level (Supabase Auth MFA guide,
+ * "Add a challenge step to sign in"). Read on every protected load by
+ * `MfaGate`; auth-js answers it from the stored session, so it normally needs
+ * no network round trip and works offline.
+ */
+export async function getMfaAssurance(): Promise<AssuranceLevels> {
+  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error) throw error;
+  return {
+    currentLevel: data?.currentLevel ?? null,
+    nextLevel: data?.nextLevel ?? null,
+  };
+}
+
+/**
+ * The sign-in second factor: prove the code and upgrade this session to
+ * `aal2`.
+ *
+ * One `challengeAndVerify` per attempt rather than a challenge held across
+ * attempts, for the reason `confirmMfaEnrolment` gives: a fresh challenge per
+ * submit cannot have expired while somebody was finding their phone. The
+ * caller sorts any error with `classifyMfaError`.
+ */
+export async function verifySignInCode(factorId: string, code: string): Promise<void> {
+  const { error } = await supabase.auth.mfa.challengeAndVerify({
+    factorId,
+    code: code.trim(),
+  });
+  if (error) throw error;
 }

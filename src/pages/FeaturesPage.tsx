@@ -79,7 +79,7 @@ const WORKFLOW = [
     points: [
       'Filter by period, location and department',
       'CSV export from any report',
-      'Compliance and qualification expiry alerts',
+      'Qualification and document expiry alerts',
       'Labour hours and cost by location',
     ],
   },
@@ -91,8 +91,8 @@ const PLATFORM = [
     body: 'RotaFlow installs to a phone or tablet home screen straight from the browser, so there is no app store listing to maintain and no review to wait for.',
   },
   {
-    title: 'Works offline',
-    body: 'The app shell opens offline. Clock-ins, leave requests and swap offers queue on the device and sync when a connection returns; other workspace data needs a connection.',
+    title: 'When the signal drops',
+    body: 'Once installed, the app opens without a connection. Clock-ins, leave and swap requests wait on the phone until the signal returns; everything else needs a connection.',
   },
   {
     title: 'Multi-tenant by design',

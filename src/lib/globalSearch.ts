@@ -129,7 +129,7 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     icon: Umbrella,
   },
   {
-    label: 'Shift swaps',
+    label: 'Swap requests',
     keywords: 'swap cover exchange request approve',
     to: '/app/swaps',
     group: 'Scheduling',
@@ -200,7 +200,7 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/settings/organisation',
     group: 'Settings',
     icon: Settings,
-    roles: MANAGERIAL,
+    roles: ['owner'],
   },
   {
     label: 'Permissions',
@@ -256,10 +256,10 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     to: '/app/settings/audit',
     group: 'Settings',
     icon: Settings,
-    roles: MANAGERIAL,
+    roles: ['owner'],
   },
   {
-    label: 'My profile',
+    label: 'My account',
     keywords: 'personal details name photo phone job title',
     to: '/app/account/profile',
     group: 'Account',

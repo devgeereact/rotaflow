@@ -122,7 +122,15 @@ export function navItemsForRole(
     items.push({ label: 'Set up', icon: ListChecks, to: '/app/setup' });
     items.push({ label: 'Rota Builder', icon: CalendarDays, to: '/app/rota' });
   }
-  items.push({ label: 'Schedule', icon: CalendarRange, to: '/app/schedule' });
+  // Staff have no builder, so the published plan is simply theirs: "My rota",
+  // the same word the phone tab uses. A manager keeps "Schedule" here because
+  // "Rota Builder" sits directly above it and two rows both called Rota would
+  // be worse than one that is not.
+  items.push({
+    label: isManager ? 'Schedule' : 'My rota',
+    icon: CalendarRange,
+    to: '/app/schedule',
+  });
 
   if (isManager) {
     // The management counterpart of Clock In: the attendance record, not a
@@ -162,10 +170,10 @@ export function navItemsForRole(
   // Staff reach Clock In as an ordinary row: it is the screen they open twice
   // a day and it belongs at the top of their list, not in an opt-in group.
   if (!isManager) {
-    items.splice(2, 0, { label: 'Clock In', icon: LogIn, to: '/app/clock' });
+    items.splice(2, 0, { label: 'Clock in', icon: LogIn, to: '/app/clock' });
   } else if (personal) {
     items.push({
-      label: 'Clock In',
+      label: 'Clock in',
       icon: LogIn,
       to: '/app/clock',
       group: 'my-work',
@@ -177,7 +185,7 @@ export function navItemsForRole(
 
 /**
  * The rail's second, quieter nav group: account-level destinations rather
- * than workspace ones. A manager gets Settings; staff get My Profile in the
+ * than workspace ones. A manager gets Settings; staff get My account in the
  * same slot, `settingsTabsForRole('staff')` is empty, so a Settings link
  * would land them on a redirect every time. Help & Support is common to both.
  *
@@ -191,7 +199,7 @@ export function footerNavItemsForRole(role: MembershipRole | null): NavItem[] {
   return [
     isManager
       ? { label: 'Settings', icon: Settings, to: '/app/settings' }
-      : { label: 'My Profile', icon: UserCircle, to: '/app/account' },
+      : { label: 'My account', icon: UserCircle, to: '/app/account' },
     { label: 'Help & Support', icon: LifeBuoy, to: '/app/help' },
   ];
 }

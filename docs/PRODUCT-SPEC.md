@@ -65,7 +65,10 @@ role membership, never in the client alone.
    (shift templates were dropped in `0096`)
    (`0107`, arithmetic done in the site's timezone so a 07:00 shift is still 07:00
    after the clocks change), colour coding, conflict
-   detection (double-booking, availability, leave, max hours, min rest).
+   detection (double-booking, availability, leave, max weekly hours, min rest,
+   max consecutive days). The three working-time limits come from Settings →
+   Policies (defaults 11 hours rest, 48 weekly hours, 6 days in a row); they
+   warn and never block a save.
 4. **Shift types & templates**. Reusable, org-defined (Morning, Late, Night, Split,
    Weekend, On-Call, Bank, Training, etc.).
 5. **Staff mobile rota view**. Installable PWA, offline-first, calendar month/week/day

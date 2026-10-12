@@ -53,7 +53,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     path: '/',
     title: 'Scheduling certainty for every shift',
     description:
-      'UK-first workforce scheduling for shift-based teams. Build rotas, manage leave and swaps, track attendance, and keep working when the signal drops.',
+      'Plan and publish rotas, handle leave and swaps, and see who has clocked in. Clock-ins, leave and swap requests wait on the phone until the signal returns.',
     sitemap: true,
     priority: 1.0,
   },
@@ -61,7 +61,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     path: '/features',
     title: 'Features',
     description:
-      'Rota building, leave and swaps, GPS clock-in, timesheets, announcements and reporting — with an offline mode that queues work until the signal returns.',
+      'Rota building, leave and swaps, GPS clock-in, timesheets and reporting. Clock-ins, leave and swap requests wait on the phone until the signal returns.',
     sitemap: true,
     priority: 0.9,
   },

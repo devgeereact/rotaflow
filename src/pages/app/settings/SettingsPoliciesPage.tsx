@@ -1,6 +1,7 @@
 import { REGION_LABELS, type BankHolidayRegion } from '@/lib/bankHolidays';
 import { LEAVE_YEAR_START_MONTHS } from '@/lib/leaveYear';
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { format } from 'date-fns';
 import { AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useOrg } from '@/hooks/useOrg';
@@ -22,21 +23,41 @@ import { Label } from '@/components/ui/Label';
 import { Toggle } from '@/components/ui/Toggle';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 
+type NumericPolicyKey =
+  'overtimeThresholdHours' | 'minRestHours' | 'maxConsecutiveDays' | 'maxWeeklyHours';
+
 interface NumericPolicy {
-  key: keyof SchedulingPolicies;
+  key: NumericPolicyKey;
   label: string;
   hint: string;
+  /** One plain sentence showing what the current value does in practice. */
+  example: (value: number) => string;
   unit: string;
   min: number;
   max: number;
   step: number;
 }
 
+/** 37.5 to "37.5", 11 to "11". No trailing ".0" in a sentence. */
+function n(value: number): string {
+  return String(Math.round(value * 100) / 100);
+}
+
+/** Minutes after midnight to "HH:MM", wrapping past midnight. */
+function clock(minutes: number): string {
+  const wrapped = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const hh = String(Math.floor(wrapped / 60)).padStart(2, '0');
+  const mm = String(wrapped % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 const NUMERIC_POLICIES: NumericPolicy[] = [
   {
     key: 'overtimeThresholdHours',
     label: 'Overtime threshold',
-    hint: 'Weekly hours after which time is treated as overtime on a timesheet.',
+    hint: "Weekly hours after which worked time is highlighted on a staff member's own timesheet.",
+    example: (v) =>
+      `With ${n(v)} hours, someone who works ${n(v + 2.5)} hours in a week sees 2.5h highlighted over the threshold on their own timesheet.`,
     unit: 'hours / week',
     min: 1,
     max: 80,
@@ -45,7 +66,9 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
   {
     key: 'minRestHours',
     label: 'Minimum rest between shifts',
-    hint: 'The gap a person should have between clocking out and their next shift.',
+    hint: 'The gap a person should have between one shift ending and the next starting. The rota warns when it is shorter.',
+    example: (v) =>
+      `With ${n(v)} hours rest, a shift ending at 23:00 means no start before ${clock(23 * 60 + v * 60)}.`,
     unit: 'hours',
     min: 0,
     max: 24,
@@ -54,7 +77,9 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
   {
     key: 'maxConsecutiveDays',
     label: 'Maximum consecutive days',
-    hint: 'How many days in a row someone may be rostered.',
+    hint: 'How many days in a row someone may be rostered before the rota warns.',
+    example: (v) =>
+      `With ${n(v)} days, rostering someone for ${n(v + 1)} days in a row raises a warning on the rota.`,
     unit: 'days',
     min: 1,
     max: 14,
@@ -63,31 +88,28 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
   {
     key: 'maxWeeklyHours',
     label: 'Maximum weekly hours',
-    hint: 'Weekly hours a rota should not roster a person past.',
+    hint: 'The rota shows a weekly total in red past this. The legal limit is an average of 48 hours, and a worker can opt out of it in writing; raise this only for people who have.',
+    example: (v) =>
+      `With ${n(v)} hours, a person rostered for ${n(v + 2)} hours in one week shows their total in red on the rota.`,
     unit: 'hours / week',
     min: 1,
     max: 84,
     step: 1,
   },
-  {
-    key: 'roundingMinutes',
-    label: 'Clock rounding',
-    hint: 'Clock-in and clock-out times are rounded to this interval on timesheets.',
-    unit: 'minutes',
-    min: 1,
-    max: 60,
-    step: 1,
-  },
-  {
-    key: 'publishLeadDays',
-    label: 'Publish rotas in advance',
-    hint: 'How far ahead a rota should be published for staff.',
-    unit: 'days',
-    min: 1,
-    max: 90,
-    step: 1,
-  },
 ];
+
+const BANK_HOLIDAY_EXAMPLES: Record<BankHolidayRegion, string> = {
+  'england-and-wales':
+    'With England and Wales, Easter Monday is a bank holiday and 2 January is not.',
+  scotland: 'With Scotland, 2 January is a bank holiday and Easter Monday is not.',
+  'northern-ireland':
+    "With Northern Ireland, St Patrick's Day on 17 March and 12 July are bank holidays too.",
+};
+
+/** A month's name from its number, 1 = January. 0 wraps to December. */
+function monthName(value: number): string {
+  return format(new Date(2026, value - 1, 1), 'MMMM');
+}
 
 /**
  * `/app/settings/policies`. Design/Settingspolicy.png, scoped honestly.
@@ -102,15 +124,20 @@ const NUMERIC_POLICIES: NumericPolicy[] = [
  * that store a value nothing ever reads, which is indistinguishable from a
  * working feature until someone relies on it.
  *
- * What ships here is the subset the product **already acts on or reports**:
- * the overtime threshold the timesheet split uses, clock rounding, minimum
- * rest, maximum consecutive days, break payment, and publish lead time.
+ * What ships here is the subset the product **already acts on**: minimum
+ * rest, maximum weekly hours and maximum consecutive days (rota warnings),
+ * the overtime threshold (highlighted on a staff member's timesheet), break
+ * payment, the holiday year, bank holidays and swap approval.
+ *
+ * Clock rounding, publish lead time and auto-declining clashing leave used to
+ * be here too. Nothing read them, so a manager who changed one saw "saved" and
+ * nothing else happened. They are gone from the screen; their stored values
+ * are kept (`RETIRED_POLICY_KEYS`).
  *
  * The honesty matters more than the count, so the screen states it directly:
- * these are defaults and reporting inputs, and nothing here blocks a rota from
- * being saved. An owner who sets "maximum 6 consecutive days" and assumes the
- * builder will refuse the seventh has been misled by a checkbox, that is the
- * failure this note exists to prevent.
+ * these warn, they do not block. An owner who sets "maximum 6 consecutive
+ * days" and assumes the builder will refuse the seventh has been misled by a
+ * checkbox, that is the failure the closing note exists to prevent.
  */
 export function SettingsPoliciesPage(): JSX.Element {
   const { orgId, role, refresh } = useOrg();
@@ -205,6 +232,9 @@ export function SettingsPoliciesPage(): JSX.Element {
               <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
                 {policy.hint}
               </p>
+              <p className="mt-1 text-xs text-content dark:text-content-dark">
+                {policy.example(policies[policy.key])}
+              </p>
             </div>
           ))}
         </div>
@@ -223,6 +253,11 @@ export function SettingsPoliciesPage(): JSX.Element {
               {policies.breaksArePaid
                 ? 'Break time counts towards paid hours.'
                 : 'Break time is deducted from paid hours.'}
+            </p>
+            <p className="mt-1 text-xs text-content dark:text-content-dark">
+              {policies.breaksArePaid
+                ? 'With paid breaks, a 9-hour shift with a 30-minute break pays 9 hours.'
+                : 'With unpaid breaks, a 9-hour shift with a 30-minute break pays 8.5 hours.'}
             </p>
           </div>
           <Toggle
@@ -262,6 +297,9 @@ export function SettingsPoliciesPage(): JSX.Element {
               Balances are counted against this year, not the calendar one. April is the
               usual choice in the public sector.
             </p>
+            <p className="mt-1 text-xs text-content dark:text-content-dark">
+              {`With ${monthName(policies.leaveYearStartMonth)}, the year runs from 1 ${monthName(policies.leaveYearStartMonth)} to the end of ${monthName(policies.leaveYearStartMonth - 1)}.`}
+            </p>
           </div>
           <div>
             <Label htmlFor="policy-carry-over">Days that can carry over</Label>
@@ -280,6 +318,11 @@ export function SettingsPoliciesPage(): JSX.Element {
             <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
               Zero is use it or lose it. Uncapped carry-over is how somebody accumulates
               months of untaken leave nobody has budgeted cover for.
+            </p>
+            <p className="mt-1 text-xs text-content dark:text-content-dark">
+              {policies.leaveCarryOverMaxDays === 0
+                ? 'With 0 days, any leave left at the end of the year is lost.'
+                : `With ${n(policies.leaveCarryOverMaxDays)} days, someone with ${n(policies.leaveCarryOverMaxDays + 3)} days left at the end of the year carries ${n(policies.leaveCarryOverMaxDays)} into the next.`}
             </p>
           </div>
         </div>
@@ -313,6 +356,9 @@ export function SettingsPoliciesPage(): JSX.Element {
             August rather than the last, and Northern Ireland adds two of its own. Leave
             requests name the bank holidays they cover.
           </p>
+          <p className="mt-1 text-xs text-content dark:text-content-dark">
+            {BANK_HOLIDAY_EXAMPLES[policies.bankHolidayRegion]}
+          </p>
         </div>
       </SettingsSection>
 
@@ -320,7 +366,7 @@ export function SettingsPoliciesPage(): JSX.Element {
         title="Approvals"
         description="Who has to sign off before a request takes effect."
       >
-        <div className="space-y-5">
+        <div>
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-content dark:text-content-dark">
@@ -331,6 +377,11 @@ export function SettingsPoliciesPage(): JSX.Element {
                   ? 'A manager must approve every swap, even once the colleague has accepted it.'
                   : 'Once a named colleague accepts a swap, the person who offered it can finalise it themselves — no manager needed. A manager can still step in on any swap at any stage.'}
               </p>
+              <p className="mt-1 text-xs text-content dark:text-content-dark">
+                {policies.swapApprovalRequired
+                  ? 'With approval on, a swap Alex and Sam have both agreed still waits for a manager.'
+                  : 'With approval off, a swap Alex and Sam have both agreed goes through straight away.'}
+              </p>
             </div>
             <Toggle
               label="Swap approval required"
@@ -338,25 +389,6 @@ export function SettingsPoliciesPage(): JSX.Element {
               disabled={!canEdit}
               onChange={(next) =>
                 setPolicies((prev) => ({ ...prev, swapApprovalRequired: next }))
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4 border-t border-surface-border pt-5 dark:border-surface-border-dark">
-            <div>
-              <p className="text-sm font-medium text-content dark:text-content-dark">
-                Auto-decline clashing leave
-              </p>
-              <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
-                Refuse a leave request that would drop a day under minimum cover, instead
-                of just flagging it for a manager to weigh up.
-              </p>
-            </div>
-            <Toggle
-              label="Auto-decline clashing leave"
-              checked={policies.autoDeclineClashingLeave}
-              disabled={!canEdit}
-              onChange={(next) =>
-                setPolicies((prev) => ({ ...prev, autoDeclineClashingLeave: next }))
               }
             />
           </div>
@@ -386,17 +418,14 @@ export function SettingsPoliciesPage(): JSX.Element {
           />
           <div className="text-sm text-content-muted dark:text-content-muted-dark">
             <p className="font-medium text-content dark:text-content-dark">
-              Most of these are defaults, not enforcement
+              The working-time rules warn, they do not block
             </p>
             <p className="mt-1">
-              RotaFlow uses the working-time values above when calculating timesheets and
-              when suggesting shifts, and reports flag rotas that fall outside them. They
-              do not currently block a rota from being saved, a manager can still roster a
-              seventh consecutive day. Automatic validation while building a rota is
-              planned separately. Auto-decline clashing leave is stored the same way for
-              now: it flags a request, it does not yet refuse one automatically. Swap
-              approval is the exception — turning it off genuinely removes the manager
-              step, it is read by the Shift Swaps screen itself.
+              Minimum rest, maximum weekly hours and maximum consecutive days raise
+              warnings on the rota, and the overtime threshold highlights hours on a
+              timesheet. None of them stops a rota being saved: a manager can still roster
+              a seventh consecutive day, knowingly. Swap approval is different, turning it
+              off genuinely removes the manager step.
             </p>
           </div>
         </div>

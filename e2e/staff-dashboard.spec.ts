@@ -156,7 +156,7 @@ test.describe('a staff member on their own dashboard', () => {
       page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ }),
     ).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('heading', { name: 'Your next shifts' })).toBeVisible();
-    await expect(page.getByText('Something went wrong')).toHaveCount(0);
+    await expect(page.getByText('This screen could not be shown')).toHaveCount(0);
 
     // The screen is allowed to render and still be broken underneath: the
     // crash this guards against was caught by the top-level ErrorBoundary,

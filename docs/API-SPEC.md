@@ -34,7 +34,7 @@ membership, never trusted.
 | `ai-rota-assistant`       | yes          | Owner or manager (`has_org_role`), plan entitlement `ai_rota_assistant` (`org_has_feature`, 403 `plan_required`), per-user and per-org rate limits. Caller's JWT; `service_role` only for `audit_write` | `{ orgId, prompt, periodStart, periodEnd, task? }`, dates `YYYY-MM-DD`, `task` is `rota` (default) or `announcement`                  | `rota`: `{ summary, suggestions[] }`, each suggestion validated against the org's real staff and shift types. `announcement`: `{ title, body, urgent, reasoning, ... }`. 503 when `OPENROUTER_API_KEY` is unset |
 | `send-notification`       | yes          | Called only by `dispatch_notification_outbox()`. Presents `x-notification-secret`, compared in the database against `vault` (`verify_notification_secret`, `0091`). `service_role` client               | `{ orgId, userIds[], type, title, body?, channels? }`, `channels` is `push` and/or `email`                                            | `{ ok: true, results, dropped, recorded }`. Recipients not in the org are dropped. 503 when the secret cannot be checked                                                                                        |
 | `send-invite`             | yes          | Signed-in user who can read the invite under RLS. Caller's JWT for the invite; `service_role` only for the organisation's mail credentials                                                              | `{ orgId, inviteId, token }`                                                                                                          | `{ sent: true, email }`. 404 unknown invite, 409 revoked, accepted or expired                                                                                                                                   |
-| `create-checkout-session` | yes          | Organisation owner, checked against `memberships` with `status = 'active'`. Caller's JWT                                                                                                                | `{ orgId, planCode }`                                                                                                                 | `{ url }`, a hosted Stripe Checkout page for a full-page redirect                                                                                                                                               |
+| `create-checkout-session` | yes          | Organisation owner, checked against `memberships` with `status = 'active'`. Caller's JWT                                                                                                                | `{ orgId, planCode }`                                                                                                                 | `{ url }`, a hosted Stripe Checkout page for a full-page redirect. 409 `{ error: 'already_subscribed' }` while the organisation holds a `trialing`, `active` or `past_due` Stripe subscription in the same mode |
 | `create-portal-session`   | yes          | Organisation owner, as above                                                                                                                                                                            | `{ orgId }`                                                                                                                           | `{ url }`, the Stripe Billing Portal. 404 when the organisation has no Stripe customer yet                                                                                                                      |
 | `stripe-webhook`          | **no**       | Stripe, verified by the `stripe-signature` header against `STRIPE_WEBHOOK_SECRET`. `service_role` client                                                                                                | Stripe events: `checkout.session.completed`, `customer.subscription.updated` and `.deleted`, `invoice.paid`, `invoice.payment_failed` | `{ received: true }`, or `{ received: true, duplicate: true }` for an event already recorded. 400 on a bad signature                                                                                            |
 | `calendar-feed`           | **no**       | A calendar client, which cannot send a header. The `token` query parameter is checked by `calendar_feed_shifts`, granted to `service_role` alone                                                        | `GET ?token=<uuid>`                                                                                                                   | `text/calendar` (iCalendar), `Cache-Control: private, max-age=900`. A bad token or an internal error returns an **empty** calendar with 200, never an error status                                              |
@@ -55,6 +55,21 @@ with no session) and is the exception.
 `service_role` for the single `audit_write` call that `authenticated` is
 deliberately not allowed to make. Its data flow is `docs/ARCHITECTURE.md` §9b.
 
+**What it sends to OpenRouter (`PROMPT_VERSION` 2, 2026-10-11, plan S3).** No
+staff name and no staff profile id leaves the function. `staffAliases.ts`
+assigns each active staff member a short alias (`S1`, `S2`...) in staff-id
+order, so the same roster gives the same aliases on every call. The context's
+`staff[].id`, `existingShifts[].staffProfileId`, `approvedLeave[].staffProfileId`
+and `unavailability[].staffProfileId` carry the alias, and `staff[]` has no
+`name` field. The manager's prompt is masked too: a full name, or a first name
+only one person has, becomes that person's alias; a nickname, misspelling or
+shared first name is sent as typed. On the way back, `suggestions[].staffProfileId`
+is mapped from alias to the real id (anything else, including a real UUID, is
+dropped as an unknown person), and aliases in `summary`, `reasoning`, `title`
+and `body` are replaced with full names before the grounding check and the
+response. The response shape to the browser is unchanged. Tested in
+`staffAliases.test.ts`, including that a serialised context holds no name.
+
 ### Billing functions
 
 Three Edge Functions, added with migration `0050`, share `supabase/functions/_shared/stripe.ts`:
@@ -62,7 +77,17 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
 - **`create-checkout-session`** — org owner picks a plan on Settings > Billing;
   runs as the calling user (JWT forwarded, RLS-scoped, owner-role checked
   against `memberships` directly) and returns a hosted Stripe Checkout URL for
-  a full-page redirect. No Stripe.js on the client.
+  a full-page redirect. No Stripe.js on the client. It refuses with **409
+  `{ error: 'already_subscribed' }`** when the organisation already holds a
+  Stripe subscription (a `provider_ref`) in the same Stripe mode with status
+  `trialing`, `active` or `past_due`: a second Checkout would create a second
+  Stripe subscription, and the webhook's upsert on `org_id` would orphan the
+  first while it kept charging. A row with no `provider_ref` (an admin-created
+  organisation, `0084`) or one in the other mode does not block. Settings >
+  Billing reacts to the 409 by opening the Billing Portal, where plan changes
+  belong. The decision is `create-checkout-session/guard.ts`, tested by vitest.
+  It reads only the stored row, so two Checkouts opened before the first
+  `checkout.session.completed` arrives are not caught (BUG-107).
 - **`create-portal-session`** — same auth pattern, returns a Stripe Billing
   Portal URL so an owner can manage payment methods / cancel without a
   custom UI.
@@ -77,6 +102,20 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
   the manual platform-finance path, and calls `set_org_status()` (via its
   `0051` service-role exception, see "RPC contracts" below) to suspend an org once
   Stripe's dunning is exhausted.
+
+  **Event ordering.** Stripe does not deliver events in order, and its
+  documentation says not to order them by `created`
+  (https://docs.stripe.com/webhooks#event-ordering). So
+  `customer.subscription.updated` does not write the event's own copy of the
+  subscription: it retrieves the subscription from Stripe and writes what Stripe
+  holds at processing time, and a stale delivery therefore writes current state.
+  A failed retrieval is a 500, so Stripe retries, rather than a fallback to the
+  stale payload. `customer.subscription.deleted` writes only the row whose
+  `provider_ref` it names, and suspends the organisation only when that write
+  matched a row, so a late `deleted` for a replaced subscription cannot suspend
+  its paying replacement. Both rules are in `stripe-webhook/reconcile.ts`, tested
+  by vitest. No new column was needed. `checkout.session.completed` still
+  upserts on `org_id` without an ordering check (BUG-108).
 
 Deploy: `supabase functions deploy <name>` (webhook needs `--no-verify-jwt`).
 Secrets: `STRIPE_SECRET_KEY` (shared by all three), `STRIPE_WEBHOOK_SECRET`

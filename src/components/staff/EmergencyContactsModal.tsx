@@ -27,7 +27,6 @@ const BLANK = {
   relationship: '',
   phone: '',
   secondaryPhone: '',
-  medicalNotes: '',
 };
 
 /**
@@ -81,7 +80,6 @@ export function EmergencyContactsModal({
         relationship: form.relationship.trim() || null,
         phone: form.phone.trim(),
         secondary_phone: form.secondaryPhone.trim() || null,
-        medical_notes: form.medicalNotes.trim() || null,
       });
       setContacts((prev) => [...prev, created]);
       setForm(BLANK);
@@ -139,11 +137,6 @@ export function EmergencyContactsModal({
                     {c.phone}
                     {c.secondary_phone && ` · ${c.secondary_phone}`}
                   </p>
-                  {c.medical_notes && (
-                    <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-                      {c.medical_notes}
-                    </p>
-                  )}
                 </div>
                 <button
                   type="button"
@@ -158,9 +151,9 @@ export function EmergencyContactsModal({
           </ul>
         )}
 
-        {/* The medical notes field was already labelled as special-category
-            data, which is more than most products manage. What was missing is
-            the other half: everything on this form is about somebody who is
+        {/* There is no medical notes field any more (GAP-058): health data
+            about a third party is not something a rota needs to hold.
+            Everything left on this form is still about somebody who is
             not a user here, never visited the site, and has rights over it
             anyway. UK GDPR Article 14 covers information obtained from
             somebody other than the person it is about, and the product has no
@@ -219,22 +212,6 @@ export function EmergencyContactsModal({
                 }
               />
             </div>
-          </div>
-          <div>
-            <Label htmlFor="ec-medical">
-              Medical notes{' '}
-              <span className="text-content-muted dark:text-content-muted-dark">
-                (optional. Special-category data, only what's needed in an emergency)
-              </span>
-            </Label>
-            <Input
-              id="ec-medical"
-              value={form.medicalNotes}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setForm((f) => ({ ...f, medicalNotes: e.target.value }))
-              }
-              placeholder="Allergies, conditions…"
-            />
           </div>
           {error && (
             <p className="text-sm text-danger-ink dark:text-danger-ink-dark" role="alert">

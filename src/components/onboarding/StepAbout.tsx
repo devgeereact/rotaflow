@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Briefcase,
   Building2,
-  Calendar,
   Check,
   Clock,
   Globe,
@@ -24,7 +23,6 @@ import {
   INDUSTRIES,
   ORG_TYPES,
   TIMEZONES,
-  WORKING_WEEKS,
 } from '@/components/onboarding/constants';
 
 export interface LocationDraft {
@@ -37,7 +35,6 @@ export interface AboutValues {
   orgType: string;
   country: string;
   timezone: string;
-  workingWeek: string;
   locations: LocationDraft[];
 }
 
@@ -207,25 +204,6 @@ export function StepAbout({
               All times in RotaFlow will be shown in this time zone.
             </p>
           </div>
-        </div>
-
-        <div>
-          <Label htmlFor="about-week">Default working week</Label>
-          <Select
-            id="about-week"
-            icon={Calendar}
-            value={values.workingWeek}
-            onChange={(e) => onChange({ workingWeek: e.target.value })}
-          >
-            {WORKING_WEEKS.map((w) => (
-              <option key={w.value} value={w.value}>
-                {w.label}
-              </option>
-            ))}
-          </Select>
-          <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-            This is used for rota planning and reports.
-          </p>
         </div>
 
         <div>

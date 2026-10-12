@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable';
-import { Input } from '@/components/ui/Input';
-import { Label } from '@/components/ui/Label';
 import { PanelTabs } from '@/components/ui/PanelTabs';
 import { Panel } from '@/components/ui/Card';
 import { Callout } from '@/components/ui/Callout';
@@ -14,10 +11,7 @@ import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { Select } from '@/components/ui/Select';
 import { Toggle } from '@/components/ui/Toggle';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
-import {
-  getPlatformSettings,
-  updatePlatformSettings,
-} from '@/services/platformSettingsService';
+import { getPlatformSettings } from '@/services/platformSettingsService';
 import {
   grantPlatformRole,
   listPlatformAdmins,
@@ -41,9 +35,8 @@ import {
 } from '@/services/platformSettingsService';
 import type { PlatformAdmin, PlatformRole, PlatformSettings, Profile } from '@/types';
 
-type Tab = 'general' | 'authentication' | 'retention' | 'administrators' | 'maintenance';
+type Tab = 'authentication' | 'retention' | 'administrators';
 
-/** The console reference's tabs, in its order. */
 /**
  * The tabs that configure something.
  *
@@ -59,13 +52,19 @@ type Tab = 'general' | 'authentication' | 'retention' | 'administrators' | 'main
  * **One has**: `require_mfa` is enforced by `is_platform_admin()` since
  * `0102`, so its control is back — on the Authentication tab, beside the
  * facts, rather than in a Security tab of its own.
+ *
+ * General and Maintenance went the same way later. Of the 28 columns in
+ * `platform_settings`, `require_mfa` is the only one anything outside this
+ * console reads. The platform name, support email, URL and default timezone
+ * were saved and read back and drove nothing (the interface name is
+ * `VITE_APP_NAME`, the support address is `src/lib/marketing.ts`), and
+ * `maintenance_mode` and its message are rendered by no screen. The columns
+ * and their values stay; the controls return when a consumer exists.
  */
 const TABS = [
-  { value: 'general', label: 'General' },
   { value: 'authentication', label: 'Authentication' },
   { value: 'retention', label: 'Data Retention' },
   { value: 'administrators', label: 'Administrators' },
-  { value: 'maintenance', label: 'Maintenance' },
 ] as const satisfies readonly { value: Tab; label: string }[];
 
 const ROLES: readonly PlatformRole[] = [
@@ -85,8 +84,9 @@ interface AdminRow {
  *
  * ## Which settings are real
  *
- * The General and Maintenance tabs write `platform_settings` (0018) and take
- * effect. The Authentication tab is **read-only and says so**: password policy,
+ * Only the second-factor switch writes anything, through
+ * `set_platform_mfa_required` (0145). The rest of the Authentication tab is
+ * **read-only and says so**: password policy,
  * magic links, OAuth providers and session length all belong to Supabase Auth,
  * which this table cannot override. A "require email verification" switch here
  * would persist a boolean nothing consults. The same defect the console
@@ -97,7 +97,7 @@ interface AdminRow {
 
 export function AdminSettingsPage(): JSX.Element {
   const { user } = useSupabaseAuth();
-  const { canManagePlatformConfig, canManagePlatformAdmins } = usePermissions();
+  const { canManagePlatformAdmins } = usePermissions();
   const { confirm } = useConfirm();
   const { showError, showSuccess } = useToast();
 
@@ -113,7 +113,7 @@ export function AdminSettingsPage(): JSX.Element {
   const requested = params.get('tab');
   const tab: Tab = TABS.some((t) => t.value === requested)
     ? (requested as Tab)
-    : 'general';
+    : 'authentication';
   const setTab = useCallback(
     (next: Tab) => {
       setParams((prev) => {
@@ -124,8 +124,6 @@ export function AdminSettingsPage(): JSX.Element {
     },
     [setParams],
   );
-  const [draft, setDraft] = useState<Partial<PlatformSettings>>({});
-  const [saving, setSaving] = useState(false);
   const [busyUser, setBusyUser] = useState<string | null>(null);
 
   useEffect(() => {
@@ -145,7 +143,6 @@ export function AdminSettingsPage(): JSX.Element {
         if (!active) return;
         const byId = new Map(profiles.map((p) => [p.id, p]));
         setSettings(row);
-        setDraft({});
         setAdmins(
           grants
             .filter((g) => g.revoked_at === null)
@@ -215,31 +212,6 @@ export function AdminSettingsPage(): JSX.Element {
     },
     [showError, showSuccess],
   );
-
-  const value = <K extends keyof PlatformSettings>(key: K): PlatformSettings[K] =>
-    (draft[key] ?? settings?.[key]) as PlatformSettings[K];
-
-  const dirty = Object.keys(draft).length > 0;
-
-  const save = useCallback(async (): Promise<void> => {
-    if (!user || !dirty) return;
-    setSaving(true);
-    try {
-      const saved = await updatePlatformSettings(draft, user.id);
-      setSettings(saved);
-      setDraft({});
-      showSuccess('Platform settings saved.');
-    } catch (err) {
-      reportError(err, { area: 'admin:settings:save' });
-      showError(
-        err instanceof Error && err.message
-          ? err.message
-          : 'Could not save. Please try again.',
-      );
-    } finally {
-      setSaving(false);
-    }
-  }, [user, dirty, draft, showError, showSuccess]);
 
   const ownerCount = useMemo(
     () => (admins ?? []).filter((a) => a.grant.role === 'platform_owner').length,
@@ -440,91 +412,17 @@ export function AdminSettingsPage(): JSX.Element {
     <AdminPage
       title="Platform settings"
       description="Configuration that applies to every tenant. Changes are audited and take effect immediately."
-      action={
-        tab === 'general' || tab === 'maintenance' ? (
-          <Button
-            disabled={!dirty || saving || !canManagePlatformConfig}
-            onClick={() => void save()}
-            title={
-              canManagePlatformConfig
-                ? undefined
-                : 'Only a platform owner or administrator can change these'
-            }
-          >
-            <Save size={16} aria-hidden="true" />
-            Save changes
-          </Button>
-        ) : undefined
-      }
     >
       <div className="space-y-4">
+        <p className="text-sm text-content-muted dark:text-content-muted-dark">
+          More settings appear here when they do something.
+        </p>
         <PanelTabs
           items={TABS.map((t) => ({ value: t.value, label: t.label }))}
           active={tab}
           onChange={setTab}
           label="Platform settings sections"
         />
-
-        {tab === 'general' && (
-          <>
-            {/* Said once, at the top, rather than four times in four hints.
-                `platform_settings` has 28 columns and exactly ONE of them is
-                read by anything outside this console: `require_mfa`, by
-                `is_platform_admin()`. The rest are stored and read back and
-                drive nothing — the support address a customer actually sees is
-                the constant in `src/lib/marketing.ts`, and the product name is
-                compiled in from `VITE_APP_NAME`.
-
-                Leaving that unsaid is the same defect as a disabled button that
-                claims a missing backend: a field that saves, reads back, and
-                changes nothing is indistinguishable from one that works. */}
-            <Callout tone="info" title="These are recorded, not yet wired">
-              <p>
-                Saving works and the values persist, but nothing outside this screen reads
-                them yet. The name in the interface comes from the build (
-                <code>VITE_APP_NAME</code>), and the support address customers see is the
-                one in <code>src/lib/marketing.ts</code>. Changing a field here does not
-                change either. The one setting on this page that does take effect is the
-                second-factor requirement, under Security.
-              </p>
-            </Callout>
-            <Panel
-              title="Platform identity"
-              bodyClassName="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]"
-            >
-              <Field
-                id="platform-name"
-                label="Platform name"
-                value={value('platform_name')}
-                disabled={!canManagePlatformConfig}
-                onChange={(v) => setDraft((d) => ({ ...d, platform_name: v }))}
-              />
-              <Field
-                id="support-email"
-                label="Support email"
-                type="email"
-                value={value('support_email')}
-                disabled={!canManagePlatformConfig}
-                onChange={(v) => setDraft((d) => ({ ...d, support_email: v }))}
-              />
-              <Field
-                id="platform-url"
-                label="Platform URL"
-                value={value('platform_url')}
-                disabled={!canManagePlatformConfig}
-                onChange={(v) => setDraft((d) => ({ ...d, platform_url: v }))}
-              />
-              <Field
-                id="default-timezone"
-                label="Default timezone"
-                value={value('default_timezone')}
-                disabled={!canManagePlatformConfig}
-                onChange={(v) => setDraft((d) => ({ ...d, default_timezone: v }))}
-                hint="Recorded only. An organisation's own timezone is set during onboarding and this is not read as a fallback."
-              />
-            </Panel>
-          </>
-        )}
 
         {tab === 'administrators' && (
           <div className="space-y-4">
@@ -577,23 +475,23 @@ export function AdminSettingsPage(): JSX.Element {
               <SettingRow
                 label="Require a second factor of platform administrators"
                 hint={
-                  value('require_mfa')
+                  settings.require_mfa
                     ? 'Enforced by is_platform_admin(): a console policy refuses a session that has not completed a second factor.'
                     : 'Off. Administrators reach this console with a password alone.'
                 }
                 control={
                   <Toggle
-                    checked={value('require_mfa')}
+                    checked={settings.require_mfa}
                     // Turning it ON needs a session that has itself done MFA.
                     // The database refuses otherwise; disabling the control
                     // says so before the click rather than after.
-                    disabled={!value('require_mfa') && !(mfa?.sessionIsAal2 ?? false)}
+                    disabled={!settings.require_mfa && !(mfa?.sessionIsAal2 ?? false)}
                     onChange={(next: boolean) => void toggleMfaRequired(next)}
                     label="Require a second factor of platform administrators"
                   />
                 }
               />
-              {!value('require_mfa') && !(mfa?.sessionIsAal2 ?? false) && (
+              {!settings.require_mfa && !(mfa?.sessionIsAal2 ?? false) && (
                 <p className="pt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
                   {mfa?.hasVerifiedFactor
                     ? 'You have a second factor but this session did not use it. Sign out and back in with your code, then turn this on.'
@@ -616,15 +514,6 @@ export function AdminSettingsPage(): JSX.Element {
                       : 'Email and password only, no OAuth providers declared'
                   }
                   enabled={env.oauthProviders.length > 0}
-                />
-                <Capability
-                  name="Self-service registration"
-                  detail={
-                    value('registration_enabled')
-                      ? 'Recorded as open. Supabase Auth is the enforcement point.'
-                      : 'Recorded as closed. Supabase Auth is the enforcement point.'
-                  }
-                  enabled={value('registration_enabled')}
                 />
                 <Capability
                   name="Error monitoring"
@@ -666,90 +555,8 @@ export function AdminSettingsPage(): JSX.Element {
             </p>
           </Panel>
         )}
-
-        {tab === 'maintenance' && (
-          <Panel title="Maintenance" bodyClassName="p-4">
-            <SettingRow
-              label="Maintenance banner"
-              hint="Shows a notice to every signed-in user, across every organisation."
-              control={
-                <Toggle
-                  checked={value('maintenance_mode')}
-                  disabled={!canManagePlatformConfig}
-                  label="Show the maintenance banner to every signed-in user"
-                  onChange={(checked) =>
-                    setDraft((d) => ({ ...d, maintenance_mode: checked }))
-                  }
-                />
-              }
-            />
-            <div className="pt-4">
-              <Field
-                id="maintenance-message"
-                label="Message"
-                value={value('maintenance_message') ?? ''}
-                disabled={!canManagePlatformConfig}
-                onChange={(v) => setDraft((d) => ({ ...d, maintenance_message: v }))}
-                hint="e.g. Scheduled maintenance on Sunday 02:00–04:00 UTC."
-              />
-            </div>
-            <Callout tone="warning" className="mt-4">
-              <p>
-                <strong>Nothing renders this yet.</strong> The flag and the message are
-                stored, and no screen in the app reads either, so turning it on shows
-                nobody anything today. It is recorded here rather than removed because the
-                column is the right home for the decision, and wiring it needs a policy
-                call first: <code>platform_settings</code> is readable by platform
-                administrators only, so a banner every signed-in user can see means
-                letting tenants read a row of this table.
-              </p>
-              <p className="mt-2">
-                When it is wired it will be a banner, not a kill switch. A static PWA
-                cannot refuse to serve itself, and row-level security is what actually
-                stands between a user and their data.
-              </p>
-            </Callout>
-          </Panel>
-        )}
       </div>
     </AdminPage>
-  );
-}
-
-function Field({
-  id,
-  label,
-  value,
-  onChange,
-  hint,
-  type = 'text',
-  disabled,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  hint?: string;
-  type?: string;
-  disabled?: boolean;
-}): JSX.Element {
-  return (
-    <div>
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type={type}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1"
-      />
-      {hint && (
-        <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
-          {hint}
-        </p>
-      )}
-    </div>
   );
 }
 

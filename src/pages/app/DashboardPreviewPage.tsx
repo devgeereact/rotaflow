@@ -104,7 +104,7 @@ const PENDING: PendingRequest[] = [
     id: 'p2',
     kind: 'swap',
     staffName: 'Michael Brown',
-    detail: 'Shift swap',
+    detail: 'Swap request',
     dateLabel: '30 May',
     createdAt: NOW.toISOString(),
   },

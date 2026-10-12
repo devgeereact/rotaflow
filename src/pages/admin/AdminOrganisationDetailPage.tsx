@@ -928,15 +928,16 @@ export function AdminOrganisationDetailPage(): JSX.Element {
               </dl>
             ) : (
               <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                This organisation has no subscription record. The plan shown elsewhere
-                comes from <code>organisations.plan</code>, which is set at sign-up and is
-                not a billing record.
+                This organisation has no subscription record. The plan shown elsewhere is{' '}
+                <code>organisations.plan</code>, which only the server sets: it starts on
+                Starter and follows the organisation's subscription.
               </p>
             )}
             <p className="mt-4 border-t border-surface-border pt-4 text-sm text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
-              MRR above is real, from Stripe billing. This organisation's individual
-              invoices and payment history aren't broken out here — the platform-wide
-              invoice list on <code>/admin/billing</code> covers every org.
+              MRR above is the subscription's monthly price (the negotiated price, or the
+              plan price), counted only while it is active or past due. It is not a sum of
+              Stripe payments. Invoices for every organisation are on{' '}
+              <code>/admin/billing</code>.
             </p>
           </Card>
         )}
@@ -960,9 +961,9 @@ export function AdminOrganisationDetailPage(): JSX.Element {
             </div>
             <Card className="border-warning/30 bg-warning/5">
               <p className="text-sm text-content-muted dark:text-content-muted-dark">
-                These are counts, not quota. No plan in the schema carries a seat,
-                location or shift limit, so there is nothing for usage to be measured
-                against and no ceiling being enforced.
+                The plan's staff and location limits are enforced by the database when a
+                record is added. They count active staff records and locations, not
+                memberships. Shifts and rotas have no limit.
               </p>
             </Card>
           </div>

@@ -16,7 +16,12 @@ vi.mock('@/services/swapService', () => ({ requestShiftSwap: vi.fn() }));
 vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 
 import { recordClockEvent } from '@/services/clockService';
-import { outboxAdd } from '@/lib/offlineOutbox';
+import {
+  deadLetterList,
+  outboxAdd,
+  outboxList,
+  outboxMoveToDeadLetter,
+} from '@/lib/offlineOutbox';
 import {
   MAX_ATTEMPTS,
   classifyFailure,
@@ -599,21 +604,85 @@ describe('ownership (GAP-042)', () => {
     expect(await listDeadLetteredWrites(OTHER_USER)).toHaveLength(1);
   });
 
-  // A row queued before this field existed. Stranding a clock-in forever is
-  // worse than replaying one, and there is no second copy of it anywhere.
-  it('claims a legacy record with no owner rather than stranding it', async () => {
+  // A row queued before this field existed (plan S4). On a shared device the
+  // next person to sign in is the last person who should replay it, so it
+  // belongs to nobody: kept on the device, never replayed, never shown.
+  it('never replays a legacy record with no owner, and keeps it on the device', async () => {
     mockedRecordClockEvent.mockResolvedValue({} as never);
     await outboxAdd({
       id: 'legacy-1',
       kind: 'clock',
-      payload: { type: 'in' },
+      payload: { type: 'in', latitude: 51.5, longitude: -0.1 },
       queuedAt: new Date().toISOString(),
       attempts: 0,
     });
 
-    const result = await flushQueuedWrites(USER);
+    expect(await flushQueuedWrites(USER)).toEqual({
+      synced: 0,
+      failed: 0,
+      deadLettered: 0,
+    });
+    expect(await flushQueuedWrites(OTHER_USER)).toEqual({
+      synced: 0,
+      failed: 0,
+      deadLettered: 0,
+    });
+    expect(recordClockEvent).not.toHaveBeenCalled();
+    expect(await listQueuedWrites(USER)).toHaveLength(0);
+    expect(await listQueuedWrites(OTHER_USER)).toHaveLength(0);
+    // Quarantined in place, not deleted: the evidence is still there.
+    expect((await outboxList()).map((record) => record.id)).toEqual(['legacy-1']);
+  });
 
-    expect(result.synced).toBe(1);
+  it('treats an empty owner the same as no owner', async () => {
+    mockedRecordClockEvent.mockResolvedValue({} as never);
+    await outboxAdd({
+      id: 'legacy-empty',
+      kind: 'clock',
+      payload: { type: 'in' },
+      queuedAt: new Date().toISOString(),
+      attempts: 0,
+      userId: '',
+    });
+
+    expect((await flushQueuedWrites('')).synced).toBe(0);
+    expect(recordClockEvent).not.toHaveBeenCalled();
+  });
+
+  it('never shows or retries a legacy dead letter with no owner', async () => {
+    await outboxMoveToDeadLetter({
+      id: 'legacy-dead',
+      kind: 'clock',
+      payload: { type: 'in' },
+      queuedAt: new Date().toISOString(),
+      attempts: 5,
+      failedAt: new Date().toISOString(),
+      reason: 'exhausted',
+    });
+
+    expect(await listDeadLetteredWrites(USER)).toHaveLength(0);
+    expect(await retryDeadLetteredWrite('legacy-dead', USER)).toEqual({
+      synced: 0,
+      failed: 0,
+      deadLettered: 0,
+    });
+    expect(recordClockEvent).not.toHaveBeenCalled();
+    expect((await deadLetterList()).map((record) => record.id)).toEqual(['legacy-dead']);
+  });
+
+  it("still replays the signed-in user's own write beside a legacy one", async () => {
+    mockedRecordClockEvent.mockResolvedValue({} as never);
+    await outboxAdd({
+      id: 'legacy-2',
+      kind: 'clock',
+      payload: { type: 'in' },
+      queuedAt: new Date(Date.now() - 60_000).toISOString(),
+      attempts: 0,
+    });
+    await enqueueWrite('clock', { type: 'out' }, USER);
+
+    expect((await flushQueuedWrites(USER)).synced).toBe(1);
     expect(recordClockEvent).toHaveBeenCalledOnce();
+    expect((await outboxList()).map((record) => record.id)).toEqual(['legacy-2']);
   });
 });

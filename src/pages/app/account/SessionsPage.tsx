@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { reportError } from '@/lib/sentry';
-import { clearTenantState } from '@/lib/session';
+import { clearTenantState, releasePushSubscription } from '@/lib/session';
+import { deletePushSubscription } from '@/services/pushSubscriptionService';
 import {
   listMySessions,
   revokeMyOtherSessions,
@@ -128,6 +129,9 @@ export function SessionsPage(): JSX.Element {
     if (!ok) return;
 
     setWorking(true);
+    // Before the sign-out, while this session can still delete its own push
+    // row (plan S4). Never throws; gives up after a few seconds.
+    await releasePushSubscription(deletePushSubscription);
     try {
       // 'global' revokes every refresh token for the user server-side, so the
       // devices this page cannot list are covered too.

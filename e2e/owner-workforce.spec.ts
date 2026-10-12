@@ -90,7 +90,7 @@ test.describe('an owner runs the workforce', () => {
     // with no staff record opened it on an empty screen. Clock In is absent
     // here because the mode defaults to management, not because this owner
     // lacks a profile — they have one, from `0121`.
-    await expect(nav.getByRole('link', { name: 'Clock In' })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Clock in' })).toHaveCount(0);
 
     // ---- setup is a report of what the database holds -----------------
     //

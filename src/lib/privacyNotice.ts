@@ -95,8 +95,8 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'Account: your first name, last name and email address, and a password held by our authentication provider, never by us in readable form. Set at sign-up or when you accept an invitation.',
       'Organisation setup: the organisation name, sector, team size, and the name and postal address of each site.',
       'Staff record: name, job title, department, contract type, contracted weekly hours, holiday allowance, skills, payroll identifier, start date, phone number, email address, a photograph if one is added, and which sites you work at.',
-      'Emergency contacts: the name, relationship and phone numbers of somebody you nominate, and a free-text medical notes field described in the product as "allergies, conditions". That is health information, and it is about you and sometimes about the person you nominated.',
-      'Documents: a type, a name, dates, and a web address pointing at the file. The type is free text, so right-to-work checks, DBS certificates and visa detail can end up here.',
+      'Emergency contacts: the name, relationship and phone numbers of somebody you nominate. Earlier versions also had a free-text medical notes field described as "allergies, conditions". The product no longer asks for it or shows it, but anything typed into it before then is still held until it is removed. That is health information, and it is about you and sometimes about the person you nominated.',
+      'Documents: a type, a name or number, dates, and a web address pointing at wherever the employer keeps the file. The product asks only for the type, number and expiry and tells the employer to keep the document itself in their own HR system, but the type is still free text, so right-to-work, DBS and visa detail can end up here if somebody types it.',
       'Pay: an hourly rate and an effective date.',
       'Working time: shifts, availability, timesheets, overtime claims and their reasons, shift swaps and any note attached, and leave requests including the type of leave and a free-text reason. Leave type includes sickness.',
       'Attendance: each clock-in and clock-out, the time, the method, and — when you clock in by GPS — your latitude, longitude and the accuracy of that fix.',
@@ -141,8 +141,8 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     heading: 'Health information and other sensitive detail',
     body: [
       'Two things in the product are special category data under Article 9, and both are named here rather than buried.',
-      'The first is the medical notes field on an emergency contact. The second is sickness absence: leave has a type, and one of the types is sick, which makes an absence record a health record about a named person.',
-      'One deliberate protection is worth stating because it was built for exactly this reason. When a manager uses the AI assistant, staff names, job titles, skills, contracted hours and the dates of approved leave are sent to the model provider so it can draft a rota. The type of leave is deliberately not sent, so an absence cannot be read as sickness by anybody outside the organisation.',
+      'The first is the medical notes field on an emergency contact, which is no longer collected or shown but still holds whatever was typed into it before. The second is sickness absence: leave has a type, and one of the types is sick, which makes an absence record a health record about a named person. The leave reason box asks people not to include medical details.',
+      'One deliberate protection is worth stating because it was built for exactly this reason. When a manager uses the AI assistant, staff job titles, skills, contracted hours and the dates of approved leave are sent to the model provider so it can draft a rota, with each person identified by a short code such as S1 rather than by name. The type of leave is deliberately not sent, so an absence cannot be read as sickness by anybody outside the organisation.',
     ],
     status: 'legal-review',
     outstanding:
@@ -167,7 +167,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     heading: 'Who else sees it',
     body: [
       'The full list of processors, what each receives, where it operates and how to avoid it where that is possible, is published separately and kept beside the code that proves each row.',
-      'Two of them take information outside the UK and the EU, and only two. Billing identity goes to Stripe in the United States when an organisation subscribes. Staff first and last names, job titles, skills, contracted hours and the dates of approved leave go to OpenRouter in the United States, but only at the moment a manager chooses to use the AI assistant — an organisation that never opens it sends nothing, and the feature is not on the entry plan.',
+      'Two of them take information outside the UK and the EU, and only two. Billing identity goes to Stripe in the United States when an organisation subscribes. Staff job titles, skills, contracted hours and the dates of approved leave, with each person under a short code rather than their name, go to OpenRouter in the United States, but only at the moment a manager chooses to use the AI assistant — an organisation that never opens it sends nothing, and the feature is not on the entry plan.',
       'Everything else is in the UK or the EU: the database and files are in Ireland, error reports go to a European endpoint, images are served from the United Kingdom, and the site itself is hosted in the United Kingdom behind a global content network.',
     ],
     status: 'legal-review',

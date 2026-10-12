@@ -31,6 +31,10 @@ const BLANK = { type: '', name: '', fileUrl: '', issuedAt: '', expiresAt: '' };
  * ImageKit (or any storage) integration wired anywhere yet, so a real
  * upload here would be a half-built feature pretending to be finished.
  * A manager pastes a link to wherever the file already lives.
+ *
+ * The link stays required for now: `documents.file_url` is `not null` with
+ * an `https?://` check (`0002`, `0092`), so making it optional needs a
+ * migration first.
  */
 export function DocumentsModal({
   open,
@@ -161,26 +165,23 @@ export function DocumentsModal({
           </ul>
         )}
 
-        {/* Two things a person adding an HR document needs to know before they
-            add one, and neither was said.
-
-            The type is a free text box whose own placeholder suggests DBS and
-            right-to-work, so criminal-record and immigration information lands
-            here by design rather than by accident. And this field is a link,
-            not an upload: erasure removes the row and cannot touch the file at
-            the other end of it, because nothing in this product manages that
-            store. That is a real limit and it belongs where somebody is about
-            to rely on it. */}
+        {/* Phase 1 of plan S2 (decision D4). The type field used to suggest
+            DBS and right-to-work in its own placeholder, so criminal-record and
+            immigration information landed here by design. It no longer
+            suggests either, and the copy says what this screen is for: a
+            record of the document, not the document. The link is a pointer
+            to wherever the file already lives; erasure removes the row and
+            cannot touch the file at the other end of it, because nothing in
+            this product manages that store. Existing records are untouched. */}
         <Callout tone="warning" title="Before you add a document">
           <p>
-            This is a link, not an upload. Deleting the entry, or anonymising the person,
-            removes the record here and cannot remove the file it points at — that stays
-            wherever you put it until you delete it there too.
+            Record the document type, number and expiry. Keep the document itself in your
+            own HR system.
           </p>
           <p>
-            Keep the type and name factual and add only what the role requires.
-            Right-to-work and DBS detail is sensitive, and it is easier not to hold it
-            than to defend holding it.
+            RotaFlow does not store the file. The link only points at where you keep it,
+            and removing the record here, or anonymising the person, does not delete the
+            file there.
           </p>
         </Callout>
 
@@ -194,11 +195,11 @@ export function DocumentsModal({
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   setForm((f) => ({ ...f, type: e.target.value }))
                 }
-                placeholder="DBS check, Right to work…"
+                placeholder="Training certificate, licence…"
               />
             </div>
             <div>
-              <Label htmlFor="doc-name">Name</Label>
+              <Label htmlFor="doc-name">Name or number</Label>
               <Input
                 id="doc-name"
                 value={form.name}
@@ -209,7 +210,12 @@ export function DocumentsModal({
             </div>
           </div>
           <div>
-            <Label htmlFor="doc-url">Link to the file</Label>
+            <Label htmlFor="doc-url">
+              Link to where you keep it{' '}
+              <span className="text-content-muted dark:text-content-muted-dark">
+                (RotaFlow does not store the file)
+              </span>
+            </Label>
             <Input
               id="doc-url"
               type="url"

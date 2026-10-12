@@ -19,12 +19,27 @@ Checked against the code and the register on 11 October 2026.
 - **A queued action the server later refuses** (for example, a duplicate clock-in)
   is reported on the screen it came from with Retry and Discard, but there is no
   notification to act on later. (GAP-086)
+- **An offline action queued on an older version of the app, before actions were
+  tied to the person who made them, is never sent.** It stays on the device but
+  is not replayed or shown to anyone, because nobody can tell whose it is. Only
+  an action queued before 2 September 2026 and never sent can be in this state.
+  (GAP-042)
+- **If a session ends without signing out** (for example, it expired), the device
+  keeps receiving that person's push notifications until somebody signs in and
+  turns notifications on again. Signing out stops them. (GAP-042)
 
 ## Staff records
 
-- **Documents and photos are links, not uploads.** A right-to-work document or a
-  staff photo is a web address someone pastes; RotaFlow does not store the file.
-  (GAP-084)
+- **Documents and photos are links, not uploads.** A staff document is recorded
+  as its type, number and expiry, plus a web address pointing at wherever you
+  keep the file; RotaFlow does not store the file, and the screen asks you to
+  keep the document itself in your own HR system. A staff photo is also a pasted
+  web address. The link is currently required on a document. (GAP-084)
+- **Medical notes entered on an emergency contact before 11 October 2026 are
+  still stored.** The field is no longer asked for or shown, so those notes cannot
+  be seen or edited on screen; deleting the contact removes them, and a person's
+  data export still includes them. Removing the stored values is a separate,
+  planned change. (GAP-058)
 - **Erasing a person does not delete files hosted elsewhere** that their links
   pointed to. (GAP-056)
 - **A user cannot change their own sign-in email address.** (GAP-085)
@@ -35,16 +50,20 @@ Checked against the code and the register on 11 October 2026.
 
 - **The rota grid shows three weeks at a time**: the previous, current and next.
   (GAP-079)
-- **The working-week setting chosen in onboarding changes nothing yet.** It is
-  stored and shown, and no screen reads it. (GAP-116)
+- **Weeks always start on Monday.** There is no setting for it. (GAP-116)
+- **The working-time rules on Settings → Policies warn, they do not block.** A
+  manager can still save a rota that breaks minimum rest, maximum weekly hours or
+  maximum consecutive days.
 - **A calendar subscription link never expires** until it is revoked, and the feed
   is not rate-limited. Treat the link as a password. (GAP-052)
 
 ## Accounts and security
 
-- **Two-factor sign-in is enrolment only.** You can enrol an authenticator app, but
-  the sign-in form never asks for the code, and an organisation cannot require it.
-  (CAP-049, GAP-017)
+- **Two-factor sign-in is new and an organisation cannot require it.** Once you
+  have enrolled an authenticator app, signing in asks for its 6-digit code before
+  anything opens. There are no backup codes yet: if you lose the device, sign out
+  and contact support to have the old factor removed. An organisation cannot make
+  two-factor sign-in compulsory for its staff. (CAP-049, GAP-017)
 - **No CAPTCHA, and no check against known leaked passwords**, on sign-up and
   sign-in. (GAP-033, GAP-034)
 - **Supabase Auth settings are not being monitored.** The weekly check that compares

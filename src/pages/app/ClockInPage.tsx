@@ -73,7 +73,7 @@ const ACTION_LABEL: Record<ClockEventType, string> = {
 type HelpTopic = 'policy' | 'trouble' | 'support';
 
 const HELP_TITLE: Record<HelpTopic, string> = {
-  policy: 'Clock In / Out Policy',
+  policy: 'Clock in and out policy',
   trouble: 'Troubleshooting',
   support: 'Contact Support',
 };
@@ -284,11 +284,11 @@ export function ClockInPage(): JSX.Element {
             // leave, it pointed at a button that does not apply and left them
             // with no way out at all — BUG-008. The fallback for the action
             // they actually took now appears on the pane behind this toast.
-            const manual = type === 'out' ? 'Clock Out Manually' : 'Clock In Manually';
+            const manual = type === 'out' ? 'Clock out manually' : 'Clock in manually';
             showError(
               geo.status === 'denied'
-                ? `Location access was denied. Use ${manual}, or allow location access and try again.`
-                : `Could not get your location. Use ${manual} instead.`,
+                ? `Location access was denied. Use “${manual}”, or allow location access and try again.`
+                : `Could not get your location. Use “${manual}” instead.`,
             );
             setSubmitting(false);
             return;
@@ -590,14 +590,14 @@ export function ClockInPage(): JSX.Element {
                 <span className="font-semibold text-content dark:text-content-dark">
                   Location denied or unavailable?
                 </span>{' '}
-                Use Clock In Manually. It records the same event without a position, and
+                Use “Clock in manually”. It records the same event without a position, and
                 your manager can see which method was used.
               </p>
               <p>
                 <span className="font-semibold text-content dark:text-content-dark">
                   Already clocked in and your location stopped working?
                 </span>{' '}
-                Try Clock Out first; if the device cannot find you, Clock Out Manually
+                Try “Clock out” first; if the device cannot find you, “Clock out manually”
                 appears underneath and ends the shift without a position. Never leave
                 yourself clocked in — the hours are counted from the clock-out.
               </p>

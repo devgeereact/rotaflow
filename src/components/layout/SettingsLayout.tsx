@@ -5,7 +5,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { RouteFallback } from '@/components/RouteFallback';
 import { Card } from '@/components/ui/Card';
 import { useOrg } from '@/hooks/useOrg';
-import { settingsTabsForRole } from '@/lib/settingsTabs';
+import { defaultSettingsPath, settingsTabsForRole } from '@/lib/settingsTabs';
 
 /**
  * `/app/settings/*`. The eight-section organisation administration area from
@@ -40,7 +40,7 @@ export function SettingsLayout(): JSX.Element {
   return (
     <div>
       <PageHeader
-        title={active ? `Settings, ${active.label}` : 'Settings'}
+        title={active ? `${active.label} settings` : 'Settings'}
         description={`Manage ${orgName || 'your organisation'}'s details, preferences and platform configuration.`}
         below={
           <>
@@ -55,9 +55,10 @@ export function SettingsLayout(): JSX.Element {
                 to="/app/account/security"
                 className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
               >
-                Account security
+                My account
               </Link>{' '}
-              has them. Changing your password there ends every other session.
+              has them, under Security. Changing your password there ends every other
+              session.
             </p>
           </>
         }
@@ -70,6 +71,20 @@ export function SettingsLayout(): JSX.Element {
       </Suspense>
     </div>
   );
+}
+
+/**
+ * `/app/settings` itself: the first section the signed-in role can use.
+ *
+ * A fixed redirect to Organisation sent every manager to an owner-only
+ * refusal. Owners still land on Organisation. With no sections at all, the
+ * layout above has already sent the person to their own account, so the
+ * fallback here is only reached while the role is still resolving.
+ */
+export function SettingsIndexRedirect(): JSX.Element {
+  const { role } = useOrg();
+  const target = defaultSettingsPath(role);
+  return <Navigate to={target ?? '/app/account/profile'} replace />;
 }
 
 /**

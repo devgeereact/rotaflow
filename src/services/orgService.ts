@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { slugify } from '@/lib/slug';
+import { mergeSettings } from '@/lib/orgPreferences';
 import type { Membership, Organisation, OrganisationUpdate } from '@/types';
 
 export interface MyMembership extends Membership {
@@ -204,7 +205,8 @@ export async function mergeOrgSettings(
 
   if (readError) throw readError;
 
-  const merged = { ...((current?.settings as Record<string, unknown>) ?? {}), ...patch };
+  // Keys not in `patch` are kept, retired ones included (see `mergeSettings`).
+  const merged = mergeSettings(current?.settings ?? null, patch);
   return updateOrganisation(orgId, { settings: merged as never });
 }
 

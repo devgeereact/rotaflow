@@ -262,6 +262,9 @@ const PLATFORM_SETTINGS = {
   registration_enabled: true,
   maintenance_mode: false,
   maintenance_message: null,
+  // Non-null in the schema (0027, 0102). Without it the second-factor switch
+  // rendered with no `aria-checked`, which the WCAG scan of this page caught.
+  require_mfa: false,
   created_at: ISO(400),
   updated_at: ISO(6),
   updated_by: USER_IDS[1],

@@ -23,7 +23,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
  * same shortcut.
  *
  * **The account avatar and its dropdown** moved into `SidebarFooter`'s
- * `.railfoot` group. Settings/My Profile, Help & Support, sign out are rows
+ * `.railfoot` group. Settings/My account, Help & Support, sign out are rows
  * there now, next to the identity card they act on, rather than a second
  * dropdown in the header repeating the first.
  *

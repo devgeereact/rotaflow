@@ -70,7 +70,7 @@ export function SwapsView({
   return (
     <div>
       <WorkspaceHeader
-        title="Shift swaps"
+        title="Swap requests"
         subtitle="A swap needs a taker and, unless it was agreed between two named colleagues, a manager. Anything that would break cover or a rest rule should be checked before you approve it."
         actions={
           <Button onClick={() => setOfferOpen(true)} disabled={!viewerStaffId}>

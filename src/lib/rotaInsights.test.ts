@@ -4,6 +4,7 @@ import {
   staffDateBlockReason,
   suggestCoverForShift,
   summariseInsights,
+  weekTotalTone,
   type RotaInsightInput,
 } from '@/lib/rotaInsights';
 import type {
@@ -563,5 +564,120 @@ describe('suggestCoverForShift', () => {
     expect(candidates).toHaveLength(1);
     expect(candidates[0]?.eligible).toBe(true);
     expect(candidates[0]?.blockers.join(' ')).toContain('over their 32h contract');
+  });
+});
+
+/**
+ * Settings → Policies working-time rules (BUG-011 family, plan 02 §4). Each
+ * of these used to save and change nothing: the rota had 11h and 48h written
+ * into it and never counted consecutive days. Every test below changes only
+ * the setting and watches the warning change.
+ */
+describe('organisation working-time limits', () => {
+  const person = staff({ id: 'p-1' });
+
+  it('minimum rest: a 12-hour gap is fine at 11 hours and a warning at 13', () => {
+    // Off at 19:00 BST, back at 07:00 BST the next morning. Twelve hours.
+    const first = shift({
+      id: 's-1',
+      staff_profile_id: 'p-1',
+      starts_at: '2026-08-19T10:00:00Z',
+      ends_at: '2026-08-19T18:00:00Z',
+    });
+    const second = shift({
+      id: 's-2',
+      staff_profile_id: 'p-1',
+      starts_at: '2026-08-20T06:00:00Z',
+      ends_at: '2026-08-20T14:00:00Z',
+    });
+    const shifts = [first, second];
+
+    const unset = computeRotaInsights(input({ shifts, staff: [person] }));
+    expect(unset.some((i) => i.kind === 'rest_breach')).toBe(false);
+
+    const stricter = computeRotaInsights(
+      input({ shifts, staff: [person], limits: { minRestHours: 13 } }),
+    );
+    const rest = stricter.find((i) => i.kind === 'rest_breach');
+    expect(rest?.detail).toContain('Your policy asks for 13h');
+  });
+
+  it('minimum rest also changes who is suggested to cover', () => {
+    const open = shift({
+      id: 's-open',
+      starts_at: '2026-08-20T06:00:00Z',
+      ends_at: '2026-08-20T14:00:00Z',
+      status: 'open',
+    });
+    const before = shift({
+      id: 's-before',
+      staff_profile_id: 'p-1',
+      starts_at: '2026-08-19T10:00:00Z',
+      ends_at: '2026-08-19T18:00:00Z',
+    });
+    const base = {
+      shift: open,
+      shifts: [open, before],
+      staff: [person],
+      leave: [],
+      availability: [],
+      timezone: TZ,
+    };
+
+    const unset = suggestCoverForShift(base);
+    expect(unset[0]?.blockers.join(' ')).not.toContain('rest either side');
+
+    const stricter = suggestCoverForShift({ ...base, limits: { minRestHours: 13 } });
+    expect(stricter[0]?.blockers.join(' ')).toContain('12.0h rest either side');
+  });
+
+  it('maximum weekly hours: 50 hours is red at 48 and normal at 55', () => {
+    const fiftyHours = 50 * 60;
+    const contract = 45 * 60;
+    expect(weekTotalTone(fiftyHours, contract)).toBe('over_limit');
+    expect(weekTotalTone(fiftyHours, contract, 48)).toBe('over_limit');
+    expect(weekTotalTone(fiftyHours, contract, 55)).toBe('normal');
+  });
+
+  it('maximum consecutive days: seven days in a row warns at 6 and not at 7', () => {
+    // Mon 17 to Sun 23 Aug, one early shift a day.
+    const shifts = [17, 18, 19, 20, 21, 22, 23].map((day) =>
+      shift({
+        id: `s-${day}`,
+        staff_profile_id: 'p-1',
+        starts_at: `2026-08-${day}T06:00:00Z`,
+        ends_at: `2026-08-${day}T14:00:00Z`,
+      }),
+    );
+
+    const unset = computeRotaInsights(input({ shifts, staff: [person] }));
+    const run = unset.find((i) => i.kind === 'consecutive_days');
+    expect(run?.title).toContain('7 days in a row');
+    expect(run?.date).toBe('2026-08-23');
+
+    const relaxed = computeRotaInsights(
+      input({ shifts, staff: [person], limits: { maxConsecutiveDays: 7 } }),
+    );
+    expect(relaxed.some((i) => i.kind === 'consecutive_days')).toBe(false);
+
+    const stricter = computeRotaInsights(
+      input({ shifts, staff: [person], limits: { maxConsecutiveDays: 3 } }),
+    );
+    expect(stricter.find((i) => i.kind === 'consecutive_days')?.date).toBe('2026-08-20');
+  });
+
+  it('maximum consecutive days: a day off breaks the run', () => {
+    const shifts = [17, 18, 19, 20, 22, 23, 24].map((day) =>
+      shift({
+        id: `s-${day}`,
+        staff_profile_id: 'p-1',
+        starts_at: `2026-08-${day}T06:00:00Z`,
+        ends_at: `2026-08-${day}T14:00:00Z`,
+      }),
+    );
+    const found = computeRotaInsights(
+      input({ shifts, staff: [person], limits: { maxConsecutiveDays: 4 } }),
+    );
+    expect(found.some((i) => i.kind === 'consecutive_days')).toBe(false);
   });
 });

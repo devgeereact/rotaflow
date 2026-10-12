@@ -45,15 +45,7 @@ export function HomePage(): JSX.Element {
             {HERO.eyebrow}
           </p>
           <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-content sm:text-5xl sm:leading-none md:text-6xl dark:text-content-dark">
-            {HERO.headline.map((line, i) => (
-              <span key={line} className="block">
-                {i === HERO.headline.length - 1 ? (
-                  <span className="text-primary dark:text-primary-ink-dark">{line}</span>
-                ) : (
-                  line
-                )}
-              </span>
-            ))}
+            {HERO.headline}
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-content-muted dark:text-content-muted-dark">
             {HERO.body}

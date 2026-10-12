@@ -136,10 +136,10 @@ both must appear in the Privacy Notice and the sub-processor list.** This sectio
 previously claimed the opposite; that claim was wrong and was corrected on
 2026-08-29.
 
-| Processor                                                                          | What leaves the UK/EU                                                                                                                                                                                                                   | Where                                                 |
-| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **OpenRouter** (and the model provider behind it, `openai/gpt-4o-mini` by default) | Staff first and last names, job titles, skills, weekly hours, contract type, plus shift, location and approved-leave **dates** for the week being drafted — assembled into the prompt context. **Leave `type` is not sent** (see below) | `supabase/functions/ai-rota-assistant/index.ts`       |
-| **Stripe**                                                                         | Billing identity for the organisation's owner: email, and whatever Checkout collects                                                                                                                                                    | `supabase/functions/create-checkout-session/index.ts` |
+| Processor                                                                          | What leaves the UK/EU                                                                                                                                                                                                                                                                                                                                                                                                                               | Where                                                 |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **OpenRouter** (and the model provider behind it, `openai/gpt-4o-mini` by default) | Staff job titles, skills, weekly hours, contract type, plus shift, location and approved-leave **dates** for the week being drafted, assembled into the prompt context. Since 2026-10-11 each person is a short alias (`S1`, `S2`), not a name or a staff profile id (plan S3, `ai-rota-assistant/staffAliases.ts`); a name in the manager's own prompt is masked only when it matches exactly one person. **Leave `type` is not sent** (see below) | `supabase/functions/ai-rota-assistant/index.ts`       |
+| **Stripe**                                                                         | Billing identity for the organisation's owner: email, and whatever Checkout collects                                                                                                                                                                                                                                                                                                                                                                | `supabase/functions/create-checkout-session/index.ts` |
 
 ⚠️ **Leave type used to be sent, and should not have been. Corrected 2026-08-30.**
 The prompt carried `approvedLeave[].type` alongside a `staff` array holding real
@@ -255,7 +255,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 152 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 153 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -489,6 +489,16 @@ than as a sentence in one document — the rest of the loop closed around it on
 (GAP-012) both landed, and the one remaining hole deserved an id somebody
 could schedule.
 
+**Opening a tenant's data needs the customer's consent first.** Platform
+support reads tenant data only through a time-boxed session
+(`support_access_sessions`, `0019`), and `has_support_access()` re-checks
+`organisations.support_access_allowed` on every read (`0143`), so an owner who
+turns it off ends a live session at once. Since `0153` (plan decision D8) a new
+organisation starts with that consent **off**: support asks in the case thread
+and the owner turns it on. Organisations created before `0153` kept the value
+they held, which for most is the old default of on. The switch does not yet
+turn itself off when a session ends; that part of D8 is not built.
+
 ## Open items, in priority order
 
 1. **Enable backups** (§1) — billing decision, blocks a safe beta more than
@@ -551,8 +561,8 @@ data is about, which is not always who typed it.
 | C5  | Invitations                                       | colleague email, role, location, department                                                                                                             | the invitee                                                | onboard staff                                  | `invites`                                                                  | `src/components/settings/TeamInviteManager.tsx`                |
 | C6  | Staff record (manager-entered)                    | name, job title, department, contract type, weekly hours, holiday allowance, skills, **payroll id**, start date, **phone**, **email**, sites, photo URL | the staff member                                           | scheduling and pay                             | `staff_profiles`                                                           | `src/components/staff/StaffFormModal.tsx`                      |
 | C7  | Own profile                                       | full name, phone, photo URL                                                                                                                             | the staff member                                           | keep the record current                        | `profiles`, `staff_profiles`                                               | `src/pages/app/account/ProfilePage.tsx`                        |
-| C8  | Emergency contacts                                | contact name, relationship, phone, second phone, **medical notes**                                                                                      | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                       | `src/components/staff/EmergencyContactsModal.tsx`              |
-| C9  | Documents                                         | free-text type (DBS, right to work…), name, **URL**, issue and expiry dates                                                                             | the staff member                                           | compliance records                             | `documents`                                                                | `src/components/staff/DocumentsModal.tsx`                      |
+| C8  | Emergency contacts                                | contact name, relationship, phone, second phone. **Medical notes** no longer collected or shown (2026-10-11); values entered before then remain stored  | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                       | `src/components/staff/EmergencyContactsModal.tsx`              |
+| C9  | Documents                                         | free-text type (no longer suggests DBS or right to work), name or number, **URL**, issue and expiry dates                                               | the staff member                                           | compliance records                             | `documents`                                                                | `src/components/staff/DocumentsModal.tsx`                      |
 | C10 | Pay rates                                         | hourly rate, effective date, note                                                                                                                       | the staff member                                           | labour cost and payroll export                 | `staff_pay_rates`                                                          | `supabase/migrations/0104_pay_rates.sql`                       |
 | C11 | Leave                                             | **type (includes `sick`)**, dates, free-text reason                                                                                                     | the staff member                                           | absence management                             | `leave_requests`                                                           | `src/components/leave/LeaveRequestModal.tsx`                   |
 | C12 | Clock in / out                                    | time, method, **latitude, longitude, accuracy**, location name                                                                                          | the staff member                                           | attendance and pay                             | `clock_events`                                                             | `src/pages/app/ClockInPage.tsx`, `src/hooks/useGeolocation.ts` |
@@ -571,14 +581,26 @@ data is about, which is not always who typed it.
 #### Notes on the ones that carry the most risk
 
 **C8 — emergency contacts.** The only place the product holds data about
-somebody who has no relationship with it at all. `medical_notes` is
-free text prompted with "Allergies, conditions", so it is Article 9 health data
-by design. Hard-deleted on erasure. **REQUIRES LEGAL REVIEW:** Article 14
+somebody who has no relationship with it at all. `medical_notes` was
+free text prompted with "Allergies, conditions", so it was Article 9 health data
+by design. Since 2026-10-11 (GAP-058, plan S1) the product no longer collects or
+shows it: the field is gone from the dialog, the client writes only the named
+columns and reads them by name. The column and any values already in it are
+untouched until an owner-approved purge migration; until then the subject-access
+export still reads `*` and so discloses a stored value to the person it is
+about. Hard-deleted on erasure. The leave reason field carries a hint not to
+include medical details. **REQUIRES LEGAL REVIEW:** Article 14
 notification duty, and how it divides between employer and processor.
 
-**C9 — documents.** The type is an unconstrained text input whose own
-placeholder suggests DBS and right-to-work, so criminal-record and immigration
-data lands in a column nothing was designed around. It is a _link_, not an
+**C9 — documents.** The type is an unconstrained text input. Until 2026-10-11
+its own placeholder suggested DBS and right-to-work, so criminal-record and
+immigration data landed in a column nothing was designed around by design. Phase
+1 of plan S2 (decision D4) removed that suggestion and changed the copy to
+"Record the document type, number and expiry. Keep the document itself in your
+own HR system." The field is still free text, and existing records are
+untouched, so such data can still be typed in or already be held. The link is
+still required, because `documents.file_url` is `not null` with an `https?://`
+check (`0002`, `0092`); making it optional needs a migration. It is a _link_, not an
 upload: erasure removes the row and cannot remove the file (GAP-056).
 
 **C11 — leave type.** `sick` makes an absence record a health record about a
@@ -590,8 +612,10 @@ beside real names on 2026-08-30.
 prompt is the gate; declining falls back to a manual clock-in recorded as
 manual, so the feature degrades rather than blocks.
 
-**C16 — AI.** Names, job titles, skills, contracted hours and leave _dates_
-leave the UK/EU on a manager's click. The browser never talks to OpenRouter;
+**C16 — AI.** Job titles, skills, contracted hours and leave _dates_ leave the
+UK/EU on a manager's click. Since 2026-10-11 staff are sent as short aliases
+(`S1`, `S2`) and names are restored server-side; a nickname, misspelling or
+shared first name in the manager's own prompt still goes as typed. The browser never talks to OpenRouter;
 the edge function does.
 
 **C23 — calendar feed.** Deployed `--no-verify-jwt`; the token in the query
@@ -631,9 +655,13 @@ safe direction.
 **The offline outbox is deliberately not cleared on sign-out**
 (`src/lib/session.ts:16-27`) — a queued clock-in belongs to the person who made
 it, not to the session. Isolation is by a `userId` ownership filter instead.
-Residual: rows written before that field existed are treated as belonging to
-whoever is signed in (`src/services/syncQueue.ts:211`), which is a shared-device
-exposure for pre-upgrade data.
+Rows written before that field existed belong to nobody since 2026-10-11 (plan
+S4): kept on the device but never replayed, listed or retried
+(`belongsTo` in `src/services/syncQueue.ts`). Residual: such a row, with its GPS
+position, stays in IndexedDB on the device until removed by hand, because there
+is no expiry yet. Sign-out now also deletes this device's `push_subscriptions`
+row and unsubscribes the browser (`releasePushSubscription`,
+`src/lib/session.ts`); a session that ends without a sign-out does not.
 
 ---
 
@@ -642,15 +670,15 @@ exposure for pre-upgrade data.
 Published at `/legal/trust`, generated from `src/lib/subprocessors.ts`. Repeated
 here only where this document adds something.
 
-| Processor                   | What it gets                                            | Where              | Outside UK/EU           |
-| --------------------------- | ------------------------------------------------------- | ------------------ | ----------------------- |
-| Supabase                    | everything the product holds                            | eu-west-1, Ireland | No                      |
-| OpenRouter + model provider | staff names, job titles, skills, hours, leave **dates** | United States      | **Yes**                 |
-| Stripe                      | billing identity of the payer                           | United States      | **Yes**                 |
-| Sentry                      | stack trace, page path, breadcrumbs                     | EU ingest          | No                      |
-| ImageKit                    | uploaded images, including staff photographs            | United Kingdom     | No                      |
-| Namecheap / cPanel          | the site itself, and outbound mail                      | United Kingdom     | No                      |
-| Cloudflare                  | IP address and requested pages of **every visitor**     | global edge        | Not flagged — see below |
+| Processor                   | What it gets                                                          | Where              | Outside UK/EU           |
+| --------------------------- | --------------------------------------------------------------------- | ------------------ | ----------------------- |
+| Supabase                    | everything the product holds                                          | eu-west-1, Ireland | No                      |
+| OpenRouter + model provider | staff aliases (not names), job titles, skills, hours, leave **dates** | United States      | **Yes**                 |
+| Stripe                      | billing identity of the payer                                         | United States      | **Yes**                 |
+| Sentry                      | stack trace, page path, breadcrumbs                                   | EU ingest          | No                      |
+| ImageKit                    | uploaded images, including staff photographs                          | United Kingdom     | No                      |
+| Namecheap / cPanel          | the site itself, and outbound mail                                    | United Kingdom     | No                      |
+| Cloudflare                  | IP address and requested pages of **every visitor**                   | global edge        | Not flagged — see below |
 
 **Cloudflare is the awkward one.** The `outsideUkEu` flag means "personal data
 leaves the UK/EU to reach it", and a proxied request is served by the location
@@ -726,18 +754,19 @@ right shape for this class of problem.
 
 ### 7. Security controls relevant to privacy
 
-| Control                 | State                                                                                                                                                        | Evidence                                          |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Tenant isolation        | Row-level security, not application filtering; CI fails on a table with no RLS, a readable table with no policy, or any grant to `anon`                      | `supabase/tests/database/rls_invariants.test.sql` |
-| Transport               | TLS only, Cloudflare in front, origin refuses direct requests                                                                                                | `.htaccess`                                       |
-| Content security policy | `script-src 'self'`; only Supabase, Sentry EU and ImageKit reachable                                                                                         | `.htaccess:158`                                   |
-| Fonts                   | self-hosted since 2026-09-03; previously leaked every visitor IP to Google                                                                                   | `public/fonts/README.md`                          |
-| Secrets                 | Edge Function secrets and Postgres `vault`; the notification secret is generated in-database and has no second copy                                          | `0091`                                            |
-| `smtp_pass`             | excluded from the `authenticated` column grant; clients read `org_smtp_settings_safe`                                                                        | `docs/DATA-MODEL.md`                              |
-| Audit log               | append-only, enforced by trigger, two narrow carve-outs                                                                                                      | `0066`                                            |
-| Rate limiting           | on invites and other sensitive paths                                                                                                                         | `0085`, `0086`                                    |
-| Backups                 | **none, and no PITR** on 4 Sep. Since 5 Sep: a nightly encrypted dump with a restore check, green every night to 10 Oct; PITR still off as last read (§1)    | `docs/SECURITY.md` §1                             |
-| Scheduled checks        | `backup.yml` and `auth-config.yml` had **never succeeded** on 4 Sep. Since: backup green nightly; auth-config green 5 and 7 Sep, red with `401` since 14 Sep | GAP-036                                           |
+| Control                 | State                                                                                                                                                                                                                                                                                                                                                                                                                         | Evidence                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Tenant isolation        | Row-level security, not application filtering; CI fails on a table with no RLS, a readable table with no policy, or any grant to `anon`                                                                                                                                                                                                                                                                                       | `supabase/tests/database/rls_invariants.test.sql`  |
+| Transport               | TLS only, Cloudflare in front, origin refuses direct requests                                                                                                                                                                                                                                                                                                                                                                 | `.htaccess`                                        |
+| Content security policy | `script-src 'self'`; only Supabase, Sentry EU and ImageKit reachable                                                                                                                                                                                                                                                                                                                                                          | `.htaccess:158`                                    |
+| Fonts                   | self-hosted since 2026-09-03; previously leaked every visitor IP to Google                                                                                                                                                                                                                                                                                                                                                    | `public/fonts/README.md`                           |
+| Secrets                 | Edge Function secrets and Postgres `vault`; the notification secret is generated in-database and has no second copy                                                                                                                                                                                                                                                                                                           | `0091`                                             |
+| `smtp_pass`             | excluded from the `authenticated` column grant; clients read `org_smtp_settings_safe`                                                                                                                                                                                                                                                                                                                                         | `docs/DATA-MODEL.md`                               |
+| Audit log               | append-only, enforced by trigger, two narrow carve-outs                                                                                                                                                                                                                                                                                                                                                                       | `0066`                                             |
+| Second factor (TOTP)    | Enrolment on the account screen; since 11 Oct a sign-in challenge (`MfaGate`) asks a session at `aal1` with a verified factor for the 6-digit code before any protected screen renders. Console data needs `aal2` once `require_mfa` is on, enforced by `is_platform_admin()`; tenant data does not look at `aal`, so for an ordinary account the challenge is a UI step. `require_mfa` is off until the owner switches it on | `0102`, `src/components/auth/MfaGate.tsx`, CAP-049 |
+| Rate limiting           | on invites and other sensitive paths                                                                                                                                                                                                                                                                                                                                                                                          | `0085`, `0086`                                     |
+| Backups                 | **none, and no PITR** on 4 Sep. Since 5 Sep: a nightly encrypted dump with a restore check, green every night to 10 Oct; PITR still off as last read (§1)                                                                                                                                                                                                                                                                     | `docs/SECURITY.md` §1                              |
+| Scheduled checks        | `backup.yml` and `auth-config.yml` had **never succeeded** on 4 Sep. Since: backup green nightly; auth-config green 5 and 7 Sep, red with `401` since 14 Sep                                                                                                                                                                                                                                                                  | GAP-036                                            |
 
 ---
 
@@ -767,8 +796,9 @@ right shape for this class of problem.
 ### 9. REQUIRES LEGAL REVIEW
 
 1. **Every lawful basis.** Proposed in the notice, confirmed by nobody.
-2. **The Article 9 condition** for `emergency_contacts.medical_notes` and for
-   sickness leave.
+2. **The Article 9 condition** for sickness leave, and for the
+   `emergency_contacts.medical_notes` values still stored from before the field
+   was removed (2026-10-11).
 3. **Article 14** and emergency contacts (GAP-058).
 4. **Whether an email address alone satisfies Article 13** for a sole trader.
 5. **Transfer mechanism and risk assessment** for Stripe and OpenRouter.

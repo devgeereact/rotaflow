@@ -162,9 +162,9 @@ function stepCopy(step: number): StepCopy {
       };
     case 5:
       return {
-        headline: "You're all set!",
+        headline: 'Your organisation is ready.',
         headlineAccent: 'Welcome to RotaFlow',
-        intro: 'Your organisation is ready. Three things worth doing first:',
+        intro: 'Three things worth doing first:',
         features: [
           {
             icon: BarChart3,
@@ -343,7 +343,6 @@ export function OnboardingPage(): JSX.Element {
     orgType: '',
     country: 'United Kingdom',
     timezone: 'Europe/London',
-    workingWeek: 'mon-sun',
     locations: [EMPTY_LOCATION],
   });
   const [staged, setStaged] = useState<StagedInvite[]>([]);
@@ -445,7 +444,7 @@ export function OnboardingPage(): JSX.Element {
       title: 'Choose a plan',
       subtitle: plan ? `${plan} · ${period}` : 'Select the right plan for you',
     },
-    { number: 5, title: 'All done!', subtitle: "You're ready to go" },
+    { number: 5, title: 'Ready', subtitle: 'Your organisation is ready.' },
   ];
 
   const handleCreateOrg = useCallback(async (): Promise<void> => {
@@ -534,7 +533,6 @@ export function OnboardingPage(): JSX.Element {
         });
         await mergeOrgSettings(orgId, {
           org_type: aboutValues.orgType,
-          working_week: aboutValues.workingWeek,
         });
 
         // RF-11. This used to create every named location unconditionally, so
@@ -671,18 +669,21 @@ export function OnboardingPage(): JSX.Element {
     [showError, showSuccess],
   );
 
-  const finish = useCallback((): void => {
-    // Stamp it before leaving, or the next visit resumes a wizard that was
-    // finished. Deliberately not awaited and deliberately not blocking: the
-    // person has done everything asked of them, and a failed stamp costs them
-    // one avoidable trip through a wizard rather than their work.
-    if (orgId) {
-      void completeOnboarding(orgId).catch((err: unknown) => {
-        reportError(err, { area: 'onboarding:complete' });
-      });
-    }
-    void navigate('/app/dashboard', { replace: true });
-  }, [navigate, orgId]);
+  const finish = useCallback(
+    (to: string = '/app/dashboard'): void => {
+      // Stamp it before leaving, or the next visit resumes a wizard that was
+      // finished. Deliberately not awaited and deliberately not blocking: the
+      // person has done everything asked of them, and a failed stamp costs them
+      // one avoidable trip through a wizard rather than their work.
+      if (orgId) {
+        void completeOnboarding(orgId).catch((err: unknown) => {
+          reportError(err, { area: 'onboarding:complete' });
+        });
+      }
+      void navigate(to, { replace: true });
+    },
+    [navigate, orgId],
+  );
 
   if (loading) return <SplashScreen />;
 

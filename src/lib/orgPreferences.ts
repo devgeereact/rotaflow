@@ -124,10 +124,6 @@ export interface SchedulingPolicies {
   maxWeeklyHours: number;
   /** Whether break time is deducted from paid hours. */
   breaksArePaid: boolean;
-  /** Clock times are rounded to this many minutes on a timesheet. */
-  roundingMinutes: number;
-  /** How many days ahead a rota should be published. */
-  publishLeadDays: number;
   /**
    * Whether a manager must approve every agreed swap. When false, a named
    * colleague's acceptance plus the requester's own final say
@@ -135,8 +131,6 @@ export interface SchedulingPolicies {
    * `SwapsPage.tsx`'s `handleColleagueDecision`/`handleFinalize`.
    */
   swapApprovalRequired: boolean;
-  /** Whether leave that would drop a day under minimum cover auto-declines rather than just warning. */
-  autoDeclineClashingLeave: boolean;
   /**
    * Which nation's bank holidays apply (CAP-009).
    *
@@ -157,10 +151,7 @@ export const DEFAULT_POLICIES: SchedulingPolicies = {
   maxConsecutiveDays: 6,
   maxWeeklyHours: 48,
   breaksArePaid: false,
-  roundingMinutes: 15,
-  publishLeadDays: 14,
   swapApprovalRequired: true,
-  autoDeclineClashingLeave: false,
   // The default rather than a guess about the customer: most of the UK, and
   // the setting is one line away on Settings → Policies.
   bankHolidayRegion: 'england-and-wales',
@@ -185,17 +176,10 @@ export function schedulingPolicies(settings: Json): SchedulingPolicies {
     ),
     maxWeeklyHours: num(settings, 'max_weekly_hours', DEFAULT_POLICIES.maxWeeklyHours),
     breaksArePaid: bool(settings, 'breaks_are_paid', DEFAULT_POLICIES.breaksArePaid),
-    roundingMinutes: num(settings, 'rounding_minutes', DEFAULT_POLICIES.roundingMinutes),
-    publishLeadDays: num(settings, 'publish_lead_days', DEFAULT_POLICIES.publishLeadDays),
     swapApprovalRequired: bool(
       settings,
       'swap_approval_required',
       DEFAULT_POLICIES.swapApprovalRequired,
-    ),
-    autoDeclineClashingLeave: bool(
-      settings,
-      'auto_decline_clashing_leave',
-      DEFAULT_POLICIES.autoDeclineClashingLeave,
     ),
     bankHolidayRegion: isRegion(str(settings, 'bank_holiday_region'))
       ? (str(settings, 'bank_holiday_region') as BankHolidayRegion)
@@ -218,6 +202,39 @@ function isRegion(value: string): value is BankHolidayRegion {
   return value in REGION_LABELS;
 }
 
+/**
+ * The shallow merge every `settings` save goes through (`mergeOrgSettings`).
+ *
+ * Only the keys in `patch` change. Everything else already stored, including
+ * keys no screen writes any more (`RETIRED_POLICY_KEYS`,
+ * `RETIRED_PROFILE_KEYS`) and keys this release has never heard of, is kept
+ * exactly as it was. Retiring a control must never delete what an
+ * organisation saved through it.
+ */
+export function mergeSettings(
+  current: Json,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  return { ...record(current), ...patch };
+}
+
+/**
+ * Keys an earlier Policies screen wrote and nothing ever read: clock rounding,
+ * publish lead time and auto-declining clashing leave. A manager who changed
+ * one saw "Changes saved" and nothing else happened, so the controls are gone.
+ *
+ * The stored values are deliberately left alone. `policiesToSettings` no
+ * longer emits these keys, and `mergeOrgSettings` only overwrites the keys it
+ * is given, so whatever an organisation saved stays in its `settings` for the
+ * day one of these comes back as a real feature. Rounding changes pay, so it
+ * needs its own careful design before it returns.
+ */
+export const RETIRED_POLICY_KEYS = [
+  'rounding_minutes',
+  'publish_lead_days',
+  'auto_decline_clashing_leave',
+] as const;
+
 export function policiesToSettings(p: SchedulingPolicies): Record<string, unknown> {
   return {
     overtime_threshold_hours: p.overtimeThresholdHours,
@@ -225,10 +242,7 @@ export function policiesToSettings(p: SchedulingPolicies): Record<string, unknow
     max_consecutive_days: p.maxConsecutiveDays,
     max_weekly_hours: p.maxWeeklyHours,
     breaks_are_paid: p.breaksArePaid,
-    rounding_minutes: p.roundingMinutes,
-    publish_lead_days: p.publishLeadDays,
     swap_approval_required: p.swapApprovalRequired,
-    auto_decline_clashing_leave: p.autoDeclineClashingLeave,
     bank_holiday_region: p.bankHolidayRegion,
     leave_year_start_month: p.leaveYearStartMonth,
     leave_carry_over_max_days: p.leaveCarryOverMaxDays,
@@ -315,24 +329,25 @@ export interface OrgProfileFields {
   orgType: string;
   country: string;
   timezone: string;
-  workingWeek: string;
   phone: string;
   website: string;
   addressLine: string;
   registrationNo: string;
   contactEmail: string;
   primaryContact: string;
-  dateFormat: string;
-  currency: string;
 }
 
-export const DATE_FORMATS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'] as const;
-
-export const CURRENCIES = [
-  { value: 'GBP', label: 'GBP (£)' },
-  { value: 'EUR', label: 'EUR (€)' },
-  { value: 'USD', label: 'USD ($)' },
-] as const;
+/**
+ * Profile keys the Organisation screen and onboarding used to write and
+ * nothing read (BUG-011 for `working_week`). The product is UK-first: dates
+ * are always UK format, money is always GBP, and every week in the app starts
+ * on Monday. Offering a choice that changes nothing is worse than offering
+ * none, so the controls are gone.
+ *
+ * Their stored values are not deleted. `orgProfileSettingsPatch` no longer
+ * writes them, and `mergeOrgSettings` leaves keys it is not given untouched.
+ */
+export const RETIRED_PROFILE_KEYS = ['working_week', 'date_format', 'currency'] as const;
 
 /**
  * The five profile fields that are real columns on `organisations`.
@@ -370,14 +385,27 @@ export function orgProfileFields(
     orgType: str(settings, 'org_type'),
     country: col(columns?.country, str(settings, 'country', 'United Kingdom')),
     timezone: col(columns?.timezone, str(settings, 'timezone', 'Europe/London')),
-    workingWeek: str(settings, 'working_week', 'mon-sun'),
     phone: col(columns?.contact_phone, str(settings, 'phone')),
     website: str(settings, 'website'),
     addressLine: str(settings, 'address_line'),
     registrationNo: str(settings, 'registration_no'),
     contactEmail: col(columns?.contact_email, str(settings, 'contact_email')),
     primaryContact: str(settings, 'primary_contact'),
-    dateFormat: str(settings, 'date_format', DATE_FORMATS[0]),
-    currency: str(settings, 'currency', CURRENCIES[0].value),
+  };
+}
+
+/**
+ * The `settings` jsonb half of an Organisation save. The five fields with real
+ * columns go to the columns instead (see `OrgProfileColumns`).
+ */
+export function orgProfileSettingsPatch(
+  fields: OrgProfileFields,
+): Record<string, unknown> {
+  return {
+    org_type: fields.orgType,
+    website: fields.website,
+    address_line: fields.addressLine,
+    registration_no: fields.registrationNo,
+    primary_contact: fields.primaryContact,
   };
 }

@@ -1,7 +1,12 @@
 import { cn } from '@/lib/utils';
 import { rotaGridTemplate } from '@/lib/rotaCanvas';
 import { shiftCellKey } from '@/lib/rotaGrid';
-import { shiftNetMinutes } from '@/lib/rotaInsights';
+import {
+  DEFAULT_ROTA_LIMITS,
+  shiftNetMinutes,
+  weekTotalTone,
+  type WeekTotalTone,
+} from '@/lib/rotaInsights';
 import { hoursLabel } from '@/components/dashboard/dashboardFormat';
 import { RotaGridCell } from '@/components/rota/RotaGridCell';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
@@ -44,7 +49,11 @@ export const ROTA_GRID_COLS = 'grid gap-1.5';
 export const ROTA_STICKY_STAFF_COL =
   '-mr-1.5 sticky left-0 z-10 border-r border-surface-border bg-surface pr-1.5 dark:border-surface-border-dark dark:bg-surface-dark';
 
-const STATUTORY_WEEKLY_MINUTES = 48 * 60;
+const WEEK_TOTAL_TONE_CLASS: Record<WeekTotalTone, string> = {
+  over_limit: 'text-danger',
+  over_contract: 'text-warning',
+  normal: 'text-content dark:text-content-dark',
+};
 
 const ROTA_ROW_GRID = `${ROTA_GRID_COLS} border-b border-surface-border py-1.5 last:border-0 dark:border-surface-border-dark`;
 
@@ -70,6 +79,8 @@ interface RotaGridRowProps {
   now: number;
   selectedShiftId: string | null;
   conflictedShiftIds: Set<string>;
+  /** Settings → Policies "Maximum weekly hours". Defaults to 48. */
+  maxWeeklyHours?: number;
   /** The date index this row is currently the keyboard move target for, if any. */
   moveTargetDateIndex: number | null;
   /** The shift being moved by keyboard, so its chip can show as lifted. */
@@ -97,6 +108,7 @@ export function RotaGridRow({
   now,
   selectedShiftId,
   conflictedShiftIds,
+  maxWeeklyHours = DEFAULT_ROTA_LIMITS.maxWeeklyHours,
   moveTargetDateIndex,
   movingShiftId,
   onAddShift,
@@ -111,7 +123,7 @@ export function RotaGridRow({
   // The ANCHOR week's hours, not the canvas's.
   //
   // The grid draws three weeks; this column is headed "Week" and is compared
-  // against the 48-hour statutory limit and the person's contract. Summing
+  // against the organisation's weekly limit and the person's contract. Summing
   // twenty-one days into it would put every full-time worker over the limit
   // on a screen whose whole job is to flag exactly that.
   const weekMinutes = staffProfileId
@@ -200,11 +212,9 @@ export function RotaGridRow({
             <span
               className={cn(
                 'font-mono text-sm font-semibold',
-                weekMinutes > STATUTORY_WEEKLY_MINUTES
-                  ? 'text-danger'
-                  : weekMinutes > contractMinutes + 12 * 60
-                    ? 'text-warning'
-                    : 'text-content dark:text-content-dark',
+                WEEK_TOTAL_TONE_CLASS[
+                  weekTotalTone(weekMinutes, contractMinutes, maxWeeklyHours)
+                ],
               )}
             >
               {hoursLabel(weekMinutes / 60)}

@@ -221,7 +221,7 @@ export const PRIVACY_FACTS: readonly DataFact[] = [
   {
     question: 'Where is it held?',
     answer:
-      'The database is in the EU (Supabase, eu-west-1). Two things leave that region and both are named on the Trust page: billing identity goes to Stripe (US) when an organisation subscribes, and, only when a manager uses the AI assistant, the week being drafted goes to OpenRouter (US) for that one request. That is staff first and last names, job titles, skills, weekly hours and contract type, together with the organisation name, its site names, the shifts already on the rota and the dates of approved leave. Leave type is deliberately never sent, so an absence cannot be read as sickness. Nothing else leaves the region.',
+      'The database is in the EU (Supabase, eu-west-1). Two things leave that region and both are named on the Trust page: billing identity goes to Stripe (US) when an organisation subscribes, and, only when a manager uses the AI assistant, the week being drafted goes to OpenRouter (US) for that one request. That is each staff member’s job title, skills, weekly hours and contract type under a short code such as S1 rather than their name, together with the organisation name, its site names, the shifts already on the rota and the dates of approved leave. Leave type is deliberately never sent, so an absence cannot be read as sickness. A name the manager types into their own request is replaced with that code when it matches exactly one person; anything else they type is sent as written. Nothing else leaves the region.',
   },
   {
     question: 'Is any of it sold, or used for advertising?',

@@ -29,6 +29,14 @@ import { reportError } from '@/lib/sentry';
  * defeats this component still gets nothing back from the database. This exists
  * so an honest wrong turn produces an explanation instead of a screen of empty
  * tables.
+ *
+ * ## What reaches it at `aal1`
+ *
+ * `ProtectedRoute` wraps this in `MfaGate`, so a session that has a verified
+ * factor but has not used it is asked for the code before this component ever
+ * renders. What still arrives here at `aal1` under `require_mfa` is an
+ * administrator with no verified factor at all, and that is the case the
+ * second-factor refusal and the owner's "turn it off" button below are for.
  */
 export function RequirePlatformAdmin({ children }: { children: ReactNode }): JSX.Element {
   const { isPlatformAdmin, platformRole, loading, refresh } = useOrg();

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PROFILE_TABS, SETTINGS_TABS } from '@/lib/settingsTabs';
+import { REQUEST_SECTIONS } from '@/lib/requestSections';
 import { FOOTER_COLUMNS, MARKETING_NAV } from '@/lib/marketing';
 import { PUBLIC_ROUTES } from '@/lib/publicRoutes';
 import { SEARCH_ENTRIES } from '@/lib/globalSearch';
@@ -139,7 +140,9 @@ function routeTable(): string[] {
 const ROUTES = routeTable();
 
 function isRoutable(target: string): boolean {
-  const wanted = target.replace(/\/$/, '');
+  // A footer link may carry an in-page anchor (`/resources#product-updates`);
+  // the route is what has to exist.
+  const wanted = (target.split('#')[0] ?? '').replace(/\/$/, '');
   return ROUTES.some((route) => {
     const declared = route.replace(/\/$/, '');
     if (declared === '*') return false;
@@ -170,6 +173,13 @@ describe('navigation targets', () => {
 
   it.each(PROFILE_TABS.map((tab) => [tab.label, tab.to] as const))(
     'Profile tab %s (%s) has a route',
+    (_label, to) => {
+      expect(isRoutable(to)).toBe(true);
+    },
+  );
+
+  it.each(REQUEST_SECTIONS.map((tab) => [tab.label, tab.to] as const))(
+    'Request switch %s (%s) has a route',
     (_label, to) => {
       expect(isRoutable(to)).toBe(true);
     },
@@ -252,7 +262,7 @@ describe('navigation targets', () => {
   });
 
   /*
-   * The rail's second, quieter nav group (Settings/My Profile, Help &
+   * The rail's second, quieter nav group (Settings/My account, Help &
    * Support) was never covered here — only the primary sidebar was. It
    * changed shape when Help & Support moved from the public `/contact`
    * page to `/app/help`, exactly the kind of rename this file exists to
@@ -291,7 +301,7 @@ describe('navigation targets', () => {
     expect(management).toContain('/app/attendance');
   });
 
-  it('offers Clock In to an owner who opts into My work, marked as such', () => {
+  it('offers Clock in to an owner who opts into My work, marked as such', () => {
     const personal = navItemsForRole('owner', { mode: 'my-work' });
     const clockIn = personal.find((i) => i.to === '/app/clock');
     expect(clockIn).toBeDefined();
@@ -304,7 +314,15 @@ describe('navigation targets', () => {
     for (const to of management) expect(personal).toContain(to);
   });
 
-  it('gives staff Clock In as an ordinary row, not an opt-in group', () => {
+  it('names the staff rows in sentence case: My rota and Clock in', () => {
+    const labels = navItemsForRole('staff').map((i) => i.label);
+    expect(labels).toContain('My rota');
+    expect(labels).toContain('Clock in');
+    expect(labels).not.toContain('Schedule');
+    expect(labels).not.toContain('Clock In');
+  });
+
+  it('gives staff Clock in as an ordinary row, not an opt-in group', () => {
     const staffNav = navItemsForRole('staff');
     const clockIn = staffNav.find((i) => i.to === '/app/clock');
     expect(clockIn).toBeDefined();
@@ -459,7 +477,8 @@ describe('public route metadata', () => {
   it('every internal public footer link carries metadata', () => {
     const described = new Set(PUBLIC_ROUTES.map((route) => route.path));
     const internal = FOOTER_COLUMNS.flatMap((column) => column.links)
-      .map((link) => link.to)
+      // An in-page anchor shares its page's metadata.
+      .map((link) => link.to.split('#')[0] ?? link.to)
       // The footer also points into the app and out to mail; neither belongs
       // in a sitemap, and neither is reachable logged out.
       .filter(

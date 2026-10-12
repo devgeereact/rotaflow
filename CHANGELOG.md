@@ -13,6 +13,20 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **fix(billing): Checkout guard, webhook ordering and an honest billing page.**
+  Settings > Billing says "No plan yet" instead of "trialing" when there is no
+  subscription, shows the entitled plan and formats prices in the plan currency
+  (BUG-106). `create-checkout-session` refuses a second Checkout with 409
+  `already_subscribed` and the page opens the Billing Portal instead (BUG-107).
+  `stripe-webhook` writes the subscription as Stripe holds it now, so an
+  out-of-order `customer.subscription.updated` cannot regress it, and a late
+  `deleted` cannot suspend a replacement subscription (BUG-108).
+- **Settings that saved but did nothing are wired or removed (GAP-116, BUG-011).**
+  Minimum rest, maximum weekly hours and maximum consecutive days drive the rota
+  warnings; the overtime threshold highlights a staff member's own timesheet.
+  Clock rounding, publish lead days, auto-decline clashing leave, working week,
+  date format and currency are gone from the screens, with their stored values
+  kept. Each Policies setting shows a worked example.
 - **docs: restructure to the GEE OS Standard application profile.** Flat `docs/`
   with one file per concern, a new `qa/` folder, `CHANGELOG.md` and
   `KNOWN-ISSUES.md`. Overlapping documents merged; dated records kept as dated

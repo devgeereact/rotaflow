@@ -125,7 +125,7 @@ export function SolutionsPage(): JSX.Element {
 
       <FinalCta
         heading="See it against your own rota"
-        body="Create an organisation, add your sites, and build a real week. It takes about ten minutes."
+        body="Create an organisation, add your sites, and build a real week with your own staff and shifts."
       />
     </MarketingLayout>
   );

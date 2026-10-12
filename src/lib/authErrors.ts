@@ -42,7 +42,7 @@ function statusOf(err: unknown): number | undefined {
  */
 export function authErrorMessage(
   err: unknown,
-  fallback = 'Something went wrong.',
+  fallback = 'We could not complete that request. Check your connection and try again.',
 ): string {
   if (err instanceof Error && !isUseless(err.message)) return err.message;
 

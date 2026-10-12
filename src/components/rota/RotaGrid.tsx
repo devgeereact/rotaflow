@@ -44,6 +44,11 @@ interface RotaGridProps {
   selectedShiftId: string | null;
   /** Shift ids with a critical, shift-specific insight — rings the chip red. */
   conflictedShiftIds: Set<string>;
+  /**
+   * Settings → Policies "Maximum weekly hours". A weekly total past it shows
+   * red. Optional so the preview pages keep the 48-hour default.
+   */
+  maxWeeklyHours?: number;
   shiftTypeFilter: string;
   onShiftTypeFilterChange: (shiftTypeId: string) => void;
   onAddShift: (staffProfileId: string | null, date: string, locationId: string) => void;
@@ -87,6 +92,7 @@ export function RotaGrid({
   dailyTotals,
   selectedShiftId,
   conflictedShiftIds,
+  maxWeeklyHours,
   shiftTypeFilter,
   onShiftTypeFilterChange,
   onAddShift,
@@ -425,6 +431,7 @@ export function RotaGrid({
           now={now}
           selectedShiftId={selectedShiftId}
           conflictedShiftIds={conflictedShiftIds}
+          maxWeeklyHours={maxWeeklyHours}
           moveTargetDateIndex={move && move.rowIndex === rowIndex ? move.dateIndex : null}
           movingShiftId={move?.shift.id ?? null}
           onAddShift={(staffProfileId, date) =>

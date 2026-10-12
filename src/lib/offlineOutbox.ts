@@ -54,10 +54,10 @@ export interface OutboxRecord {
    * it. Without an owner, the next person to sign in flushes somebody else's
    * writes under their own token and is shown somebody else's failures.
    *
-   * Absent on rows written before this field existed. Those are treated as
-   * belonging to whoever is signed in: the alternative is stranding a queued
-   * clock-in forever, and losing a write is the one outcome this subsystem
-   * exists to prevent. See `belongsTo` in `services/syncQueue.ts`.
+   * Absent on rows written before this field existed. Those belong to
+   * nobody: they are kept in the store but never replayed or shown to
+   * whoever signs in next (plan S4). See `belongsTo` in
+   * `services/syncQueue.ts`.
    */
   userId?: string;
 }
