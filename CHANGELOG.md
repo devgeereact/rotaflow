@@ -23,6 +23,16 @@ Dependabot may be grouped into one line per week. The rule sits under
   `themeContrast.test.ts` (every text token on every surface, both themes) and
   `designRatchet.test.ts` (alpha status fills, stray hex, hover scale and
   `shadow-lg` may not rise). Page layouts are not restyled here.
+- **feat(billing): a 30-day trial, then a plan or read-only (decision D2).**
+  `0154` gives every organisation a server-set 30-day trial on Professional
+  limits and removes the free Starter fallback. Without a trial, a paid or
+  trialing subscription or a grace window, rotas, shifts and invites refuse
+  writes with `BILL1`, while clock-in, leave, reads and exports keep working.
+  Checkout passes the trial end to Stripe, and the webhook queues "Your trial
+  ends in 3 days" and "Payment failed" through the outbox. Settings, Billing
+  shows "Trial, N days left", owners and managers of a read-only organisation
+  see a banner, and the onboarding plan step and pricing FAQ state the trial
+  terms (CAP-125, GAP-126, GAP-127).
 
 - **fix(billing): Checkout guard, webhook ordering and an honest billing page.**
   Settings > Billing says "No plan yet" instead of "trialing" when there is no

@@ -70,6 +70,20 @@ Checked against the code and the register on 11 October 2026.
   them with the expected baseline has failed since 14 September 2026, so a change to
   sign-in settings would not be noticed automatically. (GAP-036)
 
+## Billing
+
+- **There is no free-forever plan.** A new organisation gets 30 days free with
+  Professional limits. After that, without a plan, the organisation is read-only:
+  everyone can sign in, see and export everything, and staff can clock in and
+  request leave, but rotas cannot be built or published and nobody new can be
+  invited. (CAP-125)
+- **A free trial ends without a reminder email.** The days left are on Settings,
+  Billing, and owners and managers see a banner once it has ended, but nothing is
+  emailed beforehand unless the owner has already chosen a plan through Stripe,
+  in which case Stripe's three-day notice is sent. (GAP-127)
+- **Choosing a plan with less than two days of the trial left starts billing that
+  day.** Stripe does not accept a shorter trial at Checkout. (CAP-125)
+
 ## Product scope
 
 - **No public API, outbound webhooks, payroll integrations, SSO or SCIM, or

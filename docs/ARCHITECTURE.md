@@ -1056,6 +1056,28 @@ Callers: `MarketingLayout`, `AuthSplitLayout`, `ForgotPasswordPage`,
 `ResetPasswordPage`. Only the title is restored on unmount; the tags are
 overwritten by whichever route mounts next.
 
+#### 19. `useOrgBillingState`
+
+`src/hooks/useOrgBillingState.ts`
+The active organisation's trial and read-only state, from
+`my_org_billing_state` (`0154`) through `getOrgBillingState` in
+`src/services/subscriptionService.ts`. Any member may read it, unlike
+`subscriptions`, because a manager is who the read-only banner is for. Re-read on
+an organisation switch and every ten minutes, so a trial that ends while the app
+is open shows the banner without a reload.
+
+```ts
+interface OrgBillingStateResult {
+  snapshot: OrgBillingSnapshot | null; // { state, trialEndsAt, readOnly }
+  refresh: () => void;
+}
+export function useOrgBillingState(): OrgBillingStateResult;
+```
+
+Fails open: a failed read renders nothing. That is safe because the database,
+not this hook, refuses a read-only organisation's writes
+(`enforce_org_not_read_only`). Callers: `ReadOnlyBanner` in `AppShell`.
+
 ### Conventions
 
 - Every hook is fully typed with an explicit return interface.
