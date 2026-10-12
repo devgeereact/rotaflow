@@ -83,6 +83,14 @@ Checked against the code and the register on 11 October 2026.
   in which case Stripe's three-day notice is sent. (GAP-127)
 - **Choosing a plan with less than two days of the trial left starts billing that
   day.** Stripe does not accept a shorter trial at Checkout. (CAP-125)
+- **Invoice links stop working after a while.** Settings, Billing lists your last
+  12 invoices with links to Stripe's copy, but Stripe expires those links about a
+  month after each invoice is due (never more than 120 days). For an older
+  invoice, open the billing portal from the same screen, which lists every one.
+  An invoice appears in the list once it is paid or a payment has failed, not
+  while it is still being prepared. (CAP-127, GAP-129)
+- **The billing contact shown on Settings, Billing is not sent to Stripe.**
+  Stripe emails receipts and invoices to the address used at checkout. (GAP-128)
 
 ## Product scope
 

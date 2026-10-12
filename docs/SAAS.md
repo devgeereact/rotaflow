@@ -106,7 +106,7 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 113   |
-| 🟡 Partial            | 4     |
+| 🟡 Partial            | 5     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -1015,6 +1015,22 @@ relationship was found`. Every read of a swap has failed since that migration me
       `supabase/functions/public-enquiry/validate.test.ts` (19) · the preview harness at
       `/admin-preview/enquiries`
 
+- [x] CAP-127 🟡 Invoices in the app: Settings, Billing lists the owner's last 12 invoices
+      (date, number, amount in the invoice's currency, status in words) with "View" and
+      "Download PDF" links to the hosted page and PDF Stripe issued. `invoices` stores both
+      links (`0156`), each CHECKed to https on `invoice.stripe.com` or `pay.stripe.com`;
+      `stripe-webhook` writes them on `invoice.paid` and `invoice.payment_failed`, retrieving
+      the invoice when the event lacks them. RLS is unchanged: only the organisation's owners
+      (and platform billing roles) read a row. Plans 2026, 03 B4 and 09 F3.
+      **Partial because:** the webhook change has not been deployed, so no stored invoice has
+      a link yet, and none has been written from a real Stripe event. Stripe expires these
+      links within 120 days, so an older row's link opens Stripe's "expired" page; the screen
+      says so and points at the portal (GAP-129). The billing contact still cannot be sent to
+      Stripe (GAP-128).
+      **Evidence:** `supabase/tests/database/invoice_documents.test.sql` (14) ·
+      `supabase/functions/stripe-webhook/reconcile.test.ts` (invoice documents block) ·
+      `src/components/settings/BillingInvoices.test.tsx` (5) · `src/lib/billingState.test.ts`
+
 ## §5 The recommendation we rejected
 
 An enterprise review recommended replacing per-org SMTP with a transactional provider carrying
@@ -1354,6 +1370,8 @@ luck, and the three that luck missed cannot be got back.
 | ~~BUG-109~~ | Organisation workspace defects O1 to O13 (`docs/Plans 2026/02-ORGANISATION-AND-STAFF.md` §3) | 🟢 **Closed 2026-10-11, locally; not yet merged.** O1: `/app/settings` lands on the first tab the role can use (`defaultSettingsPath`), so a manager reaches Roles instead of an owner-only refusal. O2: Organisation and Audit are hidden from managers like Billing and Permissions, and global search follows. O3: the title is "Organisation settings", not "Settings, Organisation". O4: a phone-only Leave · Swaps · Overtime switch (`RequestsLayout`) makes the Requests tab reach all three, and the tab stays lit on each. O5: one name, "My account"; API Tokens is out of the tab bar, its route kept. O6: onboarding ends with "Build your first rota" and "Open setup checklist". O7: open shift times use the organisation's clock. O8: the SMTP verified time is `en-GB` in the organisation's zone. O9: `LabourCostCard` uses `lib/money.ts`. O10: the phone tab is "Rota" for managers and "My rota" for staff. O11 and O12: sentence case and no exclamation marks (`docs/DESIGN-SYSTEM.md`, "Words in the product"). O13: the four "Something went wrong" messages say what failed and what to do. **Not verified:** Playwright, real devices, and any user observation. Tap-target sizes deliberately untouched pending the owner's decision. | P2 |
 | ~~GAP-126~~ | An organisation that never paid kept Starter limits for ever | Unpaid means read-only, not free | 🟢 **Opened and closed 2026-10-12 by `0154`, owner decision D2.** `0120` fell back to `starter`, "the free tier", for anything not entitled, while Starter costs £29 and the pricing FAQ said every plan was paid. Every organisation now starts a 30-day trial on Professional limits (`organisations.trial_ends_at`, server-set), and after it, with no active or trialing subscription and no grace window, `org_is_read_only` is true and BEFORE triggers refuse rota, shift and invite writes with `BILL1`. Clock-in, leave, reads and exports are untouched. Existing organisations were given 30 days from the migration. `trial_then_read_only.test.sql`, 17 assertions; `plan_is_server_owned.test.sql` assertions 1 and 5 updated from `starter` to `professional` with the reason in the file | P1 |
 | GAP-127 | A no-card trial ends with no reminder email | An owner hears before the trial ends, not after | 🟡 **Opened 2026-10-12.** Stripe sends `customer.subscription.trial_will_end`, and the webhook queues "Your trial ends in 3 days", only for a **Stripe** trial, which exists once an owner has been through Checkout. The 30-day trial every organisation starts with lives in the database (`0154`), and nothing queues a reminder for it: the owner sees the trial countdown on Settings, Billing and, once it has ended, the read-only banner. The fix is one more fact in `enqueue_scheduled_alerts` (`0093`), deduplicated on the organisation and its trial end | P2 |
+| GAP-128 | The billing contact cannot be sent to Stripe | Invoices go to the address the owner chose | 🟡 **Opened 2026-10-12 (Plans 2026, 03 B4).** Settings, Billing shows the organisation's contact email as the billing contact, but nothing writes it to the Stripe customer, so Stripe emails receipts and invoices to whoever went through Checkout. No server path exists: no Edge Function calls `customers.update`, and the browser must not hold a Stripe key. The fix is a small owner-only Edge Function (caller's JWT, `has_org_role(owner)`, the stored `stripe_customer_id` in the stored `stripe_mode`) that sets the customer's `email`. Left out of CAP-127 to keep that change small | P3 |
+| GAP-129 | A stored invoice link expires | An owner can open any invoice they can see listed | 🟡 **Opened 2026-10-12.** Stripe expires a hosted invoice URL 30 days after its due date, never more than 120 days (https://docs.stripe.com/invoicing/hosted-invoice-page), and a fresh one comes only from retrieving the invoice. `0156` stores the link from the webhook, so a link on an invoice older than that opens Stripe's "expired" page. The screen says so and points at the Billing Portal, which lists every invoice. The fix is an owner-only Edge Function that retrieves the invoice by `provider_ref` and returns (or stores) the current links. Also open: `invoice.finalized` is not subscribed, so an invoice is listed only once paid or failed | P3 |
 | ~~GAP-124~~ | Nothing had been driven through `/admin/*` as a real platform admin | The console is inspected, not assumed | 🟢 **Opened and closed 2026-09-10.** All fourteen console routes were driven at three viewport widths as a `platform_owner` against an isolated local stack. Every navigation link resolves to a real route. Three defects came out of it: BUG-098, BUG-099 and BUG-100. What is still not covered is the detail routes behind a row, which were reached only through their lists. | — |
 
 ## §8 Hardening register

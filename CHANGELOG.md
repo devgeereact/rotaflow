@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(billing): invoices in the app (plan F3, CAP-127).** `0156` adds
+  `hosted_invoice_url` and `invoice_pdf` to `invoices`, each constrained to https
+  on `invoice.stripe.com` or `pay.stripe.com`. `stripe-webhook` writes them on
+  `invoice.paid` and `invoice.payment_failed`, retrieving the invoice when the
+  event lacks them. Settings, Billing gains an Invoices section for the owner:
+  the last 12, with date, number, amount, status in words, and View and Download
+  PDF links. Not deployed; the billing contact is not yet sent to Stripe
+  (GAP-128) and stored links expire within 120 days (GAP-129).
 - **feat(design): flat, monochrome tokens and primitives (decision D10).** The
   neutral and dark ramps move to true neutrals under the same token names
   (canvas `#F4F4F4`, ink `#171A20`, muted `#5C5E62`; dark canvas `#171A20`).

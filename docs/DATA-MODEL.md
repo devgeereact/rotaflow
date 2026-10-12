@@ -450,7 +450,7 @@ row written before `0156` until Stripe sends another event for it.
   due date, never more than 120 days. A stored link to an older invoice opens
   Stripe's "expired" page; the Billing screen says so and points at the Billing
   Portal, which lists every invoice. Refreshing a link on demand is a follow-up
-  (GAP in `docs/SAAS.md`).
+  (GAP-129 in `docs/SAAS.md`).
 
 `supabase/tests/database/invoice_documents.test.sql` asserts who reads the
 rows and links, and that a non-Stripe, plain-http, userinfo or look-alike host
