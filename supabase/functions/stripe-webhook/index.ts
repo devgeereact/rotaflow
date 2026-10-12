@@ -18,6 +18,11 @@
 // depending on whether it already exists — the same shape
 // handleInvoicePaymentFailed already needs to track `attempts` correctly.
 //
+// Both invoice handlers also store the invoice's hosted page and PDF links
+// (0156), so the owner's Billing screen can list them. Not on
+// invoice.finalized: that event is not subscribed, and an invoice is listed
+// once it is paid or has failed.
+//
 // invoice.paid/invoice.payment_failed write into the SAME invoices table
 // (0023_commercials.sql) that issue_invoice()/set_invoice_status() write
 // manually for platform-finance-issued invoices. This is a second,
@@ -55,6 +60,10 @@ import {
 } from '../_shared/stripe.ts';
 import {
   decideInvoiceFailure,
+  documentsToWrite,
+  invoiceDocuments,
+  needsDocumentRetrieval,
+  type InvoiceDocuments,
   freshestSubscription,
   isAlreadyQueued,
   paymentFailedNotification,
@@ -359,6 +368,29 @@ async function notifyPaymentFailed(
   );
 }
 
+// The hosted invoice page and PDF links (0156). A finalised invoice carries
+// both, so this normally makes no call. When the payload lacks one, the
+// invoice is retrieved, per Stripe's advice to read the object rather than
+// trust a partial payload. A failed retrieval is logged and the links are
+// simply not written this time: a missing link must not turn a recorded
+// payment into a 500 that Stripe retries for days. Pure rules in reconcile.ts.
+async function resolveInvoiceDocuments(
+  invoice: Stripe.Invoice,
+  mode: StripeMode,
+): Promise<Partial<InvoiceDocuments>> {
+  const fromEvent = invoiceDocuments(invoice);
+  let retrieved: InvoiceDocuments | null = null;
+  if (needsDocumentRetrieval(invoice)) {
+    try {
+      const fresh = await getStripeClient(mode).invoices.retrieve(invoice.id);
+      if (fresh.id === invoice.id) retrieved = invoiceDocuments(fresh);
+    } catch (err) {
+      console.error(`invoice ${invoice.id}: could not retrieve its document links`, err);
+    }
+  }
+  return documentsToWrite(fromEvent, retrieved);
+}
+
 function invoiceNumberFrom(invoice: Stripe.Invoice): string {
   // Stripe's own invoice number if set, else fall back to its id — either
   // way this only has to be unique, `invoices.number` has no format check.
@@ -368,6 +400,7 @@ function invoiceNumberFrom(invoice: Stripe.Invoice): string {
 async function handleInvoicePaid(
   supabase: SupabaseClient,
   invoice: Stripe.Invoice,
+  mode: StripeMode,
 ): Promise<void> {
   const orgId = invoice.subscription_details?.metadata?.org_id;
   if (!orgId) {
@@ -379,6 +412,7 @@ async function handleInvoicePaid(
   const periodStart = new Date((line?.period.start ?? invoice.period_start) * 1000);
   const periodEnd = new Date((line?.period.end ?? invoice.period_end) * 1000);
   const paidAt = new Date().toISOString();
+  const documents = await resolveInvoiceDocuments(invoice, mode);
 
   // No unique constraint on provider_ref (only `number` is unique, per
   // 0023_commercials.sql), so this cannot be an upsert with
@@ -400,6 +434,7 @@ async function handleInvoicePaid(
         amount_pence: invoice.amount_paid,
         currency: invoice.currency.toUpperCase(),
         failure_reason: null,
+        ...documents,
       })
       .eq('id', existing.id);
     if (error) throw new Error(`invoices update (paid) failed: ${error.message}`);
@@ -419,6 +454,7 @@ async function handleInvoicePaid(
       paid_at: paidAt,
       provider: 'stripe',
       provider_ref: invoice.id,
+      ...documents,
     });
     if (error) throw new Error(`invoices insert (paid) failed: ${error.message}`);
   }
@@ -482,6 +518,7 @@ async function handleInvoicePaymentFailed(
   }
 
   const failureReason = await resolveFailureReason(invoice, mode);
+  const documents = await resolveInvoiceDocuments(invoice, mode);
 
   if (existing) {
     const { error } = await supabase
@@ -490,6 +527,7 @@ async function handleInvoicePaymentFailed(
         status: 'past_due',
         failure_reason: failureReason,
         attempts: decision.attempts,
+        ...documents,
       })
       .eq('id', existing.id);
     if (error) throw new Error(`invoices update (past_due) failed: ${error.message}`);
@@ -513,6 +551,7 @@ async function handleInvoicePaymentFailed(
       attempts: decision.attempts,
       provider: 'stripe',
       provider_ref: invoice.id,
+      ...documents,
     });
     if (error) throw new Error(`invoices insert (past_due) failed: ${error.message}`);
   }
@@ -689,7 +728,7 @@ Deno.serve(async (req: Request) => {
         );
         break;
       case 'invoice.paid':
-        await handleInvoicePaid(supabase, event.data.object as Stripe.Invoice);
+        await handleInvoicePaid(supabase, event.data.object as Stripe.Invoice, mode);
         break;
       case 'invoice.payment_failed':
         await handleInvoicePaymentFailed(

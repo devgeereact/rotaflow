@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   decideInvoiceFailure,
+  documentsToWrite,
+  invoiceDocuments,
+  needsDocumentRetrieval,
+  stripeDocumentUrl,
   isAlreadyQueued,
   paymentFailedNotification,
   trialEndingNotification,
@@ -314,5 +318,80 @@ describe('trial and payment notices (F16)', () => {
     expect(trialEndsAtIso(trialEnd)).toBe('2026-10-15T09:00:00.000Z');
     expect(trialEndsAtIso(null)).toBeNull();
     expect(trialEndsAtIso(undefined)).toBeNull();
+  });
+});
+
+/**
+ * 0156: the hosted page and PDF links. The same host rule as the database
+ * CHECK, so a URL that would fail the write is dropped before it, rather than
+ * turning a paid invoice into a 500 that Stripe retries for days.
+ */
+describe('invoice documents', () => {
+  const hosted = 'https://invoice.stripe.com/i/acct_1/test_abc?s=ap';
+  const pdf = 'https://pay.stripe.com/invoice/acct_1/test_abc/pdf?s=ap';
+
+  it('keeps the links Stripe documents', () => {
+    expect(invoiceDocuments({ hosted_invoice_url: hosted, invoice_pdf: pdf })).toEqual({
+      hosted_invoice_url: hosted,
+      invoice_pdf: pdf,
+    });
+  });
+
+  it.each([
+    ['another host', 'https://evil.example/i/x'],
+    ['plain http', 'http://invoice.stripe.com/i/x'],
+    ['userinfo pointing elsewhere', 'https://invoice.stripe.com@evil.example/x'],
+    ['a look-alike host', 'https://pay.stripe.com.evil.example/x'],
+    ['a bare host with no path', 'https://invoice.stripe.com'],
+    ['whitespace inside', 'https://invoice.stripe.com/i/x y'],
+    ['a script URL', 'javascript:alert(1)'],
+    ['an over-long URL', `https://invoice.stripe.com/${'a'.repeat(2048)}`],
+  ])('drops %s', (_label, url) => {
+    expect(stripeDocumentUrl(url)).toBeNull();
+  });
+
+  it('treats a missing or non-string link as absent', () => {
+    expect(invoiceDocuments({})).toEqual({ hosted_invoice_url: null, invoice_pdf: null });
+    expect(stripeDocumentUrl(42)).toBeNull();
+  });
+
+  it('retrieves only a finalised invoice that is missing a link', () => {
+    expect(
+      needsDocumentRetrieval({
+        status: 'paid',
+        hosted_invoice_url: hosted,
+        invoice_pdf: pdf,
+      }),
+    ).toBe(false);
+    expect(needsDocumentRetrieval({ status: 'paid', hosted_invoice_url: hosted })).toBe(
+      true,
+    );
+    expect(needsDocumentRetrieval({ status: 'open' })).toBe(true);
+    expect(needsDocumentRetrieval({ status: 'draft' })).toBe(false);
+  });
+
+  it('prefers what Stripe holds now over the event', () => {
+    const fresher = 'https://invoice.stripe.com/i/acct_1/test_new?s=ap';
+    expect(
+      documentsToWrite(
+        { hosted_invoice_url: hosted, invoice_pdf: null },
+        { hosted_invoice_url: fresher, invoice_pdf: pdf },
+      ),
+    ).toEqual({ hosted_invoice_url: fresher, invoice_pdf: pdf });
+  });
+
+  it('falls back to the event when the retrieval has no link', () => {
+    expect(
+      documentsToWrite(
+        { hosted_invoice_url: hosted, invoice_pdf: pdf },
+        { hosted_invoice_url: null, invoice_pdf: null },
+      ),
+    ).toEqual({ hosted_invoice_url: hosted, invoice_pdf: pdf });
+  });
+
+  it('never writes null over a link already stored', () => {
+    expect(
+      documentsToWrite({ hosted_invoice_url: null, invoice_pdf: null }, null),
+    ).toEqual({});
   });
 });

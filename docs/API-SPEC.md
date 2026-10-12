@@ -182,6 +182,21 @@ Three Edge Functions, added with migration `0050`, share `supabase/functions/_sh
   rows are built by `trialEndingNotification` and `paymentFailedNotification`
   in `reconcile.ts`, tested by vitest.
 
+  **Invoice documents (`0156`, plan F3).** `invoice.paid` and
+  `invoice.payment_failed` also write the invoice's `hosted_invoice_url` and
+  `invoice_pdf`. A finalised invoice carries both in the event; when one is
+  missing the handler retrieves the invoice from Stripe (a draft is never
+  retrieved, it has no links). Each URL is kept only if it is https on
+  `invoice.stripe.com` or `pay.stripe.com`, the same rule as the column CHECK,
+  so an unexpected host is dropped with a log line instead of failing the
+  write. A link neither copy carries is left out of the write, never written
+  as null, so a thin redelivery cannot erase a stored link. A failed retrieval
+  is logged and does not fail the event: the payment is the part that matters.
+  The rules are `invoiceDocuments`, `needsDocumentRetrieval` and
+  `documentsToWrite` in `reconcile.ts`, tested by vitest. `invoice.finalized`
+  is not subscribed, so an invoice reaches the owner's list once it is paid or
+  has failed. The webhook endpoint's event list is unchanged.
+
 Deploy: `supabase functions deploy <name>` (`stripe-webhook`, `calendar-feed` and
 `public-enquiry` need `--no-verify-jwt`).
 Secrets: `STRIPE_SECRET_KEY` (shared by all three), `STRIPE_WEBHOOK_SECRET`
