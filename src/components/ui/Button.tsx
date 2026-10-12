@@ -121,7 +121,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         // disabled controls traces back to it.
         //
         // The opacity is deepened as well: at `opacity-50` a saturated
-        // primary button still reads as clickable, which is how a disabled
+        // primary button still reads as clickable. That is how a greyed-out
         // Create account button got mistaken for a broken sign-up.
         'disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50',
         VARIANTS[variant],
