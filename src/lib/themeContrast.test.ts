@@ -18,7 +18,8 @@ const css = readFileSync(resolve(__dirname, '../index.css'), 'utf8');
 
 function token(name: string): string {
   const match = new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(css);
-  if (!match?.[1]) throw new Error(`--color-${name} not found as a 6-digit hex in index.css`);
+  if (!match?.[1])
+    throw new Error(`--color-${name} not found as a 6-digit hex in index.css`);
   return match[1];
 }
 
@@ -102,15 +103,22 @@ describe('contrast()', () => {
 });
 
 describe.each(THEMES)('$name theme tokens', ({ texts, surfaces, washPairs }) => {
-  const surfacePairs = texts.flatMap((t) => surfaces.map((s): [string, string] => [t, s]));
+  const surfacePairs = texts.flatMap((t) =>
+    surfaces.map((s): [string, string] => [t, s]),
+  );
 
   it.each(surfacePairs)('%s on %s meets 4.5:1', (text, surface) => {
     const ratio = contrast(token(text), token(surface));
-    expect(ratio, `${text} on ${surface} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA);
+    expect(
+      ratio,
+      `${text} on ${surface} is ${ratio.toFixed(2)}:1`,
+    ).toBeGreaterThanOrEqual(AA);
   });
 
   it.each(washPairs)('%s on %s meets 4.5:1', (text, wash) => {
     const ratio = contrast(token(text), token(wash));
-    expect(ratio, `${text} on ${wash} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA);
+    expect(ratio, `${text} on ${wash} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+      AA,
+    );
   });
 });

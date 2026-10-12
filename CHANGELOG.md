@@ -13,6 +13,17 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(design): flat, monochrome tokens and primitives (decision D10).** The
+  neutral and dark ramps move to true neutrals under the same token names
+  (canvas `#F4F4F4`, ink `#171A20`, muted `#5C5E62`; dark canvas `#171A20`).
+  Two radii (4px controls, 12px cards), no resting shadows, 330ms colour-only
+  transitions on one easing curve. Button, Card, Modal, Input, Select, Badge,
+  IconButton and HeaderBar follow; Button no longer scales on hover. Status
+  colours, dark mode, 44px targets and dense tables are unchanged. New tests:
+  `themeContrast.test.ts` (every text token on every surface, both themes) and
+  `designRatchet.test.ts` (alpha status fills, stray hex, hover scale and
+  `shadow-lg` may not rise). Page layouts are not restyled here.
+
 - **fix(billing): Checkout guard, webhook ordering and an honest billing page.**
   Settings > Billing says "No plan yet" instead of "trialing" when there is no
   subscription, shows the entitled plan and formats prices in the plan currency
