@@ -34,6 +34,17 @@ Dependabot may be grouped into one line per week. The rule sits under
   see a banner, and the onboarding plan step and pricing FAQ state the trial
   terms (CAP-125, GAP-126, GAP-127).
 
+- **feat: website enquiries are stored, and the console has an Enquiries inbox
+  (CAP-126, Plans 2026 F2).** `/contact` posts to a new public Edge Function,
+  `public-enquiry`, instead of opening a `mailto:` link that reached nobody on a
+  device with no mail client. The function checks the origin, validates every
+  field, ignores a filled honeypot, verifies Cloudflare Turnstile when its secret
+  is set, and stores the row through `receive_enquiry` (`0155`), rate-limited per
+  hashed address and in total. `anon` holds nothing on the new `enquiries` table;
+  operational platform roles triage it at `/admin/enquiries`. Kept 24 months by the
+  nightly retention job. "Book a demo" links tick the demo box. Needs
+  `supabase functions deploy public-enquiry --no-verify-jwt` before it accepts
+  anything (`docs/DEPLOYMENT.md`).
 - **fix(billing): Checkout guard, webhook ordering and an honest billing page.**
   Settings > Billing says "No plan yet" instead of "trialing" when there is no
   subscription, shows the entitled plan and formats prices in the plan currency

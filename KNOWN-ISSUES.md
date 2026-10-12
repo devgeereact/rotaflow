@@ -93,7 +93,7 @@ Checked against the code and the register on 11 October 2026.
 - **Demo requests are answered by email.** The contact form records that you would
   like a demo and we reply to arrange a time; there is no online booking calendar.
   Until the form's server function is deployed, sending shows our support address
-  instead of a confirmation. (CAP-125)
+  instead of a confirmation. (CAP-126)
 - **No live payment has completed end to end yet.** Stripe Checkout and the Billing
   Portal are built and test-mode behaviour is proven, but no real charge is on
   record. (CAP-036)

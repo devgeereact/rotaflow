@@ -942,6 +942,84 @@ const USER_DIRECTORY_ROWS: {
   }),
 ];
 
+/**
+ * Website enquiries (0155). Invented people at invented organisations, one in
+ * each status, and one long message so the detail dialog's scrolling shows.
+ */
+const ENQUIRIES = [
+  [
+    'Hannah Clarke',
+    'hannah.clarke@oakleigh-care.example',
+    'Oakleigh Care Homes',
+    '26-100',
+    'Healthcare and care homes',
+    true,
+    true,
+    'new',
+    0,
+  ],
+  [
+    'Tom Reyes',
+    'tom@harbourkitchen.example',
+    'Harbour Kitchen',
+    '1-25',
+    'Hospitality',
+    false,
+    false,
+    'new',
+    1,
+  ],
+  [
+    'Aisha Mensah',
+    'a.mensah@fieldsidefm.example',
+    'Fieldside Facilities',
+    '101-500',
+    'Facilities management',
+    true,
+    false,
+    'demo_booked',
+    3,
+  ],
+  [
+    'Owen Price',
+    'owen.price@valleyretail.example',
+    'Valley Retail',
+    '26-100',
+    'Retail',
+    false,
+    false,
+    'replied',
+    6,
+  ],
+  [
+    'Grace Ellis',
+    'grace@northbridge.example',
+    'Northbridge Academy',
+    null,
+    'Education',
+    false,
+    false,
+    'closed',
+    20,
+  ],
+].map(([name, email, org, size, sector, demo, consent, status, age], i) => ({
+  id: `enquiry-${i}`,
+  name,
+  work_email: email,
+  organisation: org,
+  team_size: size,
+  sector,
+  message:
+    i === 0
+      ? 'We roster around sixty carers across two homes and still build the week in a spreadsheet. Night cover is the part that goes wrong: we find the gaps on the day. We would like to see how RotaFlow handles minimum cover and swaps before we commit.\n\nWe are free most weekday mornings.'
+      : 'We are looking at replacing our current rota tool before the new year and would like to know more.',
+  wants_demo: demo,
+  marketing_consent: consent,
+  status,
+  created_at: ISO(age as number),
+  updated_at: ISO(age as number),
+}));
+
 const TABLES: Record<string, unknown> = {
   organisations: ORGANISATIONS,
   profiles: PROFILES,
@@ -971,6 +1049,7 @@ const TABLES: Record<string, unknown> = {
   ],
   feature_flag_changes: FLAG_CHANGES,
   support_cases: SUPPORT_CASES,
+  enquiries: ENQUIRIES,
   support_case_messages: [],
   plans: PLANS,
   invoices: INVOICES,

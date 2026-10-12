@@ -77,7 +77,7 @@ P1 was reachable by any existing check, and both now have one: `e2e/staff-dashbo
 A sixth defect, GAP-123, was a missing rule rather than a broken one — nothing stopped a person
 booking the same days off twice, and the entitlement was then spent twice on days they were absent
 for once. It was recorded as a decision first and closed on the owner's instruction the same day by
-`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153, and on 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) took `main` to 154 migrations.
+`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took `main` to 155 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -106,7 +106,7 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 113   |
-| 🟡 Partial            | 3     |
+| 🟡 Partial            | 4     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -170,11 +170,14 @@ with `gen_random_bytes`, lives in `vault` alone, and is checked by a verifier gr
 deployed is the most common way this register goes stale. Live versions: `ai-rota-assistant`
 v26, `send-notification` v26, `test-smtp` v19, `create-checkout-session` v15,
 `create-portal-session` v15, `stripe-webhook` v15, `send-invite` v5, `calendar-feed` v1.
+**`public-enquiry` (added 2026-10-12, CAP-126) has never been deployed.**
 
-Two of the eight run with `verify_jwt: false`, both deliberately and both with their own
-boundary: `stripe-webhook` verifies a Stripe signature, and `calendar-feed` is fetched by
+Three of the nine run with `verify_jwt: false`, all deliberately and each with its own
+boundary: `stripe-webhook` verifies a Stripe signature, `calendar-feed` is fetched by
 calendar clients that cannot present a header, so its token is checked in
-`calendar_feed_shifts`, a function granted to `service_role` alone. The other six return 401
+`calendar_feed_shifts`, a function granted to `service_role` alone, and `public-enquiry`
+takes the public contact form, behind an origin check, validation, a honeypot, optional
+Turnstile and a per-address rate limit (`docs/API-SPEC.md`). The other six return 401
 unauthenticated.
 
 `STRIPE_MODE=live` was set on the project as part of that deploy. It had never existed — the old
@@ -779,7 +782,7 @@ itself: a restore, a real charge, and a phone.
       need capture are already named in OBSERVABILITY — rota-session starts, schedule views,
       an explicit AI-suggestion outcome, and Web Vitals
       `docs/PRODUCT-SPEC.md#metrics-and-events` · P3
-- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all eight Edge Functions via
+- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all nine Edge Functions via
       `_shared/sentry.ts`; the Stripe webhook no longer fails into a log nobody reads
       `supabase/functions/_shared/sentry.ts` · HARDEN-005 closed #216 · deployed 2026-08-31
 - [x] CAP-104 🟢 Query shape — 16 composite indexes cover the predicates the app issues; the
@@ -993,6 +996,24 @@ relationship was found`. Every read of a swap has failed since that migration me
       hides its General and Maintenance fields, which saved values nothing reads. Only the second-factor
       switch, the retention facts and the administrator grants remain
       **Evidence:** each page · driven in the preview harness
+
+- [x] CAP-126 🟡 Website enquiries are received, not handed to a mail client — `/contact`
+      posts to the `public-enquiry` Edge Function, which checks the origin, validates every
+      field, drops a filled honeypot silently, verifies Turnstile when its secret is set and
+      stores the row through `receive_enquiry` (`0155`), rate-limited per HMAC-hashed address
+      and in total. `anon` holds nothing on `enquiries`; operational platform roles read and
+      move it on at `/admin/enquiries` (New, Replied, Demo booked, Closed). Kept 24 months by
+      the nightly job. Every "Book a demo" link ticks the demo box. Plans 2026, 06 §5 and 09 F2.
+      **Partial because:** the function has not been deployed, and its handler (origin
+      refusal, Turnstile, the RPC call, the notice email) has been `deno check`ed and read,
+      never executed. The notice to platform staff is a direct email to `ENQUIRY_NOTIFY_EMAIL`,
+      not an outbox row, because the outbox cannot address anybody outside an organisation
+      (`docs/NOTIFICATIONS-SPEC.md`); without that secret and platform SMTP, nobody is told
+      and the inbox is the only place an enquiry shows. The `mailto:` form this replaces lost
+      every enquiry from a device with no mail client configured.
+      **Evidence:** `supabase/tests/database/enquiries.test.sql` (16) ·
+      `supabase/functions/public-enquiry/validate.test.ts` (19) · the preview harness at
+      `/admin-preview/enquiries`
 
 ## §5 The recommendation we rejected
 
@@ -1382,7 +1403,7 @@ one real Stripe charge (CAP-036) · re-run the multi-tenant isolation test (CAP-
 rotate the platform-owner credential onto a
 live domain.
 
-**Deploy debt: cleared 2026-08-29.** All eight edge functions are deployed (see §2). Remember
+**Deploy debt: cleared 2026-08-29**, when all eight functions that existed then were deployed (see §2). `public-enquiry`, added 2026-10-12, is not yet. Remember
 that merging never deploys them; a future edge-function fix needs `supabase functions deploy`
 naming it, or the register will claim something production does not have.
 

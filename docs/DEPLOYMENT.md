@@ -189,7 +189,7 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
   deleted its last reader, because Vite inlines every `VITE_*` variable into
   `import.meta.env` whether code reads it or not. **Retiring a service means
   removing its variable from `.env`, then checking the built bundle.**
-- **The website contact form needs its function deployed** (CAP-125). Until then
+- **The website contact form needs its function deployed** (CAP-126). Until then
   `/contact` shows the support address on every send. In order:
   1. `supabase secrets set ENQUIRY_IP_SALT=<a long random string>` (recommended; the
      function falls back to the service-role key as HMAC key material, and rotating
