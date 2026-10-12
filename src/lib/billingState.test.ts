@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   billingStatus,
   entitledPlan,
+  invoiceAmountLabel,
+  invoiceDateLabel,
+  invoiceStatus,
   orgStateBadge,
   planName,
   planPriceLabel,
@@ -157,5 +160,32 @@ describe('planName', () => {
   it('names known plans and passes unknown codes through', () => {
     expect(planName('professional')).toBe('Professional');
     expect(planName('custom')).toBe('custom');
+  });
+});
+
+describe('the owner invoice list (0156, F3)', () => {
+  it.each([
+    ['paid', 'Paid', 'success'],
+    ['open', 'Open', 'info'],
+    ['past_due', 'Failed', 'danger'],
+    ['uncollectible', 'Uncollectible', 'danger'],
+    ['void', 'Void', 'neutral'],
+    ['refunded', 'Refunded', 'neutral'],
+  ])('says %s as "%s"', (status, label, tone) => {
+    expect(invoiceStatus(status)).toEqual({ label, tone });
+  });
+
+  it('shows an unknown status in words, never as a code', () => {
+    expect(invoiceStatus('in_review')).toEqual({ label: 'In review', tone: 'neutral' });
+  });
+
+  it('prints the issue date as the calendar day stored', () => {
+    expect(invoiceDateLabel('2026-10-01')).toBe('1 October 2026');
+    expect(invoiceDateLabel('not a date')).toBe('not a date');
+  });
+
+  it('prints the amount in the invoice currency, pence included', () => {
+    expect(invoiceAmountLabel({ amount_pence: 4900, currency: 'GBP' })).toBe('£49.00');
+    expect(invoiceAmountLabel({ amount_pence: 12345, currency: 'EUR' })).toBe('€123.45');
   });
 });

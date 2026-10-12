@@ -8,6 +8,7 @@ import {
   type ServerPage,
 } from '@/lib/serverPage';
 import type { Tables } from '@/types/database.types';
+import { OWNER_INVOICE_LIMIT, type OwnerInvoiceRow } from '@/lib/billingState';
 
 export type Invoice = Tables<'invoices'>;
 export type Plan = Tables<'plans'>;
@@ -52,6 +53,34 @@ export async function listOrgInvoices(orgId: string, limit = 24): Promise<Invoic
     .select('*')
     .eq('org_id', orgId)
     .order('issued_on', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * The owner's own invoices for Settings, Billing (0156, plan F3): the most
+ * recent twelve, newest first, with Stripe's hosted page and PDF links.
+ *
+ * RLS is the guard: `invoices_select` returns rows only to the organisation's
+ * owners (and platform billing roles), so a manager calling this gets an empty
+ * list, not an error. Drafts are left out because a draft is not yet a claim
+ * on anybody and has no document. `created_at` breaks a tie between two
+ * invoices issued on the same day.
+ */
+export async function listOwnerInvoices(
+  orgId: string,
+  limit = OWNER_INVOICE_LIMIT,
+): Promise<OwnerInvoiceRow[]> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select(
+      'id, number, issued_on, amount_pence, currency, status, hosted_invoice_url, invoice_pdf',
+    )
+    .eq('org_id', orgId)
+    .neq('status', 'draft')
+    .order('issued_on', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
   return data ?? [];
@@ -229,6 +258,10 @@ function toInvoiceRow(row: Record<string, unknown>): InvoiceDirectoryRow {
     attempts: Number(row.attempts ?? 0),
     provider: text(row.provider),
     provider_ref: text(row.provider_ref),
+    // `platform_invoice_directory` does not return the 0156 document links;
+    // the console does not show them (AdminInvoiceModal says why).
+    hosted_invoice_url: null,
+    invoice_pdf: null,
     created_at: text(row.created_at) ?? text(row.issued_on) ?? '',
     updated_at: text(row.updated_at) ?? text(row.issued_on) ?? '',
   };

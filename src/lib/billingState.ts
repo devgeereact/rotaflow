@@ -196,3 +196,74 @@ export function readOnlyErrorMessage(err: unknown): string | null {
   if (code !== ORG_READ_ONLY_CODE) return null;
   return typeof message === 'string' && message.length > 0 ? message : READ_ONLY_BANNER;
 }
+
+/**
+ * One row of the owner's invoice list on Settings, Billing (0156, plan F3).
+ * The columns `listOwnerInvoices` selects, nothing more.
+ */
+export interface OwnerInvoiceRow {
+  id: string;
+  number: string;
+  issued_on: string;
+  amount_pence: number;
+  currency: string;
+  status: string;
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+}
+
+/** How many invoices the owner's list shows: a year of monthly billing. */
+export const OWNER_INVOICE_LIMIT = 12;
+
+/**
+ * The word an owner sees for an invoice's status.
+ *
+ * `past_due` is "Failed": to the customer it is a payment that did not go
+ * through, and the screen already explains what happens next. `uncollectible`
+ * is Stripe's word for an invoice it has given up on. The `invoices` status
+ * CHECK (0023) does not admit it today, so no row carries it yet; it is mapped
+ * so the day one does, the owner reads a word rather than a code. Anything
+ * else unknown is shown as its own words, never hidden.
+ */
+export function invoiceStatus(status: string): BillingStatus {
+  switch (status) {
+    case 'paid':
+      return { label: 'Paid', tone: 'success' };
+    case 'open':
+      return { label: 'Open', tone: 'info' };
+    case 'past_due':
+      return { label: 'Failed', tone: 'danger' };
+    case 'uncollectible':
+      return { label: 'Uncollectible', tone: 'danger' };
+    case 'void':
+      return { label: 'Void', tone: 'neutral' };
+    case 'refunded':
+      return { label: 'Refunded', tone: 'neutral' };
+    default: {
+      const words = status.replace(/_/g, ' ');
+      return { label: words.charAt(0).toUpperCase() + words.slice(1), tone: 'neutral' };
+    }
+  }
+}
+
+/** "12 October 2026", from a `date` column, read as a calendar day. */
+export function invoiceDateLabel(isoDate: string): string {
+  // A bare `yyyy-mm-dd` given to `new Date` is UTC midnight, which is the
+  // previous evening west of Greenwich. `parseISO` reads it as local midnight,
+  // so the day printed is the day stored.
+  const date = parseISO(isoDate);
+  if (!isValid(date)) return isoDate;
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+/** "£49.00", in the invoice's own currency. */
+export function invoiceAmountLabel(row: {
+  amount_pence: number;
+  currency: string;
+}): string {
+  return formatMoneyExact(row.amount_pence, row.currency);
+}

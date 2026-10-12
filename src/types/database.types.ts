@@ -1245,7 +1245,9 @@ export type Database = {
           currency: string;
           due_on: string;
           failure_reason: string | null;
+          hosted_invoice_url: string | null;
           id: string;
+          invoice_pdf: string | null;
           issued_on: string;
           number: string;
           org_id: string;
@@ -1266,7 +1268,9 @@ export type Database = {
           currency?: string;
           due_on: string;
           failure_reason?: string | null;
+          hosted_invoice_url?: string | null;
           id?: string;
+          invoice_pdf?: string | null;
           issued_on?: string;
           number: string;
           org_id: string;
@@ -1287,7 +1291,9 @@ export type Database = {
           currency?: string;
           due_on?: string;
           failure_reason?: string | null;
+          hosted_invoice_url?: string | null;
           id?: string;
+          invoice_pdf?: string | null;
           issued_on?: string;
           number?: string;
           org_id?: string;

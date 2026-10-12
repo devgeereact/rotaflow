@@ -6,6 +6,7 @@ import { getOrgBillingState, getSubscription } from '@/services/subscriptionServ
 import { listStaff } from '@/services/staffService';
 import { getOrganisation } from '@/services/orgService';
 import { listLocations } from '@/services/locationService';
+import { listOwnerInvoices } from '@/services/billingService';
 import { orgProfileFields } from '@/lib/orgPreferences';
 import { reportError } from '@/lib/sentry';
 import {
@@ -16,6 +17,7 @@ import {
   planName,
   planPriceLabel,
   type OrgBillingSnapshot,
+  type OwnerInvoiceRow,
 } from '@/lib/billingState';
 import {
   listPlans,
@@ -27,6 +29,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { BillingInvoices } from '@/components/settings/BillingInvoices';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
 import type { Subscription } from '@/types';
 
@@ -43,10 +46,11 @@ import type { Subscription } from '@/types';
  * `invoice.paid`/`invoice.payment_failed`.
  *
  * The reference draws invoice history, saved cards and a usage meter directly
- * on this screen. This screen deliberately doesn't rebuild that UI — Stripe's
- * hosted Customer Portal (via `openBillingPortal`) is the surface for invoice
- * history, saved payment methods and cancellation, per this feature's design
- * spec. There is still no usage metering or credits ledger, so this screen
+ * on this screen. Invoices are listed here since 0156 (plan F3): the last
+ * twelve, each linking to the hosted page and PDF Stripe issued, so an owner
+ * can file one without a trip through the portal. Saved payment methods and
+ * cancellation stay in Stripe's hosted Customer Portal (via
+ * `openBillingPortal`), which also keeps the full invoice history. There is still no usage metering or credits ledger, so this screen
  * shows what is genuinely known locally: the plan on the row, its status, and
  * the live staff count that any future plan limit will be measured against.
  */
@@ -61,6 +65,8 @@ export function SettingsBillingPage(): JSX.Element {
   const [orgPlan, setOrgPlan] = useState<string | null>(null);
   const [orgState, setOrgState] = useState<OrgBillingSnapshot | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [invoices, setInvoices] = useState<OwnerInvoiceRow[]>([]);
+  const [invoicesFailed, setInvoicesFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState<string | null>(null);
 
@@ -70,13 +76,19 @@ export function SettingsBillingPage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        const [sub, staff, sites, org, planList, state] = await Promise.all([
+        const [sub, staff, sites, org, planList, state, invoiceList] = await Promise.all([
           getSubscription(orgId),
           listStaff(orgId).catch(() => null),
           listLocations(orgId).catch(() => null),
           getOrganisation(orgId).catch(() => null),
           listPlans().catch(() => []),
           getOrgBillingState(orgId).catch(() => null),
+          // Its own failure, said in its own section: the rest of the screen
+          // is still right without it.
+          listOwnerInvoices(orgId).catch((err: unknown) => {
+            reportError(err, { area: 'settings-billing:invoices' });
+            return null;
+          }),
         ]);
         if (!active) return;
         setSubscription(sub);
@@ -86,6 +98,8 @@ export function SettingsBillingPage(): JSX.Element {
         setOrgPlan(org?.plan ?? null);
         setPlans(planList);
         setOrgState(state);
+        setInvoices(invoiceList ?? []);
+        setInvoicesFailed(invoiceList === null);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'settings-billing:load' });
@@ -361,6 +375,13 @@ export function SettingsBillingPage(): JSX.Element {
             ))}
           </div>
         )}
+      </SettingsSection>
+
+      <SettingsSection
+        title="Invoices"
+        description="Your most recent invoices, with the copy Stripe issued for each."
+      >
+        <BillingInvoices invoices={invoices} failed={invoicesFailed} />
       </SettingsSection>
     </div>
   );
