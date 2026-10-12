@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   decideInvoiceFailure,
+  isAlreadyQueued,
+  paymentFailedNotification,
+  trialEndingNotification,
+  trialEndsAtIso,
   freshestSubscription,
   mapSubscriptionStatus,
   shouldSuspendOnDeleted,
@@ -187,6 +191,7 @@ describe('customer.subscription.updated ordering', () => {
       status: 'trialing',
       current_period_end: '1970-01-01T00:00:00.000Z',
       canceled_at: null,
+      trial_ends_at: null,
     });
   });
 });
@@ -221,5 +226,93 @@ describe('customer.subscription.deleted ordering', () => {
     expect(shouldSuspendOnDeleted(true, 'cancellation_requested')).toBe(false);
     expect(shouldSuspendOnDeleted(true, 'payment_disputed')).toBe(false);
     expect(shouldSuspendOnDeleted(true, null)).toBe(false);
+  });
+});
+
+describe('trial and payment notices (F16)', () => {
+  const trialEnd = Date.parse('2026-10-15T09:00:00Z') / 1000;
+
+  it('tells the owners their trial ends in 3 days, with the charge date', () => {
+    const row = trialEndingNotification({
+      orgId: 'org_1',
+      ownerIds: ['u_1'],
+      subscriptionId: 'sub_1',
+      trialEnd,
+      mode: 'live',
+    });
+    expect(row).toEqual({
+      org_id: 'org_1',
+      event_name: 'billing/trial_will_end',
+      payload: {
+        orgId: 'org_1',
+        userIds: ['u_1'],
+        type: 'billing',
+        title: 'Your trial ends in 3 days',
+        body: 'Your card will first be charged on 15 October 2026. To change plan or cancel, open Settings, Billing.',
+      },
+      dedupe_key: `stripe:trial_will_end:live:sub_1:${trialEnd}`,
+    });
+  });
+
+  it('writes nothing when there is no owner to tell', () => {
+    expect(
+      trialEndingNotification({
+        orgId: 'org_1',
+        ownerIds: [],
+        subscriptionId: 'sub_1',
+        trialEnd,
+        mode: 'live',
+      }),
+    ).toBeNull();
+    expect(
+      paymentFailedNotification({
+        orgId: 'org_1',
+        ownerIds: [],
+        invoiceId: 'in_1',
+        mode: 'live',
+      }),
+    ).toBeNull();
+  });
+
+  it('keys a payment failure on the invoice, so retries do not repeat it', () => {
+    const first = paymentFailedNotification({
+      orgId: 'org_1',
+      ownerIds: ['u_1', 'u_2'],
+      invoiceId: 'in_1',
+      mode: 'test',
+    });
+    expect(first?.payload.title).toBe('Payment failed');
+    expect(first?.payload.userIds).toEqual(['u_1', 'u_2']);
+    expect(first?.dedupe_key).toBe('stripe:payment_failed:test:in_1');
+  });
+
+  it('keeps test and live notices apart', () => {
+    const live = trialEndingNotification({
+      orgId: 'o',
+      ownerIds: ['u'],
+      subscriptionId: 's',
+      trialEnd,
+      mode: 'live',
+    });
+    const test = trialEndingNotification({
+      orgId: 'o',
+      ownerIds: ['u'],
+      subscriptionId: 's',
+      trialEnd,
+      mode: 'test',
+    });
+    expect(live?.dedupe_key).not.toBe(test?.dedupe_key);
+  });
+
+  it('reads a unique violation as already queued, and nothing else', () => {
+    expect(isAlreadyQueued({ code: '23505' })).toBe(true);
+    expect(isAlreadyQueued({ code: '42501' })).toBe(false);
+    expect(isAlreadyQueued(null)).toBe(false);
+  });
+
+  it('records a Stripe trial end in ISO time, and no trial as null', () => {
+    expect(trialEndsAtIso(trialEnd)).toBe('2026-10-15T09:00:00.000Z');
+    expect(trialEndsAtIso(null)).toBeNull();
+    expect(trialEndsAtIso(undefined)).toBeNull();
   });
 });

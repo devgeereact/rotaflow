@@ -35,6 +35,23 @@ actually been sent) are in `docs/SAAS.md` §2, because they change.
 Invitations are the exception: `send-invite` sends its email directly, because an
 invitee has no account to address an outbox row to.
 
+### Billing notices (`0154`, plan F16)
+
+`stripe-webhook` writes two outbox rows of `type` `billing`, addressed to the
+organisation's active owners, through the same outbox and drain as everything
+else:
+
+| Event                                  | Title                       | Dedupe key                                                                   |
+| -------------------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
+| `customer.subscription.trial_will_end` | "Your trial ends in 3 days" | `stripe:trial_will_end:<mode>:<sub>:<trial end>`                             |
+| `invoice.payment_failed`               | "Payment failed"            | `stripe:payment_failed:<mode>:<invoice>`, so once per invoice, not per retry |
+
+`billing` has no row in the organisation's notification matrix, so
+`send-notification` sends it on every channel the person has not switched off.
+Only a **Stripe** trial produces the three-day notice: an organisation in its
+own no-card trial (`organisations.trial_ends_at`) is told by the in-app banner
+and Settings, Billing, and has no email reminder yet (GAP-127).
+
 ## Channels
 
 | Channel  | State                                                                                                                                                                                                                                                                                                            |

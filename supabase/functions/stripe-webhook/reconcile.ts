@@ -132,6 +132,8 @@ export interface SubscriptionSnapshot {
   status: string;
   current_period_end: number;
   canceled_at: number | null;
+  /** When a Stripe trial ends. Absent or null when there is no trial. */
+  trial_end?: number | null;
 }
 
 /**
@@ -198,12 +200,25 @@ export function subscriptionUpdatePayload(sub: SubscriptionSnapshot): {
   status: string;
   current_period_end: string;
   canceled_at: string | null;
+  trial_ends_at: string | null;
 } {
   return {
     status: mapSubscriptionStatus(sub.status),
     current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
     canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
+    trial_ends_at: trialEndsAtIso(sub.trial_end),
   };
+}
+
+/**
+ * `subscriptions.trial_ends_at` from Stripe's `trial_end`. Since 0154 the
+ * column means a STRIPE trial's end, and `org_billing_state` treats a
+ * `trialing` row as entitled only while it is ahead.
+ */
+export function trialEndsAtIso(trialEnd: number | null | undefined): string | null {
+  return typeof trialEnd === 'number' && trialEnd > 0
+    ? new Date(trialEnd * 1000).toISOString()
+    : null;
 }
 
 /**
@@ -223,4 +238,96 @@ export function shouldSuspendOnDeleted(
   cancellationReason: string | null | undefined,
 ): boolean {
   return matchedStoredSubscription && cancellationReason === 'payment_failed';
+}
+
+/**
+ * A row for `notification_outbox` (0069). The payload is exactly the body
+ * `send-notification` expects. `dedupe_key` is unique where present (0093),
+ * so Stripe redelivering an event cannot tell an owner twice.
+ */
+export interface OutboxRow {
+  org_id: string;
+  event_name: string;
+  payload: {
+    orgId: string;
+    userIds: string[];
+    type: string;
+    title: string;
+    body: string;
+  };
+  dedupe_key: string;
+}
+
+/** "15 October 2026", in UK time, from Unix seconds. */
+export function londonDate(unixSeconds: number): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Europe/London',
+  }).format(new Date(unixSeconds * 1000));
+}
+
+/**
+ * `customer.subscription.trial_will_end`: Stripe sends it three days before a
+ * trial ends (https://docs.stripe.com/billing/subscriptions/trials). The
+ * owners are told, because billing is theirs. Null when there is nobody to
+ * tell, so the caller writes nothing rather than an outbox row
+ * `send-notification` would refuse.
+ */
+export function trialEndingNotification(input: {
+  orgId: string;
+  ownerIds: string[];
+  subscriptionId: string;
+  trialEnd: number | null | undefined;
+  mode: StripeMode;
+}): OutboxRow | null {
+  if (input.ownerIds.length === 0) return null;
+  const when =
+    typeof input.trialEnd === 'number' && input.trialEnd > 0
+      ? `Your card will first be charged on ${londonDate(input.trialEnd)}.`
+      : 'Your card will be charged when the trial ends.';
+  return {
+    org_id: input.orgId,
+    event_name: 'billing/trial_will_end',
+    payload: {
+      orgId: input.orgId,
+      userIds: input.ownerIds,
+      type: 'billing',
+      title: 'Your trial ends in 3 days',
+      body: `${when} To change plan or cancel, open Settings, Billing.`,
+    },
+    dedupe_key: `stripe:trial_will_end:${input.mode}:${input.subscriptionId}:${input.trialEnd ?? 'none'}`,
+  };
+}
+
+/**
+ * `invoice.payment_failed`: one notice per invoice, not one per retry. Stripe
+ * retries a card several times over a fortnight, and the owner needs to hear
+ * it once with what to do, not on every attempt.
+ */
+export function paymentFailedNotification(input: {
+  orgId: string;
+  ownerIds: string[];
+  invoiceId: string;
+  mode: StripeMode;
+}): OutboxRow | null {
+  if (input.ownerIds.length === 0) return null;
+  return {
+    org_id: input.orgId,
+    event_name: 'billing/payment_failed',
+    payload: {
+      orgId: input.orgId,
+      userIds: input.ownerIds,
+      type: 'billing',
+      title: 'Payment failed',
+      body: 'We could not take payment for your RotaFlow plan. Your card will be retried. Update it in Settings, Billing to keep your plan active.',
+    },
+    dedupe_key: `stripe:payment_failed:${input.mode}:${input.invoiceId}`,
+  };
+}
+
+/** Postgres' unique violation: the outbox already holds this notification. */
+export function isAlreadyQueued(error: { code?: string | null } | null): boolean {
+  return error?.code === '23505';
 }

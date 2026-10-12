@@ -41,7 +41,8 @@
 // After deploying: Stripe dashboard -> Developers -> Webhooks -> Add
 // endpoint, pointed at <SUPABASE_URL>/functions/v1/stripe-webhook,
 // subscribed to: checkout.session.completed, customer.subscription.updated,
-// customer.subscription.deleted, invoice.paid, invoice.payment_failed.
+// customer.subscription.deleted, customer.subscription.trial_will_end,
+// invoice.paid, invoice.payment_failed.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { reportEdgeError } from '../_shared/sentry.ts';
@@ -55,6 +56,11 @@ import {
 import {
   decideInvoiceFailure,
   freshestSubscription,
+  isAlreadyQueued,
+  paymentFailedNotification,
+  trialEndingNotification,
+  trialEndsAtIso,
+  type OutboxRow,
   mapSubscriptionStatus,
   shouldSuspendOnDeleted,
   subscriptionRefOf,
@@ -106,6 +112,9 @@ async function handleCheckoutCompleted(
       stripe_mode: mode,
       started_at: new Date(subscription.start_date * 1000).toISOString(),
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      // A Stripe trial's end (0154). Checkout carries the organisation's own
+      // trial into Stripe, so this is usually the same date.
+      trial_ends_at: trialEndsAtIso(subscription.trial_end),
     },
     { onConflict: 'org_id' },
   );
@@ -244,6 +253,112 @@ async function handleSubscriptionDeleted(
   }
 }
 
+// The organisation's active owners: billing notices go to the people who can
+// act on them, and billing is owner-only everywhere else too.
+async function activeOwnerIds(
+  supabase: SupabaseClient,
+  orgId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('user_id')
+    .eq('org_id', orgId)
+    .eq('role', 'owner')
+    .eq('status', 'active');
+  if (error) throw new Error(`owner lookup failed: ${error.message}`);
+  return (data ?? []).map((row: { user_id: string }) => row.user_id);
+}
+
+// Through the outbox (0069), the same path every other notification takes:
+// the drain posts it to send-notification, which applies the organisation's
+// and each person's own settings. A unique violation on `dedupe_key` means
+// an earlier delivery of this event already queued it.
+async function enqueueNotification(
+  supabase: SupabaseClient,
+  row: OutboxRow | null,
+): Promise<void> {
+  if (!row) return;
+  const { error } = await supabase.from('notification_outbox').insert(row);
+  if (error && !isAlreadyQueued(error)) {
+    throw new Error(`notification enqueue failed: ${error.message}`);
+  }
+}
+
+// Whether the subscription this event names is the one the organisation holds,
+// in this mode. The same scoping rule as every financial write here (RF-05):
+// an event we cannot pin to the stored subscription tells nobody anything.
+async function holdsSubscription(
+  supabase: SupabaseClient,
+  orgId: string,
+  subscriptionRef: string,
+  mode: StripeMode,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('org_id')
+    .eq('org_id', orgId)
+    .eq('provider_ref', subscriptionRef)
+    .eq('stripe_mode', mode)
+    .maybeSingle();
+  if (error) throw new Error(`subscription lookup failed: ${error.message}`);
+  return data !== null;
+}
+
+// customer.subscription.trial_will_end: three days before a Stripe trial ends.
+async function handleTrialWillEnd(
+  supabase: SupabaseClient,
+  subscription: Stripe.Subscription,
+  mode: StripeMode,
+): Promise<void> {
+  const orgId = subscription.metadata?.org_id;
+  if (!orgId) {
+    console.error(
+      'customer.subscription.trial_will_end missing org_id metadata',
+      subscription.id,
+    );
+    return;
+  }
+  if (!(await holdsSubscription(supabase, orgId, subscription.id, mode))) {
+    console.log(`trial_will_end ${subscription.id}: not the subscription ${orgId} holds`);
+    return;
+  }
+  await enqueueNotification(
+    supabase,
+    trialEndingNotification({
+      orgId,
+      ownerIds: await activeOwnerIds(supabase, orgId),
+      subscriptionId: subscription.id,
+      trialEnd: subscription.trial_end,
+      mode,
+    }),
+  );
+}
+
+// "Payment failed", once per invoice. Called on a duplicate delivery too, so a
+// first attempt that recorded the failure and then lost its notification is
+// completed by Stripe's retry rather than skipped; the dedupe key makes the
+// second call a no-op otherwise.
+async function notifyPaymentFailed(
+  supabase: SupabaseClient,
+  invoice: Stripe.Invoice,
+  orgId: string,
+  mode: StripeMode,
+): Promise<void> {
+  const scope = subscriptionScope(orgId, subscriptionRefOf(invoice), mode);
+  if (!scope) return;
+  if (!(await holdsSubscription(supabase, scope.org_id, scope.provider_ref, mode)))
+    return;
+  await enqueueNotification(
+    supabase,
+    paymentFailedNotification({
+      orgId,
+      ownerIds: await activeOwnerIds(supabase, orgId),
+      invoiceId: invoice.id,
+      mode,
+    }),
+  );
+}
+
 function invoiceNumberFrom(invoice: Stripe.Invoice): string {
   // Stripe's own invoice number if set, else fall back to its id — either
   // way this only has to be unique, `invoices.number` has no format check.
@@ -360,6 +475,9 @@ async function handleInvoicePaymentFailed(
   const decision = decideInvoiceFailure(existing, invoice.attempt_count);
   if (!decision.apply) {
     console.log(`invoice.payment_failed ${invoice.id}: no change (${decision.reason})`);
+    if (decision.reason === 'duplicate-delivery') {
+      await notifyPaymentFailed(supabase, invoice, orgId, mode);
+    }
     return;
   }
 
@@ -429,6 +547,8 @@ async function handleInvoicePaymentFailed(
   if (subError) {
     throw new Error(`subscriptions update (past_due) failed: ${subError.message}`);
   }
+
+  await notifyPaymentFailed(supabase, invoice, orgId, mode);
 }
 
 /**
@@ -559,6 +679,13 @@ Deno.serve(async (req: Request) => {
         await handleSubscriptionDeleted(
           supabase,
           event.data.object as Stripe.Subscription,
+        );
+        break;
+      case 'customer.subscription.trial_will_end':
+        await handleTrialWillEnd(
+          supabase,
+          event.data.object as Stripe.Subscription,
+          mode,
         );
         break;
       case 'invoice.paid':
