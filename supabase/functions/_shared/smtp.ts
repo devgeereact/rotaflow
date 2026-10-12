@@ -1,6 +1,7 @@
 // _shared/smtp.ts. RotaFlow
 //
-// One SMTP resolution, shared by send-notification and send-invite, for the
+// One SMTP resolution, shared by send-notification, send-invite and
+// public-enquiry, for the
 // same reason _shared/stripe.ts exists: two copies of "which mailbox does this
 // organisation send from" drift, and the one that drifts is the one nobody is
 // looking at.
@@ -79,6 +80,15 @@ export async function resolveSmtpConfig(
     };
   }
 
+  return platformSmtpConfig();
+}
+
+/**
+ * The platform's own mailbox, or null when it is not configured. For mail
+ * that belongs to no organisation, such as `public-enquiry`'s notice to the
+ * platform inbox.
+ */
+export function platformSmtpConfig(): SmtpTransportConfig | null {
   if (!globalSmtpIsConfigured()) return null;
   return {
     host: Deno.env.get('SMTP_HOST')!,

@@ -18,6 +18,19 @@ const ALLOWED_ORIGINS = new Set<string>([
   'http://localhost:5842',
 ]);
 
+/**
+ * Whether a browser origin is one RotaFlow ships from.
+ *
+ * For a function with no auth of its own (`public-enquiry`), CORS alone is
+ * not enough: it stops a foreign page READING the response, not SENDING the
+ * request. Such a function refuses a request whose `Origin` is present and not
+ * on this list. A missing `Origin` (curl, a server) is not refused by this
+ * check, which is why that function has its own rate limit as well.
+ */
+export function isAllowedOrigin(origin: string | null): boolean {
+  return origin !== null && ALLOWED_ORIGINS.has(origin);
+}
+
 export function corsHeaders(
   req: Request,
   allowHeaders: string,
