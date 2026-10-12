@@ -205,20 +205,24 @@ test.describe('reduced motion', () => {
 
     // The global rule in `src/index.css` collapses the *duration*, which is
     // not the same thing: a `scale(1.02)` with no transition still scales,
-    // instantly. `motion-reduce:hover:scale-100` is what removes it.
+    // instantly. Button no longer scales at all (2026-10-12), and this keeps
+    // a transform from creeping back in.
     expect(Math.abs(hovered.width - before.width)).toBeLessThan(0.5);
     expect(Math.abs(hovered.height - before.height)).toBeLessThan(0.5);
 
-    // `none` or the identity matrix — `motion-reduce:hover:scale-100` resolves
-    // to `scale(1)`, which computes as `matrix(1, 0, 0, 1, 0, 0)`. Either is a
-    // control that did not move; what must never appear here is a scale.
+    // `none` or the identity matrix. Either is a control that did not move;
+    // what must never appear here is a scale.
     const transform = await button.evaluate((el) => getComputedStyle(el).transform);
     expect(['none', 'matrix(1, 0, 0, 1, 0, 0)']).toContain(transform);
   });
 
-  test('the same Button does scale when motion is allowed', async ({ browser }) => {
-    // Proves the assertion above is testing the reduced-motion branch and not
-    // simply that the transform was deleted for everybody.
+  test('the same Button changes colour, not size, when motion is allowed', async ({
+    browser,
+  }) => {
+    // Proves the assertion above is testing something real. Since 2026-10-12
+    // (docs/DESIGN-SYSTEM.md "Visual language") hover is colour only for
+    // everybody: the box must not grow, and the fill must change, otherwise
+    // this would pass equally well if the hover state had simply been deleted.
     const context = await browser.newContext({ reducedMotion: 'no-preference' });
     const page = await context.newPage();
     await acceptConsent(page);
@@ -226,10 +230,15 @@ test.describe('reduced motion', () => {
 
     const button = page.getByRole('button', { name: 'Add Staff' });
     const before = (await button.boundingBox())!;
+    const fillBefore = await button.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    );
     await button.hover();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(450);
     const hovered = (await button.boundingBox())!;
-    expect(hovered.width).toBeGreaterThan(before.width);
+    const fillAfter = await button.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(Math.abs(hovered.width - before.width)).toBeLessThan(0.5);
+    expect(fillAfter).not.toBe(fillBefore);
 
     await context.close();
   });
