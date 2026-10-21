@@ -5,6 +5,9 @@ recorded in `docs/SAAS.md` (GAP-071, GAP-083, GAP-089) and the budgets in
 `bundle-budget.json`; each figure below names the row it comes from. Status stays
 in the register.
 
+Open items found here are listed in the work queue at the top of `docs/SAAS.md`;
+this file keeps the evidence.
+
 ## The acceptance dataset
 
 The target a workforce read has to survive: **20 sites, 250 staff, 10,000 shifts

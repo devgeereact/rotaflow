@@ -5,6 +5,9 @@ public claim are in `docs/ACCESSIBILITY.md`; status is in `docs/SAAS.md`. Create
 on 11 October 2026 by collecting the accessibility findings already recorded in
 the register, so each entry below cites the row it comes from.
 
+Open items found here are listed in the work queue at the top of `docs/SAAS.md`;
+this file keeps the evidence.
+
 **No specialist audit has ever been carried out.** Everything here is automated
 (axe through Playwright) or a developer's own sweep. Screen-reader output and real
 assistive technology are `NOT TESTED`.

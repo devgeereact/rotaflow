@@ -5,6 +5,9 @@ owns the audit evidence; it does not own status. `docs/SAAS.md` is the plan of
 record, and every defect worth tracking has a row there. Read each section as a
 snapshot of the commit it names, not as current state.
 
+Open items found here are listed in the work queue at the top of `docs/SAAS.md`;
+this file keeps the evidence.
+
 The method behind a full pass, and the CI table, are in `qa/README.md`.
 
 | Pass                                                                                        | Dated            | Scope                                                            |
