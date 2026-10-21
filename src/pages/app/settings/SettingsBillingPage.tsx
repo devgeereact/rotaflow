@@ -17,12 +17,15 @@ import {
   planName,
   planPriceLabel,
   type OrgBillingSnapshot,
+  type InvoiceLinks,
   type OwnerInvoiceRow,
 } from '@/lib/billingState';
 import {
   listPlans,
   startCheckout,
   openBillingPortal,
+  refreshInvoiceLinks,
+  syncBillingContact,
   type Plan,
 } from '@/services/billingCheckoutService';
 import { Badge } from '@/components/ui/Badge';
@@ -56,7 +59,7 @@ import type { Subscription } from '@/types';
  */
 export function SettingsBillingPage(): JSX.Element {
   const { orgId, role } = useOrg();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
 
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [staffCount, setStaffCount] = useState<number | null>(null);
@@ -151,6 +154,44 @@ export function SettingsBillingPage(): JSX.Element {
           : 'Could not open the billing portal. Please try again.',
       );
       setActionPending(null);
+    }
+  }
+
+  // GAP-128: Stripe emails receipts and invoices to the customer's address,
+  // which is whoever went through Checkout until the owner sends the billing
+  // contact across.
+  async function handleSyncContact(): Promise<void> {
+    if (!orgId) return;
+    setActionPending('contact');
+    try {
+      const email = await syncBillingContact(orgId);
+      showSuccess(`Stripe will send receipts and invoices to ${email}.`);
+    } catch (err) {
+      reportError(err, { area: 'settings-billing:sync-contact' });
+      showError(
+        err instanceof Error
+          ? err.message
+          : 'Could not update the billing contact in Stripe. Please try again.',
+      );
+    } finally {
+      setActionPending(null);
+    }
+  }
+
+  // GAP-129: a stored hosted link expires; Stripe gives a working one on
+  // request. Null on failure, which this has already said.
+  async function handleRefreshLinks(invoiceId: string): Promise<InvoiceLinks | null> {
+    if (!orgId) return null;
+    try {
+      return await refreshInvoiceLinks(orgId, invoiceId);
+    } catch (err) {
+      reportError(err, { area: 'settings-billing:invoice-links' });
+      showError(
+        err instanceof Error
+          ? err.message
+          : 'Could not get a fresh invoice link. Open the billing portal instead.',
+      );
+      return null;
     }
   }
 
@@ -287,8 +328,18 @@ export function SettingsBillingPage(): JSX.Element {
                 <Check size={16} className="text-success" aria-hidden="true" />
                 Billing contact
               </span>
-              <span className="text-content-muted dark:text-content-muted-dark">
+              <span className="flex flex-wrap items-center justify-end gap-2 text-content-muted dark:text-content-muted-dark">
                 {billingContact}
+                {subscription?.stripe_customer_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={actionPending !== null}
+                    onClick={() => void handleSyncContact()}
+                  >
+                    {actionPending === 'contact' ? 'Sending…' : 'Use for Stripe invoices'}
+                  </Button>
+                )}
               </span>
             </li>
           )}
@@ -381,7 +432,13 @@ export function SettingsBillingPage(): JSX.Element {
         title="Invoices"
         description="Your most recent invoices, with the copy Stripe issued for each."
       >
-        <BillingInvoices invoices={invoices} failed={invoicesFailed} />
+        <BillingInvoices
+          invoices={invoices}
+          failed={invoicesFailed}
+          onRefreshLinks={
+            subscription?.stripe_customer_id ? handleRefreshLinks : undefined
+          }
+        />
       </SettingsSection>
     </div>
   );

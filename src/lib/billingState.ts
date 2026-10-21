@@ -212,6 +212,23 @@ export interface OwnerInvoiceRow {
   invoice_pdf: string | null;
 }
 
+/** The two document links Stripe currently serves for one invoice (GAP-129). */
+export interface InvoiceLinks {
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+}
+
+/**
+ * A link kept only if it is https on one of Stripe's two document hosts, the
+ * same rule as the `invoices` CHECK (0156) and the webhook's filter. Applied
+ * to a refreshed link before it replaces a stored one, so the screen never
+ * renders a link from anywhere else, whatever the server returned.
+ */
+export function stripeDocumentLink(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 2048) return null;
+  return /^https:\/\/(invoice|pay)\.stripe\.com\/\S*$/.test(value) ? value : null;
+}
+
 /** How many invoices the owner's list shows: a year of monthly billing. */
 export const OWNER_INVOICE_LIMIT = 12;
 
