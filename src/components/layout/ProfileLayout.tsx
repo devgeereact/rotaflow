@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';
 import { RouteFallback } from '@/components/RouteFallback';
@@ -17,12 +17,17 @@ import { profileTabs } from '@/lib/settingsTabs';
  * own notification preferences and their own sessions.
  */
 export function ProfileLayout(): JSX.Element {
+  const location = useLocation();
+  const tabs = profileTabs();
+  // Each reference names the section in the title, as Settings now does.
+  const active = tabs.find((tab) => location.pathname.startsWith(tab.to));
+
   return (
     <div>
       <PageHeader
-        title="My account"
+        title={active ? `My account: ${active.label}` : 'My account'}
         description="Manage your personal information, preferences and security."
-        below={<Tabs items={profileTabs()} label="My account sections" />}
+        below={<Tabs items={tabs} label="My account sections" />}
       />
       <Suspense fallback={<RouteFallback />}>
         <Outlet />
