@@ -10,9 +10,9 @@
     "why": "What a first visit downloads before the app is usable offline. The number that matters most: a carer on hospital wifi pays it once, in full, up front."
   },
   "precacheEntries": {
-    "budget": 190,
-    "measured": 161,
-    "why": "Guards chunk-count explosions. PR #75: thirteen DEV preview pages were defined outside the import.meta.env.DEV guard, so Rollup emitted a chunk for each and Workbox precached all thirteen — 87 kB of fabricated staff names shipped to every user."
+    "budget": 210,
+    "measured": 193,
+    "why": "Guards chunk-count explosions. PR #75: thirteen DEV preview pages were defined outside the import.meta.env.DEV guard, so Rollup emitted a chunk for each and Workbox precached all thirteen — 87 kB of fabricated staff names shipped to every user. Raised 190 to 210 on 2026-10-21 for Vite 8: Rolldown gives each module shared by two lazy routes its own small chunk instead of folding it into the entry, so the count rose from 180 to 193 while the entry chunk fell from 97 to 51 KiB and the precache bytes fell by 8 KiB."
   },
   "entryJsGzipKiB": {
     "budget": 175,
