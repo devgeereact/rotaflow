@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * Shown while a lazily-loaded route chunk is fetched.
  *

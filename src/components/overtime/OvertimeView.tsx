@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { Plus } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';

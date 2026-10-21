@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { NotificationBell } from '@/components/layout/NotificationBell';

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, Download, FileUp, Info, Plus, SearchX, Users } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';

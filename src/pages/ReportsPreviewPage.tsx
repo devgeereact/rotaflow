@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 import { BarChart3, CalendarDays, Download, Settings } from 'lucide-react';
 import { ReportsView } from '@/components/reports/ReportsView';
 import { DEMO_OVERVIEW, DEMO_RECENT_REPORTS, DEMO_REPORTS } from '@/lib/reportsDemo';

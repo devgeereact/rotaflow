@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 'react';
 import { CheckCircle2, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';

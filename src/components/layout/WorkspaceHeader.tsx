@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import {
   HEADER_DESCRIPTION_CLASS,
   HEADER_TITLE_CLASS,

@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Callout } from '@/components/ui/Callout';
 import type { NoticeSection } from '@/lib/privacyNotice';
 

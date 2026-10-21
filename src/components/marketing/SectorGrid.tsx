@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Check } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { SECTORS } from '@/lib/marketing';

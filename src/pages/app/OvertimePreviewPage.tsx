@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { OvertimeView } from '@/components/overtime/OvertimeView';
 import type { OvertimeRow, OvertimeStatus } from '@/lib/overtimeRows';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';

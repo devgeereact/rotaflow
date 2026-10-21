@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type JSX } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   BookOpen,

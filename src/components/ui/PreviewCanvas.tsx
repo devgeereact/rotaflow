@@ -1,4 +1,4 @@
-import { useContext, type ReactNode } from 'react';
+import { useContext, type ReactNode, type JSX } from 'react';
 import { InAppShellContext } from '@/components/ui/inAppShell';
 import { cn } from '@/lib/utils';
 

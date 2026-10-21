@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * The "team collaborating" illustration for the invite-team step
  * (docs/design/Team-onboarding.png). Three simplified flat figures at a table,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Download } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';

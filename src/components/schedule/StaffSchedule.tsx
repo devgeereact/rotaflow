@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { CalendarClock, CalendarPlus, Repeat2 } from 'lucide-react';

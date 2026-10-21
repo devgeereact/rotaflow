@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';

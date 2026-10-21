@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * "Skip to main content" — WCAG 2.2 Level A, 2.4.1 Bypass Blocks.
  *

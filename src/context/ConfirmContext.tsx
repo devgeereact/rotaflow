@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useMemo, useRef, useState, type JSX } from 'react';
 import type { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';

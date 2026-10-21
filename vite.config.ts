@@ -402,7 +402,7 @@ export default defineConfig({
     // that copies them up is still safe.
     sourcemap: 'hidden',
     target: 'es2020',
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // Split vendors so the app shell stays tiny and cache-stable.
         //
@@ -418,17 +418,27 @@ export default defineConfig({
         // Grouping them keeps the win (a 58% smaller entry chunk) without the
         // request storm. Tree-shaking still applies inside each group — the
         // icons chunk holds the icons actually imported, not all of lucide.
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
-          icons: ['lucide-react'],
-          dates: ['date-fns', 'date-fns-tz'],
-          // Only the rota builder uses drag-and-drop, so this rides along with
-          // that route's chunk rather than the entry.
-          dnd: ['@dnd-kit/core', '@dnd-kit/utilities'],
-          // Only the marketing pages load this, through a dynamic import after
-          // first paint. Named so the precache can leave it out by pattern.
-          motion: ['gsap', 'gsap/ScrollTrigger', 'lenis'],
+        //
+        // Vite 8 bundles with Rolldown, which dropped the object form of
+        // `manualChunks`; `codeSplitting.groups` is its replacement. Groups match
+        // module paths, so each regex names the package and the dependencies the
+        // old form pulled in with it (react-router, scheduler, @supabase/*).
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-vendor',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+            },
+            { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/ },
+            { name: 'icons', test: /node_modules[\\/]lucide-react[\\/]/ },
+            { name: 'dates', test: /node_modules[\\/]date-fns(-tz)?[\\/]/ },
+            // Only the rota builder uses drag-and-drop, so this rides along with
+            // that route's chunk rather than the entry.
+            { name: 'dnd', test: /node_modules[\\/]@dnd-kit[\\/]/ },
+            // Only the marketing pages load this, through a dynamic import after
+            // first paint. Named so the precache can leave it out by pattern.
+            { name: 'motion', test: /node_modules[\\/](gsap|lenis)[\\/]/ },
+          ],
         },
       },
     },

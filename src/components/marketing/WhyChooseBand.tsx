@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Check } from 'lucide-react';
 import { WHY_ROTAFLOW } from '@/lib/marketing';
 

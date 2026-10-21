@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase, Building2, Clock, Globe, Mail, Phone } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';

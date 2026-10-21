@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ClockInView } from '@/components/clockin/ClockInView';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';
 import {

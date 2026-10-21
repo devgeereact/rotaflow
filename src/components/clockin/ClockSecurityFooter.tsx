@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ShieldCheck } from 'lucide-react';
 
 interface ClockSecurityFooterProps {

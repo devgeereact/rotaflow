@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addDays, addWeeks, format, isSameDay, startOfWeek, subWeeks } from 'date-fns';
 import { LifeBuoy, ScanLine, ShieldQuestion, WifiOff } from 'lucide-react';

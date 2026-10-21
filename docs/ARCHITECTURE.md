@@ -5,7 +5,7 @@
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                     Client Browser / Installed PWA                 │
-│      React 18 + Vite + Tailwind  ·  Service Worker (Workbox)        │
+│      React 19 + Vite + Tailwind  ·  Service Worker (Workbox)        │
 │      Served as static files from cPanel (public_html)              │
 └──────┬───────────────┬───────────────┬───────────────┬────────────┘
        │               │               │               │

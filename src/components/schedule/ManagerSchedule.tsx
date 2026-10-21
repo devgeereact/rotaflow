@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, ScanFace } from 'lucide-react';
 import { ATTENDANCE_STATUS_META, type AttendanceCounts } from '@/lib/attendance';

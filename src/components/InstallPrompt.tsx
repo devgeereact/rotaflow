@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';

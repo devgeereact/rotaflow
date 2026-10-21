@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { format } from 'date-fns';
 import { ManagerSchedule } from '@/components/schedule/ManagerSchedule';
 import { StaffSchedule } from '@/components/schedule/StaffSchedule';

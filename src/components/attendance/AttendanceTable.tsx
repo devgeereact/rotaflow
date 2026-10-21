@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';

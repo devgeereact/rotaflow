@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { LanguagePill } from '@/components/ui/LanguagePill';

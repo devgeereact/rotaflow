@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { ShieldCheck, Users } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';

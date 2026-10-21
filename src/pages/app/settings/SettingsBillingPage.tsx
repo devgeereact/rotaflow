@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { Check } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';

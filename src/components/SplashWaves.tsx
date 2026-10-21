@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * Decorative wave field behind the splash screen (docs/design/splash-screen.png).
  *

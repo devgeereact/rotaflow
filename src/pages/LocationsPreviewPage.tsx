@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { LocationsView } from '@/components/locations/LocationsView';
 import type { LocationRow } from '@/lib/locationsDirectory';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';

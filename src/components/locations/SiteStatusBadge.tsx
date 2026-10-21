@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { SITE_STATUS_LABELS, type SiteStatus } from '@/lib/locationsDirectory';
 import { cn } from '@/lib/utils';

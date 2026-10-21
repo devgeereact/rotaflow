@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { FileText } from 'lucide-react';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import type { DocumentStatus, StaffDocument } from '@/lib/staffDirectory';

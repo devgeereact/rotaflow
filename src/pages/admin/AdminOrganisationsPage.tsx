@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, Download, Plus, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/Card';

@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **chore(deps): the framework majors (GAP-037).** React 19 with its types (the
+  global `JSX` namespace is gone, so 305 files import the type from `react`), Vite 8
+  with Rolldown (vendor chunks move to `codeSplitting.groups`; the entry chunk falls
+  from 97 to 51 KiB gzip), `vite-plugin-pwa` 2, `@vitejs/plugin-react` 5, TypeScript
+  6, vitest 5 with `@vitest/coverage-v8` 5 (moved together, which is why Dependabot
+  #342 failed), `eslint-plugin-react-refresh` 0.5 and the in-range updates. Still
+  held back, each with its reason in GAP-037: eslint 10, TypeScript 7,
+  `@vitejs/plugin-react` 6 and Sentry 11.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating

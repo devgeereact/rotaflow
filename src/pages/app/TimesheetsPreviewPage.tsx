@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { format } from 'date-fns';
 import { ManagerTimesheets } from '@/components/timesheets/ManagerTimesheets';
 import { StaffTimesheets } from '@/components/timesheets/StaffTimesheets';

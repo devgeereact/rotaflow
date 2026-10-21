@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type JSX } from 'react';
 import { Building2, ArrowRight, Check, Info, Loader2, Users } from 'lucide-react';
 import { isSlugAvailable, slugify } from '@/services/orgService';
 import { reportError } from '@/lib/sentry';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { Plus } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Button } from '@/components/ui/Button';

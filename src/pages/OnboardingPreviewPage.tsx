@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
