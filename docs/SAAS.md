@@ -992,7 +992,7 @@ itself: a restore, a real charge, and a phone.
       need capture are already named in OBSERVABILITY — rota-session starts, schedule views,
       an explicit AI-suggestion outcome, and Web Vitals
       `docs/PRODUCT-SPEC.md#metrics-and-events` · P3
-- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all ten Edge Functions via
+- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all eleven Edge Functions via
       `_shared/sentry.ts`; the Stripe webhook no longer fails into a log nobody reads
       `supabase/functions/_shared/sentry.ts` · HARDEN-005 closed #216 · deployed 2026-08-31
 - [x] CAP-104 🟢 Query shape — 16 composite indexes cover the predicates the app issues; the
