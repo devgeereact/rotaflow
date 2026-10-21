@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { PublicNav } from '@/components/marketing/PublicNav';
 import { PublicFooter } from '@/components/marketing/PublicFooter';
 import { usePageMetadata } from '@/hooks/usePageMetadata';
 import { SkipLink } from '@/components/layout/SkipLink';
+import { useMarketingMotion } from '@/components/marketing/motion/useMarketingMotion';
 
 interface MarketingLayoutProps {
   /**
@@ -26,6 +27,9 @@ interface MarketingLayoutProps {
  * shared link. Since 2026-09-02 that is `usePageMetadata`, which also writes
  * the description, the canonical URL and the Open Graph and Twitter tags —
  * none of which existed anywhere in this repository before then.
+ *
+ * Scroll motion starts here too, and only here: the app shell never mounts
+ * this layout, so GSAP and Lenis cannot reach an authenticated screen.
  */
 export function MarketingLayout({
   title,
@@ -33,9 +37,14 @@ export function MarketingLayout({
   children,
 }: MarketingLayoutProps): JSX.Element {
   usePageMetadata({ title, noindex });
+  const rootRef = useRef<HTMLDivElement>(null);
+  useMarketingMotion(rootRef);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background dark:bg-background-dark">
+    <div
+      ref={rootRef}
+      className="flex min-h-screen flex-col bg-background dark:bg-background-dark"
+    >
       <SkipLink />
       <PublicNav />
       <main id="main-content" tabIndex={-1} className="flex-1">
@@ -53,7 +62,12 @@ interface PageHeroProps {
   children?: ReactNode;
 }
 
-/** Standard heading block for the inner marketing pages. */
+/**
+ * Standard heading block for the inner marketing pages.
+ *
+ * The three lines enter one after another on the CSS `fade-up` keyframe, the
+ * same visible-without-JavaScript entrance as the home hero.
+ */
 export function PageHero({
   eyebrow,
   heading,
@@ -63,16 +77,20 @@ export function PageHero({
   return (
     <section className="border-b border-surface-border bg-surface dark:border-surface-border-dark dark:bg-surface-dark">
       <div className="mx-auto max-w-3xl px-6 py-16 text-center md:py-20">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-primary-ink dark:text-primary-ink-dark">
+        <p className="mb-3 animate-fade-up text-sm font-semibold uppercase tracking-wide text-primary-ink motion-reduce:animate-none dark:text-primary-ink-dark">
           {eyebrow}
         </p>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-content md:text-5xl dark:text-content-dark">
+        <h1 className="animate-fade-up font-display text-3xl font-extrabold tracking-tight text-content [animation-delay:80ms] motion-reduce:animate-none md:text-5xl dark:text-content-dark">
           {heading}
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-content-muted dark:text-content-muted-dark">
+        <p className="mx-auto mt-5 max-w-2xl animate-fade-up text-lg leading-relaxed text-content-muted [animation-delay:160ms] motion-reduce:animate-none dark:text-content-muted-dark">
           {body}
         </p>
-        {children && <div className="mt-8">{children}</div>}
+        {children && (
+          <div className="mt-8 animate-fade-up [animation-delay:240ms] motion-reduce:animate-none">
+            {children}
+          </div>
+        )}
       </div>
     </section>
   );
