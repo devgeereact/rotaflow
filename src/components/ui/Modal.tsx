@@ -121,6 +121,9 @@ export function Modal({
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-overlay p-4 dark:bg-overlay-dark"
+      // A long dialog scrolls itself natively. Without this the marketing
+      // smooth scroll (Lenis) would take the wheel and move nothing.
+      data-lenis-prevent
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}

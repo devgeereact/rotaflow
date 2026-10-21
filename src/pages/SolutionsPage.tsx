@@ -80,7 +80,7 @@ export function SolutionsPage(): JSX.Element {
 
           <div className="space-y-4">
             {SHARED_PROBLEMS.map(({ problem, consequence, answer }) => (
-              <Card key={problem} className="grid gap-4 md:grid-cols-3">
+              <Card key={problem} data-reveal className="grid gap-4 md:grid-cols-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-danger-ink dark:text-danger-ink-dark">
                     The problem

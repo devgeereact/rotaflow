@@ -69,6 +69,7 @@ export function PricingPage(): JSX.Element {
           {PLANS.map(({ name, price, cadence, summary, features, cta, featured }) => (
             <Card
               key={name}
+              data-reveal
               className={cn(
                 'flex h-full flex-col',
                 featured && 'border-primary shadow ring-1 ring-primary',
@@ -131,6 +132,7 @@ export function PricingPage(): JSX.Element {
             {FAQS.map(({ q, a }) => (
               <div
                 key={q}
+                data-reveal
                 className="rounded-2xl border border-surface-border bg-surface p-6 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark"
               >
                 <dt className="font-display font-semibold text-content dark:text-content-dark">
