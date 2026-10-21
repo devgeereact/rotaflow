@@ -53,6 +53,39 @@
     />
     <meta name="twitter:image" content="https://rotaflow.space/og-image.png" />
 
+    <!--
+      Structured data for search engines: who publishes the site and what the
+      product is, nothing more. No aggregateRating, review or offers: there are
+      no reviews to cite (the marketing honesty rule, docs/UX-SPEC.md), and a
+      price copied here would drift from src/lib/marketing.ts. A JSON-LD block
+      is data, not script, so the `script-src 'self'` CSP does not apply to it.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://rotaflow.space/#organization",
+            "name": "RotaFlow",
+            "url": "https://rotaflow.space/",
+            "logo": "https://rotaflow.space/icons/pwa-512.png",
+            "email": "support@rotaflow.space"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://rotaflow.space/#software",
+            "name": "RotaFlow",
+            "url": "https://rotaflow.space/",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web, iOS, Android",
+            "description": "Plan and publish rotas, handle leave and swaps, and see who has clocked in. Clock-ins, leave and swap requests wait on the phone until the signal returns.",
+            "publisher": { "@id": "https://rotaflow.space/#organization" }
+          }
+        ]
+      }
+    </script>
+
     <!-- iOS PWA support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

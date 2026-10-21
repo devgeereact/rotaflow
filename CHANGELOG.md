@@ -13,6 +13,11 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(seo): honest JSON-LD in `index.html`.** One `Organization` and one
+  `SoftwareApplication` node, with no ratings, reviews, awards or prices, guarded
+  by `src/lib/structuredData.test.ts`. README's tech-stack table now lists GSAP
+  and Lenis. The not-found screen already existed (`*` route, `noindex`), so it is
+  unchanged.
 - **feat(marketing): scroll motion on the public pages (GSAP + Lenis).** The home
   hero and `PageHero` now enter line by line on CSS `fade-up`, the hero rota chips
   fill in on a new `pop-in` keyframe, and the sections below rise in as they reach
