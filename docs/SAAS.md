@@ -6,6 +6,172 @@ v2, the go-live decisions list, and the six shipped-feature plans and specs that
 under a superpowers folder. They disagreed with the code and with each other. Do not start a sixth —
 update this one.
 
+## Work queue: start here
+
+Added 2026-10-21. **This is the one list of open work.** Every report, plan and
+note that used to carry its own to-do list now points here: the 2026 plan pack
+(`docs/Plans 2026/`, deleted 2026-10-21 once each decision below had a home), the
+dated audits in `qa/`, and the agents' private notes. If something is open and it is
+not in this section or in a row this section links to, it is not tracked.
+
+**How to use it.**
+
+- A line here names the work and the next action. It never restates a status: the
+  status lives in the row it links to (§4 `CAP-`, §6 `BUG-`, §7 `GAP-`, §8
+  `HARDEN-`). Change the status there, never here.
+- Start every session at this section. Pick one line, write the task contract
+  (`.agent/CURRENT-TASK.template.md`), branch from a freshly fetched `origin/main`
+  in its own worktree, and close or move the line in the same pull request.
+- A finding that needs tracking gets a register row first, then a line here.
+- Owner actions are listed once, below. An agent cannot clear them, so an agent
+  does not re-report them as findings; it points here.
+
+### 1. Owner actions
+
+Each needs the owner's account, money, signature or a production change.
+
+| #   | Action                                                                                                                                                                 | Unblocks                                   |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| O1  | Mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September)                                | GAP-036                                    |
+| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and the REST endpoint                 | `docs/DEPLOYMENT.md#alert-owners`, GAP-036 |
+| O3  | Merge #338 (it applies `0154` to `0156` to production on merge), then deploy `public-enquiry`, `stripe-webhook` and `create-checkout-session` by name                  | CAP-126, CAP-127, BUG-107, BUG-108         |
+| O4  | Move to a paid Supabase plan with PITR (decision D6: RPO 15 minutes, RTO 4 hours), keep an off-site backup copy, and rehearse one restore into a real Supabase project | GAP-001, CAP-095, CAP-107                  |
+| O5  | Put one Stripe test-mode charge through Checkout, then authorise one supervised live charge                                                                            | CAP-036                                    |
+| O6  | Decide sole trader or limited company (D7), have Terms, Privacy and a DPA reviewed, and pay the ICO fee                                                                | GAP-059                                    |
+| O7  | Run a UKIPO search in classes 9 and 42 (D1), then claim one suffixed handle everywhere (D11)                                                                           | §5a naming paragraph                       |
+| O8  | Run both loops on a real iPhone and a real Android phone: a push received, a clock-in queued offline and sent                                                          | CAP-023a, CAP-106                          |
+| O9  | Use a real authenticator once, then switch on `require_mfa`                                                                                                            | CAP-049                                    |
+| O10 | Turn on Turnstile and leaked-password protection in Supabase Auth (the second needs the paid plan in O4)                                                               | GAP-033, GAP-034                           |
+| O11 | Export existing `medical_notes` values for the owner, so the column can be purged (D5)                                                                                 | GAP-058                                    |
+| O12 | Close or rebase the bot branch `plan-drift-audit/weekly` (do not merge it as written: it rewrites the maturity line), and decide Dependabot #342 (vitest 5 fails CI)   | GAP-037                                    |
+
+### 2. Next up, for an agent
+
+Ranked by risk to a paying customer first, then by value. Each links the row that
+holds its status and evidence.
+
+1. **Offline and shared-device proof.** One Playwright test with
+   `context.setOffline()` for clock-in, replay and an expired session, run in CI
+   against a local stack; then the cache-clear on user change. GAP-072, GAP-050,
+   GAP-054, GAP-049, GAP-086.
+2. **Private document storage** (D4): Supabase Storage with signed links, lifecycle
+   tests, erasure and organisation deletion remove the files. GAP-056, GAP-084.
+3. **Purge `medical_notes`** once O11 is done: a migration that drops the column.
+   GAP-058.
+4. **Trial reminder email** before a no-card trial ends. GAP-127.
+5. **Invoice follow-ups.** GAP-128 (billing contact to Stripe), GAP-129 (expired
+   hosted link).
+6. **Calendar feed**: an expiring token and a rate limit. GAP-052.
+7. **"Your data" page** in My account, routed into the existing GDPR case process.
+   GAP-057.
+8. **Re-test the recovered defects**, BUG-015 first. GAP-115.
+9. **Design match.** Compare the thirteen workspace screens and the marketing home
+   with their references (GAP-088, `docs/UX-SPEC.md#design-match-loop`), and re-check
+   the screens marked matched now that wave 2 adopted the flat tokens.
+10. **Performance at a larger tenant**: 20 sites, 250 staff, 10,000 shifts, 50,000
+    clock events, measured against a local stack, then publish the supported size.
+    GAP-071, HARDEN-007.
+11. **Dependency majors.** GAP-037.
+12. **Re-run the release gate** end to end and replace the 4 September decision in
+    `qa/LAUNCH-CHECKLIST.md`.
+13. **Website and landing finish**: device-frame screenshots, entrance-only hero
+    motion, prerender, JSON-LD and a real 404. No row yet; this line is its home.
+14. **Locale-aware formatting** in one module as screens are touched (there is no
+    `src/lib/format.ts` yet). No row yet.
+15. **Pilot-facing extras**: payroll CSV presets checked by a pilot's payroll person,
+    annual billing at two months free and the "ex VAT" display once VAT is settled
+    (D3), sidebar grouping only if two managers find things faster with it. No rows
+    yet.
+16. **Website content editor** in the platform console, phase 3 only (D9). No row
+    yet.
+
+### 3. Built, but never proved on real infrastructure
+
+Mechanisms that pass every test and have not met production, a real device or a real
+card. Each is a ❓ row or a deploy step, not engineering:
+
+- A push seen arriving on a phone (CAP-023a) and offline use on a phone (CAP-106).
+- A completed charge (CAP-036).
+- A restore into a real Supabase project (CAP-107).
+- Merged Edge Function changes that nobody has deployed: merging never deploys them
+  (see §2, "What is actually deployed").
+
+### 4. Evidence archive
+
+The `qa/` files are dated evidence, not to-do lists. Their open items are the lines
+above.
+
+| File                        | What it holds                                                               |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `qa/LAUNCH-CHECKLIST.md`    | Release gate runs of 4 and 10 September and evidence added on 11 October    |
+| `qa/FUNCTIONAL-AUDIT.md`    | Functional passes, 2 to 11 September                                        |
+| `qa/SECURITY-AUDIT.md`      | The 4 September privacy audit and the checklist for the next audit          |
+| `qa/ACCESSIBILITY-AUDIT.md` | Automated axe findings; keyboard and screen-reader journeys not yet audited |
+| `qa/PERFORMANCE-AUDIT.md`   | The local load test of 7 September and the bundle budgets                   |
+| `qa/REGRESSION-AUDIT.md`    | Which closed defect each test guards                                        |
+| `qa/README.md`              | The CI and scheduled-workflow table                                         |
+
+### 5. Operating lessons
+
+Each of these cost a round trip, a broken `main` or a near miss, and none had a home
+in the repository until now.
+
+- **Build and deploy only from a freshly fetched `origin/main`.** A build from a stale
+  local branch deploys an older site and silently rolls production back.
+- **CI tests the branch head, not the merge result.** Two green pull requests can turn
+  `main` red together. Re-check `origin/main` itself before building to deploy.
+- **`npm install` passing proves nothing about `npm ci`**, because it rewrites the
+  lockfile. Verify a dependency bump with a clean `npm ci`.
+- **The checkout is shared by several agents.** Do multi-step work in its own
+  worktree, and copy `.env` into a fresh worktree or the dev server serves a page that
+  never mounts.
+- **A captured `wip/*` branch is a payload, not a branch.** Cherry-pick from it with
+  `-n`; merging one would have reverted thirteen pull requests.
+- **During a rebase, `--ours` is the new base and `--theirs` is your own commit**, the
+  reverse of a merge. Never `cherry-pick -X theirs` a stale branch.
+- **A pull request can merge before its review fix-up lands.** Re-check the pull
+  request's state after pushing a fix-up commit.
+- **Stacked pull requests are reviewed by CodeRabbit only once they target `main`.**
+- **A hosted runner can fail to start** and fail the job after 15 minutes without
+  running a step. A rerun is refused while the old run is still active.
+- **Local Supabase needs the worktree under the home directory**, because the
+  container runtime shares only that; elsewhere `supabase test db` can report no tests
+  and still exit 0.
+- **A 200 from the live site does not prove a file exists**: the SPA fallback answers
+  every path. Verify by content or on the server.
+
+### 6. Approved decisions from the 2026 plan pack
+
+All thirteen were approved by the owner on 10 October 2026. The pack was deleted on
+2026-10-21; its full text is in git history (`git show 8f01667 -- "docs/Plans 2026"`,
+the last commit that changed it).
+
+| #   | Decision                                                                                                 | Where it now lives                                                        |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| D1  | UKIPO search in classes 9 and 42 before any launch spend; rename if a live conflicting mark exists       | O7; §5a naming paragraph                                                  |
+| D2  | 30-day trial, no card, then a paid plan or read-only. No free-forever tier                               | CAP-125 (`0154`)                                                          |
+| D3  | Keep the four plans, show "ex VAT" once registered, add annual billing at two months free                | Next up 15                                                                |
+| D4  | Private storage with signed links; until then, no DBS or right-to-work links                             | GAP-056, GAP-084                                                          |
+| D5  | Remove `medical_notes` and purge existing values after export to the owner                               | GAP-058, O11                                                              |
+| D6  | Paid plan with PITR before the first paying customer, RPO 15 minutes, RTO 4 hours                        | O4; GAP-001, CAP-095                                                      |
+| D7  | Sole trader or limited company decided before Terms are final                                            | O6; GAP-059                                                               |
+| D8  | Support access off by default, asked for per case                                                        | `0153`                                                                    |
+| D9  | Website content editor in the platform console in phase 3, not before                                    | Next up 16                                                                |
+| D10 | The flat, monochrome-plus-one visual language                                                            | `docs/DESIGN-SYSTEM.md#visual-language-tesla-inspired-adopted-2026-10-12` |
+| D11 | LinkedIn first; Instagram and Facebook support; TikTok after 20 recorded demos; WhatsApp only for pilots | O7                                                                        |
+| D12 | Pilot of 3 to 5 UK organisations, up to 60 staff each, in two sectors (care plus one other)              | Pilot terms, below                                                        |
+| D13 | Move each decision to its owning document, then delete the pack                                          | Done 2026-10-21, this section                                             |
+
+**Pilot terms** (D12, proposed to the owner): free during the pilot, then the trial
+terms that apply to everyone; a weekly 15-minute call and real feedback; a signed data
+processing agreement before any real staff data goes in; and from RotaFlow a named
+contact, a stated response time, an export on request and deletion on exit.
+
+**Phases**, in dependency order: facts (alerts reach a person), safe to hold real data
+(every P0 closed), pilot (both organisation and staff loops run by every pilot with no
+P0 or unexplained P1), professional finish (design, website, content, social), paid
+launch (billing scenarios pass in test mode, then one supervised live payment).
+
 ## §0 How to use this file
 
 **The rule: any PR that changes a capability's status updates its row in the same PR.**
