@@ -30,6 +30,14 @@ Dependabot may be grouped into one line per week. The rule sits under
   every five minutes. The Documents dialog uploads a file and opens it through a
   60-second signed link. Needs `supabase functions deploy purge-storage` before
   files are actually removed.
+- **fix(calendar): a feed nobody reads stops working, and one read too often is
+  refused (GAP-052).** `0158` makes `calendar_feed_shifts` return nothing for a
+  token no calendar has read for 90 days, and revoke it, and limits reads to 120 an
+  hour per staff record through `consume_rate_limit`. `calendar-feed` answers the
+  refusal with 429 and `Retry-After`, and its iCalendar code moved to a tested
+  module. "My rota" shows when a calendar last read the feed and gains a Reset
+  link, so rotating no longer depends on support. The migration applies on merge;
+  the Edge Function needs a manual deploy.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating

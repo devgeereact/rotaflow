@@ -625,7 +625,12 @@ the edge function does.
 
 **C23 — calendar feed.** Deployed `--no-verify-jwt`; the token in the query
 string _is_ the credential, and the function's own header says the URL is
-assumed leakable. Revocable, and revoked by erasure since `0111`.
+assumed leakable. Revocable, and revoked by erasure since `0111`. Since `0158`
+(GAP-052) a token that no calendar has read for 90 days stops working and is
+revoked on its next read, and more than 120 reads an hour for one person are
+refused with 429. The person rotates the link from "My rota" (Reset link). The
+token still travels in the query string, so it still reaches platform request
+logs: that is the cost of a client that cannot send a header.
 
 ---
 

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { env } from '@/lib/env';
+import type { CalendarFeedRow } from '@/lib/calendarFeed';
 
 /**
  * The subscribable calendar feed for the signed-in person's own rota
@@ -18,20 +19,24 @@ import { env } from '@/lib/env';
  *
  * A calendar client cannot present a header, so the token lives in the query
  * string. It reads one person's own published shifts and nothing else, and it
- * is revocable and rotatable from the same screen that shows it. Treat it as
- * something worth keeping private, not as a password.
+ * is rotatable from the same screen that shows it ("Reset link" on My rota).
+ * Treat it as something worth keeping private, not as a password.
+ *
+ * A link no calendar reads for 90 days stops working (GAP-052, `0158`);
+ * `calendarFeedState` in `src/lib/calendarFeed.ts` decides that from the row
+ * this returns, because the database only marks it revoked on the next read.
  */
 
 /** Null when the person has no live feed — the normal state until they ask. */
-export async function getMyCalendarFeedToken(orgId: string): Promise<string | null> {
+export async function getMyCalendarFeed(orgId: string): Promise<CalendarFeedRow | null> {
   const { data, error } = await supabase
     .from('calendar_feed_tokens')
-    .select('token')
+    .select('token, created_at, last_used_at')
     .eq('org_id', orgId)
     .is('revoked_at', null)
     .maybeSingle();
   if (error) throw error;
-  return data?.token ?? null;
+  return data ?? null;
 }
 
 /**
