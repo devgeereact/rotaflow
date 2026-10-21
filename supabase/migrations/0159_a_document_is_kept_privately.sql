@@ -134,10 +134,15 @@ as $$
     when p_name is null
       or p_name !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[^/]+$'
       then false
-    else
+    -- coalesce: a caller with no staff record in that organisation gets a
+    -- null from my_staff_profile_id, and `false or null` is null. A policy
+    -- reads null as no, but a helper that answers "maybe" is a trap for the
+    -- next caller that is not a policy.
+    else coalesce(
       public.has_org_role(split_part(p_name, '/', 1)::uuid, array['owner', 'manager'])
       or split_part(p_name, '/', 2)::uuid
-         = public.my_staff_profile_id(split_part(p_name, '/', 1)::uuid)
+         = public.my_staff_profile_id(split_part(p_name, '/', 1)::uuid),
+      false)
   end;
 $$;
 
