@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { Image, Mail, Phone, User } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -7,6 +8,8 @@ import { getProfile, updateProfile } from '@/services/profileService';
 import { getMyStaffProfile, updateStaffProfile } from '@/services/staffService';
 import { roleLabels, type SystemRole } from '@/lib/orgPreferences';
 import { getOrganisation } from '@/services/orgService';
+import { listMyAuditLogs, type AuditLogEntry } from '@/services/auditService';
+import { formatAuditAction } from '@/lib/auditActions';
 import { reportError } from '@/lib/sentry';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -73,6 +76,7 @@ export function ProfilePage(): JSX.Element {
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [labels, setLabels] = useState<Record<SystemRole, string> | null>(null);
+  const [activity, setActivity] = useState<AuditLogEntry[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -80,10 +84,12 @@ export function ProfilePage(): JSX.Element {
     setLoading(true);
     void (async () => {
       try {
-        const [profile, staffProfile, org] = await Promise.all([
+        const [profile, staffProfile, org, recent] = await Promise.all([
           getProfile(user.id),
           orgId ? getMyStaffProfile(orgId, user.id).catch(() => null) : null,
           orgId ? getOrganisation(orgId).catch(() => null) : null,
+          // Non-fatal: a nicety beside the form, never a reason to fail it.
+          orgId ? listMyAuditLogs(orgId, user.id, 5).catch(() => []) : [],
         ]);
         if (!active) return;
         setFullName(profile?.full_name ?? '');
@@ -92,6 +98,7 @@ export function ProfilePage(): JSX.Element {
         setPhone(staffProfile?.phone ?? '');
         setPhotoUrl(staffProfile?.photo_url ?? '');
         setLabels(org ? roleLabels(org.settings) : null);
+        setActivity(recent);
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'account-profile:load' });
@@ -291,26 +298,73 @@ export function ProfilePage(): JSX.Element {
         )}
       </div>
 
-      <SettingsSection title="Role & access" description="What you can see and do.">
-        {role ? (
-          <div>
-            <Badge
-              tone={
-                role === 'owner' ? 'primary' : role === 'manager' ? 'info' : 'neutral'
-              }
-            >
-              {labels?.[role] ?? role}
-            </Badge>
-            <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
-              {ROLE_SCOPE[role]}
+      <div className="space-y-6">
+        <SettingsSection title="Role & access" description="What you can see and do.">
+          {role ? (
+            <div>
+              <Badge
+                tone={
+                  role === 'owner' ? 'primary' : role === 'manager' ? 'info' : 'neutral'
+                }
+              >
+                {labels?.[role] ?? role}
+              </Badge>
+              <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
+                {ROLE_SCOPE[role]}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              No role assigned in this organisation.
             </p>
-          </div>
-        ) : (
-          <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            No role assigned in this organisation.
-          </p>
-        )}
-      </SettingsSection>
+          )}
+        </SettingsSection>
+
+        {/* The reference's "Recent account activity" card. Only the caller's
+          own audited actions in this organisation, which is what the read
+          policy admits (0016); the full list is the Activity tab. */}
+        <SettingsSection
+          title="Recent account activity"
+          description="What you have done in this organisation lately."
+        >
+          {activity.length === 0 ? (
+            <p className="text-sm text-content-muted dark:text-content-muted-dark">
+              Nothing recorded yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-divider text-sm dark:divide-divider-dark">
+              {activity.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex items-baseline justify-between gap-3 py-2.5"
+                >
+                  <span className="text-content dark:text-content-dark">
+                    {formatAuditAction(entry.action)}
+                  </span>
+                  <span className="shrink-0 font-mono text-xs text-content-muted dark:text-content-muted-dark">
+                    {formatActivityTime(entry.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            to="/app/account/activity"
+            className="mt-3 inline-block text-sm font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+          >
+            View all activity
+          </Link>
+        </SettingsSection>
+      </div>
     </div>
   );
+}
+
+function formatActivityTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

@@ -25,6 +25,27 @@ import { defaultSettingsPath, settingsTabsForRole } from '@/lib/settingsTabs';
  * with no tab pointing at it. There is no state in which the bar silently
  * does not exist.
  */
+/**
+ * One line per section, as each reference screen has under its title.
+ * Written for what each section
+ * really does here, not copied from the mockups, several of which describe
+ * subsystems that do not exist (a template library, an integrations catalogue).
+ */
+const SECTION_DESCRIPTIONS: Record<string, string> = {
+  '/app/settings/organisation':
+    'Your organisation’s details, preferences and whether support may open your data.',
+  '/app/settings/permissions': 'Who can sign in, and the role each person holds.',
+  '/app/settings/roles': 'What each role can see and change.',
+  '/app/settings/policies':
+    'The working-time, break, holiday and swap rules your rotas are checked against.',
+  '/app/settings/notifications':
+    'What your organisation tells staff about, and on which channels.',
+  '/app/settings/integrations':
+    'Send notification emails from your own address instead of the shared sender.',
+  '/app/settings/billing': 'Your plan, payment details and invoices.',
+  '/app/settings/audit': 'Who did what in your organisation, and when.',
+};
+
 export function SettingsLayout(): JSX.Element {
   const { role, orgName } = useOrg();
   const location = useLocation();
@@ -40,8 +61,11 @@ export function SettingsLayout(): JSX.Element {
   return (
     <div>
       <PageHeader
-        title={active ? `${active.label} settings` : 'Settings'}
-        description={`Manage ${orgName || 'your organisation'}'s details, preferences and platform configuration.`}
+        title={active ? `Settings: ${active.label}` : 'Settings'}
+        description={
+          (active && SECTION_DESCRIPTIONS[active.to]) ??
+          `Manage ${orgName || 'your organisation'}'s details, preferences and platform configuration.`
+        }
         below={
           <>
             <Tabs items={tabs} label="Settings sections" />
