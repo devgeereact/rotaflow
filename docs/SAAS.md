@@ -62,8 +62,9 @@ holds its status and evidence.
 5. **Invoice follow-ups.** GAP-128 (billing contact to Stripe), GAP-129 (expired
    hosted link).
 6. **Calendar feed**: an expiring token and a rate limit. GAP-052.
-7. **"Your data" page** in My account, routed into the existing GDPR case process.
-   GAP-057.
+7. **Account deletion behind an erasure request.** The "Your data" page now files
+   requests in the GDPR register (`0160`); closing an erasure case still leaves the
+   `auth.users` row, so the deletion step is the open half. GAP-057.
 8. **Re-test the recovered defects**, BUG-015 first. GAP-115.
 9. **Design match.** Compare the thirteen workspace screens and the marketing home
    with their references (GAP-088, `docs/UX-SPEC.md#design-match-loop`), and re-check
@@ -76,8 +77,9 @@ holds its status and evidence.
     `qa/LAUNCH-CHECKLIST.md`.
 13. **Website and landing finish**: device-frame screenshots, entrance-only hero
     motion, prerender, JSON-LD and a real 404. No row yet; this line is its home.
-14. **Locale-aware formatting** in one module as screens are touched (there is no
-    `src/lib/format.ts` yet). No row yet.
+14. **Locale-aware formatting**: `src/lib/format.ts` exists (2026-10-21) and the
+    account screens use it; the remaining inline `toLocaleString('en-GB')` calls
+    move to it as each screen is touched. No row; this line is its home.
 15. **Pilot-facing extras**: payroll CSV presets checked by a pilot's payroll person,
     annual billing at two months free and the "ex VAT" display once VAT is settled
     (D3), sidebar grouping only if two managers find things faster with it. No rows
@@ -177,7 +179,7 @@ launch (billing scenarios pass in test mode, then one supervised live payment).
 The unbuilt part of the plan pack's feature list. **P1** means before or during the
 pilot, **P2** after the pilot shows a need. Each becomes a `CAP-` row when work
 starts. Already built from the same list: the trial (CAP-125), website enquiries
-(CAP-126), invoices in the app (CAP-127), policy-driven working-time warnings, the
+(CAP-126), the "Your data" page (GAP-057), invoices in the app (CAP-127), policy-driven working-time warnings, the
 phone Requests switcher and announcement read receipts (CAP-027).
 
 | Feature                                | Smallest version                                                                                | Priority |
@@ -187,7 +189,6 @@ phone Requests switcher and announcement read receipts (CAP-027).
 | "What changed" summary on publish      | Added, moved and removed shifts shown before Publish and in the staff notification              | P1       |
 | My next shifts available offline       | A read-only cache of the person's own next 14 days, with its "last updated" time                | P2       |
 | Missed clock-in follow-up list         | A "Didn't clock in" filter on Attendance, from the existing state machine                       | P1       |
-| "Your data" page                       | Request a copy or closure through the existing GDPR case process (GAP-057)                      | P1       |
 | Change my email                        | A verified change through Supabase Auth (GAP-085)                                               | P1       |
 | Trial and payment emails               | "Trial ends in 3 days" and "Payment failed" through the existing outbox (GAP-127)               | P1       |
 | Annual billing                         | Annual Stripe prices and a toggle (D3)                                                          | P2       |
@@ -270,7 +271,7 @@ P1 was reachable by any existing check, and both now have one: `e2e/staff-dashbo
 A sixth defect, GAP-123, was a missing rule rather than a broken one — nothing stopped a person
 booking the same days off twice, and the entitlement was then spent twice on days they were absent
 for once. It was recorded as a decision first and closed on the owner's instruction the same day by
-`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took the tree to 155. `0156` (an invoice keeps its Stripe hosted page and PDF links, CAP-127) took `main` to 156 migrations.
+`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took the tree to 155. `0156` (an invoice keeps its Stripe hosted page and PDF links, CAP-127) took the tree to 156. `0160` (a person can ask for their own data, GAP-057) took `main` to 157 migrations; `0157` to `0159` are reserved by branches in flight.
 
 ### What production actually holds, 2026-08-31
 
@@ -1438,7 +1439,7 @@ luck, and the three that luck missed cannot be got back.
 | GAP-054 | Nothing exercises the service worker, manifest or update prompt in a browser | 🟠 **Opened 2026-09-04.** Sibling to GAP-050, which covers offline only. `UpdatePrompt` now has unit coverage, but no test installs a second service worker, so the update path — the one that decides whether a user is ever moved off a broken build — is verified by reasoning alone. | P2 |
 | GAP-055 | The public site has no structured data and one shared link preview | ⚫ **Opened 2026-09-04, deferred.** `usePageMetadata` sets a per-route title, description and canonical but never `og:image`/`twitter:image`, so every page shares the site card; there is no JSON-LD anywhere; and the manifest declares no `shortcuts`, `screenshots` or `categories`, with no maskable 192 icon, no dark-mode `theme-color` and no `apple-mobile-web-app-title`. All cosmetic-to-discovery, none blocking. | P3 |
 | GAP-056 | Uploaded files survive erasure and organisation deletion | 🟠 **Opened 2026-09-04.** `anonymize_staff_member` (`0111`) deletes the `documents` row and nulls `photo_url`; the file behind `documents.file_url` is untouched, because nothing in this repository manages the store it lives in. `delete_organisation` (`0063`) has the same hole. So an erasure that the register records as complete leaves a photograph or a right-to-work scan reachable at a URL. Both export functions already warn that files are not included, which is the same fact seen from the other side. The Documents dialog now says so at the point somebody adds one, and the Privacy Notice says so where it describes erasure — but a notice admitting a gap is a disclosure, not a fix. Needs an owner decision about the image host before it can close. | P1 |
-| GAP-057 | No self-service subject access or account deletion | 🟡 **Opened 2026-09-04.** A manager can export one person's record (13 datasets, `gdprService.ts`) and an owner can anonymise them, but an individual has no control of their own: the routes under `/app/account` are Profile, Preferences, Security, Connected accounts, Sessions, Tokens and Activity, and none offers an export or a deletion. `auth.users` is never touched by erasure at all (`0011:4-11`), so there is no account deletion in any sense. The request route is email into `gdpr_requests`, which is case-managed and real, and the Privacy Notice now says plainly that there is no button rather than implying there is. Correct as an interim position; not a permanent one. | P2 |
+| GAP-057 | No account deletion behind an erasure request | 🟡 **Narrowed 2026-10-21.** My account now has a "Your data" tab (`/app/account/data`) that files an access, portability, correction or erasure request for the signed-in person in the `0020` register through `request_my_data` (`0160`), and lists their own requests with the deadline that applies (`my_data_requests`). The subject is taken from `auth.users`, so nothing on the page can name somebody else, a repeat of an open kind returns the open case, and the outcome note stays in the case file. Asserted in `supabase/tests/database/own_data_requests.test.sql`. What stays open is the second half of the title: closing an erasure case still never touches `auth.users`. **Opened 2026-09-04.** A manager can export one person's record (13 datasets, `gdprService.ts`) and an owner can anonymise them, but an individual has no control of their own: the routes under `/app/account` are Profile, Preferences, Security, Connected accounts, Sessions, Tokens and Activity, and none offers an export or a deletion. `auth.users` is never touched by erasure at all (`0011:4-11`), so there is no account deletion in any sense. The request route is email into `gdpr_requests`, which is case-managed and real, and the Privacy Notice now says plainly that there is no button rather than implying there is. Correct as an interim position; not a permanent one. | P2 |
 | GAP-058 | Emergency contacts hold third-party data with no rights channel | 🟡 **Opened 2026-09-04.** `emergency_contacts` holds a named person's relationship, two phone numbers and a free-text `medical_notes` field — Article 9 health data about somebody who never visited the site, has not been told, and has no way to ask. UK GDPR Article 14 normally requires that person to be informed. The dialog now tells the staff member entering it that these are somebody else's details and to ask them first, which is the only lever the product has. Whether an exemption applies, and how the duty divides between the employer as controller and us as processor, is a question for counsel. **Narrowed 2026-10-11 (plan S1, decision D5):** the medical notes field is gone from `EmergencyContactsModal.tsx`, both the input and the display, and the client no longer writes it: `emergencyContactService.ts` builds the insert field by field and reads named columns, and the client types omit `medical_notes`. The leave reason field now says "Please don't include medical details." **Not done, deliberately:** the column and the values already in it are untouched, because removing them is a migration with a `SAFETY` note that needs the owner's approval (export each organisation's values to its owner first, then null the column). Until then the subject-access export (`gdprService.ts`, `select('*')`) still discloses any stored value to the person it is about. The Article 14 half of this row is unchanged. | P2 |
 | GAP-059 | No ICO registration, and no answer on an EU representative | 🔴 **Opened 2026-09-04.** RotaFlow is operated by a UK sole trader and is not registered with the Information Commissioner's Office; most UK organisations processing personal data must register and pay the data protection fee. The product is also intended for EEA users, which raises an Article 27 representative question nobody has answered. Neither is a code defect and neither can be closed from this repository — but the Privacy Notice cannot honestly be published as final until both are settled, so the draft names them where the operator's identity is given. | P1 |
 | GAP-060 | No age field, in a product that schedules young workers | 🟡 **Opened 2026-09-04.** There is no `date_of_birth` column anywhere, no age check at sign-up and no minimum age in the terms. The sectors this is built for — hospitality, retail, care — employ people at sixteen and seventeen, and UK working-time rules for young workers differ from those for adults, so the rules engine cannot apply the right ones because it does not know which is which. That is a product gap with a legal edge rather than a pure compliance one. | P2 |

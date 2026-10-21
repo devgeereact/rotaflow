@@ -276,7 +276,9 @@ New functions worth knowing before writing a query: `my_sessions()` /
 (`0103`), `labour_cost()` / `current_pay_rates()` (`0104`),
 `staff_at_location()` (`0105`), `delegate_role()` / `revoke_delegation()`
 (`0106`), `repeat_rota_weeks()` (`0107`), `render_notification()` (`0108`),
-`leave_days()` (`0109`), `support_sla_state()` (`0110`).
+`leave_days()` (`0109`), `support_sla_state()` (`0110`), and later
+`request_my_data()` / `my_data_requests()` (`0160`), a person's own UK GDPR
+requests in the `gdpr_requests` register.
 
 **Two predicates changed behaviour**, which matters more than any new table:
 `is_platform_admin()` gained an MFA condition (`0102`) and `has_org_role()`
