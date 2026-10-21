@@ -37,7 +37,7 @@ alongside light ones, don't defer them.
 
 ### Visual language (Tesla-inspired, adopted 2026-10-12)
 
-The owner's decision D10 (`docs/Plans 2026/04-DESIGN-AND-EXPERIENCE.md` §2a)
+The owner's decision D10 (recorded in the work queue in `docs/SAAS.md`)
 adopts a quiet, flat, monochrome-plus-one visual language. The rules below were
 taken from a generated design reference and merged here by hand; the reference
 file itself was read outside the repository and discarded. **Source credit:**
@@ -605,7 +605,7 @@ judgement, payroll provider, or employment-law advice.
 ### Approved website claims
 
 The public site's headline claims, set on 11 October 2026 (work package WP-F,
-`docs/Plans 2026/06-WEBSITE-AND-CONTENT.md` §3). Each is checked against the
+the 2026 plan pack's positioning section). Each is checked against the
 code named beside it. Change the claim and the evidence together.
 
 | Use this                                                                                                                            | Not this                                                              | Evidence                                                           |
@@ -629,7 +629,7 @@ stats band reappears only when `TRACTION` holds real, sourced figures.
 ### Words in the product
 
 Sentence case, British English, no exclamation marks and no em dashes in UI copy.
-One term for one thing (adopted 2026-10-11, from `docs/Plans 2026/04-DESIGN-AND-EXPERIENCE.md` §8):
+One term for one thing (adopted 2026-10-11, from the 2026 plan pack's design guide):
 
 | Use                                            | Not                                        |
 | ---------------------------------------------- | ------------------------------------------ |

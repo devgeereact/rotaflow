@@ -13,6 +13,16 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
+  opens with a work queue: owner actions, the ranked next items, what is built but
+  never proved on real infrastructure, an index of the `qa/` evidence, operating
+  lessons, the thirteen approved plan decisions with where each now lives, and the
+  unbuilt feature candidates. The pack's release gate and billing scenarios moved to
+  `qa/LAUNCH-CHECKLIST.md`, its alerting gaps to `docs/DEPLOYMENT.md` and its offline
+  promise to `docs/ARCHITECTURE.md`; then `docs/Plans 2026/` was deleted, on the
+  owner's approval. The register's contradictions with itself were settled (Stripe
+  test key, backup secrets, decisions 7 and 11, BUG-014, struck and unstruck rows,
+  the roadmap).
 - **feat(billing): invoices in the app (plan F3, CAP-127).** `0156` adds
   `hosted_invoice_url` and `invoice_pdf` to `invoices`, each constrained to https
   on `invoice.stripe.com` or `pay.stripe.com`. `stripe-webhook` writes them on

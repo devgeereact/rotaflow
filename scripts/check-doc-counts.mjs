@@ -332,7 +332,7 @@ function safeDecode(s) {
 
 const LINK_SCOPE = [
   (f) => !f.includes('/') && f.endsWith('.md'),
-  (f) => f.startsWith('docs/') && f.endsWith('.md') && !f.startsWith('docs/Plans 2026/'),
+  (f) => f.startsWith('docs/') && f.endsWith('.md'),
   (f) => f.startsWith('qa/') && f.endsWith('.md'),
   (f) => f.startsWith('.agent/') && f.endsWith('.md'),
   (f) => f.startsWith('.claude/agents/') && f.endsWith('.md'),
