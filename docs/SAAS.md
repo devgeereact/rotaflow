@@ -30,20 +30,20 @@ not in this section or in a row this section links to, it is not tracked.
 
 Each needs the owner's account, money, signature or a production change.
 
-| #   | Action                                                                                                                                                                 | Unblocks                                   |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| O1  | Mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September)                                | GAP-036                                    |
-| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and the REST endpoint                 | `docs/DEPLOYMENT.md#alert-owners`, GAP-036 |
-| O3  | Merge #338 (it applies `0154` to `0156` to production on merge), then deploy `public-enquiry`, `stripe-webhook` and `create-checkout-session` by name                  | CAP-126, CAP-127, BUG-107, BUG-108         |
-| O4  | Move to a paid Supabase plan with PITR (decision D6: RPO 15 minutes, RTO 4 hours), keep an off-site backup copy, and rehearse one restore into a real Supabase project | GAP-001, CAP-095, CAP-107                  |
-| O5  | Put one Stripe test-mode charge through Checkout, then authorise one supervised live charge                                                                            | CAP-036                                    |
-| O6  | Decide sole trader or limited company (D7), have Terms, Privacy and a DPA reviewed, and pay the ICO fee                                                                | GAP-059                                    |
-| O7  | Run a UKIPO search in classes 9 and 42 (D1), then claim one suffixed handle everywhere (D11)                                                                           | §5a naming paragraph                       |
-| O8  | Run both loops on a real iPhone and a real Android phone: a push received, a clock-in queued offline and sent                                                          | CAP-023a, CAP-106                          |
-| O9  | Use a real authenticator once, then switch on `require_mfa`                                                                                                            | CAP-049                                    |
-| O10 | Turn on Turnstile and leaked-password protection in Supabase Auth (the second needs the paid plan in O4)                                                               | GAP-033, GAP-034                           |
-| O11 | Export existing `medical_notes` values for the owner, so the column can be purged (D5)                                                                                 | GAP-058                                    |
-| O12 | Close or rebase the bot branch `plan-drift-audit/weekly` (do not merge it as written: it rewrites the maturity line), and decide Dependabot #342 (vitest 5 fails CI)   | GAP-037                                    |
+| #   | Action                                                                                                                                                                                        | Unblocks                                             |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| O1  | Mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September)                                                       | GAP-036                                              |
+| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and the REST endpoint                                        | `docs/DEPLOYMENT.md#alert-owners`, GAP-036           |
+| O3  | Merge #338 (it applies `0154` to `0156` to production on merge), then deploy `public-enquiry`, `stripe-webhook`, `create-checkout-session` and (once its PR merges) `billing-account` by name | CAP-126, CAP-127, BUG-107, BUG-108, GAP-128, GAP-129 |
+| O4  | Move to a paid Supabase plan with PITR (decision D6: RPO 15 minutes, RTO 4 hours), keep an off-site backup copy, and rehearse one restore into a real Supabase project                        | GAP-001, CAP-095, CAP-107                            |
+| O5  | Put one Stripe test-mode charge through Checkout, then authorise one supervised live charge                                                                                                   | CAP-036                                              |
+| O6  | Decide sole trader or limited company (D7), have Terms, Privacy and a DPA reviewed, and pay the ICO fee                                                                                       | GAP-059                                              |
+| O7  | Run a UKIPO search in classes 9 and 42 (D1), then claim one suffixed handle everywhere (D11)                                                                                                  | §5a naming paragraph                                 |
+| O8  | Run both loops on a real iPhone and a real Android phone: a push received, a clock-in queued offline and sent                                                                                 | CAP-023a, CAP-106                                    |
+| O9  | Use a real authenticator once, then switch on `require_mfa`                                                                                                                                   | CAP-049                                              |
+| O10 | Turn on Turnstile and leaked-password protection in Supabase Auth (the second needs the paid plan in O4)                                                                                      | GAP-033, GAP-034                                     |
+| O11 | Export existing `medical_notes` values for the owner, so the column can be purged (D5)                                                                                                        | GAP-058                                              |
+| O12 | Close or rebase the bot branch `plan-drift-audit/weekly` (do not merge it as written: it rewrites the maturity line), and decide Dependabot #342 (vitest 5 fails CI)                          | GAP-037                                              |
 
 ### 2. Next up, for an agent
 
@@ -58,9 +58,10 @@ holds its status and evidence.
    tests, erasure and organisation deletion remove the files. GAP-056, GAP-084.
 3. **Purge `medical_notes`** once O11 is done: a migration that drops the column.
    GAP-058.
-4. **Trial reminder email** before a no-card trial ends. GAP-127.
-5. **Invoice follow-ups.** GAP-128 (billing contact to Stripe), GAP-129 (expired
-   hosted link).
+4. **Trial reminder email**: built in `0157`, live once its migration merges. GAP-127.
+5. **Invoice follow-ups**: built in `billing-account`, live once deployed (O3). Still
+   open: `invoice.finalized` is not subscribed, so an unpaid invoice is listed only
+   once it is paid or fails. GAP-128, GAP-129.
 6. **Calendar feed**: an expiring token and a rate limit. GAP-052.
 7. **"Your data" page** in My account, routed into the existing GDPR case process.
    GAP-057.
@@ -189,7 +190,6 @@ phone Requests switcher and announcement read receipts (CAP-027).
 | Missed clock-in follow-up list         | A "Didn't clock in" filter on Attendance, from the existing state machine                       | P1       |
 | "Your data" page                       | Request a copy or closure through the existing GDPR case process (GAP-057)                      | P1       |
 | Change my email                        | A verified change through Supabase Auth (GAP-085)                                               | P1       |
-| Trial and payment emails               | "Trial ends in 3 days" and "Payment failed" through the existing outbox (GAP-127)               | P1       |
 | Annual billing                         | Annual Stripe prices and a toggle (D3)                                                          | P2       |
 | What's new panel, in-app help articles | From the console content source once it exists (D9)                                             | P2       |
 | Status notice on the website           | One line from `site_settings` or a public incident flag                                         | P2       |
@@ -270,7 +270,7 @@ P1 was reachable by any existing check, and both now have one: `e2e/staff-dashbo
 A sixth defect, GAP-123, was a missing rule rather than a broken one — nothing stopped a person
 booking the same days off twice, and the entitlement was then spent twice on days they were absent
 for once. It was recorded as a decision first and closed on the owner's instruction the same day by
-`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took the tree to 155. `0156` (an invoice keeps its Stripe hosted page and PDF links, CAP-127) took `main` to 156 migrations.
+`0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took the tree to 155. `0156` (an invoice keeps its Stripe hosted page and PDF links, CAP-127) took the tree to 156, and on 2026-10-21 `0157` (an owner is reminded three days before the free trial ends, GAP-127) took `main` to 157 migrations.
 
 ### What production actually holds, 2026-08-31
 
@@ -614,9 +614,11 @@ itself: a restore, a real charge, and a phone.
       subscription or a grace window the organisation is read-only: rotas, shifts and invites
       refuse authenticated writes with `BILL1`, plan features stop, and clock-in, leave, reads
       and exports keep working. Checkout carries the trial into Stripe (`trial_end`) and the
-      webhook queues "Your trial ends in 3 days" and "Payment failed". Partial because the
-      no-card trial has no reminder email (GAP-127) and no Stripe trial has been run in test mode
-      `supabase/migrations/0154_a_trial_then_a_plan.sql` · GAP-126 closed · 17 pgTAP assertions
+      webhook queues "Your trial ends in 3 days" and "Payment failed". The no-card trial's
+      owner is reminded three days before it ends (`0157`, GAP-127). Partial because no Stripe
+      trial has been run in test mode
+      `supabase/migrations/0154_a_trial_then_a_plan.sql` · GAP-126 closed · 17 pgTAP assertions ·
+      `supabase/tests/database/trial_end_reminder.test.sql` (8)
 
 ### Security
 
@@ -979,7 +981,7 @@ itself: a restore, a real charge, and a phone.
       need capture are already named in OBSERVABILITY — rota-session starts, schedule views,
       an explicit AI-suggestion outcome, and Web Vitals
       `docs/PRODUCT-SPEC.md#metrics-and-events` · P3
-- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all nine Edge Functions via
+- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all ten Edge Functions via
       `_shared/sentry.ts`; the Stripe webhook no longer fails into a log nobody reads
       `supabase/functions/_shared/sentry.ts` · HARDEN-005 closed #216 · deployed 2026-08-31
 - [x] CAP-104 🟢 Query shape — 16 composite indexes cover the predicates the app issues; the
@@ -1221,9 +1223,9 @@ relationship was found`. Every read of a swap has failed since that migration me
       (and platform billing roles) read a row. From the 2026 plan pack.
       **Partial because:** the webhook change has not been deployed, so no stored invoice has
       a link yet, and none has been written from a real Stripe event. Stripe expires these
-      links within 120 days, so an older row's link opens Stripe's "expired" page; the screen
-      says so and points at the portal (GAP-129). The billing contact still cannot be sent to
-      Stripe (GAP-128).
+      links within 120 days; "Refresh links" now asks Stripe for working ones, and "Use for
+      Stripe invoices" sends the billing contact to the Stripe customer, both through the
+      owner-only `billing-account` function, which is not deployed yet (GAP-128, GAP-129).
       **Evidence:** `supabase/tests/database/invoice_documents.test.sql` (14) ·
       `supabase/functions/stripe-webhook/reconcile.test.ts` (invoice documents block) ·
       `src/components/settings/BillingInvoices.test.tsx` (5) · `src/lib/billingState.test.ts`
@@ -1566,9 +1568,9 @@ luck, and the three that luck missed cannot be got back.
 | ~~BUG-105~~ | Staff were greeted "Good morning" at every hour | The greeting matches the clock | 🟢 **Closed 2026-09-11.** The string was hardcoded, and the date beside it was formatted in the browser's zone rather than the organisation's. This is a product for people who work nights: a care assistant opening the app at the start of a 22:00 shift was told good morning by their employer's software. `greeting(now, timezone)` in `dashboardFormat.ts` with five unit tests, including the 22:00 case, a cross-timezone instant and a clock-change date. | P3 Merging the two passes then found a third thing: `e2e/staff-dashboard.spec.ts`, written the same week to prove a staff member reaches their dashboard, asserted the heading `/Good morning/`. That pinned the hour rather than the role, so it passed only between 05:00 and noon; it now accepts any of the three greetings. Neither branch's tests were wrong alone. |
 | ~~BUG-109~~ | Organisation workspace defects O1 to O13 (from the 2026 plan pack) | 🟢 **Closed 2026-10-11, locally; not yet merged.** O1: `/app/settings` lands on the first tab the role can use (`defaultSettingsPath`), so a manager reaches Roles instead of an owner-only refusal. O2: Organisation and Audit are hidden from managers like Billing and Permissions, and global search follows. O3: the title is "Organisation settings", not "Settings, Organisation". O4: a phone-only Leave · Swaps · Overtime switch (`RequestsLayout`) makes the Requests tab reach all three, and the tab stays lit on each. O5: one name, "My account"; API Tokens is out of the tab bar, its route kept. O6: onboarding ends with "Build your first rota" and "Open setup checklist". O7: open shift times use the organisation's clock. O8: the SMTP verified time is `en-GB` in the organisation's zone. O9: `LabourCostCard` uses `lib/money.ts`. O10: the phone tab is "Rota" for managers and "My rota" for staff. O11 and O12: sentence case and no exclamation marks (`docs/DESIGN-SYSTEM.md`, "Words in the product"). O13: the four "Something went wrong" messages say what failed and what to do. **Not verified:** Playwright, real devices, and any user observation. Tap-target sizes deliberately untouched pending the owner's decision. | P2 |
 | ~~GAP-126~~ | An organisation that never paid kept Starter limits for ever | Unpaid means read-only, not free | 🟢 **Opened and closed 2026-10-12 by `0154`, owner decision D2.** `0120` fell back to `starter`, "the free tier", for anything not entitled, while Starter costs £29 and the pricing FAQ said every plan was paid. Every organisation now starts a 30-day trial on Professional limits (`organisations.trial_ends_at`, server-set), and after it, with no active or trialing subscription and no grace window, `org_is_read_only` is true and BEFORE triggers refuse rota, shift and invite writes with `BILL1`. Clock-in, leave, reads and exports are untouched. Existing organisations were given 30 days from the migration. `trial_then_read_only.test.sql`, 17 assertions; `plan_is_server_owned.test.sql` assertions 1 and 5 updated from `starter` to `professional` with the reason in the file | P1 |
-| GAP-127 | A no-card trial ends with no reminder email | An owner hears before the trial ends, not after | 🟡 **Opened 2026-10-12.** Stripe sends `customer.subscription.trial_will_end`, and the webhook queues "Your trial ends in 3 days", only for a **Stripe** trial, which exists once an owner has been through Checkout. The 30-day trial every organisation starts with lives in the database (`0154`), and nothing queues a reminder for it: the owner sees the trial countdown on Settings, Billing and, once it has ended, the read-only banner. The fix is one more fact in `enqueue_scheduled_alerts` (`0093`), deduplicated on the organisation and its trial end | P2 |
-| GAP-128 | The billing contact cannot be sent to Stripe | Invoices go to the address the owner chose | 🟡 **Opened 2026-10-12 (from the 2026 plan pack).** Settings, Billing shows the organisation's contact email as the billing contact, but nothing writes it to the Stripe customer, so Stripe emails receipts and invoices to whoever went through Checkout. No server path exists: no Edge Function calls `customers.update`, and the browser must not hold a Stripe key. The fix is a small owner-only Edge Function (caller's JWT, `has_org_role(owner)`, the stored `stripe_customer_id` in the stored `stripe_mode`) that sets the customer's `email`. Left out of CAP-127 to keep that change small | P3 |
-| GAP-129 | A stored invoice link expires | An owner can open any invoice they can see listed | 🟡 **Opened 2026-10-12.** Stripe expires a hosted invoice URL 30 days after its due date, never more than 120 days (https://docs.stripe.com/invoicing/hosted-invoice-page), and a fresh one comes only from retrieving the invoice. `0156` stores the link from the webhook, so a link on an invoice older than that opens Stripe's "expired" page. The screen says so and points at the Billing Portal, which lists every invoice. The fix is an owner-only Edge Function that retrieves the invoice by `provider_ref` and returns (or stores) the current links. Also open: `invoice.finalized` is not subscribed, so an invoice is listed only once paid or failed | P3 |
+| ~~GAP-127~~ | A no-card trial ended with no reminder email | An owner hears before the trial ends, not after | 🟢 **Opened 2026-10-12, closed 2026-10-21 by `0157`.** Stripe's `customer.subscription.trial_will_end` covers only a Stripe trial, so the 30-day trial every organisation starts with (`0154`) had no reminder. `enqueue_scheduled_alerts` (`0093`, every fifteen minutes) now also queues one `billing/trial_ending` notice to the active owners of an `active` organisation whose own trial ends within three days and whose billing state is still `trial`, deduplicated on the organisation and its trial end, so an extended trial is reminded again. It is a billing notice, so `send-notification` emails it under the owner's channel preferences. Applies to production when the migration merges; no deploy needed. **Evidence:** `supabase/tests/database/trial_end_reminder.test.sql` (8: one reminder, owner only, billing type, no repeat on a second run, none at ten days out, none once a plan is chosen, none when suspended, none after the trial ended) | P2 |
+| GAP-128 | The billing contact could not be sent to Stripe | Invoices go to the address the owner chose | 🟡 **Opened 2026-10-12, fixed in code 2026-10-21, not deployed.** The owner-only `billing-account` Edge Function (`sync_contact`, caller's JWT, active owner, stored `stripe_customer_id` in the stored `stripe_mode`) writes the organisation's contact email, read on the server the way the browser reads it, to the Stripe customer's `email`. Settings, Billing offers "Use for Stripe invoices" beside the billing contact once a Stripe customer exists. Not proved against Stripe: no test-mode run (O5), and the function is not deployed (O3). **Evidence:** `supabase/functions/billing-account/request.test.ts` | P3 |
+| GAP-129 | A stored invoice link expires | An owner can open any invoice they can see listed | 🟡 **Opened 2026-10-12, link refresh fixed in code 2026-10-21, not deployed.** Stripe expires a hosted invoice URL 30 days after its due date, never more than 120 days (https://docs.stripe.com/invoicing/hosted-invoice-page). "Refresh links" on each Stripe invoice calls `billing-account` (`invoice_links`), which reads the invoice row as the caller (so `invoices_select` decides), retrieves the stored `provider_ref` from Stripe and returns the current links through the webhook's own Stripe-host filter; the browser checks the hosts again before replacing a link. The fresh links are returned, not stored. Still open: `invoice.finalized` is not subscribed, so an invoice is listed only once paid or failed. **Evidence:** `supabase/functions/billing-account/request.test.ts` · `src/components/settings/BillingInvoices.test.tsx` (refresh block) | P3 |
 | ~~GAP-124~~ | Nothing had been driven through `/admin/*` as a real platform admin | The console is inspected, not assumed | 🟢 **Opened and closed 2026-09-10.** All fourteen console routes were driven at three viewport widths as a `platform_owner` against an isolated local stack. Every navigation link resolves to a real route. Three defects came out of it: BUG-098, BUG-099 and BUG-100. What is still not covered is the detail routes behind a row, which were reached only through their lists. | — |
 
 ## §8 Hardening register

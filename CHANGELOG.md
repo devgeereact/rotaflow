@@ -13,6 +13,15 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(billing): a trial reminder, the billing contact in Stripe and fresh
+  invoice links (GAP-127, GAP-128, GAP-129).** `0157` adds a free trial ending
+  within three days to `enqueue_scheduled_alerts`: the owners of an organisation
+  still on its own trial get one "Your free trial ends on" notice naming the date, in the app
+  and by email, and nothing once a plan is chosen. A new owner-only Edge Function,
+  `billing-account`, writes the organisation's contact email to the Stripe customer
+  ("Use for Stripe invoices") and returns an invoice's current hosted page and PDF
+  links ("Refresh links"), because Stripe expires a stored link within 120 days.
+  `0157` applies to production on merge; `billing-account` needs deploying by name.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating
