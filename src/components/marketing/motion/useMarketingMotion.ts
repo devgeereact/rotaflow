@@ -20,7 +20,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
  * A failed import (offline, since the chunk is deliberately not precached)
  * is swallowed: the page is complete without it.
  */
-export function useMarketingMotion(root: RefObject<HTMLElement>): void {
+export function useMarketingMotion(root: RefObject<HTMLElement | null>): void {
   const { pathname, hash } = useLocation();
   const allowMotion = useMediaQuery('(prefers-reduced-motion: no-preference)');
 
