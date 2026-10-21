@@ -189,6 +189,10 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
   deleted its last reader, because Vite inlines every `VITE_*` variable into
   `import.meta.env` whether code reads it or not. **Retiring a service means
   removing its variable from `.env`, then checking the built bundle.**
+- **The billing contact and invoice-link refresh need their function deployed**
+  (GAP-128, GAP-129): `supabase functions deploy billing-account`. It uses the
+  existing `STRIPE_MODE` and Stripe secret key; no new secret. Until then "Use for
+  Stripe invoices" and "Refresh links" on Settings, Billing show an error.
 - **The website contact form needs its function deployed** (CAP-126). Until then
   `/contact` shows the support address on every send. In order:
   1. `supabase secrets set ENQUIRY_IP_SALT=<a long random string>` (recommended; the
