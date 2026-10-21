@@ -12,7 +12,17 @@
  * dashboard mockup uses. Everything here is `aria-hidden`, a screen reader
  * gets the hero copy, which says the same thing in words, instead of a
  * meaningless tour of decorative cells.
+ *
+ * Motion, both halves of it optional: the shift chips fill the week in on the
+ * CSS `pop-in` keyframe (visible with no JavaScript, dropped under reduced
+ * motion), and `data-parallax` lets the marketing scroll motion drift the
+ * phone over the dashboard as the hero scrolls away.
  */
+
+/** When the rota chips start filling in: after the hero copy has landed. */
+const CHIP_DELAY_START_MS = 300;
+/** Between one chip and the next, reading left to right, row by row. */
+const CHIP_DELAY_STEP_MS = 18;
 
 const METRICS = [
   { label: 'On shift today', value: '41', tone: 'text-content dark:text-content-dark' },
@@ -71,7 +81,10 @@ export function ProductPreview(): JSX.Element {
         grid and half the "Open shifts" metric, which reads as a layout bug
         rather than as depth.
       */}
-      <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg lg:mr-40 dark:border-surface-border-dark dark:bg-surface-dark">
+      <div
+        data-parallax="frame"
+        className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg lg:mr-40 dark:border-surface-border-dark dark:bg-surface-dark"
+      >
         <div className="flex items-center gap-2 border-b border-surface-border px-4 py-3 dark:border-surface-border-dark">
           <span className="h-2.5 w-2.5 rounded-full bg-danger/60" />
           <span className="h-2.5 w-2.5 rounded-full bg-warning/60" />
@@ -135,7 +148,7 @@ export function ProductPreview(): JSX.Element {
                 ))}
               </div>
 
-              {ROWS.map(({ name, shifts }) => (
+              {ROWS.map(({ name, shifts }, row) => (
                 <div
                   key={name}
                   className="grid grid-cols-[minmax(0,1.4fr)_repeat(7,minmax(0,1fr))] border-b border-divider last:border-0 dark:border-divider-dark"
@@ -146,7 +159,14 @@ export function ProductPreview(): JSX.Element {
                   {shifts.map((shift, i) => (
                     <span key={i} className="p-1">
                       <span
-                        className={`flex h-7 items-center justify-center rounded ${shift ? CHIP[shift] : 'bg-divider dark:bg-divider-dark'}`}
+                        className={`flex h-7 items-center justify-center rounded ${shift ? `${CHIP[shift]} animate-pop-in motion-reduce:animate-none` : 'bg-divider dark:bg-divider-dark'}`}
+                        style={
+                          shift
+                            ? {
+                                animationDelay: `${CHIP_DELAY_START_MS + (row * DAYS.length + i) * CHIP_DELAY_STEP_MS}ms`,
+                              }
+                            : undefined
+                        }
                       >
                         {shift && (
                           <span className="font-mono text-[8px] font-semibold leading-none">
@@ -164,7 +184,10 @@ export function ProductPreview(): JSX.Element {
       </div>
 
       {/* Staff phone. The same week, published */}
-      <div className="absolute -bottom-8 -right-2 hidden w-52 rounded-[1.75rem] border-4 border-content/85 bg-surface shadow-lg lg:block dark:border-content-dark/20 dark:bg-surface-dark">
+      <div
+        data-parallax="phone"
+        className="absolute -bottom-8 -right-2 hidden w-52 rounded-[1.75rem] border-4 border-content/85 bg-surface shadow-lg lg:block dark:border-content-dark/20 dark:bg-surface-dark"
+      >
         <div className="rounded-t-[1.4rem] bg-primary px-4 pb-4 pt-5 text-primary-fg">
           {/* Not `opacity-80`: white at 80% over solid `bg-primary` reads at
               3.56:1, under the 4.5:1 small-text minimum. Full `text-primary-fg`

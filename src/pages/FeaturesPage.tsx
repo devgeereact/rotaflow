@@ -148,7 +148,10 @@ export function FeaturesPage(): JSX.Element {
           <ol className="space-y-6">
             {WORKFLOW.map(({ step, title, body, points }, i) => (
               <li key={step}>
-                <Card className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <Card
+                  data-reveal
+                  className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+                >
                   <div>
                     <div className="mb-3 flex items-center gap-3">
                       <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-sm font-bold text-primary-fg">
@@ -200,7 +203,7 @@ export function FeaturesPage(): JSX.Element {
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {PLATFORM.map(({ title, body }) => (
-            <Card key={title} className="h-full">
+            <Card key={title} data-reveal className="h-full">
               <h3 className="mb-1.5 font-display text-base font-semibold text-content dark:text-content-dark">
                 {title}
               </h3>

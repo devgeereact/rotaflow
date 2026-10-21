@@ -25,7 +25,10 @@ export function FinalCta({
 
   return (
     <section className="mx-auto max-w-6xl px-6 pb-24">
-      <div className="rounded-2xl border border-surface-border bg-surface p-10 text-center shadow-sm md:p-16 dark:border-surface-border-dark dark:bg-surface-dark">
+      <div
+        data-reveal
+        className="rounded-2xl border border-surface-border bg-surface p-10 text-center shadow-sm md:p-16 dark:border-surface-border-dark dark:bg-surface-dark"
+      >
         <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
           {heading}
         </h2>
