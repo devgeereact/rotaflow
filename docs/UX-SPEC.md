@@ -331,6 +331,14 @@ independently.
 The same rule governs feature claims: nothing goes in `PRODUCT_BENEFITS` that is
 not built, checked against this document first.
 
+It governs structured data too. Since 2026-10-21 `index.html` carries a JSON-LD
+block naming the publisher (`Organization`) and the product
+(`SoftwareApplication`), and nothing else: no `aggregateRating`, `review`, `award`
+or `offers`. Stars in search results would need reviews that do not exist, and a
+price there would be a copy of `PLANS` nothing reconciles.
+`src/lib/structuredData.test.ts` fails if any of those keys appear or the block
+stops parsing.
+
 ## Deleted from `docs/design/`
 
 `screenshoots/` — 21 screenshots, 14 MB, referenced by nothing in this repository and
