@@ -243,3 +243,88 @@ test.describe('reduced motion', () => {
     await context.close();
   });
 });
+
+/**
+ * The marketing scroll motion (GSAP + Lenis, `components/marketing/motion`)
+ * is the one place the product runs a JavaScript animation library, and the
+ * reason it was banned is a hero that once rendered invisible. These pin the
+ * rules it was allowed back under (docs/DESIGN-SYSTEM.md §4): it never loads
+ * under reduced motion, copy is readable before it arrives, everything ends
+ * at full opacity, and it does not break the skip link or a dialog's lock.
+ */
+test.describe('marketing scroll motion', () => {
+  const MOTION_MODULE = /marketingMotion|\/gsap|\/lenis/;
+
+  test('never loads under reduced motion', async ({ page }) => {
+    const requested: string[] = [];
+    page.on('request', (req) => {
+      if (MOTION_MODULE.test(req.url())) requested.push(req.url());
+    });
+    await acceptConsent(page);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await page.waitForTimeout(1000);
+
+    expect(requested).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.className)).not.toMatch(
+      /\blenis\b/,
+    );
+  });
+
+  test.describe('with motion allowed', () => {
+    test.use({ reducedMotion: 'no-preference' });
+
+    test('the hero is readable at once, and every section ends fully visible', async ({
+      page,
+    }) => {
+      await acceptConsent(page);
+      await page.goto('/');
+      await expect(
+        page.getByRole('heading', {
+          level: 1,
+          name: /rotas your team can actually follow/i,
+        }),
+      ).toBeVisible({ timeout: 1500 });
+      await expect(page.locator('html.lenis')).toHaveCount(1);
+
+      // Step down the page the way a reader does, so each batch fires.
+      const height = await page.evaluate(() => document.documentElement.scrollHeight);
+      for (let y = 0; y <= height; y += 400) {
+        await page.evaluate((top) => window.scrollTo(0, top), y);
+        await page.waitForTimeout(60);
+      }
+      await page.waitForTimeout(1200);
+
+      const faded = await page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'))
+          .map((el) => getComputedStyle(el).opacity)
+          .filter((opacity) => opacity !== '1'),
+      );
+      expect(faded).toEqual([]);
+    });
+
+    test('the skip link still moves focus to the content', async ({ page }) => {
+      await acceptConsent(page);
+      await page.goto('/');
+      await expect(page.locator('html.lenis')).toHaveCount(1);
+
+      await page.keyboard.press('Tab');
+      await expect(
+        page.getByRole('link', { name: 'Skip to main content' }),
+      ).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('#main-content')).toBeFocused();
+    });
+
+    test('an open dialog stops the smooth scroll behind it', async ({ page }) => {
+      await openConsentDialog(page);
+      await expect(page.locator('html.lenis')).toHaveCount(1);
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.locator('html.lenis-stopped')).toHaveCount(1);
+
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toBeHidden();
+      await expect(page.locator('html.lenis-stopped')).toHaveCount(0);
+    });
+  });
+});
