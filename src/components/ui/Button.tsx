@@ -51,7 +51,9 @@ const VARIANTS: Record<Variant, string> = {
   // its token value (#E0A030), so its ink is the dark content token rather
   // than white. Same swatch as the reference; readable text on it.
   warning: 'bg-warning text-content hover:brightness-95 active:brightness-90',
-  danger: 'bg-danger text-white hover:bg-danger-ink active:bg-danger-ink',
+  // `danger` sits on its ink too: white on `#D94A3A` is 4.2 : 1, under the
+  // line. Found when Settings > Organisation was first scanned (2026-10-21).
+  danger: 'bg-danger-ink text-white hover:bg-danger-ink/90 active:bg-danger-ink/90',
   clock:
     'bg-clock text-primary-fg hover:bg-clock-fg focus-visible:ring-clock focus-visible:ring-offset-2',
   'danger-outline':
