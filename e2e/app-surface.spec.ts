@@ -55,6 +55,20 @@ const APP_SCREENS = [
   { path: '/announcements-preview', heading: /^announcements$/i },
   { path: '/reports-preview', heading: /^reports$/i },
   { path: '/onboarding-preview', heading: /set up your organisation/i },
+  // The real Settings and My account pages against fixtures
+  // (SettingsLivePreviewPage). The titles name the section.
+  { path: '/settings-preview/organisation', heading: /^settings: organisation$/i },
+  { path: '/settings-preview/policies', heading: /^settings: policies$/i },
+  { path: '/settings-preview/notifications', heading: /^settings: notifications$/i },
+  { path: '/settings-preview/integrations', heading: /^settings: integrations$/i },
+  { path: '/settings-preview/billing', heading: /^settings: billing$/i },
+  { path: '/settings-preview/audit', heading: /^settings: audit$/i },
+  { path: '/settings-preview/account/profile', heading: /^my account: profile$/i },
+  {
+    path: '/settings-preview/account/preferences',
+    heading: /^my account: preferences$/i,
+  },
+  { path: '/settings-preview/account/security', heading: /^my account: security$/i },
 ];
 
 /**
