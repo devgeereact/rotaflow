@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ScrollText, ShieldAlert } from 'lucide-react';
+import { ScrollText } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
 import { listAuditLogs, type AuditLogEntry } from '@/services/auditService';
 import { reportError } from '@/lib/sentry';
 import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
+import { Callout } from '@/components/ui/Callout';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SettingsSection } from '@/components/settings/SettingsSection';
-import { formatAuditAction } from '@/lib/auditActions';
+import {
+  auditSeverityTone,
+  formatAuditAction,
+  formatAuditRecord,
+  formatAuditSeverity,
+} from '@/lib/auditActions';
 import { OwnerOnlyNotice } from '@/components/layout/SettingsLayout';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
@@ -25,23 +30,23 @@ function formatTimestamp(iso: string): string {
 /**
  * `/app/settings/audit`. Design/Settingsaudit.png.
  *
- * ## Why this screen is mostly an explanation
+ * ## What the trail holds, and what it does not
  *
- * `audit_logs` has been provisioned since `0002` and has exactly one writer in
- * the entire system: the `anonymize_staff_member` RPC. No login, rota publish,
- * shift edit, role change, invite or GDPR export is recorded anywhere.
+ * Since `0016` the database writes an entry for the decisions it can observe
+ * (rota publishing and amendments, role and membership changes, invitations,
+ * organisation changes) and `log_audit_event` / `audit_write` record the rest
+ * (exports, GDPR requests, leave reviews, timesheet amendments, billing,
+ * announcements, the AI assistant). `formatAuditAction` names every one of
+ * them. Two things are not recorded, and the note under the table says so:
+ * sign-ins, and individual shift edits, which are recorded at the rota
+ * decision rather than per row (see `auditService.ts`).
  *
- * For a multi-tenant app holding staff PII under UK GDPR, an audit trail is an
- * accountability control, *who changed this person's shift*, *who exported
- * this record*. Shipping a viewer over a table that will be empty for every
- * organisation, without saying why, produces a screen that looks broken and,
- * worse, implies that nothing has happened. So the screen renders whatever is
- * genuinely there and states exactly which events are captured today.
- *
- * The reference also has `ip_address`, `severity` and an "area" column, none
- * of which the table has. Writing the missing events plus those columns is one
- * migration and it should land before this screen is treated as a compliance
- * artefact.
+ * The note used to say only staff anonymisation was written, which stopped
+ * being true at `0016`; an owner reading it would have distrusted a complete
+ * trail. The reference's Severity and Area columns are here because the table
+ * has `severity` and `entity_type`. Its IP address column is not: nothing
+ * writes `ip_address`, and an empty column would imply a capture that does
+ * not happen.
  */
 export function SettingsAuditPage(): JSX.Element {
   const { orgId, role } = useOrg();
@@ -113,7 +118,10 @@ export function SettingsAuditPage(): JSX.Element {
                     Who
                   </th>
                   <th className="pb-3 font-medium text-content-muted dark:text-content-muted-dark">
-                    Record
+                    Area
+                  </th>
+                  <th className="pb-3 font-medium text-content-muted dark:text-content-muted-dark">
+                    Severity
                   </th>
                 </tr>
               </thead>
@@ -134,8 +142,13 @@ export function SettingsAuditPage(): JSX.Element {
                         <span className="text-content-muted">Deleted account</span>
                       )}
                     </td>
-                    <td className="py-3 text-content-muted dark:text-content-muted-dark">
-                      {entry.entity_type ?? '-'}
+                    <td className="py-3 pr-4 text-content-muted dark:text-content-muted-dark">
+                      {formatAuditRecord(entry.entity_type)}
+                    </td>
+                    <td className="py-3">
+                      <Badge tone={auditSeverityTone(entry.severity)}>
+                        {formatAuditSeverity(entry.severity)}
+                      </Badge>
                     </td>
                   </tr>
                 ))}
@@ -145,29 +158,14 @@ export function SettingsAuditPage(): JSX.Element {
         )}
       </SettingsSection>
 
-      <Card className="bg-warning/5">
-        <div className="flex gap-3">
-          <ShieldAlert
-            size={18}
-            className="mt-0.5 shrink-0 text-warning"
-            aria-hidden="true"
-          />
-          <div className="text-sm text-content-muted dark:text-content-muted-dark">
-            <p className="font-medium text-content dark:text-content-dark">
-              What is recorded today
-            </p>
-            <p className="mt-1">
-              Only staff-record anonymisation is written to this trail. Sign-ins, rota
-              publishing, shift edits, role changes, invitations and data exports are{' '}
-              <strong className="font-semibold text-content dark:text-content-dark">
-                not
-              </strong>{' '}
-              recorded yet. Treat this as an incomplete record: an empty trail does not
-              mean nothing happened.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <Callout tone="info" title="What this trail records">
+        Rota publishing and amendments, role and membership changes, invitations,
+        organisation and billing changes, data exports, GDPR requests, leave reviews,
+        timesheet amendments, announcements and the AI assistant&rsquo;s actions. Two
+        things are <strong className="font-semibold">not</strong> recorded: sign-ins, and
+        individual shift edits, which are recorded once at the rota decision rather than
+        shift by shift.
+      </Callout>
     </div>
   );
 }
