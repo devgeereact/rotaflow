@@ -223,3 +223,74 @@ export function pendingErasures(
 ): number {
   return requests.filter((r) => r.kind === 'erasure' && !isClosed(r.status)).length;
 }
+
+/**
+ * What a person can ask for from their own account (`request_my_data`, 0160).
+ *
+ * Four of the six rights. Restriction and objection need a conversation about
+ * what to restrict or object to, so they stay with the support route, and the
+ * database refuses them from this path too.
+ */
+export type SelfServiceKind = Extract<
+  GdprRequestKind,
+  'access' | 'portability' | 'rectification' | 'erasure'
+>;
+
+export interface SelfServiceRequestOption {
+  kind: SelfServiceKind;
+  title: string;
+  description: string;
+  action: string;
+}
+
+export const SELF_SERVICE_REQUESTS: readonly SelfServiceRequestOption[] = [
+  {
+    kind: 'access',
+    title: 'A copy of your data',
+    description:
+      'Everything RotaFlow holds about you: your profile, shifts, clock events, leave and messages.',
+    action: 'Request a copy',
+  },
+  {
+    kind: 'portability',
+    title: 'Your data to take elsewhere',
+    description:
+      'The data you gave us, in a machine-readable file you can move to another service.',
+    action: 'Request a file',
+  },
+  {
+    kind: 'rectification',
+    title: 'A correction',
+    description:
+      'Something we hold about you is wrong and you cannot fix it on your profile. We will ask what.',
+    action: 'Ask for a correction',
+  },
+  {
+    kind: 'erasure',
+    title: 'Close your account and erase your data',
+    description:
+      'Your account is closed and your personal data removed, except records an employer must keep by law, such as pay and hours.',
+    action: 'Ask to close my account',
+  },
+] as const;
+
+/** The caller's own request, as `my_data_requests()` returns it. No outcome note. */
+export interface OwnDataRequest {
+  id: string;
+  kind: GdprRequestKind;
+  status: GdprRequestStatus;
+  receivedOn: string;
+  dueOn: string;
+  extendedTo: string | null;
+  closedAt: string | null;
+}
+
+/** Plain-English kind for the person's own list, not the Article numbers staff see. */
+export const OWN_KIND_LABELS: Record<GdprRequestKind, string> = {
+  access: 'Copy of your data',
+  portability: 'Data to take elsewhere',
+  rectification: 'Correction',
+  erasure: 'Close account and erase data',
+  restriction: 'Restrict use of your data',
+  objection: 'Objection',
+};

@@ -38,6 +38,14 @@ Dependabot may be grouped into one line per week. The rule sits under
   module. "My rota" shows when a calendar last read the feed and gains a Reset
   link, so rotating no longer depends on support. The migration applies on merge;
   the Edge Function needs a manual deploy.
+- **feat(account): a "Your data" tab, and one formatting module.** My account gains
+  Your data (`/app/account/data`): a signed-in person can ask for a copy, a portable
+  file, a correction or for their account to be closed, and see their own requests
+  with the date each will be answered. Each button files a case in the existing GDPR
+  register through `request_my_data` (`0160`), which takes the subject from the
+  account so it cannot name anybody else and returns an open case rather than
+  starting a second clock. Deleting the login behind an erasure is still open
+  (GAP-057). Dates on the account screens now come from `src/lib/format.ts`.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating

@@ -401,6 +401,10 @@ const ActivityPage = lazyPage(
   'ActivityPage',
   () => import('@/pages/app/account/ActivityPage'),
 );
+const YourDataPage = lazyPage(
+  'YourDataPage',
+  () => import('@/pages/app/account/YourDataPage'),
+);
 
 /**
  * Roles that may reach the manager-only routes. Named once so the route table
@@ -827,6 +831,7 @@ export function App(): JSX.Element {
                           <Route path="sessions" element={<SessionsPage />} />
                           <Route path="tokens" element={<TokensPage />} />
                           <Route path="activity" element={<ActivityPage />} />
+                          <Route path="data" element={<YourDataPage />} />
                         </Route>
                         {/* The spec calls this area "My Profile" at
                         /app/profile/*. See RouteAliases. */}

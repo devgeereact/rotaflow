@@ -112,6 +112,7 @@ describe('profileTabs', () => {
       'Connected Accounts',
       'Sessions',
       'Activity',
+      'Your data',
     ]);
   });
 

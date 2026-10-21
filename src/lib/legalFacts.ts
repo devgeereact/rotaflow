@@ -236,7 +236,7 @@ export const PRIVACY_FACTS: readonly DataFact[] = [
   {
     question: 'Can it be exported or deleted?',
     answer:
-      'Yes, though not by you on your own. An organisation can export everything it holds as one file and can delete the organisation entirely, and an individual can be anonymised in place, which keeps the rota history the business needs while removing the person from it. There is no self-service button for an individual: ask your employer, or write to us and we will handle it as a formal request.',
+      'Yes, though not by you on your own. An organisation can export everything it holds as one file and can delete the organisation entirely, and an individual can be anonymised in place, which keeps the rota history the business needs while removing the person from it. A person with an account can ask for a copy, a correction or closure from My account, Your data, which files a formal request rather than acting on the spot; anyone can also ask their employer, or write to us.',
   },
   {
     question: 'Who is responsible for this notice?',

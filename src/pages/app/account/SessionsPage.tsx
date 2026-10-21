@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { reportError } from '@/lib/sentry';
+import { formatDateTime, formatTime } from '@/lib/format';
 import { clearTenantState, releasePushSubscription } from '@/lib/session';
 import { deletePushSubscription } from '@/services/pushSubscriptionService';
 import {
@@ -168,11 +169,8 @@ export function SessionsPage(): JSX.Element {
               Current browser
             </p>
             <p className="mt-0.5 text-xs text-content-muted dark:text-content-muted-dark">
-              {signedInAt
-                ? `Signed in ${new Date(signedInAt).toLocaleString('en-GB')}`
-                : 'Session active'}
-              {expiresAt &&
-                ` · renews ${new Date(expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+              {signedInAt ? `Signed in ${formatDateTime(signedInAt)}` : 'Session active'}
+              {expiresAt && ` · renews ${formatTime(expiresAt)}`}
             </p>
           </div>
           <Badge tone="success">Active</Badge>
@@ -201,10 +199,7 @@ export function SessionsPage(): JSX.Element {
                   </p>
                   <p className="mt-0.5 text-xs text-content-muted dark:text-content-muted-dark">
                     {session.ip ? `${session.ip} · ` : ''}
-                    last used{' '}
-                    {new Date(session.refreshedAt ?? session.createdAt).toLocaleString(
-                      'en-GB',
-                    )}
+                    last used {formatDateTime(session.refreshedAt ?? session.createdAt)}
                   </p>
                 </div>
                 {session.isCurrent && <Badge tone="success">This device</Badge>}

@@ -69,6 +69,13 @@ currently break that with type-only imports — `clockinDemo`, `reportsDemo`,
 grep -ln "from '@/pages\|from '@/components" src/lib/*.ts
 ```
 
+**Formatting lives in `src/lib/format.ts`** (2026-10-21): `formatDate` for a
+`YYYY-MM-DD` value (read as components and printed in UTC, so the stored day is
+the day shown in every zone), `formatDateTime`, `formatTime` and `formatCount`,
+all in the product locale `APP_LOCALE` (`en-GB`, because every string is still
+an English literal). New screens use it; an inline `toLocaleString('en-GB')`
+moves to it when its screen is touched.
+
 **RotaFlow services** (typed Supabase data access, all `org_id`-scoped):
 `orgService`, `staffService`, `locationService`, `rotaService`, `shiftService`,
 `availabilityService`, `leaveService`, `swapService`, `clockService`,

@@ -233,6 +233,19 @@ given in `docs/DATA-MODEL.md` §6. The rota publication RPCs are in
   here, since a member can only spend an allowance they could spend anyway by
   making the requests. Buckets are a fixed list (`ai_assistant_org`), because
   an invented bucket name would be an unlimited private allowance.
+- **`request_my_data(kind, org?)`** and **`my_data_requests()`** (`0160`,
+  `security definer`, `authenticated`): a person's own UK GDPR request, from My
+  account, Your data. `request_my_data` files `access`, `portability`,
+  `rectification` or `erasure` in the `0020` register for the caller; the subject
+  email is read from `auth.users`, never passed, so there is no way to name somebody
+  else. `org` is optional and must pass `is_org_member` (`42501` otherwise). Returns
+  `{id, due_on, already_open}`: a second request of a kind already open returns the
+  open case with `already_open = true` rather than starting a second clock. Refusals:
+  signed out (`42501`), restriction or objection (`22023`, they stay with the email
+  route), five requests already open (`54000`). `my_data_requests()` takes no
+  argument and returns the caller's own cases: kind, status, received, due, extended
+  and closed dates, never the outcome note. pgTAP:
+  `supabase/tests/database/own_data_requests.test.sql`.
 - **`rate_support_case(case, score, comment?)`** (`0024`, message clarified in
   `0077`): the requester's satisfaction score for a _resolved_ case, 1-5. Three
   refusals, all with their own wording since `0077`: not the requester (`42501`),
