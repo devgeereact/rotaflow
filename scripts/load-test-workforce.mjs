@@ -460,18 +460,137 @@ for (const [name, from, to] of WINDOWS) {
   );
 }
 
-// `listStaff` — the directory, which the filter contract pages over.
+// `listStaff` — the directory, which the filter contract pages over. Read
+// through `staff_profiles_visible`, as the service does: since `0150` the
+// table itself refuses `select=*` to `authenticated` (pay and contact columns
+// are not granted), so reading the table here measured a 403, not the screen.
 {
   const predicate = `staff_profiles?org_id=eq.${orgId}`;
   results.push(
     await measure(
-      'staff_profiles, whole org',
+      'staff_profiles_visible, whole org',
       token,
-      () => `${predicate}&select=*&order=last_name.asc,id.asc`,
+      () =>
+        `staff_profiles_visible?org_id=eq.${orgId}&select=*&order=last_name.asc,id.asc`,
       await expectedCount(predicate),
     ),
   );
 }
+
+/**
+ * The screens, as the browser issues them: several reads in parallel, timed
+ * from the first request to the last response. The bulk windows above answer
+ * "does it read every row"; these answer "how long does a manager wait".
+ *
+ * Each read mirrors one service function, named beside it. Day and week are
+ * the attendance workspace's two ranges, the builder week is
+ * `listShiftsForRotas`, and the report month is what Reports pulls for a
+ * timesheet or shift export. The live dashboard reads today.
+ */
+const DAY = ['2026-01-13T00:00:00.000Z', '2026-01-14T00:00:00.000Z'];
+const WEEK = ['2026-01-12T00:00:00.000Z', '2026-01-19T00:00:00.000Z'];
+const MONTH = ['2026-01-05T00:00:00.000Z', '2026-02-05T00:00:00.000Z'];
+const widen = (iso, hours) =>
+  new Date(new Date(iso).getTime() + hours * 3_600_000).toISOString();
+
+const { rows: builderRotas } = await rest(
+  `rotas?org_id=eq.${orgId}&period_start=eq.2026-01-12&select=id`,
+  { token },
+);
+const builderRotaIds = builderRotas.map((r) => r.id).join(',');
+
+const overlapping = ([from, to]) =>
+  `shifts?org_id=eq.${orgId}&starts_at=lt.${to}&ends_at=gt.${from}&status=neq.cancelled&select=*,rota:rotas(status,supersedes_rota_id)&order=starts_at.asc,id.asc`;
+const startingWithin = ([from, to]) =>
+  `shifts?org_id=eq.${orgId}&starts_at=gte.${from}&starts_at=lt.${to}&status=neq.cancelled&select=*,rota:rotas(status,supersedes_rota_id)&order=starts_at.asc,id.asc`;
+const clockIn = ([from, to], context = 0) =>
+  `clock_events?org_id=eq.${orgId}&event_at=gte.${widen(from, -context)}&event_at=lt.${widen(to, context)}&select=*&order=event_at.asc,id.asc`;
+const staffVisible = `staff_profiles_visible?org_id=eq.${orgId}&select=*&order=first_name.asc`;
+
+const SCREENS = [
+  // RotaBuilderPage: `listShiftsForRotas` for the week's rotas.
+  [
+    'rota builder, one week',
+    [
+      `shifts?rota_id=in.(${builderRotaIds})&select=*&order=rota_id.asc,starts_at.asc,id.asc`,
+    ],
+  ],
+  // SchedulePage: `listShiftsForPeriod`, one week.
+  ['schedule, one week', [startingWithin(WEEK)]],
+  // AttendancePage day: `listShiftsOverlapping` + `listClockEventsForOrg` with context.
+  ['attendance, one day', [overlapping(DAY), clockIn(DAY, 24)]],
+  // AttendancePage range, a week.
+  ['attendance, one week', [overlapping(WEEK), clockIn(WEEK, 24)]],
+  // DashboardPage: today's shifts and events, active staff, open requests.
+  [
+    'dashboard, today',
+    [
+      startingWithin(DAY),
+      clockIn(DAY),
+      `staff_profiles_visible?org_id=eq.${orgId}&active=eq.true&select=*&order=first_name.asc`,
+      `leave_requests?org_id=eq.${orgId}&select=*&order=created_at.desc`,
+      `shift_swaps?org_id=eq.${orgId}&select=*&order=created_at.desc`,
+    ],
+  ],
+  // Reports, timesheet export for a month: `getTimesheetReportRows`.
+  ['report, timesheet month', [clockIn(MONTH, 24), staffVisible]],
+  // Reports, shift export for a month: `getShiftReportRows`.
+  ['report, shifts month', [startingWithin(MONTH), staffVisible]],
+];
+
+const screens = [];
+for (const [label, paths] of SCREENS) {
+  const before = { requests: requestCount, bytes: byteCount };
+  const started = Date.now();
+  const reads = await Promise.all(
+    paths.map((path, i) => measure(`${label} #${i}`, token, () => path)),
+  );
+  const errors = reads.filter((r) => r.status.startsWith('ERROR'));
+  screens.push({
+    screen: label,
+    rows: reads.reduce((sum, r) => sum + r.rows, 0),
+    requests: requestCount - before.requests,
+    kb: Math.round((byteCount - before.bytes) / 1024),
+    ms: Date.now() - started,
+    status: errors.length ? errors[0].status : 'complete',
+  });
+}
+
+// `getLabourCost`, the cost card on Reports: one RPC, priced in the database.
+{
+  const started = Date.now();
+  let status = 'complete';
+  let rows = 0;
+  try {
+    const result = await rest('rpc/labour_cost', {
+      method: 'POST',
+      token,
+      body: {
+        p_org: orgId,
+        p_from: '2026-01-05',
+        p_to: '2026-02-04',
+        p_paid_breaks: false,
+      },
+    });
+    rows = result.rows.length;
+  } catch (cause) {
+    status = `ERROR: ${String(cause instanceof Error ? cause.message : cause).slice(0, 120)}`;
+  }
+  screens.push({
+    screen: 'report, labour cost month',
+    rows,
+    requests: 1,
+    kb: 0,
+    ms: Date.now() - started,
+    status,
+  });
+}
+
+results.push(
+  ...screens
+    .filter((s) => s.status !== 'complete')
+    .map((s) => ({ label: s.screen, status: s.status })),
+);
 
 const failed = results.filter((r) => r.status !== 'complete');
 
@@ -479,6 +598,8 @@ console.log('');
 console.log(`Seeded in ${(seedResult.seedMs / 1000).toFixed(1)}s:`, seedResult.seeded);
 console.log('');
 console.table(results);
+console.log('');
+console.table(screens);
 console.log('');
 console.log(
   `Total requests: ${requestCount}. Total payload: ${(byteCount / 1024 / 1024).toFixed(1)} MiB.`,
