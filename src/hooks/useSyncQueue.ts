@@ -15,6 +15,24 @@ import type { DeadLetterRecord, OutboxKind, OutboxRecord } from '@/lib/offlineOu
 
 export type QueuedItem = OutboxRecord;
 
+/**
+ * Fired on `window` whenever one instance of this hook changes the outbox.
+ *
+ * There is more than one instance on screen at once: `OfflineQueueDrain` in
+ * the shell, and the clock, leave or swaps screen the person is looking at.
+ * Each held its own copy of `pending`, so when the shell's instance replayed a
+ * queued clock-in, the clock screen went on saying "Sending 1 entry" and "Saved
+ * on this device, not sent yet" about a row that was already in Postgres. Its
+ * own flush had lost the Web Lock to the shell's and read the list mid-flight.
+ * Found by `e2e/offline-clock-in.spec.ts`, the first test to watch both at once.
+ */
+export const OUTBOX_CHANGED_EVENT = 'rotaflow:outbox-changed';
+
+function announceOutboxChanged(): void {
+  if (typeof window !== 'undefined')
+    window.dispatchEvent(new Event(OUTBOX_CHANGED_EVENT));
+}
+
 export interface UseSyncQueue {
   /** Writes still waiting to reach Supabase. */
   pending: QueuedItem[];
@@ -80,6 +98,17 @@ export function useSyncQueue(): UseSyncQueue {
     void refresh();
   }, [refresh]);
 
+  // Another instance changed the outbox: read it again. Refresh only, never
+  // announce, so two instances cannot set each other off.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onChanged = (): void => {
+      void refresh();
+    };
+    window.addEventListener(OUTBOX_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(OUTBOX_CHANGED_EVENT, onChanged);
+  }, [refresh]);
+
   const flush = useCallback(async (): Promise<FlushResult> => {
     if (!userId || flushing.current) return { synced: 0, failed: 0, deadLettered: 0 };
     flushing.current = true;
@@ -87,6 +116,7 @@ export function useSyncQueue(): UseSyncQueue {
     try {
       const result = await flushQueuedWrites(userId);
       await refresh();
+      announceOutboxChanged();
       return result;
     } finally {
       setSyncing(false);
@@ -153,6 +183,7 @@ export function useSyncQueue(): UseSyncQueue {
       if (!userId) throw new Error('Cannot queue a write without a signed-in user');
       await enqueueWrite(kind, payload, userId);
       await refresh();
+      announceOutboxChanged();
     },
     [refresh, userId],
   );
@@ -161,6 +192,7 @@ export function useSyncQueue(): UseSyncQueue {
     async (id: string): Promise<void> => {
       await discardDeadLetteredWrite(id);
       await refresh();
+      announceOutboxChanged();
     },
     [refresh],
   );
@@ -174,6 +206,7 @@ export function useSyncQueue(): UseSyncQueue {
       if (!userId) return;
       await retryDeadLetteredWrite(id, userId);
       await refresh();
+      announceOutboxChanged();
     },
     [refresh, userId],
   );

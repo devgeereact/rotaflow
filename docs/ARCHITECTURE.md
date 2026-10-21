@@ -396,19 +396,19 @@ and what does not.**
 
 **The public promise** (decided 10 October 2026 with the 2026 plan pack): "Clock-ins,
 leave and swap requests can wait on the phone until the signal returns." Not "works
-offline". The conditions that promise has to survive, each still to be proved in a
-browser (GAP-049, GAP-050, GAP-072, GAP-086):
+offline". The conditions that promise has to survive, and what proves each in a
+browser as of 21 October 2026:
 
-| Condition                              | Required behaviour                                                       |
-| -------------------------------------- | ------------------------------------------------------------------------ |
-| First visit with no signal             | Says a connection is needed to sign in. Shows no invented rota           |
-| App opened offline with nothing cached | Shell opens with a clear "not available offline" state                   |
-| Clock-in queued                        | "Waiting to send" on the button, with the time it was recorded           |
-| Back online                            | Sends once. Shows "Sent" or the server's reason for refusing             |
-| Session expired while queued           | Asks the same person to sign in, then sends. Never sends as someone else |
-| Two tabs or two phones                 | No duplicate clock events                                                |
-| App update while items are queued      | Queue survives the update                                                |
-| Membership revoked                     | Queued writes are refused by the server, and the person is told          |
+| Condition                              | Required behaviour                                                       | Proved by                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| First visit with no signal             | Says a connection is needed to sign in. Shows no invented rota           | Partly: `e2e/pwa-offline.spec.ts` opens sign-in from the precache; signing in offline is not asserted       |
+| App opened offline with nothing cached | Shell opens with a clear "not available offline" state                   | `e2e/pwa-offline.spec.ts` (shell); `e2e/offline-clock-in.spec.ts` "opened cold" (the clock screen's state)  |
+| Clock-in queued                        | "Waiting to send" on the button, with the time it was recorded           | `e2e/offline-clock-in.spec.ts`: "Offline, 1 waiting" and "Saved on this device, not sent yet"               |
+| Back online                            | Sends once. Shows "Sent" or the server's reason for refusing             | `e2e/offline-clock-in.spec.ts`: one row, "Synced", no second row on reload. A refusal: `FailedWritesNotice` |
+| Session expired while queued           | Asks the same person to sign in, then sends. Never sends as someone else | `e2e/offline-clock-in.spec.ts`: held through a colleague's session, sent when its owner signs back in       |
+| Two tabs or two phones                 | No duplicate clock events                                                | Not in a browser: the Web Lock and `0081`'s idempotency key, unit-tested only                               |
+| App update while items are queued      | Queue survives the update                                                | Not asserted: the update path is (`e2e/pwa-offline.spec.ts`), a queue across it is not                      |
+| Membership revoked                     | Queued writes are refused by the server, and the person is told          | Not in a browser: server-side refusal plus `FailedWritesNotice`                                             |
 
 ### The honest one-paragraph version
 
