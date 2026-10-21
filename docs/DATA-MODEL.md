@@ -471,6 +471,16 @@ from `0028`, which also redefined the first two) so membership checks don't recu
 | `public.has_support_access(org uuid, write boolean?)` | bool    | this admin holds an unrevoked, unexpired `support_access_sessions` row for `org` (`0028`); `write` additionally requires `scope = 'read_write'` |
 | `public.has_platform_role(roles text[])`              | bool    | current user holds one of these `platform_admins.role` values (`0015`)                                                                          |
 
+**A write policy on a hot table is one policy per command, never `FOR ALL`.** A
+`FOR ALL` policy's USING clause is also a SELECT policy, and permissive policies are
+OR-ed, so a read pays its predicate on every scanned row. On `shifts` and `rotas`
+that was one `has_org_role` call per row, OFFSET-skipped rows included, and it made
+five months of shifts twelve times slower than it needed to be. `0161` split both
+into INSERT, UPDATE and DELETE policies, and the bulk reads of `clock_events`
+(`0136`), `shifts` (`0137`) and `rotas` (`0161`) use the set-returning helpers
+`my_member_org_ids()`, `my_managed_org_ids()` and `my_readable_rota_ids()`, which
+the planner evaluates once as hashed SubPlans.
+
 ### 5a. Grants — the outer envelope (`0056`, narrowed by `0075`)
 
 RLS decides which rows; GRANT decides whether the role reaches the table at all.

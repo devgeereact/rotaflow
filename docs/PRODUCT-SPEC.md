@@ -157,6 +157,11 @@ Phase 2 any more.
 - **Accessible:** WCAG AA contrast, 44px touch targets, visible focus rings; never
   convey shift state by colour alone.
 - **Region/compliance:** UK-first (GDPR / UK GDPR terminology); PII handled with care.
+- **Supported tenant size:** 20 sites and 250 staff in one organisation, holding
+  10,000 shifts and 50,000 clock events. That is the size measured on 21
+  October 2026 (`qa/PERFORMANCE-AUDIT.md`), where every screen read finished in under
+  250 ms on a local stack. Larger organisations are not refused; they are not yet
+  measured (HARDEN-007).
 
 ## 7. Out of scope (V1)
 
