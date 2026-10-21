@@ -48,9 +48,13 @@ else:
 
 `billing` has no row in the organisation's notification matrix, so
 `send-notification` sends it on every channel the person has not switched off.
-Only a **Stripe** trial produces the three-day notice: an organisation in its
-own no-card trial (`organisations.trial_ends_at`) is told by the in-app banner
-and Settings, Billing, and has no email reminder yet (GAP-127).
+Only a **Stripe** trial produces the `trial_will_end` notice. An organisation in
+its own no-card trial (`organisations.trial_ends_at`, `0154`) is reminded by the
+scheduled job instead (`0157`): `enqueue_scheduled_alerts` queues one
+`billing/trial_ending` row, "Your free trial ends on" and the date, to the active owners
+of an `active` organisation whose trial ends within three days and whose billing
+state is still `trial`. Its dedupe key is `trial_ending:<org>:<trial end>`, so an
+extended trial is reminded again before its new end.
 
 **Website enquiries are the second exception (`0155`).** The outbox cannot carry
 them: `notification_outbox.org_id` is NOT NULL, and `send-notification` drops
@@ -101,13 +105,13 @@ Inngest was retired in `0087`. On 31 August 2026 four of these were verified
 running by reading `cron.job` in production; the fifth was added by `0132` after
 that check, and its production state has not been re-read for this document.
 
-| Job                               | Schedule                      | Runs                                   | Defined in | What it does                                                                                                     |
-| --------------------------------- | ----------------------------- | -------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
-| `rotaflow-notification-outbox`    | every minute                  | `dispatch_notification_outbox()`       | `0069`     | Drains the outbox into `send-notification`                                                                       |
-| `rotaflow-announcement-scheduler` | every minute                  | `publish_due_platform_announcements()` | `0132`     | Publishes platform announcements whose scheduled time has come, through the outbox                               |
-| `rotaflow-scheduled-alerts`       | every 15 minutes              | `enqueue_scheduled_alerts()`           | `0093`     | Missed clock-ins and **expiring documents**, one outbox row per fact, deduplicated by `dedupe_key`               |
-| `rotaflow-health-probe`           | every 5 minutes               | `probe_platform_health()`              | `0076`     | Platform health samples, not a notification; listed here because it is a scheduled job (`docs/DATA-MODEL.md` §6) |
-| `rotaflow-retention`              | daily at 02:15, pg_cron clock | `enforce_retention(false)`             | `0029`     | Deletes rows past their retention window, including the notification log (`docs/SECURITY.md` §3)                 |
+| Job                               | Schedule                      | Runs                                   | Defined in | What it does                                                                                                                                           |
+| --------------------------------- | ----------------------------- | -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `rotaflow-notification-outbox`    | every minute                  | `dispatch_notification_outbox()`       | `0069`     | Drains the outbox into `send-notification`                                                                                                             |
+| `rotaflow-announcement-scheduler` | every minute                  | `publish_due_platform_announcements()` | `0132`     | Publishes platform announcements whose scheduled time has come, through the outbox                                                                     |
+| `rotaflow-scheduled-alerts`       | every 15 minutes              | `enqueue_scheduled_alerts()`           | `0093`     | Missed clock-ins, **expiring documents** and a **free trial ending** within three days (`0157`), one outbox row per fact, deduplicated by `dedupe_key` |
+| `rotaflow-health-probe`           | every 5 minutes               | `probe_platform_health()`              | `0076`     | Platform health samples, not a notification; listed here because it is a scheduled job (`docs/DATA-MODEL.md` §6)                                       |
+| `rotaflow-retention`              | daily at 02:15, pg_cron clock | `enforce_retention(false)`             | `0029`     | Deletes rows past their retention window, including the notification log (`docs/SECURITY.md` §3)                                                       |
 
 `0093` does not alert on leave: the scheduled alerts are a missed clock-in and a
 document nearing its expiry date (GAP-013, CAP-019, CAP-088).
