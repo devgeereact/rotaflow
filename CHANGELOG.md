@@ -85,6 +85,15 @@ Dependabot may be grouped into one line per week. The rule sits under
   activity; the boot screen's lockup matches the reference's size. The nine screens
   joined the accessibility scan, which found two contrast failures used across the
   app and now fixed: the active tab and the danger button were both 4.2 : 1.
+- **perf(db): shift and rota reads stop paying for the write rule (`0161`).** The
+  load test now times each screen at the acceptance size (20 sites, 250 staff,
+  10,000 shifts, 50,000 clock events) and found shifts five times slower per row
+  than clock events. The `FOR ALL` write policies on `shifts` and `rotas` also
+  applied to every read, one `has_org_role` call per scanned row. They are now one
+  policy per command, and `rotas_select` uses `my_readable_rota_ids()`. Five months
+  of shifts fell from 1,973 ms to 158 ms; every screen read is under 250 ms. The
+  supported size is published in `docs/PRODUCT-SPEC.md`. Merging applies `0161` to
+  production. GAP-071, HARDEN-007.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating
