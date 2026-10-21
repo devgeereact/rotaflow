@@ -215,7 +215,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     heading: 'Your rights, and how to use them',
     body: [
       'You can ask for a copy of what is held about you, ask for it to be corrected, ask for it to be deleted, ask us to restrict or stop a particular use, ask for it in a portable form, and withdraw any consent you gave. Where an employer is the controller, the request goes to them and we support it.',
-      'There is no self-service button for an individual, and rather than imply otherwise: write to support@rotaflow.space. Every request is logged in a register with a due date one month from receipt, extendable by two further months where a request is complex, and cannot be closed without recording what was done.',
+      'If you have an account, open My account, then Your data, to ask for a copy, a portable file, a correction or for your account to be closed. That page files the request; it does not hand over or delete anything on the spot, because an employer’s records need checking first. Without an account, or for anything else, write to support@rotaflow.space. Every request is logged in a register with a due date one month from receipt, extendable by two further months where a request is complex, and cannot be closed without recording what was done.',
       'A manager or owner can export a single person’s employment record as a file covering thirteen sets of data, and can export or delete the whole organisation.',
       'Deleting a person does not delete their rota. It replaces their name, email address, phone number, photograph and payroll identifier, removes their emergency contacts and documents, revokes any calendar link they had, and leaves the shifts and clock events attached to an anonymous record so the business still has a history of who was covered when. One limitation is worth knowing: the database row pointing at an uploaded file is removed, but the file itself is not deleted from the image host.',
     ],
@@ -223,7 +223,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     outstanding:
       'The one-month response time is what the register computes; whether it is the right commitment to publish for both UK and EEA users needs confirming. Uploaded files surviving an erasure is a real gap with no fix wired — it needs an owner decision about the image host before this paragraph can be softened.',
     evidence:
-      'supabase/migrations/0020_gdpr_requests.sql, 0111_erasure_misses_email.sql, src/services/gdprService.ts',
+      'supabase/migrations/0020_gdpr_requests.sql, 0111_erasure_misses_email.sql, 0160_a_person_can_ask_for_their_own_data.sql, src/services/gdprService.ts, src/pages/app/account/YourDataPage.tsx',
   },
   {
     id: 'automated-decisions',
