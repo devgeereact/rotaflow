@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addDays, addWeeks, format, isSameDay, startOfWeek, subWeeks } from 'date-fns';
 import { LifeBuoy, ScanLine, ShieldQuestion, WifiOff } from 'lucide-react';
@@ -39,6 +39,7 @@ import {
   pickCurrentShift,
   segmentsInRange,
 } from '@/lib/clockRows';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
@@ -201,6 +202,23 @@ export function ClockInPage(): JSX.Element {
       active = false;
     };
   }, [orgId, user, reloadKey]);
+
+  const retryLoad = useCallback((): void => {
+    setLoadFailed(false);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
+
+  // A load that failed for want of signal is retried the moment the signal
+  // returns, rather than waiting for somebody to find a reload control. Only
+  // on the offline-to-online edge: retrying whenever `loadFailed` is set would
+  // loop forever against a server that keeps refusing.
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    const cameBack = online && !wasOnline.current;
+    wasOnline.current = online;
+    if (cameBack && loadFailed) retryLoad();
+  }, [online, loadFailed, retryLoad]);
 
   const lookups = useMemo<ClockLookups>(
     () => ({
@@ -464,11 +482,25 @@ export function ClockInPage(): JSX.Element {
   }
 
   if (loadFailed) {
+    // Offline, this is the screen most likely to be opened without signal, and
+    // the old line ("check your connection and reload") was the only thing it
+    // said. The truth is narrower and more useful (GAP-049): the write path
+    // works offline, but it needs the person's staff record, which comes from
+    // the server. Once this screen has loaded with a connection and is left
+    // open, clock actions queue on the device. It reloads by itself when the
+    // signal returns, so nobody has to know to press anything.
     return (
       <Card>
         <p className="text-content-muted dark:text-content-muted-dark">
-          Could not load your clock-in status. Check your connection and reload.
+          {online
+            ? 'Could not load your clock-in status.'
+            : 'You’re offline, and your clock-in details have not loaded on this device. Open this screen once with a connection and leave it open: clock actions then save on the device until the signal returns.'}
         </p>
+        {online && (
+          <Button variant="secondary" className="mt-4" onClick={retryLoad}>
+            Try again
+          </Button>
+        )}
       </Card>
     );
   }
