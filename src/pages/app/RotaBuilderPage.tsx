@@ -1082,6 +1082,11 @@ export function RotaBuilderPage(): JSX.Element {
             }
           })
           .catch((err) => {
+            const refusal = rotaRefusalMessage(err);
+            if (refusal) {
+              showError(refusal);
+              return;
+            }
             reportError(err, { area: 'rota:drag-create' });
             showError('Could not add that shift. Please try again.');
           });
@@ -1847,6 +1852,11 @@ export function RotaBuilderPage(): JSX.Element {
         setLastSavedAt(new Date());
         showSuccess('Shift assigned.');
       } catch (err) {
+        const refusal = rotaRefusalMessage(err);
+        if (refusal) {
+          showError(refusal);
+          return;
+        }
         reportError(err, { area: 'rota:assistant-assign' });
         showError('Could not assign that shift. Please try again.');
       }

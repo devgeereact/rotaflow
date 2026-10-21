@@ -15,9 +15,13 @@ import { cn } from '@/lib/utils';
  * Exported so `PageHeader` and `WorkspaceHeader` cannot drift apart, which is
  * exactly what happened to the two of them before (`tracking-[-0.5px]` on one,
  * none on the other; `mb-5` against `mb-6`).
+ *
+ * Weight 500 and normal tracking since 2026-10-12: the visual language uses two
+ * weights (400 and 500) and lets the type size carry the hierarchy, rather than
+ * a heavier weight pulled tighter.
  */
 export const HEADER_TITLE_CLASS =
-  'text-balance font-display text-page-title-mobile font-semibold tracking-[-0.4px] text-content sm:text-page-title sm:tracking-[-0.5px] dark:text-content-dark';
+  'text-balance font-display text-page-title-mobile font-medium tracking-normal text-content sm:text-page-title dark:text-content-dark';
 
 /** The one-line purpose sentence under a title. */
 export const HEADER_DESCRIPTION_CLASS =

@@ -52,11 +52,13 @@ select set_config(
   (select id::text from public.organisations where slug = 'plan-care'),
   true);
 
--- ---------- 1. A new organisation is on the free tier ------------------
+-- ---------- 1. A new organisation is on its trial's limits ------------
+-- Was 'starter', "the free tier", until 0154: there is no free tier, and a
+-- new organisation starts a 30-day trial on Professional limits (D2).
 select is(
   (select plan from public.organisations where id = current_setting('test.org')::uuid),
-  'starter',
-  'a new organisation starts on the free tier'
+  'professional',
+  'a new organisation starts its trial on Professional limits'
 );
 
 -- ---------- 2. The owner cannot promote themselves ---------------------
@@ -91,15 +93,18 @@ select is(
   'an active subscription lifts the organisation onto its plan'
 );
 
--- ---------- 5. Losing it puts them back on the free tier ---------------
+-- ---------- 5. Losing it returns them to their trial, not a free tier --
+-- Was 'starter' until 0154. The organisation's own trial is still running
+-- here, so its limits are the trial's. Past the trial it would be
+-- read-only instead; trial_then_read_only.test.sql covers that.
 update public.subscriptions
    set status = 'canceled'
  where org_id = current_setting('test.org')::uuid;
 
 select is(
   (select plan from public.organisations where id = current_setting('test.org')::uuid),
-  'starter',
-  'a cancelled subscription falls back to the free tier, not to nothing'
+  'professional',
+  'a cancelled subscription inside the trial returns to the trial''s limits'
 );
 
 -- ---------- 6. The founder has a staff record --------------------------

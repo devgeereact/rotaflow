@@ -370,6 +370,10 @@ const AdminGdprPage = lazyPage(
   'AdminGdprPage',
   () => import('@/pages/admin/AdminGdprPage'),
 );
+const AdminEnquiriesPage = lazyPage(
+  'AdminEnquiriesPage',
+  () => import('@/pages/admin/AdminEnquiriesPage'),
+);
 const AdminPreviewHarness = devPage(
   'AdminPreviewHarness',
   () => import('@/pages/admin/AdminPreviewHarness'),
@@ -535,6 +539,7 @@ export function App(): JSX.Element {
                             />
                             <Route path="billing" element={<AdminBillingPage />} />
                             <Route path="support" element={<AdminSupportPage />} />
+                            <Route path="enquiries" element={<AdminEnquiriesPage />} />
                             <Route
                               path="support/:caseId"
                               element={<AdminSupportCaseDetailPage />}
@@ -937,6 +942,20 @@ export function App(): JSX.Element {
                               area="Support centre"
                             >
                               <AdminSupportPage />
+                            </RequirePlatformRole>
+                          }
+                        />
+                        {/* Prospects' personal data, so operational roles only:
+                      `enquiries_select` is `is_platform_operational()` (0155),
+                      which excludes finance. */}
+                        <Route
+                          path="enquiries"
+                          element={
+                            <RequirePlatformRole
+                              allow={PLATFORM_OPERATIONAL_ROLES}
+                              area="Enquiries"
+                            >
+                              <AdminEnquiriesPage />
                             </RequirePlatformRole>
                           }
                         />

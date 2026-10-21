@@ -112,10 +112,13 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     id: 'contact-form',
     heading: 'The contact form on this website',
     body: [
-      'It stores nothing. The form composes a message in your own email program and you send it yourself, so nothing reaches a server of ours until you press send in your own client, and there is no database row behind it.',
-      'Once you have sent it, it is an email in a mailbox like any other.',
+      'What you type is sent to us and stored so we can reply: your name, work email address, organisation, team size and sector if you give them, your message, whether you asked for a demo, and whether you ticked the box agreeing to occasional emails. That box starts unticked, and unless you tick it we only reply to your message.',
+      'With it we store a one-way keyed hash of your IP address, which lets us limit how many messages one connection can send without keeping the address itself, and your browser’s user agent. Neither is shown to the team reading the message.',
+      'It is read only by the RotaFlow team, in the platform console, and deleted 24 months after it arrived. The alert we receive says only that a message arrived, not what it says.',
+      'If the bot check is switched on, Cloudflare Turnstile runs in your browser before the form is sent, and Cloudflare receives your IP address and browser signals to decide whether you are a person.',
     ],
-    evidence: 'src/pages/ContactPage.tsx',
+    evidence:
+      'src/pages/ContactPage.tsx, supabase/functions/public-enquiry/index.ts, supabase/migrations/0155_enquiries_are_received.sql',
   },
   {
     id: 'why',
@@ -128,6 +131,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'To sign you in and keep your account secure, including the audit log and session records. Proposed basis: legitimate interests in keeping the service secure.',
       'To take payment and issue invoices. Proposed basis: performance of a contract, and a legal obligation to keep financial records.',
       'To answer your support messages. Proposed basis: legitimate interests, or performance of a contract.',
+      'To reply to a message sent through the website contact form, and to limit abuse of it. Proposed basis: legitimate interests. Occasional emails about RotaFlow only where the box was ticked. Proposed basis: consent.',
       'To find and fix faults, if you agreed to crash reporting. Proposed basis: consent.',
       'To remember interface preferences on your device, if you agreed. Proposed basis: consent.',
     ],
@@ -187,6 +191,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'Leave records: 6 years.',
       'Support cases, once resolved: 3 years.',
       'Notification delivery records: 1 year.',
+      'Messages sent through the website contact form: 2 years.',
       'The platform audit log: kept indefinitely, and cannot be edited or deleted by anyone, including us.',
       'An organisation that deletes itself: removed immediately, not after a delay.',
     ],
@@ -194,7 +199,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     outstanding:
       'These periods were chosen when the schedule was built and have not been justified against a legal or business requirement. Indefinite audit retention in particular is a decision worth defending or shortening rather than leaving as a default. Pay rates are kept through anonymisation so past labour costs remain reproducible, which is a choice that should be checked against payroll record-keeping duties.',
     evidence:
-      'supabase/migrations/0027_platform_configuration.sql, 0029_retention_enforcement.sql, 0092',
+      'supabase/migrations/0027_platform_configuration.sql, 0029_retention_enforcement.sql, 0092, 0155',
   },
   {
     id: 'security',

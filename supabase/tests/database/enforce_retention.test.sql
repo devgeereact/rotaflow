@@ -34,8 +34,8 @@ select lives_ok(
 );
 
 -- ---------- 2. it returns a row per implemented policy ----------------
--- Five policies have branches: rota_history, attendance, leave,
--- support_cases, and notifications (added with its branch in 0092 — a policy
+-- Six policies have branches: rota_history, attendance, leave,
+-- support_cases, enquiries (0155), and notifications (added with its branch in 0092 — a policy
 -- without one takes the `else` path and deletes nothing). audit_log is
 -- skipped by `retain_months is not null` and deleted_tenant by the explicit
 -- exclusion, so neither should appear.
@@ -45,8 +45,8 @@ select lives_ok(
 -- test that counted whatever it found would have said nothing about it.
 select is(
   (select count(*)::int from public.enforce_retention(true)),
-  5,
-  'dry run returns one row for each of the five implemented policies'
+  6,
+  'dry run returns one row for each of the six implemented policies'
 );
 
 select is(
@@ -76,7 +76,7 @@ select ok(
 -- useless as a rehearsal.
 select is(
   (select count(*)::int from public.retention_policies),
-  7,
+  8,
   'a dry run mutates no policy rows'
 );
 

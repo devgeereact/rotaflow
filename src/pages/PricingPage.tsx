@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 const FAQS = [
   {
     q: 'How does billing work?',
-    a: "Sign up with no card required. Once your organisation exists, its owner picks a plan from Settings and pays through Stripe's secure checkout. Nothing is charged before that.",
+    a: "Sign up with no card required. Every new organisation starts a 30-day free trial with Professional limits. Its owner picks a plan from Settings and pays through Stripe's secure checkout, and choosing one during the trial keeps the days left: the card is first charged when the trial ends.",
   },
   {
     q: 'What counts as a staff member?',
@@ -27,7 +27,7 @@ const FAQS = [
   },
   {
     q: 'Is there a free trial?',
-    a: 'Not yet — every plan is paid from the start. Create your organisation and explore it fully before choosing a plan; nothing is charged until you do.',
+    a: 'Yes. Every new organisation gets 30 days free with Professional limits, five sites and up to 60 staff, and no card. There is no free-forever plan: if the trial ends without a plan, your organisation becomes read-only. Everyone can still sign in, see and export everything, and staff can still clock in and request leave, but rotas cannot be published and nobody new can be invited until a plan is chosen.',
   },
   {
     q: 'Can we move between plans?',

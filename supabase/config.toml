@@ -20,3 +20,13 @@ project_id = "rotaflow"
 # the local and CI databases on the same one, so a gate that goes red
 # does so because a migration changed, not because an image did.
 major_version = 17
+
+# The public contact form's endpoint (0155, docs/API-SPEC.md). Its callers
+# are visitors with no session, so the gateway's JWT check would prove
+# nothing: the anon key is public. The function's own boundary is its
+# origin check, validation, honeypot, optional Turnstile and the
+# per-address rate limit. The other two public functions, stripe-webhook
+# and calendar-feed, are deployed with `--no-verify-jwt` by hand; this
+# block makes the CLI do the same for this one without relying on a flag.
+[functions.public-enquiry]
+verify_jwt = false

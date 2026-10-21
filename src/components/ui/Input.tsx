@@ -17,8 +17,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <input
         ref={ref}
         className={cn(
-          'w-full rounded-xl border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden',
-          'placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-primary',
+          'w-full rounded-control border border-surface-border bg-background px-3 py-2.5 text-content outline-hidden',
+          'placeholder:text-content-muted focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary',
+          'transition-[border-color,box-shadow] duration-control ease-control motion-reduce:transition-none',
+          'dark:placeholder:text-content-muted-dark',
           'dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark',
           Icon && 'pl-10',
           // 48px: the adornment is a 44x44 control (docs/ACCESSIBILITY.md) sat 4px

@@ -66,3 +66,40 @@ export function decideCheckout(
   }
   return { allow: true };
 }
+
+/**
+ * Stripe refuses a Checkout `subscription_data.trial_end` less than 48 hours
+ * ahead ("at least two days if using Checkout",
+ * https://docs.stripe.com/billing/testing). One hour of margin on top, so a
+ * request that takes a moment to reach Stripe is not refused at the boundary.
+ */
+export const MIN_CHECKOUT_TRIAL_MS = 49 * 60 * 60 * 1000;
+
+/**
+ * The `subscription_data.trial_end` to send, in Unix seconds, or null for
+ * "charge now".
+ *
+ * Every organisation starts a 30-day trial that the database records
+ * (`organisations.trial_ends_at`, migration 0154). An owner who chooses a plan
+ * part-way through it should not lose the days left, so Checkout collects the
+ * card now and Stripe first charges it when the trial the customer was already
+ * promised ends. Stripe's parameter is `subscription_data.trial_end`, a Unix
+ * timestamp (https://docs.stripe.com/api/checkout/sessions/create, and
+ * https://docs.stripe.com/get-started/use-cases/saas-subscriptions "Add trial
+ * periods"). `trial_period_days` would restart a fresh 30 days, which is not
+ * the trial the organisation has.
+ *
+ * No trial is sent when the trial has ended, is unreadable, or is too close
+ * for Stripe to accept: the customer pays from today, which is what they
+ * chose.
+ */
+export function checkoutTrialEnd(
+  orgTrialEndsAt: string | null | undefined,
+  now: Date,
+): number | null {
+  if (!orgTrialEndsAt) return null;
+  const end = Date.parse(orgTrialEndsAt);
+  if (Number.isNaN(end)) return null;
+  if (end - now.getTime() < MIN_CHECKOUT_TRIAL_MS) return null;
+  return Math.floor(end / 1000);
+}

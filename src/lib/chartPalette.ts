@@ -90,5 +90,5 @@ export const CHART_TOKENS = {
   /** `--color-info` */
   info: '#388fd4',
   /** `--color-secondary`, the neutral grey */
-  secondary: '#6b7280',
+  secondary: '#5c5e62',
 } as const;

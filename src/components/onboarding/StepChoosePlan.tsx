@@ -185,17 +185,18 @@ export function StepChoosePlan({
           </p>
         </div>
 
-        {/* What choosing a paid plan here actually does.
+        {/* What choosing a plan here actually does.
             `OnboardingPage.handlePlan` records the choice as an intent and
-            nothing more: `organisations.plan` is written by the Stripe webhook,
-            so the organisation runs on the free Starter tier until payment is
-            set up. Without this line the first sign of that is the database
-            refusing a second site, several screens later. */}
-        {plan !== null && plan !== 'starter' && (
+            nothing more: `organisations.plan` is written by the server. Every
+            new organisation starts a 30-day trial on Professional limits
+            (0154), and there is no free tier after it: without a plan the
+            organisation becomes read-only. */}
+        {plan !== null && (
           <p className="text-sm text-content-muted dark:text-content-muted-dark">
-            Your choice is saved with your organisation. Billing is set up separately from
-            Settings, then Billing, and until that is done the organisation runs on the
-            free Starter tier: one site and up to 15 people.
+            Your choice is saved with your organisation. You start with a 30-day free
+            trial on Professional limits, five sites and up to 60 people, with no card.
+            Set up billing from Settings, then Billing: choosing a plan during the trial
+            keeps the days left, and nothing is charged until it ends.
           </p>
         )}
 

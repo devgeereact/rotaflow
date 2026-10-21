@@ -69,6 +69,7 @@ const CONSOLE_SCREENS = [
   { path: '/admin-preview/subscriptions', heading: /^subscriptions$/i },
   { path: '/admin-preview/billing', heading: /^billing and finance$/i },
   { path: '/admin-preview/support', heading: /^support centre$/i },
+  { path: '/admin-preview/enquiries', heading: /^enquiries$/i },
   { path: '/admin-preview/support-access', heading: /^temporary support access$/i },
   { path: '/admin-preview/platform-health', heading: /^system status$/i },
   { path: '/admin-preview/incidents', heading: /^incidents$/i },

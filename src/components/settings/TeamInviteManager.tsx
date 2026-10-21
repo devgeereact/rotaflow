@@ -20,6 +20,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { ScrollableCode } from '@/components/ui/ScrollableCode';
 import type { Invite, MembershipRole } from '@/types';
+import { readOnlyErrorMessage } from '@/lib/billingState';
 
 const ROLE_OPTIONS: { value: MembershipRole; label: string; hint: string }[] = [
   { value: 'staff', label: 'Staff', hint: 'View their rota, clock in, request leave' },
@@ -134,13 +135,16 @@ export function TeamInviteManager(): JSX.Element {
         );
       }
     } catch (err) {
-      reportError(err, { area: 'team:create-invite' });
       // The database raises specific messages (already a member, bad address,
-      // insufficient role) that are more useful than a generic failure.
+      // insufficient role) that are more useful than a generic failure. A
+      // read-only organisation (0154) is a billing state, not a fault.
+      const readOnly = readOnlyErrorMessage(err);
+      if (!readOnly) reportError(err, { area: 'team:create-invite' });
       const message =
-        err instanceof Error && err.message
+        readOnly ??
+        (err instanceof Error && err.message
           ? err.message
-          : 'Could not create that invitation.';
+          : 'Could not create that invitation.');
       setFormError(message);
     } finally {
       setSubmitting(false);

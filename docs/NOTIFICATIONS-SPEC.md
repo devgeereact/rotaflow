@@ -35,6 +35,40 @@ actually been sent) are in `docs/SAAS.md` §2, because they change.
 Invitations are the exception: `send-invite` sends its email directly, because an
 invitee has no account to address an outbox row to.
 
+### Billing notices (`0154`, plan F16)
+
+`stripe-webhook` writes two outbox rows of `type` `billing`, addressed to the
+organisation's active owners, through the same outbox and drain as everything
+else:
+
+| Event                                  | Title                       | Dedupe key                                                                   |
+| -------------------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
+| `customer.subscription.trial_will_end` | "Your trial ends in 3 days" | `stripe:trial_will_end:<mode>:<sub>:<trial end>`                             |
+| `invoice.payment_failed`               | "Payment failed"            | `stripe:payment_failed:<mode>:<invoice>`, so once per invoice, not per retry |
+
+`billing` has no row in the organisation's notification matrix, so
+`send-notification` sends it on every channel the person has not switched off.
+Only a **Stripe** trial produces the three-day notice: an organisation in its
+own no-card trial (`organisations.trial_ends_at`) is told by the in-app banner
+and Settings, Billing, and has no email reminder yet (GAP-127).
+
+**Website enquiries are the second exception (`0155`).** The outbox cannot carry
+them: `notification_outbox.org_id` is NOT NULL, and `send-notification` drops
+every recipient who is not a member of that organisation, so there is no way to
+address platform staff about a prospect who belongs to no organisation (`0148`
+met the same limit for a prospect's support case and skipped it). Widening the
+outbox and the delivery function for one alert was judged the larger risk. So
+`public-enquiry` sends one short email itself, after the `enquiries` row has
+committed, to `ENQUIRY_NOTIFY_EMAIL` over the platform SMTP account
+(`platformSmtpConfig` in `_shared/smtp.ts`). It says a message arrived, whether
+a demo was asked for, the team size and sector, and links to `/admin/enquiries`.
+It carries **no text the visitor typed**: not the name, the address or the
+message, which stay behind sign-in and RLS and inside the retention job's
+reach. Without `ENQUIRY_NOTIFY_EMAIL` or platform SMTP nothing is sent, and the
+console inbox still shows the enquiry. A send failure is reported to Sentry and
+changes nothing for the visitor. Nothing is ever sent to the visitor's address,
+so the form cannot be used to mail a third party.
+
 ## Channels
 
 | Channel  | State                                                                                                                                                                                                                                                                                                            |

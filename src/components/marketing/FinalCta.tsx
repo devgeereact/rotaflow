@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Button } from '@/components/ui/Button';
 import { HERO, PRIMARY_CTA } from '@/lib/marketing';
+import { BOOK_DEMO_PATH } from '@/lib/enquiry';
 
 interface FinalCtaProps {
   heading?: string;
@@ -12,8 +13,8 @@ interface FinalCtaProps {
 /**
  * Closing call to action.
  *
- * "Book a Demo" routes to `/contact` rather than a scheduling widget: there is
- * no calendar integration and no sales calendar to book into, and a button
+ * "Book a Demo" routes to `/contact?demo=1`, where the demo box starts ticked,
+ * rather than a scheduling widget: there is no calendar integration and no sales calendar to book into, and a button
  * that opens nothing is worse than one that reaches a form somebody reads.
  */
 export function FinalCta({
@@ -48,7 +49,7 @@ export function FinalCta({
                   <ArrowRight size={18} aria-hidden="true" />
                 </Button>
               </Link>
-              <Link to="/contact">
+              <Link to={BOOK_DEMO_PATH}>
                 <Button size="lg" variant="secondary">
                   Book a demo
                 </Button>

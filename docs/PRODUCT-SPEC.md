@@ -130,6 +130,17 @@ Phase 2 any more.
   real completed charge has been run through it end-to-end (verified
   2026-08-20 that the code path is correctly wired; see
   `qa/FUNCTIONAL-AUDIT.md`). Apple Pay / Google Pay / PayPal remain unbuilt.
+- **Trial terms (owner decision D2, `0154`).** Every new organisation gets a
+  30-day free trial with Professional limits (five sites, 60 staff) and no card.
+  There is no free-forever tier. Choosing a plan during the trial keeps the days
+  left: Checkout collects the card and Stripe first charges it when the trial
+  ends. When the trial ends without a plan, or a cancelled plan runs out after
+  its grace period, the organisation becomes **read-only**: everyone can sign
+  in, see and export everything, and staff can still clock in, clock out and
+  request leave, but nobody can create or publish a rota, add or change shifts,
+  or invite anyone, and plan features such as the AI assistant stop, until a plan
+  is chosen. The database enforces it (SQLSTATE `BILL1`); the in-app banner and
+  Settings, Billing explain it.
 
 ## 6. Non-functional requirements
 

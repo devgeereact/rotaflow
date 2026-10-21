@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALREADY_SUBSCRIBED as CLIENT_CODE } from '@/lib/billingState';
-import { ALREADY_SUBSCRIBED, decideCheckout } from './guard';
+import { ALREADY_SUBSCRIBED, checkoutTrialEnd, decideCheckout } from './guard';
 
 /**
  * A second Checkout for an organisation that is already paying created a
@@ -64,5 +64,29 @@ describe('decideCheckout', () => {
 
   it('uses the same error code the browser matches on', () => {
     expect(ALREADY_SUBSCRIBED).toBe(CLIENT_CODE);
+  });
+});
+
+describe('checkoutTrialEnd', () => {
+  const now = new Date('2026-10-12T09:00:00Z');
+
+  it('carries the organisation trial end into Stripe, in Unix seconds', () => {
+    expect(checkoutTrialEnd('2026-11-01T09:00:00Z', now)).toBe(
+      Date.parse('2026-11-01T09:00:00Z') / 1000,
+    );
+  });
+
+  it('charges now when the trial has ended', () => {
+    expect(checkoutTrialEnd('2026-10-01T09:00:00Z', now)).toBeNull();
+  });
+
+  it('charges now when the trial is too close for Stripe to accept', () => {
+    // 47 hours: Stripe needs at least 48 for a Checkout trial.
+    expect(checkoutTrialEnd('2026-10-14T08:00:00Z', now)).toBeNull();
+  });
+
+  it('charges now when there is no trial or it is unreadable', () => {
+    expect(checkoutTrialEnd(null, now)).toBeNull();
+    expect(checkoutTrialEnd('not a date', now)).toBeNull();
   });
 });
