@@ -13,7 +13,7 @@ export function WhyChooseBand(): JSX.Element {
   return (
     <section className="border-y border-surface-border bg-surface-subtle py-20 dark:border-surface-border-dark dark:bg-surface-subtle-dark">
       <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div>
+        <div data-reveal>
           <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
             Why teams choose RotaFlow
           </h2>
@@ -25,7 +25,7 @@ export function WhyChooseBand(): JSX.Element {
 
         <ul className="space-y-6">
           {WHY_ROTAFLOW.map(({ title, body }) => (
-            <li key={title} className="flex gap-4">
+            <li key={title} data-reveal className="flex gap-4">
               <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-success/10 text-success">
                 <Check size={16} aria-hidden="true" />
               </span>

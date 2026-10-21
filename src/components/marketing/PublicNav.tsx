@@ -21,6 +21,12 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
  * The mobile menu is a real dialog: focus moves into it, Escape closes it and
  * Tab is trapped. The same treatment `Sidebar` gives its drawer. A nav that
  * traps a keyboard user is the kind of thing a click-through test never finds.
+ * It also locks the page behind it, as `Modal` does, which is what tells the
+ * marketing smooth scroll to stand still while it is open.
+ *
+ * `data-scroll-nav` lets the marketing scroll motion mark the bar
+ * `data-scrolled` once the page moves, and the bar firms up from translucent
+ * to solid. Colour only: the bar never changes height.
  */
 export function PublicNav(): JSX.Element {
   const { user } = useSupabaseAuth();
@@ -38,6 +44,9 @@ export function PublicNav(): JSX.Element {
 
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    body.style.overflow = 'hidden';
     (panel?.querySelector<HTMLElement>(FOCUSABLE) ?? panel)?.focus();
 
     const onKeyDown = (e: KeyboardEvent): void => {
@@ -66,12 +75,16 @@ export function PublicNav(): JSX.Element {
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
+      body.style.overflow = previousOverflow;
       previouslyFocused?.focus();
     };
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-surface-border bg-surface/80 backdrop-blur-sm dark:border-surface-border-dark dark:bg-surface-dark/80">
+    <header
+      data-scroll-nav
+      className="sticky top-0 z-30 border-b border-surface-border bg-surface/80 backdrop-blur-sm transition-colors data-scrolled:bg-surface/95 dark:border-surface-border-dark dark:bg-surface-dark/80 dark:data-scrolled:bg-surface-dark/95"
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <BrandMark label={null} className="h-8 w-8" />
@@ -145,6 +158,7 @@ export function PublicNav(): JSX.Element {
             aria-modal="true"
             aria-label="Menu"
             tabIndex={-1}
+            data-lenis-prevent
             className="absolute inset-x-0 top-0 max-h-full overflow-y-auto bg-surface p-6 shadow-lg dark:bg-surface-dark"
           >
             <div className="mb-6 flex items-center justify-between">

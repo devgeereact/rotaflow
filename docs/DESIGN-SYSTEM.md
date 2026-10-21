@@ -299,7 +299,7 @@ control picks the role rather than a number:
 | `duration-press`    | 100ms | a button's own press/hover transform                 |
 | `duration-control`  | 330ms | hover/focus colour on any control, row, link or tile |
 | `duration-overlay`  | 180ms | a menu, popover, dropdown or dialog appearing        |
-| `duration-entrance` | 300ms | the `animate-fade-up` entrance                       |
+| `duration-entrance` | 300ms | the `animate-fade-up` and `animate-pop-in` entrances |
 
 | Interaction       | Spec                                                          |
 | ----------------- | ------------------------------------------------------------- |
@@ -307,6 +307,7 @@ control picks the role rather than a number:
 | Tap               | colour only; no scale                                         |
 | Shift drag/drop   | ghost preview while dragging; stable drop target              |
 | Page/section in   | `animate-fade-up` — an _entrance_, never replayed on refetch  |
+| Marketing scroll  | GSAP + Lenis, public pages only; rules below                  |
 | Sync/save confirm | brief, non-blocking, and only after the write actually landed |
 | Reduced motion    | see below — durations **and** transforms                      |
 
@@ -341,8 +342,49 @@ hover state is simply deleted.
 
 Do not animate table rows, animate counters, or replay a page entrance after a
 filter or a refetch. Preserve scroll, focus, filters and selection through a
-save. `animate-fade-up` is the only animation mechanism in the product; Framer
-Motion was a dependency until 2026-08-31 and was never imported by anything.
+save. Inside the app, CSS keyframes (`animate-fade-up`, `animate-pop-in`) are
+the only animation mechanism. Framer Motion was a dependency until 2026-08-31
+and was never imported by anything.
+
+### Marketing scroll motion (GSAP + Lenis, since 2026-10-21)
+
+The public marketing pages, and only those, add smooth scrolling (Lenis) and
+scroll reveals (GSAP ScrollTrigger). The owner approved this on 21 October 2026,
+reversing the earlier "no JavaScript animation library" rule. That rule existed
+because a framer-motion entrance once left the home hero invisible, so these
+conditions are what make the library acceptable:
+
+- **It lives in one module**, `src/components/marketing/motion/marketingMotion.ts`,
+  reached only through a dynamic `import()` in `useMarketingMotion`. That hook
+  is mounted by `MarketingLayout`, which no authenticated screen uses.
+- **It loads after first paint, and only under
+  `prefers-reduced-motion: no-preference`.** Under reduced motion, in every
+  Playwright run (`reducedMotion: 'reduce'`) and with JavaScript blocked, the
+  page is complete and static.
+- **Visible by default.** Copy above the fold is never animated by GSAP. The
+  hero and `PageHero` enter on staggered CSS `fade-up` (`[animation-delay:…]`),
+  which paints with no JavaScript. GSAP hides an element (`opacity: 0`, 16px
+  down) only if it is still below the viewport when the module runs, and every
+  reveal runs once and clears its inline styles.
+- **Markup opts in with attributes, not imports.** `data-reveal` on an item
+  that should rise in. `data-parallax="frame"` and `"phone"` on the hero product
+  shot (scrubbed, so position only, never visibility). `data-scroll-nav` on the
+  marketing header, which gets `data-scrolled` once the page moves and firms up
+  its background. Colour only: it never changes height.
+- **Timing:** reveal 500ms, 60ms between items, `power2.out`. The scroll
+  reveal is the one place a curve other than `ease-control` is used:
+  `ease-control` is an in-out curve for colour changes, and an entrance should
+  decelerate.
+- **Lenis stands still behind a dialog.** Any lock that sets
+  `body.style.overflow = 'hidden'` (`Modal`, the marketing mobile menu) stops
+  it. A scrollable dialog body carries `data-lenis-prevent`. In-page anchors
+  stay native (`anchors: false`), which keeps the skip link moving focus.
+- **Bundle:** GSAP, ScrollTrigger and Lenis are one `assets/motion-*.js` chunk,
+  49.3KiB gzip, deliberately excluded from the service worker's precache.
+- `e2e/responsive-and-motion.spec.ts` ("marketing scroll motion") pins all of
+  this: the module never loads under reduced motion, the hero heading is
+  visible at once, every `data-reveal` ends at opacity 1, the skip link still
+  focuses `#main-content`, and an open dialog stops the scroll.
 
 ## 5. Accessibility (frontline-critical)
 

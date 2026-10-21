@@ -17,7 +17,7 @@ export function BenefitGrid({
 }: BenefitGridProps): JSX.Element {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
-      <div className="mx-auto mb-12 max-w-2xl text-center">
+      <div data-reveal className="mx-auto mb-12 max-w-2xl text-center">
         <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
           {heading}
         </h2>
@@ -26,7 +26,7 @@ export function BenefitGrid({
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {PRODUCT_BENEFITS.map(({ icon: Icon, title, body: text }) => (
-          <Card key={title} className="h-full">
+          <Card key={title} data-reveal className="h-full">
             <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <Icon size={20} aria-hidden="true" />
             </span>

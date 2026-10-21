@@ -17,7 +17,7 @@ interface SectorGridProps {
 export function SectorGrid({ variant = 'full' }: SectorGridProps): JSX.Element {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
-      <div className="mx-auto mb-12 max-w-2xl text-center">
+      <div data-reveal className="mx-auto mb-12 max-w-2xl text-center">
         <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
           Built for shift-based teams
         </h2>
@@ -28,7 +28,7 @@ export function SectorGrid({ variant = 'full' }: SectorGridProps): JSX.Element {
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {SECTORS.map(({ icon: Icon, name, body, points }) => (
-          <Card key={name} className="flex h-full flex-col">
+          <Card key={name} data-reveal className="flex h-full flex-col">
             <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <Icon size={20} aria-hidden="true" />
             </span>
