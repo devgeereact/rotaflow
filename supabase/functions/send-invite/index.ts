@@ -41,6 +41,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { reportEdgeError } from '../_shared/sentry.ts';
 import { createSmtpTransport, resolveSmtpConfig } from '../_shared/smtp.ts';
+import { inviteEmail, inviteRefusal, type InviteRow } from './sendability.ts';
 
 const ALLOW_HEADERS = 'authorization, x-client-info, apikey, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -63,12 +64,6 @@ async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: 'an owner',
-  manager: 'a manager',
-  staff: 'a team member',
-};
 
 Deno.serve(async (req: Request) => {
   requestCorsHeaders = corsHeaders(req, ALLOW_HEADERS);
@@ -111,18 +106,12 @@ Deno.serve(async (req: Request) => {
     // Indistinguishable from "you may not see this org's invites", on purpose.
     if (!invite) return jsonResponse({ error: 'Invite not found' }, 404);
 
-    if (invite.accepted_at || invite.revoked_at) {
-      return jsonResponse({ error: 'That invite is no longer live' }, 409);
-    }
-    if (new Date(invite.expires_at as string) <= new Date()) {
-      return jsonResponse({ error: 'That invite has expired' }, 409);
-    }
-
-    // Proves the caller holds the real token, so a mistyped or stale one is
-    // refused rather than emailed as a link that will not work.
-    if ((await sha256Hex(token)) !== invite.token_hash) {
-      return jsonResponse({ error: 'That token does not match this invite' }, 400);
-    }
+    const refusal = inviteRefusal(
+      invite as InviteRow,
+      await sha256Hex(token),
+      new Date(),
+    );
+    if (refusal) return jsonResponse({ error: refusal.error }, refusal.status);
 
     // service_role, and only for the mail credentials. See the file header.
     const admin = createClient(
@@ -153,27 +142,16 @@ Deno.serve(async (req: Request) => {
 
     const origin =
       req.headers.get('Origin') || Deno.env.get('APP_URL') || 'https://rotaflow.space';
-    const link = `${origin}/invite/${token}`;
-    const expires = new Date(invite.expires_at as string).toUTCString();
-    const roleLabel = ROLE_LABEL[invite.role as string] ?? 'a team member';
+    const message = inviteEmail(invite as InviteRow, orgName, origin, token);
 
     const transport = await createSmtpTransport(smtpConfig);
     try {
       await transport.sendMail({
         from: smtpConfig.from,
-        // From the row, never from the request body.
-        to: invite.email as string,
-        subject: `You have been invited to join ${orgName} on RotaFlow`,
-        text: [
-          `You have been invited to join ${orgName} on RotaFlow as ${roleLabel}.`,
-          '',
-          'Open this link to accept:',
-          link,
-          '',
-          `The link expires on ${expires}.`,
-          '',
-          'If you were not expecting this, you can ignore this email — nothing happens until you open the link.',
-        ].join('\n'),
+        // From the row, never from the request body (see sendability.ts).
+        to: message.to,
+        subject: message.subject,
+        text: message.text,
       });
     } catch (mailError) {
       // Never surface the SMTP error verbatim: an owner-supplied server can put

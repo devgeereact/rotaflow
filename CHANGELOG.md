@@ -68,6 +68,12 @@ Dependabot may be grouped into one line per week. The rule sits under
   reloads by itself when the signal returns. Fixed on the way: the clock screen kept saying
   "Sending 1 entry" after the shell had already sent it, because each
   `useSyncQueue` instance held its own list; they now announce changes to each other.
+- **test: the recovered defects re-tested (GAP-115).** BUG-010's form-to-row
+  mapping moves to `src/lib/staffForm.ts` with a test naming every column it
+  writes, and the pgTAP grant invariants now cover those `staff_profiles` columns.
+  `send-invite`'s refusals and message move to `sendability.ts` under vitest
+  (behaviour unchanged). The only step left on GAP-115 is owner action O13: one
+  invitation sent into a real inbox.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating
