@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase';
-import { DOCUMENT_BUCKET, SIGNED_URL_SECONDS, documentObjectPath } from '@/lib/documentFiles';
+import {
+  DOCUMENT_BUCKET,
+  SIGNED_URL_SECONDS,
+  documentObjectPath,
+} from '@/lib/documentFiles';
 import type { StaffDocument, StaffDocumentInsert } from '@/types';
 
 /**

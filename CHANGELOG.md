@@ -13,6 +13,15 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(staff): documents are kept privately and deleted with their record (D4,
+  GAP-056, GAP-084).** `0159` adds a private `staff-documents` bucket with policies
+  that admit the person and their organisation's owners and managers, a
+  `storage_path` column (legacy pasted links still open), and a `storage_deletions`
+  queue filled by triggers when a document, person or organisation is deleted. The
+  new `purge-storage` Edge Function removes queued files, drained by a pg_cron job
+  every five minutes. The Documents dialog uploads a file and opens it through a
+  60-second signed link. Needs `supabase functions deploy purge-storage` before
+  files are actually removed.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating

@@ -20,18 +20,28 @@ describe('parsePurgeRequest', () => {
   });
 
   it('accepts an organisation folder and a person folder', () => {
-    expect(parsePurgeRequest({ bucket: 'staff-documents', path: ORG, isFolder: true })).not.toBeNull();
     expect(
-      parsePurgeRequest({ bucket: 'staff-documents', path: `${ORG}/${PERSON}`, isFolder: true }),
+      parsePurgeRequest({ bucket: 'staff-documents', path: ORG, isFolder: true }),
+    ).not.toBeNull();
+    expect(
+      parsePurgeRequest({
+        bucket: 'staff-documents',
+        path: `${ORG}/${PERSON}`,
+        isFolder: true,
+      }),
     ).not.toBeNull();
   });
 
   it('refuses another bucket', () => {
-    expect(parsePurgeRequest({ bucket: 'avatars', path: ORG, isFolder: true })).toBeNull();
+    expect(
+      parsePurgeRequest({ bucket: 'avatars', path: ORG, isFolder: true }),
+    ).toBeNull();
   });
 
   it('refuses an empty folder, which would mean the whole bucket', () => {
-    expect(parsePurgeRequest({ bucket: 'staff-documents', path: '', isFolder: true })).toBeNull();
+    expect(
+      parsePurgeRequest({ bucket: 'staff-documents', path: '', isFolder: true }),
+    ).toBeNull();
   });
 
   it('refuses traversal, a leading slash and a nested file', () => {
@@ -42,16 +52,26 @@ describe('parsePurgeRequest', () => {
       `${ORG}/${PERSON}/`,
       'not-a-uuid/x/y.pdf',
     ]) {
-      expect(parsePurgeRequest({ bucket: 'staff-documents', path, isFolder: false })).toBeNull();
-      expect(parsePurgeRequest({ bucket: 'staff-documents', path, isFolder: true })).toBeNull();
+      expect(
+        parsePurgeRequest({ bucket: 'staff-documents', path, isFolder: false }),
+      ).toBeNull();
+      expect(
+        parsePurgeRequest({ bucket: 'staff-documents', path, isFolder: true }),
+      ).toBeNull();
     }
   });
 
   it('refuses a file path flagged as a folder and the reverse', () => {
     expect(
-      parsePurgeRequest({ bucket: 'staff-documents', path: `${ORG}/${PERSON}/a.pdf`, isFolder: true }),
+      parsePurgeRequest({
+        bucket: 'staff-documents',
+        path: `${ORG}/${PERSON}/a.pdf`,
+        isFolder: true,
+      }),
     ).toBeNull();
-    expect(parsePurgeRequest({ bucket: 'staff-documents', path: ORG, isFolder: false })).toBeNull();
+    expect(
+      parsePurgeRequest({ bucket: 'staff-documents', path: ORG, isFolder: false }),
+    ).toBeNull();
   });
 
   it('refuses a malformed body', () => {

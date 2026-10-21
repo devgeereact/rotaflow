@@ -11,19 +11,25 @@ const PERSON = '22222222-2222-4222-8222-222222222222';
 
 describe('documentFileProblem', () => {
   it('accepts a PDF under the limit', () => {
-    expect(documentFileProblem({ name: 'a.pdf', size: 1000, type: 'application/pdf' })).toBeNull();
+    expect(
+      documentFileProblem({ name: 'a.pdf', size: 1000, type: 'application/pdf' }),
+    ).toBeNull();
   });
 
   it('refuses an empty file, an oversized file and an unsupported type', () => {
-    expect(documentFileProblem({ name: 'a.pdf', size: 0, type: 'application/pdf' })).toMatch(
-      /empty/,
-    );
     expect(
-      documentFileProblem({ name: 'a.pdf', size: MAX_DOCUMENT_BYTES + 1, type: 'application/pdf' }),
+      documentFileProblem({ name: 'a.pdf', size: 0, type: 'application/pdf' }),
+    ).toMatch(/empty/);
+    expect(
+      documentFileProblem({
+        name: 'a.pdf',
+        size: MAX_DOCUMENT_BYTES + 1,
+        type: 'application/pdf',
+      }),
     ).toMatch(/10 MB/);
-    expect(documentFileProblem({ name: 'a.exe', size: 10, type: 'application/x-msdownload' })).toMatch(
-      /PDF/,
-    );
+    expect(
+      documentFileProblem({ name: 'a.exe', size: 10, type: 'application/x-msdownload' }),
+    ).toMatch(/PDF/);
   });
 });
 
@@ -56,6 +62,8 @@ describe('documentObjectPath', () => {
   });
 
   it('is always exactly three segments, whatever the file is called', () => {
-    expect(documentObjectPath(ORG, PERSON, 'abc', 'a/b/c.pdf').split('/')).toHaveLength(3);
+    expect(documentObjectPath(ORG, PERSON, 'abc', 'a/b/c.pdf').split('/')).toHaveLength(
+      3,
+    );
   });
 });

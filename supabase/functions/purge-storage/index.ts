@@ -82,9 +82,12 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { data: ok, error: verifyError } = await supabase.rpc('verify_notification_secret', {
-      p_presented: presented,
-    });
+    const { data: ok, error: verifyError } = await supabase.rpc(
+      'verify_notification_secret',
+      {
+        p_presented: presented,
+      },
+    );
     if (verifyError) {
       reportEdgeError(verifyError, 'purge-storage:verify');
       return jsonResponse({ error: 'Storage purge is not configured yet' }, 503);
@@ -94,7 +97,9 @@ Deno.serve(async (req: Request) => {
     const request = parsePurgeRequest(await req.json().catch(() => null));
     if (!request) return jsonResponse({ error: 'Not a path this function removes' }, 400);
 
-    const paths = request.isFolder ? await listFolder(supabase, request.path) : [request.path];
+    const paths = request.isFolder
+      ? await listFolder(supabase, request.path)
+      : [request.path];
 
     // `remove` takes at most 1000 paths, and treats a missing one as success.
     for (let i = 0; i < paths.length; i += 1000) {

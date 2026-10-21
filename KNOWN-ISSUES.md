@@ -30,18 +30,17 @@ Checked against the code and the register on 11 October 2026.
 
 ## Staff records
 
-- **Documents and photos are links, not uploads.** A staff document is recorded
-  as its type, number and expiry, plus a web address pointing at wherever you
-  keep the file; RotaFlow does not store the file, and the screen asks you to
-  keep the document itself in your own HR system. A staff photo is also a pasted
-  web address. The link is currently required on a document. (GAP-084)
+- **Staff photos are links, not uploads.** A staff photo is a pasted web
+  address. Documents are uploaded and stored privately; documents added before
+  uploads existed keep the link they were given. (GAP-084)
 - **Medical notes entered on an emergency contact before 11 October 2026 are
   still stored.** The field is no longer asked for or shown, so those notes cannot
   be seen or edited on screen; deleting the contact removes them, and a person's
   data export still includes them. Removing the stored values is a separate,
   planned change. (GAP-058)
-- **Erasing a person does not delete files hosted elsewhere** that their links
-  pointed to. (GAP-056)
+- **Erasing a person does not delete files hosted elsewhere** that an older
+  document link or a photo link pointed to. Uploaded documents are deleted with
+  the person. (GAP-056)
 - **A user cannot change their own sign-in email address.** (GAP-085)
 - **There is no self-service download or deletion of your own account data**; a
   request goes to the organisation or to support. (GAP-057)

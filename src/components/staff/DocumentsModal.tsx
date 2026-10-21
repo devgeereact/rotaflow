@@ -281,9 +281,7 @@ export function DocumentsModal({
             size="sm"
             variant="secondary"
             onClick={() => void handleAdd()}
-            disabled={
-              submitting || !form.type.trim() || !form.name.trim() || !file
-            }
+            disabled={submitting || !form.type.trim() || !form.name.trim() || !file}
           >
             <Plus size={16} aria-hidden="true" className="mr-1.5" />
             {submitting ? 'Uploading…' : 'Add document'}
