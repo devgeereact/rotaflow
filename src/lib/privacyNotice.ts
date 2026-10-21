@@ -217,13 +217,13 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'You can ask for a copy of what is held about you, ask for it to be corrected, ask for it to be deleted, ask us to restrict or stop a particular use, ask for it in a portable form, and withdraw any consent you gave. Where an employer is the controller, the request goes to them and we support it.',
       'There is no self-service button for an individual, and rather than imply otherwise: write to support@rotaflow.space. Every request is logged in a register with a due date one month from receipt, extendable by two further months where a request is complex, and cannot be closed without recording what was done.',
       'A manager or owner can export a single person’s employment record as a file covering thirteen sets of data, and can export or delete the whole organisation.',
-      'Deleting a person does not delete their rota. It replaces their name, email address, phone number, photograph and payroll identifier, removes their emergency contacts and documents, revokes any calendar link they had, and leaves the shifts and clock events attached to an anonymous record so the business still has a history of who was covered when. One limitation is worth knowing: the database row pointing at an uploaded file is removed, but the file itself is not deleted from the image host.',
+      'Deleting a person does not delete their rota. It replaces their name, email address, phone number, photograph and payroll identifier, removes their emergency contacts and documents, revokes any calendar link they had, and leaves the shifts and clock events attached to an anonymous record so the business still has a history of who was covered when. A document uploaded to RotaFlow is deleted with its record: the file is queued for removal in the same step and taken out of storage within minutes. One limitation is worth knowing: a document added as a link before uploads existed, and a staff photograph, are links to wherever they are hosted, so the link is removed but the file at the other end is not.',
     ],
     status: 'owner-input',
     outstanding:
-      'The one-month response time is what the register computes; whether it is the right commitment to publish for both UK and EEA users needs confirming. Uploaded files surviving an erasure is a real gap with no fix wired — it needs an owner decision about the image host before this paragraph can be softened.',
+      'The one-month response time is what the register computes; whether it is the right commitment to publish for both UK and EEA users needs confirming. The "within minutes" sentence is true only once the purge-storage Edge Function is deployed (0159; functions never deploy on merge), so deploy it before a build with this paragraph reaches the live site.',
     evidence:
-      'supabase/migrations/0020_gdpr_requests.sql, 0111_erasure_misses_email.sql, src/services/gdprService.ts',
+      'supabase/migrations/0020_gdpr_requests.sql, 0111_erasure_misses_email.sql, 0159_a_document_is_kept_privately.sql, src/services/gdprService.ts',
   },
   {
     id: 'automated-decisions',

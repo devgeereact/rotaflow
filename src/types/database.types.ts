@@ -560,36 +560,39 @@ export type Database = {
         Row: {
           created_at: string;
           expires_at: string | null;
-          file_url: string;
+          file_url: string | null;
           id: string;
           issued_at: string | null;
           name: string;
           org_id: string;
           staff_profile_id: string;
+          storage_path: string | null;
           type: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
           expires_at?: string | null;
-          file_url: string;
+          file_url?: string | null;
           id?: string;
           issued_at?: string | null;
           name: string;
           org_id: string;
           staff_profile_id: string;
+          storage_path?: string | null;
           type: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
           expires_at?: string | null;
-          file_url?: string;
+          file_url?: string | null;
           id?: string;
           issued_at?: string | null;
           name?: string;
           org_id?: string;
           staff_profile_id?: string;
+          storage_path?: string | null;
           type?: string;
           updated_at?: string;
         };

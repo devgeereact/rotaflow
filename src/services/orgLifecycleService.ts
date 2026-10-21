@@ -146,6 +146,11 @@ export const DELIBERATELY_EXCLUDED: readonly { table: string; reason: string }[]
       'A ledger of which webhook deliveries Stripe has made and whether they finished (0125). It is operational plumbing, not your data: the invoices and subscription states those events produced are exported, and they are the record that means anything to you. It also carries no personal data at all.',
   },
   {
+    table: 'storage_deletions',
+    reason:
+      'A queue of stored files waiting to be removed from Storage after their record, person or organisation was deleted (0159). It is server plumbing, readable by no signed-in user, and the records it refers to have already gone.',
+  },
+  {
     table: 'org_smtp_settings',
     reason:
       'Contains the SMTP password for your own mailbox. Exporting a live credential into a file that gets emailed around is a worse outcome than an incomplete export; the settings are on your Integrations screen.',
@@ -255,7 +260,7 @@ export async function exportOrganisationData(orgId: string): Promise<Organisatio
     notes: [
       'Every row scoped to this organisation, read with your own permissions. A table you cannot read is listed under "omitted" with the reason, rather than left out silently.',
       'Staff records are read through `staff_profiles_visible`. Payroll id, start date, phone, email and holiday allowance are readable only by an owner or manager of this organisation, or by the person the record is about, so they are present in an export an owner runs and would be blank in one run by anybody else.',
-      'Files themselves are not included. `documents` records the URL of each uploaded file, held by ImageKit; download anything you need to keep before deleting the organisation.',
+      'Files themselves are not included. `documents` records where each one is: `storage_path` for a file RotaFlow stores privately, or `file_url` for an older pasted link. Deleting the organisation deletes every stored file, so download anything you need to keep first.',
       "Staff accounts are not included. A person's RotaFlow login can belong to more than one organisation, so it is not this organisation's to export. Their employment record with you is in `staff_profiles` and the tables around it.",
       "Audit rows survive the organisation being deleted, by design: an audit trail a tenant deletion erases is not an audit trail. They are kept with the organisation's name and no longer linked to it.",
       ...DELIBERATELY_EXCLUDED.map(

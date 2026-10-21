@@ -242,7 +242,7 @@ export async function exportStaffData(staffProfileId: string): Promise<StaffData
     clockCorrections,
     notes: [
       "Your RotaFlow login is not included. It can belong to more than one organisation, so it is not this one's to export.",
-      'Files themselves are not included — `documents` records the URL of each one.',
+      'Files themselves are not included. `documents` records where each one is: `storage_path` for a file RotaFlow stores privately (open it from the Documents dialog), or `file_url` for an older pasted link.',
       ...SUBJECT_EXPORT_EXCLUDED.map((x) => `Not included — ${x.table}: ${x.reason}`),
     ],
   };

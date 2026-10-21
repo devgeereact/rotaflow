@@ -256,7 +256,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 156 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 157 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -329,9 +329,11 @@ self-service flow. What each type actually does today:
   `timesheets` intact (now pointing at the anonymised "Deleted Member"), so
   payroll history stays consistent for UK retention requirements. It does
   not touch `auth.users` (needs the Auth Admin API, not yet wired to this
-  flow) and does not delete the file behind `documents.file_url` on
-  ImageKit, only the database row — both limits are in the migration's own
-  header, and neither was contradicted by the live test.
+  flow) and, at the time of that test, did not delete the file behind
+  `documents.file_url`, only the database row. Since `0159` a document is an
+  upload to a private bucket, and deleting its row queues the file for the
+  `purge-storage` function in the same transaction; a legacy pasted link is
+  still only a link.
 - **Access / portability**: an **organisation-level** one-click export exists —
   `exportOrganisationData()` (`src/services/orgLifecycleService.ts`) assembles
   **33** tables into a single JSON file from Settings → Organisation, read through
@@ -599,10 +601,12 @@ immigration data landed in a column nothing was designed around by design. Phase
 1 of plan S2 (decision D4) removed that suggestion and changed the copy to
 "Record the document type, number and expiry. Keep the document itself in your
 own HR system." The field is still free text, and existing records are
-untouched, so such data can still be typed in or already be held. The link is
-still required, because `documents.file_url` is `not null` with an `https?://`
-check (`0002`, `0092`); making it optional needs a migration. It is a _link_, not an
-upload: erasure removes the row and cannot remove the file (GAP-056).
+untouched, so such data can still be typed in or already be held. Since `0159`
+the file is an upload to the private `staff-documents` bucket, readable only by
+the person and the organisation's owners and managers through a 60-second signed
+link, and erasure, removal and organisation deletion queue it for deletion
+(GAP-056, closed in code; `docs/DATA-MODEL.md` §4.15). Rows from before then keep
+their pasted link, which erasure cannot reach.
 
 **C11 — leave type.** `sick` makes an absence record a health record about a
 named person. Deliberately excluded from the AI prompt
@@ -703,19 +707,20 @@ From `retention_policies` (`0027`, `0092`, `0155`), enforced by `enforce_retenti
 nightly at 02:15 UTC (`0029`, fixed by `0057`), with each run recorded in
 `retention_runs`.
 
-| Data                                   | Period     | Trigger          | Method                                        | Enforced                                                 |
-| -------------------------------------- | ---------- | ---------------- | --------------------------------------------- | -------------------------------------------------------- |
-| Rota and shift history                 | 84 months  | shift start date | hard delete                                   | Yes                                                      |
-| Attendance, incl. GPS                  | 36 months  | event date       | hard delete                                   | Yes                                                      |
-| Leave                                  | 72 months  | end date         | hard delete                                   | Yes                                                      |
-| Support cases                          | 36 months  | resolution date  | hard delete                                   | Yes                                                      |
-| Notification delivery + settled outbox | 12 months  | creation         | hard delete                                   | Yes                                                      |
-| Website enquiries                      | 24 months  | arrival          | hard delete                                   | Yes (`0155`)                                             |
-| Audit log                              | indefinite | —                | append-only trigger refuses `UPDATE`/`DELETE` | By the database                                          |
-| Deleted tenant                         | immediate  | owner's action   | cascade across ~32 tables                     | **The declared 1-month grace window is not implemented** |
-| Platform health samples                | 90 days    | sample time      | pruned inside the probe                       | Yes                                                      |
-| `staff_pay_rates`                      | none       | —                | survives anonymisation, identifying nobody    | By decision                                              |
-| Uploaded files                         | **none**   | —                | **not deleted at all** (GAP-056)              | No                                                       |
+| Data                                   | Period            | Trigger          | Method                                                       | Enforced                                                 |
+| -------------------------------------- | ----------------- | ---------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
+| Rota and shift history                 | 84 months         | shift start date | hard delete                                                  | Yes                                                      |
+| Attendance, incl. GPS                  | 36 months         | event date       | hard delete                                                  | Yes                                                      |
+| Leave                                  | 72 months         | end date         | hard delete                                                  | Yes                                                      |
+| Support cases                          | 36 months         | resolution date  | hard delete                                                  | Yes                                                      |
+| Notification delivery + settled outbox | 12 months         | creation         | hard delete                                                  | Yes                                                      |
+| Website enquiries                      | 24 months         | arrival          | hard delete                                                  | Yes (`0155`)                                             |
+| Audit log                              | indefinite        | —                | append-only trigger refuses `UPDATE`/`DELETE`                | By the database                                          |
+| Deleted tenant                         | immediate         | owner's action   | cascade across ~32 tables                                    | **The declared 1-month grace window is not implemented** |
+| Platform health samples                | 90 days           | sample time      | pruned inside the probe                                      | Yes                                                      |
+| `staff_pay_rates`                      | none              | —                | survives anonymisation, identifying nobody                   | By decision                                              |
+| Uploaded document files (`0159`)       | with their record | record deleted   | queued by trigger, removed by `purge-storage` within minutes | Yes, once `purge-storage` is deployed                    |
+| Legacy pasted document links, photos   | **none**          | —                | the link is removed, the file is not                         | No                                                       |
 
 Nothing is anonymised by retention; every branch is a hard `DELETE`.
 
@@ -786,8 +791,9 @@ right shape for this class of problem.
    pro-rata credit, what happens to data at the end of the billing grace
    window, VAT inclusive or exclusive, notice before suspension, any service
    level.
-6. **Uploaded files** (GAP-056). Erasure cannot reach them. Needs a decision
-   about the image host before the notice can stop admitting it.
+6. **Uploaded files** (GAP-056). Uploaded documents are deleted with their
+   record since `0159`, once `purge-storage` is deployed. Legacy pasted links and
+   staff photographs are still links the product cannot delete through.
 7. **Minimum age** (GAP-060), and what an employer scheduling a 16- or
    17-year-old must be told.
 8. **Whether a DPA will be commissioned.** `docs/SAAS.md` CAP-059 says never;

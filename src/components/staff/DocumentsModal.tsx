@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 'react';
+import { useCallback, useEffect, useState, useRef, type ChangeEvent, type JSX } from 'react';
 import { ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Callout } from '@/components/ui/Callout';
 import {
-  createDocument,
   deleteDocument,
+  documentOpenUrl,
   listDocuments,
+  uploadDocument,
 } from '@/services/documentService';
+import { DOCUMENT_ACCEPT, documentFileProblem } from '@/lib/documentFiles';
 import { reportError } from '@/lib/sentry';
 import { useConfirm } from '@/hooks/useConfirm';
 import type { StaffDocument } from '@/types';
@@ -22,19 +24,19 @@ interface DocumentsModalProps {
   staffName: string;
 }
 
-const BLANK = { type: '', name: '', fileUrl: '', issuedAt: '', expiresAt: '' };
+const BLANK = { type: '', name: '', issuedAt: '', expiresAt: '' };
 
 /**
  * Add + delete only, no edit. Same call as `EmergencyContactsModal`.
  *
- * `fileUrl` is a plain link field, not a file upload: this repo has no
- * ImageKit (or any storage) integration wired anywhere yet, so a real
- * upload here would be a half-built feature pretending to be finished.
- * A manager pastes a link to wherever the file already lives.
+ * The file is uploaded to the private `staff-documents` bucket (0159,
+ * decision D4) and opened through a signed link that expires a minute after
+ * it is asked for. Removing the record, anonymising the person or deleting
+ * the organisation queues the file for deletion in the same transaction.
  *
- * The link stays required for now: `documents.file_url` is `not null` with
- * an `https?://` check (`0002`, `0092`), so making it optional needs a
- * migration first.
+ * Rows from before 0159 hold a pasted link instead. They still open, but a
+ * new link can no longer be added: a file somewhere else is a file erasure
+ * cannot reach, which is the gap this closed (GAP-056).
  */
 export function DocumentsModal({
   open,
@@ -47,6 +49,8 @@ export function DocumentsModal({
   const [documents, setDocuments] = useState<StaffDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(BLANK);
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,40 +69,43 @@ export function DocumentsModal({
   useEffect(() => {
     if (open) {
       setForm(BLANK);
+      setFile(null);
       setError(null);
       void load();
     }
   }, [open, load]);
 
+  const handleFile = (e: ChangeEvent<HTMLInputElement>): void => {
+    const chosen = e.target.files?.[0] ?? null;
+    const problem = chosen ? documentFileProblem(chosen) : null;
+    setError(problem);
+    setFile(problem ? null : chosen);
+    if (problem && fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleAdd = async (): Promise<void> => {
-    if (!form.type.trim() || !form.name.trim() || !form.fileUrl.trim()) return;
-    const fileUrl = form.fileUrl.trim();
-    // The "Add document" button is type="button" with a direct onClick, not
-    // a form submit, so the input's type="url" constraint validation never
-    // runs, and even when it does, it accepts any scheme, javascript:
-    // included. This is rendered as a real <a href> below, so an
-    // unvalidated scheme here is a stored-XSS vector, not just bad data.
-    if (!/^https?:\/\//i.test(fileUrl)) {
-      setError('Enter a link starting with http:// or https://.');
-      return;
-    }
+    if (!form.type.trim() || !form.name.trim() || !file) return;
     setSubmitting(true);
     setError(null);
     try {
-      const created = await createDocument({
-        staff_profile_id: staffProfileId,
-        org_id: orgId,
-        type: form.type.trim(),
-        name: form.name.trim(),
-        file_url: fileUrl,
-        issued_at: form.issuedAt || null,
-        expires_at: form.expiresAt || null,
-      });
+      const created = await uploadDocument(
+        {
+          staff_profile_id: staffProfileId,
+          org_id: orgId,
+          type: form.type.trim(),
+          name: form.name.trim(),
+          issued_at: form.issuedAt || null,
+          expires_at: form.expiresAt || null,
+        },
+        file,
+      );
       setDocuments((prev) => [...prev, created]);
       setForm(BLANK);
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       reportError(err, { area: 'staff:documents-add' });
-      setError('Could not add this document. Please try again.');
+      setError('Could not upload this document. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -107,7 +114,9 @@ export function DocumentsModal({
   const handleDelete = async (doc: StaffDocument): Promise<void> => {
     const ok = await confirm({
       title: 'Remove document record?',
-      message: `"${doc.name}" will be removed from this staff member's file. This only removes the record in RotaFlow. The file itself stays wherever it is hosted.`,
+      message: doc.storage_path
+        ? `"${doc.name}" and its file will be deleted from this staff member's record.`
+        : `"${doc.name}" will be removed from this staff member's file. It was added as a link, so the file itself stays wherever it is hosted.`,
       confirmLabel: 'Remove',
       tone: 'danger',
     });
@@ -118,6 +127,23 @@ export function DocumentsModal({
     } catch (err) {
       reportError(err, { area: 'staff:documents-delete' });
       setError('Could not remove that document.');
+    }
+  };
+
+  // The window is opened inside the click, before the await, because a
+  // window opened after one is treated as a pop-up and blocked. It is then
+  // pointed at the signed link once that arrives.
+  const handleOpen = async (doc: StaffDocument): Promise<void> => {
+    const win = window.open('', '_blank');
+    if (win) win.opener = null;
+    try {
+      const url = await documentOpenUrl(doc);
+      if (win) win.location.href = url;
+      else window.location.assign(url);
+    } catch (err) {
+      win?.close();
+      reportError(err, { area: 'staff:documents-open' });
+      setError('Could not open that document.');
     }
   };
 
@@ -138,15 +164,15 @@ export function DocumentsModal({
                 className="flex items-start justify-between gap-3 rounded-xl border border-surface-border p-3 dark:border-surface-border-dark"
               >
                 <div className="min-w-0">
-                  <a
-                    href={d.file_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 font-medium text-content hover:text-primary dark:text-primary-ink-dark dark:text-content-dark"
+                  <button
+                    type="button"
+                    onClick={() => void handleOpen(d)}
+                    className="flex max-w-full items-center gap-1.5 text-left font-medium text-content hover:text-primary dark:text-content-dark dark:hover:text-primary-ink-dark"
                   >
                     <span className="truncate">{d.name}</span>
                     <ExternalLink size={14} aria-hidden="true" className="shrink-0" />
-                  </a>
+                    <span className="sr-only">(opens in a new tab)</span>
+                  </button>
                   <p className="text-sm text-content-muted dark:text-content-muted-dark">
                     {d.type}
                     {d.expires_at && ` · expires ${d.expires_at}`}
@@ -165,23 +191,19 @@ export function DocumentsModal({
           </ul>
         )}
 
-        {/* Phase 1 of plan S2 (decision D4). The type field used to suggest
-            DBS and right-to-work in its own placeholder, so criminal-record and
-            immigration information landed here by design. It no longer
-            suggests either, and the copy says what this screen is for: a
-            record of the document, not the document. The link is a pointer
-            to wherever the file already lives; erasure removes the row and
-            cannot touch the file at the other end of it, because nothing in
-            this product manages that store. Existing records are untouched. */}
-        <Callout tone="warning" title="Before you add a document">
+        {/* Decision D4. The file is held privately: only this person and the
+            organisation's owners and managers can open it, through a link that
+            expires in a minute, and it is deleted with the record. The type
+            placeholder still does not suggest DBS or right-to-work: what an
+            organisation keeps here is its own decision, not a prompt from us. */}
+        <Callout tone="info" title="How files are kept">
           <p>
-            Record the document type, number and expiry. Keep the document itself in your
-            own HR system.
+            Files are stored privately. Only this person and your organisation&apos;s
+            owners and managers can open them.
           </p>
           <p>
-            RotaFlow does not store the file. The link only points at where you keep it,
-            and removing the record here, or anonymising the person, does not delete the
-            file there.
+            Removing a document, anonymising the person or deleting the organisation
+            deletes the file as well.
           </p>
         </Callout>
 
@@ -210,20 +232,19 @@ export function DocumentsModal({
             </div>
           </div>
           <div>
-            <Label htmlFor="doc-url">
-              Link to where you keep it{' '}
+            <Label htmlFor="doc-file">
+              File{' '}
               <span className="text-content-muted dark:text-content-muted-dark">
-                (RotaFlow does not store the file)
+                (PDF or image, up to 10 MB)
               </span>
             </Label>
-            <Input
-              id="doc-url"
-              type="url"
-              value={form.fileUrl}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setForm((f) => ({ ...f, fileUrl: e.target.value }))
-              }
-              placeholder="https://…"
+            <input
+              ref={fileInputRef}
+              id="doc-file"
+              type="file"
+              accept={DOCUMENT_ACCEPT}
+              onChange={handleFile}
+              className="block w-full text-sm text-content file:mr-3 file:rounded-lg file:border file:border-surface-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-content dark:text-content-dark dark:file:border-surface-border-dark dark:file:bg-surface-dark dark:file:text-content-dark"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -260,12 +281,10 @@ export function DocumentsModal({
             size="sm"
             variant="secondary"
             onClick={() => void handleAdd()}
-            disabled={
-              submitting || !form.type.trim() || !form.name.trim() || !form.fileUrl.trim()
-            }
+            disabled={submitting || !form.type.trim() || !form.name.trim() || !file}
           >
             <Plus size={16} aria-hidden="true" className="mr-1.5" />
-            {submitting ? 'Adding…' : 'Add document'}
+            {submitting ? 'Uploading…' : 'Add document'}
           </Button>
         </div>
       </div>

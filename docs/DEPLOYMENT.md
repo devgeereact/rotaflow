@@ -202,6 +202,13 @@ after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
 TURNSTILE_SECRET_KEY=...` and `VITE_TURNSTILE_SITE_KEY=...` in the build `.env`,
      then rebuild. The secret alone refuses every enquiry, because no widget renders
      to produce a token.
+- **Private staff documents need `purge-storage` deployed** (`0159`, GAP-056).
+  Merging applies the bucket, policies, queue and cron job; until the function is
+  deployed, deletions wait in `storage_deletions` and nothing is lost. Run
+  `supabase functions deploy purge-storage`. It needs no secret of its own: it
+  verifies the outbox drains' shared secret through `verify_notification_secret`.
+  Deploy it before a site build whose Privacy Notice says files are removed
+  "within minutes" reaches the live site.
 
 ## The live release tag is the deployed commit, not `main`
 
