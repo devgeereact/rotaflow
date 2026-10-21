@@ -1713,6 +1713,22 @@ Removed, along with all three claims. Verified with `rm -rf node_modules && npm 
 `npm install`, because the two are not the same check — an install rewrites the lockfile and
 would hide exactly the breakage this could cause in CI.
 
+**2026-10-21 (a JavaScript animation library returns, on the marketing pages only)**: GSAP
+and Lenis were added for scroll reveals and smooth scrolling on the public pages, with the
+owner's approval. The rule above was not dropped, it was given conditions:
+
+- The libraries load only through a dynamic import, after first paint.
+- They load only without reduced motion, and never inside the app.
+- Nothing above the fold waits for them.
+
+The rules are in `docs/DESIGN-SYSTEM.md` §4, "Marketing scroll motion", and
+`e2e/responsive-and-motion.spec.ts` enforces them.
+
+The chunk is 49.3KiB gzip and left out of the precache. Even so, it is the reason
+`bundle-budget.json` raised `shippedGzipKiB` from 700 to 760. The budget's measured
+figures were also re-taken: the entry chunk had been recorded as 149.9KiB against a
+real 97.1KiB.
+
 **This is the last of the "what is not needed" sweep**, and worth stating as a finding rather
 than a chore: a dependency is the one kind of dead weight that is invisible to every check this
 repository runs. It typechecks, it lints, it tree-shakes out of the bundle so no budget notices,

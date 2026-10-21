@@ -13,6 +13,19 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(marketing): scroll motion on the public pages (GSAP + Lenis).** The home
+  hero and `PageHero` now enter line by line on CSS `fade-up`, the hero rota chips
+  fill in on a new `pop-in` keyframe, and the sections below rise in as they reach
+  the viewport. The phone in the product shot drifts over the dashboard on
+  scroll, the header firms up once the page moves, and scrolling is smoothed by
+  Lenis.
+  - It all loads as one 49.3KiB chunk after first paint, only without reduced
+    motion, only on marketing pages, and outside the precache.
+  - The mobile menu now locks the page behind it, marketing pages open at the
+    top, and `bundle-budget.json` is re-measured, with shipped raised from 700
+    to 760KiB.
+  - Reverses the "CSS only" motion rule under the conditions in
+    DESIGN-SYSTEM §4.
 - **feat(billing): invoices in the app (plan F3, CAP-127).** `0156` adds
   `hosted_invoice_url` and `invoice_pdf` to `invoices`, each constrained to https
   on `invoice.stripe.com` or `pay.stripe.com`. `stripe-webhook` writes them on
