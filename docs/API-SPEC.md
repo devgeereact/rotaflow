@@ -51,7 +51,7 @@ other two rely on `--no-verify-jwt` at deploy.
 
 ### The public enquiry function (`0155`)
 
-Plans 2026, 06 §5 and 09 F2. It replaced a `mailto:` form that reached nobody on
+CAP-126, from the 2026 plan pack. It replaced a `mailto:` form that reached nobody on
 a device with no mail client. `anon` holds no privilege on `enquiries`; the
 function is the only way in, and the order of its checks is in its header.
 

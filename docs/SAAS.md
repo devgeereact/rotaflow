@@ -172,6 +172,33 @@ contact, a stated response time, an export on request and deletion on exit.
 P0 or unexplained P1), professional finish (design, website, content, social), paid
 launch (billing scenarios pass in test mode, then one supervised live payment).
 
+### 7. Feature candidates
+
+The unbuilt part of the plan pack's feature list. **P1** means before or during the
+pilot, **P2** after the pilot shows a need. Each becomes a `CAP-` row when work
+starts. Already built from the same list: the trial (CAP-125), website enquiries
+(CAP-126), invoices in the app (CAP-127), policy-driven working-time warnings, the
+phone Requests switcher and announcement read receipts (CAP-027).
+
+| Feature                                | Smallest version                                                                                | Priority |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+| Payroll CSV presets                    | Generic, Sage and Xero column layouts on the existing timesheet export, each checked by a pilot | P1       |
+| Sample week for a new organisation     | "Load an example week" in setup: clearly labelled sample staff and shifts, removable in one go  | P1       |
+| "What changed" summary on publish      | Added, moved and removed shifts shown before Publish and in the staff notification              | P1       |
+| My next shifts available offline       | A read-only cache of the person's own next 14 days, with its "last updated" time                | P2       |
+| Missed clock-in follow-up list         | A "Didn't clock in" filter on Attendance, from the existing state machine                       | P1       |
+| "Your data" page                       | Request a copy or closure through the existing GDPR case process (GAP-057)                      | P1       |
+| Change my email                        | A verified change through Supabase Auth (GAP-085)                                               | P1       |
+| Trial and payment emails               | "Trial ends in 3 days" and "Payment failed" through the existing outbox (GAP-127)               | P1       |
+| Annual billing                         | Annual Stripe prices and a toggle (D3)                                                          | P2       |
+| What's new panel, in-app help articles | From the console content source once it exists (D9)                                             | P2       |
+| Status notice on the website           | One line from `site_settings` or a public incident flag                                         | P2       |
+
+Refused for now, with the reasons in §9: native store apps, direct payroll or HR
+integrations, kiosk, QR, NFC or biometric clock-in, demand forecasting and
+unreviewed automatic rotas, continuous location tracking, built-in chat, a page
+builder, CRM or automatic social posting, and multi-currency.
+
 ## §0 How to use this file
 
 **The rule: any PR that changes a capability's status updates its row in the same PR.**
@@ -1173,7 +1200,7 @@ relationship was found`. Every read of a swap has failed since that migration me
       stores the row through `receive_enquiry` (`0155`), rate-limited per HMAC-hashed address
       and in total. `anon` holds nothing on `enquiries`; operational platform roles read and
       move it on at `/admin/enquiries` (New, Replied, Demo booked, Closed). Kept 24 months by
-      the nightly job. Every "Book a demo" link ticks the demo box. Plans 2026, 06 §5 and 09 F2.
+      the nightly job. Every "Book a demo" link ticks the demo box. From the 2026 plan pack.
       **Partial because:** the function has not been deployed, and its handler (origin
       refusal, Turnstile, the RPC call, the notice email) has been `deno check`ed and read,
       never executed. The notice to platform staff is a direct email to `ENQUIRY_NOTIFY_EMAIL`,
@@ -1191,7 +1218,7 @@ relationship was found`. Every read of a swap has failed since that migration me
       links (`0156`), each CHECKed to https on `invoice.stripe.com` or `pay.stripe.com`;
       `stripe-webhook` writes them on `invoice.paid` and `invoice.payment_failed`, retrieving
       the invoice when the event lacks them. RLS is unchanged: only the organisation's owners
-      (and platform billing roles) read a row. Plans 2026, 03 B4 and 09 F3.
+      (and platform billing roles) read a row. From the 2026 plan pack.
       **Partial because:** the webhook change has not been deployed, so no stored invoice has
       a link yet, and none has been written from a real Stripe event. Stripe expires these
       links within 120 days, so an older row's link opens Stripe's "expired" page; the screen
@@ -1537,10 +1564,10 @@ luck, and the three that luck missed cannot be got back.
 | ~~BUG-102~~ | Two legal pages scrolled sideways at 390px | The body never scrolls horizontally | 🟢 **Closed 2026-09-10.** 398px and 413px, on unbreakable file paths in the "Checkable in:" lines. | P3 |
 | ~~BUG-103~~ | The rota search box advertised a shortcut that does something else | A shortcut hint is true | 🟢 **Closed 2026-09-10.** It carried a "⌘ K" hint; ⌘K opens the global command palette and has never focused that box. Removed, and the box gained the accessible name it lacked. | P3 |
 | ~~BUG-105~~ | Staff were greeted "Good morning" at every hour | The greeting matches the clock | 🟢 **Closed 2026-09-11.** The string was hardcoded, and the date beside it was formatted in the browser's zone rather than the organisation's. This is a product for people who work nights: a care assistant opening the app at the start of a 22:00 shift was told good morning by their employer's software. `greeting(now, timezone)` in `dashboardFormat.ts` with five unit tests, including the 22:00 case, a cross-timezone instant and a clock-change date. | P3 Merging the two passes then found a third thing: `e2e/staff-dashboard.spec.ts`, written the same week to prove a staff member reaches their dashboard, asserted the heading `/Good morning/`. That pinned the hour rather than the role, so it passed only between 05:00 and noon; it now accepts any of the three greetings. Neither branch's tests were wrong alone. |
-| ~~BUG-109~~ | Organisation workspace defects O1 to O13 (`docs/Plans 2026/02-ORGANISATION-AND-STAFF.md` §3) | 🟢 **Closed 2026-10-11, locally; not yet merged.** O1: `/app/settings` lands on the first tab the role can use (`defaultSettingsPath`), so a manager reaches Roles instead of an owner-only refusal. O2: Organisation and Audit are hidden from managers like Billing and Permissions, and global search follows. O3: the title is "Organisation settings", not "Settings, Organisation". O4: a phone-only Leave · Swaps · Overtime switch (`RequestsLayout`) makes the Requests tab reach all three, and the tab stays lit on each. O5: one name, "My account"; API Tokens is out of the tab bar, its route kept. O6: onboarding ends with "Build your first rota" and "Open setup checklist". O7: open shift times use the organisation's clock. O8: the SMTP verified time is `en-GB` in the organisation's zone. O9: `LabourCostCard` uses `lib/money.ts`. O10: the phone tab is "Rota" for managers and "My rota" for staff. O11 and O12: sentence case and no exclamation marks (`docs/DESIGN-SYSTEM.md`, "Words in the product"). O13: the four "Something went wrong" messages say what failed and what to do. **Not verified:** Playwright, real devices, and any user observation. Tap-target sizes deliberately untouched pending the owner's decision. | P2 |
+| ~~BUG-109~~ | Organisation workspace defects O1 to O13 (from the 2026 plan pack) | 🟢 **Closed 2026-10-11, locally; not yet merged.** O1: `/app/settings` lands on the first tab the role can use (`defaultSettingsPath`), so a manager reaches Roles instead of an owner-only refusal. O2: Organisation and Audit are hidden from managers like Billing and Permissions, and global search follows. O3: the title is "Organisation settings", not "Settings, Organisation". O4: a phone-only Leave · Swaps · Overtime switch (`RequestsLayout`) makes the Requests tab reach all three, and the tab stays lit on each. O5: one name, "My account"; API Tokens is out of the tab bar, its route kept. O6: onboarding ends with "Build your first rota" and "Open setup checklist". O7: open shift times use the organisation's clock. O8: the SMTP verified time is `en-GB` in the organisation's zone. O9: `LabourCostCard` uses `lib/money.ts`. O10: the phone tab is "Rota" for managers and "My rota" for staff. O11 and O12: sentence case and no exclamation marks (`docs/DESIGN-SYSTEM.md`, "Words in the product"). O13: the four "Something went wrong" messages say what failed and what to do. **Not verified:** Playwright, real devices, and any user observation. Tap-target sizes deliberately untouched pending the owner's decision. | P2 |
 | ~~GAP-126~~ | An organisation that never paid kept Starter limits for ever | Unpaid means read-only, not free | 🟢 **Opened and closed 2026-10-12 by `0154`, owner decision D2.** `0120` fell back to `starter`, "the free tier", for anything not entitled, while Starter costs £29 and the pricing FAQ said every plan was paid. Every organisation now starts a 30-day trial on Professional limits (`organisations.trial_ends_at`, server-set), and after it, with no active or trialing subscription and no grace window, `org_is_read_only` is true and BEFORE triggers refuse rota, shift and invite writes with `BILL1`. Clock-in, leave, reads and exports are untouched. Existing organisations were given 30 days from the migration. `trial_then_read_only.test.sql`, 17 assertions; `plan_is_server_owned.test.sql` assertions 1 and 5 updated from `starter` to `professional` with the reason in the file | P1 |
 | GAP-127 | A no-card trial ends with no reminder email | An owner hears before the trial ends, not after | 🟡 **Opened 2026-10-12.** Stripe sends `customer.subscription.trial_will_end`, and the webhook queues "Your trial ends in 3 days", only for a **Stripe** trial, which exists once an owner has been through Checkout. The 30-day trial every organisation starts with lives in the database (`0154`), and nothing queues a reminder for it: the owner sees the trial countdown on Settings, Billing and, once it has ended, the read-only banner. The fix is one more fact in `enqueue_scheduled_alerts` (`0093`), deduplicated on the organisation and its trial end | P2 |
-| GAP-128 | The billing contact cannot be sent to Stripe | Invoices go to the address the owner chose | 🟡 **Opened 2026-10-12 (Plans 2026, 03 B4).** Settings, Billing shows the organisation's contact email as the billing contact, but nothing writes it to the Stripe customer, so Stripe emails receipts and invoices to whoever went through Checkout. No server path exists: no Edge Function calls `customers.update`, and the browser must not hold a Stripe key. The fix is a small owner-only Edge Function (caller's JWT, `has_org_role(owner)`, the stored `stripe_customer_id` in the stored `stripe_mode`) that sets the customer's `email`. Left out of CAP-127 to keep that change small | P3 |
+| GAP-128 | The billing contact cannot be sent to Stripe | Invoices go to the address the owner chose | 🟡 **Opened 2026-10-12 (from the 2026 plan pack).** Settings, Billing shows the organisation's contact email as the billing contact, but nothing writes it to the Stripe customer, so Stripe emails receipts and invoices to whoever went through Checkout. No server path exists: no Edge Function calls `customers.update`, and the browser must not hold a Stripe key. The fix is a small owner-only Edge Function (caller's JWT, `has_org_role(owner)`, the stored `stripe_customer_id` in the stored `stripe_mode`) that sets the customer's `email`. Left out of CAP-127 to keep that change small | P3 |
 | GAP-129 | A stored invoice link expires | An owner can open any invoice they can see listed | 🟡 **Opened 2026-10-12.** Stripe expires a hosted invoice URL 30 days after its due date, never more than 120 days (https://docs.stripe.com/invoicing/hosted-invoice-page), and a fresh one comes only from retrieving the invoice. `0156` stores the link from the webhook, so a link on an invoice older than that opens Stripe's "expired" page. The screen says so and points at the Billing Portal, which lists every invoice. The fix is an owner-only Edge Function that retrieves the invoice by `provider_ref` and returns (or stores) the current links. Also open: `invoice.finalized` is not subscribed, so an invoice is listed only once paid or failed | P3 |
 | ~~GAP-124~~ | Nothing had been driven through `/admin/*` as a real platform admin | The console is inspected, not assumed | 🟢 **Opened and closed 2026-09-10.** All fourteen console routes were driven at three viewport widths as a `platform_owner` against an isolated local stack. Every navigation link resolves to a real route. Three defects came out of it: BUG-098, BUG-099 and BUG-100. What is still not covered is the detail routes behind a row, which were reached only through their lists. | — |
 
@@ -1564,15 +1591,21 @@ luck, and the three that luck missed cannot be got back.
 
 ## §9 Not building, and why
 
-| Item                                             | Reason                                                                               |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| SMS                                              | No provider, no delivery record. A toggle that sends nothing is worse than no toggle |
-| Per-tenant sending domains with DNS verification | BYO-SMTP already achieves it — see §5                                                |
-| Autonomous scheduling                            | Deterministic logic decides; the model only phrases. Do not invert that              |
-| Dedicated sending IPs                            | No volume to justify it, and reputation is already per-tenant under BYO-SMTP         |
-| Marketplace                                      | Requires an API and integrations that do not exist                                   |
-| Internationalisation                             | UK-first until the UK product is excellent                                           |
-| Public status page                               | A second surface with its own hosting and its own failure mode                       |
+| Item                                              | Reason                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| SMS                                               | No provider, no delivery record. A toggle that sends nothing is worse than no toggle |
+| Per-tenant sending domains with DNS verification  | BYO-SMTP already achieves it — see §5                                                |
+| Autonomous scheduling                             | Deterministic logic decides; the model only phrases. Do not invert that              |
+| Dedicated sending IPs                             | No volume to justify it, and reputation is already per-tenant under BYO-SMTP         |
+| Marketplace                                       | Requires an API and integrations that do not exist                                   |
+| Internationalisation                              | UK-first until the UK product is excellent                                           |
+| Public status page                                | A second surface with its own hosting and its own failure mode                       |
+| Native App Store and Play Store apps              | The PWA installs on both. Refused with the 2026 plan pack, as are the rows below     |
+| Kiosk, QR, NFC or biometric clock-in              | A shared or physical credential replaces a geofenced personal one (CAP-017)          |
+| Demand forecasting and unreviewed automatic rotas | No data to fit, and a manager always reviews (see Autonomous scheduling)             |
+| Continuous location tracking                      | Location is taken at clock-in only, and nothing needs more                           |
+| Built-in chat                                     | A system to run and moderate; announcements and notifications cover the need         |
+| Page builder, CRM, automatic social posting       | Each is a product of its own; the console content source is the limit (D9)           |
 
 ## §10 Roadmap
 
