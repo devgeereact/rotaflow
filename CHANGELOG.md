@@ -13,6 +13,19 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **feat(marketing): scroll motion on the public pages (GSAP + Lenis).** The home
+  hero and `PageHero` now enter line by line on CSS `fade-up`, the hero rota chips
+  fill in on a new `pop-in` keyframe, and the sections below rise in as they reach
+  the viewport. The phone in the product shot drifts over the dashboard on
+  scroll, the header firms up once the page moves, and scrolling is smoothed by
+  Lenis.
+  - It all loads as one 49.3KiB chunk after first paint, only without reduced
+    motion, only on marketing pages, and outside the precache.
+  - The mobile menu now locks the page behind it, marketing pages open at the
+    top, and `bundle-budget.json` is re-measured, with shipped raised from 700
+    to 760KiB.
+  - Reverses the "CSS only" motion rule under the conditions in
+    DESIGN-SYSTEM §4.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating
