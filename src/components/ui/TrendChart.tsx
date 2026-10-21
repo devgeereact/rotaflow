@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState, type JSX } from 'react';
 import { cn } from '@/lib/utils';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 

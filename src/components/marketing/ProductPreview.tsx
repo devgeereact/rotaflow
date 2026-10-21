@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * The hero product shot, a manager's dashboard with a phone showing the same
  * week as a staff member sees it.

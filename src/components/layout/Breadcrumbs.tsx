@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useOrg } from '@/hooks/useOrg';
 import { navItemsForRole, footerNavItemsForRole } from '@/lib/sidebarNav';

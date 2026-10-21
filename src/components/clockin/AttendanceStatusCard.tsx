@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { CircleAlert, CircleCheck, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { ClockCardHeading } from '@/components/clockin/ClockCardHeading';

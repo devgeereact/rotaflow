@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { StaffProfileView } from '@/components/staff/StaffProfileView';
 import { DEMO_PROFILE } from '@/lib/staffDemo';
 import type { StaffProfileTab } from '@/lib/staffProfile';

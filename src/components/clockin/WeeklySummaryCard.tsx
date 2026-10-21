@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';

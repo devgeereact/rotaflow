@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { cn } from '@/lib/utils';

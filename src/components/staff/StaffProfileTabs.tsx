@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { PanelTabs, type PanelTabItem } from '@/components/ui/PanelTabs';
 import type { StaffProfileTab } from '@/lib/staffProfile';
 

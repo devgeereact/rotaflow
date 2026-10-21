@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronRight, CircleHelp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';

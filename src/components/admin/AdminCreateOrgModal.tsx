@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type JSX } from 'react';
 import { createOrganisationWithInvite } from '@/services/platformService';
 import type { CreatedOrganisationInvite } from '@/services/platformService';
 import { listPlans, type Plan } from '@/services/billingCheckoutService';

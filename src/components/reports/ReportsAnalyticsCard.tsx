@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type JSX } from 'react';
 import { format } from 'date-fns';
 import { BarChart3 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';

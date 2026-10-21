@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ArrowRightLeft } from 'lucide-react';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import type { SwapParty } from '@/lib/swapRows';

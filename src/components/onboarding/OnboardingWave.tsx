@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * The single soft wave anchoring the onboarding marketing panel's bottom
  * third (docs/design/Organisation-Onboarding.png, Organisation-about.png,

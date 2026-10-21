@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Building2, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';

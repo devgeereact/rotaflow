@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * The office-building illustration anchoring the onboarding marketing panel
  * (docs/design/Organisation-Onboarding.png, Organisation-about.png,

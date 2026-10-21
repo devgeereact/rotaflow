@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';

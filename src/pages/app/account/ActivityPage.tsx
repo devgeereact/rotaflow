@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { History } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { formatAuditAction } from '@/lib/auditActions';

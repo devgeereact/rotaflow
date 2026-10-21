@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent, type JSX } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CheckCircle2, Mail, MessageSquare, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/Button';

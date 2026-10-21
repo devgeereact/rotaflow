@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { AnnouncementsView } from '@/components/announcements/AnnouncementsView';
 import type { AnnouncementCard, ReachRow } from '@/lib/announcementsMapping';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';

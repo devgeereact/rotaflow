@@ -1,5 +1,5 @@
 import { ListFilter, Plus } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';

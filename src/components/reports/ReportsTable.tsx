@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Download, MoreVertical, Play, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ReportChip } from '@/components/reports/ReportChip';

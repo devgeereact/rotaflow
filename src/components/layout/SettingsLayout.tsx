@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, type JSX } from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tabs } from '@/components/ui/Tabs';

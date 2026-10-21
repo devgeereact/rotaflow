@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
 import { FactList } from '@/components/legal/FactList';

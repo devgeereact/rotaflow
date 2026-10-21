@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useRef, type KeyboardEvent, type JSX } from 'react';
 import { cn } from '@/lib/utils';
 import { reportsTabId } from '@/lib/reportRows';
 

@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { FOOTER_COLUMNS, TAGLINE } from '@/lib/marketing';
 import { BrandMark } from '@/components/ui/BrandMark';

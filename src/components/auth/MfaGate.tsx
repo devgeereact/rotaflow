@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode, type JSX } from 'react';
 import { LogOut, RotateCw, ShieldAlert } from 'lucide-react';
 import { AppBootScreen } from '@/components/AppBootScreen';
 import { Button } from '@/components/ui/Button';

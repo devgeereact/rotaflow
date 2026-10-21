@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { AvailabilityView } from '@/components/availability/AvailabilityView';
 import type { ExceptionRow, WeeklyPatternDay } from '@/lib/availabilityRows';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';

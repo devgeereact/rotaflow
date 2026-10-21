@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { Card, Panel } from '@/components/ui/Card';

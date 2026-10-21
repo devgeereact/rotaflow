@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useState, type JSX } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { RouteFallback } from '@/components/RouteFallback';
 import { useOrg } from '@/hooks/useOrg';

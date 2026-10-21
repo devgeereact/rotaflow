@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { BadgeCheck, CalendarClock, Clock3, ShieldCheck, Users } from 'lucide-react';
 import { SwapsView } from '@/components/swaps/SwapsView';
 import type { SwapRow } from '@/lib/swapRows';

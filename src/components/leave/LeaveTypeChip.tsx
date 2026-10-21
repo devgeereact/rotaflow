@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { cn } from '@/lib/utils';
 import { LEAVE_TYPE_CHIP, LEAVE_TYPE_ICON, LEAVE_TYPE_LABEL } from '@/lib/leaveStatus';
 import type { LeaveTypeKey } from '@/lib/leaveRows';

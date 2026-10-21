@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Quote, ShieldCheck, WifiOff, FlaskConical, Lock } from 'lucide-react';
 import { TESTIMONIALS } from '@/lib/marketing';
 

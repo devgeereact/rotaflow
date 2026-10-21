@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { CONTROL_MOTION } from '@/components/ui/Button';

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type JSX } from 'react';
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react';
 import {
   createDepartment,

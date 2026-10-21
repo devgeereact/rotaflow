@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 import { AuthContext, type AuthContextValue } from '@/context/AuthContext';
 import { OrgContext, type OrgContextValue } from '@/context/OrgContext';
 import { DashboardPage } from '@/pages/app/DashboardPage';

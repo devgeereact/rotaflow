@@ -1,4 +1,4 @@
-import { useCallback, useState, type ChangeEvent } from 'react';
+import { useCallback, useState, type ChangeEvent, type JSX } from 'react';
 import { CheckCircle2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
