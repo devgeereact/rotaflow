@@ -23,13 +23,18 @@
 --   7. a revoked token returns nothing;
 --   8. `authenticated` cannot call the feed reader at all — it is
 --      granted to `service_role`, so a signed-in user cannot hand it
---      somebody else's token and read their rota.
+--      somebody else's token and read their rota;
+--   9. a read is counted against the person's hourly allowance (`0158`);
+--  10. over the allowance the reader raises P0001, which the Edge
+--      Function answers with 429, rather than serving the feed;
+--  11. a token no calendar has read for 90 days returns nothing,
+--  12. and is marked revoked, so the account screen shows no live feed.
 --
 -- pgTAP, run via `supabase test db`.
 -- =====================================================================
 
 begin;
-select plan(8);
+select plan(12);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
@@ -155,6 +160,46 @@ select ok(
 select ok(
   not has_function_privilege('authenticated', 'public.calendar_feed_shifts(uuid)', 'EXECUTE'),
   'a signed-in user cannot call the feed reader and hand it somebody else''s token'
+);
+
+-- GAP-052, 0158: bounded use.
+select is(
+  (select count(*)::int from public.rate_limit_events
+    where bucket = 'calendar_feed'
+      and subject = 'f9200000-0000-0000-0000-000000000001'),
+  2,
+  'each served read is counted against the person''s hourly allowance'
+);
+
+insert into public.rate_limit_events (bucket, subject)
+select 'calendar_feed', 'f9200000-0000-0000-0000-000000000001'
+  from generate_series(1, 118);
+
+select throws_ok(
+  format('select * from public.calendar_feed_shifts(%L::uuid)',
+         (select token from reissued)),
+  'P0001',
+  null,
+  'over 120 reads an hour the reader refuses rather than serving the feed'
+);
+
+delete from public.rate_limit_events where bucket = 'calendar_feed';
+
+update public.calendar_feed_tokens
+   set created_at = timezone('utc', now()) - interval '200 days',
+       last_used_at = timezone('utc', now()) - interval '91 days'
+ where token = (select token from reissued);
+
+select is(
+  (select count(*)::int from public.calendar_feed_shifts((select token from reissued))),
+  0,
+  'a token no calendar has read for 90 days returns nothing'
+);
+
+select ok(
+  (select revoked_at is not null from public.calendar_feed_tokens
+    where token = (select token from reissued)),
+  'and is marked revoked, so the account screen offers a new link'
 );
 
 select * from finish();
