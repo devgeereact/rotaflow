@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import type { Location, Shift, ShiftType } from '@/types';
+import { FEED_IDLE_DAYS, type CalendarFeedState } from '@/lib/calendarFeed';
 import { formatTimeRange } from '@/lib/timeRange';
 
 export interface StaffScheduleProps {
@@ -30,6 +31,13 @@ export interface StaffScheduleProps {
    * button is absent rather than present and failing.
    */
   onSubscribe?: () => void;
+  /**
+   * The person's calendar feed (GAP-052). Null or absent while unknown, and
+   * then nothing is said about it.
+   */
+  feed?: CalendarFeedState | null;
+  /** Rotate the feed link. Offered only while a working link exists. */
+  onResetFeed?: () => void;
 }
 
 interface DayShift {
@@ -115,6 +123,8 @@ export function StaffSchedule({
   fallbackTimezone,
   onAddToCalendar,
   onSubscribe,
+  feed,
+  onResetFeed,
 }: StaffScheduleProps): JSX.Element {
   const days = buildDays(weekDates, shifts, locations, shiftTypes, fallbackTimezone);
 
@@ -146,6 +156,29 @@ export function StaffSchedule({
           </>
         }
       />
+
+      {feed?.kind === 'live' && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-content-muted dark:text-content-muted-dark">
+          <p>
+            {feed.lastUsedAt
+              ? `Calendar subscription last read on ${format(new Date(feed.lastUsedAt), 'd MMMM yyyy')}.`
+              : 'Calendar link not read by a calendar yet.'}{' '}
+            A link no calendar reads for {FEED_IDLE_DAYS} days stops working.
+          </p>
+          {onResetFeed && (
+            <Button variant="ghost" size="sm" onClick={onResetFeed}>
+              Reset link
+            </Button>
+          )}
+        </div>
+      )}
+
+      {feed?.kind === 'idle' && (
+        <Callout tone="info" className="mb-4">
+          Your calendar link stopped working because no calendar read it for{' '}
+          {FEED_IDLE_DAYS} days. Choose Subscribe to get a new one.
+        </Callout>
+      )}
 
       {!published && (
         <Callout tone="warning" className="mb-4">
