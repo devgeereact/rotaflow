@@ -387,6 +387,22 @@ GEE OS asks for exactly this classification before a PWA can be called ready
 matters here: **do not promise generic offline support; state exactly what works
 and what does not.**
 
+**The public promise** (decided 10 October 2026 with the 2026 plan pack): "Clock-ins,
+leave and swap requests can wait on the phone until the signal returns." Not "works
+offline". The conditions that promise has to survive, each still to be proved in a
+browser (GAP-049, GAP-050, GAP-072, GAP-086):
+
+| Condition                              | Required behaviour                                                       |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| First visit with no signal             | Says a connection is needed to sign in. Shows no invented rota           |
+| App opened offline with nothing cached | Shell opens with a clear "not available offline" state                   |
+| Clock-in queued                        | "Waiting to send" on the button, with the time it was recorded           |
+| Back online                            | Sends once. Shows "Sent" or the server's reason for refusing             |
+| Session expired while queued           | Asks the same person to sign in, then sends. Never sends as someone else |
+| Two tabs or two phones                 | No duplicate clock events                                                |
+| App update while items are queued      | Queue survives the update                                                |
+| Membership revoked                     | Queued writes are refused by the server, and the person is told          |
+
 ### The honest one-paragraph version
 
 The **app shell** is genuinely offline: 166 precached entries, every lazy route
