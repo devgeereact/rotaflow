@@ -19,14 +19,14 @@ const TIMEZONE_OPTIONS = [
 ];
 
 /** `SCREENS.locations`'s "Add a location" modal's Type select. */
-export const LOCATION_TYPES = [
+const LOCATION_TYPES = [
   'Residential',
   'Dementia care',
   'Domiciliary',
   'Head office',
 ] as const;
 
-export const LOCATION_STATUSES = [
+const LOCATION_STATUSES = [
   { value: 'setup', label: 'In setup' },
   { value: 'active', label: 'Active' },
   { value: 'maintenance', label: 'Maintenance' },
