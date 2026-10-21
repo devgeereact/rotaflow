@@ -46,7 +46,7 @@ discipline".
 
 | Layer           | Choice                            | Notes                                                                                                        |
 | --------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Framework       | React 18 and Vite 6               |                                                                                                              |
+| Framework       | React 19 and Vite 8               |                                                                                                              |
 | Language        | TypeScript (strict)               | Enforced in CI                                                                                               |
 | Styling         | Tailwind CSS 4                    | Tokens in the `@theme` block of `src/index.css`; there is no `tailwind.config.ts`                            |
 | PWA             | `vite-plugin-pwa` (Workbox)       | Precached app shell, runtime caching, web push via `public/push-sw.js`                                       |
