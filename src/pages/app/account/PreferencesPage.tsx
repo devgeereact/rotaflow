@@ -103,7 +103,7 @@ export function PreferencesPage(): JSX.Element {
         description={
           allows('preferences')
             ? 'Remembered on this device.'
-            : 'Applied now, but not remembered — you declined preference storage.'
+            : 'Applied now, but not remembered: you declined preference storage.'
         }
       >
         <div className="flex flex-wrap gap-3">

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatAuditAction } from '@/lib/auditActions';
+import {
+  auditSeverityTone,
+  formatAuditAction,
+  formatAuditRecord,
+  formatAuditSeverity,
+} from '@/lib/auditActions';
 
 describe('formatAuditAction', () => {
   it('names the actions the rota lifecycle actually writes', () => {
@@ -38,5 +43,34 @@ describe('formatAuditAction', () => {
   it('never returns an empty string, whatever it is handed', () => {
     expect(formatAuditAction('x')).toBe('X');
     expect(formatAuditAction('')).toBe('');
+  });
+});
+
+describe('formatAuditRecord', () => {
+  it('reads a record type as a heading would', () => {
+    expect(formatAuditRecord('leave_request')).toBe('Leave request');
+    expect(formatAuditRecord('organisation')).toBe('Organisation');
+  });
+
+  it('shows a dash for an entry about no particular record', () => {
+    expect(formatAuditRecord(null)).toBe('-');
+    expect(formatAuditRecord('')).toBe('-');
+  });
+});
+
+describe('auditSeverityTone', () => {
+  it('gives each stored severity its tone', () => {
+    expect(auditSeverityTone('critical')).toBe('danger');
+    expect(auditSeverityTone('warning')).toBe('warning');
+    expect(auditSeverityTone('notice')).toBe('info');
+    expect(auditSeverityTone('info')).toBe('neutral');
+  });
+
+  it('treats an unknown severity as routine rather than alarming', () => {
+    expect(auditSeverityTone('something-new')).toBe('neutral');
+  });
+
+  it('capitalises the stored word for display', () => {
+    expect(formatAuditSeverity('critical')).toBe('Critical');
   });
 });

@@ -116,19 +116,19 @@ export function AppBootScreen({
             aria-label="RotaFlow home"
             className="rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <BrandMark label={null} className="h-12 w-12" />
+            <BrandMark label={null} className="h-14 w-14" />
           </Link>
           <Link
             to="/"
-            className="font-display text-2xl font-bold text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
+            className="font-display text-4xl font-bold text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark"
           >
             Rota<span className="text-brand dark:text-brand-light">Flow</span>
           </Link>
           <span
             aria-hidden="true"
-            className="ml-2 hidden h-6 w-px bg-surface-border dark:bg-surface-border-dark sm:block"
+            className="ml-3 hidden h-8 w-px bg-surface-border dark:bg-surface-border-dark sm:block"
           />
-          <span className="hidden text-xs font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark sm:block">
+          <span className="ml-3 hidden text-sm font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark sm:block">
             Workforce Scheduling Platform
           </span>
         </div>

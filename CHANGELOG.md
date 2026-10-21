@@ -74,6 +74,17 @@ Dependabot may be grouped into one line per week. The rule sits under
   `send-invite`'s refusals and message move to `sendability.ts` under vitest
   (behaviour unchanged). The only step left on GAP-115 is owner action O13: one
   invitation sent into a real inbox.
+- **fix(design): the thirteen unmatched workspace screens compared (GAP-088).** A
+  development-only `/settings-preview/*` harness mounts the real Settings and My
+  account pages against fixtures, so the nine screens that needed a session can be
+  captured at last. Each of the thirteen was compared with its mockup and with
+  `docs/design/ORGANISATION_WORKSPACE.html`, and its result recorded in
+  `docs/UX-SPEC.md`. Fixes from the pass: the audit trail's note no longer claims
+  only anonymisation is recorded, and the trail gains Area and Severity columns;
+  Settings and My account titles name the section; Profile shows recent account
+  activity; the boot screen's lockup matches the reference's size. The nine screens
+  joined the accessibility scan, which found two contrast failures used across the
+  app and now fixed: the active tab and the danger button were both 4.2 : 1.
 - **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
   opens with a work queue: owner actions, the ranked next items, what is built but
   never proved on real infrastructure, an index of the `qa/` evidence, operating

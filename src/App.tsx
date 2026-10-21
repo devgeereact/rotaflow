@@ -165,6 +165,10 @@ const DashboardLivePreviewPage = devPage(
   'DashboardLivePreviewPage',
   () => import('@/pages/app/DashboardLivePreviewPage'),
 );
+const SettingsLivePreviewPage = devPage(
+  'SettingsLivePreviewPage',
+  () => import('@/pages/app/SettingsLivePreviewPage'),
+);
 const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
@@ -638,6 +642,13 @@ export function App(): JSX.Element {
                           <Route
                             path="/dashboard-live-preview"
                             element={<DashboardLivePreviewPage />}
+                          />
+                          {/* The real Settings and My account pages, inside
+                        their tab layouts, against a fetch-intercepted
+                        Supabase client. See SettingsLivePreviewPage. */}
+                          <Route
+                            path="/settings-preview/*"
+                            element={<SettingsLivePreviewPage />}
                           />
                         </>
                       )}
