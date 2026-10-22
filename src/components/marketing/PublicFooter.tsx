@@ -19,7 +19,7 @@ import { useConsent } from '@/context/ConsentContext';
  * five are written from the code and cite it; Terms is a published draft that
  * says so at the top and still needs UK counsel.
  *
- * "Cookie preferences" is a button rather than a link, deliberately. It has no
+ * "Cookie settings" is a button rather than a link, deliberately. It has no
  * route, so it is kept out of `FOOTER_COLUMNS` — `navigationTargets.test.ts`
  * asserts every entry there resolves to a real `<Route>`, and weakening that
  * test to admit one non-route would cost more than the special case does.
@@ -30,8 +30,8 @@ export function PublicFooter(): JSX.Element {
   return (
     <footer className="border-t border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
       <div className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="lg:col-span-1">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(5,1fr)]">
+          <div>
             <Link to="/" className="flex items-center gap-2">
               <BrandMark label={null} className="h-8 w-8" />
               <span className="font-display text-lg font-medium text-content dark:text-content-dark">
@@ -67,7 +67,7 @@ export function PublicFooter(): JSX.Element {
                       onClick={reopen}
                       className="rounded text-left text-sm text-content-muted hover:text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark dark:hover:text-content-dark"
                     >
-                      Cookie preferences
+                      Cookie settings
                     </button>
                   </li>
                 )}
