@@ -58,7 +58,26 @@ npm run preview                      # smoke-test the production bundle before s
 ```
 
 The only shippable output is `dist/` plus the repo-root **`.htaccess`** (HTTPS
-redirect, SPA rewrite to `index.html`, MIME types, cache + security headers).
+redirect, prerendered pages, SPA rewrite to `index.html`, a real 404, MIME types,
+cache + security headers).
+
+**Since 2026-10-22 `npm run build` also writes `dist/prerendered/`**
+(`scripts/prerender.mjs`): one static HTML file per sitemap page and a `404.html`.
+`.htaccess` serves `/` and each public page from there, sends a path whose first
+segment is a route in `src/App.tsx` to `index.html`, and answers anything else with
+**HTTP 404** and the prerendered not-found page. Before this, every unknown path
+answered 200. The service worker does not precache `prerendered/`, so an installed
+client still navigates through the app shell. Two consequences for a deploy:
+
+- `dist/prerendered/` ships with the rest of `dist/`. If it is missing, the public
+  pages still work through the `index.html` fallback; only crawlers lose the static
+  copy and an unknown path gets Apache's plain 404 page.
+- **The first deploy carrying this needs `--with-htaccess`**, composed with the
+  origin-lock block as described under
+  [Composing the live `.htaccess`](#composing-the-live-htaccess). A deploy without
+  it leaves the old routing live, which serves `dist/index.html` for every path and
+  never reaches `prerendered/`. After it, also run the four checks under that
+  section's table headed "Prerender and 404".
 
 `check:bundle` runs in CI's `verify` job too, so a breach fails the PR rather
 than the deploy. Run it locally anyway before shipping a build you are about to
@@ -270,6 +289,23 @@ through; it worked, and these are the steps that made it safe.
 
    The fourth row is the one that fails silently. A lock with no `/.well-known/` exemption
    looks perfect until a certificate comes up for renewal.
+
+   **Prerender and 404**, from the first deploy carrying `dist/prerendered/` (2026-10-22).
+   Read the status with `curl -s -o /dev/null -w '%{http_code}'` and the body with
+   `curl -s`, never a browser with the service worker installed, which answers every
+   navigation from its own shell:
+
+   | Check                            | Expect                                                                                           |
+   | -------------------------------- | ------------------------------------------------------------------------------------------------ |
+   | `/no-such-page`                  | **404**, and the body contains `This page doesn’t exist` and `noindex`                           |
+   | `/features` and `/legal/privacy` | 200, and the body has `data-prerendered="/features"` (or that path) and the page's own `<title>` |
+   | `/app/dashboard` and `/invite/x` | 200, and the body is the empty app shell (`<div id="root"></div>`)                               |
+   | a missing `/assets/missing.js`   | **404**, still                                                                                   |
+
+   If the second row returns the empty shell, the prerendered copy is not being found:
+   check that `dist/prerendered/` deployed, then that `%{DOCUMENT_ROOT}` on this host is
+   the site's own document root. The pages still work in that state; only the static
+   copy is missing. If the first row returns 200, the new `.htaccess` did not deploy.
 
 ## A deploy does not undo a leak
 

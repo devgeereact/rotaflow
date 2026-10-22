@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **The public pages are prerendered, and an unknown path is a real 404 (22 October
+  2026).** `npm run build` now writes the fourteen sitemap pages and a not-found
+  page to `dist/prerendered/` (`scripts/prerender.mjs`), each with its own title,
+  description and canonical, and `src/main.tsx` hydrates them in place rather than
+  re-rendering. `.htaccess` serves those files, sends known app routes to
+  `index.html`, and answers everything else with HTTP 404; `htaccessRoutes.test.ts`
+  fails if a route in `App.tsx` and the `.htaccess` list drift apart. Live only
+  after a deploy with a composed `.htaccess` (`docs/DEPLOYMENT.md`).
 - **Every designed screen is matched (22 October 2026, GAP-088 closed).** From
   `xl` the marketing hero sets the copy left and the product shot right, as its
   reference does, and the website's headings take the two-weight rule. The
