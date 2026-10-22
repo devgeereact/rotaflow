@@ -147,27 +147,36 @@ export type Database = {
       app_settings: {
         Row: {
           created_at: string;
+          digest_frequency: string;
           id: string;
           notifications_enabled: boolean;
           theme: string;
+          time_format: string;
           updated_at: string;
           user_id: string;
+          week_start: string;
         };
         Insert: {
           created_at?: string;
+          digest_frequency?: string;
           id?: string;
           notifications_enabled?: boolean;
           theme?: string;
+          time_format?: string;
           updated_at?: string;
           user_id: string;
+          week_start?: string;
         };
         Update: {
           created_at?: string;
+          digest_frequency?: string;
           id?: string;
           notifications_enabled?: boolean;
           theme?: string;
+          time_format?: string;
           updated_at?: string;
           user_id?: string;
+          week_start?: string;
         };
         Relationships: [
           {
