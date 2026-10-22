@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useRef, useState, type ChangeEvent, type JSX } from 'react';
 import { FileUp, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';

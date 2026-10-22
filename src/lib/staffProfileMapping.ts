@@ -29,6 +29,7 @@ import type {
   StaffWorkInfoRow,
   UpcomingShift,
 } from '@/lib/staffProfile';
+import { photoSource } from '@/lib/staffPhoto';
 
 const CONTRACT_LABELS: Record<string, string> = {
   full_time: 'Full-time',
@@ -199,7 +200,7 @@ export function buildProfile({
     id: staff.id,
     firstName: staff.first_name,
     lastName: staff.last_name,
-    photoUrl: staff.photo_url,
+    photoUrl: photoSource(staff),
     role: staff.job_title ?? '-',
     department: department?.name ?? '-',
     location: locationName,

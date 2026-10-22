@@ -147,27 +147,36 @@ export type Database = {
       app_settings: {
         Row: {
           created_at: string;
+          digest_frequency: string;
           id: string;
           notifications_enabled: boolean;
           theme: string;
+          time_format: string;
           updated_at: string;
           user_id: string;
+          week_start: string;
         };
         Insert: {
           created_at?: string;
+          digest_frequency?: string;
           id?: string;
           notifications_enabled?: boolean;
           theme?: string;
+          time_format?: string;
           updated_at?: string;
           user_id: string;
+          week_start?: string;
         };
         Update: {
           created_at?: string;
+          digest_frequency?: string;
           id?: string;
           notifications_enabled?: boolean;
           theme?: string;
+          time_format?: string;
           updated_at?: string;
           user_id?: string;
+          week_start?: string;
         };
         Relationships: [
           {
@@ -560,36 +569,39 @@ export type Database = {
         Row: {
           created_at: string;
           expires_at: string | null;
-          file_url: string;
+          file_url: string | null;
           id: string;
           issued_at: string | null;
           name: string;
           org_id: string;
           staff_profile_id: string;
+          storage_path: string | null;
           type: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
           expires_at?: string | null;
-          file_url: string;
+          file_url?: string | null;
           id?: string;
           issued_at?: string | null;
           name: string;
           org_id: string;
           staff_profile_id: string;
+          storage_path?: string | null;
           type: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
           expires_at?: string | null;
-          file_url?: string;
+          file_url?: string | null;
           id?: string;
           issued_at?: string | null;
           name?: string;
           org_id?: string;
           staff_profile_id?: string;
+          storage_path?: string | null;
           type?: string;
           updated_at?: string;
         };
@@ -614,7 +626,6 @@ export type Database = {
         Row: {
           created_at: string;
           id: string;
-          medical_notes: string | null;
           name: string;
           org_id: string;
           phone: string;
@@ -626,7 +637,6 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
-          medical_notes?: string | null;
           name: string;
           org_id: string;
           phone: string;
@@ -638,7 +648,6 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: string;
-          medical_notes?: string | null;
           name?: string;
           org_id?: string;
           phone?: string;
@@ -2875,6 +2884,7 @@ export type Database = {
           org_id: string;
           payroll_id: string | null;
           phone: string | null;
+          photo_path: string | null;
           photo_url: string | null;
           skills: string[];
           start_date: string | null;
@@ -2897,6 +2907,7 @@ export type Database = {
           org_id: string;
           payroll_id?: string | null;
           phone?: string | null;
+          photo_path?: string | null;
           photo_url?: string | null;
           skills?: string[];
           start_date?: string | null;
@@ -2919,6 +2930,7 @@ export type Database = {
           org_id?: string;
           payroll_id?: string | null;
           phone?: string | null;
+          photo_path?: string | null;
           photo_url?: string | null;
           skills?: string[];
           start_date?: string | null;
@@ -3321,6 +3333,7 @@ export type Database = {
           org_id: string;
           payroll_id: string | null;
           phone: string | null;
+          photo_path: string | null;
           photo_url: string | null;
           skills: string[];
           start_date: string | null;
@@ -4067,6 +4080,19 @@ export type Database = {
         /** Refused unless the caller is holding an aal2 session (0102). */
         Returns: boolean;
       };
+      my_data_requests: {
+        Args: Record<PropertyKey, never>;
+        /** The caller's own UK GDPR requests, matched on their own email. No argument (0160). */
+        Returns: {
+          id: string;
+          kind: string;
+          status: string;
+          received_on: string;
+          due_on: string;
+          extended_to: string | null;
+          closed_at: string | null;
+        }[];
+      };
       my_sessions: {
         Args: Record<PropertyKey, never>;
         /** Where this account is signed in. No argument: no way to ask about anybody else (0100). */
@@ -4078,6 +4104,11 @@ export type Database = {
           ip: string | null;
           is_current: boolean;
         }[];
+      };
+      request_my_data: {
+        Args: { p_kind: string; p_org?: string };
+        /** Files a request for the caller; returns the open one if the same kind is already open (0160). */
+        Returns: { id: string; due_on: string; already_open: boolean }[];
       };
       revoke_my_other_sessions: {
         Args: Record<PropertyKey, never>;

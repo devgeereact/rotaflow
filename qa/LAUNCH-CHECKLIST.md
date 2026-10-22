@@ -162,6 +162,40 @@ destroys a tenant.
 
 ## Release decision
 
+### Current — integration run, 21 October 2026
+
+**NOT READY FOR PRODUCTION. Ready to review and merge once CI has run on GitHub.**
+
+The code is in the best state this file has recorded: every local gate passes on
+the integration branch, including the full pgTAP suite, every authenticated and
+offline browser spec against a local stack, and the service-worker specs against a
+production build (see "Run of 21 October 2026" below). That is a statement about
+the branch, not about production, and four things keep the product itself short of
+ready:
+
+1. **Nothing in this run is merged or deployed** (gate 30). Production still lacks
+   migrations `0154` to `0161` and six Edge Function changes. Merging applies the
+   migrations at once; the functions need deploying by name (O3).
+2. **GitHub Actions has run nothing since 18 October 2026, 07:24 UTC** (gates 27
+   and 28). Workflows are enabled and active, yet there has been no scheduled
+   backup for four nights and no CI run on any of #343 to #354. Until that is
+   explained, the nightly backup this file counted as recovered on 11 October is
+   not running, and no pull request in this set has passed a required check (O14).
+3. **Recovery is still unproven**: no restore into a real Supabase project, and PITR
+   is off (O4).
+4. **No charge has completed** (O5), and nothing has run on a real phone (O8).
+
+Items 2 to 4 are owner actions in the work queue at the top of `docs/SAAS.md`. None
+of them is an engineering task an agent can close.
+
+### Superseded — the decision of the second run, 4 September 2026
+
+Replaced on 21 October 2026 by the decision above. It read **NOT READY FOR
+PRODUCTION** on one line, gate 28: no backup of production and no restore ever
+performed. The nightly backup then ran from 6 September to 18 October, and has not
+run since. Kept, as the first decision is, because a decision that disappears when
+it becomes inconvenient is worth less than one that stays visible.
+
 ### Superseded — the decision of the first run, 4 September 2026
 
 **NOT READY** for a release that claims offline support or a recoverable
@@ -169,12 +203,7 @@ production environment. Two lines carried it: no backup of production (28) and
 no documented rollback (29). Kept because a decision that quietly disappears
 when it becomes inconvenient is worth less than one that stays visible.
 
-### Current — after the production-readiness pass, 4 September 2026
-
-**Stale since 2026-10-21, until the gate is re-run.** Several lines below have
-moved since 4 September (the nightly backup now succeeds, for one), so this decision
-no longer describes the product. Re-running it is item 12 of the work queue at the
-top of `docs/SAAS.md`. Until then, read it as history.
+### The second run's reasoning, 4 September 2026 (history)
 
 **NOT READY FOR PRODUCTION.**
 
@@ -289,6 +318,74 @@ records evidence the next run should take into account.
 | --- | ------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 28  | Backup and recovery exist | FAIL (4 Sep)    | `backup.yml` has succeeded on every scheduled run from 6 September to 10 October 2026, each with a `verify-restore` job that restores the dump into a throwaway PostgreSQL. A human restore was rehearsed on 7 September (GAP-001). Still not proven: a restore into a real Supabase project with its `auth` and `storage` schemas, and PITR, last read as off on 13 August |
 | 27  | Monitoring operational    | PARTIAL (4 Sep) | `auth-config.yml`, which watches the Supabase Auth settings, has failed with `401 Unauthorized` on every run since 14 September (GAP-036). `plan-drift-audit.yml` has also failed since 14 September                                                                                                                                                                        |
+
+## Run of 21 October 2026 — integration branch
+
+A full re-run, on branch `integration/fix-whats-left`: the work-queue branch
+(#343) with #344 to #354 merged into it, which is what `main` will hold once those
+pull requests land. Every line below was taken on 21 and 22 October 2026 against
+that branch, a local Supabase stack built from all 161 migrations, and a production
+build. **Production was not touched, and nothing here was deployed**, so no line
+speaks for the live site unless it says so.
+
+Local evidence, all on this branch:
+
+- `npm ci` from a clean `node_modules`, then typecheck, lint (zero warnings),
+  format:check, 1,638 unit tests in 110 files, build with no `.env`,
+  `check:bundle`, `check:docs`, `check:migrations`, `check:export`: all PASS.
+  `npm audit --audit-level=high`: 0 vulnerabilities.
+- pgTAP after `supabase db reset`: **781 assertions in 80 files, all passing.**
+- Playwright, default suite: 145 passed, 9 skipped (the specs that need a stack).
+  Authenticated specs against the local stack (`authenticated-loop`,
+  `owner-workforce`, `platform-console`, `staff-dashboard`, `offline-clock-in`):
+  9 passed. Production build: `pwa-offline` 3 passed, `pwa-cache-teardown` 1
+  passed.
+- `deno check` of all eleven Edge entry points: PASS, run as CI runs it (without
+  `--frozen`; the committed `deno.lock` predates the dependency upgrades).
+
+| #   | Gate                                                     | Status     | Evidence, 21 October 2026                                                                                                                                                                          |
+| --- | -------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Application works online                                 | PASS       | the Playwright runs above; on the branch and a local stack, not on production                                                                                                                      |
+| 2   | Network failure produces intentional behaviour           | PASS       | `e2e/offline-clock-in.spec.ts`: a clock-in queued with no network arrives once when the signal returns; the clock screen opened offline with nothing loaded says so and offers Try again (GAP-049) |
+| 3   | Offline behaviour matches the approved specification     | PASS       | in a browser, GAP-049, GAP-050 and GAP-054 closed by #351. On a real phone it is O8, not this line                                                                                                 |
+| 4   | Service worker registration, scope and lifecycle         | PASS       | `e2e/pwa-offline.spec.ts` against a production build                                                                                                                                               |
+| 5   | Old caches are removed safely                            | PASS       | unchanged: `cleanupOutdatedCaches: true`                                                                                                                                                           |
+| 6   | New versions update without trapping users on stale code | PASS       | a second worker raises the update prompt and waits until the person agrees (`pwa-offline`)                                                                                                         |
+| 7   | Failed requests recover appropriately                    | PARTIAL    | unchanged in substance since 10 September                                                                                                                                                          |
+| 8   | Duplicate submissions prevented or idempotent            | PASS       | the offline replay arrives once and does not duplicate on reload (`offline-clock-in`)                                                                                                              |
+| 9   | API failures have visible, recoverable states            | PARTIAL    | unchanged: true on the three queued paths, not on every console screen                                                                                                                             |
+| 10  | Installation works on supported platforms                | NOT TESTED | no install performed on a device (O8)                                                                                                                                                              |
+| 11  | Icons and launch presentation work                       | PARTIAL    | the manifest's icons resolve in a production build; launch presentation on a device is O8                                                                                                          |
+| 12  | The manifest is valid                                    | PASS       | `pwa-offline`                                                                                                                                                                                      |
+| 13  | Start URL, scope, deep links, refreshed routes           | PASS       | offline and signed out, `/app/dashboard` lands on sign-in through `navigateFallback` (`pwa-offline`)                                                                                               |
+| 14  | Authentication survives the intended lifecycle           | PASS       | a write queued across an ended session is held for its owner and sent when they sign back in, never for a colleague (`offline-clock-in`)                                                           |
+| 15  | Private data is not cached accidentally                  | PASS       | `pwa-cache-teardown`: a second account does not inherit the first one's cached reads (GAP-072)                                                                                                     |
+| 16  | User work is not silently lost                           | PASS       | refused writes show Retry and Discard on all three queueing screens (GAP-086)                                                                                                                      |
+| 17  | Queue, retry, conflict and sync states are explicit      | PARTIAL    | queue, retry and sync yes; conflict is still server-side refusal only                                                                                                                              |
+| 18  | Database policies and permissions verified               | PASS       | pgTAP, 781 assertions, including the new storage, calendar-feed, own-data, trial-reminder and shift/rota write-split suites                                                                        |
+| 19  | Role permissions verified server-side                    | PASS       | as 18; the shift/rota policy split keeps the same four callers' access (`shift_rota_write_split.test.sql`)                                                                                         |
+| 20  | Mobile layout on supported sizes                         | PASS       | emulated widths in `responsive-and-motion`; a real phone is O8                                                                                                                                     |
+| 21  | Desktop layout on supported sizes                        | PARTIAL    | 13 workspace screens compared with their references on 21 October (#353); 2 wait on product decisions                                                                                              |
+| 22  | Accessibility checked with recorded evidence             | PARTIAL    | axe contrast at zero in light and dark across the public pages and the app surface; keyboard and screen-reader journeys not audited                                                                |
+| 23  | Production build succeeds                                | PASS       | no `.env`; precache 741.1 of 760 KiB, shipped 743.1 of 760 KiB. Headroom is now 2%, so the next sizeable addition needs a decision                                                                 |
+| 24  | No critical console or runtime errors                    | PARTIAL    | none in the Playwright runs; production not re-checked                                                                                                                                             |
+| 25  | No exposed secrets                                       | PASS       | `check:bundle` finds no undeclared `VITE_*` key                                                                                                                                                    |
+| 26  | No critical security findings open                       | PARTIAL    | `npm audit` clean and the RLS suite green; no manual review in this run, and the calendar token is still in a query string (GAP-052)                                                               |
+| 27  | Monitoring and error reporting operational               | **FAIL**   | `auth-config.yml` red since 14 September (O1); no alert reaches a person (O2); and no workflow has run since 18 October (O14)                                                                      |
+| 28  | Backup and recovery exist                                | **FAIL**   | the last nightly backup ran on 18 October 2026; none since (O14). PITR off and no restore into a real Supabase project (O4)                                                                        |
+| 29  | Rollback documented and feasible                         | PARTIAL    | the site rolls back by redeploying a commit; migrations do not roll back, and `0154` to `0161` apply on merge                                                                                      |
+| 30  | Production environment verified directly                 | NOT TESTED | nothing in this run is deployed; production does not yet hold any of it                                                                                                                            |
+
+Two defects this run found only because the pull requests were put together, each
+fixed on the branch:
+
+- **The motion chunk loaded on every page and broke offline start.** Under Vite 8
+  (#346) a chunk group also captures what its modules import, so a Babel helper GSAP
+  shares with the app moved into the motion chunk (#344) and the entry imported it.
+  The precache leaves that chunk out, so `pwa-offline` failed to open the home page
+  with no network. The group now captures GSAP and Lenis only.
+- **A unit test from #351 passed or failed by timing under React 19** (#346). It is
+  now deterministic and still fails if the fix it guards is removed.
 
 ## Release gate for every release from the pilot on
 

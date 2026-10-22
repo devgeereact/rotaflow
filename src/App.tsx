@@ -1,4 +1,11 @@
-import { Suspense, lazy, type ComponentType, type LazyExoticComponent } from 'react';
+import {
+  Suspense,
+  lazy,
+  type ComponentType,
+  type LazyExoticComponent,
+  type JSX,
+  type ReactNode,
+} from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -43,12 +50,42 @@ import {
  * The dynamic `import()` stays a literal inside the caller's arrow function so
  * Rollup can still see it statically and split the chunk. Passing a pre-built
  * promise here would defeat that silently.
+ *
+ * `preload()` fetches the chunk ahead of the first render, and once it has,
+ * the factory hands `lazy` an already-settled thenable so the page renders
+ * without suspending. `src/main.tsx` needs that to hydrate a prerendered
+ * public page: a lazy route that suspends during hydration, and then sees a
+ * provider update, is thrown away and rendered again, which replaces the
+ * prerendered markup it was meant to keep.
  */
+type PreloadablePage = LazyExoticComponent<ComponentType> & {
+  preload: () => Promise<void>;
+};
+
 function lazyPage<K extends string>(
   name: K,
   loader: () => Promise<Record<K, ComponentType>>,
-): LazyExoticComponent<ComponentType> {
-  return lazy(() => loader().then((m) => ({ default: m[name] })));
+): PreloadablePage {
+  let loaded: ComponentType | undefined;
+  const load = (): Promise<{ default: ComponentType }> =>
+    loader().then((m) => {
+      loaded = m[name];
+      return { default: m[name] };
+    });
+  const page = lazy(() => {
+    if (!loaded) return load();
+    const module = { default: loaded };
+    // Settles synchronously, so `lazy` records it as resolved on first use.
+    const settled: PromiseLike<{ default: ComponentType }> = {
+      then: (onFulfilled) => {
+        onFulfilled?.(module);
+        return settled as never;
+      },
+    };
+    return settled as Promise<{ default: ComponentType }>;
+  }) as PreloadablePage;
+  page.preload = () => load().then(() => undefined);
+  return page;
 }
 
 /**
@@ -113,6 +150,40 @@ const AccessibilityPage = lazyPage(
   () => import('@/pages/legal/AccessibilityPage'),
 );
 const TrustPage = lazyPage('TrustPage', () => import('@/pages/legal/TrustPage'));
+const SignupPage = lazyPage('SignupPage', () => import('@/pages/SignupPage'));
+
+/**
+ * The lazy public pages that `scripts/prerender.mjs` writes to static HTML,
+ * by path. `src/main.tsx` preloads the one being visited before it hydrates
+ * (see `lazyPage`). `/` and `/login` are eager and need no entry.
+ * `htaccessRoutes.test.ts` checks this covers every prerendered lazy page.
+ */
+const PRERENDERED_LAZY_PAGES: Readonly<Record<string, PreloadablePage>> = {
+  '/features': FeaturesPage,
+  '/solutions': SolutionsPage,
+  '/pricing': PricingPage,
+  '/resources': ResourcesPage,
+  '/about': AboutPage,
+  '/contact': ContactPage,
+  '/legal/privacy': PrivacyPage,
+  '/legal/terms': TermsPage,
+  '/legal/cookies': CookiesPage,
+  '/legal/accessibility': AccessibilityPage,
+  '/legal/trust': TrustPage,
+  '/signup': SignupPage,
+};
+
+/**
+ * Loads the page chunk for a prerendered path, so hydration need not wait.
+ * Exported from here, beside the lazy pages it names, at the cost of Fast
+ * Refresh for this file: App.tsx is the route table and is reloaded whole
+ * anyway.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function preloadPrerenderedPage(pathname: string): Promise<void> {
+  const path = pathname.replace(/\/+$/, '') || '/';
+  return PRERENDERED_LAZY_PAGES[path]?.preload() ?? Promise.resolve();
+}
 
 const OnboardingPage = lazyPage('OnboardingPage', () => import('@/pages/OnboardingPage'));
 const OnboardingPreviewPage = devPage(
@@ -167,7 +238,6 @@ const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
 );
-const SignupPage = lazyPage('SignupPage', () => import('@/pages/SignupPage'));
 const ForgotPasswordPage = lazyPage(
   'ForgotPasswordPage',
   () => import('@/pages/ForgotPasswordPage'),
@@ -399,6 +469,10 @@ const ActivityPage = lazyPage(
   'ActivityPage',
   () => import('@/pages/app/account/ActivityPage'),
 );
+const YourDataPage = lazyPage(
+  'YourDataPage',
+  () => import('@/pages/app/account/YourDataPage'),
+);
 
 /**
  * Roles that may reach the manager-only routes. Named once so the route table
@@ -407,7 +481,22 @@ const ActivityPage = lazyPage(
  */
 const MANAGERIAL: readonly MembershipRole[] = ['owner', 'manager'];
 
-export function App(): JSX.Element {
+/**
+ * Wraps the route tree in a router. The browser uses `BrowserRouter`; the
+ * build-time prerender (`src/entry-prerender.tsx`) passes a `StaticRouter`
+ * pinned to the path it is rendering, so both render the same tree.
+ */
+export type RenderRouter = (children: ReactNode) => JSX.Element;
+
+const browserRouter: RenderRouter = (children) => (
+  <BrowserRouter>{children}</BrowserRouter>
+);
+
+export interface AppProps {
+  renderRouter?: RenderRouter;
+}
+
+export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Element {
   return (
     <ThemeProvider>
       {/* Outside AuthProvider so sign-in/sign-out failures can surface too. */}
@@ -417,45 +506,46 @@ export function App(): JSX.Element {
         <ConfirmProvider>
           <AuthProvider>
             <OrgProvider>
-              <BrowserRouter>
-                {/* Inside the router because the banner and the footer control
+              {renderRouter(
+                <>
+                  {/* Inside the router because the banner and the footer control
                   that reopens it both link to /legal/*, and above Routes so a
                   decision is shared by the public pages and the signed-in app. */}
-                <ConsentProvider>
-                  {/* Covers the lazy PUBLIC routes (signup, onboarding, invite,
+                  <ConsentProvider>
+                    {/* Covers the lazy PUBLIC routes (signup, onboarding, invite,
                   password reset). /app/* has its own boundary inside AppShell
                   so the chrome survives navigation. See there. */}
-                  <Suspense fallback={<RouteFallback />}>
-                    <Routes>
-                      <Route path="/" element={<HomePage />} />
-                      {/* Public marketing site. Every one of these is linked from
+                    <Suspense fallback={<RouteFallback />}>
+                      <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        {/* Public marketing site. Every one of these is linked from
                       PublicNav or PublicFooter, and navigationTargets.test.ts
                       asserts each link resolves to a Route declared here. The
                       nav and the route table cannot drift apart silently. */}
-                      <Route path="/features" element={<FeaturesPage />} />
-                      <Route path="/solutions" element={<SolutionsPage />} />
-                      <Route path="/pricing" element={<PricingPage />} />
-                      <Route path="/resources" element={<ResourcesPage />} />
-                      <Route path="/about" element={<AboutPage />} />
-                      <Route path="/contact" element={<ContactPage />} />
-                      <Route path="/legal/privacy" element={<PrivacyPage />} />
-                      <Route path="/legal/terms" element={<TermsPage />} />
-                      <Route path="/legal/cookies" element={<CookiesPage />} />
-                      <Route
-                        path="/legal/accessibility"
-                        element={<AccessibilityPage />}
-                      />
-                      <Route path="/legal/trust" element={<TrustPage />} />
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/signup" element={<SignupPage />} />
-                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                      <Route path="/reset-password" element={<ResetPasswordPage />} />
-                      <Route path="/splash" element={<SplashScreen />} />
-                      {/* Where an OAuth provider or magic link may return. See
+                        <Route path="/features" element={<FeaturesPage />} />
+                        <Route path="/solutions" element={<SolutionsPage />} />
+                        <Route path="/pricing" element={<PricingPage />} />
+                        <Route path="/resources" element={<ResourcesPage />} />
+                        <Route path="/about" element={<AboutPage />} />
+                        <Route path="/contact" element={<ContactPage />} />
+                        <Route path="/legal/privacy" element={<PrivacyPage />} />
+                        <Route path="/legal/terms" element={<TermsPage />} />
+                        <Route path="/legal/cookies" element={<CookiesPage />} />
+                        <Route
+                          path="/legal/accessibility"
+                          element={<AccessibilityPage />}
+                        />
+                        <Route path="/legal/trust" element={<TrustPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/signup" element={<SignupPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
+                        <Route path="/splash" element={<SplashScreen />} />
+                        {/* Where an OAuth provider or magic link may return. See
                       RouteAliases for why this exists when sign-in already
                       redirects straight to the dashboard. */}
-                      <Route path="/auth/callback" element={<AuthCallbackPage />} />
-                      {/* ---------------------------------------------------------
+                        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+                        {/* ---------------------------------------------------------
                     Design-loop preview routes. DEV ONLY.
 
                     Every screen below lives behind auth in the real product and
@@ -477,200 +567,203 @@ export function App(): JSX.Element {
                     The loop is unaffected. It drives the dev server, where DEV
                     is true. Keep new preview routes inside this block.
                     --------------------------------------------------------- */}
-                      {import.meta.env.DEV && (
-                        <>
-                          {/* The real screen only ever renders inline from
+                        {import.meta.env.DEV && (
+                          <>
+                            {/* The real screen only ever renders inline from
                         ProtectedRoute/AppShell while auth or org membership is
                         resolving. Fixed props reproduce the "setting up
                         organisation" mid-boot state in docs/design/appboot.png. */}
-                          <Route
-                            path="/appboot"
-                            element={<AppBootScreen authResolved orgResolved={false} />}
-                          />
-                          {/* /onboarding writes real rows. ?step=1|2|5 reproduces the
+                            <Route
+                              path="/appboot"
+                              element={<AppBootScreen authResolved orgResolved={false} />}
+                            />
+                            {/* /onboarding writes real rows. ?step=1|2|5 reproduces the
                         reference-designed steps against mock local state. */}
-                          <Route
-                            path="/onboarding-preview"
-                            element={<OnboardingPreviewPage />}
-                          />
-                          {/* docs/design/Workforce-Dashboard.png's numbers. */}
-                          <Route
-                            path="/dashboard-preview"
-                            element={<DashboardPreviewPage />}
-                          />
-                          {/* Mirrors RotaBuilderPage's render tree against mock data. */}
-                          <Route
-                            path="/rota-builder-preview"
-                            element={<RotaBuilderPreviewPage />}
-                          />
-                          {/* Renders the real ManagerSchedule/StaffSchedule; ?role=staff switches branch. */}
-                          <Route
-                            path="/schedule-preview"
-                            element={<SchedulePreviewPage />}
-                          />
-                          {/* docs/design/Timesheets-Dashboard.png's numbers. */}
-                          <Route
-                            path="/timesheets-preview"
-                            element={<TimesheetsPreviewPage />}
-                          />
-                          {/* docs/design/clockin.png. */}
-                          <Route
-                            path="/clockin-preview"
-                            element={<ClockInPreviewPage />}
-                          />
-                          {/* The whole platform console against fixtures, with the
+                            <Route
+                              path="/onboarding-preview"
+                              element={<OnboardingPreviewPage />}
+                            />
+                            {/* docs/design/Workforce-Dashboard.png's numbers. */}
+                            <Route
+                              path="/dashboard-preview"
+                              element={<DashboardPreviewPage />}
+                            />
+                            {/* Mirrors RotaBuilderPage's render tree against mock data. */}
+                            <Route
+                              path="/rota-builder-preview"
+                              element={<RotaBuilderPreviewPage />}
+                            />
+                            {/* Renders the real ManagerSchedule/StaffSchedule; ?role=staff switches branch. */}
+                            <Route
+                              path="/schedule-preview"
+                              element={<SchedulePreviewPage />}
+                            />
+                            {/* docs/design/Timesheets-Dashboard.png's numbers. */}
+                            <Route
+                              path="/timesheets-preview"
+                              element={<TimesheetsPreviewPage />}
+                            />
+                            {/* docs/design/clockin.png. */}
+                            <Route
+                              path="/clockin-preview"
+                              element={<ClockInPreviewPage />}
+                            />
+                            {/* The whole platform console against fixtures, with the
                         real shell and the real page components. The only way to
                         look at `/admin/*` without a seeded platform-admin
                         session. See `AdminPreviewHarness`. */}
-                          <Route path="/admin-preview" element={<AdminPreviewHarness />}>
-                            <Route index element={<AdminOverviewPage />} />
                             <Route
-                              path="organisations"
-                              element={<AdminOrganisationsPage />}
-                            />
-                            <Route
-                              path="organisations/:organisationId"
-                              element={<AdminOrganisationDetailPage />}
-                            />
-                            <Route path="users" element={<AdminUsersPage />} />
-                            <Route
-                              path="users/:userId"
-                              element={<AdminUserDetailPage />}
-                            />
-                            <Route
-                              path="subscriptions"
-                              element={<AdminSubscriptionsPage />}
-                            />
-                            <Route path="billing" element={<AdminBillingPage />} />
-                            <Route path="support" element={<AdminSupportPage />} />
-                            <Route path="enquiries" element={<AdminEnquiriesPage />} />
-                            <Route
-                              path="support/:caseId"
-                              element={<AdminSupportCaseDetailPage />}
-                            />
-                            <Route
-                              path="support-access"
-                              element={<AdminSupportAccessPage />}
-                            />
-                            <Route
-                              path="platform-health"
-                              element={<AdminPlatformHealthPage />}
-                            />
-                            <Route path="incidents" element={<AdminIncidentsPage />} />
-                            <Route
-                              path="integrations"
-                              element={<AdminIntegrationsPage />}
-                            />
-                            <Route
-                              path="notifications"
-                              element={<AdminNotificationsPage />}
-                            />
-                            <Route path="audit" element={<AdminAuditPage />} />
-                            <Route
-                              path="feature-flags"
-                              element={<AdminFeatureFlagsPage />}
-                            />
-                            {/* The DSAR register names data subjects, so it is
+                              path="/admin-preview"
+                              element={<AdminPreviewHarness />}
+                            >
+                              <Route index element={<AdminOverviewPage />} />
+                              <Route
+                                path="organisations"
+                                element={<AdminOrganisationsPage />}
+                              />
+                              <Route
+                                path="organisations/:organisationId"
+                                element={<AdminOrganisationDetailPage />}
+                              />
+                              <Route path="users" element={<AdminUsersPage />} />
+                              <Route
+                                path="users/:userId"
+                                element={<AdminUserDetailPage />}
+                              />
+                              <Route
+                                path="subscriptions"
+                                element={<AdminSubscriptionsPage />}
+                              />
+                              <Route path="billing" element={<AdminBillingPage />} />
+                              <Route path="support" element={<AdminSupportPage />} />
+                              <Route path="enquiries" element={<AdminEnquiriesPage />} />
+                              <Route
+                                path="support/:caseId"
+                                element={<AdminSupportCaseDetailPage />}
+                              />
+                              <Route
+                                path="support-access"
+                                element={<AdminSupportAccessPage />}
+                              />
+                              <Route
+                                path="platform-health"
+                                element={<AdminPlatformHealthPage />}
+                              />
+                              <Route path="incidents" element={<AdminIncidentsPage />} />
+                              <Route
+                                path="integrations"
+                                element={<AdminIntegrationsPage />}
+                              />
+                              <Route
+                                path="notifications"
+                                element={<AdminNotificationsPage />}
+                              />
+                              <Route path="audit" element={<AdminAuditPage />} />
+                              <Route
+                                path="feature-flags"
+                                element={<AdminFeatureFlagsPage />}
+                              />
+                              {/* The DSAR register names data subjects, so it is
                       operational tenant data: 0138 moved `gdpr_requests_select`
                       to `is_platform_operational()`, which excludes finance.
                       Without this gate finance opened the screen and RLS
                       filtered it to an empty register. */}
+                              <Route
+                                path="gdpr"
+                                element={
+                                  <RequirePlatformRole
+                                    allow={PLATFORM_OPERATIONAL_ROLES}
+                                    area="GDPR and data requests"
+                                  >
+                                    <AdminGdprPage />
+                                  </RequirePlatformRole>
+                                }
+                              />
+                              <Route path="settings" element={<AdminSettingsPage />} />
+                            </Route>
+                            {/* docs/design/staff.png and docs/design/Staff-Profile.png. */}
+                            <Route path="/staff-preview" element={<StaffPreviewPage />} />
                             <Route
-                              path="gdpr"
-                              element={
-                                <RequirePlatformRole
-                                  allow={PLATFORM_OPERATIONAL_ROLES}
-                                  area="GDPR and data requests"
-                                >
-                                  <AdminGdprPage />
-                                </RequirePlatformRole>
-                              }
+                              path="/staff-preview/:staffId"
+                              element={<StaffProfilePreviewPage />}
                             />
-                            <Route path="settings" element={<AdminSettingsPage />} />
-                          </Route>
-                          {/* docs/design/staff.png and docs/design/Staff-Profile.png. */}
-                          <Route path="/staff-preview" element={<StaffPreviewPage />} />
-                          <Route
-                            path="/staff-preview/:staffId"
-                            element={<StaffProfilePreviewPage />}
-                          />
-                          {/* docs/design/Locations-Management.png and
+                            {/* docs/design/Locations-Management.png and
                         docs/design/Location-department.png, merged into one
                         tabbed workspace. ?tab=departments opens the second. */}
-                          <Route
-                            path="/locations-preview"
-                            element={<LocationsPreviewPage />}
-                          />
-                          <Route
-                            path="/locations-preview/departments"
-                            element={<LocationsPreviewPage />}
-                          />
-                          {/* docs/design/Announcements-Dashboard.png's rows and metrics. */}
-                          <Route
-                            path="/announcements-preview"
-                            element={<AnnouncementsPreviewPage />}
-                          />
-                          {/* docs/design/Reports-Dashboard.png's catalogue and figures. */}
-                          <Route
-                            path="/reports-preview"
-                            element={<ReportsPreviewPage />}
-                          />
-                          {/* The whole organisation workspace shell (rail, org
+                            <Route
+                              path="/locations-preview"
+                              element={<LocationsPreviewPage />}
+                            />
+                            <Route
+                              path="/locations-preview/departments"
+                              element={<LocationsPreviewPage />}
+                            />
+                            {/* docs/design/Announcements-Dashboard.png's rows and metrics. */}
+                            <Route
+                              path="/announcements-preview"
+                              element={<AnnouncementsPreviewPage />}
+                            />
+                            {/* docs/design/Reports-Dashboard.png's catalogue and figures. */}
+                            <Route
+                              path="/reports-preview"
+                              element={<ReportsPreviewPage />}
+                            />
+                            {/* The whole organisation workspace shell (rail, org
                         switcher, topbar, mobile tab bar) against a stubbed
                         OrgContext, with the real *PreviewPage components
                         routed inside it. See AppShellPreviewPage.
                         ?role=owner|manager|staff switches the stubbed role. */}
-                          <Route
-                            path="/app-preview/*"
-                            element={<AppShellPreviewPage />}
-                          />
-                          {/* The real DashboardPage, hooks and service calls
+                            <Route
+                              path="/app-preview/*"
+                              element={<AppShellPreviewPage />}
+                            />
+                            {/* The real DashboardPage, hooks and service calls
                         included, against a fetch-intercepted Supabase client
                         with realistic edge-case fixtures (null settings, a
                         null holiday_allowance, an orphaned leave request, a
                         null department_id). See DashboardLivePreviewPage. */}
-                          <Route
-                            path="/dashboard-live-preview"
-                            element={<DashboardLivePreviewPage />}
-                          />
-                          {/* The real Settings and My account pages, inside
+                            <Route
+                              path="/dashboard-live-preview"
+                              element={<DashboardLivePreviewPage />}
+                            />
+                            {/* The real Settings and My account pages, inside
                         their tab layouts, against a fetch-intercepted
                         Supabase client. See SettingsLivePreviewPage. */}
-                          <Route
-                            path="/settings-preview/*"
-                            element={<SettingsLivePreviewPage />}
-                          />
-                        </>
-                      )}
-                      {/* Public on purpose: an invitee has no account yet, and
+                            <Route
+                              path="/settings-preview/*"
+                              element={<SettingsLivePreviewPage />}
+                            />
+                          </>
+                        )}
+                        {/* Public on purpose: an invitee has no account yet, and
                     preview_invite is granted to anon so they can see who
                     invited them before signing up. */}
-                      <Route path="/invite/:token" element={<AcceptInvitePage />} />
-                      <Route
-                        path="/onboarding"
-                        element={
-                          <ProtectedRoute>
-                            <OnboardingPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/app"
-                        element={
-                          <ProtectedRoute>
-                            {/* Inside ProtectedRoute, so the staff lookup is
+                        <Route path="/invite/:token" element={<AcceptInvitePage />} />
+                        <Route
+                          path="/onboarding"
+                          element={
+                            <ProtectedRoute>
+                              <OnboardingPage />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/app"
+                          element={
+                            <ProtectedRoute>
+                              {/* Inside ProtectedRoute, so the staff lookup is
                                 only ever made for a resolved session, and
                                 outside AppShell so the rail, the tab bar and
                                 every page read one answer rather than four. */}
-                            <WorkModeProvider>
-                              <AppShell />
-                            </WorkModeProvider>
-                          </ProtectedRoute>
-                        }
-                      >
-                        <Route index element={<Navigate to="dashboard" replace />} />
-                        <Route path="dashboard" element={<DashboardPage />} />
-                        {/* Manager-only areas.
+                              <WorkModeProvider>
+                                <AppShell />
+                              </WorkModeProvider>
+                            </ProtectedRoute>
+                          }
+                        >
+                          <Route index element={<Navigate to="dashboard" replace />} />
+                          <Route path="dashboard" element={<DashboardPage />} />
+                          {/* Manager-only areas.
 
                         The gate used to live inside whichever page remembered
                         it, as a one-line card, worded differently each time, and the staff directory, staff profiles and locations
@@ -680,186 +773,190 @@ export function App(): JSX.Element {
                         a new page cannot forget. RLS is still the real
                         boundary; this only turns a wrong turn into an
                         explanation. See `RequireRole`. */}
-                        {/* NEW_STRUCTURE §10/§34: the workforce directory lives
+                          {/* NEW_STRUCTURE §10/§34: the workforce directory lives
                       at /app/team, and the sidebar entry is "Team". It was
                       built at /app/staff, so that spelling now redirects here
                       rather than the other way round. Every bookmark and
                       every link already sent to staff still resolves. */}
-                        <Route
-                          path="team"
-                          element={
-                            <RequireRole allow={MANAGERIAL} area="the team directory">
-                              <StaffPage />
-                            </RequireRole>
-                          }
-                        />
-                        <Route
-                          path="team/:staffId"
-                          element={
-                            <RequireRole allow={MANAGERIAL} area="staff profiles">
-                              <StaffProfilePage />
-                            </RequireRole>
-                          }
-                        />
-                        <Route
-                          path="staff"
-                          element={<Navigate to="/app/team" replace />}
-                        />
-                        <Route path="staff/:staffId" element={<StaffMemberRedirect />} />
-                        <Route
-                          path="locations"
-                          element={
-                            <RequireRole allow={MANAGERIAL} area="locations">
-                              <LocationsPage />
-                            </RequireRole>
-                          }
-                        />
-                        {/* SCREENS.locations folded department and staffing-
+                          <Route
+                            path="team"
+                            element={
+                              <RequireRole allow={MANAGERIAL} area="the team directory">
+                                <StaffPage />
+                              </RequireRole>
+                            }
+                          />
+                          <Route
+                            path="team/:staffId"
+                            element={
+                              <RequireRole allow={MANAGERIAL} area="staff profiles">
+                                <StaffProfilePage />
+                              </RequireRole>
+                            }
+                          />
+                          <Route
+                            path="staff"
+                            element={<Navigate to="/app/team" replace />}
+                          />
+                          <Route
+                            path="staff/:staffId"
+                            element={<StaffMemberRedirect />}
+                          />
+                          <Route
+                            path="locations"
+                            element={
+                              <RequireRole allow={MANAGERIAL} area="locations">
+                                <LocationsPage />
+                              </RequireRole>
+                            }
+                          />
+                          {/* SCREENS.locations folded department and staffing-
                       minimum management into per-card dialogs on the one
                       screen (LocationsPage), rather than a second tab or a
                       per-site detail route. Both old URLs still resolve. */}
-                        <Route
-                          path="locations/departments"
-                          element={<Navigate to="/app/locations" replace />}
-                        />
-                        <Route
-                          path="locations/:locationId"
-                          element={<Navigate to="/app/locations" replace />}
-                        />
-                        <Route
-                          path="rota"
-                          element={
-                            <RequireRole allow={MANAGERIAL} area="the rota builder">
-                              <RotaBuilderPage />
-                            </RequireRole>
-                          }
-                        />
-                        <Route
-                          path="setup"
-                          element={
-                            <RequireRole
-                              allow={MANAGERIAL}
-                              area="the organisation setup checklist"
-                            >
-                              <SetupPage />
-                            </RequireRole>
-                          }
-                        />
-                        <Route path="schedule" element={<SchedulePage />} />
-                        <Route
-                          path="attendance"
-                          element={
-                            <RequireRole
-                              allow={MANAGERIAL}
-                              area="the team attendance record"
-                            >
-                              <AttendancePage />
-                            </RequireRole>
-                          }
-                        />
-                        <Route path="clock" element={<ClockInPage />} />
-                        {/* The spec's spelling. See RouteAliases. */}
-                        <Route
-                          path="clock-in"
-                          element={<Navigate to="/app/clock" replace />}
-                        />
-                        <Route path="timesheets" element={<TimesheetsPage />} />
-                        <Route path="availability" element={<AvailabilityPage />} />
-                        {/* Leave, Swaps and Overtime share a phone-only switch,
+                          <Route
+                            path="locations/departments"
+                            element={<Navigate to="/app/locations" replace />}
+                          />
+                          <Route
+                            path="locations/:locationId"
+                            element={<Navigate to="/app/locations" replace />}
+                          />
+                          <Route
+                            path="rota"
+                            element={
+                              <RequireRole allow={MANAGERIAL} area="the rota builder">
+                                <RotaBuilderPage />
+                              </RequireRole>
+                            }
+                          />
+                          <Route
+                            path="setup"
+                            element={
+                              <RequireRole
+                                allow={MANAGERIAL}
+                                area="the organisation setup checklist"
+                              >
+                                <SetupPage />
+                              </RequireRole>
+                            }
+                          />
+                          <Route path="schedule" element={<SchedulePage />} />
+                          <Route
+                            path="attendance"
+                            element={
+                              <RequireRole
+                                allow={MANAGERIAL}
+                                area="the team attendance record"
+                              >
+                                <AttendancePage />
+                              </RequireRole>
+                            }
+                          />
+                          <Route path="clock" element={<ClockInPage />} />
+                          {/* The spec's spelling. See RouteAliases. */}
+                          <Route
+                            path="clock-in"
+                            element={<Navigate to="/app/clock" replace />}
+                          />
+                          <Route path="timesheets" element={<TimesheetsPage />} />
+                          <Route path="availability" element={<AvailabilityPage />} />
+                          {/* Leave, Swaps and Overtime share a phone-only switch,
                       so the "Requests" tab reaches all three. */}
-                        <Route element={<RequestsLayout />}>
-                          <Route path="leave" element={<LeavePage />} />
-                          <Route path="swaps" element={<SwapsPage />} />
-                          {/* Open to every member: a staff member raises their own
+                          <Route element={<RequestsLayout />}>
+                            <Route path="leave" element={<LeavePage />} />
+                            <Route path="swaps" element={<SwapsPage />} />
+                            {/* Open to every member: a staff member raises their own
                         overtime here, and the page's Team toggle is what gates
                         the approval queue behind `canApprove`. */}
-                          <Route path="overtime" element={<OvertimePage />} />
-                        </Route>
-                        <Route path="open-shifts" element={<OpenShiftsPage />} />
-                        <Route path="announcements" element={<AnnouncementsPage />} />
-                        <Route path="notifications" element={<NotificationsPage />} />
-                        <Route path="help" element={<HelpPage />} />
-                        <Route
-                          path="approvals"
-                          element={
-                            <RequireRole allow={MANAGERIAL} area="approvals">
-                              <ApprovalsPage />
-                            </RequireRole>
-                          }
-                        />
-                        <Route
-                          path="reports"
-                          element={
-                            <RequireRole allow={MANAGERIAL} area="reports">
-                              <ReportsPage />
-                            </RequireRole>
-                          }
-                        />
-                        {/* Integrations moved under Settings, as the design shows. */}
-                        <Route
-                          path="integrations"
-                          element={<Navigate to="/app/settings/integrations" replace />}
-                        />
-                        <Route path="settings" element={<SettingsLayout />}>
-                          <Route index element={<SettingsIndexRedirect />} />
+                            <Route path="overtime" element={<OvertimePage />} />
+                          </Route>
+                          <Route path="open-shifts" element={<OpenShiftsPage />} />
+                          <Route path="announcements" element={<AnnouncementsPage />} />
+                          <Route path="notifications" element={<NotificationsPage />} />
+                          <Route path="help" element={<HelpPage />} />
                           <Route
-                            path="organisation"
-                            element={<SettingsOrganisationPage />}
+                            path="approvals"
+                            element={
+                              <RequireRole allow={MANAGERIAL} area="approvals">
+                                <ApprovalsPage />
+                              </RequireRole>
+                            }
                           />
                           <Route
-                            path="permissions"
-                            element={<SettingsPermissionsPage />}
+                            path="reports"
+                            element={
+                              <RequireRole allow={MANAGERIAL} area="reports">
+                                <ReportsPage />
+                              </RequireRole>
+                            }
                           />
-                          <Route path="roles" element={<SettingsRolesPage />} />
-                          <Route path="policies" element={<SettingsPoliciesPage />} />
-                          <Route
-                            path="notifications"
-                            element={<SettingsNotificationsPage />}
-                          />
+                          {/* Integrations moved under Settings, as the design shows. */}
                           <Route
                             path="integrations"
-                            element={<SettingsIntegrationsPage />}
+                            element={<Navigate to="/app/settings/integrations" replace />}
                           />
-                          <Route path="billing" element={<SettingsBillingPage />} />
-                          <Route path="audit" element={<SettingsAuditPage />} />
-                        </Route>
-                        <Route path="account" element={<ProfileLayout />}>
-                          <Route index element={<Navigate to="profile" replace />} />
-                          <Route path="profile" element={<ProfilePage />} />
-                          <Route path="preferences" element={<PreferencesPage />} />
-                          <Route path="security" element={<SecurityPage />} />
-                          <Route path="accounts" element={<ConnectedAccountsPage />} />
-                          <Route path="sessions" element={<SessionsPage />} />
-                          <Route path="tokens" element={<TokensPage />} />
-                          <Route path="activity" element={<ActivityPage />} />
-                        </Route>
-                        {/* The spec calls this area "My Profile" at
+                          <Route path="settings" element={<SettingsLayout />}>
+                            <Route index element={<SettingsIndexRedirect />} />
+                            <Route
+                              path="organisation"
+                              element={<SettingsOrganisationPage />}
+                            />
+                            <Route
+                              path="permissions"
+                              element={<SettingsPermissionsPage />}
+                            />
+                            <Route path="roles" element={<SettingsRolesPage />} />
+                            <Route path="policies" element={<SettingsPoliciesPage />} />
+                            <Route
+                              path="notifications"
+                              element={<SettingsNotificationsPage />}
+                            />
+                            <Route
+                              path="integrations"
+                              element={<SettingsIntegrationsPage />}
+                            />
+                            <Route path="billing" element={<SettingsBillingPage />} />
+                            <Route path="audit" element={<SettingsAuditPage />} />
+                          </Route>
+                          <Route path="account" element={<ProfileLayout />}>
+                            <Route index element={<Navigate to="profile" replace />} />
+                            <Route path="profile" element={<ProfilePage />} />
+                            <Route path="preferences" element={<PreferencesPage />} />
+                            <Route path="security" element={<SecurityPage />} />
+                            <Route path="accounts" element={<ConnectedAccountsPage />} />
+                            <Route path="sessions" element={<SessionsPage />} />
+                            <Route path="tokens" element={<TokensPage />} />
+                            <Route path="activity" element={<ActivityPage />} />
+                            <Route path="data" element={<YourDataPage />} />
+                          </Route>
+                          {/* The spec calls this area "My Profile" at
                         /app/profile/*. See RouteAliases. */}
-                        <Route path="profile/*" element={<ProfileRedirect />} />
-                      </Route>
+                          <Route path="profile/*" element={<ProfileRedirect />} />
+                        </Route>
 
-                      {/* Platform administration (NEW_STRUCTURE §34). Outside
+                        {/* Platform administration (NEW_STRUCTURE §34). Outside
                     `/app` deliberately: this area sits above organisations, and
                     it is gated on `profiles.is_platform_admin` rather than on a
                     membership role, §2 is explicit that Super Admin is not one.
                     `ProtectedRoute` still applies, so an anonymous visitor is
                     sent to sign in rather than told the area exists. */}
-                      <Route
-                        path="/admin"
-                        element={
-                          <ProtectedRoute>
-                            <RequirePlatformAdmin>
-                              <AdminShell />
-                            </RequirePlatformAdmin>
-                          </ProtectedRoute>
-                        }
-                      >
-                        <Route index element={<AdminOverviewPage />} />
                         <Route
-                          path="organisations"
-                          element={<AdminOrganisationsPage />}
-                        />
-                        {/* No `RequirePlatformRole` here, on purpose, and the
+                          path="/admin"
+                          element={
+                            <ProtectedRoute>
+                              <RequirePlatformAdmin>
+                                <AdminShell />
+                              </RequirePlatformAdmin>
+                            </ProtectedRoute>
+                          }
+                        >
+                          <Route index element={<AdminOverviewPage />} />
+                          <Route
+                            path="organisations"
+                            element={<AdminOrganisationsPage />}
+                          />
+                          {/* No `RequirePlatformRole` here, on purpose, and the
                       same as the Organisations list above. Every platform role
                       may open an organisation: finance needs its Subscription
                       and Usage tabs, and 0122 left `organisations` readable by
@@ -869,223 +966,224 @@ export function App(): JSX.Element {
                       four roles would add nothing except refusing an
                       administrator whose granular role could not be read,
                       while the list one click away still let them in. */}
-                        <Route
-                          path="organisations/:organisationId"
-                          element={<AdminOrganisationDetailPage />}
-                        />
-                        {/* Operational roles only, mirroring
+                          <Route
+                            path="organisations/:organisationId"
+                            element={<AdminOrganisationDetailPage />}
+                          />
+                          {/* Operational roles only, mirroring
                       `is_platform_operational()` (0122), which is the
                       platform-side predicate on `profiles` and `memberships`.
                       Without the gate a finance administrator opened this
                       screen and RLS filtered it to their own row — a
                       one-account table rather than a refusal, which reads as
                       a broken product rather than as a boundary. */}
-                        <Route
-                          path="users"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Platform users"
-                            >
-                              <AdminUsersPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="users/:userId"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Platform users"
-                            >
-                              <AdminUserDetailPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="subscriptions"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_BILLING_ROLES}
-                              area="Subscriptions"
-                            >
-                              <AdminSubscriptionsPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="settings"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_CONFIG_ROLES}
-                              area="Platform settings"
-                            >
-                              <AdminSettingsPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        {/* Billing and feature flags are narrower than the area
+                          <Route
+                            path="users"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Platform users"
+                              >
+                                <AdminUsersPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="users/:userId"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Platform users"
+                              >
+                                <AdminUserDetailPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="subscriptions"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_BILLING_ROLES}
+                                area="Subscriptions"
+                              >
+                                <AdminSubscriptionsPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="settings"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_CONFIG_ROLES}
+                                area="Platform settings"
+                              >
+                                <AdminSettingsPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          {/* Billing and feature flags are narrower than the area
                       itself: `adminNavForRole` hides them from a support
                       administrator, and §34 is explicit that restricted routes
                       "must not rely only on hidden navigation". So the route
                       gates too, a hidden link that still renders when typed is
                       not a permission, it is a decoration. The role lists mirror
                       the `has_platform_role(...)` predicates in the migrations. */}
-                        <Route
-                          path="billing"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_BILLING_ROLES}
-                              area="Platform billing"
-                            >
-                              <AdminBillingPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        {/* Support cases, their internal notes and the audit
+                          <Route
+                            path="billing"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_BILLING_ROLES}
+                                area="Platform billing"
+                              >
+                                <AdminBillingPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          {/* Support cases, their internal notes and the audit
                       log are all operational tenant data under 0122. Same
                       reasoning as Users above. */}
-                        <Route
-                          path="support"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Support centre"
-                            >
-                              <AdminSupportPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        {/* Prospects' personal data, so operational roles only:
+                          <Route
+                            path="support"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Support centre"
+                              >
+                                <AdminSupportPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          {/* Prospects' personal data, so operational roles only:
                       `enquiries_select` is `is_platform_operational()` (0155),
                       which excludes finance. */}
-                        <Route
-                          path="enquiries"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Enquiries"
-                            >
-                              <AdminEnquiriesPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="support/:caseId"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Support centre"
-                            >
-                              <AdminSupportCaseDetailPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="support-access"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Support access"
-                            >
-                              <AdminSupportAccessPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="audit"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Audit logs"
-                            >
-                              <AdminAuditPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="platform-health"
-                          element={<AdminPlatformHealthPage />}
-                        />
-                        <Route
-                          path="incidents"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Incidents"
-                            >
-                              <AdminIncidentsPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="integrations"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="Integrations"
-                            >
-                              <AdminIntegrationsPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        {/* Config roles only: this reads every tenant's delivery
+                          <Route
+                            path="enquiries"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Enquiries"
+                              >
+                                <AdminEnquiriesPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="support/:caseId"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Support centre"
+                              >
+                                <AdminSupportCaseDetailPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="support-access"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Support access"
+                              >
+                                <AdminSupportAccessPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="audit"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Audit logs"
+                              >
+                                <AdminAuditPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="platform-health"
+                            element={<AdminPlatformHealthPage />}
+                          />
+                          <Route
+                            path="incidents"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Incidents"
+                              >
+                                <AdminIncidentsPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="integrations"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="Integrations"
+                              >
+                                <AdminIntegrationsPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          {/* Config roles only: this reads every tenant's delivery
                       record, which is a cross-tenant view of who was told what.
                       The nav hides it for support and finance, and so does the
                       route, a hidden link that renders when typed is not a
                       permission. */}
-                        <Route
-                          path="notifications"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_CONFIG_ROLES}
-                              area="Platform notifications"
-                            >
-                              <AdminNotificationsPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        {/* The DSAR register names data subjects, so it is
+                          <Route
+                            path="notifications"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_CONFIG_ROLES}
+                                area="Platform notifications"
+                              >
+                                <AdminNotificationsPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          {/* The DSAR register names data subjects, so it is
                       operational tenant data: 0138 moved `gdpr_requests_select`
                       to `is_platform_operational()`, which excludes finance.
                       Without this gate finance opened the screen and RLS
                       filtered it to an empty register. */}
-                        <Route
-                          path="gdpr"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_OPERATIONAL_ROLES}
-                              area="GDPR and data requests"
-                            >
-                              <AdminGdprPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                        <Route
-                          path="feature-flags"
-                          element={
-                            <RequirePlatformRole
-                              allow={PLATFORM_CONFIG_ROLES}
-                              area="Feature flags"
-                            >
-                              <AdminFeatureFlagsPage />
-                            </RequirePlatformRole>
-                          }
-                        />
-                      </Route>
+                          <Route
+                            path="gdpr"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_OPERATIONAL_ROLES}
+                                area="GDPR and data requests"
+                              >
+                                <AdminGdprPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                          <Route
+                            path="feature-flags"
+                            element={
+                              <RequirePlatformRole
+                                allow={PLATFORM_CONFIG_ROLES}
+                                area="Feature flags"
+                              >
+                                <AdminFeatureFlagsPage />
+                              </RequirePlatformRole>
+                            }
+                          />
+                        </Route>
 
-                      <Route path="*" element={<NotFoundPage />} />
-                    </Routes>
-                  </Suspense>
+                        <Route path="*" element={<NotFoundPage />} />
+                      </Routes>
+                    </Suspense>
 
-                  {/* Global PWA affordances */}
-                  <UpdatePrompt />
-                  <InstallPrompt />
-                  <OfflineBanner />
-                  <ConsentBanner />
-                  <ConsentPreferences />
-                </ConsentProvider>
-              </BrowserRouter>
+                    {/* Global PWA affordances */}
+                    <UpdatePrompt />
+                    <InstallPrompt />
+                    <OfflineBanner />
+                    <ConsentBanner />
+                    <ConsentPreferences />
+                  </ConsentProvider>
+                </>,
+              )}
             </OrgProvider>
           </AuthProvider>
         </ConfirmProvider>

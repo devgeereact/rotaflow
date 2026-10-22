@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { TeamDirectoryView } from '@/components/staff/TeamDirectoryView';
 import type { TeamRow } from '@/lib/teamRows';
 import { PreviewCanvas } from '@/components/ui/PreviewCanvas';

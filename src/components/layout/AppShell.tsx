@@ -1,7 +1,8 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useState, type JSX } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { RouteFallback } from '@/components/RouteFallback';
 import { useOrg } from '@/hooks/useOrg';
+import { usePersonalPreferences } from '@/hooks/usePersonalPreferences';
 import { AppBootScreen } from '@/components/AppBootScreen';
 import { SupportAccessBanner } from '@/components/layout/SupportAccessBanner';
 import { ReadOnlyBanner } from '@/components/layout/ReadOnlyBanner';
@@ -25,6 +26,8 @@ import { OfflineQueueDrain } from '@/components/OfflineQueueDrain';
 export function AppShell(): JSX.Element {
   const { loading, loadFailed, memberships, refresh, isPlatformAdmin } = useOrg();
   const [navOpen, setNavOpen] = useState(false);
+  // Applies the person's clock format to every screen (0163).
+  usePersonalPreferences();
 
   // Auth already resolved to reach AppShell; only the org query is outstanding.
   if (loading) return <AppBootScreen authResolved orgResolved={false} />;

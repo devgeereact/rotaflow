@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { format } from 'date-fns';
 import {
   OperationsDashboard,
@@ -84,6 +85,7 @@ const STAFF: StaffProfile[] = [
     payroll_id: null,
     start_date: NOW.toISOString().slice(0, 10),
     phone: null,
+    photo_path: null,
     photo_url: null,
     active: true,
     created_at: NOW.toISOString(),

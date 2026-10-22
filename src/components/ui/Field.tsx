@@ -1,4 +1,4 @@
-import { cloneElement, useId, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, useId, type ReactElement, type ReactNode, type JSX } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Label } from '@/components/ui/Label';
 import { cn } from '@/lib/utils';

@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SwapParties } from '@/components/swaps/SwapParties';

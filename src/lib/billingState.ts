@@ -173,6 +173,28 @@ export function orgStateBadge(
   return null;
 }
 
+/**
+ * One line for Settings, Integrations: where the organisation stands with
+ * Stripe. Null while the state is unknown, so the line is left out rather
+ * than guessed.
+ */
+export function stripeConnectionLabel(
+  snapshot: OrgBillingSnapshot | null,
+  now: Date,
+): string | null {
+  if (!snapshot) return null;
+  const badge = orgStateBadge(snapshot, now);
+  if (badge) return badge.label;
+  switch (snapshot.state) {
+    case 'trialing':
+      return 'Stripe subscription, in its trial';
+    case 'grace':
+      return 'Stripe subscription, payment overdue';
+    default:
+      return 'Stripe subscription active';
+  }
+}
+
 /** The app-wide banner a manager sees once the organisation is read-only. */
 export const READ_ONLY_BANNER =
   'Your trial has ended. Choose a plan to keep building rotas.';
@@ -210,6 +232,23 @@ export interface OwnerInvoiceRow {
   status: string;
   hosted_invoice_url: string | null;
   invoice_pdf: string | null;
+}
+
+/** The two document links Stripe currently serves for one invoice (GAP-129). */
+export interface InvoiceLinks {
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+}
+
+/**
+ * A link kept only if it is https on one of Stripe's two document hosts, the
+ * same rule as the `invoices` CHECK (0156) and the webhook's filter. Applied
+ * to a refreshed link before it replaces a stored one, so the screen never
+ * renders a link from anywhere else, whatever the server returned.
+ */
+export function stripeDocumentLink(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 2048) return null;
+  return /^https:\/\/(invoice|pay)\.stripe\.com\/\S*$/.test(value) ? value : null;
 }
 
 /** How many invoices the owner's list shows: a year of monthly billing. */

@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ArrowLeft, ArrowRight, Check, Crown, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';

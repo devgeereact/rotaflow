@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 /** Fixed bottom banner shown only while the device is offline. */

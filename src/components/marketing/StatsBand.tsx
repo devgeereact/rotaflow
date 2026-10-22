@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { TRACTION } from '@/lib/marketing';
 
 /**
@@ -20,7 +21,7 @@ export function StatsBand(): JSX.Element | null {
   return (
     <section className="border-y border-surface-border bg-surface py-16 dark:border-surface-border-dark dark:bg-surface-dark">
       <div className="mx-auto max-w-6xl px-6">
-        <h2 className="mb-10 text-center font-display text-2xl font-bold text-content md:text-3xl dark:text-content-dark">
+        <h2 className="mb-10 text-center font-display text-2xl font-medium text-content md:text-3xl dark:text-content-dark">
           RotaFlow by the numbers
         </h2>
 
@@ -29,10 +30,10 @@ export function StatsBand(): JSX.Element | null {
             <div key={label} className="text-center">
               <dt className="sr-only">{label}</dt>
               <dd>
-                <p className="font-display text-3xl font-extrabold tracking-tight text-primary dark:text-primary-ink-dark md:text-4xl">
+                <p className="font-display text-3xl font-medium tracking-tight text-primary dark:text-primary-ink-dark md:text-4xl">
                   {value}
                 </p>
-                <p className="mt-2 font-semibold text-content dark:text-content-dark">
+                <p className="mt-2 font-medium text-content dark:text-content-dark">
                   {label}
                 </p>
                 <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">

@@ -104,7 +104,7 @@ export const TERMS_SECTIONS: readonly NoticeSection[] = [
     outstanding:
       'Refunds, pro-rata credit on a mid-period downgrade, what happens to data at the end of the grace window, and whether prices include or exclude VAT are all undecided. The published prices carry no VAT statement, which is the sort of omission that becomes a dispute.',
     evidence:
-      'supabase/functions/create-checkout-session, create-portal-session, stripe-webhook, supabase/migrations/0098_subscription_grace_window.sql',
+      'supabase/functions/create-checkout-session, create-portal-session, billing-account, stripe-webhook, supabase/migrations/0098_subscription_grace_window.sql',
   },
   {
     id: 'your-data',

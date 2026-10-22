@@ -48,9 +48,13 @@ else:
 
 `billing` has no row in the organisation's notification matrix, so
 `send-notification` sends it on every channel the person has not switched off.
-Only a **Stripe** trial produces the three-day notice: an organisation in its
-own no-card trial (`organisations.trial_ends_at`) is told by the in-app banner
-and Settings, Billing, and has no email reminder yet (GAP-127).
+Only a **Stripe** trial produces the `trial_will_end` notice. An organisation in
+its own no-card trial (`organisations.trial_ends_at`, `0154`) is reminded by the
+scheduled job instead (`0157`): `enqueue_scheduled_alerts` queues one
+`billing/trial_ending` row, "Your free trial ends on" and the date, to the active owners
+of an `active` organisation whose trial ends within three days and whose billing
+state is still `trial`. Its dedupe key is `trial_ending:<org>:<trial end>`, so an
+extended trial is reminded again before its new end.
 
 **Website enquiries are the second exception (`0155`).** The outbox cannot carry
 them: `notification_outbox.org_id` is NOT NULL, and `send-notification` drops
@@ -78,6 +82,11 @@ so the form cannot be used to mail a third party.
 | Web push | Built. VAPID keys are Edge Function secrets; the public key is `VITE_VAPID_PUBLIC_KEY`. Subscriptions are `push_subscriptions` (`0009`). Whether a push has ever arrived on a real device is recorded in `docs/SAAS.md`, not assumed                                                                             |
 | SMS      | **Not built.** A reserved seam: no provider, and Settings shows it as unavailable                                                                                                                                                                                                                                |
 
+**Email summaries are not sent.** Since `0163` a person can choose a daily or weekly
+summary on My account, Preferences (`app_settings.digest_frequency`). Nothing reads
+it: every notification is still sent on its own, and the screen says so. A digest
+job would be a new `pg_cron` entry in the table below.
+
 ### Web push on the device
 
 The browser side is `useWebPush` (`docs/ARCHITECTURE.md#hook-contracts` §16), which
@@ -95,19 +104,22 @@ that expires or is revoked elsewhere does not run it; see
 
 ## Scheduled jobs
 
-Five `pg_cron` jobs are defined in `supabase/migrations/`. Background work runs
+Seven `pg_cron` jobs are defined in `supabase/migrations/`. Background work runs
 inside Postgres with `pg_cron` and `pg_net`; nothing runs on the cPanel origin, and
 Inngest was retired in `0087`. On 31 August 2026 four of these were verified
-running by reading `cron.job` in production; the fifth was added by `0132` after
-that check, and its production state has not been re-read for this document.
+running by reading `cron.job` in production; the fifth was added by `0132`, the sixth by
+`0159` and the seventh by `0162` after that check, and their production state has not
+been re-read for this document.
 
-| Job                               | Schedule                      | Runs                                   | Defined in | What it does                                                                                                     |
-| --------------------------------- | ----------------------------- | -------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
-| `rotaflow-notification-outbox`    | every minute                  | `dispatch_notification_outbox()`       | `0069`     | Drains the outbox into `send-notification`                                                                       |
-| `rotaflow-announcement-scheduler` | every minute                  | `publish_due_platform_announcements()` | `0132`     | Publishes platform announcements whose scheduled time has come, through the outbox                               |
-| `rotaflow-scheduled-alerts`       | every 15 minutes              | `enqueue_scheduled_alerts()`           | `0093`     | Missed clock-ins and **expiring documents**, one outbox row per fact, deduplicated by `dedupe_key`               |
-| `rotaflow-health-probe`           | every 5 minutes               | `probe_platform_health()`              | `0076`     | Platform health samples, not a notification; listed here because it is a scheduled job (`docs/DATA-MODEL.md` §6) |
-| `rotaflow-retention`              | daily at 02:15, pg_cron clock | `enforce_retention(false)`             | `0029`     | Deletes rows past their retention window, including the notification log (`docs/SECURITY.md` §3)                 |
+| Job                               | Schedule                      | Runs                                   | Defined in | What it does                                                                                                                                           |
+| --------------------------------- | ----------------------------- | -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `rotaflow-notification-outbox`    | every minute                  | `dispatch_notification_outbox()`       | `0069`     | Drains the outbox into `send-notification`                                                                                                             |
+| `rotaflow-announcement-scheduler` | every minute                  | `publish_due_platform_announcements()` | `0132`     | Publishes platform announcements whose scheduled time has come, through the outbox                                                                     |
+| `rotaflow-scheduled-alerts`       | every 15 minutes              | `enqueue_scheduled_alerts()`           | `0093`     | Missed clock-ins, **expiring documents** and a **free trial ending** within three days (`0157`), one outbox row per fact, deduplicated by `dedupe_key` |
+| `rotaflow-health-probe`           | every 5 minutes               | `probe_platform_health()`              | `0076`     | Platform health samples, not a notification; listed here because it is a scheduled job (`docs/DATA-MODEL.md` §6)                                       |
+| `rotaflow-storage-deletions`      | every 5 minutes               | `dispatch_storage_deletions()`         | `0159`     | Not a notification: posts queued document and photo files (`0162`) to `purge-storage`, so an erasure or deletion reaches Storage                       |
+| `rotaflow-account-deletions`      | every 5 minutes               | `dispatch_account_deletions()`         | `0162`     | Not a notification: posts logins owed to a completed erasure case to `delete-account`, which removes them through the Auth Admin API                   |
+| `rotaflow-retention`              | daily at 02:15, pg_cron clock | `enforce_retention(false)`             | `0029`     | Deletes rows past their retention window, including the notification log (`docs/SECURITY.md` §3)                                                       |
 
 `0093` does not alert on leave: the scheduled alerts are a missed clock-in and a
 document nearing its expiry date (GAP-013, CAP-019, CAP-088).

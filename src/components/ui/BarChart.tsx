@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useState, type JSX } from 'react';
 import { useTheme } from '@/context/ThemeContext';
 import { seriesColour } from '@/lib/chartPalette';
 import { cn } from '@/lib/utils';

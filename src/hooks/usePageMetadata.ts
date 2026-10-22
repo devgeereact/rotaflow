@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { BRAND } from '@/lib/brand';
-import { publicRouteFor } from '@/lib/publicRoutes';
+import { resolvePageMetadata } from '@/lib/pageMetadata';
 import { appOrigin } from '@/lib/appOrigin';
 
 /**
@@ -26,7 +25,8 @@ import { appOrigin } from '@/lib/appOrigin';
  * `index.html` keeps a complete, honest set of site-level defaults: those
  * scrapers get the real card, just not a per-page one. Pre-rendering the
  * sixteen public routes would fix that properly and is a bigger change than
- * this one.
+ * this one. (Since 2026-10-22 they are: `src/entry-prerender.tsx` writes the
+ * same tags, from `resolvePageMetadata`, into each public page's static HTML.)
  *
  * ## Cleanup
  *
@@ -73,13 +73,11 @@ export function usePageMetadata(overrides: PageMetadata = {}): void {
   const { title, description, noindex } = overrides;
 
   useEffect(() => {
-    const route = publicRouteFor(pathname);
-    const pageTitle = title ?? route?.title ?? BRAND.tagline;
-    const pageDescription = description ?? route?.description ?? BRAND.description;
-    // Trailing slash only for the root, so `/features` and `/features/` do not
-    // become two URLs claiming to be canonical for each other.
-    const canonical = `${appOrigin()}${pathname === '/' ? '/' : pathname.replace(/\/$/, '')}`;
-    const fullTitle = `${pageTitle} · ${BRAND.name}`;
+    const {
+      fullTitle,
+      description: pageDescription,
+      canonical,
+    } = resolvePageMetadata(pathname, appOrigin(), { title, description });
 
     const previousTitle = document.title;
     document.title = fullTitle;

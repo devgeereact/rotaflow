@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { cn } from '@/lib/utils';
 import { paletteTokenForColour } from '@/lib/shiftPalette';
 import type { ShiftType } from '@/types';

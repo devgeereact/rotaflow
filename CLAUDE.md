@@ -104,7 +104,7 @@ GAP-114 (`lib/reportsCatalogue.ts`).
   server compute), ImageKit (media), Sentry (monitoring), OpenRouter (AI, only from
   an Edge Function), Stripe (Checkout, Billing Portal and a signature-verified
   webhook, all Edge Functions; secrets never reach the client). Background work is
-  `pg_cron` and `pg_net` inside Postgres: five jobs are defined in the migrations,
+  `pg_cron` and `pg_net` inside Postgres: seven jobs are defined in the migrations,
   listed in `docs/NOTIFICATIONS-SPEC.md`. `0093`'s scheduled alerts cover missed
   clock-ins and **expiring documents**, not leave. **Inngest is fully retired**
   (`0087`). Do not reintroduce a `VITE_*` variable for a service nothing calls:
@@ -150,7 +150,7 @@ The rules most expensive to get wrong. `docs/RULES.md` §5 and `docs/DATA-MODEL.
   cross-tenant work (billing webhook, scheduled drain, calendar feed) and is the
   exception. `ai-rota-assistant` is the worked example (`docs/API-SPEC.md`).
 - `supabase/functions/**` is Deno, excluded from `npm run typecheck` and `lint`.
-  CI's `edge-types` job typechecks all nine entry points with a pinned Deno, which
+  CI's `edge-types` job typechecks all twelve entry points with a pinned Deno, which
   proves they compile and nothing more: **read them by hand**. RF-04 and RF-05 were
   replay and namespace bugs in the billing webhook, and both typechecked.
 - The part that decides something can be tested: a module with no Deno globals runs

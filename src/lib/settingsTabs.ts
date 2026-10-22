@@ -36,6 +36,9 @@ export const PROFILE_TABS: readonly TabItem[] = [
   // reads as unfinished. The route and page stay, so a saved link still works.
   { to: '/app/account/tokens', label: 'API Tokens', hidden: true },
   { to: '/app/account/activity', label: 'Activity' },
+  // A person's own UK GDPR rights (GAP-057). Last, after the account's own
+  // history, because it is the tab a person looks for rather than browses to.
+  { to: '/app/account/data', label: 'Your data' },
 ] as const;
 
 /**

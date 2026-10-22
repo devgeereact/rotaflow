@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { AlertTriangle, CheckCircle2, Info, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

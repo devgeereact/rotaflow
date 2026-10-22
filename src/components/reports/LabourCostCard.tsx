@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { Banknote, TriangleAlert } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { getLabourCost, type LabourCostRow } from '@/services/payRateService';

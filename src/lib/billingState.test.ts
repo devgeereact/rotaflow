@@ -10,6 +10,7 @@ import {
   planPriceLabel,
   READ_ONLY_BANNER,
   readOnlyErrorMessage,
+  stripeConnectionLabel,
   toOrgBillingSnapshot,
   trialDaysLabel,
 } from './billingState';
@@ -39,6 +40,25 @@ describe('trial and read-only (D2, 0154)', () => {
       orgStateBadge({ state: 'active', trialEndsAt: null, readOnly: false }, now),
     ).toBeNull();
     expect(orgStateBadge(null, now)).toBeNull();
+  });
+
+  it('names the Stripe connection for Settings, Integrations', () => {
+    const at = (state: 'active' | 'trialing' | 'grace' | 'trial'): string | null =>
+      stripeConnectionLabel(
+        { state, trialEndsAt: '2026-11-02T12:00:00Z', readOnly: false },
+        now,
+      );
+    expect(at('active')).toBe('Stripe subscription active');
+    expect(at('trialing')).toBe('Stripe subscription, in its trial');
+    expect(at('grace')).toBe('Stripe subscription, payment overdue');
+    expect(at('trial')).toBe('Trial, 23 days left');
+    expect(
+      stripeConnectionLabel(
+        { state: 'read_only', trialEndsAt: null, readOnly: true },
+        now,
+      ),
+    ).toBe('Read-only, choose a plan');
+    expect(stripeConnectionLabel(null, now)).toBeNull();
   });
 
   it('never lets an unknown state hide the server read-only flag', () => {

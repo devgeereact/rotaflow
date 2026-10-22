@@ -24,6 +24,11 @@
 // all. The token check in `calendar_feed_shifts` is the actual boundary, and
 // that function is granted to `service_role` alone.
 //
+// BOUNDS (GAP-052, `0158`). A token no calendar has read for 90 days stops
+// working, and more than 120 reads an hour for one person are refused with
+// 429. Both are decided in `calendar_feed_shifts`; this function only turns
+// the refusal into a status code.
+//
 // WHAT IT DELIBERATELY DOES NOT DO. It does not say whether an unknown token
 // is wrong or revoked — both return an empty calendar rather than a 404,
 // because a calendar client shows an error for a 404 and nothing useful for
@@ -35,96 +40,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { reportEdgeError } from '../_shared/sentry.ts';
-
-interface FeedShift {
-  shift_id: string;
-  starts_at: string;
-  ends_at: string;
-  shift_type: string | null;
-  location_name: string | null;
-  break_minutes: number;
-  notes: string | null;
-}
-
-/** `2027-03-04T09:00:00Z` → `20270304T090000Z`. */
-function icsStamp(iso: string): string {
-  return new Date(iso)
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace(/\.\d{3}/, '');
-}
-
-/**
- * RFC 5545 escaping: backslash first, or it escapes the escapes.
- * Newlines become the literal `\n` the format expects.
- */
-function escapeText(value: string): string {
-  return value
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/\r?\n/g, '\\n');
-}
-
-/**
- * Fold to 75 octets, as the spec requires. Long location names and notes
- * genuinely exceed it, and some clients reject the whole calendar over one
- * over-length line rather than skipping it.
- */
-function fold(line: string): string {
-  if (line.length <= 75) return line;
-  const parts = [line.slice(0, 75)];
-  let rest = line.slice(75);
-  while (rest.length > 74) {
-    parts.push(' ' + rest.slice(0, 74));
-    rest = rest.slice(74);
-  }
-  if (rest) parts.push(' ' + rest);
-  return parts.join('\r\n');
-}
-
-function buildCalendar(shifts: FeedShift[]): string {
-  const now = icsStamp(new Date().toISOString());
-  const lines: string[] = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//RotaFlow//Rota//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    'X-WR-CALNAME:My shifts',
-    // A polite hint at how often to re-read. Clients treat it as advisory,
-    // and most poll less often than asked; there is no way to push.
-    'X-PUBLISHED-TTL:PT1H',
-    'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
-  ];
-
-  for (const shift of shifts) {
-    const description: string[] = [];
-    if (shift.break_minutes > 0)
-      description.push(`Break: ${shift.break_minutes} minutes`);
-    if (shift.notes) description.push(shift.notes);
-
-    lines.push(
-      'BEGIN:VEVENT',
-      // Stable across re-reads, so an amended shift UPDATES the existing
-      // event rather than appearing beside it. This is the whole difference
-      // between a subscription and a pile of duplicates.
-      `UID:${shift.shift_id}@rotaflow`,
-      `DTSTAMP:${now}`,
-      `DTSTART:${icsStamp(shift.starts_at)}`,
-      `DTEND:${icsStamp(shift.ends_at)}`,
-      `SUMMARY:${escapeText(shift.shift_type ?? 'Shift')}`,
-    );
-    if (shift.location_name) lines.push(`LOCATION:${escapeText(shift.location_name)}`);
-    if (description.length > 0) {
-      lines.push(`DESCRIPTION:${escapeText(description.join('\n'))}`);
-    }
-    lines.push('END:VEVENT');
-  }
-
-  lines.push('END:VCALENDAR');
-  return lines.map(fold).join('\r\n') + '\r\n';
-}
+import {
+  buildCalendar,
+  isRateLimited,
+  RETRY_AFTER_SECONDS,
+  type FeedShift,
+} from './calendar.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -154,6 +75,20 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await supabase.rpc('calendar_feed_shifts', {
       p_token: token,
     });
+    // Over the hourly allowance (`0158`). A 429 rather than the empty
+    // calendar below: a real subscription never gets near the limit, so the
+    // only client that sees this is one reading in a loop, and it should be
+    // told to stop rather than handed a calendar that looks like a revoked
+    // feed.
+    if (isRateLimited(error)) {
+      return new Response('Too many requests for this calendar feed.\n', {
+        status: 429,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Retry-After': String(RETRY_AFTER_SECONDS),
+        },
+      });
+    }
     if (error) throw error;
 
     return new Response(buildCalendar((data ?? []) as FeedShift[]), {

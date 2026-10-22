@@ -1,8 +1,11 @@
+import type { JSX } from 'react';
+import { useStoredPhoto } from '@/hooks/useStoredPhoto';
 import { cn } from '@/lib/utils';
 
 interface StaffAvatarProps {
   firstName: string;
   lastName: string;
+  /** A pasted link, or a stored photo from `photoSource` (`src/lib/staffPhoto.ts`). */
   photoUrl?: string | null;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
@@ -25,11 +28,12 @@ export function StaffAvatar({
   className,
 }: StaffAvatarProps): JSX.Element {
   const initials = `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
+  const src = useStoredPhoto(photoUrl);
 
-  if (photoUrl) {
+  if (src) {
     return (
       <img
-        src={photoUrl}
+        src={src}
         alt=""
         className={cn('shrink-0 rounded-full object-cover', SIZES[size], className)}
       />

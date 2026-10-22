@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -29,7 +30,7 @@ export function FinalCta({
         data-reveal
         className="rounded-2xl border border-surface-border bg-surface p-10 text-center shadow-sm md:p-16 dark:border-surface-border-dark dark:bg-surface-dark"
       >
-        <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
+        <h2 className="font-display text-3xl font-medium text-content md:text-4xl dark:text-content-dark">
           {heading}
         </h2>
         <p className="mx-auto mt-4 max-w-xl leading-relaxed text-content-muted dark:text-content-muted-dark">

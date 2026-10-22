@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type JSX } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AppBootScreen } from '@/components/AppBootScreen';
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type JSX } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { ArrowLeft, ChevronUp, LogOut, Menu, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';

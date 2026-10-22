@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, Building2, LogOut, MoreVertical, ShieldCheck } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';

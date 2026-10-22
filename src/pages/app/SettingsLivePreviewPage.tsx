@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 import {
   NavigationType,
   Route,
@@ -184,6 +184,9 @@ const APP_SETTINGS = [
     user_id: USER_ID,
     theme: 'light',
     notifications_enabled: true,
+    time_format: '24h',
+    week_start: 'monday',
+    digest_frequency: 'immediate',
     created_at: daysAgo(140),
     updated_at: daysAgo(5),
   },
@@ -200,6 +203,7 @@ const STAFF_PROFILES = [
     job_title: 'Registered Manager',
     payroll_id: 'RM0042',
     phone: '07700 900123',
+    photo_path: null,
     photo_url: null,
     email: 'james.davis@sunnyvale.example',
     active: true,

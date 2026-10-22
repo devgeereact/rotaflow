@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Lock, MapPin } from 'lucide-react';
 
 const CLAIMS = [

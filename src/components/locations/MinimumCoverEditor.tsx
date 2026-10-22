@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type JSX } from 'react';
 import { listMinimumCoverRules, setMinimumCoverRules } from '@/services/locationService';
 import { reportError } from '@/lib/sentry';
 import { useToast } from '@/hooks/useToast';

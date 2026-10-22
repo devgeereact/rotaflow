@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { AlertTriangle, Globe2, ShieldCheck } from 'lucide-react';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
 import { Badge } from '@/components/ui/Badge';

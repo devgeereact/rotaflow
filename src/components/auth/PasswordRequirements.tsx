@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PasswordRequirement } from '@/lib/password';

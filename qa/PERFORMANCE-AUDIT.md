@@ -51,6 +51,53 @@ The rule that came out of it: convert a table's policy when a bulk read of it is
 predicate-bound, measured first, not because it matches the pattern. The five-month
 end-to-end figure with `0136` applied was never captured on a clean run.
 
+## Load test by screen, 21 October 2026 (GAP-071, HARDEN-007)
+
+Local disposable stack, one machine, the acceptance dataset above, read as the
+organisation's owner. The script now also issues each screen's reads in parallel,
+the way the browser does, and times the screen from first request to last
+response. It reads staff through `staff_profiles_visible`, as `staffService` does:
+since `0150` the table refuses `select=*` to `authenticated`, so the old directory
+read had been measuring a 403.
+
+**Hotspot found.** Shifts read five times slower per row than clock events (10,000
+shifts in 1,973 ms, 50,000 clock events in 882 ms). `EXPLAIN ANALYZE` of page 10 of
+the five-month shifts read: 225 ms, against 23 ms for page 50 of clock events. The
+plan's filter was `has_org_role(org_id, ...) OR (hashed SubPlan ...)`: the
+`FOR ALL` write policies on `shifts` and `rotas` also apply to SELECT, so every
+scanned row, including every row an OFFSET skipped, paid one SECURITY DEFINER call,
+and the embedded rota paid two more through `rotas_select`. `0161` splits the write
+policies per command and moves `rotas_select` onto `my_readable_rota_ids()`. Page 10
+fell to 120 ms with the split alone and 75 ms with both.
+
+| Read or screen                 | Rows   | Requests | Before `0161` | After `0161` | After, second tenant present |
+| ------------------------------ | ------ | -------- | ------------- | ------------ | ---------------------------- |
+| `clock_events`, one day        | 1,250  | 2        | 15 ms         | 13 ms        | 18 ms                        |
+| `clock_events`, one week       | 5,000  | 6        | 47 ms         | 51 ms        | 58 ms                        |
+| `clock_events`, one month      | 20,000 | 21       | 237 ms        | 243 ms       | 415 ms                       |
+| `clock_events`, five months    | 50,000 | 51       | 882 ms        | 759 ms       | 1,226 ms                     |
+| `shifts`, five months          | 10,000 | 11       | 1,973 ms      | 158 ms       | 200 ms                       |
+| Staff directory (visible view) | 251    | 1        | 23 ms         | 21 ms        | 23 ms                        |
+| Rota builder, one week         | 750    | 1        | 17 ms         | 5 ms         | not recorded                 |
+| Schedule, one week             | 750    | 1        | 28 ms         | 7 ms         | not recorded                 |
+| Attendance, one day            | 1,500  | 3        | 26 ms         | 22 ms        | not recorded                 |
+| Attendance, one week           | 7,000  | 8        | 62 ms         | 49 ms        | not recorded                 |
+| Dashboard, today               | 1,751  | 6        | 46 ms         | 37 ms        | not recorded                 |
+| Report, timesheet month        | 20,251 | 22       | 251 ms        | 215 ms       | not recorded                 |
+| Report, shifts month           | 4,251  | 6        | 433 ms        | 53 ms        | not recorded                 |
+| Report, labour cost month      | 20     | 1        | 16 ms         | 15 ms        | not recorded                 |
+
+The earlier 7 September figures (one month of clock events in 7.6 s) predate
+`0136`; these runs agree with the end-to-end numbers recorded for it.
+
+**Supported size**, published in `docs/PRODUCT-SPEC.md`: 20 sites and 250 staff in
+one organisation, the size measured. It is a floor that was tested, not a ceiling
+that was found.
+
+**NOT TESTED**: a hosted database, concurrent users, a 500-staff tenant, the same
+reads as a staff member (whose RLS path differs from the owner's), and the
+browser's own parse and render time for these payloads.
+
 ## Bundle budgets
 
 Enforced on every pull request by `npm run check:bundle` (`scripts/check-bundle-size.mjs`,

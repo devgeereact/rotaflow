@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';

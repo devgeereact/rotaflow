@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Pin, Plus } from 'lucide-react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Badge } from '@/components/ui/Badge';

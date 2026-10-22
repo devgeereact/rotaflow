@@ -145,8 +145,34 @@ function sitemap(): PluginOption {
   };
 }
 
+/**
+ * True only inside the build-time prerender (`scripts/prerender.mjs`), which
+ * builds `src/entry-prerender.tsx` for Node with `vite build --ssr`. That build
+ * exists to render HTML and is thrown away, so it must not write
+ * `dist/sitemap.xml`, generate a service worker or copy `public/` beside it.
+ */
+const PRERENDER_SSR = process.env['ROTAFLOW_PRERENDER_SSR'] === '1';
+
+function flattenPlugins(options: PluginOption[]): PluginOption[] {
+  return options.flatMap((option) =>
+    Array.isArray(option) ? flattenPlugins(option) : [option],
+  );
+}
+
+/** Drops the plugins that write deploy output when building the prerender. */
+function forBuild(options: PluginOption[]): PluginOption[] {
+  if (!PRERENDER_SSR) return options;
+  return flattenPlugins(options).filter((option) => {
+    const name =
+      option && typeof option === 'object' && 'name' in option ? String(option.name) : '';
+    return !name.startsWith('rotaflow-sitemap') && !name.startsWith('vite-plugin-pwa');
+  });
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  publicDir: PRERENDER_SSR ? false : 'public',
+
   // Absolute base: rotaflow.space serves this bundle from its domain root,
   // not a cPanel sub-directory. A relative base ('./') resolves asset/manifest
   // URLs against the CURRENT route path, not the site root — so landing
@@ -167,6 +193,17 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // VitePWA is left out of the prerender build, so nothing generates this
+      // module there. The no-op stub the tests use is the honest stand-in:
+      // Node has no service worker to register.
+      ...(PRERENDER_SSR
+        ? {
+            'virtual:pwa-register': path.resolve(
+              __dirname,
+              './src/test/stubs/pwa-register.ts',
+            ),
+          }
+        : {}),
     },
   },
 
@@ -184,7 +221,7 @@ export default defineConfig({
     strictPort: true,
   },
 
-  plugins: [
+  plugins: forBuild([
     react(),
 
     sitemap(),
@@ -268,6 +305,11 @@ export default defineConfig({
           // it would charge every member of staff for a homepage effect.
           'assets/motion-*.js',
           'assets/marketingMotion-*.js',
+          // The prerendered public pages (scripts/prerender.mjs). They are
+          // written after this manifest, so this is a guard, not a filter: an
+          // installed client navigates through the precached app shell, and
+          // the static copies exist for crawlers and visitors without one.
+          'prerendered/**',
         ],
         // SPA navigations resolve to the precached index.html.
         navigateFallback: 'index.html',
@@ -381,7 +423,7 @@ export default defineConfig({
           }),
         ]
       : []),
-  ],
+  ]),
 
   build: {
     outDir: 'dist',
@@ -402,7 +444,7 @@ export default defineConfig({
     // that copies them up is still safe.
     sourcemap: 'hidden',
     target: 'es2020',
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // Split vendors so the app shell stays tiny and cache-stable.
         //
@@ -418,17 +460,37 @@ export default defineConfig({
         // Grouping them keeps the win (a 58% smaller entry chunk) without the
         // request storm. Tree-shaking still applies inside each group — the
         // icons chunk holds the icons actually imported, not all of lucide.
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
-          icons: ['lucide-react'],
-          dates: ['date-fns', 'date-fns-tz'],
-          // Only the rota builder uses drag-and-drop, so this rides along with
-          // that route's chunk rather than the entry.
-          dnd: ['@dnd-kit/core', '@dnd-kit/utilities'],
-          // Only the marketing pages load this, through a dynamic import after
-          // first paint. Named so the precache can leave it out by pattern.
-          motion: ['gsap', 'gsap/ScrollTrigger', 'lenis'],
+        //
+        // Vite 8 bundles with Rolldown, which dropped the object form of
+        // `manualChunks`; `codeSplitting.groups` is its replacement. Groups match
+        // module paths, so each regex names the package and the dependencies the
+        // old form pulled in with it (react-router, scheduler, @supabase/*).
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-vendor',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+            },
+            { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/ },
+            { name: 'icons', test: /node_modules[\\/]lucide-react[\\/]/ },
+            { name: 'dates', test: /node_modules[\\/]date-fns(-tz)?[\\/]/ },
+            // Only the rota builder uses drag-and-drop, so this rides along with
+            // that route's chunk rather than the entry.
+            { name: 'dnd', test: /node_modules[\\/]@dnd-kit[\\/]/ },
+            // Only the marketing pages load this, through a dynamic import after
+            // first paint. Named so the precache can leave it out by pattern.
+            //
+            // `includeDependenciesRecursively: false` matters. By default a group
+            // also captures what its modules import, and GSAP imports the same
+            // Babel helper the app does, so the helper landed in this chunk and
+            // the entry imported it: the motion chunk loaded on every page, and an
+            // offline start failed because the precache leaves it out.
+            {
+              name: 'motion',
+              test: /node_modules[\\/](gsap|lenis)[\\/]/,
+              includeDependenciesRecursively: false,
+            },
+          ],
         },
       },
     },

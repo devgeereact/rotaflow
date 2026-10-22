@@ -43,11 +43,42 @@
   # still falls through, so SPA deep links are untouched.
   RewriteRule ^(assets|icons)/ - [L]
 
-  # Send every non-file, non-directory request to index.html
-  # so React Router can resolve client-side routes.
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ index.html [L]
+  # ---- Prerendered public pages and a real 404 (2026-10-22) ----
+  #
+  # Until this block every unknown path fell through to index.html with a 200,
+  # so a crawler could not tell a dead URL from a live one and the 404 page had
+  # to say `noindex` itself. Now, in this order:
+  #
+  #   1. `/` serves the prerendered home page (scripts/prerender.mjs).
+  #   2. Real files and directories are served as they are: the bundle,
+  #      sitemap.xml, robots.txt, /.well-known/ and dist/prerendered/ itself.
+  #   3. A public page with a prerendered copy serves it, so crawlers and
+  #      visitors without JavaScript get the page and not an empty <div>.
+  #   4. A path whose first segment is a route in src/App.tsx falls back to
+  #      index.html, so React Router resolves it. The list is checked against
+  #      the route table by src/lib/htaccessRoutes.test.ts, which fails if a
+  #      route is added without it (that route would 404) or an entry outlives
+  #      its route.
+  #   5. Anything else is a real 404, with the prerendered not-found page as
+  #      its body (ErrorDocument at the end of this file).
+  #
+  # If dist/prerendered/ is missing, steps 1 and 3 find no file and the public
+  # pages fall back to index.html through step 4, as before. Nothing goes dark.
+  # An installed client never sees any of this for navigation: its service
+  # worker answers from the precached app shell.
+  RewriteRule ^$ prerendered/index.html [L]
+
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteCond %{DOCUMENT_ROOT}/prerendered/$1.html -f
+  RewriteRule ^(.+?)/?$ prerendered/$1.html [L]
+
+  # app-routes: kept in step with src/App.tsx by src/lib/htaccessRoutes.test.ts
+  RewriteRule ^(about|admin|app|auth|contact|features|forgot-password|invite|legal|login|onboarding|pricing|reset-password|resources|signup|solutions|splash)(/.*)?$ index.html [L]
+
+  RewriteRule ^ - [R=404,L]
 </IfModule>
 
 # ---- Correct MIME types for PWA assets ------------------------
@@ -73,9 +104,11 @@
     Header set Cache-Control "max-age=31536000, public, immutable"
   </FilesMatch>
 
-  # NEVER cache the service worker, manifest, or the HTML entrypoint,
-  # otherwise users get stuck on stale app versions.
-  <FilesMatch "(sw\.js|service-worker\.js|push-sw\.js|workbox-.*\.js|manifest\.webmanifest|index\.html)$">
+  # NEVER cache the service worker, manifest, or any HTML page, otherwise
+  # users get stuck on stale app versions. Every `.html`, not only index.html:
+  # the prerendered pages under prerendered/ name this build's hashed assets
+  # too, and a cached copy would ask for files the next deploy deleted.
+  <FilesMatch "(sw\.js|service-worker\.js|push-sw\.js|workbox-.*\.js|manifest\.webmanifest|\.html)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires 0
@@ -159,13 +192,16 @@
 </IfModule>
 
 # ---- Pretty error handling ------------------------------------
-# Kept, but note it is now nearly dead code: the SPA fallback above already
-# resolves every unknown NON-file path to index.html with a 200, so the only
-# thing that reaches here is a miss under assets/ or icons/.
+# Two things reach here: a path that is neither a file nor a route (the
+# `R=404` rule above), and a miss under assets/ or icons/. Both get the
+# prerendered not-found page as the body of a real 404. Before 2026-10-22 the
+# body was index.html, and an unknown path never got here at all: the SPA
+# fallback answered it with a 200.
 #
-# For those it serves the app shell as the *body* of a 404. That is deliberate:
-# the status line is what matters (it is what makes a broken deploy detectable),
-# and a browser fetching a missing chunk sees 404 and fails correctly regardless
-# of the body. Do NOT "fix" this by removing the exclusion above — that trades a
-# cosmetic oddity for an undetectable outage.
-ErrorDocument 404 /index.html
+# The status line is what matters for a missing chunk (it is what makes a
+# broken deploy detectable), and a browser fetching one sees 404 and fails
+# correctly regardless of the body. Do NOT "fix" anything by removing the
+# assets/icons exclusion above: that trades a cosmetic oddity for an
+# undetectable outage. If dist/prerendered/404.html is absent, Apache falls
+# back to its own plain 404 page, still with the right status.
+ErrorDocument 404 /prerendered/404.html

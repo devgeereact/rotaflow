@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Info } from 'lucide-react';
 import { Button } from '@/components/ui/Button';

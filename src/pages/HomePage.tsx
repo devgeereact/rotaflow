@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -43,52 +44,59 @@ export function HomePage(): JSX.Element {
           anyone who has asked for less movement. GSAP and Lenis
           (`components/marketing/motion`) arrive after first paint and only
           touch what is still below the fold. docs/DESIGN-SYSTEM.md §4.
-        */}
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <p className="mb-5 inline-block animate-fade-up rounded-full motion-reduce:animate-none border border-surface-border bg-surface px-3.5 py-1.5 text-sm text-content-muted dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark">
-            {HERO.eyebrow}
-          </p>
-          <h1 className="animate-fade-up font-display text-4xl [animation-delay:80ms] motion-reduce:animate-none font-extrabold leading-[1.1] tracking-tight text-content sm:text-5xl sm:leading-none md:text-6xl dark:text-content-dark">
-            {HERO.headline}
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl animate-fade-up text-lg [animation-delay:160ms] motion-reduce:animate-none leading-relaxed text-content-muted dark:text-content-muted-dark">
-            {HERO.body}
-          </p>
 
-          <div className="mt-9 flex animate-fade-up flex-col items-center [animation-delay:240ms] motion-reduce:animate-none justify-center gap-3 sm:flex-row">
-            {user ? (
-              <Link to="/app/dashboard">
-                <Button size="lg">
-                  Go to dashboard
-                  <ArrowRight size={18} aria-hidden="true" />
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/signup">
+          From `xl` the copy and the product shot sit side by side, copy on the
+          left, as `docs/design/marketting.png` lays them out. Below `xl` the
+          right-hand column would squeeze the rota grid's seven day columns, so
+          the shot stacks under centred copy (2026-10-22 design-match pass).
+        */}
+        <div className="mx-auto max-w-6xl px-6 xl:grid xl:grid-cols-[minmax(0,4fr)_minmax(0,6fr)] xl:items-center xl:gap-10">
+          <div className="mx-auto max-w-3xl text-center xl:mx-0 xl:max-w-none xl:text-left">
+            <p className="mb-5 inline-block animate-fade-up rounded-full motion-reduce:animate-none border border-surface-border bg-surface px-3.5 py-1.5 text-sm text-content-muted dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-muted-dark">
+              {HERO.eyebrow}
+            </p>
+            <h1 className="animate-fade-up font-display text-4xl [animation-delay:80ms] motion-reduce:animate-none font-medium leading-[1.1] tracking-tight text-content sm:text-5xl sm:leading-none md:text-6xl dark:text-content-dark">
+              {HERO.headline}
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl animate-fade-up xl:mx-0 text-lg [animation-delay:160ms] motion-reduce:animate-none leading-relaxed text-content-muted dark:text-content-muted-dark">
+              {HERO.body}
+            </p>
+
+            <div className="mt-9 flex animate-fade-up flex-col items-center [animation-delay:240ms] motion-reduce:animate-none justify-center gap-3 sm:flex-row xl:justify-start">
+              {user ? (
+                <Link to="/app/dashboard">
                   <Button size="lg">
-                    {PRIMARY_CTA}
+                    Go to dashboard
                     <ArrowRight size={18} aria-hidden="true" />
                   </Button>
                 </Link>
-                <Link to={BOOK_DEMO_PATH}>
-                  <Button size="lg" variant="secondary">
-                    Book a demo
-                  </Button>
-                </Link>
-              </>
-            )}
+              ) : (
+                <>
+                  <Link to="/signup">
+                    <Button size="lg">
+                      {PRIMARY_CTA}
+                      <ArrowRight size={18} aria-hidden="true" />
+                    </Button>
+                  </Link>
+                  <Link to={BOOK_DEMO_PATH}>
+                    <Button size="lg" variant="secondary">
+                      Book a demo
+                    </Button>
+                  </Link>
+                </>
+              )}
+            </div>
+
+            <ul className="mt-6 flex animate-fade-up flex-wrap items-center [animation-delay:320ms] motion-reduce:animate-none justify-center gap-x-6 gap-y-2 xl:justify-start text-sm text-content-muted dark:text-content-muted-dark">
+              {HERO.trust.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
           </div>
 
-          <ul className="mt-6 flex animate-fade-up flex-wrap items-center [animation-delay:320ms] motion-reduce:animate-none justify-center gap-x-6 gap-y-2 text-sm text-content-muted dark:text-content-muted-dark">
-            {HERO.trust.map((point) => (
-              <li key={point}>{point}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mt-16">
-          <ProductPreview />
+          <div className="mt-16 xl:mt-0">
+            <ProductPreview />
+          </div>
         </div>
       </section>
 

@@ -1,5 +1,11 @@
 import { supabase } from '@/lib/supabase';
-import type { GdprRequest, GdprRequestKind, GdprRequestStatus } from '@/lib/gdprRequests';
+import type {
+  GdprRequest,
+  GdprRequestKind,
+  GdprRequestStatus,
+  OwnDataRequest,
+  SelfServiceKind,
+} from '@/lib/gdprRequests';
 
 /**
  * The data subject request register.
@@ -171,4 +177,41 @@ export async function extendGdprRequest(
   });
   if (error) throw error;
   return data;
+}
+
+/**
+ * File a request for the signed-in person (`request_my_data`, 0160).
+ *
+ * The subject is the caller's own email, taken from `auth.users` in the
+ * database; nothing here can name anybody else. Asking again for a kind that is
+ * already open returns that request with `alreadyOpen`, so a double press is
+ * one request and one clock.
+ */
+export async function requestMyData(
+  kind: SelfServiceKind,
+  orgId?: string | null,
+): Promise<{ id: string; dueOn: string; alreadyOpen: boolean }> {
+  const { data, error } = await supabase.rpc('request_my_data', {
+    p_kind: kind,
+    p_org: orgId ?? undefined,
+  });
+  if (error) throw error;
+  const row = data?.[0];
+  if (!row) throw new Error('The request was not recorded.');
+  return { id: row.id, dueOn: row.due_on, alreadyOpen: row.already_open };
+}
+
+/** The signed-in person's own requests, newest first (`my_data_requests`, 0160). */
+export async function listMyDataRequests(): Promise<OwnDataRequest[]> {
+  const { data, error } = await supabase.rpc('my_data_requests');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    kind: row.kind as GdprRequestKind,
+    status: row.status as GdprRequestStatus,
+    receivedOn: row.received_on,
+    dueOn: row.due_on,
+    extendedTo: row.extended_to,
+    closedAt: row.closed_at,
+  }));
 }

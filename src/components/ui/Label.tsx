@@ -1,4 +1,4 @@
-import type { LabelHTMLAttributes, ReactNode } from 'react';
+import type { LabelHTMLAttributes, ReactNode, JSX } from 'react';
 import { cn } from '@/lib/utils';
 
 interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {

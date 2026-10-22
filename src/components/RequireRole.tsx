@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { PermissionDenied } from '@/components/PermissionDenied';
 import { useOrg } from '@/hooks/useOrg';
 import type { MembershipRole } from '@/types';

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { addDays, startOfDay, startOfMonth } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';

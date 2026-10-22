@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { cn } from '@/lib/utils';
 import type { OAuthProvider } from '@/lib/env';
 import { GoogleIcon } from '@/components/ui/icons/GoogleIcon';
