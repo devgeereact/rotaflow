@@ -77,10 +77,10 @@ export function PageHero({
   return (
     <section className="border-b border-surface-border bg-surface dark:border-surface-border-dark dark:bg-surface-dark">
       <div className="mx-auto max-w-3xl px-6 py-16 text-center md:py-20">
-        <p className="mb-3 animate-fade-up text-sm font-semibold uppercase tracking-wide text-primary-ink motion-reduce:animate-none dark:text-primary-ink-dark">
+        <p className="mb-3 animate-fade-up text-sm font-medium uppercase tracking-wide text-primary-ink motion-reduce:animate-none dark:text-primary-ink-dark">
           {eyebrow}
         </p>
-        <h1 className="animate-fade-up font-display text-3xl font-extrabold tracking-tight text-content [animation-delay:80ms] motion-reduce:animate-none md:text-5xl dark:text-content-dark">
+        <h1 className="animate-fade-up font-display text-3xl font-medium tracking-tight text-content [animation-delay:80ms] motion-reduce:animate-none md:text-5xl dark:text-content-dark">
           {heading}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl animate-fade-up text-lg leading-relaxed text-content-muted [animation-delay:160ms] motion-reduce:animate-none dark:text-content-muted-dark">

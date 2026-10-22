@@ -88,7 +88,7 @@ export function PublicNav(): JSX.Element {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <BrandMark label={null} className="h-8 w-8" />
-          <span className="font-display text-lg font-bold text-content dark:text-content-dark">
+          <span className="font-display text-lg font-medium text-content dark:text-content-dark">
             Rota<span className="text-primary-ink dark:text-primary-ink-dark">Flow</span>
           </span>
         </Link>
@@ -162,7 +162,7 @@ export function PublicNav(): JSX.Element {
             className="absolute inset-x-0 top-0 max-h-full overflow-y-auto bg-surface p-6 shadow-lg dark:bg-surface-dark"
           >
             <div className="mb-6 flex items-center justify-between">
-              <span className="font-display text-lg font-bold text-content dark:text-content-dark">
+              <span className="font-display text-lg font-medium text-content dark:text-content-dark">
                 Rota
                 <span className="text-primary-ink dark:text-primary-ink-dark">Flow</span>
               </span>

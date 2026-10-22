@@ -356,7 +356,7 @@ export function OnboardingPreviewPage(): JSX.Element {
         <StepComplete
           orgName="Sunnyvale Care Group"
           planLabel="Professional"
-          locationCount={3}
+          locationCount={aboutValues.locations.filter((l) => l.name.trim()).length}
           inviteCount={3}
           onFinish={() => {}}
         />

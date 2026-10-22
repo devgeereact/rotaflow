@@ -27,16 +27,19 @@ const CHIP_DELAY_STEP_MS = 18;
 
 const METRICS = [
   { label: 'On shift today', value: '41', tone: 'text-content dark:text-content-dark' },
-  { label: 'Coverage', value: '92%', tone: 'text-success' },
-  // Not `text-warning` (#E0A030): at this weight/size against white it reads
-  // at 2.27:1, well under the 3:1 large-text minimum. `warning` has no
-  // darker text-safe ink token yet (only DEFAULT/wash), so this is a
-  // one-off local value rather than inventing one — a real design-system
-  // gap tracked in `docs/SAAS.md`, not solved here.
+  // The ink tokens, not `text-success` / `text-warning`: since the website took
+  // the two-weight rule these figures are medium, not bold, so they need 4.5:1
+  // rather than the large-text 3:1, and the plain status fills miss it
+  // (`text-success` reads 3.33:1 on white).
+  {
+    label: 'Coverage',
+    value: '92%',
+    tone: 'text-success-ink dark:text-success-ink-dark',
+  },
   {
     label: 'Open shifts',
     value: '23',
-    tone: 'text-[#96650F] dark:text-warning-ink-dark',
+    tone: 'text-warning-ink dark:text-warning-ink-dark',
   },
 ];
 
@@ -74,7 +77,10 @@ const AGENDA = [
 
 export function ProductPreview(): JSX.Element {
   return (
-    <div aria-hidden="true" className="relative mx-auto max-w-5xl select-none px-6">
+    <div
+      aria-hidden="true"
+      className="relative mx-auto max-w-5xl select-none px-6 xl:px-0"
+    >
       {/*
         The phone is absolutely positioned over the dashboard's bottom-right
         corner, so on `lg` and up the dashboard reserves room for it. Without
@@ -84,7 +90,7 @@ export function ProductPreview(): JSX.Element {
       */}
       <div
         data-parallax="frame"
-        className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg lg:mr-40 dark:border-surface-border-dark dark:bg-surface-dark"
+        className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg lg:mr-40 xl:mr-48 dark:border-surface-border-dark dark:bg-surface-dark"
       >
         <div className="flex items-center gap-2 border-b border-surface-border px-4 py-3 dark:border-surface-border-dark">
           <span className="h-2.5 w-2.5 rounded-full bg-danger/60" />
@@ -96,7 +102,12 @@ export function ProductPreview(): JSX.Element {
         </div>
 
         <div className="flex">
-          <div className="hidden w-40 shrink-0 border-r border-surface-border p-3 sm:block dark:border-surface-border-dark">
+          {/*
+            The mock sidebar steps aside from `xl`, where the shot shares the
+            hero with the copy: in that narrower column it cost the rota grid
+            its staff names.
+          */}
+          <div className="hidden w-40 shrink-0 border-r border-surface-border p-3 sm:block xl:hidden dark:border-surface-border-dark">
             <div className="mb-3 h-2 w-20 rounded bg-primary/25" />
             {['Dashboard', 'Rota', 'Schedule', 'Staff', 'Leave', 'Reports'].map(
               (item, i) => (
@@ -129,20 +140,20 @@ export function ProductPreview(): JSX.Element {
                   <p className="truncate text-[10px] uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
                     {label}
                   </p>
-                  <p className={`font-display text-xl font-bold ${tone}`}>{value}</p>
+                  <p className={`font-display text-xl font-medium ${tone}`}>{value}</p>
                 </div>
               ))}
             </div>
 
             <div className="overflow-hidden rounded-xl border border-surface-border dark:border-surface-border-dark">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_repeat(7,minmax(0,1fr))] border-b border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
-                <span className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
+              <div className="grid grid-cols-[minmax(5.5rem,1.4fr)_repeat(7,minmax(0,1fr))] border-b border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
+                <span className="px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
                   Staff
                 </span>
                 {DAYS.map((day, i) => (
                   <span
                     key={`${day}-${i}`}
-                    className="px-1 py-2 text-center text-[10px] font-semibold text-content-muted dark:text-content-muted-dark"
+                    className="px-1 py-2 text-center text-[10px] font-medium text-content-muted dark:text-content-muted-dark"
                   >
                     {day}
                   </span>
@@ -152,7 +163,7 @@ export function ProductPreview(): JSX.Element {
               {ROWS.map(({ name, shifts }, row) => (
                 <div
                   key={name}
-                  className="grid grid-cols-[minmax(0,1.4fr)_repeat(7,minmax(0,1fr))] border-b border-divider last:border-0 dark:border-divider-dark"
+                  className="grid grid-cols-[minmax(5.5rem,1.4fr)_repeat(7,minmax(0,1fr))] border-b border-divider last:border-0 dark:border-divider-dark"
                 >
                   <span className="truncate px-3 py-2 text-xs text-content dark:text-content-dark">
                     {name}
@@ -170,7 +181,7 @@ export function ProductPreview(): JSX.Element {
                         }
                       >
                         {shift && (
-                          <span className="font-mono text-[8px] font-semibold leading-none">
+                          <span className="font-mono text-[8px] font-medium leading-none">
                             {CHIP_TIME[shift]}
                           </span>
                         )}
@@ -196,7 +207,7 @@ export function ProductPreview(): JSX.Element {
           <p className="text-[10px] uppercase tracking-wide text-primary-fg">
             My schedule
           </p>
-          <p className="font-display text-sm font-bold">11-17 May</p>
+          <p className="font-display text-sm font-medium">11-17 May</p>
         </div>
         <div className="space-y-2 p-3">
           {AGENDA.map(({ day, time, role, chip }) => (
@@ -205,7 +216,7 @@ export function ProductPreview(): JSX.Element {
               className="rounded-lg border border-surface-border p-2 dark:border-surface-border-dark"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-content dark:text-content-dark">
+                <span className="text-[10px] font-medium text-content dark:text-content-dark">
                   {day}
                 </span>
                 <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${chip}`}>
