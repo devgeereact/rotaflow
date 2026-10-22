@@ -43,6 +43,7 @@ function mkStaff(overrides: Partial<StaffProfile> = {}): StaffProfile {
     job_title: null,
     job_title_id: null,
     department_id: null,
+    photo_path: null,
     photo_url: null,
     phone: null,
     active: true,

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 'react';
 import { Link } from 'react-router-dom';
-import { Image, Mail, Phone, User } from 'lucide-react';
+import { Mail, Phone, User } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { getProfile, updateProfile } from '@/services/profileService';
 import { getMyStaffProfile, updateStaffProfile } from '@/services/staffService';
+import { removeStaffPhoto, uploadStaffPhoto } from '@/services/staffPhotoService';
+import { PHOTO_ACCEPT, photoFileProblem, photoSource } from '@/lib/staffPhoto';
 import { roleLabels, type SystemRole } from '@/lib/orgPreferences';
 import { getOrganisation } from '@/services/orgService';
 import { listMyAuditLogs, type AuditLogEntry } from '@/services/auditService';
@@ -17,6 +19,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import type { StaffProfile } from '@/types';
 
 const ROLE_SCOPE: Record<SystemRole, string> = {
@@ -46,17 +49,13 @@ const ROLE_SCOPE: Record<SystemRole, string> = {
  * round-trip on both the old and the new address, and half-building that
  * produces an account whose login no longer matches its profile row.
  *
- * `photo_url` is a pasted link, not a file upload — ImageKit is in the
- * stack for *delivery* (the service worker caches `ik.imagekit.io` responses
- * as `imagekit-media`; no client code builds transformed URLs since the
- * unused `src/lib/imagekit.ts` helper was removed), but nothing here signs
- * an upload, which needs a server-side call so the private key never
- * reaches the client. A real "choose a file" control is a separate, larger piece of work; a URL field
- * is real and honest in the meantime, not a placeholder.
+ * The photo is an upload to the private `staff-photos` bucket (0162), shown
+ * through a signed link, so erasure can remove it. A legacy pasted
+ * `photo_url` still shows until it is replaced or removed.
  *
  * Job title, department, contract and hours are read-only here since
  * `0042_staff_self_edit_personal_info.sql`: a staff member may only change
- * their own `phone` and `photo_url` on `staff_profiles`, everything else on
+ * their own `phone` and photo on `staff_profiles`, everything else on
  * that row is manager/owner-only, enforced by a trigger regardless of which
  * screen tries to write it.
  */
@@ -74,7 +73,6 @@ export function ProfilePage(): JSX.Element {
   const [email, setEmail] = useState('');
   const [staff, setStaff] = useState<StaffProfile | null>(null);
   const [phone, setPhone] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
   const [labels, setLabels] = useState<Record<SystemRole, string> | null>(null);
   const [activity, setActivity] = useState<AuditLogEntry[]>([]);
 
@@ -96,7 +94,6 @@ export function ProfilePage(): JSX.Element {
         setEmail(profile?.email ?? user.email ?? '');
         setStaff(staffProfile);
         setPhone(staffProfile?.phone ?? '');
-        setPhotoUrl(staffProfile?.photo_url ?? '');
         setLabels(org ? roleLabels(org.settings) : null);
         setActivity(recent);
       } catch (err) {
@@ -143,22 +140,43 @@ export function ProfilePage(): JSX.Element {
     }
   }, [staff, phone, showError, showSuccess]);
 
-  const handleSavePhoto = useCallback(async (): Promise<void> => {
+  const handlePhotoFile = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!staff || !file) return;
+      const problem = photoFileProblem(file);
+      if (problem) {
+        showError(problem);
+        return;
+      }
+      setSavingPhoto(true);
+      try {
+        setStaff(await uploadStaffPhoto(staff, file));
+        showSuccess('Photo updated.');
+      } catch (err) {
+        reportError(err, { area: 'account-profile:save-photo' });
+        showError('Could not update your photo. Please try again.');
+      } finally {
+        setSavingPhoto(false);
+      }
+    },
+    [staff, showError, showSuccess],
+  );
+
+  const handleRemovePhoto = useCallback(async (): Promise<void> => {
     if (!staff) return;
     setSavingPhoto(true);
     try {
-      const updated = await updateStaffProfile(staff.id, {
-        photo_url: photoUrl.trim() || null,
-      });
-      setStaff(updated);
-      showSuccess('Photo updated.');
+      setStaff(await removeStaffPhoto(staff.id));
+      showSuccess('Photo removed.');
     } catch (err) {
-      reportError(err, { area: 'account-profile:save-photo' });
-      showError('Could not update your photo. Please try again.');
+      reportError(err, { area: 'account-profile:remove-photo' });
+      showError('Could not remove your photo. Please try again.');
     } finally {
       setSavingPhoto(false);
     }
-  }, [staff, photoUrl, showError, showSuccess]);
+  }, [staff, showError, showSuccess]);
 
   if (loading) {
     return (
@@ -213,34 +231,39 @@ export function ProfilePage(): JSX.Element {
             description="How colleagues recognise you around the app."
           >
             <div className="flex items-center gap-4">
-              {photoUrl ? (
-                <img
-                  src={photoUrl}
-                  alt=""
-                  className="h-16 w-16 shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-surface-subtle text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark">
-                  <Image size={22} aria-hidden="true" />
-                </div>
-              )}
+              <StaffAvatar
+                firstName={staff.first_name}
+                lastName={staff.last_name}
+                photoUrl={photoSource(staff)}
+                size="2xl"
+              />
               <div className="flex-1">
-                <Label htmlFor="profile-photo-url">Photo URL</Label>
-                <Input
-                  id="profile-photo-url"
-                  value={photoUrl}
-                  placeholder="https://…"
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setPhotoUrl(e.target.value)
-                  }
+                <Label htmlFor="profile-photo-file">Choose a picture</Label>
+                <input
+                  id="profile-photo-file"
+                  type="file"
+                  accept={PHOTO_ACCEPT}
+                  disabled={savingPhoto}
+                  onChange={(e) => void handlePhotoFile(e)}
+                  className="block w-full text-sm text-content file:mr-3 file:rounded-lg file:border file:border-surface-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-content dark:text-content-dark dark:file:border-surface-border-dark dark:file:bg-surface-dark dark:file:text-content-dark"
                 />
+                <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
+                  JPEG, PNG or WebP, up to 2 MB. Kept privately and removed if your record
+                  is erased.
+                </p>
               </div>
             </div>
-            <div className="mt-6 flex justify-end">
-              <Button onClick={() => void handleSavePhoto()} disabled={savingPhoto}>
-                {savingPhoto ? 'Saving…' : 'Save photo'}
-              </Button>
-            </div>
+            {(staff.photo_path || staff.photo_url) && (
+              <div className="mt-6 flex justify-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleRemovePhoto()}
+                  disabled={savingPhoto}
+                >
+                  {savingPhoto ? 'Saving…' : 'Remove photo'}
+                </Button>
+              </div>
+            )}
           </SettingsSection>
         )}
 

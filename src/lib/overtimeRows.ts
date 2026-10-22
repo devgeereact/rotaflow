@@ -11,6 +11,7 @@
 
 import { format, parseISO } from 'date-fns';
 import type { OvertimeRequest, StaffProfile } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 /**
  * `overtime_requests.status` is `text` with a CHECK constraint, not a Postgres
@@ -119,7 +120,7 @@ export function buildOvertimeRows({
           ? `${person.first_name} ${person.last_name}`
           : 'Unknown staff member',
         jobTitle: person?.job_title ?? null,
-        photoUrl: person?.photo_url ?? null,
+        photoUrl: photoSource(person),
         dateLabel: format(parseISO(request.date), 'EEE d MMM yyyy'),
         date: request.date,
         hours: request.hours,

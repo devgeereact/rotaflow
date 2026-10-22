@@ -121,6 +121,7 @@ import type {
   StaffDocument,
   StaffProfile,
 } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 const DEFAULT_TZ = 'Europe/London';
 
@@ -2586,7 +2587,7 @@ export function RotaBuilderPage(): JSX.Element {
                     <StaffAvatar
                       firstName={person.first_name}
                       lastName={person.last_name}
-                      photoUrl={person.photo_url}
+                      photoUrl={photoSource(person)}
                       size="sm"
                     />
                     <div className="min-w-0 flex-1">

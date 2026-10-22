@@ -90,6 +90,7 @@ function mkStaff(
     payroll_id: null,
     start_date: null,
     phone: null,
+    photo_path: null,
     photo_url: null,
     active: true,
     created_at: ISO(now),

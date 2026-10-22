@@ -200,6 +200,7 @@ const STAFF_PROFILES = [
     job_title: 'Registered Manager',
     payroll_id: 'RM0042',
     phone: '07700 900123',
+    photo_path: null,
     photo_url: null,
     email: 'james.davis@sunnyvale.example',
     active: true,

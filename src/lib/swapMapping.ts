@@ -5,6 +5,7 @@ import { toDisplayStatus } from '@/lib/swapRows';
 import type { ShiftSwapWithShift } from '@/services/swapService';
 import type { SwapParty, SwapRow } from '@/lib/swapRows';
 import type { Location, StaffProfile } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 export interface SwapMappingContext {
   staffById: Map<string, StaffProfile>;
@@ -73,7 +74,7 @@ function toParty(person: StaffProfile | undefined): SwapParty {
     firstName: person.first_name,
     lastName: person.last_name,
     jobTitle: person.job_title,
-    photoUrl: person.photo_url,
+    photoUrl: photoSource(person),
   };
 }
 
