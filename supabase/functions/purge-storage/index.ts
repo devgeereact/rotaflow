@@ -1,7 +1,8 @@
 // purge-storage. RotaFlow
 //
-// Removes a staff document, or a whole person's or organisation's folder of
-// them, from the private `staff-documents` bucket (0159, decision D4).
+// Removes a staff document or photo, or a whole person's or organisation's
+// folder of them, from the private `staff-documents` (0159, decision D4) or
+// `staff-photos` (0162) bucket.
 //
 // Invoked by ONE caller: `dispatch_storage_deletions()`, the pg_cron job that
 // drains `storage_deletions`. Never by a browser. Rows reach that queue from
@@ -31,7 +32,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { reportEdgeError } from '../_shared/sentry.ts';
-import { parsePurgeRequest, PURGE_BUCKET, splitListing } from './request.ts';
+import { parsePurgeRequest, splitListing, type PurgeBucket } from './request.ts';
 
 const ALLOW_HEADERS = 'x-notification-secret, content-type';
 let requestCorsHeaders: Record<string, string> = {};
@@ -44,7 +45,11 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 /** Every object under a folder, two levels deep at most (org, then person). */
-async function listFolder(supabase: SupabaseClient, folder: string): Promise<string[]> {
+async function listFolder(
+  supabase: SupabaseClient,
+  bucket: PurgeBucket,
+  folder: string,
+): Promise<string[]> {
   const found: string[] = [];
   const pending = [folder];
   while (pending.length > 0) {
@@ -53,7 +58,7 @@ async function listFolder(supabase: SupabaseClient, folder: string): Promise<str
     // organisation's folder level holds people, not files.
     for (let offset = 0; ; offset += 1000) {
       const { data, error } = await supabase.storage
-        .from(PURGE_BUCKET)
+        .from(bucket)
         .list(prefix, { limit: 1000, offset });
       if (error) throw error;
       const { objects, folders } = splitListing(prefix, data ?? []);
@@ -98,13 +103,13 @@ Deno.serve(async (req: Request) => {
     if (!request) return jsonResponse({ error: 'Not a path this function removes' }, 400);
 
     const paths = request.isFolder
-      ? await listFolder(supabase, request.path)
+      ? await listFolder(supabase, request.bucket, request.path)
       : [request.path];
 
     // `remove` takes at most 1000 paths, and treats a missing one as success.
     for (let i = 0; i < paths.length; i += 1000) {
       const { error } = await supabase.storage
-        .from(PURGE_BUCKET)
+        .from(request.bucket)
         .remove(paths.slice(i, i + 1000));
       if (error) throw error;
     }
