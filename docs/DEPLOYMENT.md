@@ -213,6 +213,12 @@ TURNSTILE_SECRET_KEY=...` and `VITE_TURNSTILE_SITE_KEY=...` in the build `.env`,
   verifies the outbox drains' shared secret through `verify_notification_secret`.
   Deploy it before a site build whose Privacy Notice says files are removed
   "within minutes" reaches the live site.
+- **Erasure needs `delete-account` deployed** (`0162`, GAP-057). Merging applies
+  the `staff-photos` bucket, the `account_deletions` queue and its cron job; until
+  the function is deployed, logins owed to completed erasure cases wait in the
+  queue. Run `supabase functions deploy delete-account`. Like `purge-storage` it
+  verifies the outbox drains' shared secret and needs no secret of its own, and
+  `purge-storage` must be redeployed too, because it now removes photos as well.
 
 ## The live release tag is the deployed commit, not `main`
 

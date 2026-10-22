@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **A staff photo and a login go with an erasure (GAP-056, GAP-057, `0162`).** A
+  staff photo is now an upload to a private `staff-photos` bucket from My account,
+  Profile, shown to colleagues through a signed link; replacing it or erasing the
+  person queues the file for `purge-storage`, which now handles both buckets.
+  Closing an erasure case as completed queues the person's login for the new
+  `delete-account` Edge Function, which removes it through the Auth Admin API, and
+  refuses to close while the person is an organisation's last owner or holds a
+  platform role. Both functions need deploying by hand (O3).
 - **The release gate re-run on every work-queue pull request merged together
   (21 October 2026).** #344 to #354 merged into the work-queue branch: every local
   gate passes, including 781 pgTAP assertions and the authenticated, offline and
