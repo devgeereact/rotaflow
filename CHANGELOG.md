@@ -13,6 +13,10 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **`@vitejs/plugin-react` 6 (22 October 2026).** The plugin no longer depends on
+  Babel; an `overrides` pin keeps npm from resolving its unused optional Babel 8
+  peer chain. eslint 10 and TypeScript 7 stay held: their plugins' latest releases
+  still peer to eslint 9 and TypeScript below 6.1. GAP-037.
 - **Every designed screen is matched (22 October 2026, GAP-088 closed).** From
   `xl` the marketing hero sets the copy left and the product shot right, as its
   reference does, and the website's headings take the two-weight rule. The
