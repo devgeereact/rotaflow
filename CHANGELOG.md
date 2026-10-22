@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Every designed screen is matched (22 October 2026, GAP-088 closed).** From
+  `xl` the marketing hero sets the copy left and the product shot right, as its
+  reference does, and the website's headings take the two-weight rule. The
+  manager's availability view and six workspace screens are recorded as matched
+  against `docs/design/ORGANISATION_WORKSPACE.html`, whose PNGs it supersedes. Two
+  fixes from the re-check: the onboarding panel's wave no longer sits behind the
+  last feature's text, and the onboarding preview's location count agrees between
+  steps.
 - **Medical notes are gone from the database (22 October 2026, `0164`).** The
   retired `emergency_contacts.medical_notes` column is dropped (GAP-058, decision
   D5). A count-only read of production, approved by the owner, found no row in the
