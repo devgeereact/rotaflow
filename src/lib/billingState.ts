@@ -173,6 +173,28 @@ export function orgStateBadge(
   return null;
 }
 
+/**
+ * One line for Settings, Integrations: where the organisation stands with
+ * Stripe. Null while the state is unknown, so the line is left out rather
+ * than guessed.
+ */
+export function stripeConnectionLabel(
+  snapshot: OrgBillingSnapshot | null,
+  now: Date,
+): string | null {
+  if (!snapshot) return null;
+  const badge = orgStateBadge(snapshot, now);
+  if (badge) return badge.label;
+  switch (snapshot.state) {
+    case 'trialing':
+      return 'Stripe subscription, in its trial';
+    case 'grace':
+      return 'Stripe subscription, payment overdue';
+    default:
+      return 'Stripe subscription active';
+  }
+}
+
 /** The app-wide banner a manager sees once the organisation is read-only. */
 export const READ_ONLY_BANNER =
   'Your trial has ended. Choose a plan to keep building rotas.';
