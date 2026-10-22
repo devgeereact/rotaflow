@@ -19,7 +19,7 @@ export function SectorGrid({ variant = 'full' }: SectorGridProps): JSX.Element {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
       <div data-reveal className="mx-auto mb-12 max-w-2xl text-center">
-        <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
+        <h2 className="font-display text-3xl font-medium text-content md:text-4xl dark:text-content-dark">
           Built for shift-based teams
         </h2>
         <p className="mt-3 text-content-muted dark:text-content-muted-dark">
@@ -33,7 +33,7 @@ export function SectorGrid({ variant = 'full' }: SectorGridProps): JSX.Element {
             <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
               <Icon size={20} aria-hidden="true" />
             </span>
-            <h3 className="mb-1.5 font-display text-lg font-semibold text-content dark:text-content-dark">
+            <h3 className="mb-1.5 font-display text-lg font-medium text-content dark:text-content-dark">
               {name}
             </h3>
             <p className="text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
