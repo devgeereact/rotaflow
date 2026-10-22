@@ -410,3 +410,60 @@ export function documentsToWrite(
   if (pdf) out.invoice_pdf = pdf;
   return out;
 }
+
+export interface FinalizedDecision {
+  /**
+   * `insert`: record the invoice as `open`. `documents`: the row exists, so
+   * only its links may be written. `skip`: write nothing.
+   */
+  action: 'insert' | 'documents' | 'skip';
+  /** Why, for the log and for the tests. */
+  reason:
+    | 'first-sight'
+    | 'already-known'
+    | 'not-open'
+    | 'no-subscription'
+    | 'subscription-not-held';
+}
+
+/**
+ * What an `invoice.finalized` event should do (GAP-129).
+ *
+ * Stripe sends it when a draft becomes an open invoice, the moment the hosted
+ * page and PDF first exist (https://docs.stripe.com/api/invoices: finalising
+ * returns the invoice with `status=open`, or `paid` when nothing is due).
+ * Before this, an unpaid invoice only reached the owner's Billing screen once
+ * it was paid or had failed.
+ *
+ * Four rules.
+ *
+ * **It never changes a status we already hold.** Delivery order is not
+ * guaranteed, so this can arrive after the `invoice.paid` or
+ * `invoice.payment_failed` for the same invoice. A known row only has its
+ * links filled in; `paid` and `past_due` stay exactly as recorded (RF-04).
+ *
+ * **Only an open invoice is inserted.** A zero-amount invoice is finalised
+ * already `paid`; `invoice.paid` records that with its `paid_at`, which the
+ * `invoices` CHECK requires. Anything else (void, uncollectible, a draft) has
+ * nothing for the owner to pay.
+ *
+ * **It is pinned to one subscription in one mode.** Both Stripe modes deliver
+ * to the same URL, so a test-mode invoice carrying a live organisation's id
+ * must not appear on that organisation's Billing screen (RF-05). A new row is
+ * written only when the organisation holds the invoice's subscription in the
+ * event's mode; an invoice naming no subscription is not one we can place.
+ *
+ * **A redelivery is harmless.** The second delivery finds the row the first
+ * inserted and at most rewrites the same links.
+ */
+export function decideInvoiceFinalized(
+  known: KnownInvoice | null,
+  event: { status?: string | null; subscriptionRef: string | null },
+  holdsSubscription: boolean,
+): FinalizedDecision {
+  if (known) return { action: 'documents', reason: 'already-known' };
+  if (event.status !== 'open') return { action: 'skip', reason: 'not-open' };
+  if (!event.subscriptionRef) return { action: 'skip', reason: 'no-subscription' };
+  if (!holdsSubscription) return { action: 'skip', reason: 'subscription-not-held' };
+  return { action: 'insert', reason: 'first-sight' };
+}
