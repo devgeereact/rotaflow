@@ -68,6 +68,15 @@ Per-user preferences (`theme`, `notifications_enabled`). Unchanged. `theme` valu
 before any channel runs. An **absent row means the column default (`true`)**, never
 "opted out"; do not infer consent from a missing row.
 
+`0163` adds three text columns, each with a check constraint and a default that is
+the behaviour before it: `time_format` (`24h` | `12h`, read by `src/lib/format.ts`
+through `usePersonalPreferences`), `week_start` (`monday` | `sunday`, read by My
+rota only: rota periods stay Monday-keyed, see GAP-116) and `digest_frequency`
+(`immediate` | `daily` | `weekly`, stored and read by nothing yet, because no
+digest job exists). No new policy or grant: `app_settings_all_own` and the 0056
+table grants cover the columns. Tested by
+`supabase/tests/database/personal_preferences.test.sql`.
+
 ## 3. RotaFlow tables (from `0002_rotaflow.sql`)
 
 Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, except

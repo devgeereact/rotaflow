@@ -25,6 +25,8 @@
 
 export const APP_LOCALE = 'en-GB';
 
+export type TimeFormat = '24h' | '12h';
+
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const dateFormatter = new Intl.DateTimeFormat(APP_LOCALE, {
@@ -34,18 +36,51 @@ const dateFormatter = new Intl.DateTimeFormat(APP_LOCALE, {
   timeZone: 'UTC',
 });
 
-const dateTimeFormatter = new Intl.DateTimeFormat(APP_LOCALE, {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-});
+// Two of each, built once: the 24-hour clock is the product's en-GB default,
+// and a person may choose 12-hour on My account, Preferences (0163).
+const dateTimeFormatters: Record<TimeFormat, Intl.DateTimeFormat> = {
+  '24h': new Intl.DateTimeFormat(APP_LOCALE, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }),
+  '12h': new Intl.DateTimeFormat(APP_LOCALE, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }),
+};
 
-const timeFormatter = new Intl.DateTimeFormat(APP_LOCALE, {
-  hour: '2-digit',
-  minute: '2-digit',
-});
+const timeFormatters: Record<TimeFormat, Intl.DateTimeFormat> = {
+  '24h': new Intl.DateTimeFormat(APP_LOCALE, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }),
+  '12h': new Intl.DateTimeFormat(APP_LOCALE, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }),
+};
+
+let timeFormat: TimeFormat = '24h';
+
+/**
+ * The signed-in person's clock preference. Set once their preferences load
+ * (`usePersonalPreferences`); every later `formatTime` and `formatDateTime`
+ * follows it. Module state rather than a context because these are plain
+ * functions called from mappers as well as components.
+ */
+export function setTimeFormat(next: TimeFormat): void {
+  timeFormat = next;
+}
 
 const countFormatter = new Intl.NumberFormat(APP_LOCALE);
 
@@ -63,18 +98,20 @@ export function formatDate(value: string): string {
   return Number.isNaN(instant.getTime()) ? value : dateFormatter.format(instant);
 }
 
-/** An instant in the reader's own zone, "3 Mar 2027, 14:05". */
+/** An instant in the reader's own zone, "3 Mar 2027, 14:05" (or "2:05 pm"). */
 export function formatDateTime(value: string | Date): string {
   const instant = typeof value === 'string' ? new Date(value) : value;
   return Number.isNaN(instant.getTime())
     ? String(value)
-    : dateTimeFormatter.format(instant);
+    : dateTimeFormatters[timeFormat].format(instant);
 }
 
-/** A time of day in the reader's own zone, "14:05". */
+/** A time of day in the reader's own zone, "14:05", or "2:05 pm" on the 12-hour clock. */
 export function formatTime(value: string | Date): string {
   const instant = typeof value === 'string' ? new Date(value) : value;
-  return Number.isNaN(instant.getTime()) ? String(value) : timeFormatter.format(instant);
+  return Number.isNaN(instant.getTime())
+    ? String(value)
+    : timeFormatters[timeFormat].format(instant);
 }
 
 /** A whole-number count with thousands separators, "12,400". */

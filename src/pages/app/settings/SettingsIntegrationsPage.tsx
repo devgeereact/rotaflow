@@ -12,6 +12,9 @@ import {
   updateOrgSmtpFields,
 } from '@/services/smtpSettingsService';
 import { getOrganisation } from '@/services/orgService';
+import { Link } from 'react-router-dom';
+import { useOrgBillingState } from '@/hooks/useOrgBillingState';
+import { stripeConnectionLabel } from '@/lib/billingState';
 import { reportError } from '@/lib/sentry';
 import { FALLBACK_TIMEZONE } from '@/lib/operationalDay';
 import { Button } from '@/components/ui/Button';
@@ -410,6 +413,58 @@ export function SettingsIntegrationsPage(): JSX.Element {
           </div>
         </div>
       </Card>
+
+      <ConnectedElsewhere />
     </div>
+  );
+}
+
+/**
+ * What else already connects to the outside world, and where each one lives.
+ * The reference shows a catalogue of payroll and HR integrations; those are
+ * Phase 2 (docs/SAAS.md CAP-067), so this lists only what exists today.
+ */
+function ConnectedElsewhere(): JSX.Element {
+  const { snapshot } = useOrgBillingState();
+  const stripe = stripeConnectionLabel(snapshot, new Date());
+  const rowClass =
+    'flex flex-wrap items-baseline justify-between gap-2 border-t border-divider py-3 first:border-t-0 dark:border-divider-dark';
+  const linkClass =
+    'text-sm font-medium text-primary-ink underline dark:text-primary-ink-dark';
+  return (
+    <Card className="mt-6">
+      <h2 className="mb-2 font-medium text-content dark:text-content-dark">
+        Also connected
+      </h2>
+      <ul>
+        <li className={rowClass}>
+          <span className="text-sm text-content dark:text-content-dark">
+            Payroll: approved hours as a CSV for your payroll software
+          </span>
+          <Link to="/app/reports" className={linkClass}>
+            Reports
+          </Link>
+        </li>
+        <li className={rowClass}>
+          <span className="text-sm text-content dark:text-content-dark">
+            Calendar: each person subscribes to their own shifts
+          </span>
+          <Link to="/app/schedule" className={linkClass}>
+            My rota
+          </Link>
+        </li>
+        <li className={rowClass}>
+          <span className="text-sm text-content dark:text-content-dark">
+            Billing: {stripe ?? 'Stripe'}
+          </span>
+          <Link to="/app/settings/billing" className={linkClass}>
+            Billing
+          </Link>
+        </li>
+      </ul>
+      <p className="mt-3 text-sm text-content-muted dark:text-content-muted-dark">
+        Direct payroll and HR connections are planned for a later phase.
+      </p>
+    </Card>
   );
 }

@@ -18,6 +18,12 @@ Dependabot may be grouped into one line per week. The rule sits under
   D5). A count-only read of production, approved by the owner, found no row in the
   table, so the planned export to owners (O11) had nothing to export. The privacy
   notice now names sickness absence as the only Article 9 data.
+- **Integrations lists what exists, and Preferences keeps three choices (22 October
+  2026, owner decisions, `0163`).** Settings, Integrations adds an "Also connected"
+  card (payroll CSV, calendar feed, Stripe billing state) and says direct payroll
+  and HR connections come later. My account, Preferences stores the clock format,
+  the first day of the person's own week (My rota only; rota weeks stay Monday to
+  Sunday) and an email summary choice, which is labelled as not sent yet. GAP-088.
 - **Unpaid Stripe invoices reach the Billing screen (22 October 2026).**
   `stripe-webhook` handles `invoice.finalized`: an open invoice is listed with its
   links before it is paid or fails. A status already held is never changed, and a

@@ -21,8 +21,15 @@ export interface SchedulePeriod {
   label: string;
 }
 
+/** 1 is Monday, the rota builder's week; 0 is Sunday, a personal choice (0163). */
+export type WeekStartsOn = 0 | 1;
+
 /** The anchor date snapped to the start of its period. */
-export function periodStart(view: ScheduleView, anchor: string): string {
+export function periodStart(
+  view: ScheduleView,
+  anchor: string,
+  weekStartsOn: WeekStartsOn = 1,
+): string {
   const date = new Date(`${anchor}T00:00:00`);
   switch (view) {
     case 'day':
@@ -30,8 +37,9 @@ export function periodStart(view: ScheduleView, anchor: string): string {
     case 'month':
       return format(startOfMonth(date), 'yyyy-MM-dd');
     default:
-      // Week and fortnight both start on Monday, matching the rota builder.
-      return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      // Week and fortnight start on Monday, matching the rota builder, unless
+      // the person viewing their own schedule chose Sunday.
+      return format(startOfWeek(date, { weekStartsOn }), 'yyyy-MM-dd');
   }
 }
 
@@ -46,8 +54,9 @@ export function resolvePeriod(
   view: ScheduleView,
   anchor: string,
   timezone: string,
+  weekStartsOn: WeekStartsOn = 1,
 ): SchedulePeriod {
-  const start = periodStart(view, anchor);
+  const start = periodStart(view, anchor, weekStartsOn);
   const startDate = new Date(`${start}T00:00:00`);
 
   let dates: string[];

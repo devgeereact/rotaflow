@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type JSX } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useTheme } from '@/context/ThemeContext';
@@ -9,6 +9,14 @@ import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Toggle } from '@/components/ui/Toggle';
+import { Label } from '@/components/ui/Label';
+import { Select } from '@/components/ui/Select';
+import { rememberPersonalPreferences } from '@/hooks/usePersonalPreferences';
+import {
+  DEFAULT_PREFERENCES,
+  toPersonalPreferences,
+  type PersonalPreferences,
+} from '@/lib/personalPreferences';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { useConsent } from '@/context/ConsentContext';
 
@@ -18,7 +26,9 @@ import { useConsent } from '@/context/ConsentContext';
  * Everything here is a real stored preference: `app_settings.theme` and
  * `app_settings.notifications_enabled` per user, plus the browser's own push
  * subscription, which is device-scoped rather than account-scoped and so is
- * managed separately from the master switch.
+ * managed separately from the master switch. 0163 added the clock format,
+ * the first day of the person's own week and an email summary frequency. The
+ * summary is stored and labelled as not sent yet: no digest job exists.
  *
  * The reference also shows a language selector. It is not built: there is no
  * i18n layer in the app, every string is an English literal in a component,
@@ -33,6 +43,7 @@ export function PreferencesPage(): JSX.Element {
   const push = useWebPush();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [personal, setPersonal] = useState<PersonalPreferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +56,7 @@ export function PreferencesPage(): JSX.Element {
         const settings = await getSettings(user.id);
         if (!active) return;
         setNotificationsEnabled(settings?.notifications_enabled ?? true);
+        setPersonal(toPersonalPreferences(settings));
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'account-preferences:load' });
@@ -76,6 +88,32 @@ export function PreferencesPage(): JSX.Element {
       }
     },
     [user, showError],
+  );
+
+  const handlePersonal = useCallback(
+    async (patch: Partial<PersonalPreferences>): Promise<void> => {
+      if (!user) return;
+      const previous = personal;
+      const next = { ...personal, ...patch };
+      setPersonal(next);
+      setSaving(true);
+      try {
+        await updateSettings(user.id, {
+          time_format: next.timeFormat,
+          week_start: next.weekStart,
+          digest_frequency: next.digestFrequency,
+        });
+        rememberPersonalPreferences(user.id, next);
+        showSuccess('Preference saved.');
+      } catch (err) {
+        setPersonal(previous);
+        reportError(err, { area: 'account-preferences:personal' });
+        showError('Could not save that preference.');
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user, personal, showError, showSuccess],
   );
 
   const handleTheme = useCallback(
@@ -127,6 +165,46 @@ export function PreferencesPage(): JSX.Element {
       </SettingsSection>
 
       <SettingsSection
+        title="Time and week"
+        description="How times and your own week are shown to you. Rota weeks stay Monday to Sunday for everyone."
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="pref-time-format">Clock</Label>
+            <Select
+              id="pref-time-format"
+              value={personal.timeFormat}
+              disabled={saving}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                void handlePersonal({
+                  timeFormat: event.target.value === '12h' ? '12h' : '24h',
+                })
+              }
+            >
+              <option value="24h">24-hour (14:30)</option>
+              <option value="12h">12-hour (2:30 pm)</option>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="pref-week-start">My week starts on</Label>
+            <Select
+              id="pref-week-start"
+              value={personal.weekStart}
+              disabled={saving}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                void handlePersonal({
+                  weekStart: event.target.value === 'sunday' ? 'sunday' : 'monday',
+                })
+              }
+            >
+              <option value="monday">Monday</option>
+              <option value="sunday">Sunday</option>
+            </Select>
+          </div>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
         title="Notifications"
         description="Your personal override of the organisation's defaults."
       >
@@ -147,6 +225,31 @@ export function PreferencesPage(): JSX.Element {
             disabled={saving}
             onChange={(next) => void handleToggleNotifications(next)}
           />
+        </div>
+        <div className="mt-5 max-w-xs">
+          <Label htmlFor="pref-digest">Email summary</Label>
+          <Select
+            id="pref-digest"
+            value={personal.digestFrequency}
+            disabled={saving || !notificationsEnabled}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+              const value = event.target.value;
+              void handlePersonal({
+                digestFrequency:
+                  value === 'daily' || value === 'weekly' ? value : 'immediate',
+              });
+            }}
+          >
+            <option value="immediate">Each notification as it happens</option>
+            <option value="daily">Daily summary</option>
+            <option value="weekly">Weekly summary</option>
+          </Select>
+          {personal.digestFrequency !== 'immediate' && (
+            <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
+              Saved. Summaries are not sent yet, so you will keep receiving each
+              notification as it happens until they are.
+            </p>
+          )}
         </div>
       </SettingsSection>
 
