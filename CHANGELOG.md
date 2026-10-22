@@ -13,6 +13,11 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Unpaid Stripe invoices reach the Billing screen (22 October 2026).**
+  `stripe-webhook` handles `invoice.finalized`: an open invoice is listed with its
+  links before it is paid or fails. A status already held is never changed, and a
+  test-mode invoice never lands on a live organisation. Needs `stripe-webhook`
+  deployed and the endpoint subscribed to the event (O3). GAP-129.
 - **The release gate re-run on every work-queue pull request merged together
   (21 October 2026).** #344 to #354 merged into the work-queue branch: every local
   gate passes, including 781 pgTAP assertions and the authenticated, offline and
