@@ -13,6 +13,11 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Medical notes are gone from the database (22 October 2026, `0164`).** The
+  retired `emergency_contacts.medical_notes` column is dropped (GAP-058, decision
+  D5). A count-only read of production, approved by the owner, found no row in the
+  table, so the planned export to owners (O11) had nothing to export. The privacy
+  notice now names sickness absence as the only Article 9 data.
 - **Unpaid Stripe invoices reach the Billing screen (22 October 2026).**
   `stripe-webhook` handles `invoice.finalized`: an open invoice is listed with its
   links before it is paid or fails. A status already held is never changed, and a

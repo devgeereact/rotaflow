@@ -256,7 +256,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 162 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 163 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -596,10 +596,10 @@ somebody who has no relationship with it at all. `medical_notes` was
 free text prompted with "Allergies, conditions", so it was Article 9 health data
 by design. Since 2026-10-11 (GAP-058, plan S1) the product no longer collects or
 shows it: the field is gone from the dialog, the client writes only the named
-columns and reads them by name. The column and any values already in it are
-untouched until an owner-approved purge migration; until then the subject-access
-export still reads `*` and so discloses a stored value to the person it is
-about. Hard-deleted on erasure. The leave reason field carries a hint not to
+columns and reads them by name. `0164` dropped the column itself (2026-10-22,
+decision D5); a count-only read of production that day, approved by the owner,
+found no row in `emergency_contacts` at all, so the planned export to owners
+(O11) had nothing to export. Hard-deleted on erasure. The leave reason field carries a hint not to
 include medical details. **REQUIRES LEGAL REVIEW:** Article 14
 notification duty, and how it divides between employer and processor.
 
@@ -825,9 +825,9 @@ right shape for this class of problem.
 ### 9. REQUIRES LEGAL REVIEW
 
 1. **Every lawful basis.** Proposed in the notice, confirmed by nobody.
-2. **The Article 9 condition** for sickness leave, and for the
-   `emergency_contacts.medical_notes` values still stored from before the field
-   was removed (2026-10-11).
+2. **The Article 9 condition** for sickness leave. (The other Article 9
+   field, `emergency_contacts.medical_notes`, was dropped by `0164` on
+   2026-10-22.)
 3. **Article 14** and emergency contacts (GAP-058).
 4. **Whether an email address alone satisfies Article 13** for a sole trader.
 5. **Transfer mechanism and risk assessment** for Stripe and OpenRouter.
