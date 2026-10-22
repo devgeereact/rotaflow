@@ -6,6 +6,9 @@ Which closed defects are guarded by a test, and which test. Created on
 each cited file exists in the tree. RF findings from the 5 September 2026 delivery
 audit were closed as BUG-071 to BUG-081, so they appear under those numbers.
 
+Open items found here are listed in the work queue at the top of `docs/SAAS.md`;
+this file keeps the evidence.
+
 ## Result, 11 October 2026
 
 - 143 closed `BUG-` and `GAP-` rows in the register; **40** name at least one test file.

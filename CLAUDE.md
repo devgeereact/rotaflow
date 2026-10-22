@@ -16,6 +16,7 @@ including here.
 | Need                                         | Owner                                                                                               |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | What is built, partial or missing            | `docs/SAAS.md`, the capability register and the only place status is set                            |
+| What to work on next                         | The work queue at the top of `docs/SAAS.md`, the one list of open work and owner actions            |
 | Coding, tenancy and secret rules in full     | `docs/RULES.md`                                                                                     |
 | Folder layout, data flow, offline, hooks     | `docs/ARCHITECTURE.md`                                                                              |
 | Tables, RLS, grants, migration policy        | `docs/DATA-MODEL.md`                                                                                |

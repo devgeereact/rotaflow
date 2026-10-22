@@ -171,6 +171,11 @@ when it becomes inconvenient is worth less than one that stays visible.
 
 ### Current — after the production-readiness pass, 4 September 2026
 
+**Stale since 2026-10-21, until the gate is re-run.** Several lines below have
+moved since 4 September (the nightly backup now succeeds, for one), so this decision
+no longer describes the product. Re-running it is item 12 of the work queue at the
+top of `docs/SAAS.md`. Until then, read it as history.
+
 **NOT READY FOR PRODUCTION.**
 
 Not "ready with minor fixes". The pass closed real defects and the deployed site
@@ -284,3 +289,43 @@ records evidence the next run should take into account.
 | --- | ------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 28  | Backup and recovery exist | FAIL (4 Sep)    | `backup.yml` has succeeded on every scheduled run from 6 September to 10 October 2026, each with a `verify-restore` job that restores the dump into a throwaway PostgreSQL. A human restore was rehearsed on 7 September (GAP-001). Still not proven: a restore into a real Supabase project with its `auth` and `storage` schemas, and PITR, last read as off on 13 August |
 | 27  | Monitoring operational    | PARTIAL (4 Sep) | `auth-config.yml`, which watches the Supabase Auth settings, has failed with `401 Unauthorized` on every run since 14 September (GAP-036). `plan-drift-audit.yml` has also failed since 14 September                                                                                                                                                                        |
+
+## Release gate for every release from the pilot on
+
+Decided with the 2026 plan pack on 10 October 2026 (the pack was deleted on
+2026-10-21; its decisions are recorded in the `docs/SAAS.md` work queue). Every
+release records its commit, the migrations applied, the Edge Function versions, the
+static build and the service-worker version, and passes all of the following:
+
+1. Every CI job green, plus the PWA offline test once it exists (work queue item 1).
+2. No open P0. Every open P1 has an owner and, where a user can see it, a visible
+   treatment.
+3. Migrations stay backwards-compatible with the previous client for one release,
+   because a static rollback cannot undo a migration.
+4. Rollback and the post-release checks are written before deploying.
+5. One real clock-in on a real phone after release.
+6. The result is recorded in this file with the date and version.
+
+After a release, watch the error rate, outbox age, failed invites and notifications,
+and webhook failures. No release is called green on old screenshots or skipped tests.
+
+## Billing scenarios to prove before the paid launch
+
+Run in Stripe test mode first, without switching the production project's mode.
+After the test-mode evidence, the owner may authorise one supervised live
+transaction; planning approval never authorises a real charge or refund.
+
+| Scenario                          | Required outcome                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| Successful Checkout               | Owner, organisation, plan and mode all correct. Stripe and RotaFlow agree           |
+| Second Checkout while active      | Refused, Portal offered. One subscription in Stripe                                 |
+| Abandoned Checkout                | No active subscription. Retry works                                                 |
+| Return before webhook             | Pending message, then converges. The return page never grants entitlement by itself |
+| Duplicate and out-of-order events | One effect. Paid state never regresses                                              |
+| Trial ends without payment        | Read-only, data visible and exportable                                              |
+| Trial converts                    | Active, first invoice recorded with PDF link                                        |
+| Upgrade and downgrade             | Limits change. Over-limit downgrade explained, nothing deleted                      |
+| Payment fails, then recovers      | Grace applies once. Recovery restores access                                        |
+| Cancellation                      | Active until period end, then read-only                                             |
+| Non-owner or other organisation   | Refused server-side                                                                 |
+| Refund and dispute in Stripe      | Audit event recorded, finance alerted                                               |

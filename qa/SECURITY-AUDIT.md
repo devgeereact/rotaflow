@@ -6,6 +6,9 @@ one. This file records what an audit found on a day; it does not set status.
 `docs/SECURITY.md` (backup, retention, erasure, incident response, privacy data
 map) and `docs/DATA-MODEL.md` §5 (RLS and grants).
 
+Open items found here are listed in the work queue at the top of `docs/SAAS.md`;
+this file keeps the evidence.
+
 ## Next audit
 
 Run this list against the code and production, record the result as a new dated

@@ -471,6 +471,19 @@ from this repository.
 | `plan-drift-audit.yml` | The weekly register-against-code audit did not run or found drift | Gideon Akinlotan | Read the drift log at the end of `docs/SAAS.md` and the run log                                     |
 | `codeql.yml`           | A code-scanning finding, or the analysis failed                   | Gideon Akinlotan | Security tab, then a fix or a dismissal with a reason                                               |
 
+**What does not alert anyone yet** (decided with the 2026 plan pack, 10 October
+2026; work queue O2 in `docs/SAAS.md`). Until each of these exists, a failure is
+found by a customer first:
+
+1. GitHub email notifications for failed scheduled runs, switched on and tested.
+2. Sentry alert rules that email the owner on a new issue and on an error-rate
+   spike. None was found when the pack was written.
+3. A free external uptime check on `/` and on the REST endpoint.
+4. The health probe (`0076`) only writes samples; it should queue a notification
+   to a named owner when it records an outage.
+
+The exit is a test alert that reaches the owner's phone.
+
 ### A standing check before any release
 
 `gh run list --workflow=backup.yml --limit 3` before shipping, and treat a

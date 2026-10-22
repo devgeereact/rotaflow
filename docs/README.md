@@ -42,7 +42,7 @@ here wins, and the other should link to it rather than restate it.
 | Release gates and the recorded release decision                                      | `qa/LAUNCH-CHECKLIST.md`                                                         |
 | What changed, per merged pull request                                                | `CHANGELOG.md`                                                                   |
 | Limitations a customer can see today                                                 | `KNOWN-ISSUES.md`                                                                |
-| The approved 2026 plan pack, until it is retired                                     | `docs/Plans 2026/` (temporary; see its `10-GOVERNANCE-ALIGNMENT.md` §6)          |
+| Open work, owner actions and the approved 2026 decisions                             | `docs/SAAS.md` (the work queue at the top)                                       |
 
 `docs/ACCOUNTS.md` also exists on the owner's machine. It is gitignored on purpose,
 because it holds a live production credential and this repository is public. It is
