@@ -13,6 +13,17 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **fix(design): the thirteen unmatched workspace screens compared (GAP-088).** A
+  development-only `/settings-preview/*` harness mounts the real Settings and My
+  account pages against fixtures, so the nine screens that needed a session can be
+  captured at last. Each of the thirteen was compared with its mockup and with
+  `docs/design/ORGANISATION_WORKSPACE.html`, and its result recorded in
+  `docs/UX-SPEC.md`. Fixes from the pass: the audit trail's note no longer claims
+  only anonymisation is recorded, and the trail gains Area and Severity columns;
+  Settings and My account titles name the section; Profile shows recent account
+  activity; the boot screen's lockup matches the reference's size. The nine screens
+  joined the accessibility scan, which found two contrast failures used across the
+  app and now fixed: the active tab and the danger button were both 4.2 : 1.
 - **test: the recovered defects re-tested (GAP-115).** BUG-010's form-to-row
   mapping moves to `src/lib/staffForm.ts` with a test naming every column it
   writes, and the pgTAP grant invariants now cover those `staff_profiles` columns.

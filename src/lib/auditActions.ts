@@ -95,3 +95,34 @@ export function formatAuditAction(action: string): string {
   const words = action.replace(/[._]/g, ' ').trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
+
+/**
+ * The kind of record an entry is about, as a heading would say it:
+ * `leave_request` reads "Leave request". The reference's "Area" column.
+ */
+export function formatAuditRecord(entityType: string | null): string {
+  if (!entityType) return '-';
+  const words = entityType.replace(/[._]/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** `audit_logs.severity` is `info`, `notice`, `warning` or `critical` (0016). */
+export type AuditSeverityTone = 'neutral' | 'info' | 'warning' | 'danger';
+
+export function auditSeverityTone(severity: string): AuditSeverityTone {
+  switch (severity) {
+    case 'critical':
+      return 'danger';
+    case 'warning':
+      return 'warning';
+    case 'notice':
+      return 'info';
+    default:
+      return 'neutral';
+  }
+}
+
+/** The severity as a person reads it, falling back to the stored word. */
+export function formatAuditSeverity(severity: string): string {
+  return severity.charAt(0).toUpperCase() + severity.slice(1);
+}

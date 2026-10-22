@@ -45,7 +45,7 @@ const PALETTE_FILES = new Set([
  */
 const BASELINE = {
   /** `bg-success/10` and friends: alpha status fills instead of the opaque washes. */
-  alphaStatusWash: 74,
+  alphaStatusWash: 73,
   /** A raw hex colour in a file that is not a palette. */
   hexOutsidePalette: 16,
   /** A hover that moves the box. Hover is a colour change only. */
