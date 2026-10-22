@@ -358,6 +358,8 @@ the deploy entirely is the safe default, and it is the default.
   instant. `UpdatePrompt` polls hourly, so an app left open recovers within the hour.
 - **`index.html`, `sw.js` and `manifest.webmanifest` are `no-store`**, so the entry point itself
   does flip immediately. That is what makes the rollback take effect for new visitors at all.
+  It also carries the site's JSON-LD block (publisher and product, no ratings or prices), so a
+  rollback restores the structured data of that build too.
 
 ### Verifying a rollback
 

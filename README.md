@@ -44,19 +44,20 @@ discipline".
 
 ## Tech stack
 
-| Layer           | Choice                            | Notes                                                                                                        |
-| --------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Framework       | React 18 and Vite 6               |                                                                                                              |
-| Language        | TypeScript (strict)               | Enforced in CI                                                                                               |
-| Styling         | Tailwind CSS 4                    | Tokens in the `@theme` block of `src/index.css`; there is no `tailwind.config.ts`                            |
-| PWA             | `vite-plugin-pwa` (Workbox)       | Precached app shell, runtime caching, web push via `public/push-sw.js`                                       |
-| Auth and DB     | Supabase (PostgreSQL and RLS)     |                                                                                                              |
-| Server compute  | Supabase Edge Functions           | The only server runtime; contracts in [`docs/API-SPEC.md`](docs/API-SPEC.md)                                 |
-| AI              | OpenRouter, from an Edge Function | The only AI provider; the key never reaches the client                                                       |
-| Background jobs | `pg_cron` and `pg_net`            | Five jobs, listed in [`docs/NOTIFICATIONS-SPEC.md`](docs/NOTIFICATIONS-SPEC.md). Inngest is retired (`0087`) |
-| Payments        | Stripe, from Edge Functions       | Secrets never reach the client                                                                               |
-| Monitoring      | Sentry                            |                                                                                                              |
-| Hosting         | cPanel, static `dist/`            | No server runtime on the origin                                                                              |
+| Layer            | Choice                            | Notes                                                                                                                                 |
+| ---------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework        | React 18 and Vite 6               |                                                                                                                                       |
+| Language         | TypeScript (strict)               | Enforced in CI                                                                                                                        |
+| Styling          | Tailwind CSS 4                    | Tokens in the `@theme` block of `src/index.css`; there is no `tailwind.config.ts`                                                     |
+| Marketing motion | GSAP and Lenis                    | Public pages only, loaded after first paint and never under reduced motion; rules in [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) |
+| PWA              | `vite-plugin-pwa` (Workbox)       | Precached app shell, runtime caching, web push via `public/push-sw.js`                                                                |
+| Auth and DB      | Supabase (PostgreSQL and RLS)     |                                                                                                                                       |
+| Server compute   | Supabase Edge Functions           | The only server runtime; contracts in [`docs/API-SPEC.md`](docs/API-SPEC.md)                                                          |
+| AI               | OpenRouter, from an Edge Function | The only AI provider; the key never reaches the client                                                                                |
+| Background jobs  | `pg_cron` and `pg_net`            | Five jobs, listed in [`docs/NOTIFICATIONS-SPEC.md`](docs/NOTIFICATIONS-SPEC.md). Inngest is retired (`0087`)                          |
+| Payments         | Stripe, from Edge Functions       | Secrets never reach the client                                                                                                        |
+| Monitoring       | Sentry                            |                                                                                                                                       |
+| Hosting          | cPanel, static `dist/`            | No server runtime on the origin                                                                                                       |
 
 ## Quick start
 
