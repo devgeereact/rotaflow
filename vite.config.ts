@@ -437,7 +437,17 @@ export default defineConfig({
             { name: 'dnd', test: /node_modules[\\/]@dnd-kit[\\/]/ },
             // Only the marketing pages load this, through a dynamic import after
             // first paint. Named so the precache can leave it out by pattern.
-            { name: 'motion', test: /node_modules[\\/](gsap|lenis)[\\/]/ },
+            //
+            // `includeDependenciesRecursively: false` matters. By default a group
+            // also captures what its modules import, and GSAP imports the same
+            // Babel helper the app does, so the helper landed in this chunk and
+            // the entry imported it: the motion chunk loaded on every page, and an
+            // offline start failed because the precache leaves it out.
+            {
+              name: 'motion',
+              test: /node_modules[\\/](gsap|lenis)[\\/]/,
+              includeDependenciesRecursively: false,
+            },
           ],
         },
       },
