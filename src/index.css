@@ -619,6 +619,19 @@
   --shadow-2xl: 0 4px 16px rgba(0, 0, 0, 0.08);
 
   --animate-fade-up: fade-up 300ms ease-out both;
+  /* the marketing hero's rota chips filling in, one after another */
+  --animate-pop-in: pop-in 300ms ease-out both;
+
+  @keyframes pop-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
 
   @keyframes fade-up {
     0% {
@@ -760,6 +773,35 @@
      * is answered, so this is 0px for everyone who has decided.
      */
     padding-bottom: var(--consent-inset, 0px);
+  }
+
+  /*
+   * Lenis smooth scroll, marketing pages only (components/marketing/motion).
+   * Lenis puts `lenis` on <html> while it runs and removes it on destroy, so
+   * these rules exist only for that lifetime. They are lenis/dist/lenis.css,
+   * inlined rather than imported so the motion chunk stays JavaScript only,
+   * plus one line of ours: native smooth scrolling and Lenis both easing the
+   * same jump fight each other, so `scroll-behavior` steps aside.
+   */
+  html.lenis {
+    scroll-behavior: auto;
+  }
+
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+
+  .lenis.lenis-stopped {
+    overflow: clip;
+  }
+
+  .lenis [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+
+  .lenis.lenis-smooth iframe {
+    pointer-events: none;
   }
 
   /* Respect user motion preferences globally. */

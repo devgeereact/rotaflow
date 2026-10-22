@@ -44,6 +44,7 @@ export function TestimonialBand(): JSX.Element {
           {TESTIMONIALS.map(({ quote, name, role, organisation }) => (
             <figure
               key={`${name}-${organisation}`}
+              data-reveal
               className="flex h-full flex-col rounded-2xl border border-surface-border bg-surface p-6 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark"
             >
               <Quote
@@ -71,7 +72,7 @@ export function TestimonialBand(): JSX.Element {
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
-      <div className="mx-auto mb-12 max-w-2xl text-center">
+      <div data-reveal className="mx-auto mb-12 max-w-2xl text-center">
         <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
           What we will put in writing
         </h2>
@@ -86,6 +87,7 @@ export function TestimonialBand(): JSX.Element {
         {COMMITMENTS.map(({ icon: Icon, title, body }) => (
           <div
             key={title}
+            data-reveal
             className="flex gap-4 rounded-2xl border border-surface-border bg-surface p-6 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark"
           >
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">

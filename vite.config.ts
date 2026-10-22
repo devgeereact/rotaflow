@@ -261,6 +261,13 @@ export default defineConfig({
           // cold offline start renders in the fallback stack rather than waiting.
           // The runtime rule below caches them on first use instead.
           'fonts/*.woff2',
+          // GSAP + Lenis, the marketing scroll motion, ~45KiB gzip. It is an
+          // enhancement that the page is complete without, it never runs in
+          // the app, and a failed load is caught (`useMarketingMotion`), so
+          // there is nothing for an offline start to need it for. Precaching
+          // it would charge every member of staff for a homepage effect.
+          'assets/motion-*.js',
+          'assets/marketingMotion-*.js',
         ],
         // SPA navigations resolve to the precached index.html.
         navigateFallback: 'index.html',
@@ -419,6 +426,9 @@ export default defineConfig({
           // Only the rota builder uses drag-and-drop, so this rides along with
           // that route's chunk rather than the entry.
           dnd: ['@dnd-kit/core', '@dnd-kit/utilities'],
+          // Only the marketing pages load this, through a dynamic import after
+          // first paint. Named so the precache can leave it out by pattern.
+          motion: ['gsap', 'gsap/ScrollTrigger', 'lenis'],
         },
       },
     },
