@@ -166,7 +166,7 @@ delete from public.staff_profiles where id = 'd2000000-0000-4000-8000-0000000000
 select is(
   (select count(*)::int from public.storage_deletions
     where path = 'd1000000-0000-4000-8000-00000000000a/d2000000-0000-4000-8000-0000000000a3'
-      and is_folder and reason = 'person_removed'),
+      and is_folder and reason = 'person_removed' and bucket = 'staff-documents'),
   1,
   'deleting a person queues their whole folder');
 
@@ -181,7 +181,7 @@ reset role;
 select is(
   (select count(*)::int from public.storage_deletions
     where path = 'd1000000-0000-4000-8000-00000000000b'
-      and is_folder and reason = 'organisation_deleted'),
+      and is_folder and reason = 'organisation_deleted' and bucket = 'staff-documents'),
   1,
   'deleting an organisation queues its whole folder, and the row outlives it');
 
