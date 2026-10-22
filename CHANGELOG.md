@@ -13,6 +13,19 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **test(offline): the queue, the service worker and the update prompt, in a
+  browser and in CI (GAP-049, GAP-050, GAP-054, GAP-086).**
+  `e2e/offline-clock-in.spec.ts` queues a clock-in with the network off and checks
+  the database: nothing arrives while offline, exactly one row after, and none
+  more on reload. A session that ends while the write waits holds it for the same
+  person and never sends it for a colleague who signs in on the same phone.
+  `e2e/pwa-offline.spec.ts` loads the manifest and its icons, opens the app from
+  its precache with no network, and installs a second worker to see the update
+  prompt appear and wait. `pwa-cache-teardown.spec.ts` runs in CI for the first
+  time. The clock screen opened cold with no signal now says what is missing and
+  reloads by itself when the signal returns. Fixed on the way: the clock screen kept saying
+  "Sending 1 entry" after the shell had already sent it, because each
+  `useSyncQueue` instance held its own list; they now announce changes to each other.
 - **feat(seo): honest JSON-LD in `index.html`.** One `Organization` and one
   `SoftwareApplication` node, with no ratings, reviews, awards or prices, guarded
   by `src/lib/structuredData.test.ts`. README's tech-stack table now lists GSAP

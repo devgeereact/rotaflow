@@ -244,6 +244,16 @@ jobs:
       - name: E2E smoke + accessibility
         run: npx playwright test
 
+      # The service worker exists only in a production build
+      # (`devOptions.enabled: false`), so the step above can never see it.
+      # The `pwa` project serves `dist/` with `vite preview`; this spec needs
+      # no Supabase, so it runs here rather than in e2e-authenticated
+      # (GAP-050, GAP-054).
+      - name: Service worker, manifest and update prompt
+        env:
+          E2E_PWA: only
+        run: npx playwright test --project=pwa e2e/pwa-offline.spec.ts
+
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -341,7 +351,18 @@ jobs:
           npx playwright test e2e/authenticated-loop.spec.ts \
             e2e/owner-workforce.spec.ts \
             e2e/platform-console.spec.ts \
-            e2e/staff-dashboard.spec.ts
+            e2e/staff-dashboard.spec.ts \
+            e2e/offline-clock-in.spec.ts
+
+      # Cache teardown on an identity change needs both a real service worker
+      # and a real sign-in, so it is the one spec that needs a production build
+      # pointed at this stack (GAP-072). It existed since 7 September and ran
+      # nowhere in CI until this step.
+      - name: Cache teardown on an identity change (production build)
+        env:
+          E2E_LIVE_SUPABASE: '1'
+          E2E_PWA: only
+        run: npx playwright test --project=pwa e2e/pwa-cache-teardown.spec.ts
 
       - uses: actions/upload-artifact@v7
         if: failure()
