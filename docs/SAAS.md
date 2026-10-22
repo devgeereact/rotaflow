@@ -30,21 +30,22 @@ not in this section or in a row this section links to, it is not tracked.
 
 Each needs the owner's account, money, signature or a production change.
 
-| #   | Action                                                                                                                                                                                        | Unblocks                                             |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| O1  | Mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September)                                                       | GAP-036                                              |
-| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and the REST endpoint                                        | `docs/DEPLOYMENT.md#alert-owners`, GAP-036           |
-| O3  | Merge #338 (it applies `0154` to `0156` to production on merge), then deploy `public-enquiry`, `stripe-webhook`, `create-checkout-session` and (once its PR merges) `billing-account` by name | CAP-126, CAP-127, BUG-107, BUG-108, GAP-128, GAP-129 |
-| O4  | Move to a paid Supabase plan with PITR (decision D6: RPO 15 minutes, RTO 4 hours), keep an off-site backup copy, and rehearse one restore into a real Supabase project                        | GAP-001, CAP-095, CAP-107                            |
-| O5  | Put one Stripe test-mode charge through Checkout, then authorise one supervised live charge                                                                                                   | CAP-036                                              |
-| O6  | Decide sole trader or limited company (D7), have Terms, Privacy and a DPA reviewed, and pay the ICO fee                                                                                       | GAP-059                                              |
-| O7  | Run a UKIPO search in classes 9 and 42 (D1), then claim one suffixed handle everywhere (D11)                                                                                                  | §5a naming paragraph                                 |
-| O8  | Run both loops on a real iPhone and a real Android phone: a push received, a clock-in queued offline and sent                                                                                 | CAP-023a, CAP-106                                    |
-| O9  | Use a real authenticator once, then switch on `require_mfa`                                                                                                                                   | CAP-049                                              |
-| O10 | Turn on Turnstile and leaked-password protection in Supabase Auth (the second needs the paid plan in O4)                                                                                      | GAP-033, GAP-034                                     |
-| O11 | Export existing `medical_notes` values for the owner, so the column can be purged (D5)                                                                                                        | GAP-058                                              |
-| O12 | Close or rebase the bot branch `plan-drift-audit/weekly` (do not merge it as written: it rewrites the maturity line), and decide Dependabot #342 (vitest 5 fails CI)                          | GAP-037                                              |
-| O13 | Send one invitation from Team, Invite to a real inbox you can read, and confirm it arrives with a working link                                                                                | BUG-015, GAP-115                                     |
+| #   | Action                                                                                                                                                                                                                                                                                                                                                                                                                       | Unblocks                                                               |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| O1  | Mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September)                                                                                                                                                                                                                                                                                      | GAP-036                                                                |
+| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and the REST endpoint                                                                                                                                                                                                                                                                       | `docs/DEPLOYMENT.md#alert-owners`, GAP-036                             |
+| O3  | Merge #338 (it applies `0154` to `0156` to production on merge), then the work-queue PRs or their integration branch (they apply `0157` to `0161`), then deploy by name: `public-enquiry`, `stripe-webhook`, `create-checkout-session`, `billing-account`, `calendar-feed` (with `--no-verify-jwt`), `purge-storage` and `send-invite`. Deploy `purge-storage` before a site build carrying the new Privacy Notice goes live | CAP-126, CAP-127, BUG-107, BUG-108, GAP-128, GAP-129, GAP-052, GAP-056 |
+| O4  | Move to a paid Supabase plan with PITR (decision D6: RPO 15 minutes, RTO 4 hours), keep an off-site backup copy, and rehearse one restore into a real Supabase project                                                                                                                                                                                                                                                       | GAP-001, CAP-095, CAP-107                                              |
+| O5  | Put one Stripe test-mode charge through Checkout, then authorise one supervised live charge                                                                                                                                                                                                                                                                                                                                  | CAP-036                                                                |
+| O6  | Decide sole trader or limited company (D7), have Terms, Privacy and a DPA reviewed, and pay the ICO fee                                                                                                                                                                                                                                                                                                                      | GAP-059                                                                |
+| O7  | Run a UKIPO search in classes 9 and 42 (D1), then claim one suffixed handle everywhere (D11)                                                                                                                                                                                                                                                                                                                                 | §5a naming paragraph                                                   |
+| O8  | Run both loops on a real iPhone and a real Android phone: a push received, a clock-in queued offline and sent                                                                                                                                                                                                                                                                                                                | CAP-023a, CAP-106                                                      |
+| O9  | Use a real authenticator once, then switch on `require_mfa`                                                                                                                                                                                                                                                                                                                                                                  | CAP-049                                                                |
+| O10 | Turn on Turnstile and leaked-password protection in Supabase Auth (the second needs the paid plan in O4)                                                                                                                                                                                                                                                                                                                     | GAP-033, GAP-034                                                       |
+| O11 | Export existing `medical_notes` values for the owner, so the column can be purged (D5)                                                                                                                                                                                                                                                                                                                                       | GAP-058                                                                |
+| O12 | Close or rebase the bot branch `plan-drift-audit/weekly` (do not merge it as written: it rewrites the maturity line), and decide Dependabot #342 (vitest 5 fails CI)                                                                                                                                                                                                                                                         | GAP-037                                                                |
+| O13 | Send one invitation from Team, Invite to a real inbox you can read, and confirm it arrives with a working link                                                                                                                                                                                                                                                                                                               | BUG-015, GAP-115                                                       |
+| O14 | Find out why GitHub Actions has run nothing since 18 October 2026, 07:24 UTC (workflows enabled and active, yet no scheduled backup since and no CI on #343 to #354), restore it, and let `backup.yml` succeed again before merging                                                                                                                                                                                          | gates 27 and 28 in `qa/LAUNCH-CHECKLIST.md`                            |
 
 ### 2. Next up, for an agent
 
@@ -82,10 +83,14 @@ holds its status and evidence.
 11. **Dependency majors still held**: eslint 10, TypeScript 7, `@vitejs/plugin-react`
     6 and Sentry 11, each waiting on the condition in GAP-037. Sentry 11 is the one
     with work in it: verify scrubbing against a probe DSN.
-12. **Re-run the release gate** end to end and replace the 4 September decision in
-    `qa/LAUNCH-CHECKLIST.md`.
-13. **Website and landing finish**: device-frame screenshots, entrance-only hero
-    motion, prerender, JSON-LD and a real 404. No row yet; this line is its home.
+12. ~~**Re-run the release gate.**~~ Done 21 October 2026 on the integration branch
+    (all eleven work-queue PRs merged together): every local gate passes, and the
+    decision is NOT READY FOR PRODUCTION on owner actions alone (O3, O4, O5, O8,
+    O14). Re-run it against `main` after the merge and the deploys.
+13. **Website finish, what remains**: prerendering the public routes, device-frame
+    screenshots, and a server-side 404 status (the SPA fallback answers unknown paths
+    with 200, which needs `.htaccess` and deploy changes). JSON-LD and the not-found
+    screen are done. No row yet; this line is its home.
 14. **Locale-aware formatting**: `src/lib/format.ts` exists (2026-10-21) and the
     account screens use it; the remaining inline `toLocaleString('en-GB')` calls
     move to it as each screen is touched. No row; this line is its home.
@@ -112,15 +117,15 @@ card. Each is a ❓ row or a deploy step, not engineering:
 The `qa/` files are dated evidence, not to-do lists. Their open items are the lines
 above.
 
-| File                        | What it holds                                                               |
-| --------------------------- | --------------------------------------------------------------------------- |
-| `qa/LAUNCH-CHECKLIST.md`    | Release gate runs of 4 and 10 September and evidence added on 11 October    |
-| `qa/FUNCTIONAL-AUDIT.md`    | Functional passes, 2 to 11 September                                        |
-| `qa/SECURITY-AUDIT.md`      | The 4 September privacy audit and the checklist for the next audit          |
-| `qa/ACCESSIBILITY-AUDIT.md` | Automated axe findings; keyboard and screen-reader journeys not yet audited |
-| `qa/PERFORMANCE-AUDIT.md`   | The local load test of 7 September and the bundle budgets                   |
-| `qa/REGRESSION-AUDIT.md`    | Which closed defect each test guards                                        |
-| `qa/README.md`              | The CI and scheduled-workflow table                                         |
+| File                        | What it holds                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| `qa/LAUNCH-CHECKLIST.md`    | Release gate runs of 4 and 10 September and 21 October, and the current decision |
+| `qa/FUNCTIONAL-AUDIT.md`    | Functional passes, 2 to 11 September                                             |
+| `qa/SECURITY-AUDIT.md`      | The 4 September privacy audit and the checklist for the next audit               |
+| `qa/ACCESSIBILITY-AUDIT.md` | Automated axe findings; keyboard and screen-reader journeys not yet audited      |
+| `qa/PERFORMANCE-AUDIT.md`   | The local load test of 7 September and the bundle budgets                        |
+| `qa/REGRESSION-AUDIT.md`    | Which closed defect each test guards                                             |
+| `qa/README.md`              | The CI and scheduled-workflow table                                              |
 
 ### 5. Operating lessons
 

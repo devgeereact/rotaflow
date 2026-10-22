@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **The release gate re-run on every work-queue pull request merged together
+  (21 October 2026).** #344 to #354 merged into the work-queue branch: every local
+  gate passes, including 781 pgTAP assertions and the authenticated, offline and
+  service-worker browser specs. Two defects only the combination showed were fixed:
+  the motion chunk no longer loads on every page under Vite 8, and a sync-queue
+  test is no longer timing-dependent under React 19. The decision in
+  `qa/LAUNCH-CHECKLIST.md` is NOT READY FOR PRODUCTION on owner actions alone,
+  including O14: GitHub Actions has run nothing since 18 October.
 - **chore(deps): the framework majors (GAP-037).** React 19 with its types (the
   global `JSX` namespace is gone, so 305 files import the type from `react`), Vite 8
   with Rolldown (vendor chunks move to `codeSplitting.groups`; the entry chunk falls
