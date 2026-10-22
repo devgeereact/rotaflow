@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Info, MessageSquarePlus, ShieldCheck, Star } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';

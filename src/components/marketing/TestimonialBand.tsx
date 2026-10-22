@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Quote, ShieldCheck, WifiOff, FlaskConical, Lock } from 'lucide-react';
 import { TESTIMONIALS } from '@/lib/marketing';
 
@@ -56,7 +57,7 @@ export function TestimonialBand(): JSX.Element {
                 {quote}
               </blockquote>
               <figcaption className="mt-5 border-t border-surface-border pt-4 text-sm dark:border-surface-border-dark">
-                <span className="block font-semibold text-content dark:text-content-dark">
+                <span className="block font-medium text-content dark:text-content-dark">
                   {name}
                 </span>
                 <span className="text-content-muted dark:text-content-muted-dark">
@@ -73,7 +74,7 @@ export function TestimonialBand(): JSX.Element {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
       <div data-reveal className="mx-auto mb-12 max-w-2xl text-center">
-        <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
+        <h2 className="font-display text-3xl font-medium text-content md:text-4xl dark:text-content-dark">
           What we will put in writing
         </h2>
         <p className="mt-3 text-content-muted dark:text-content-muted-dark">
@@ -94,7 +95,7 @@ export function TestimonialBand(): JSX.Element {
               <Icon size={20} aria-hidden="true" />
             </span>
             <div>
-              <h3 className="font-display font-semibold text-content dark:text-content-dark">
+              <h3 className="font-display font-medium text-content dark:text-content-dark">
                 {title}
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">

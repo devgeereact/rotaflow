@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { X } from 'lucide-react';
 import { registerSW } from 'virtual:pwa-register';
 import { Button } from '@/components/ui/Button';

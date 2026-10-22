@@ -95,7 +95,7 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
       'Account: your first name, last name and email address, and a password held by our authentication provider, never by us in readable form. Set at sign-up or when you accept an invitation.',
       'Organisation setup: the organisation name, sector, team size, and the name and postal address of each site.',
       'Staff record: name, job title, department, contract type, contracted weekly hours, holiday allowance, skills, payroll identifier, start date, phone number, email address, a photograph if one is added, and which sites you work at.',
-      'Emergency contacts: the name, relationship and phone numbers of somebody you nominate. Earlier versions also had a free-text medical notes field described as "allergies, conditions". The product no longer asks for it or shows it, but anything typed into it before then is still held until it is removed. That is health information, and it is about you and sometimes about the person you nominated.',
+      'Emergency contacts: the name, relationship and phone numbers of somebody you nominate. Earlier versions also had a free-text medical notes field described as "allergies, conditions". It was removed from the product, and on 22 October 2026 the column itself was deleted from the database; none was held when it went.',
       'Documents: a type, a name or number, dates, and a web address pointing at wherever the employer keeps the file. The product asks only for the type, number and expiry and tells the employer to keep the document itself in their own HR system, but the type is still free text, so right-to-work, DBS and visa detail can end up here if somebody types it.',
       'Pay: an hourly rate and an effective date.',
       'Working time: shifts, availability, timesheets, overtime claims and their reasons, shift swaps and any note attached, and leave requests including the type of leave and a free-text reason. Leave type includes sickness.',
@@ -144,8 +144,8 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     id: 'special-category',
     heading: 'Health information and other sensitive detail',
     body: [
-      'Two things in the product are special category data under Article 9, and both are named here rather than buried.',
-      'The first is the medical notes field on an emergency contact, which is no longer collected or shown but still holds whatever was typed into it before. The second is sickness absence: leave has a type, and one of the types is sick, which makes an absence record a health record about a named person. The leave reason box asks people not to include medical details.',
+      'One thing in the product is special category data under Article 9, and it is named here rather than buried.',
+      'It is sickness absence: leave has a type, and one of the types is sick, which makes an absence record a health record about a named person. The leave reason box asks people not to include medical details. A medical notes field on emergency contacts used to be a second example; it was deleted, with its database column, on 22 October 2026.',
       'One deliberate protection is worth stating because it was built for exactly this reason. When a manager uses the AI assistant, staff job titles, skills, contracted hours and the dates of approved leave are sent to the model provider so it can draft a rota, with each person identified by a short code such as S1 rather than by name. The type of leave is deliberately not sent, so an absence cannot be read as sickness by anybody outside the organisation.',
     ],
     status: 'legal-review',
@@ -215,15 +215,15 @@ export const PRIVACY_NOTICE_SECTIONS: readonly NoticeSection[] = [
     heading: 'Your rights, and how to use them',
     body: [
       'You can ask for a copy of what is held about you, ask for it to be corrected, ask for it to be deleted, ask us to restrict or stop a particular use, ask for it in a portable form, and withdraw any consent you gave. Where an employer is the controller, the request goes to them and we support it.',
-      'There is no self-service button for an individual, and rather than imply otherwise: write to support@rotaflow.space. Every request is logged in a register with a due date one month from receipt, extendable by two further months where a request is complex, and cannot be closed without recording what was done.',
+      'If you have an account, open My account, then Your data, to ask for a copy, a portable file, a correction or for your account to be closed. That page files the request; it does not hand over or delete anything on the spot, because an employer’s records need checking first. Without an account, or for anything else, write to support@rotaflow.space. Every request is logged in a register with a due date one month from receipt, extendable by two further months where a request is complex, and cannot be closed without recording what was done.',
       'A manager or owner can export a single person’s employment record as a file covering thirteen sets of data, and can export or delete the whole organisation.',
-      'Deleting a person does not delete their rota. It replaces their name, email address, phone number, photograph and payroll identifier, removes their emergency contacts and documents, revokes any calendar link they had, and leaves the shifts and clock events attached to an anonymous record so the business still has a history of who was covered when. One limitation is worth knowing: the database row pointing at an uploaded file is removed, but the file itself is not deleted from the image host.',
+      'Deleting a person does not delete their rota. It replaces their name, email address, phone number, photograph and payroll identifier, removes their emergency contacts and documents, revokes any calendar link they had, and leaves the shifts and clock events attached to an anonymous record so the business still has a history of who was covered when. A document or photograph uploaded to RotaFlow is deleted with its record: the file is queued for removal in the same step and taken out of storage within minutes. When an erasure request is completed, the person’s RotaFlow login is removed too. One limitation is worth knowing: a document or photograph added as a link before uploads existed is a link to wherever it is hosted, so the link is removed but the file at the other end is not.',
     ],
     status: 'owner-input',
     outstanding:
-      'The one-month response time is what the register computes; whether it is the right commitment to publish for both UK and EEA users needs confirming. Uploaded files surviving an erasure is a real gap with no fix wired — it needs an owner decision about the image host before this paragraph can be softened.',
+      'The one-month response time is what the register computes; whether it is the right commitment to publish for both UK and EEA users needs confirming. The "within minutes" and login sentences are true only once the purge-storage and delete-account Edge Functions are deployed (0159, 0162; functions never deploy on merge), so deploy both before a build with this paragraph reaches the live site.',
     evidence:
-      'supabase/migrations/0020_gdpr_requests.sql, 0111_erasure_misses_email.sql, src/services/gdprService.ts',
+      'supabase/migrations/0020_gdpr_requests.sql, 0111_erasure_misses_email.sql, 0159_a_document_is_kept_privately.sql, 0160_a_person_can_ask_for_their_own_data.sql, 0162_a_photo_and_a_login_go_with_an_erasure.sql, src/services/gdprService.ts, src/pages/app/account/YourDataPage.tsx',
   },
   {
     id: 'automated-decisions',

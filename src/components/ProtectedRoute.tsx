@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { MfaGate } from '@/components/auth/MfaGate';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';

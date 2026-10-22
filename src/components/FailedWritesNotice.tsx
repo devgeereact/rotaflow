@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/Button';

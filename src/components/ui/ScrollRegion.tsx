@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import {
   useCallback,
   useEffect,
@@ -28,7 +29,7 @@ interface ScrollRegionProps {
    * the middle of a three-week canvas. Read-only from the region's side; it
    * still owns the overflow measurement.
    */
-  viewportRef?: RefObject<HTMLDivElement>;
+  viewportRef?: RefObject<HTMLDivElement | null>;
 }
 
 /**

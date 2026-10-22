@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { cleanup, render } from '@testing-library/react';
-import { useRef } from 'react';
+import { useRef, type JSX } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useMarketingMotion } from '@/components/marketing/motion/useMarketingMotion';

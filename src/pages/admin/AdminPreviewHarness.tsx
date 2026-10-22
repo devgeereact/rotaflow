@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminShell } from '@/components/layout/AdminShell';
 import { OrgContext, type OrgContextValue } from '@/context/OrgContext';

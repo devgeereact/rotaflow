@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, Calendar, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 import { BrandMark } from '@/components/ui/BrandMark';

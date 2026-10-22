@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Card } from '@/components/ui/Card';
 import { StaffLinkButton } from '@/components/staff/StaffLinkButton';
 import { StaffSectionHeader } from '@/components/staff/StaffSectionHeader';

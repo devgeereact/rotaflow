@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Callout } from '@/components/ui/Callout';

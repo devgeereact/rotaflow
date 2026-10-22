@@ -293,6 +293,13 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     group: 'Account',
     icon: UserCircle,
   },
+  {
+    label: 'Your data',
+    keywords: 'gdpr privacy copy export download delete erase close account correction',
+    to: '/app/account/data',
+    group: 'Account',
+    icon: UserCircle,
+  },
 ] as const;
 
 /** Group order in the results list. Most-used first, account last. */

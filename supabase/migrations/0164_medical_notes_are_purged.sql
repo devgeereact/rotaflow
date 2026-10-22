@@ -1,0 +1,24 @@
+-- =====================================================================
+-- 0164 — medical notes are purged (GAP-058, decision D5)
+--
+-- `emergency_contacts.medical_notes` (0002) was a free-text field for
+-- health information about a staff member's emergency contact: Article 9
+-- data about somebody who never visited the site and has no rights channel
+-- here. The form stopped collecting it and the client types stopped carrying
+-- it on 2026-09-04 (`src/types/index.ts`, `emergencyContactService.ts`
+-- names its columns). Decision D5 was to remove the column once any stored
+-- values had been exported for the owner (owner action O11).
+--
+-- That export is moot. On 2026-10-22 a count-only read of production,
+-- approved by the owner, returned 0 rows in `emergency_contacts` and 0 rows
+-- with a non-blank `medical_notes`. Nothing is lost by dropping it.
+--
+-- Nothing else depends on the column: no view, function, policy, trigger,
+-- index or column-level grant names it (grants on this table are table-wide,
+-- 0056). The subject-access export reads `select *`, which simply stops
+-- returning the key.
+--
+-- SAFETY(drop_column): production held no row in emergency_contacts on 2026-10-22 (count-only read approved by the owner); the column has not been written by the app since 2026-09-04
+-- =====================================================================
+
+alter table public.emergency_contacts drop column if exists medical_notes;

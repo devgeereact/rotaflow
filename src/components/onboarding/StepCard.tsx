@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 

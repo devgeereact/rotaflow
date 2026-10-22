@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 

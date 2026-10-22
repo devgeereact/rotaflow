@@ -39,18 +39,33 @@ describe('useSyncQueue', () => {
   });
 
   it('tells every other instance when one of them empties the outbox', async () => {
-    queued = [{ id: 'a' }];
-    services.listQueuedWrites.mockImplementation(() => Promise.resolve(queued));
-    services.listDeadLetteredWrites.mockResolvedValue([]);
-    // The Web Lock, as the browser applies it: the first flush holds it and
-    // does the work slowly; a flush that arrives meanwhile gets nothing and
-    // returns at once, while the write is still in the outbox.
+    // A store of this test's own, so a flush still settling after the test
+    // ends cannot empty the next test's outbox.
+    let outbox = [{ id: 'a' }];
+    // The Web Lock, as the browser applies it: the first flush holds it; a
+    // flush that arrives meanwhile gets nothing, returns at once and reads the
+    // list while the write is still in the outbox. The first flush finishes only
+    // after that read, so the overlap is the same however loaded the machine is.
     let held = false;
+    let secondFlushed = false;
+    let staleRead: () => void = () => undefined;
+    const readMidFlight = new Promise<void>((resolve) => {
+      staleRead = resolve;
+    });
+    services.listQueuedWrites.mockImplementation(() => {
+      const snapshot = outbox;
+      if (secondFlushed) staleRead();
+      return Promise.resolve(snapshot);
+    });
+    services.listDeadLetteredWrites.mockResolvedValue([]);
     services.flushQueuedWrites.mockImplementation(async () => {
-      if (held) return { synced: 0, failed: 0, deadLettered: 0 };
+      if (held) {
+        secondFlushed = true;
+        return { synced: 0, failed: 0, deadLettered: 0 };
+      }
       held = true;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      queued = [];
+      await readMidFlight;
+      outbox = [];
       held = false;
       return { synced: 1, failed: 0, deadLettered: 0 };
     });
@@ -61,9 +76,15 @@ describe('useSyncQueue', () => {
 
     // Both mount with work waiting and both flush on start. One wins the lock;
     // the other reads the list mid-flight and, on its own, would keep it.
-    await waitFor(() => expect(shell.result.current.pending).toHaveLength(0));
-    await waitFor(() => expect(screen.result.current.pending).toHaveLength(0));
-    expect(services.flushQueuedWrites).toHaveBeenCalledTimes(2);
+    // `pending` starts empty, so wait for both flushes before asserting it is
+    // empty again, or the check can pass before either instance has loaded.
+    await waitFor(() => expect(services.flushQueuedWrites).toHaveBeenCalledTimes(2));
+    await waitFor(() => {
+      expect(shell.result.current.syncing).toBe(false);
+      expect(screen.result.current.syncing).toBe(false);
+    });
+    expect(shell.result.current.pending).toHaveLength(0);
+    expect(screen.result.current.pending).toHaveLength(0);
   });
 
   it('refreshes on the announcement alone, without flushing in reply', async () => {

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/types/database.types';
+import type { InvoiceLinks } from '@/lib/billingState';
 
 export type Plan = Tables<'plans'>;
 
@@ -85,4 +86,60 @@ export async function openBillingPortal(orgId: string): Promise<void> {
     throw new Error(result.data?.error || 'Could not open billing portal');
   }
   window.location.href = result.data.url;
+}
+
+/**
+ * Writes the organisation's billing contact (its contact email) to the Stripe
+ * customer, so receipts and invoices go there (GAP-128). The server reads the
+ * stored address; the browser sends only the organisation. Returns the
+ * address Stripe now holds.
+ */
+export async function syncBillingContact(orgId: string): Promise<string> {
+  const result = await supabase.functions.invoke<{ email?: string; error?: string }>(
+    'billing-account',
+    { body: { action: 'sync_contact', orgId } },
+  );
+  if (result.error) {
+    throw new Error(
+      await extractFunctionErrorMessage(
+        result.error,
+        'Could not update the billing contact in Stripe',
+      ),
+    );
+  }
+  if (!result.data?.email) {
+    throw new Error(
+      result.data?.error || 'Could not update the billing contact in Stripe',
+    );
+  }
+  return result.data.email;
+}
+
+/**
+ * Asks Stripe for an invoice's current links (GAP-129). A stored hosted link
+ * expires 30 to 120 days after the invoice is due; retrieving the invoice is
+ * the only way to get a working one. The invoice is named by RotaFlow's own
+ * row id, never a Stripe id.
+ */
+export async function refreshInvoiceLinks(
+  orgId: string,
+  invoiceId: string,
+): Promise<InvoiceLinks> {
+  const result = await supabase.functions.invoke<InvoiceLinks & { error?: string }>(
+    'billing-account',
+    { body: { action: 'invoice_links', orgId, invoiceId } },
+  );
+  if (result.error) {
+    throw new Error(
+      await extractFunctionErrorMessage(
+        result.error,
+        'Could not get a fresh invoice link',
+      ),
+    );
+  }
+  if (!result.data) throw new Error('Could not get a fresh invoice link');
+  return {
+    hosted_invoice_url: result.data.hosted_invoice_url ?? null,
+    invoice_pdf: result.data.invoice_pdf ?? null,
+  };
 }

@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type JSX } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { usePersonalPreferences } from '@/hooks/usePersonalPreferences';
+import { weekStartsOn } from '@/lib/personalPreferences';
 import { listLocations } from '@/services/locationService';
 import { listActiveStaff, getMyStaffProfile } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
@@ -24,9 +26,11 @@ import { isWeekPublished } from '@/lib/rotaRollup';
 import { downloadIcs } from '@/lib/ics';
 import {
   calendarFeedUrl,
-  getMyCalendarFeedToken,
+  getMyCalendarFeed,
   issueMyCalendarFeedToken,
 } from '@/services/calendarFeedService';
+import { calendarFeedState, type CalendarFeedState } from '@/lib/calendarFeed';
+import { useConfirm } from '@/hooks/useConfirm';
 import { reportError } from '@/lib/sentry';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -50,7 +54,12 @@ export function SchedulePage(): JSX.Element {
   const { canBuildRota } = usePermissions();
   const { user } = useSupabaseAuth();
   const { showError, showSuccess } = useToast();
+  const { confirm } = useConfirm();
   const isManager = canBuildRota;
+  // A personal choice (0163) for the staff week only; the manager's roster
+  // summary stays on the rota builder's Monday week.
+  const { weekStart } = usePersonalPreferences();
+  const myWeekStartsOn = weekStartsOn(weekStart);
 
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -75,6 +84,9 @@ export function SchedulePage(): JSX.Element {
   const [myWeekPublished, setMyWeekPublished] = useState(false);
   const [weekStartLabel, setWeekStartLabel] = useState('');
   const [weekDates, setWeekDates] = useState<string[]>([]);
+  // Null until read, and when the read fails: the rota is the point of this
+  // screen, so a feed lookup that fails hides the feed line, not the rota.
+  const [feed, setFeed] = useState<CalendarFeedState | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     if (!orgId || !user) return;
@@ -95,9 +107,9 @@ export function SchedulePage(): JSX.Element {
       const timezone = reporting.timezone || DEFAULT_TZ;
       setReportingTimezone(timezone);
       const today = operationalToday;
-      const week = resolvePeriod('week', today, timezone);
 
       if (isManager) {
+        const week = resolvePeriod('week', today, timezone);
         const day = resolvePeriod('day', today, timezone);
         setTodayLabel(day.label);
         const staffRows = await listActiveStaff(orgId);
@@ -130,6 +142,7 @@ export function SchedulePage(): JSX.Element {
         setLeave(leaveRows);
         setAttendance(attendanceDay.counts);
       } else {
+        const week = resolvePeriod('week', today, timezone, myWeekStartsOn);
         setWeekStartLabel(
           new Date(`${week.dates[0]}T00:00:00`).toLocaleDateString('en-GB', {
             day: 'numeric',
@@ -168,7 +181,7 @@ export function SchedulePage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [orgId, user, isManager, operationalToday, showError]);
+  }, [orgId, user, isManager, operationalToday, myWeekStartsOn, showError]);
 
   useEffect(() => {
     void load();
@@ -181,21 +194,40 @@ export function SchedulePage(): JSX.Element {
     onChange: () => void load(),
   });
 
+  useEffect(() => {
+    if (!orgId || isManager) return;
+    let cancelled = false;
+    getMyCalendarFeed(orgId)
+      .then((row) => {
+        if (!cancelled) setFeed(calendarFeedState(row));
+      })
+      .catch((err: unknown) => {
+        reportError(err, { area: 'schedule:feed-state' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, isManager]);
+
   /**
    * Hand over the subscription URL (CAP-063).
    *
    * Issuing is idempotent from the person's point of view — `0099` revokes
    * any live token and creates a new one in the same transaction — so this
-   * reads first and only issues when there is nothing. Pressing it twice
-   * should not silently break the subscription already on their phone.
+   * reads first and only issues when there is no WORKING link. Pressing it
+   * twice should not silently break the subscription already on their phone,
+   * and a link idle past 90 days (GAP-052) is not working, so it is replaced.
    */
   const handleSubscribe = useCallback(async (): Promise<void> => {
     if (!orgId) return;
     try {
-      const existing = await getMyCalendarFeedToken(orgId);
-      const token = existing ?? (await issueMyCalendarFeedToken(orgId));
-      const url = calendarFeedUrl(token);
-      await navigator.clipboard.writeText(url);
+      const current = calendarFeedState(await getMyCalendarFeed(orgId));
+      const token =
+        current.kind === 'live' ? current.token : await issueMyCalendarFeedToken(orgId);
+      await navigator.clipboard.writeText(calendarFeedUrl(token));
+      setFeed(
+        current.kind === 'live' ? current : { kind: 'live', token, lastUsedAt: null },
+      );
       showSuccess(
         'Calendar link copied. Add it in your calendar app as a subscription — it updates itself when the rota changes.',
       );
@@ -204,6 +236,32 @@ export function SchedulePage(): JSX.Element {
       showError('Could not create a calendar link. Please try again.');
     }
   }, [orgId, showSuccess, showError]);
+
+  /**
+   * Rotate the link (GAP-052). The way to stop a URL that has been shared by
+   * mistake: the old one returns an empty calendar from the moment this runs,
+   * so a calendar already subscribed with it needs the new one.
+   */
+  const handleResetFeed = useCallback(async (): Promise<void> => {
+    if (!orgId) return;
+    const ok = await confirm({
+      title: 'Reset your calendar link?',
+      message:
+        'The current link stops working straight away. Any calendar subscribed with it will stop updating until you add the new link, which is copied for you.',
+      confirmLabel: 'Reset link',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const token = await issueMyCalendarFeedToken(orgId);
+      await navigator.clipboard.writeText(calendarFeedUrl(token));
+      setFeed({ kind: 'live', token, lastUsedAt: null });
+      showSuccess('New calendar link copied. The old one no longer works.');
+    } catch (err) {
+      reportError(err, { area: 'schedule:reset-feed' });
+      showError('Could not reset the calendar link. Please try again.');
+    }
+  }, [orgId, confirm, showSuccess, showError]);
 
   const handleAddToCalendar = useCallback((): void => {
     if (myShifts.length === 0) {
@@ -272,6 +330,8 @@ export function SchedulePage(): JSX.Element {
       fallbackTimezone={locations[0]?.timezone ?? DEFAULT_TZ}
       onAddToCalendar={handleAddToCalendar}
       onSubscribe={() => void handleSubscribe()}
+      feed={feed}
+      onResetFeed={() => void handleResetFeed()}
     />
   );
 }

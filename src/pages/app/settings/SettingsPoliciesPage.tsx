@@ -1,6 +1,6 @@
 import { REGION_LABELS, type BankHolidayRegion } from '@/lib/bankHolidays';
 import { LEAVE_YEAR_START_MONTHS } from '@/lib/leaveYear';
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 'react';
 import { format } from 'date-fns';
 import { AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';

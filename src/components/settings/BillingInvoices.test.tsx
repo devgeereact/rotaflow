@@ -1,8 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BillingInvoices } from '@/components/settings/BillingInvoices';
 import type { OwnerInvoiceRow } from '@/lib/billingState';
 
@@ -70,5 +70,66 @@ describe('BillingInvoices', () => {
     render(<BillingInvoices invoices={[]} failed />);
     expect(screen.getByText(/could not be loaded/)).toBeTruthy();
     expect(screen.queryByText('No invoices yet')).toBeNull();
+  });
+
+  it('offers no refresh when the page supplies no way to refresh', () => {
+    render(<BillingInvoices invoices={[paid]} failed={false} />);
+    expect(screen.queryAllByRole('button', { name: /Refresh the links/ })).toHaveLength(
+      0,
+    );
+  });
+
+  it('replaces an expired link with the one Stripe returns', async () => {
+    const fresh = 'https://invoice.stripe.com/i/acct_1/test_a?s=fresh';
+    const onRefreshLinks = vi.fn().mockResolvedValue({
+      hosted_invoice_url: fresh,
+      invoice_pdf: paid.invoice_pdf,
+    });
+    render(
+      <BillingInvoices
+        invoices={[paid]}
+        failed={false}
+        onRefreshLinks={onRefreshLinks}
+      />,
+    );
+    const [button] = screen.getAllByRole('button', {
+      name: /Refresh the links for invoice RF-0001/,
+    });
+    if (!button) throw new Error('a refresh button should render');
+    fireEvent.click(button);
+    expect(onRefreshLinks).toHaveBeenCalledWith('a');
+    await waitFor(() => {
+      const [view] = screen.getAllByRole('link', { name: /View invoice RF-0001/ });
+      expect(view?.getAttribute('href')).toBe(fresh);
+    });
+  });
+
+  it('keeps the stored link when the refreshed one is not on a Stripe host', async () => {
+    const onRefreshLinks = vi.fn().mockResolvedValue({
+      hosted_invoice_url: 'https://evil.example/i/1',
+      invoice_pdf: null,
+    });
+    render(
+      <BillingInvoices
+        invoices={[paid]}
+        failed={false}
+        onRefreshLinks={onRefreshLinks}
+      />,
+    );
+    const [button] = screen.getAllByRole('button', { name: /Refresh the links/ });
+    if (!button) throw new Error('a refresh button should render');
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.getByText(/Stripe returned no link/)).toBeTruthy());
+    const [view] = screen.getAllByRole('link', { name: /View invoice RF-0001/ });
+    expect(view?.getAttribute('href')).toBe(paid.hosted_invoice_url);
+  });
+
+  it('offers no refresh on an invoice that was never issued through Stripe', () => {
+    render(
+      <BillingInvoices invoices={[manual]} failed={false} onRefreshLinks={vi.fn()} />,
+    );
+    expect(screen.queryAllByRole('button', { name: /Refresh the links/ })).toHaveLength(
+      0,
+    );
   });
 });

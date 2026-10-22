@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { CalendarDays, Clock, HeartPulse, Star, Umbrella } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';

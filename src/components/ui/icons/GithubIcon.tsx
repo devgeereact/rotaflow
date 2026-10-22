@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * GitHub "octocat" mark for OAuth buttons. Replaces the reference design's
  * Microsoft icon, since this project's second OAuth provider is GitHub (see

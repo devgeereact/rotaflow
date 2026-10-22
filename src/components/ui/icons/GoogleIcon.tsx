@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /**
  * Google "G" mark for OAuth buttons (docs/design/signup.png, docs/design/signin.png).
  * Not a `lucide-react` icon: brand logos are fixed multi-colour marks, not

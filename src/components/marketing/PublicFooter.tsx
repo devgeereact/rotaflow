@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { FOOTER_COLUMNS, TAGLINE } from '@/lib/marketing';
 import { BrandMark } from '@/components/ui/BrandMark';
@@ -33,7 +34,7 @@ export function PublicFooter(): JSX.Element {
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center gap-2">
               <BrandMark label={null} className="h-8 w-8" />
-              <span className="font-display text-lg font-bold text-content dark:text-content-dark">
+              <span className="font-display text-lg font-medium text-content dark:text-content-dark">
                 Rota
                 <span className="text-primary-ink dark:text-primary-ink-dark">Flow</span>
               </span>
@@ -45,7 +46,7 @@ export function PublicFooter(): JSX.Element {
 
           {FOOTER_COLUMNS.map(({ heading, links }) => (
             <nav key={heading} aria-label={heading}>
-              <h2 className="mb-3 text-sm font-semibold text-content dark:text-content-dark">
+              <h2 className="mb-3 text-sm font-medium text-content dark:text-content-dark">
                 {heading}
               </h2>
               <ul className="space-y-2.5">

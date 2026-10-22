@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Tabs } from '@/components/ui/Tabs';
 import { REQUEST_SECTIONS } from '@/lib/requestSections';

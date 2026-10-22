@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

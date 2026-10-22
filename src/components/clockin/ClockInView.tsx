@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { AttendanceStatusCard } from '@/components/clockin/AttendanceStatusCard';
 import { ClockActionPane } from '@/components/clockin/ClockActionPane';

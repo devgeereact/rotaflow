@@ -28,6 +28,7 @@ import type {
   StaffDocument,
   StaffStatus,
 } from '@/lib/staffDirectory';
+import { photoSource } from '@/lib/staffPhoto';
 
 /** Monday-first, matching the six dots the reference meter shows. */
 const METER_WEEKDAYS = [1, 2, 3, 4, 5, 6];
@@ -112,7 +113,7 @@ export function toDirectoryRow(
     id: profile.id,
     firstName: profile.first_name,
     lastName: profile.last_name,
-    photoUrl: profile.photo_url,
+    photoUrl: photoSource(profile),
     payrollId: profile.payroll_id ?? '-',
     role: profile.job_title ?? '-',
     roleCode: roleCodeFor(profile.job_title),
@@ -211,7 +212,7 @@ export function toStaffDetails(
     id: profile.id,
     firstName: profile.first_name,
     lastName: profile.last_name,
-    photoUrl: profile.photo_url,
+    photoUrl: photoSource(profile),
     role: profile.job_title ?? '-',
     location: locationNameFor(profile, context),
     email,

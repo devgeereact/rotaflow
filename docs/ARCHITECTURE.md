@@ -5,7 +5,7 @@
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                     Client Browser / Installed PWA                 │
-│      React 18 + Vite + Tailwind  ·  Service Worker (Workbox)        │
+│      React 19 + Vite + Tailwind  ·  Service Worker (Workbox)        │
 │      Served as static files from cPanel (public_html)              │
 └──────┬───────────────┬───────────────┬───────────────┬────────────┘
        │               │               │               │
@@ -68,6 +68,13 @@ currently break that with type-only imports — `clockinDemo`, `reportsDemo`,
 ```bash
 grep -ln "from '@/pages\|from '@/components" src/lib/*.ts
 ```
+
+**Formatting lives in `src/lib/format.ts`** (2026-10-21): `formatDate` for a
+`YYYY-MM-DD` value (read as components and printed in UTC, so the stored day is
+the day shown in every zone), `formatDateTime`, `formatTime` and `formatCount`,
+all in the product locale `APP_LOCALE` (`en-GB`, because every string is still
+an English literal). New screens use it; an inline `toLocaleString('en-GB')`
+moves to it when its screen is touched.
 
 **RotaFlow services** (typed Supabase data access, all `org_id`-scoped):
 `orgService`, `staffService`, `locationService`, `rotaService`, `shiftService`,
@@ -258,7 +265,11 @@ Offline example (staff clock-in with no signal)
 The server has **no Node/npm**. The build runs locally (or in CI) and only the static
 artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 
-1. `npm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps).
+1. `npm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps)
+   → `scripts/prerender.mjs`, which renders the sitemap pages and a not-found page with
+   the real component tree (`src/entry-prerender.tsx`, built for Node and discarded) into
+   `dist/prerendered/`. `src/main.tsx` hydrates a prerendered page when its
+   `data-prerendered` marker matches the path, and renders from empty otherwise.
 2. Deploy `dist/*` and root `.htaccess` into **this app's own docroot** (e.g.
    `~/<domain>/` or `public_html/<app>/`) via rsync-over-SSH, cPanel Git, or FTP.
    **Never** target a shared docroot, and dry-run any mirror-with-delete first.

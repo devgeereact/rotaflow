@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { ManagerLeave } from '@/components/leave/ManagerLeave';
 import { StaffLeave } from '@/components/leave/StaffLeave';
 import type { LeaveDisplayRow } from '@/components/leave/LeaveRowsTable';

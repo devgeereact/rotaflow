@@ -132,21 +132,13 @@ export type DepartmentInsert = Database['public']['Tables']['departments']['Inse
 export type DepartmentUpdate = Database['public']['Tables']['departments']['Update'];
 
 /*
- * `medical_notes` is left out of both client types on purpose (GAP-058, plan
- * S1). It is free-text health data about somebody who is not a user here, and
- * the product no longer collects or shows it. The column and the values
- * already stored in it are untouched until an owner-approved purge migration;
- * the subject-access export in `gdprService` still reads `*`, so anything held
- * is still disclosed to the person it is about until then.
+ * There is no `medical_notes` field: the column was dropped by `0164`
+ * (GAP-058). It held free-text health data about somebody who is not a user
+ * here, and production held no row when it went.
  */
-export type EmergencyContact = Omit<
-  Database['public']['Tables']['emergency_contacts']['Row'],
-  'medical_notes'
->;
-export type EmergencyContactInsert = Omit<
-  Database['public']['Tables']['emergency_contacts']['Insert'],
-  'medical_notes'
->;
+export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row'];
+export type EmergencyContactInsert =
+  Database['public']['Tables']['emergency_contacts']['Insert'];
 
 export type StaffDocument = Database['public']['Tables']['documents']['Row'];
 export type StaffDocumentInsert = Database['public']['Tables']['documents']['Insert'];

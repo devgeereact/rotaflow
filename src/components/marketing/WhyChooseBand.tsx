@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Check } from 'lucide-react';
 import { WHY_ROTAFLOW } from '@/lib/marketing';
 
@@ -14,7 +15,7 @@ export function WhyChooseBand(): JSX.Element {
     <section className="border-y border-surface-border bg-surface-subtle py-20 dark:border-surface-border-dark dark:bg-surface-subtle-dark">
       <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <div data-reveal>
-          <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
+          <h2 className="font-display text-3xl font-medium text-content md:text-4xl dark:text-content-dark">
             Why teams choose RotaFlow
           </h2>
           <p className="mt-4 max-w-md leading-relaxed text-content-muted dark:text-content-muted-dark">
@@ -30,7 +31,7 @@ export function WhyChooseBand(): JSX.Element {
                 <Check size={16} aria-hidden="true" />
               </span>
               <div>
-                <h3 className="font-display font-semibold text-content dark:text-content-dark">
+                <h3 className="font-display font-medium text-content dark:text-content-dark">
                   {title}
                 </h3>
                 <p className="mt-1 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -56,6 +56,7 @@ import type { LeaveDisplayRow } from '@/components/leave/LeaveRowsTable';
 import type { LeaveRequestDraft } from '@/components/leave/LeaveRequestModal';
 import type { LeaveStatus } from '@/lib/leaveRows';
 import type { Department, LeaveRequest, StaffProfile } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 /**
  * The muted line under the status pill. Only ever states what the row
@@ -199,7 +200,7 @@ export function LeavePage(): JSX.Element {
           firstName: person?.first_name ?? 'Former',
           lastName: person?.last_name ?? 'member',
           department,
-          photoUrl: person?.photo_url ?? null,
+          photoUrl: photoSource(person),
           type: leaveTypeKey(request.type),
           dateLabel: formatLeaveRange(request.start_date, request.end_date),
           durationDays: leaveDayCount(

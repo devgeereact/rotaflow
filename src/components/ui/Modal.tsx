@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type JSX } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
 

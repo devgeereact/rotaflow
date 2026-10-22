@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type JSX } from 'react';
 import { Link2, Link2Off, Mail, ShieldCheck } from 'lucide-react';
 import type { UserIdentity } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';

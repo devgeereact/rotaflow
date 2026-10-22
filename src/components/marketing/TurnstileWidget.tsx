@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, type JSX } from 'react';
 
 /**
  * Cloudflare Turnstile, rendered explicitly, for the contact form.

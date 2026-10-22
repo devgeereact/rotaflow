@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ChevronDown, ChevronLeft, CircleCheck, Mail, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/Badge';

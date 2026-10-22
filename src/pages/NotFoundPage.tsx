@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { MarketingLayout } from '@/components/marketing/MarketingLayout';
@@ -16,10 +17,12 @@ import { MARKETING_NAV } from '@/lib/marketing';
  * Wrapping it in `MarketingLayout` gives it the nav and footer, so the way out
  * is the same one every other public page offers.
  *
- * `noindex` because the SPA fallback answers an unknown path with HTTP 200:
- * the server cannot tell a crawler this page does not exist, so the page has
- * to say so itself. A crawler that already has a dead URL should drop it
- * rather than index sixteen identical "not found" pages.
+ * `noindex` because, until 2026-10-22, the SPA fallback answered an unknown
+ * path with HTTP 200 and the page had to say so itself. `.htaccess` now
+ * answers an unknown path with a real 404 and the prerendered copy of this
+ * page (`scripts/prerender.mjs`), but an installed client navigating through
+ * its service worker still reaches this route with no status at all, so the
+ * `noindex` stays.
  */
 export function NotFoundPage(): JSX.Element {
   return (

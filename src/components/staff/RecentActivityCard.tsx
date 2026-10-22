@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { CircleCheck, FileText, Repeat, Umbrella } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';

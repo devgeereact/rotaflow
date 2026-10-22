@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { cn } from '@/lib/utils';
 import { LEAVE_STATUS_LABEL, LEAVE_STATUS_TONE } from '@/lib/leaveStatus';
 import type { LeaveStatus } from '@/lib/leaveRows';

@@ -256,7 +256,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 156 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 164 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -304,7 +304,9 @@ actually completes, which is exactly how the original bug hid for two weeks.
 `public.gdpr_requests` (migration `0020`) tracks all six request types —
 `access`, `portability`, `rectification`, `erasure`, `restriction`,
 `objection` — as a case-managed workflow in `/admin/gdpr`, not an automated
-self-service flow. What each type actually does today:
+self-service flow. Since 2026-10-21 (`0160`, GAP-057) a signed-in person can file
+access, portability, rectification or erasure for themselves from My account, Your
+data; that files the case, it does not fulfil it. What each type actually does today:
 
 - **Erasure**, real, callable, and live-verified 2026-08-13 — **and incomplete
   from that day until 2026-08-31**, which is worth reading before trusting any
@@ -327,11 +329,18 @@ self-service flow. What each type actually does today:
   `audit_logs` row (`gdpr_anonymize`) recording who did it and when. It
   deliberately leaves `shifts`/`clock_events`/`leave_requests`/`shift_swaps`/
   `timesheets` intact (now pointing at the anonymised "Deleted Member"), so
-  payroll history stays consistent for UK retention requirements. It does
-  not touch `auth.users` (needs the Auth Admin API, not yet wired to this
-  flow) and does not delete the file behind `documents.file_url` on
-  ImageKit, only the database row — both limits are in the migration's own
-  header, and neither was contradicted by the live test.
+  payroll history stays consistent for UK retention requirements. At the
+  time of that test it did not touch `auth.users` and did not delete the file
+  behind `documents.file_url`, only the database row. Since `0159` a document
+  is an upload to a private bucket, and deleting its row queues the file for
+  the `purge-storage` function in the same transaction. Since `0162` a staff
+  photo is an upload to the private `staff-photos` bucket, erasure clears it
+  and queues both of the person's folders, and closing an erasure case as
+  completed queues the person's login in `account_deletions` for the
+  `delete-account` function, which removes it through the Auth Admin API. The
+  case refuses to close when that deletion would fail: the subject is the last
+  owner of an organisation, or holds a platform role. A legacy pasted link is
+  still only a link.
 - **Access / portability**: an **organisation-level** one-click export exists —
   `exportOrganisationData()` (`src/services/orgLifecycleService.ts`) assembles
   **33** tables into a single JSON file from Settings → Organisation, read through
@@ -553,31 +562,32 @@ not legal advice.
 Grouped by where a person's information enters the system. "Subject" is who the
 data is about, which is not always who typed it.
 
-| #   | Collection point                                  | Fields                                                                                                                                                                              | Subject                                                    | Purpose                                        | Stored in                                                                         | Evidence                                                       |
-| --- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| C1  | Sign-up                                           | first name, last name, email, password                                                                                                                                              | account holder                                             | create an account                              | `auth.users`, `profiles`                                                          | `src/pages/SignupPage.tsx`                                     |
-| C2  | Sign-in, magic link, OAuth                        | email, password, provider identity                                                                                                                                                  | account holder                                             | authenticate                                   | Supabase Auth                                                                     | `src/pages/LoginPage.tsx`                                      |
-| C3  | Password reset                                    | email, new password                                                                                                                                                                 | account holder                                             | account recovery                               | Supabase Auth                                                                     | `src/pages/ForgotPasswordPage.tsx`                             |
-| C4  | Organisation setup                                | org name, slug, sector, team size, site name, **site postal address**, coordinates, geofence radius                                                                                 | the organisation                                           | provision the tenant                           | `organisations`, `locations`                                                      | `src/components/onboarding/StepAbout.tsx`                      |
-| C5  | Invitations                                       | colleague email, role, location, department                                                                                                                                         | the invitee                                                | onboard staff                                  | `invites`                                                                         | `src/components/settings/TeamInviteManager.tsx`                |
-| C6  | Staff record (manager-entered)                    | name, job title, department, contract type, weekly hours, holiday allowance, skills, **payroll id**, start date, **phone**, **email**, sites, photo URL                             | the staff member                                           | scheduling and pay                             | `staff_profiles`                                                                  | `src/components/staff/StaffFormModal.tsx`                      |
-| C7  | Own profile                                       | full name, phone, photo URL                                                                                                                                                         | the staff member                                           | keep the record current                        | `profiles`, `staff_profiles`                                                      | `src/pages/app/account/ProfilePage.tsx`                        |
-| C8  | Emergency contacts                                | contact name, relationship, phone, second phone. **Medical notes** no longer collected or shown (2026-10-11); values entered before then remain stored                              | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                              | `src/components/staff/EmergencyContactsModal.tsx`              |
-| C9  | Documents                                         | free-text type (no longer suggests DBS or right to work), name or number, **URL**, issue and expiry dates                                                                           | the staff member                                           | compliance records                             | `documents`                                                                       | `src/components/staff/DocumentsModal.tsx`                      |
-| C10 | Pay rates                                         | hourly rate, effective date, note                                                                                                                                                   | the staff member                                           | labour cost and payroll export                 | `staff_pay_rates`                                                                 | `supabase/migrations/0104_pay_rates.sql`                       |
-| C11 | Leave                                             | **type (includes `sick`)**, dates, free-text reason                                                                                                                                 | the staff member                                           | absence management                             | `leave_requests`                                                                  | `src/components/leave/LeaveRequestModal.tsx`                   |
-| C12 | Clock in / out                                    | time, method, **latitude, longitude, accuracy**, location name                                                                                                                      | the staff member                                           | attendance and pay                             | `clock_events`                                                                    | `src/pages/app/ClockInPage.tsx`, `src/hooks/useGeolocation.ts` |
-| C13 | Shifts, swaps, overtime, availability, timesheets | dates, times, notes visible to colleagues, reasons                                                                                                                                  | the staff member                                           | scheduling                                     | `shifts`, `shift_swaps`, `overtime_requests`, `availability`, `timesheets`        | `src/components/swaps/`, `src/components/overtime/`            |
-| C14 | In-app support                                    | message bodies, replies, rating, requester email                                                                                                                                    | the requester                                              | answer the request                             | `support_cases`, `support_case_messages`                                          | `src/services/supportCaseService.ts`                           |
-| C15 | Website contact form                              | name, work email, organisation, sector, team size, message, wants a demo, **marketing consent (unticked by default)**; server-side an **HMAC of the IP address** and the user agent | the enquirer                                               | reply to an enquiry                            | `enquiries` (platform-wide, no `org_id`), read by operational platform roles only | `supabase/functions/public-enquiry/index.ts`, `0155`           |
-| C16 | AI assistant                                      | manager's free-text prompt, plus assembled staff context                                                                                                                            | the staff scheduled                                        | draft a rota or an announcement                | prompt not stored; output reviewed before saving                                  | `supabase/functions/ai-rota-assistant/index.ts`                |
-| C17 | Billing                                           | email and card details **entered on Stripe's page**, org id, plan code, Stripe's invoice page and PDF links (unguessable, expire within 120 days, `0156`)                           | the payer                                                  | take payment                                   | Stripe; `subscriptions`, `invoices` locally                                       | `supabase/functions/create-checkout-session/index.ts`          |
-| C18 | Push notifications                                | endpoint, `p256dh`, `auth` keys                                                                                                                                                     | the device owner                                           | deliver notifications                          | `push_subscriptions`                                                              | `src/hooks/useWebPush.ts`                                      |
-| C19 | Audit trail                                       | actor id, **actor email and name snapshots**, **IP address**, **user agent**, action metadata                                                                                       | the actor                                                  | security and accountability                    | `audit_logs`                                                                      | `supabase/migrations/0016_audit_events.sql`                    |
-| C20 | Sessions                                          | user agent, last seen                                                                                                                                                               | the account holder                                         | let a person see and revoke their own sessions | `own_sessions`                                                                    | `supabase/migrations/0100_own_sessions.sql`                    |
-| C21 | Crash reports                                     | stack trace, page path, breadcrumbs                                                                                                                                                 | whoever hit the error                                      | fix faults                                     | Sentry (EU)                                                                       | `src/lib/sentry.ts`                                            |
-| C22 | Org SMTP settings                                 | host, port, user, **password**, from address                                                                                                                                        | the organisation                                           | send mail as the customer                      | `org_smtp_settings`                                                               | `src/pages/app/settings/SettingsIntegrationsPage.tsx`          |
-| C23 | Calendar feed                                     | token in a URL, then that person's shifts, times, locations, notes                                                                                                                  | the staff member                                           | subscribe a calendar                           | `calendar_feed_tokens`                                                            | `supabase/functions/calendar-feed/index.ts`                    |
+| #   | Collection point                                  | Fields                                                                                                                                                                              | Subject                                                    | Purpose                                        | Stored in                                                                         | Evidence                                                           |
+| --- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| C1  | Sign-up                                           | first name, last name, email, password                                                                                                                                              | account holder                                             | create an account                              | `auth.users`, `profiles`                                                          | `src/pages/SignupPage.tsx`                                         |
+| C2  | Sign-in, magic link, OAuth                        | email, password, provider identity                                                                                                                                                  | account holder                                             | authenticate                                   | Supabase Auth                                                                     | `src/pages/LoginPage.tsx`                                          |
+| C3  | Password reset                                    | email, new password                                                                                                                                                                 | account holder                                             | account recovery                               | Supabase Auth                                                                     | `src/pages/ForgotPasswordPage.tsx`                                 |
+| C4  | Organisation setup                                | org name, slug, sector, team size, site name, **site postal address**, coordinates, geofence radius                                                                                 | the organisation                                           | provision the tenant                           | `organisations`, `locations`                                                      | `src/components/onboarding/StepAbout.tsx`                          |
+| C5  | Invitations                                       | colleague email, role, location, department                                                                                                                                         | the invitee                                                | onboard staff                                  | `invites`                                                                         | `src/components/settings/TeamInviteManager.tsx`                    |
+| C6  | Staff record (manager-entered)                    | name, job title, department, contract type, weekly hours, holiday allowance, skills, **payroll id**, start date, **phone**, **email**, sites, photo (legacy link)                   | the staff member                                           | scheduling and pay                             | `staff_profiles`                                                                  | `src/components/staff/StaffFormModal.tsx`                          |
+| C7  | Own profile                                       | full name, phone, photo upload (`staff-photos`, `0162`)                                                                                                                             | the staff member                                           | keep the record current                        | `profiles`, `staff_profiles`                                                      | `src/pages/app/account/ProfilePage.tsx`                            |
+| C8  | Emergency contacts                                | contact name, relationship, phone, second phone. **Medical notes** no longer collected or shown (2026-10-11); values entered before then remain stored                              | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                              | `src/components/staff/EmergencyContactsModal.tsx`                  |
+| C9  | Documents                                         | free-text type (no longer suggests DBS or right to work), name or number, **URL**, issue and expiry dates                                                                           | the staff member                                           | compliance records                             | `documents`                                                                       | `src/components/staff/DocumentsModal.tsx`                          |
+| C10 | Pay rates                                         | hourly rate, effective date, note                                                                                                                                                   | the staff member                                           | labour cost and payroll export                 | `staff_pay_rates`                                                                 | `supabase/migrations/0104_pay_rates.sql`                           |
+| C11 | Leave                                             | **type (includes `sick`)**, dates, free-text reason                                                                                                                                 | the staff member                                           | absence management                             | `leave_requests`                                                                  | `src/components/leave/LeaveRequestModal.tsx`                       |
+| C12 | Clock in / out                                    | time, method, **latitude, longitude, accuracy**, location name                                                                                                                      | the staff member                                           | attendance and pay                             | `clock_events`                                                                    | `src/pages/app/ClockInPage.tsx`, `src/hooks/useGeolocation.ts`     |
+| C13 | Shifts, swaps, overtime, availability, timesheets | dates, times, notes visible to colleagues, reasons                                                                                                                                  | the staff member                                           | scheduling                                     | `shifts`, `shift_swaps`, `overtime_requests`, `availability`, `timesheets`        | `src/components/swaps/`, `src/components/overtime/`                |
+| C14 | In-app support                                    | message bodies, replies, rating, requester email                                                                                                                                    | the requester                                              | answer the request                             | `support_cases`, `support_case_messages`                                          | `src/services/supportCaseService.ts`                               |
+| C15 | Website contact form                              | name, work email, organisation, sector, team size, message, wants a demo, **marketing consent (unticked by default)**; server-side an **HMAC of the IP address** and the user agent | the enquirer                                               | reply to an enquiry                            | `enquiries` (platform-wide, no `org_id`), read by operational platform roles only | `supabase/functions/public-enquiry/index.ts`, `0155`               |
+| C16 | AI assistant                                      | manager's free-text prompt, plus assembled staff context                                                                                                                            | the staff scheduled                                        | draft a rota or an announcement                | prompt not stored; output reviewed before saving                                  | `supabase/functions/ai-rota-assistant/index.ts`                    |
+| C17 | Billing                                           | email and card details **entered on Stripe's page**, org id, plan code, Stripe's invoice page and PDF links (unguessable, expire within 120 days, `0156`)                           | the payer                                                  | take payment                                   | Stripe; `subscriptions`, `invoices` locally                                       | `supabase/functions/create-checkout-session/index.ts`              |
+| C18 | Push notifications                                | endpoint, `p256dh`, `auth` keys                                                                                                                                                     | the device owner                                           | deliver notifications                          | `push_subscriptions`                                                              | `src/hooks/useWebPush.ts`                                          |
+| C19 | Audit trail                                       | actor id, **actor email and name snapshots**, **IP address**, **user agent**, action metadata                                                                                       | the actor                                                  | security and accountability                    | `audit_logs`                                                                      | `supabase/migrations/0016_audit_events.sql`                        |
+| C20 | Sessions                                          | user agent, last seen                                                                                                                                                               | the account holder                                         | let a person see and revoke their own sessions | `own_sessions`                                                                    | `supabase/migrations/0100_own_sessions.sql`                        |
+| C21 | Crash reports                                     | stack trace, page path, breadcrumbs                                                                                                                                                 | whoever hit the error                                      | fix faults                                     | Sentry (EU)                                                                       | `src/lib/sentry.ts`                                                |
+| C22 | Org SMTP settings                                 | host, port, user, **password**, from address                                                                                                                                        | the organisation                                           | send mail as the customer                      | `org_smtp_settings`                                                               | `src/pages/app/settings/SettingsIntegrationsPage.tsx`              |
+| C23 | Calendar feed                                     | token in a URL, then that person's shifts, times, locations, notes                                                                                                                  | the staff member                                           | subscribe a calendar                           | `calendar_feed_tokens`                                                            | `supabase/functions/calendar-feed/index.ts`                        |
+| C24 | Data requests                                     | the account's email and name, request kind, dates, status                                                                                                                           | the requester                                              | answer a UK GDPR request                       | `gdpr_requests`                                                                   | `supabase/migrations/0160_a_person_can_ask_for_their_own_data.sql` |
 
 #### Notes on the ones that carry the most risk
 
@@ -586,10 +596,10 @@ somebody who has no relationship with it at all. `medical_notes` was
 free text prompted with "Allergies, conditions", so it was Article 9 health data
 by design. Since 2026-10-11 (GAP-058, plan S1) the product no longer collects or
 shows it: the field is gone from the dialog, the client writes only the named
-columns and reads them by name. The column and any values already in it are
-untouched until an owner-approved purge migration; until then the subject-access
-export still reads `*` and so discloses a stored value to the person it is
-about. Hard-deleted on erasure. The leave reason field carries a hint not to
+columns and reads them by name. `0164` dropped the column itself (2026-10-22,
+decision D5); a count-only read of production that day, approved by the owner,
+found no row in `emergency_contacts` at all, so the planned export to owners
+(O11) had nothing to export. Hard-deleted on erasure. The leave reason field carries a hint not to
 include medical details. **REQUIRES LEGAL REVIEW:** Article 14
 notification duty, and how it divides between employer and processor.
 
@@ -599,10 +609,12 @@ immigration data landed in a column nothing was designed around by design. Phase
 1 of plan S2 (decision D4) removed that suggestion and changed the copy to
 "Record the document type, number and expiry. Keep the document itself in your
 own HR system." The field is still free text, and existing records are
-untouched, so such data can still be typed in or already be held. The link is
-still required, because `documents.file_url` is `not null` with an `https?://`
-check (`0002`, `0092`); making it optional needs a migration. It is a _link_, not an
-upload: erasure removes the row and cannot remove the file (GAP-056).
+untouched, so such data can still be typed in or already be held. Since `0159`
+the file is an upload to the private `staff-documents` bucket, readable only by
+the person and the organisation's owners and managers through a 60-second signed
+link, and erasure, removal and organisation deletion queue it for deletion
+(GAP-056, closed in code; `docs/DATA-MODEL.md` §4.15). Rows from before then keep
+their pasted link, which erasure cannot reach.
 
 **C11 — leave type.** `sick` makes an absence record a health record about a
 named person. Deliberately excluded from the AI prompt
@@ -621,7 +633,12 @@ the edge function does.
 
 **C23 — calendar feed.** Deployed `--no-verify-jwt`; the token in the query
 string _is_ the credential, and the function's own header says the URL is
-assumed leakable. Revocable, and revoked by erasure since `0111`.
+assumed leakable. Revocable, and revoked by erasure since `0111`. Since `0158`
+(GAP-052) a token that no calendar has read for 90 days stops working and is
+revoked on its next read, and more than 120 reads an hour for one person are
+refused with 429. The person rotates the link from "My rota" (Reset link). The
+token still travels in the query string, so it still reaches platform request
+logs: that is the cost of a client that cannot send a header.
 
 ---
 
@@ -703,19 +720,22 @@ From `retention_policies` (`0027`, `0092`, `0155`), enforced by `enforce_retenti
 nightly at 02:15 UTC (`0029`, fixed by `0057`), with each run recorded in
 `retention_runs`.
 
-| Data                                   | Period     | Trigger          | Method                                        | Enforced                                                 |
-| -------------------------------------- | ---------- | ---------------- | --------------------------------------------- | -------------------------------------------------------- |
-| Rota and shift history                 | 84 months  | shift start date | hard delete                                   | Yes                                                      |
-| Attendance, incl. GPS                  | 36 months  | event date       | hard delete                                   | Yes                                                      |
-| Leave                                  | 72 months  | end date         | hard delete                                   | Yes                                                      |
-| Support cases                          | 36 months  | resolution date  | hard delete                                   | Yes                                                      |
-| Notification delivery + settled outbox | 12 months  | creation         | hard delete                                   | Yes                                                      |
-| Website enquiries                      | 24 months  | arrival          | hard delete                                   | Yes (`0155`)                                             |
-| Audit log                              | indefinite | —                | append-only trigger refuses `UPDATE`/`DELETE` | By the database                                          |
-| Deleted tenant                         | immediate  | owner's action   | cascade across ~32 tables                     | **The declared 1-month grace window is not implemented** |
-| Platform health samples                | 90 days    | sample time      | pruned inside the probe                       | Yes                                                      |
-| `staff_pay_rates`                      | none       | —                | survives anonymisation, identifying nobody    | By decision                                              |
-| Uploaded files                         | **none**   | —                | **not deleted at all** (GAP-056)              | No                                                       |
+| Data                                   | Period                | Trigger          | Method                                                       | Enforced                                                 |
+| -------------------------------------- | --------------------- | ---------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
+| Rota and shift history                 | 84 months             | shift start date | hard delete                                                  | Yes                                                      |
+| Attendance, incl. GPS                  | 36 months             | event date       | hard delete                                                  | Yes                                                      |
+| Leave                                  | 72 months             | end date         | hard delete                                                  | Yes                                                      |
+| Support cases                          | 36 months             | resolution date  | hard delete                                                  | Yes                                                      |
+| Notification delivery + settled outbox | 12 months             | creation         | hard delete                                                  | Yes                                                      |
+| Website enquiries                      | 24 months             | arrival          | hard delete                                                  | Yes (`0155`)                                             |
+| Audit log                              | indefinite            | —                | append-only trigger refuses `UPDATE`/`DELETE`                | By the database                                          |
+| Deleted tenant                         | immediate             | owner's action   | cascade across ~32 tables                                    | **The declared 1-month grace window is not implemented** |
+| Platform health samples                | 90 days               | sample time      | pruned inside the probe                                      | Yes                                                      |
+| `staff_pay_rates`                      | none                  | —                | survives anonymisation, identifying nobody                   | By decision                                              |
+| Uploaded document files (`0159`)       | with their record     | record deleted   | queued by trigger, removed by `purge-storage` within minutes | Yes, once `purge-storage` is deployed                    |
+| Uploaded staff photos (`0162`)         | with their record     | replaced, erased | queued by trigger, removed by `purge-storage` within minutes | Yes, once `purge-storage` is deployed                    |
+| Login after a completed erasure        | until the case closes | case completed   | queued, removed by `delete-account` through the Admin API    | Yes, once `delete-account` is deployed                   |
+| Legacy pasted document links, photos   | **none**              | —                | the link is removed, the file is not                         | No                                                       |
 
 Nothing is anonymised by retention; every branch is a hard `DELETE`.
 
@@ -739,11 +759,17 @@ shortening.
 | Org export             | Yes               | 33 tables, one JSON file                         | `src/services/orgLifecycleService.ts:92-127` |
 | Org deletion           | Yes               | typed name confirmation, immediate cascade       | `0063_delete_organisation.sql`               |
 
-**No self-service anything for an individual** (GAP-057). `auth.users` is never
-touched by erasure (`0011:4-11`), so there is no account deletion in any real
-sense. Requests go by email into `gdpr_requests`, which computes a due date one
-month out, extendable by two with a recorded reason, and cannot be closed
-without an outcome note.
+**An individual can ask, but not act** (GAP-057). Since 2026-10-21 My account,
+Your data (`/app/account/data`) files an access, portability, rectification or
+erasure request for the signed-in person through `request_my_data` (`0160`); the
+subject is taken from `auth.users`, so the page cannot name anybody else, and
+`my_data_requests()` shows the person their own cases without the outcome note.
+Restriction and objection, and anyone without an account, still go by email. Every
+route lands in `gdpr_requests`, which computes a due date one month out,
+extendable by two with a recorded reason, and cannot be closed without an outcome
+note. Since `0162`, closing an erasure case as completed removes the person's
+login: the case queues it in `account_deletions`, and `delete-account` deletes it
+through the Auth Admin API once deployed.
 
 What erasure keeps, deliberately: shifts, clock events, leave, swaps,
 timesheets, availability, site assignments and pay rates, all repointed at an
@@ -786,8 +812,9 @@ right shape for this class of problem.
    pro-rata credit, what happens to data at the end of the billing grace
    window, VAT inclusive or exclusive, notice before suspension, any service
    level.
-6. **Uploaded files** (GAP-056). Erasure cannot reach them. Needs a decision
-   about the image host before the notice can stop admitting it.
+6. **Uploaded files** (GAP-056). Uploaded documents (`0159`) and photos (`0162`)
+   are deleted with their record once `purge-storage` is deployed. Legacy pasted
+   document and photo links are still links the product cannot delete through.
 7. **Minimum age** (GAP-060), and what an employer scheduling a 16- or
    17-year-old must be told.
 8. **Whether a DPA will be commissioned.** `docs/SAAS.md` CAP-059 says never;
@@ -798,9 +825,9 @@ right shape for this class of problem.
 ### 9. REQUIRES LEGAL REVIEW
 
 1. **Every lawful basis.** Proposed in the notice, confirmed by nobody.
-2. **The Article 9 condition** for sickness leave, and for the
-   `emergency_contacts.medical_notes` values still stored from before the field
-   was removed (2026-10-11).
+2. **The Article 9 condition** for sickness leave. (The other Article 9
+   field, `emergency_contacts.medical_notes`, was dropped by `0164` on
+   2026-10-22.)
 3. **Article 14** and emergency contacts (GAP-058).
 4. **Whether an email address alone satisfies Article 13** for a sole trader.
 5. **Transfer mechanism and risk assessment** for Stripe and OpenRouter.

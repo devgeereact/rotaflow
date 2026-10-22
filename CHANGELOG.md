@@ -13,23 +13,100 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
-- **fix(design): the thirteen unmatched workspace screens compared (GAP-088).** A
-  development-only `/settings-preview/*` harness mounts the real Settings and My
-  account pages against fixtures, so the nine screens that needed a session can be
-  captured at last. Each of the thirteen was compared with its mockup and with
-  `docs/design/ORGANISATION_WORKSPACE.html`, and its result recorded in
-  `docs/UX-SPEC.md`. Fixes from the pass: the audit trail's note no longer claims
-  only anonymisation is recorded, and the trail gains Area and Severity columns;
-  Settings and My account titles name the section; Profile shows recent account
-  activity; the boot screen's lockup matches the reference's size. The nine screens
-  joined the accessibility scan, which found two contrast failures used across the
-  app and now fixed: the active tab and the danger button were both 4.2 : 1.
-- **test: the recovered defects re-tested (GAP-115).** BUG-010's form-to-row
-  mapping moves to `src/lib/staffForm.ts` with a test naming every column it
-  writes, and the pgTAP grant invariants now cover those `staff_profiles` columns.
-  `send-invite`'s refusals and message move to `sendability.ts` under vitest
-  (behaviour unchanged). The only step left on GAP-115 is owner action O13: one
-  invitation sent into a real inbox.
+- **`@vitejs/plugin-react` 6 (22 October 2026).** The plugin no longer depends on
+  Babel; an `overrides` pin keeps npm from resolving its unused optional Babel 8
+  peer chain. eslint 10 and TypeScript 7 stay held: their plugins' latest releases
+  still peer to eslint 9 and TypeScript below 6.1. GAP-037.
+- **The public pages are prerendered, and an unknown path is a real 404 (22 October
+  2026).** `npm run build` now writes the fourteen sitemap pages and a not-found
+  page to `dist/prerendered/` (`scripts/prerender.mjs`), each with its own title,
+  description and canonical, and `src/main.tsx` hydrates them in place rather than
+  re-rendering. `.htaccess` serves those files, sends known app routes to
+  `index.html`, and answers everything else with HTTP 404; `htaccessRoutes.test.ts`
+  fails if a route in `App.tsx` and the `.htaccess` list drift apart. Live only
+  after a deploy with a composed `.htaccess` (`docs/DEPLOYMENT.md`).
+- **Every designed screen is matched (22 October 2026, GAP-088 closed).** From
+  `xl` the marketing hero sets the copy left and the product shot right, as its
+  reference does, and the website's headings take the two-weight rule. The
+  manager's availability view and six workspace screens are recorded as matched
+  against `docs/design/ORGANISATION_WORKSPACE.html`, whose PNGs it supersedes. Two
+  fixes from the re-check: the onboarding panel's wave no longer sits behind the
+  last feature's text, and the onboarding preview's location count agrees between
+  steps.
+- **Medical notes are gone from the database (22 October 2026, `0164`).** The
+  retired `emergency_contacts.medical_notes` column is dropped (GAP-058, decision
+  D5). A count-only read of production, approved by the owner, found no row in the
+  table, so the planned export to owners (O11) had nothing to export. The privacy
+  notice now names sickness absence as the only Article 9 data.
+- **Integrations lists what exists, and Preferences keeps three choices (22 October
+  2026, owner decisions, `0163`).** Settings, Integrations adds an "Also connected"
+  card (payroll CSV, calendar feed, Stripe billing state) and says direct payroll
+  and HR connections come later. My account, Preferences stores the clock format,
+  the first day of the person's own week (My rota only; rota weeks stay Monday to
+  Sunday) and an email summary choice, which is labelled as not sent yet. GAP-088.
+- **Unpaid Stripe invoices reach the Billing screen (22 October 2026).**
+  `stripe-webhook` handles `invoice.finalized`: an open invoice is listed with its
+  links before it is paid or fails. A status already held is never changed, and a
+  test-mode invoice never lands on a live organisation. Needs `stripe-webhook`
+  deployed and the endpoint subscribed to the event (O3). GAP-129.
+- **A staff photo and a login go with an erasure (GAP-056, GAP-057, `0162`).** A
+  staff photo is now an upload to a private `staff-photos` bucket from My account,
+  Profile, shown to colleagues through a signed link; replacing it or erasing the
+  person queues the file for `purge-storage`, which now handles both buckets.
+  Closing an erasure case as completed queues the person's login for the new
+  `delete-account` Edge Function, which removes it through the Auth Admin API, and
+  refuses to close while the person is an organisation's last owner or holds a
+  platform role. Both functions need deploying by hand (O3).
+- **The release gate re-run on every work-queue pull request merged together
+  (21 October 2026).** #344 to #354 merged into the work-queue branch: every local
+  gate passes, including 781 pgTAP assertions and the authenticated, offline and
+  service-worker browser specs. Two defects only the combination showed were fixed:
+  the motion chunk no longer loads on every page under Vite 8, and a sync-queue
+  test is no longer timing-dependent under React 19. The decision in
+  `qa/LAUNCH-CHECKLIST.md` is NOT READY FOR PRODUCTION on owner actions alone,
+  including O14: GitHub Actions has run nothing since 18 October.
+- **chore(deps): the framework majors (GAP-037).** React 19 with its types (the
+  global `JSX` namespace is gone, so 305 files import the type from `react`), Vite 8
+  with Rolldown (vendor chunks move to `codeSplitting.groups`; the entry chunk falls
+  from 97 to 51 KiB gzip), `vite-plugin-pwa` 2, `@vitejs/plugin-react` 5, TypeScript
+  6, vitest 5 with `@vitest/coverage-v8` 5 (moved together, which is why Dependabot
+  #342 failed), `eslint-plugin-react-refresh` 0.5 and the in-range updates. Still
+  held back, each with its reason in GAP-037: eslint 10, TypeScript 7,
+  `@vitejs/plugin-react` 6 and Sentry 11.
+- **feat(staff): documents are kept privately and deleted with their record (D4,
+  GAP-056, GAP-084).** `0159` adds a private `staff-documents` bucket with policies
+  that admit the person and their organisation's owners and managers, a
+  `storage_path` column (legacy pasted links still open), and a `storage_deletions`
+  queue filled by triggers when a document, person or organisation is deleted. The
+  new `purge-storage` Edge Function removes queued files, drained by a pg_cron job
+  every five minutes. The Documents dialog uploads a file and opens it through a
+  60-second signed link. Needs `supabase functions deploy purge-storage` before
+  files are actually removed.
+- **fix(calendar): a feed nobody reads stops working, and one read too often is
+  refused (GAP-052).** `0158` makes `calendar_feed_shifts` return nothing for a
+  token no calendar has read for 90 days, and revoke it, and limits reads to 120 an
+  hour per staff record through `consume_rate_limit`. `calendar-feed` answers the
+  refusal with 429 and `Retry-After`, and its iCalendar code moved to a tested
+  module. "My rota" shows when a calendar last read the feed and gains a Reset
+  link, so rotating no longer depends on support. The migration applies on merge;
+  the Edge Function needs a manual deploy.
+- **feat(account): a "Your data" tab, and one formatting module.** My account gains
+  Your data (`/app/account/data`): a signed-in person can ask for a copy, a portable
+  file, a correction or for their account to be closed, and see their own requests
+  with the date each will be answered. Each button files a case in the existing GDPR
+  register through `request_my_data` (`0160`), which takes the subject from the
+  account so it cannot name anybody else and returns an open case rather than
+  starting a second clock. Deleting the login behind an erasure is still open
+  (GAP-057). Dates on the account screens now come from `src/lib/format.ts`.
+- **feat(billing): a trial reminder, the billing contact in Stripe and fresh
+  invoice links (GAP-127, GAP-128, GAP-129).** `0157` adds a free trial ending
+  within three days to `enqueue_scheduled_alerts`: the owners of an organisation
+  still on its own trial get one "Your free trial ends on" notice naming the date, in the app
+  and by email, and nothing once a plan is chosen. A new owner-only Edge Function,
+  `billing-account`, writes the organisation's contact email to the Stripe customer
+  ("Use for Stripe invoices") and returns an invoice's current hosted page and PDF
+  links ("Refresh links"), because Stripe expires a stored link within 120 days.
+  `0157` applies to production on merge; `billing-account` needs deploying by name.
 - **test(offline): the queue, the service worker and the update prompt, in a
   browser and in CI (GAP-049, GAP-050, GAP-054, GAP-086).**
   `e2e/offline-clock-in.spec.ts` queues a clock-in with the network off and checks
@@ -43,6 +120,42 @@ Dependabot may be grouped into one line per week. The rule sits under
   reloads by itself when the signal returns. Fixed on the way: the clock screen kept saying
   "Sending 1 entry" after the shell had already sent it, because each
   `useSyncQueue` instance held its own list; they now announce changes to each other.
+- **test: the recovered defects re-tested (GAP-115).** BUG-010's form-to-row
+  mapping moves to `src/lib/staffForm.ts` with a test naming every column it
+  writes, and the pgTAP grant invariants now cover those `staff_profiles` columns.
+  `send-invite`'s refusals and message move to `sendability.ts` under vitest
+  (behaviour unchanged). The only step left on GAP-115 is owner action O13: one
+  invitation sent into a real inbox.
+- **fix(design): the thirteen unmatched workspace screens compared (GAP-088).** A
+  development-only `/settings-preview/*` harness mounts the real Settings and My
+  account pages against fixtures, so the nine screens that needed a session can be
+  captured at last. Each of the thirteen was compared with its mockup and with
+  `docs/design/ORGANISATION_WORKSPACE.html`, and its result recorded in
+  `docs/UX-SPEC.md`. Fixes from the pass: the audit trail's note no longer claims
+  only anonymisation is recorded, and the trail gains Area and Severity columns;
+  Settings and My account titles name the section; Profile shows recent account
+  activity; the boot screen's lockup matches the reference's size. The nine screens
+  joined the accessibility scan, which found two contrast failures used across the
+  app and now fixed: the active tab and the danger button were both 4.2 : 1.
+- **perf(db): shift and rota reads stop paying for the write rule (`0161`).** The
+  load test now times each screen at the acceptance size (20 sites, 250 staff,
+  10,000 shifts, 50,000 clock events) and found shifts five times slower per row
+  than clock events. The `FOR ALL` write policies on `shifts` and `rotas` also
+  applied to every read, one `has_org_role` call per scanned row. They are now one
+  policy per command, and `rotas_select` uses `my_readable_rota_ids()`. Five months
+  of shifts fell from 1,973 ms to 158 ms; every screen read is under 250 ms. The
+  supported size is published in `docs/PRODUCT-SPEC.md`. Merging applies `0161` to
+  production. GAP-071, HARDEN-007.
+- **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
+  opens with a work queue: owner actions, the ranked next items, what is built but
+  never proved on real infrastructure, an index of the `qa/` evidence, operating
+  lessons, the thirteen approved plan decisions with where each now lives, and the
+  unbuilt feature candidates. The pack's release gate and billing scenarios moved to
+  `qa/LAUNCH-CHECKLIST.md`, its alerting gaps to `docs/DEPLOYMENT.md` and its offline
+  promise to `docs/ARCHITECTURE.md`; then `docs/Plans 2026/` was deleted, on the
+  owner's approval. The register's contradictions with itself were settled (Stripe
+  test key, backup secrets, decisions 7 and 11, BUG-014, struck and unstruck rows,
+  the roadmap).
 - **feat(seo): honest JSON-LD in `index.html`.** One `Organization` and one
   `SoftwareApplication` node, with no ratings, reviews, awards or prices, guarded
   by `src/lib/structuredData.test.ts`. README's tech-stack table now lists GSAP
@@ -61,16 +174,6 @@ Dependabot may be grouped into one line per week. The rule sits under
     to 760KiB.
   - Reverses the "CSS only" motion rule under the conditions in
     DESIGN-SYSTEM §4.
-- **docs(saas): one work queue, and the 2026 plan pack retired.** `docs/SAAS.md`
-  opens with a work queue: owner actions, the ranked next items, what is built but
-  never proved on real infrastructure, an index of the `qa/` evidence, operating
-  lessons, the thirteen approved plan decisions with where each now lives, and the
-  unbuilt feature candidates. The pack's release gate and billing scenarios moved to
-  `qa/LAUNCH-CHECKLIST.md`, its alerting gaps to `docs/DEPLOYMENT.md` and its offline
-  promise to `docs/ARCHITECTURE.md`; then `docs/Plans 2026/` was deleted, on the
-  owner's approval. The register's contradictions with itself were settled (Stripe
-  test key, backup secrets, decisions 7 and 11, BUG-014, struck and unstruck rows,
-  the roadmap).
 - **feat(billing): invoices in the app (plan F3, CAP-127).** `0156` adds
   `hosted_invoice_url` and `invoice_pdf` to `invoices`, each constrained to https
   on `invoice.stripe.com` or `pay.stripe.com`. `stripe-webhook` writes them on

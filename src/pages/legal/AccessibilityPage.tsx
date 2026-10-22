@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
 import { FactList } from '@/components/legal/FactList';
 import { Card } from '@/components/ui/Card';
