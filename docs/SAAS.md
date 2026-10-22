@@ -88,10 +88,16 @@ holds its status and evidence.
     (all eleven work-queue PRs merged together): every local gate passes, and the
     decision is NOT READY FOR PRODUCTION on owner actions alone (O3, O4, O5, O8,
     O14). Re-run it against `main` after the merge and the deploys.
-13. **Website finish, what remains**: prerendering the public routes, device-frame
-    screenshots, and a server-side 404 status (the SPA fallback answers unknown paths
-    with 200, which needs `.htaccess` and deploy changes). JSON-LD and the not-found
-    screen are done. No row yet; this line is its home.
+13. **Website finish, what remains**: device-frame screenshots only, once real
+    product screenshots exist (the home page's product shot is drawn in markup, and
+    framing a drawing as a screenshot would misdescribe it). Built 2026-10-22, live
+    after the next deploy: the fourteen sitemap pages are prerendered to static HTML
+    and hydrated (`scripts/prerender.mjs`), and `.htaccess` answers a path that is
+    neither a file nor a route with a real 404 and the prerendered not-found page.
+    The deploy carries `.htaccess`, so it must be composed with the origin-lock block
+    (`docs/DEPLOYMENT.md#composing-the-live-htaccess`) and then checked with the
+    table there. JSON-LD and the not-found screen were done earlier. No row; this
+    line is its home.
 14. **Locale-aware formatting**: `src/lib/format.ts` exists (2026-10-21) and the
     account screens use it; the remaining inline `toLocaleString('en-GB')` calls
     move to it as each screen is touched. No row; this line is its home.
