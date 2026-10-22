@@ -206,7 +206,7 @@ test.describe('consent banner', () => {
     await page.getByRole('button', { name: 'Reject all' }).click();
 
     await page.goto('/legal/cookies');
-    await page.getByRole('button', { name: 'Cookie preferences' }).click();
+    await page.getByRole('button', { name: 'Cookie settings' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
   });
 
@@ -257,7 +257,7 @@ test.describe('consent banner', () => {
     await firstVisit(page, '/pricing');
     await expect(banner(page)).toBeVisible();
 
-    const last = page.getByRole('button', { name: 'Cookie preferences' });
+    const last = page.getByRole('button', { name: 'Cookie settings' });
     await last.scrollIntoViewIfNeeded();
 
     // `trial: true` performs every actionability check, including the

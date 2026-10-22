@@ -480,7 +480,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
       // The one legal page that is not a placeholder: it is a statement of
       // fact about the system rather than a policy needing counsel, so it is
       // published now (docs/SAAS.md GAP-014).
-      { label: 'Trust and sub-processors', to: '/legal/trust' },
+      { label: 'Trust', to: '/legal/trust' },
     ],
   },
 ] as const;
