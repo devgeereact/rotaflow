@@ -4,6 +4,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { usePersonalPreferences } from '@/hooks/usePersonalPreferences';
+import { weekStartsOn } from '@/lib/personalPreferences';
 import { listLocations } from '@/services/locationService';
 import { listActiveStaff, getMyStaffProfile } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
@@ -54,6 +56,10 @@ export function SchedulePage(): JSX.Element {
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
   const isManager = canBuildRota;
+  // A personal choice (0163) for the staff week only; the manager's roster
+  // summary stays on the rota builder's Monday week.
+  const { weekStart } = usePersonalPreferences();
+  const myWeekStartsOn = weekStartsOn(weekStart);
 
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -101,9 +107,9 @@ export function SchedulePage(): JSX.Element {
       const timezone = reporting.timezone || DEFAULT_TZ;
       setReportingTimezone(timezone);
       const today = operationalToday;
-      const week = resolvePeriod('week', today, timezone);
 
       if (isManager) {
+        const week = resolvePeriod('week', today, timezone);
         const day = resolvePeriod('day', today, timezone);
         setTodayLabel(day.label);
         const staffRows = await listActiveStaff(orgId);
@@ -136,6 +142,7 @@ export function SchedulePage(): JSX.Element {
         setLeave(leaveRows);
         setAttendance(attendanceDay.counts);
       } else {
+        const week = resolvePeriod('week', today, timezone, myWeekStartsOn);
         setWeekStartLabel(
           new Date(`${week.dates[0]}T00:00:00`).toLocaleDateString('en-GB', {
             day: 'numeric',
@@ -174,7 +181,7 @@ export function SchedulePage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [orgId, user, isManager, operationalToday, showError]);
+  }, [orgId, user, isManager, operationalToday, myWeekStartsOn, showError]);
 
   useEffect(() => {
     void load();

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatCount, formatDate, formatDateTime, formatTime } from '@/lib/format';
+import {
+  formatCount,
+  formatDate,
+  formatDateTime,
+  formatTime,
+  setTimeFormat,
+} from '@/lib/format';
 
 describe('formatDate', () => {
   it('prints the stored day for a date-only value', () => {
@@ -33,6 +39,17 @@ describe('formatDateTime and formatTime', () => {
   it('returns an unparseable instant unchanged', () => {
     expect(formatDateTime('nope')).toBe('nope');
     expect(formatTime('nope')).toBe('nope');
+  });
+
+  it('follows the 12-hour preference once it is set, and back again', () => {
+    setTimeFormat('12h');
+    try {
+      expect(formatTime(new Date(2027, 2, 3, 14, 5))).toMatch(/^2:05\s?pm$/i);
+      expect(formatDateTime(new Date(2027, 2, 3, 9, 7))).toMatch(/9:07\s?am/i);
+    } finally {
+      setTimeFormat('24h');
+    }
+    expect(formatTime(new Date(2027, 2, 3, 14, 5))).toBe('14:05');
   });
 });
 
