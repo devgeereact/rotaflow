@@ -617,7 +617,6 @@ export type Database = {
         Row: {
           created_at: string;
           id: string;
-          medical_notes: string | null;
           name: string;
           org_id: string;
           phone: string;
@@ -629,7 +628,6 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
-          medical_notes?: string | null;
           name: string;
           org_id: string;
           phone: string;
@@ -641,7 +639,6 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: string;
-          medical_notes?: string | null;
           name?: string;
           org_id?: string;
           phone?: string;

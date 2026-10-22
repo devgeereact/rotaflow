@@ -2,8 +2,9 @@ import { supabase } from '@/lib/supabase';
 import type { EmergencyContact, EmergencyContactInsert } from '@/types';
 
 /**
- * Named columns rather than `*`, so the retired `medical_notes` column
- * (GAP-058) never reaches this screen even while old values remain stored.
+ * Named columns rather than `*`, so a column added later reaches this screen
+ * only when someone decides it should (the retired `medical_notes` column was
+ * dropped by `0164`, GAP-058).
  */
 const CONTACT_COLUMNS =
   'id, org_id, staff_profile_id, name, relationship, phone, secondary_phone, created_at, updated_at';
@@ -31,8 +32,8 @@ export async function listEmergencyContacts(
 export async function createEmergencyContact(
   input: EmergencyContactInsert,
 ): Promise<EmergencyContact> {
-  // Built field by field, so nothing outside the client type (such as a
-  // stray `medical_notes` from an untyped caller) is ever written.
+  // Built field by field, so nothing outside the client type from an untyped
+  // caller is ever written.
   const row: EmergencyContactInsert = {
     org_id: input.org_id,
     staff_profile_id: input.staff_profile_id,
