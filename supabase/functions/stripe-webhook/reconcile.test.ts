@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   decideInvoiceFailure,
+  decideInvoiceFinalized,
   documentsToWrite,
   invoiceDocuments,
   needsDocumentRetrieval,
@@ -393,5 +394,61 @@ describe('invoice documents', () => {
     expect(
       documentsToWrite({ hosted_invoice_url: null, invoice_pdf: null }, null),
     ).toEqual({});
+  });
+});
+
+describe('invoice.finalized (GAP-129)', () => {
+  const open = { status: 'open', subscriptionRef: 'sub_1' };
+
+  it('records an open invoice the organisation holds the subscription for', () => {
+    expect(decideInvoiceFinalized(null, open, true)).toEqual({
+      action: 'insert',
+      reason: 'first-sight',
+    });
+  });
+
+  it('never regresses a paid invoice that arrived first', () => {
+    const paid = { status: 'paid', paid_at: '2026-10-22T09:00:00Z', attempts: 0 };
+    expect(decideInvoiceFinalized(paid, open, true)).toEqual({
+      action: 'documents',
+      reason: 'already-known',
+    });
+  });
+
+  it('never clears a failure that arrived first', () => {
+    expect(
+      decideInvoiceFinalized({ status: 'past_due', attempts: 2 }, open, true).action,
+    ).toBe('documents');
+  });
+
+  it('treats a redelivery as links only', () => {
+    expect(decideInvoiceFinalized({ status: 'open' }, open, true).action).toBe(
+      'documents',
+    );
+  });
+
+  it('leaves a zero-amount invoice, finalised already paid, to invoice.paid', () => {
+    expect(
+      decideInvoiceFinalized(null, { status: 'paid', subscriptionRef: 'sub_1' }, true),
+    ).toEqual({ action: 'skip', reason: 'not-open' });
+  });
+
+  it.each(['void', 'uncollectible', 'draft', null])('skips a %s invoice', (status) => {
+    expect(
+      decideInvoiceFinalized(null, { status, subscriptionRef: 'sub_1' }, true).action,
+    ).toBe('skip');
+  });
+
+  it('declines an invoice that names no subscription', () => {
+    expect(
+      decideInvoiceFinalized(null, { status: 'open', subscriptionRef: null }, true),
+    ).toEqual({ action: 'skip', reason: 'no-subscription' });
+  });
+
+  it('declines a test-mode invoice naming a live organisation (RF-05)', () => {
+    expect(decideInvoiceFinalized(null, open, false)).toEqual({
+      action: 'skip',
+      reason: 'subscription-not-held',
+    });
   });
 });

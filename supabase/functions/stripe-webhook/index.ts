@@ -18,10 +18,11 @@
 // depending on whether it already exists — the same shape
 // handleInvoicePaymentFailed already needs to track `attempts` correctly.
 //
-// Both invoice handlers also store the invoice's hosted page and PDF links
-// (0156), so the owner's Billing screen can list them. Not on
-// invoice.finalized: that event is not subscribed, and an invoice is listed
-// once it is paid or has failed.
+// The invoice handlers also store the invoice's hosted page and PDF links
+// (0156), so the owner's Billing screen can list them. invoice.finalized
+// records an unpaid invoice as `open` the moment those links exist, so the
+// owner sees it before it is paid or fails (GAP-129). It never changes a
+// status already held; rules in reconcile.ts.
 //
 // invoice.paid/invoice.payment_failed write into the SAME invoices table
 // (0023_commercials.sql) that issue_invoice()/set_invoice_status() write
@@ -47,7 +48,7 @@
 // endpoint, pointed at <SUPABASE_URL>/functions/v1/stripe-webhook,
 // subscribed to: checkout.session.completed, customer.subscription.updated,
 // customer.subscription.deleted, customer.subscription.trial_will_end,
-// invoice.paid, invoice.payment_failed.
+// invoice.finalized, invoice.paid, invoice.payment_failed.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { reportEdgeError } from '../_shared/sentry.ts';
@@ -60,6 +61,7 @@ import {
 } from '../_shared/stripe.ts';
 import {
   decideInvoiceFailure,
+  decideInvoiceFinalized,
   documentsToWrite,
   invoiceDocuments,
   needsDocumentRetrieval,
@@ -460,6 +462,80 @@ async function handleInvoicePaid(
   }
 }
 
+// invoice.finalized: an unpaid invoice reaches the owner's Billing screen as
+// `open` with its links, instead of only once paid or failed (GAP-129). A row
+// that already exists only has its links filled in, so an `invoice.paid` or
+// `invoice.payment_failed` that arrived first is never undone. A new row needs
+// the organisation to hold the invoice's subscription in this mode (RF-05).
+// If this and `invoice.paid` insert at the same moment, the unique `number`
+// rejects the second insert; that throws, Stripe retries, and the retry finds
+// the row.
+async function handleInvoiceFinalized(
+  supabase: SupabaseClient,
+  invoice: Stripe.Invoice,
+  mode: StripeMode,
+): Promise<void> {
+  const orgId = invoice.subscription_details?.metadata?.org_id;
+  if (!orgId) {
+    console.error('invoice.finalized missing org_id metadata', invoice.id);
+    return;
+  }
+
+  const { data: existing } = await supabase
+    .from('invoices')
+    .select('id, status, paid_at, attempts')
+    .eq('provider_ref', invoice.id)
+    .maybeSingle();
+
+  const subscriptionRef = subscriptionRefOf(invoice);
+  const held =
+    !existing && subscriptionRef
+      ? await holdsSubscription(supabase, orgId, subscriptionRef, mode)
+      : false;
+  const decision = decideInvoiceFinalized(
+    existing,
+    { status: invoice.status, subscriptionRef },
+    held,
+  );
+  if (decision.action === 'skip') {
+    console.log(`invoice.finalized ${invoice.id}: not recorded (${decision.reason})`);
+    return;
+  }
+
+  const documents = await resolveInvoiceDocuments(invoice, mode);
+
+  if (decision.action === 'documents') {
+    if (!existing || Object.keys(documents).length === 0) return;
+    const { error } = await supabase
+      .from('invoices')
+      .update(documents)
+      .eq('id', existing.id);
+    if (error) throw new Error(`invoices update (finalized) failed: ${error.message}`);
+    return;
+  }
+
+  const line = invoice.lines.data[0];
+  const periodStart = new Date((line?.period.start ?? invoice.period_start) * 1000);
+  const periodEnd = new Date((line?.period.end ?? invoice.period_end) * 1000);
+  const { error } = await supabase.from('invoices').insert({
+    org_id: orgId,
+    number: invoiceNumberFrom(invoice),
+    period_start: periodStart.toISOString().slice(0, 10),
+    period_end: periodEnd.toISOString().slice(0, 10),
+    amount_pence: invoice.amount_due,
+    currency: invoice.currency.toUpperCase(),
+    status: 'open',
+    issued_on: new Date(invoice.created * 1000).toISOString().slice(0, 10),
+    due_on: invoice.due_date
+      ? new Date(invoice.due_date * 1000).toISOString().slice(0, 10)
+      : new Date(invoice.created * 1000).toISOString().slice(0, 10),
+    provider: 'stripe',
+    provider_ref: invoice.id,
+    ...documents,
+  });
+  if (error) throw new Error(`invoices insert (open) failed: ${error.message}`);
+}
+
 // `last_finalization_error` is set when Stripe fails to *finalize* an
 // invoice (e.g. bad tax settings), not when a card is declined — the
 // realistic failure mode. The actual decline reason lives on the invoice's
@@ -726,6 +802,9 @@ Deno.serve(async (req: Request) => {
           event.data.object as Stripe.Subscription,
           mode,
         );
+        break;
+      case 'invoice.finalized':
+        await handleInvoiceFinalized(supabase, event.data.object as Stripe.Invoice, mode);
         break;
       case 'invoice.paid':
         await handleInvoicePaid(supabase, event.data.object as Stripe.Invoice, mode);
