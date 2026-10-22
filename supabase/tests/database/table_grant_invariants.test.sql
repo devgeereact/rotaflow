@@ -78,6 +78,22 @@ select is(
           ('organisations',     'timezone'),
           ('organisations',     'contact_email'),
           ('organisations',     'contact_phone'),
+          -- staffService.updateStaffProfile, written by the Team screen
+          -- through lib/staffForm.ts. BUG-010 was an edited email that never
+          -- changed; the field and its grant both have to be there.
+          ('staff_profiles',    'first_name'),
+          ('staff_profiles',    'last_name'),
+          ('staff_profiles',    'job_title_id'),
+          ('staff_profiles',    'job_title'),
+          ('staff_profiles',    'department_id'),
+          ('staff_profiles',    'contract_type'),
+          ('staff_profiles',    'weekly_hours'),
+          ('staff_profiles',    'holiday_allowance'),
+          ('staff_profiles',    'skills'),
+          ('staff_profiles',    'payroll_id'),
+          ('staff_profiles',    'start_date'),
+          ('staff_profiles',    'phone'),
+          ('staff_profiles',    'email'),
           -- profileService.updateProfile, written by ProfilePage.
           ('profiles',          'full_name'),
           -- smtpSettingsService: upsert writes the first six, and

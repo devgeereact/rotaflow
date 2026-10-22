@@ -26,6 +26,9 @@ fix locally and run the named test.
 
 | Row     | Defect                                                                                        | Guarding test                                                                                                                    |
 | ------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| BUG-010 | Staff email edits silently discarded (re-tested 2026-10-21)                                   | `src/lib/staffForm.test.ts`, `supabase/tests/database/table_grant_invariants.test.sql`                                           |
+| BUG-013 | Client chooses its own plan (re-tested 2026-10-21)                                            | `supabase/tests/database/table_grant_invariants.test.sql`                                                                        |
+| BUG-015 | Invitation emails: refusals and message only; delivery is owner action O13                    | `supabase/functions/send-invite/sendability.test.ts`                                                                             |
 | BUG-046 | Outbox replay                                                                                 | `supabase/tests/database/outbox_idempotency.test.sql`                                                                            |
 | BUG-053 | Pricing page                                                                                  | `src/lib/marketing.test.ts`                                                                                                      |
 | BUG-060 | Support CSAT                                                                                  | `supabase/tests/database/support_csat.test.sql`                                                                                  |
