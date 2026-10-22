@@ -82,6 +82,11 @@ so the form cannot be used to mail a third party.
 | Web push | Built. VAPID keys are Edge Function secrets; the public key is `VITE_VAPID_PUBLIC_KEY`. Subscriptions are `push_subscriptions` (`0009`). Whether a push has ever arrived on a real device is recorded in `docs/SAAS.md`, not assumed                                                                             |
 | SMS      | **Not built.** A reserved seam: no provider, and Settings shows it as unavailable                                                                                                                                                                                                                                |
 
+**Email summaries are not sent.** Since `0163` a person can choose a daily or weekly
+summary on My account, Preferences (`app_settings.digest_frequency`). Nothing reads
+it: every notification is still sent on its own, and the screen says so. A digest
+job would be a new `pg_cron` entry in the table below.
+
 ### Web push on the device
 
 The browser side is `useWebPush` (`docs/ARCHITECTURE.md#hook-contracts` §16), which
