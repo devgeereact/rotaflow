@@ -256,7 +256,7 @@ ambiguity error.
 ### 3b. Resolved — enforcement is real as of 21 August 2026
 
 `0057` reached production on 20 August and is recorded in the ledger under its
-numeric version (66 migrations as at 21 August 2026 — 161 today; the figure dates
+numeric version (66 migrations as at 21 August 2026 — 162 today; the figure dates
 the observation, it is not a running count). The nightly job has run
 successfully every night since:
 
@@ -329,12 +329,17 @@ data; that files the case, it does not fulfil it. What each type actually does t
   `audit_logs` row (`gdpr_anonymize`) recording who did it and when. It
   deliberately leaves `shifts`/`clock_events`/`leave_requests`/`shift_swaps`/
   `timesheets` intact (now pointing at the anonymised "Deleted Member"), so
-  payroll history stays consistent for UK retention requirements. It does
-  not touch `auth.users` (needs the Auth Admin API, not yet wired to this
-  flow) and, at the time of that test, did not delete the file behind
-  `documents.file_url`, only the database row. Since `0159` a document is an
-  upload to a private bucket, and deleting its row queues the file for the
-  `purge-storage` function in the same transaction; a legacy pasted link is
+  payroll history stays consistent for UK retention requirements. At the
+  time of that test it did not touch `auth.users` and did not delete the file
+  behind `documents.file_url`, only the database row. Since `0159` a document
+  is an upload to a private bucket, and deleting its row queues the file for
+  the `purge-storage` function in the same transaction. Since `0162` a staff
+  photo is an upload to the private `staff-photos` bucket, erasure clears it
+  and queues both of the person's folders, and closing an erasure case as
+  completed queues the person's login in `account_deletions` for the
+  `delete-account` function, which removes it through the Auth Admin API. The
+  case refuses to close when that deletion would fail: the subject is the last
+  owner of an organisation, or holds a platform role. A legacy pasted link is
   still only a link.
 - **Access / portability**: an **organisation-level** one-click export exists —
   `exportOrganisationData()` (`src/services/orgLifecycleService.ts`) assembles
@@ -564,8 +569,8 @@ data is about, which is not always who typed it.
 | C3  | Password reset                                    | email, new password                                                                                                                                                                 | account holder                                             | account recovery                               | Supabase Auth                                                                     | `src/pages/ForgotPasswordPage.tsx`                                 |
 | C4  | Organisation setup                                | org name, slug, sector, team size, site name, **site postal address**, coordinates, geofence radius                                                                                 | the organisation                                           | provision the tenant                           | `organisations`, `locations`                                                      | `src/components/onboarding/StepAbout.tsx`                          |
 | C5  | Invitations                                       | colleague email, role, location, department                                                                                                                                         | the invitee                                                | onboard staff                                  | `invites`                                                                         | `src/components/settings/TeamInviteManager.tsx`                    |
-| C6  | Staff record (manager-entered)                    | name, job title, department, contract type, weekly hours, holiday allowance, skills, **payroll id**, start date, **phone**, **email**, sites, photo URL                             | the staff member                                           | scheduling and pay                             | `staff_profiles`                                                                  | `src/components/staff/StaffFormModal.tsx`                          |
-| C7  | Own profile                                       | full name, phone, photo URL                                                                                                                                                         | the staff member                                           | keep the record current                        | `profiles`, `staff_profiles`                                                      | `src/pages/app/account/ProfilePage.tsx`                            |
+| C6  | Staff record (manager-entered)                    | name, job title, department, contract type, weekly hours, holiday allowance, skills, **payroll id**, start date, **phone**, **email**, sites, photo (legacy link)                   | the staff member                                           | scheduling and pay                             | `staff_profiles`                                                                  | `src/components/staff/StaffFormModal.tsx`                          |
+| C7  | Own profile                                       | full name, phone, photo upload (`staff-photos`, `0162`)                                                                                                                             | the staff member                                           | keep the record current                        | `profiles`, `staff_profiles`                                                      | `src/pages/app/account/ProfilePage.tsx`                            |
 | C8  | Emergency contacts                                | contact name, relationship, phone, second phone. **Medical notes** no longer collected or shown (2026-10-11); values entered before then remain stored                              | **a third party**, plus health data about the staff member | emergency response                             | `emergency_contacts`                                                              | `src/components/staff/EmergencyContactsModal.tsx`                  |
 | C9  | Documents                                         | free-text type (no longer suggests DBS or right to work), name or number, **URL**, issue and expiry dates                                                                           | the staff member                                           | compliance records                             | `documents`                                                                       | `src/components/staff/DocumentsModal.tsx`                          |
 | C10 | Pay rates                                         | hourly rate, effective date, note                                                                                                                                                   | the staff member                                           | labour cost and payroll export                 | `staff_pay_rates`                                                                 | `supabase/migrations/0104_pay_rates.sql`                           |
@@ -715,20 +720,22 @@ From `retention_policies` (`0027`, `0092`, `0155`), enforced by `enforce_retenti
 nightly at 02:15 UTC (`0029`, fixed by `0057`), with each run recorded in
 `retention_runs`.
 
-| Data                                   | Period            | Trigger          | Method                                                       | Enforced                                                 |
-| -------------------------------------- | ----------------- | ---------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
-| Rota and shift history                 | 84 months         | shift start date | hard delete                                                  | Yes                                                      |
-| Attendance, incl. GPS                  | 36 months         | event date       | hard delete                                                  | Yes                                                      |
-| Leave                                  | 72 months         | end date         | hard delete                                                  | Yes                                                      |
-| Support cases                          | 36 months         | resolution date  | hard delete                                                  | Yes                                                      |
-| Notification delivery + settled outbox | 12 months         | creation         | hard delete                                                  | Yes                                                      |
-| Website enquiries                      | 24 months         | arrival          | hard delete                                                  | Yes (`0155`)                                             |
-| Audit log                              | indefinite        | —                | append-only trigger refuses `UPDATE`/`DELETE`                | By the database                                          |
-| Deleted tenant                         | immediate         | owner's action   | cascade across ~32 tables                                    | **The declared 1-month grace window is not implemented** |
-| Platform health samples                | 90 days           | sample time      | pruned inside the probe                                      | Yes                                                      |
-| `staff_pay_rates`                      | none              | —                | survives anonymisation, identifying nobody                   | By decision                                              |
-| Uploaded document files (`0159`)       | with their record | record deleted   | queued by trigger, removed by `purge-storage` within minutes | Yes, once `purge-storage` is deployed                    |
-| Legacy pasted document links, photos   | **none**          | —                | the link is removed, the file is not                         | No                                                       |
+| Data                                   | Period                | Trigger          | Method                                                       | Enforced                                                 |
+| -------------------------------------- | --------------------- | ---------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
+| Rota and shift history                 | 84 months             | shift start date | hard delete                                                  | Yes                                                      |
+| Attendance, incl. GPS                  | 36 months             | event date       | hard delete                                                  | Yes                                                      |
+| Leave                                  | 72 months             | end date         | hard delete                                                  | Yes                                                      |
+| Support cases                          | 36 months             | resolution date  | hard delete                                                  | Yes                                                      |
+| Notification delivery + settled outbox | 12 months             | creation         | hard delete                                                  | Yes                                                      |
+| Website enquiries                      | 24 months             | arrival          | hard delete                                                  | Yes (`0155`)                                             |
+| Audit log                              | indefinite            | —                | append-only trigger refuses `UPDATE`/`DELETE`                | By the database                                          |
+| Deleted tenant                         | immediate             | owner's action   | cascade across ~32 tables                                    | **The declared 1-month grace window is not implemented** |
+| Platform health samples                | 90 days               | sample time      | pruned inside the probe                                      | Yes                                                      |
+| `staff_pay_rates`                      | none                  | —                | survives anonymisation, identifying nobody                   | By decision                                              |
+| Uploaded document files (`0159`)       | with their record     | record deleted   | queued by trigger, removed by `purge-storage` within minutes | Yes, once `purge-storage` is deployed                    |
+| Uploaded staff photos (`0162`)         | with their record     | replaced, erased | queued by trigger, removed by `purge-storage` within minutes | Yes, once `purge-storage` is deployed                    |
+| Login after a completed erasure        | until the case closes | case completed   | queued, removed by `delete-account` through the Admin API    | Yes, once `delete-account` is deployed                   |
+| Legacy pasted document links, photos   | **none**              | —                | the link is removed, the file is not                         | No                                                       |
 
 Nothing is anonymised by retention; every branch is a hard `DELETE`.
 
@@ -760,8 +767,9 @@ subject is taken from `auth.users`, so the page cannot name anybody else, and
 Restriction and objection, and anyone without an account, still go by email. Every
 route lands in `gdpr_requests`, which computes a due date one month out,
 extendable by two with a recorded reason, and cannot be closed without an outcome
-note. `auth.users` is still never touched by erasure (`0011:4-11`), so there is
-no account deletion in any real sense.
+note. Since `0162`, closing an erasure case as completed removes the person's
+login: the case queues it in `account_deletions`, and `delete-account` deletes it
+through the Auth Admin API once deployed.
 
 What erasure keeps, deliberately: shifts, clock events, leave, swaps,
 timesheets, availability, site assignments and pay rates, all repointed at an
@@ -804,9 +812,9 @@ right shape for this class of problem.
    pro-rata credit, what happens to data at the end of the billing grace
    window, VAT inclusive or exclusive, notice before suspension, any service
    level.
-6. **Uploaded files** (GAP-056). Uploaded documents are deleted with their
-   record since `0159`, once `purge-storage` is deployed. Legacy pasted links and
-   staff photographs are still links the product cannot delete through.
+6. **Uploaded files** (GAP-056). Uploaded documents (`0159`) and photos (`0162`)
+   are deleted with their record once `purge-storage` is deployed. Legacy pasted
+   document and photo links are still links the product cannot delete through.
 7. **Minimum age** (GAP-060), and what an employer scheduling a 16- or
    17-year-old must be told.
 8. **Whether a DPA will be commissioned.** `docs/SAAS.md` CAP-059 says never;

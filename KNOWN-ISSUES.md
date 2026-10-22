@@ -30,20 +30,21 @@ Checked against the code and the register on 11 October 2026.
 
 ## Staff records
 
-- **Staff photos are links, not uploads.** A staff photo is a pasted web
-  address. Documents are uploaded and stored privately; documents added before
-  uploads existed keep the link they were given. (GAP-084)
+- **Photos and documents added before uploads existed are still links.** Both
+  are now uploaded and stored privately; an older photo or document keeps the
+  link it was given until it is replaced. (GAP-084)
 - **Medical notes entered on an emergency contact before 11 October 2026 are
   still stored.** The field is no longer asked for or shown, so those notes cannot
   be seen or edited on screen; deleting the contact removes them, and a person's
   data export still includes them. Removing the stored values is a separate,
   planned change. (GAP-058)
 - **Erasing a person does not delete files hosted elsewhere** that an older
-  document link or a photo link pointed to. Uploaded documents are deleted with
-  the person. (GAP-056)
+  document link or a photo link pointed to. Uploaded documents and photos are
+  deleted with the person. (GAP-056)
 - **A user cannot change their own sign-in email address.** (GAP-085)
-- **There is no self-service download or deletion of your own account data**; a
-  request goes to the organisation or to support. (GAP-057)
+- **Your own data is requested, not downloaded on the spot.** My account, Your
+  data files the request, and a completed erasure removes your login; the copy
+  or the deletion follows once the request has been checked. (GAP-057)
 
 ## Scheduling
 

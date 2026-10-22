@@ -13,6 +13,7 @@ import type {
   Shift,
   StaffProfile,
 } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 export type TeamTodayStatus = 'on_shift' | 'absent' | 'off';
 
@@ -162,7 +163,7 @@ export function buildTeamRows(staff: StaffProfile[], context: TeamRowContext): T
       id: profile.id,
       firstName: profile.first_name,
       lastName: profile.last_name,
-      photoUrl: profile.photo_url,
+      photoUrl: photoSource(profile),
       // Catalogue name first, legacy free text second. Both columns are live
       // until 0127's retirement condition is met.
       jobTitle: title?.name ?? profile.job_title,

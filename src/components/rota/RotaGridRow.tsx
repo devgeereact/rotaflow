@@ -13,6 +13,7 @@ import { RotaGridCell } from '@/components/rota/RotaGridCell';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
 import type { Shift, ShiftType, StaffProfile } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 /**
  * The single column template every band of the grid shares. Staff column,
@@ -145,7 +146,7 @@ export function RotaGridRow({
             <StaffAvatar
               firstName={staff.first_name}
               lastName={staff.last_name}
-              photoUrl={staff.photo_url}
+              photoUrl={photoSource(staff)}
               size="md"
             />
             <div className="min-w-0">

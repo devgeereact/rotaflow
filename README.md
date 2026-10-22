@@ -54,7 +54,7 @@ discipline".
 | Auth and DB      | Supabase (PostgreSQL and RLS)     |                                                                                                                                       |
 | Server compute   | Supabase Edge Functions           | The only server runtime; contracts in [`docs/API-SPEC.md`](docs/API-SPEC.md)                                                          |
 | AI               | OpenRouter, from an Edge Function | The only AI provider; the key never reaches the client                                                                                |
-| Background jobs  | `pg_cron` and `pg_net`            | Six jobs, listed in [`docs/NOTIFICATIONS-SPEC.md`](docs/NOTIFICATIONS-SPEC.md). Inngest is retired (`0087`)                           |
+| Background jobs  | `pg_cron` and `pg_net`            | Seven jobs, listed in [`docs/NOTIFICATIONS-SPEC.md`](docs/NOTIFICATIONS-SPEC.md). Inngest is retired (`0087`)                         |
 | Payments         | Stripe, from Edge Functions       | Secrets never reach the client                                                                                                        |
 | Monitoring       | Sentry                            |                                                                                                                                       |
 | Hosting          | cPanel, static `dist/`            | No server runtime on the origin                                                                                                       |
@@ -82,7 +82,7 @@ The build must also succeed with no `.env` at all: CI has none, and a missing
 
 ### 3. Set up the database
 
-**Run every file in `supabase/migrations/`, in numeric order** — there are 161, and they
+**Run every file in `supabase/migrations/`, in numeric order** — there are 162, and they
 are additive. Stopping early leaves a database that looks like it works and fails at the
 first RLS check. Easier: `supabase db push`, which applies the whole ledger.
 

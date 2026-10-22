@@ -26,6 +26,7 @@ import { Card } from '@/components/ui/Card';
 import { AvailabilityView } from '@/components/availability/AvailabilityView';
 import type { AddExceptionInput } from '@/components/availability/AddExceptionModal';
 import type { Availability, StaffProfile } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 /**
  * `/app/availability`. Real data wiring; see AvailabilityView for the markup
@@ -110,7 +111,7 @@ export function AvailabilityPage(): JSX.Element {
           staffId: row.staffId,
           firstName: person?.first_name ?? 'Unknown',
           lastName: person?.last_name ?? '',
-          photoUrl: person?.photo_url ?? null,
+          photoUrl: photoSource(person),
           available: row.available,
         };
       }),

@@ -2878,6 +2878,7 @@ export type Database = {
           org_id: string;
           payroll_id: string | null;
           phone: string | null;
+          photo_path: string | null;
           photo_url: string | null;
           skills: string[];
           start_date: string | null;
@@ -2900,6 +2901,7 @@ export type Database = {
           org_id: string;
           payroll_id?: string | null;
           phone?: string | null;
+          photo_path?: string | null;
           photo_url?: string | null;
           skills?: string[];
           start_date?: string | null;
@@ -2922,6 +2924,7 @@ export type Database = {
           org_id?: string;
           payroll_id?: string | null;
           phone?: string | null;
+          photo_path?: string | null;
           photo_url?: string | null;
           skills?: string[];
           start_date?: string | null;
@@ -3324,6 +3327,7 @@ export type Database = {
           org_id: string;
           payroll_id: string | null;
           phone: string | null;
+          photo_path: string | null;
           photo_url: string | null;
           skills: string[];
           start_date: string | null;

@@ -34,6 +34,7 @@ function staff(
     holiday_allowance: 28,
     payroll_id: null,
     phone: null,
+    photo_path: null,
     photo_url: null,
     skills: [],
     start_date: null,

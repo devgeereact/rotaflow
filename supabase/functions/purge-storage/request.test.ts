@@ -32,6 +32,27 @@ describe('parsePurgeRequest', () => {
     ).not.toBeNull();
   });
 
+  it('accepts the staff-photos bucket in the same shapes (0162)', () => {
+    expect(
+      parsePurgeRequest({
+        bucket: 'staff-photos',
+        path: `${ORG}/${PERSON}/me.jpg`,
+        isFolder: false,
+      }),
+    ).toEqual({
+      bucket: 'staff-photos',
+      path: `${ORG}/${PERSON}/me.jpg`,
+      isFolder: false,
+    });
+    expect(
+      parsePurgeRequest({
+        bucket: 'staff-photos',
+        path: `${ORG}/${PERSON}`,
+        isFolder: true,
+      }),
+    ).not.toBeNull();
+  });
+
   it('refuses another bucket', () => {
     expect(
       parsePurgeRequest({ bucket: 'avatars', path: ORG, isFolder: true }),

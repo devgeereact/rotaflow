@@ -41,6 +41,7 @@ import type { AmendClockEventInput } from '@/components/timesheets/AmendClockEve
 import type { TimesheetDisplayRow } from '@/components/timesheets/TimesheetRowsTable';
 import type { TimesheetDayStatus } from '@/lib/timesheetDayRows';
 import type { ClockEvent, Location, Shift, StaffProfile } from '@/types';
+import { photoSource } from '@/lib/staffPhoto';
 
 const DEFAULT_TZ = 'Europe/London';
 
@@ -288,7 +289,7 @@ export function TimesheetsPage(): JSX.Element {
         firstName: person?.first_name ?? 'Unknown',
         lastName: person?.last_name ?? '',
         jobTitle: person?.job_title ?? null,
-        photoUrl: person?.photo_url ?? null,
+        photoUrl: photoSource(person),
         dayLabel: format(new Date(`${today}T00:00:00`), 'EEE d MMM'),
         plannedLabel: row.plannedLabel,
         actualLabel: row.actualLabel,

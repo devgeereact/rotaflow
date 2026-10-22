@@ -99,12 +99,12 @@ that expires or is revoked elsewhere does not run it; see
 
 ## Scheduled jobs
 
-Six `pg_cron` jobs are defined in `supabase/migrations/`. Background work runs
+Seven `pg_cron` jobs are defined in `supabase/migrations/`. Background work runs
 inside Postgres with `pg_cron` and `pg_net`; nothing runs on the cPanel origin, and
 Inngest was retired in `0087`. On 31 August 2026 four of these were verified
-running by reading `cron.job` in production; the fifth was added by `0132` and the sixth by
-`0159` after that check, and their production state has not been re-read for this
-document.
+running by reading `cron.job` in production; the fifth was added by `0132`, the sixth by
+`0159` and the seventh by `0162` after that check, and their production state has not
+been re-read for this document.
 
 | Job                               | Schedule                      | Runs                                   | Defined in | What it does                                                                                                                                           |
 | --------------------------------- | ----------------------------- | -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -112,7 +112,8 @@ document.
 | `rotaflow-announcement-scheduler` | every minute                  | `publish_due_platform_announcements()` | `0132`     | Publishes platform announcements whose scheduled time has come, through the outbox                                                                     |
 | `rotaflow-scheduled-alerts`       | every 15 minutes              | `enqueue_scheduled_alerts()`           | `0093`     | Missed clock-ins, **expiring documents** and a **free trial ending** within three days (`0157`), one outbox row per fact, deduplicated by `dedupe_key` |
 | `rotaflow-health-probe`           | every 5 minutes               | `probe_platform_health()`              | `0076`     | Platform health samples, not a notification; listed here because it is a scheduled job (`docs/DATA-MODEL.md` §6)                                       |
-| `rotaflow-storage-deletions`      | every 5 minutes               | `dispatch_storage_deletions()`         | `0159`     | Not a notification: posts queued document files to `purge-storage`, so an erasure or deletion reaches Storage                                          |
+| `rotaflow-storage-deletions`      | every 5 minutes               | `dispatch_storage_deletions()`         | `0159`     | Not a notification: posts queued document and photo files (`0162`) to `purge-storage`, so an erasure or deletion reaches Storage                       |
+| `rotaflow-account-deletions`      | every 5 minutes               | `dispatch_account_deletions()`         | `0162`     | Not a notification: posts logins owed to a completed erasure case to `delete-account`, which removes them through the Auth Admin API                   |
 | `rotaflow-retention`              | daily at 02:15, pg_cron clock | `enforce_retention(false)`             | `0029`     | Deletes rows past their retention window, including the notification log (`docs/SECURITY.md` §3)                                                       |
 
 `0093` does not alert on leave: the scheduled alerts are a missed clock-in and a
