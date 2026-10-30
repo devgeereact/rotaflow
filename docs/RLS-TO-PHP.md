@@ -326,3 +326,14 @@ Documents (`staff-documents`) use the same store and arrive with the Compliance 
 | Document types (new) | n/a | `Compliance::createType`, `addPreset`, `updateType`, `archiveType`: owners and managers, optimistic version, one name check per organisation under a row lock | 230 | NEW |
 | `enqueue_scheduled_alerts` (expiring documents, `0093`) | Owners and managers told at 30 days and on expiry, deduplicated per document and date | `Compliance::cron` / `runReminders`: d30, d14, d7 and `expired`, once per document and stage (`document_reminders` primary key), in the organisation's timezone; the person (if they have a login) and the owners and managers | 230 | DONE (folded in, not duplicated) |
 
+## S11: scheduling (warnings, publish preview, patterns)
+
+No new table and no Postgres policy to map: the rules below are new behaviour or a new PHP check on an existing route.
+All of it only while the `scheduling_tools` flag is on; off, nothing here runs.
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| Publish preview (new) | n/a (the builder computed warnings in the browser) | `Scheduling::preview`: membership first (stranger 404), owners and managers, then the flag (403 `feature_off`); drafts only; reads only this organisation's rows | 240, 099 | NEW |
+| Pattern generation (new) | n/a | `Scheduling::generate`: owners and managers, `requireWritable`, `Billing::requireNotReadOnly`, the rota row lock (`FOR UPDATE`) like every shift write, draft only, every referenced id checked against the organisation; skips duplicates and double-bookings | 240, 099 | NEW |
+| `publish_rota` (overlap) | No overlap rule (the builder refused overlaps in the browser) | `Rotas::publish` refuses 409 `shift_overlap` when `Scheduling::overlaps` finds one person in two places at once | 240 incl. mutation | NEW (flag on only) |
+| Leave review (clashes) | n/a | `Leave::reviewLeave` adds `clashing_shifts` (the person's own shifts, not archived) after an approval by an owner or manager | 240 | NEW (flag on only) |

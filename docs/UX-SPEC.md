@@ -196,6 +196,17 @@ default), so the module ships dark.
 | ✅ | Settings: Document types | `/app/settings/document-types` (owners and managers; tab after Policies) | Active types with "Required to work", add and edit (name, description, months it lasts, required, needs an expiry date), archive with a confirmation, and the UK examples to add in one click (not legal advice) |
 | ✅ | Eligibility chip | Rota builder, under each name; Open shifts, on each card | "Not cleared" (the missing types in the title and for screen readers) or "Expiring". It informs and never blocks: rostering stays the manager's decision, and the open-shift claim gains the server check in S12 |
 
+## 7b. Scheduling (R2 slice S11), behind the `scheduling_tools` flag
+
+No design reference; built in the existing components. Hidden while the flag is off (the default).
+
+| Status | Screen | Where | What it does |
+| ------ | ------ | ----- | ------------ |
+| ✅ | Warnings at assign | Rota builder, Add shift / Edit shift | A "things to check" panel as the manager types: short rest, over the weekly limit, approved leave, declared unavailable. Save is never blocked ("These are warnings, not rules") |
+| ✅ | Before you publish | Rota builder, Publish | Opens first: what changes (new, unchanged, removed, cancelled), the warnings by kind with each shift, and any double-booking. A double-booking disables Publish (the server refuses it too); warnings show "Publish anyway". If the check cannot load, Publish stays available and the server still refuses a double-booking |
+| ✅ | Generate pattern | Rota builder, Week actions (a draft week) | Days of the week, or days on / days off from a start date; one to six time blocks (split shifts; an end before the start runs overnight); a person or open shifts; shift type, break, notes. Preview, then Create draft shifts; skipped shifts are counted by reason and warned shifts listed |
+| ✅ | Shifts to cover after leave | Leave and Approvals, after Approve | "Leave approved: shifts to cover" lists the person's shifts inside the leave (draft ones marked) and offers Open the rota. Nothing is changed automatically |
+
 ## 8. Tables with no UI
 
 **`platform_health_probes` and `rate_limit_events`. Both correctly so.**

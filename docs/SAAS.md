@@ -324,7 +324,7 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 113   |
-| 🟡 Partial            | 6     |
+| 🟡 Partial            | 7     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -487,6 +487,13 @@ itself: a restore, a real charge, and a phone.
 - [x] CAP-004 🟢 Minimum cover — `publish_rota` refuses a shortfall, counting exactly as the builder
       does; the escape hatch is lowering that day's minimum, not a force flag
       `supabase/migrations/0080_enforce_minimum_cover.sql` · GAP-006 closed #192 · 9 pgTAP assertions
+- [ ] CAP-004b 🟡 Scheduling tools (R2 slice S11) — rota warnings (daily rest, weekly hours, approved leave,
+      declared unavailability) at assign and in a publish preview; a double-booking blocks publishing, warnings never
+      do; recurring patterns (weekly or days on/off, split shifts, 92 days, 500 shifts, wall-clock across clock
+      changes); the shifts that clash with an approved leave request. **Built on the branch `r2/s11-scheduling`,
+      behind the `scheduling_tools` flag (seeded off), not released.** Becomes 🟢 when the owner turns the flag on
+      after a local-live walk-through. `backend/migrations/016-scheduling.sql` · `backend/src/Mod/Scheduling.php` ·
+      suites `235-scheduling-rules`, `240-scheduling` · `src/lib/schedulingRules.test.ts`, `src/lib/zonedTime.test.ts`
 - [x] CAP-005 ⚫ Shift templates — removed rather than built. A pre-filled placement is a different
       feature from a shift type, and should be designed as one if it is ever wanted
       `supabase/migrations/0096_drop_shift_templates.sql` · BUG-051 closed #229

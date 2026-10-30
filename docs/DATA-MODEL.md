@@ -555,6 +555,18 @@ The first R2 table set, in the new MariaDB schema (the PHP API, `docs/MERGE-TARG
 - **Not copied from SiteRelay**: `document_type_sites`, `member_documents`, `member_profiles` (RotaFlow has staff
   records, emergency contacts and this `documents` table).
 
+### 4.17 Scheduling (MariaDB `backend/migrations/016-scheduling.sql`, R2 slice S11)
+
+No new tables. The rules are PHP (`backend/src/SchedulingRules.php`, `backend/src/Mod/Scheduling.php`) and the
+same rules in the browser (`src/lib/schedulingRules.ts`).
+
+- **Settings keys** (in `organisations.settings`, already written by Settings, Policies through
+  `POST /orgs/{o}/settings`): `min_rest_hours` (0 to 24; default 11 when unset; 0 turns the rest warning off) and
+  `max_weekly_hours` (1 to 168; default 48). Read by the publish preview, the pattern generator and the assign
+  dialog. `max_consecutive_days` stays a browser-only warning in the rota assistant, as before.
+- **Flag**: `feature_flags.scheduling_tools` is seeded **off**. Off, the two new routes answer 403 `feature_off` and
+  publishing and leave decisions behave exactly as before.
+
 ## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions

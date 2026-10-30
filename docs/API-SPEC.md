@@ -629,3 +629,21 @@ Eligibility is an internal service, not an endpoint: `Compliance::eligible(pdo, 
 `{ok, missing}` for the organisation-local date of that instant. S12 (cover, and the instant claim on open shifts)
 consumes it.
 
+### Slice S11 (R2): scheduling
+
+Owners and managers only (delegates included; a platform support session has a manager's reach and a read session
+cannot generate). Behind the `scheduling_tools` feature flag, seeded **off** by migration 016: while it is off both
+routes answer **403 `feature_off`** after the membership and role checks (a stranger still gets 404), publishing
+refuses nothing new and the leave decision answers exactly as before. Times are ISO 8601 UTC; pattern dates and
+times are the site's wall clock (the rota's site, else the organisation's timezone), so 06:00 stays 06:00 across a
+clock change. The limits come from `organisations.settings` (`min_rest_hours`, default 11, 0 turns the rest check
+off; `max_weekly_hours`, default 48), written by `POST /orgs/{o}/settings` (Settings, Policies).
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/rotas/{r}/publish-preview` | owner, manager | For a **draft** (409 `rota_not_draft` otherwise): `{rota, limits, shifts[{id, staff_profile_id, location_id, starts_at, ends_at, break_minutes, status, change, warnings[{code, message}]}], removed[], total, truncated, counts{new, unchanged, cancelled, removed}, with_warnings, warnings_by_code, overlaps[{staff_profile_id, shift, other}], can_publish}`. `change` is `new` on a first publish; an amendment is compared with the rota it replaces (`unchanged`, `new`, and `removed` for what goes). Warning codes: `rest` (no continuous minimum rest in the 24 hours before the shift), `weekly_hours` (Monday to Sunday, net of breaks), `leave` (approved leave on its local dates), `unavailable` (declared unavailability: weekday window, whole day or one date). Shifts are read with what is committed: published rotas (except the one being amended) and shifts with no rota; other drafts are not counted. At most 500 shifts listed |
+| `POST /orgs/{o}/rotas/{r}/patterns/generate` `{kind: weekly\|cycle, weekdays?[1-7], days_on?, days_off?, cycle_start?, from_date, to_date, blocks[{start, end}], staff_profile_id?, location_id?, department_id?, shift_type_id?, break_minutes?, notes?, preview?}` | owner, manager; writable; not read-only billing | Fills a **draft** rota (409 `rota_not_draft`). Dates inside the rota's period, at most 92 days and 500 shifts, 1 to 6 blocks (an end before the start runs overnight), break shorter than each block; 422 with the sentence otherwise. A shift that repeats one already on the rota (`duplicate`) or double-books the person (`overlap`) is skipped and reported, never forced. With a person the shifts are `assigned`, without one `open`. `{created, shift_ids, skipped[{date, starts_at, ends_at, reason, message}], warnings[{starts_at, ends_at, warnings}], preview}`; `preview: true` runs the same generation and rolls it back. Audited `rota.pattern_generated` |
+| `POST /orgs/{o}/rotas/{r}/publish` (changed, flag on only) | owner, manager | Also refuses **409 `shift_overlap`** when a person on this rota is in two places at once (against this rota, published rotas and loose shifts). Warnings never block |
+| `POST /orgs/{o}/leave/{l}/review` (changed, flag on only) | owner, manager | The response gains `clashing_shifts[{id, rota_id, rota_status, location_id, starts_at, ends_at}]`: on approval, the person's live shifts (draft or published, never archived history) inside the leave dates; `[]` on a rejection |
+
+Copy-week stays RotaFlow's own `POST /orgs/{o}/rotas/{r}/repeat` (SiteRelay's copy-week and templates were not ported).
