@@ -376,12 +376,12 @@ export default defineConfig({
       },
 
       devOptions: {
-        enabled: false, // set true to debug the SW in `npm run dev`
+        enabled: false, // set true to debug the SW in `pnpm run dev`
       },
     }),
 
     // Live TS + ESLint errors in the dev overlay, instead of only finding out
-    // at `npm run build` / CI. `enableBuild: false` because `npm run build`
+    // at `pnpm run build` / CI. `enableBuild: false` because `pnpm run build`
     // already runs a separate `tsc --noEmit` — checking twice would just
     // slow the build down for the same answer.
     checker({
@@ -390,7 +390,7 @@ export default defineConfig({
       enableBuild: false,
     }),
 
-    // Bundle breakdown, opt-in only: `ANALYZE=true npm run build`. Writes
+    // Bundle breakdown, opt-in only: `ANALYZE=true pnpm run build`. Writes
     // stats.html at the repo root (gitignored, never shipped) rather than
     // running on every build.
     ...(process.env.ANALYZE

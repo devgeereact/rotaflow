@@ -118,7 +118,7 @@ Same layout-route pattern as §3, at `/app/account`, titled "My account" (the on
 | ✅     | Account settings                                     | `/app/account/*` (see §4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ✅     | Forgot / reset password                              | `/forgot-password`, `/reset-password`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ✅     | Accept invite. Public, pre-signup                    | `/invite/:token`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ✅     | Legal. Privacy, Terms, Cookies, Accessibility, Trust | **Five routes, not four.** `/legal/privacy`, `/legal/cookies` and `/legal/accessibility` are written from the code and checkable against it (CAP-060, 2026-08-31); `/legal/trust` publishes the sub-processor list, the AI transparency notice and the security disclosure policy from `src/lib/subprocessors.ts`, and `npm run check:docs` now resolves each row's cited path (BUG-067); `/legal/terms` is still the placeholder shell, because a contract cannot be derived from a codebase. All linked from `PublicFooter` |
+| ✅     | Legal. Privacy, Terms, Cookies, Accessibility, Trust | **Five routes, not four.** `/legal/privacy`, `/legal/cookies` and `/legal/accessibility` are written from the code and checkable against it (CAP-060, 2026-08-31); `/legal/trust` publishes the sub-processor list, the AI transparency notice and the security disclosure policy from `src/lib/subprocessors.ts`, and `pnpm run check:docs` now resolves each row's cited path (BUG-067); `/legal/terms` is still the placeholder shell, because a contract cannot be derived from a codebase. All linked from `PublicFooter` |
 | ✅     | OAuth / magic-link return                            | `/auth/callback` → `AuthCallbackPage` (`src/components/RouteAliases.tsx`)                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ✅     | Permission denied. Role, requirement, way back       | rendered by `RequireRole` on a gated route                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ✅     | 404                                                  | `*` → `NotFoundPage`. Since 2026-10-22 the server answers an unknown path with a real 404 status and a prerendered copy of this screen (`.htaccess`, `scripts/prerender.mjs`); the screen keeps `noindex` for installed clients, whose service worker answers without a status                                                                                                                                                                                                                                                |
@@ -604,7 +604,7 @@ Build the **`<SCREEN>`** screen so it visually matches `<REF>` as closely as pos
    that doesn't exist yet.
 5. The reference image is light-mode only, but every surface still needs a working
    `dark:` variant per `docs/DESIGN-SYSTEM.md` §1. Don't defer dark mode.
-6. **You may run the dev server for this task.** Start `npm run dev` in the background
+6. **You may run the dev server for this task.** Start `pnpm run dev` in the background
    if it isn't already running and reuse it. Do not spawn a second instance.
 7. This is a **static PWA build**, no server runtime. Anything server-side (data,
    auth) goes through Supabase per `docs/DATA-MODEL.md` / `docs/ARCHITECTURE.md`; don't
@@ -627,7 +627,7 @@ a different layout.
 Each iteration:
 
 1. Implement / refine the screen.
-2. `npm run typecheck` and `npm run lint`, both must be clean before you screenshot.
+2. `pnpm run typecheck` and `pnpm run lint`, both must be clean before you screenshot.
    A type error means the iteration is not done.
 3. Screenshot the running dev server:
    - Load the Chrome tools if not already loaded (ToolSearch:
@@ -658,5 +658,5 @@ both images, do not eyeball it).
   uses an asset you do not have, or a font not in the project).
 
 On stop, output: a short list of what still differs and why, plus every value you
-inferred rather than read from the design system. Then run `npm run typecheck` and
-`npm run lint` one final time. If you could not reach the dev server, say so plainly. Do not claim the screen renders.
+inferred rather than read from the design system. Then run `pnpm run typecheck` and
+`pnpm run lint` one final time. If you could not reach the dev server, say so plainly. Do not claim the screen renders.

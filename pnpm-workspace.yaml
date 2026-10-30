@@ -1,0 +1,6 @@
+# pnpm blocks dependency install scripts by default.
+# Add a package here only after reviewing why it needs to run a build script.
+allowBuilds:
+  # Downloads the Sentry CLI binary. Only used by the sourcemap upload in
+  # vite.config.ts, which runs only when SENTRY_AUTH_TOKEN is set at build time.
+  '@sentry/cli': true

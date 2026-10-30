@@ -51,17 +51,17 @@ and only the built artifacts are shipped.
 ## 1. Build locally
 
 ```bash
-npm run typecheck && npm run lint    # gates
-npm run build                        # emits ./dist (hashed JS/CSS, sw.js, manifest, source maps)
-npm run check:bundle                 # size budgets + "no DEV page shipped"; reads dist/
-npm run preview                      # smoke-test the production bundle before shipping
+pnpm run typecheck && pnpm run lint    # gates
+pnpm run build                        # emits ./dist (hashed JS/CSS, sw.js, manifest, source maps)
+pnpm run check:bundle                 # size budgets + "no DEV page shipped"; reads dist/
+pnpm run preview                      # smoke-test the production bundle before shipping
 ```
 
 The only shippable output is `dist/` plus the repo-root **`.htaccess`** (HTTPS
 redirect, prerendered pages, SPA rewrite to `index.html`, a real 404, MIME types,
 cache + security headers).
 
-**Since 2026-10-22 `npm run build` also writes `dist/prerendered/`**
+**Since 2026-10-22 `pnpm run build` also writes `dist/prerendered/`**
 (`scripts/prerender.mjs`): one static HTML file per sitemap page and a `404.html`.
 `.htaccess` serves `/` and each public page from there, sends a path whose first
 segment is a route in `src/App.tsx` to `index.html`, and answers anything else with
@@ -371,7 +371,7 @@ ssh cpanel 'ls -la ~/rotaflow.space/assets/ | head'
 # 2. Build the commit you want to return to, in a clean tree.
 git worktree add ../rotaflow-rollback <good-sha>
 cd ../rotaflow-rollback && cp ~/WebstormProjects/rotaflow/.env .   # a fresh tree has no .env
-npm ci && npm run build && npm run check:bundle
+pnpm install --frozen-lockfile && pnpm run build && pnpm run check:bundle
 
 # 3. Dry run first. It prints every change and every deletion.
 cpanel-deploy dist rotaflow.space \
@@ -382,7 +382,7 @@ cpanel-deploy dist rotaflow.space \
 # 4. Then --go, and verify as after any deploy.
 ```
 
-`npm ci`, not `npm install`: `install` rewrites the lockfile, so it does not prove the older
+`pnpm install --frozen-lockfile`, not `npm install`: `install` rewrites the lockfile, so it does not prove the older
 commit's dependency tree still resolves.
 
 ### What `--keep` is protecting, and why omitting it is the real risk

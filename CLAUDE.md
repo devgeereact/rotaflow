@@ -60,17 +60,17 @@ describe how to sequence work; in this repository GEE OS routes.
 
 | Task             | Command                                                                                                                                                                                                          |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dev server       | `npm run dev`, port **5042**, `strictPort`. The port is duplicated into `playwright.config.ts`, the Supabase redirect allowlist and the Edge Function CORS list, so changing it is never a one-file edit         |
-| Build            | `npm run build` (`tsc --noEmit`, then `vite build`). It must succeed with **no `.env`**: CI has none, and a missing `VITE_*` var has to degrade, not throw                                                       |
-| One test file    | `npx vitest run src/lib/hours.test.ts`                                                                                                                                                                           |
-| One test by name | `npx vitest run -t 'overnight'`                                                                                                                                                                                  |
-| Watch tests      | `npm run test:watch`                                                                                                                                                                                             |
-| One e2e spec     | `npx playwright test e2e/marketing.spec.ts`. Playwright starts `npm run dev` itself, against dev (not `dist/`) because the `-preview` routes it uses are `import.meta.env.DEV`-only                              |
-| Lint one path    | `npx eslint src/pages/app/RotaBuilderPage.tsx`                                                                                                                                                                   |
+| Dev server       | `pnpm run dev`, port **5042**, `strictPort`. The port is duplicated into `playwright.config.ts`, the Supabase redirect allowlist and the Edge Function CORS list, so changing it is never a one-file edit         |
+| Build            | `pnpm run build` (`tsc --noEmit`, then `vite build`). It must succeed with **no `.env`**: CI has none, and a missing `VITE_*` var has to degrade, not throw                                                       |
+| One test file    | `pnpm exec vitest run src/lib/hours.test.ts`                                                                                                                                                                           |
+| One test by name | `pnpm exec vitest run -t 'overnight'`                                                                                                                                                                                  |
+| Watch tests      | `pnpm run test:watch`                                                                                                                                                                                             |
+| One e2e spec     | `pnpm exec playwright test e2e/marketing.spec.ts`. Playwright starts `pnpm run dev` itself, against dev (not `dist/`) because the `-preview` routes it uses are `import.meta.env.DEV`-only                              |
+| Lint one path    | `pnpm exec eslint src/pages/app/RotaBuilderPage.tsx`                                                                                                                                                                   |
 | pgTAP            | `supabase start && supabase db reset && supabase test db && supabase stop`. **Needs Docker.** Reset first: the suite is not idempotent, and rows left by an e2e run fail assertions that count over whole tables |
-| Load test        | `npm run load:test`, against a **local** stack only; see `qa/PERFORMANCE-AUDIT.md`                                                                                                                               |
+| Load test        | `pnpm run load:test`, against a **local** stack only; see `qa/PERFORMANCE-AUDIT.md`                                                                                                                               |
 
-**Gates.** `npm run typecheck`, `lint` (zero warnings; it is ESLint, not `tsc`, that
+**Gates.** `pnpm run typecheck`, `lint` (zero warnings; it is ESLint, not `tsc`, that
 requires explicit return types), `format:check`, `test`, `check:bundle`,
 `check:migrations`, `check:docs`, `check:export`, then Playwright and pgTAP. In CI,
 `ci.yml` runs them as **six** jobs; which of them a merge requires, and the four
@@ -82,7 +82,7 @@ signal. A scheduled workflow fails where nobody is standing: check
 **Two timezones, deliberately.** `vitest.config.ts` pins `TZ=Europe/London` (DST
 exists, and a day-arithmetic bug on a clock-change date is invisible in UTC);
 `ci.yml` pins `TZ=UTC` for the build. Neither covers the other's bug class; do not
-unify them. CI runs **Node 22** (Node 20 is end-of-life, and jsdom 30 requires
+unify them. CI and local development run **Node 24** (`.node-version`; Node 20 is end-of-life, and jsdom 30 requires
 `^22.22.2 || ^24.15.0 || >=26.0.0`).
 
 **Pure logic stays in `src/lib`, and a test says so.** `src/lib/moduleBoundaries.test.ts`
@@ -149,7 +149,7 @@ The rules most expensive to get wrong. `docs/RULES.md` §5 and `docs/DATA-MODEL.
   forwarded JWT**, so RLS scopes every query. `service_role` is for genuinely
   cross-tenant work (billing webhook, scheduled drain, calendar feed) and is the
   exception. `ai-rota-assistant` is the worked example (`docs/API-SPEC.md`).
-- `supabase/functions/**` is Deno, excluded from `npm run typecheck` and `lint`.
+- `supabase/functions/**` is Deno, excluded from `pnpm run typecheck` and `lint`.
   CI's `edge-types` job typechecks all twelve entry points with a pinned Deno, which
   proves they compile and nothing more: **read them by hand**. RF-04 and RF-05 were
   replay and namespace bugs in the billing webhook, and both typechecked.

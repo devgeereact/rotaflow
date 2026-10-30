@@ -353,7 +353,7 @@ data; that files the case, it does not fulfil it. What each type actually does t
   still excluded are excluded **with a reason printed in the file itself** — two
   are live credentials (`org_smtp_settings`, `calendar_feed_tokens`), one is a
   queue that empties in a minute, and four are platform plumbing.
-  `npm run check:export` fails CI when a table with an `org_id` is in neither
+  `pnpm run check:export` fails CI when a table with an `org_id` is in neither
   list, so this cannot drift again. A **per-subject** package covers one
   organisation's employment record: `exportStaffData()`
   (`src/services/gdprService.ts`) now returns **thirteen** datasets for one staff
@@ -465,13 +465,13 @@ that throws.
 
 The unit and e2e suites cover the logic and the interface, but neither can see
 what leaves the browser, because Sentry only runs when `import.meta.env.PROD`
-is true and the Playwright suite runs against `npm run dev`. The check that
+is true and the Playwright suite runs against `pnpm run dev`. The check that
 matters is a production build with a DSN pointing at a host that cannot
 resolve, served by `vite preview`, watching the network:
 
 ```
-VITE_SENTRY_DSN='https://<key>@consent-probe.invalid/1' npm run build
-npm run preview
+VITE_SENTRY_DSN='https://<key>@consent-probe.invalid/1' pnpm run build
+pnpm run preview
 ```
 
 Then, in a browser with site data cleared: throw an error before answering, and

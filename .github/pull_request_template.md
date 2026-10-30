@@ -8,10 +8,10 @@
 
 | Check | Status | Notes |
 | ----- | ------ | ----- |
-| `npm run typecheck` | NOT TESTED | |
-| `npm run lint` | NOT TESTED | |
-| `npm test` | NOT TESTED | |
-| `npm run check:docs` | NOT TESTED | |
+| `pnpm run typecheck` | NOT TESTED | |
+| `pnpm run lint` | NOT TESTED | |
+| `pnpm test` | NOT TESTED | |
+| `pnpm run check:docs` | NOT TESTED | |
 | Behaviour checked in the running app | NOT TESTED | |
 
 ## Docs

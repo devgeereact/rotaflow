@@ -3,12 +3,12 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * E2E smoke suite (`docs/SAAS.md`).
  *
- * Runs against `npm run dev`, not the production build: the `-preview` routes
+ * Runs against `pnpm run dev`, not the production build: the `-preview` routes
  * these tests use to reach role-specific screens without a live Supabase
  * session are gated behind `import.meta.env.DEV` and compiled out of
  * production entirely (see the comment above the preview routes in
  * `src/App.tsx`) — a `vite preview` server serving `dist/` would 404 every
- * one of them. `npm run dev` runs in dev mode in CI exactly as it does
+ * one of them. `pnpm run dev` runs in dev mode in CI exactly as it does
  * locally, so this is deliberate, not a shortcut.
  *
  * Chromium only for now: this is a smoke suite guarding critical paths and
@@ -22,7 +22,7 @@ import { defineConfig, devices } from '@playwright/test';
  * A second working copy of this repository keeps the same allocated port on
  * purpose — a diverging port committed on a branch lands on `main` at merge —
  * so `strictPort` fails loudly when two copies run at once. That is the
- * intended behaviour for `npm run dev`, and the wrong behaviour for a test
+ * intended behaviour for `pnpm run dev`, and the wrong behaviour for a test
  * run: an e2e suite in a second worktree should not have to stop the server
  * somebody is working against. `E2E_PORT` is the documented override, and it
  * is passed through to Vite on the command line rather than committed.
@@ -33,7 +33,7 @@ const BASE_URL = `http://localhost:${PORT}`;
 /**
  * The second server, and why there has to be one.
  *
- * Everything above runs against `npm run dev`, deliberately: the `-preview`
+ * Everything above runs against `pnpm run dev`, deliberately: the `-preview`
  * routes are `import.meta.env.DEV`-only and a production build 404s them.
  *
  * But the service worker is compiled out of dev entirely
@@ -113,7 +113,7 @@ export default defineConfig({
       ? []
       : [
           {
-            command: `npm run dev -- --port ${PORT}`,
+            command: `pnpm run dev -- --port ${PORT}`,
             url: BASE_URL,
             /**
              * Never reuse a running server for a live-Supabase run.
@@ -142,7 +142,7 @@ export default defineConfig({
             // the caller to remember it: a stale `dist/` is a test that passes
             // against last week's service worker, which is worse than one that
             // fails.
-            command: `npm run build && npm run preview -- --port ${PREVIEW_PORT}`,
+            command: `pnpm run build && pnpm run preview -- --port ${PREVIEW_PORT}`,
             url: PREVIEW_URL,
             reuseExistingServer: false,
             timeout: 300_000,

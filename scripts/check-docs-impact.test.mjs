@@ -23,6 +23,7 @@ describe('isCodePath / isDocPath', () => {
     }
     for (const p of [
       'package-lock.json',
+      'pnpm-lock.yaml',
       'scripts/x.mjs',
       'README.md',
       '.github/dependabot.yml',
@@ -100,6 +101,7 @@ describe('decideDocsImpact', () => {
         .status,
     ).toBe('exempt');
     expect(decideDocsImpact({ files: ['package-lock.json'] }).status).toBe('exempt');
+    expect(decideDocsImpact({ files: ['pnpm-lock.yaml'] }).status).toBe('exempt');
   });
 
   it('does not count the PR template as documentation', () => {

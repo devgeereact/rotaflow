@@ -265,7 +265,7 @@ Offline example (staff clock-in with no signal)
 The server has **no Node/npm**. The build runs locally (or in CI) and only the static
 artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 
-1. `npm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps)
+1. `pnpm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps)
    → `scripts/prerender.mjs`, which renders the sitemap pages and a not-found page with
    the real component tree (`src/entry-prerender.tsx`, built for Node and discarded) into
    `dist/prerendered/`. `src/main.tsx` hydrates a prerendered page when its

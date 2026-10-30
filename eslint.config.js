@@ -1,11 +1,11 @@
 // Flat config (ESLint 9). Replaces `.eslintrc.cjs`.
 //
 // The move off eslintrc was forced, not cosmetic: `vite-plugin-checker@0.14`
-// declares a peer on `eslint >= 9.39.4`, so `npm ci` failed with ERESOLVE
+// declares a peer on `eslint >= 9.39.4`, so `pnpm install --frozen-lockfile` failed with ERESOLVE
 // against the old `eslint@^8.57.1` pin. ESLint 9 removed eslintrc support,
 // so the config had to come with it.
 //
-// Rule set is a like-for-like port of the old file. `npm run lint` runs with
+// Rule set is a like-for-like port of the old file. `pnpm run lint` runs with
 // `--max-warnings 0`, so a rule that changes severity or gains coverage here
 // turns the build red — every deviation below is deliberate and noted.
 
@@ -25,7 +25,7 @@ export default tseslint.config(
       'dev-dist',
       // Vitest's HTML coverage report ships its own un-typed helper scripts
       // (prettify.js, sorter.js, block-navigation.js). Without this, running
-      // `npm run test:coverage` makes the very next `npm run lint` fail with
+      // `pnpm run test:coverage` makes the very next `pnpm run lint` fail with
       // three parser errors about files nobody wrote — and `--max-warnings 0`
       // turns that into a red build for a reason that has nothing to do with
       // the code.
@@ -35,7 +35,7 @@ export default tseslint.config(
       'supabase/functions', // Deno runtime (npm:/jsr: specifiers) — not tsc/ESLint compatible
       // Written by `supabase start`, which two of the four required gates
       // run. The CLI drops a Deno entrypoint under `.temp/start-secrets/`
-      // that is in no tsconfig, so the very next `npm run lint` fails with
+      // that is in no tsconfig, so the very next `pnpm run lint` fails with
       // two parser errors about a file nobody wrote — and `--max-warnings 0`
       // makes that a red build. Same class as the `coverage` entry above.
       // CI never saw it because the `verify` job does not start the stack.

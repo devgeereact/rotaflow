@@ -1,0 +1,9 @@
+# Secret scanning: gitleaks' default rules, plus one exception.
+# Clerk *publishable* keys (pk_live_/pk_test_) are public by design: they are in every page the
+# browser loads. local-live.json commits them. Clerk *secret* keys (sk_...) stay forbidden.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Clerk publishable keys are public"
+regexes = ['''^pk_(live|test)_[A-Za-z0-9+/=]+\$?$''']

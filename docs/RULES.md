@@ -13,7 +13,7 @@ codebase will drift from, and several below had.
   cPanel host runs no application code. No Node server, no SSR, no server
   middleware.
 - **Server logic is a Supabase Edge Function, or it does not exist.** Eight live
-  in `supabase/functions/` (Deno, excluded from `npm run typecheck`/`lint` — review
+  in `supabase/functions/` (Deno, excluded from `pnpm run typecheck`/`lint` — review
   them by hand). Don't trust that number: the deployed set and the checked-in set
   are different lists, because functions **never deploy on merge**. This is not an exception to the rule above; it is where the rule
   sends you.
@@ -74,7 +74,14 @@ codebase will drift from, and several below had.
 ## 7. Git & reviews
 
 - Small, atomic commits; imperative messages (`feat: add install prompt`).
-- Every PR must pass `typecheck` + `lint` (zero warnings) before review.
+- Every PR must pass `typecheck` + `lint` (zero warnings) before review. `pnpm run check`
+  is the one local gate.
+- **Tooling** (since 2026-10-30): pnpm, Node pinned in `.node-version`, **Biome formats**
+  and **ESLint lints**. This deliberately differs from the house kit, which uses Biome
+  for both: ESLint here runs the type-checked `typescript-eslint` rules, the explicit
+  return-type rule, `jsx-a11y` and the React hooks rules, which Biome does not replace,
+  and Biome's own linter added about 260 findings on top of them. Markdown is not
+  formatted by any tool. A commit hook runs gitleaks on staged files.
 - **Review happens on pull requests.** Use branch → PR → merge; `main` requires
   the `verify`, `e2e`, `db-tests` and `e2e-authenticated` checks, and CodeRabbit
   comments on pull requests only. Work pushed straight to `main` is never reviewed.

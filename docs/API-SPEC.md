@@ -14,7 +14,7 @@ moved from `docs/ARCHITECTURE.md` (§9c and §10), and the RPC text from
 ## Edge Functions
 
 `supabase/functions/**` is the only server compute in the product. It is Deno, and
-it is excluded from `npm run typecheck` and `npm run lint` (`eslint.config.js`).
+it is excluded from `pnpm run typecheck` and `pnpm run lint` (`eslint.config.js`).
 CI's `edge-types` job typechecks all twelve entry points with a pinned Deno 2.9.5
 and the committed `deno.lock`, which proves they compile and nothing more:
 **reading these files is still the only check on what they do**.

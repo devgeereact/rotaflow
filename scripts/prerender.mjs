@@ -24,7 +24,7 @@
  * during `vite build`, before this runs, and `vite.config.ts` also ignores
  * `prerendered/**`. An installed visitor keeps getting the app shell.
  *
- *   node scripts/prerender.mjs        (run by `npm run build`)
+ *   node scripts/prerender.mjs        (run by `pnpm run build`)
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

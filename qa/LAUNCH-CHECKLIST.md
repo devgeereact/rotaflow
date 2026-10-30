@@ -25,7 +25,7 @@ borrowing an older result.
 
 | #   | Gate                                                     | Status  | Evidence                                                                                                                                                                                  |
 | --- | -------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Application works online                                 | PASS    | `npm run build` clean; CI green on the three most recent merged pull requests                                                                                                             |
+| 1   | Application works online                                 | PASS    | `pnpm run build` clean; CI green on the three most recent merged pull requests                                                                                                             |
 | 2   | Network failure produces intentional behaviour           | PARTIAL | `OfflineBanner`, `FailedWritesNotice` and per-screen queued-write notices all exist and are unit-tested; no browser run has ever exercised them                                           |
 | 3   | Offline behaviour matches the approved specification     | PARTIAL | the specification did not exist until today. `docs/ARCHITECTURE.md#offline-and-pwa` now states it, and the three queued writes match it; the read story is weaker than the UI copy claims |
 | 4   | Service worker registration, scope and lifecycle         | PASS    | one registration site, `src/components/UpdatePrompt.tsx:15`, with `injectRegister: null`; scope `/`; `generateSW` config at `vite.config.ts:70-151`                                       |
@@ -62,7 +62,7 @@ borrowing an older result.
 | 20  | Mobile layout on supported sizes             | NOT TESTED | no device or emulator run recorded                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 21  | Desktop layout on supported sizes            | PARTIAL    | Playwright renders 42 screens in CI; that is a render, not a layout review                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 22  | Accessibility checked with recorded evidence | PARTIAL    | 13 public pages at zero axe contrast violations; the authenticated screens were never scanned until 30 August and the real figure was 172, tracked as GAP-030                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| 23  | Production build succeeds                    | PASS       | `npm run build`, 4 September 2026: 166 precache entries, 1,997 KiB precached                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 23  | Production build succeeds                    | PASS       | `pnpm run build`, 4 September 2026: 166 precache entries, 1,997 KiB precached                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 24  | No critical console or runtime errors        | NOT TESTED | requires a browser session; none was run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | 25  | No exposed secrets                           | PASS       | every inlined `VITE_*` is public by design (anon key, publishable key, DSN, VAPID **public** key). A pattern scan of `dist/` matched only the words `service_role` inside three `.map` files' comments, and `*.map` is excluded from the deployed set                                                                                                                                                                                                                                                                                                                                        |
 | 26  | No critical security findings open           | PARTIAL    | `npm audit --audit-level=high` runs in CI's `verify` job and is green; no manual review of `supabase/functions/**`, which is excluded from typecheck and lint                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -78,16 +78,16 @@ signal here: the `e2e-authenticated` and `db-tests` CI jobs need Docker and did
 not run.
 
 ```text
-npm run typecheck      PASS
-npm run lint           PASS   (--max-warnings 0)
-npm run format:check   PASS
-npm test               PASS   808 tests, 45 files
-npm run build          PASS   166 precache entries, 1,997 KiB
-npm run check:bundle   PASS   precache 678/760 KiB gzip, entry 132/175 KiB
-npm run check:migrations  PASS   no new migrations on this branch
-npm run check:export   PASS   40 tenant tables accounted for
-npm run check:docs     PASS   113 capability rows match the summary
-npx playwright test    NOT TESTED   not run locally on this branch
+pnpm run typecheck      PASS
+pnpm run lint           PASS   (--max-warnings 0)
+pnpm run format:check   PASS
+pnpm test               PASS   808 tests, 45 files
+pnpm run build          PASS   166 precache entries, 1,997 KiB
+pnpm run check:bundle   PASS   precache 678/760 KiB gzip, entry 132/175 KiB
+pnpm run check:migrations  PASS   no new migrations on this branch
+pnpm run check:export   PASS   40 tenant tables accounted for
+pnpm run check:docs     PASS   113 capability rows match the summary
+pnpm exec playwright test    NOT TESTED   not run locally on this branch
 supabase test db       BLOCKED      needs Docker
 ```
 
@@ -125,16 +125,16 @@ listed here keeps the status recorded above, and the reason it kept it.
 ### Local gate evidence, 4 September 2026 (second run)
 
 ```text
-npm run typecheck         PASS
-npm run lint              PASS   (--max-warnings 0)
-npm run format:check      PASS
-npm test                  PASS   849 tests, 48 files (4 new: UpdatePrompt)
-npm run build             PASS   166 precache entries, 2,009 KiB
-npm run check:bundle      PASS   precache 682/760 KiB gzip, entry 134.2/175 KiB
-npm run check:migrations  PASS   1 new migration, no undeclared destructive statements
-npm run check:export      PASS   40 tenant tables accounted for
-npm run check:docs        PASS   113 capability rows, migration count 116
-npx playwright test       PASS   80 passed, 1 skipped (the authenticated loop needs Docker)
+pnpm run typecheck         PASS
+pnpm run lint              PASS   (--max-warnings 0)
+pnpm run format:check      PASS
+pnpm test                  PASS   849 tests, 48 files (4 new: UpdatePrompt)
+pnpm run build             PASS   166 precache entries, 2,009 KiB
+pnpm run check:bundle      PASS   precache 682/760 KiB gzip, entry 134.2/175 KiB
+pnpm run check:migrations  PASS   1 new migration, no undeclared destructive statements
+pnpm run check:export      PASS   40 tenant tables accounted for
+pnpm run check:docs        PASS   113 capability rows, migration count 116
+pnpm exec playwright test       PASS   80 passed, 1 skipped (the authenticated loop needs Docker)
 supabase test db          BLOCKED locally, PASS in CI — see below
 ```
 
@@ -330,7 +330,7 @@ speaks for the live site unless it says so.
 
 Local evidence, all on this branch:
 
-- `npm ci` from a clean `node_modules`, then typecheck, lint (zero warnings),
+- `pnpm install --frozen-lockfile` from a clean `node_modules`, then typecheck, lint (zero warnings),
   format:check, 1,638 unit tests in 110 files, build with no `.env`,
   `check:bundle`, `check:docs`, `check:migrations`, `check:export`: all PASS.
   `npm audit --audit-level=high`: 0 vulnerabilities.

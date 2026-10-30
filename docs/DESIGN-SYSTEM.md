@@ -42,7 +42,7 @@ adopts a quiet, flat, monochrome-plus-one visual language. The rules below were
 taken from a generated design reference and merged here by hand; the reference
 file itself was read outside the repository and discarded. **Source credit:**
 the "Tesla-inspired" template in VoltAgent's `awesome-design-md` collection,
-fetched with `npx getdesign@latest add tesla`. This section is the only place
+fetched with `pnpm exec getdesign@latest add tesla`. This section is the only place
 that name appears: no name, logo, wording or asset from it is used in the
 product, on the website or in metadata.
 

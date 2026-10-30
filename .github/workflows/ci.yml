@@ -53,31 +53,33 @@ jobs:
           # check that had nothing to say.
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          node-version-file: .node-version
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      # `npm run build` runs `tsc --noEmit` first, but run it separately so a type
+      # `pnpm run build` runs `tsc --noEmit` first, but run it separately so a type
       # error is reported as a type error rather than buried in a failed bundle.
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       # --max-warnings 0, so warnings fail too. Currently 0 problems. Keep it there.
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       # Now a hard gate. The 37-file backlog that made this report-only was cleared
-      # on 2026-07-29 with `npm run format`; the tree is Prettier-clean.
+      # on 2026-07-29 with `pnpm run format`; the tree is Prettier-clean.
       #
       # Note for anyone hitting a surprise failure here: Prettier can move an
       # `eslint-disable-next-line` away from the line it suppresses, which turns a
       # working directive into an "unused disable directive" lint error. Anchor such
       # comments directly above the reported line. See src/hooks/useOptimizedImage.ts.
       - name: Format check
-        run: npm run format:check
+        run: pnpm run format:check
 
       # The first gate in this file that checks BEHAVIOUR rather than shape.
       #
@@ -94,10 +96,10 @@ jobs:
       # the suite to Europe/London for exactly that reason. Two zones, two
       # different bug classes; neither one covers the other.
       - name: Test
-        run: npm test
+        run: pnpm test
 
       - name: Build (no .env. Must survive missing VITE_* vars)
-        run: npm run build
+        run: pnpm run build
 
       # A PWA that builds but emits no service worker is a silent regression: the app
       # keeps working online and quietly stops working offline, which is the whole
@@ -116,7 +118,7 @@ jobs:
       # the only step in `verify` that can catch them. Prints the numbers on
       # every run, pass or fail, so growth is visible while it is still small.
       - name: Bundle budget
-        run: npm run check:bundle
+        run: pnpm run check:bundle
 
       # Migrations auto-apply to production on merge and there are no backups
       # (GAP-001), so a destructive statement has already run against the only
@@ -124,7 +126,7 @@ jobs:
       # that: it runs against an empty database where dropping a column costs
       # nothing. This asks the author to have written down why theirs is safe.
       - name: Migration safety
-        run: npm run check:migrations
+        run: pnpm run check:migrations
 
       # Counts written into prose, checked against the tree. The README told a
       # newcomer to run "0001 through 0066 — there are 66" when there were 91,
@@ -132,10 +134,10 @@ jobs:
       # numbers were deleted rather than corrected; the few worth stating are
       # verified here instead of trusted.
       - name: Documented counts
-        run: npm run check:docs
+        run: pnpm run check:docs
 
       - name: Organisation export covers every tenant table
-        run: npm run check:export
+        run: pnpm run check:export
 
       # The drift `check:docs` cannot count: a pull request that changes code
       # and says nothing about documentation. Fails unless a root *.md, docs/
@@ -172,12 +174,12 @@ jobs:
       # get ignored. `audit-level=high` still fails the build the day
       # something in the dependency tree is actually dangerous.
       - name: Dependency audit
-        run: npm audit --audit-level=high
+        run: pnpm audit --audit-level high
 
   # The only automated check that reads `supabase/functions/**` at all.
   #
-  # Those files are Deno, and are excluded from `npm run typecheck` and
-  # `npm run lint` — CLAUDE.md says plainly that "no automated check stands in
+  # Those files are Deno, and are excluded from `pnpm run typecheck` and
+  # `pnpm run lint` — CLAUDE.md says plainly that "no automated check stands in
   # for reading those files". That was true of the whole tree until the
   # delivery audit of 2026-09-05 (RF-14) pointed out what it costs: the Edge
   # Functions are where billing, invitations and notifications live, they are
@@ -226,23 +228,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          node-version-file: .node-version
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       # Chromium only (see playwright.config.ts) — no --with-deps browsers
       # beyond the one project actually runs.
       - name: Install Playwright's Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       # No .env here either, same reasoning as the build step above: these
       # tests exercise the public marketing/auth pages and DEV-only preview
       # routes, none of which need a real Supabase session.
       - name: E2E smoke + accessibility
-        run: npx playwright test
+        run: pnpm exec playwright test
 
       # The service worker exists only in a production build
       # (`devOptions.enabled: false`), so the step above can never see it.
@@ -252,7 +256,7 @@ jobs:
       - name: Service worker, manifest and update prompt
         env:
           E2E_PWA: only
-        run: npx playwright test --project=pwa e2e/pwa-offline.spec.ts
+        run: pnpm exec playwright test --project=pwa e2e/pwa-offline.spec.ts
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
@@ -305,18 +309,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          node-version-file: .node-version
+          cache: pnpm
 
       - uses: supabase/setup-cli@v3
         with:
           version: latest
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npx playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium
 
       # Every migration against a fresh local Postgres, plus GoTrue and
       # PostgREST. Nothing outside this runner: no project ref, no login.
@@ -348,7 +354,7 @@ jobs:
         env:
           E2E_LIVE_SUPABASE: '1'
         run: |
-          npx playwright test e2e/authenticated-loop.spec.ts \
+          pnpm exec playwright test e2e/authenticated-loop.spec.ts \
             e2e/owner-workforce.spec.ts \
             e2e/platform-console.spec.ts \
             e2e/staff-dashboard.spec.ts \
@@ -362,7 +368,7 @@ jobs:
         env:
           E2E_LIVE_SUPABASE: '1'
           E2E_PWA: only
-        run: npx playwright test --project=pwa e2e/pwa-cache-teardown.spec.ts
+        run: pnpm exec playwright test --project=pwa e2e/pwa-cache-teardown.spec.ts
 
       - uses: actions/upload-artifact@v7
         if: failure()

@@ -63,8 +63,8 @@ discipline".
 
 ### 1. Prerequisites
 
-- Node.js **>= 22** (`package.json` engines; CI runs Node 22)
-- npm
+- Node.js **>= 24** (`package.json` engines; CI runs the exact version in `.node-version`)
+- pnpm (`packageManager` in `package.json`)
 - [Supabase CLI](https://supabase.com/docs/guides/cli), needed to deploy the Edge
   Functions, to run `supabase db push`, and to run the `db-tests` and
   `e2e-authenticated` gates locally (both also need Docker)
@@ -87,7 +87,7 @@ are additive. Stopping early leaves a database that looks like it works and fail
 first RLS check. Easier: `supabase db push`, which applies the whole ledger.
 
 Don't hand-count this list: `ls supabase/migrations/*.sql | wc -l` is the answer, and
-`npm run check:docs` fails when the figure above drifts.
+`pnpm run check:docs` fails when the figure above drifts.
 
 ### 4. Deploy the AI rota assistant (optional)
 
@@ -104,14 +104,14 @@ not deploy on merge; see [`docs/API-SPEC.md`](docs/API-SPEC.md).
 ### 5. Develop
 
 ```bash
-npm run dev        # http://localhost:5042  (strictPort: fails loudly if taken)
+pnpm run dev        # http://localhost:5042  (strictPort: fails loudly if taken)
 ```
 
 ### 6. Verify before shipping
 
 ```bash
-npm run typecheck && npm run lint && npm run format:check && npm test
-npm run build && npm run check:bundle
+pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm test
+pnpm run build && pnpm run check:bundle
 ```
 
 The full list of CI jobs and scheduled workflows, and what each one blocks, is one
@@ -129,26 +129,28 @@ playbook, the `--keep` flags, rollback and recovery.
 
 | Script                     | Does                                                                                                                                                                                                                                                                                                               |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run dev`              | Vite dev server on port 5042                                                                                                                                                                                                                                                                                       |
-| `npm run build`            | Type-check, then build the static PWA to `dist/`                                                                                                                                                                                                                                                                   |
-| `npm run preview`          | Serve the production build locally                                                                                                                                                                                                                                                                                 |
-| `npm run typecheck`        | `tsc --noEmit`                                                                                                                                                                                                                                                                                                     |
-| `npm run lint`             | ESLint, zero warnings (also enforces explicit return types)                                                                                                                                                                                                                                                        |
-| `npm run lint:fix`         | ESLint with `--fix`                                                                                                                                                                                                                                                                                                |
-| `npm run format`           | Prettier write over `src/**` and `docs/**/*.md`                                                                                                                                                                                                                                                                    |
-| `npm run format:check`     | Prettier check over `src/**` only. Documentation formatting is not gated in CI                                                                                                                                                                                                                                     |
-| `npm test`                 | Vitest unit suite, pinned to `Europe/London`                                                                                                                                                                                                                                                                       |
-| `npm run test:watch`       | The same, on watch                                                                                                                                                                                                                                                                                                 |
-| `npm run test:coverage`    | Vitest with coverage                                                                                                                                                                                                                                                                                               |
-| `npm run check:bundle`     | Size budgets, and that no DEV preview page shipped                                                                                                                                                                                                                                                                 |
-| `npm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                                                                                                                                                                                                                                                               |
-| `npm run check:docs`       | Counts and toolchain facts in prose against the tree, the register summary against its rows, and every relative link or `docs/` and `qa/` path resolves                                                                                                                                                            |
-| `npm run check:export`     | Every table with an `org_id` is in the organisation export, or excluded with a reason                                                                                                                                                                                                                              |
-| `npm run og:image`         | Regenerates `public/og-image.png`, the 1200x630 link-preview card, with Playwright. No arguments. Run it by hand when the card's words or tokens change; the output is committed                                                                                                                                   |
-| `npm run load:test`        | Seeds 20 sites, 250 staff, 10,000 shifts and 50,000 clock events into a **local** stack and times the workforce reads. Needs `API_URL` and `SERVICE_ROLE_KEY` from `supabase status -o env`; refuses any host but `127.0.0.1`, `localhost` or `::1`. Results: [`qa/PERFORMANCE-AUDIT.md`](qa/PERFORMANCE-AUDIT.md) |
+| `pnpm run dev`              | Vite dev server on port 5042                                                                                                                                                                                                                                                                                       |
+| `pnpm run build`            | Type-check, then build the static PWA to `dist/`                                                                                                                                                                                                                                                                   |
+| `pnpm run preview`          | Serve the production build locally                                                                                                                                                                                                                                                                                 |
+| `pnpm run typecheck`        | `tsc --noEmit`                                                                                                                                                                                                                                                                                                     |
+| `pnpm run lint`             | ESLint, zero warnings (also enforces explicit return types)                                                                                                                                                                                                                                                        |
+| `pnpm run lint:fix`         | ESLint with `--fix`                                                                                                                                                                                                                                                                                                |
+| `pnpm run format`           | Biome formatter, write, over the repository (Markdown is not formatted)                                                          |
+| `pnpm run format:check`     | Biome formatter, check only                                                                                                      |
+| `pnpm test`                 | Vitest unit suite, pinned to `Europe/London`                                                                                                                                                                                                                                                                       |
+| `pnpm run test:watch`       | The same, on watch                                                                                                                                                                                                                                                                                                 |
+| `pnpm run test:coverage`    | Vitest with coverage                                                                                                                                                                                                                                                                                               |
+| `pnpm run check:bundle`     | Size budgets, and that no DEV preview page shipped                                                                                                                                                                                                                                                                 |
+| `pnpm run check:migrations` | Destructive SQL with no `-- SAFETY(...)` declaration                                                                                                                                                                                                                                                               |
+| `pnpm run check:docs`       | Counts and toolchain facts in prose against the tree, the register summary against its rows, and every relative link or `docs/` and `qa/` path resolves                                                                                                                                                            |
+| `pnpm run check`            | The one gate: lint, format check, typecheck, tests, build, then the four `check:*` scripts. Playwright and pgTAP run separately  |
+| `pnpm run check` | The one gate: lint, format check, typecheck, tests, build, then the four `check:*` scripts. Playwright and pgTAP run separately |
+| `pnpm run check:export`     | Every table with an `org_id` is in the organisation export, or excluded with a reason                                                                                                                                                                                                                              |
+| `pnpm run og:image`         | Regenerates `public/og-image.png`, the 1200x630 link-preview card, with Playwright. No arguments. Run it by hand when the card's words or tokens change; the output is committed                                                                                                                                   |
+| `pnpm run load:test`        | Seeds 20 sites, 250 staff, 10,000 shifts and 50,000 clock events into a **local** stack and times the workforce reads. Needs `API_URL` and `SERVICE_ROLE_KEY` from `supabase status -o env`; refuses any host but `127.0.0.1`, `localhost` or `::1`. Results: [`qa/PERFORMANCE-AUDIT.md`](qa/PERFORMANCE-AUDIT.md) |
 
 Two more run against live services rather than as npm scripts:
-`npx playwright test` (42 screens rendered and scanned for WCAG A and AA) and
+`pnpm exec playwright test` (42 screens rendered and scanned for WCAG A and AA) and
 `supabase test db` (pgTAP, the only gate that can catch an RLS regression).
 
 ## Project layout

@@ -24,7 +24,7 @@
  * smaller. It is used because it is deterministic and available everywhere,
  * and a budget only has to be a stable yardstick, not an exact wire figure.
  *
- * Usage: `npm run check:bundle` after a build. Exits non-zero on a breach.
+ * Usage: `pnpm run check:bundle` after a build. Exits non-zero on a breach.
  */
 
 import { gzipSync } from 'node:zlib';
@@ -61,7 +61,7 @@ function walk(dir) {
 }
 
 if (!existsSync(DIST)) {
-  fail(`${DIST}/ does not exist. Run \`npm run build\` first.`);
+  fail(`${DIST}/ does not exist. Run \`pnpm run build\` first.`);
   process.exit(1);
 }
 
@@ -242,7 +242,7 @@ for (const b of breaches) {
   fail(
     `${b.label} is ${b.value}${b.unit}, over the ${b.budget}${b.unit} budget ` +
       `(+${(b.value - b.budget).toFixed(1)}${b.unit}). ` +
-      'Find what grew before raising it: `npx vite build --mode production` prints ' +
+      'Find what grew before raising it: `pnpm exec vite build --mode production` prints ' +
       'per-chunk sizes, and a new large chunk usually means a lazy route became a ' +
       `static import. If the growth is intended, raise "${b.key}" in bundle-budget.json ` +
       'in the same PR and say why.',

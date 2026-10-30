@@ -141,7 +141,7 @@ after S9. Tests are PHP suites in `backend/tests/` plus vitest where logic is pu
 - **Tenancy proof:** SiteRelay's access sweep, extended to RotaFlow's roles. It reads the router, then calls
   every route as anonymous, a user from another organisation, staff, manager and owner with random ids,
   and fails on any 500 or any data leak. This replaces the pgTAP RLS-invariant tests.
-- **Policy table:** `docs/RLS-TO-PHP.md` is created in S2 and grows each slice: policy -> PHP check -> test.
+- **Policy table:** The RLS-to-PHP policy table (a new document, created in S2) and grows each slice: policy -> PHP check -> test.
   Done when all 119 final policies and the 6 storage policies are accounted for.
 - **Browser:** Playwright specs stay, retargeted at the API; the offline spec is the one that must not regress.
 - **Not run by me until cutover:** Stripe live mode, a real push on a phone, a real GPS clock-in on a phone.
@@ -151,7 +151,7 @@ after S9. Tests are PHP suites in `backend/tests/` plus vitest where logic is pu
 
 | #  | Risk                                                                                                         | Likelihood / impact | Mitigation                                                                                                      |
 | -- | ------------------------------------------------------------------------------------------------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 1  | 157 SECURITY DEFINER functions and 36 triggers hold rules nobody lists in one place; one missed becomes a security hole | High / High | Section 3 of the Phase 0 backend report is the checklist; each slice lists the rules it takes; `RLS-TO-PHP.md`; access sweep |
+| 1  | 157 SECURITY DEFINER functions and 36 triggers hold rules nobody lists in one place; one missed becomes a security hole | High / High | Section 3 of the Phase 0 backend report is the checklist; each slice lists the rules it takes; the RLS-to-PHP policy table; access sweep |
 | 2  | Browser-only enforcement creeping back (limits, entitlements, minimum cover were once browser-only)          | Med / High          | Every limit and entitlement is a PHP check with a test that calls the API directly, not the UI                  |
 | 3  | Clerk token lacks an `email` claim, or session tokens arrive "pending"                                       | Med / High          | Claim configured before S2 (needs your go); Jwt rejects `sts` != active; test against the dev instance first    |
 | 4  | All-or-nothing auth switch: no half-way build                                                                | Certain / Med       | Branch isolation, R1 contains no new features, rollback is the previous build and its `.htaccess`               |
@@ -164,7 +164,7 @@ after S9. Tests are PHP suites in `backend/tests/` plus vitest where logic is pu
 | 11 | CSP blocks Clerk (five hosts) and sign-in fails silently                                                     | Med / High          | CSP names clerk.rotaflow.space, cdn.protect.clerk.com, challenges.cloudflare.com, img.clerk.com, clerk-telemetry.com; smoke test signs in |
 | 12 | The Clerk app has an unused development instance and a production user named "Founder TEST" who never signed in | Low / Low          | Treat as the Super Admin seed; confirm with you at S2                                                           |
 | 13 | Plaintext secrets in the old schema (`smtp_pass`)                                                            | Low / Med           | Encrypted at rest with libsodium; key in private config; migration re-encrypts on first save                    |
-| 14 | pgTAP coverage (817 assertions) disappears with Postgres                                                     | Certain / Med       | Access sweep plus per-module PHP suites; count of protected behaviours listed in `RLS-TO-PHP.md`                |
+| 14 | pgTAP coverage (817 assertions) disappears with Postgres                                                     | Certain / Med       | Access sweep plus per-module PHP suites; count of protected behaviours listed in the RLS-to-PHP policy table                |
 | 15 | cPanel shared hosting limits (PHP time, cron granularity, no long-running worker)                            | Med / Med           | Outbox drain every minute by cron, bounded batches; polling not websockets; web push sender batch-limited      |
 | 16 | The tooling change in S0 (ESLint to Biome) hides regressions in a large codebase                             | Med / Low           | Format commit separate from lint-rule commits; `tsc` and tests unchanged and green before and after             |
 | 17 | SiteRelay Jwt.php reuse brings its weaknesses                                                                | Med / Med           | J1, J2, J4, J7 fixed first; J6 resolved by the claim decision; its alg-confusion tests copied                   |

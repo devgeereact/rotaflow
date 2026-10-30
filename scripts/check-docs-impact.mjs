@@ -30,7 +30,7 @@
  * needed to change. That is a legitimate answer; silence is not.
  *
  * Exempt: dependabot pull requests, and changes that touch only
- * `package-lock.json`. A dependency bump does not change what any document
+ * `pnpm-lock.yaml` (formerly `package-lock.json`). A dependency bump does not change what any document
  * says, and asking a bot for a rationale is a gate that trains people to
  * click past it.
  *
@@ -196,8 +196,8 @@ export function decideDocsImpact({ files, body = '', actor = '', headRef = '' })
   if (actor === 'dependabot[bot]' || headRef.startsWith('dependabot/')) {
     return { ...base, status: 'exempt', reason: 'dependabot pull request' };
   }
-  if (changed.length > 0 && changed.every((f) => f === 'package-lock.json')) {
-    return { ...base, status: 'exempt', reason: 'only package-lock.json changed' };
+  if (changed.length > 0 && changed.every((f) => f === 'pnpm-lock.yaml' || f === 'package-lock.json')) {
+    return { ...base, status: 'exempt', reason: 'only the lockfile changed' };
   }
   if (codeFiles.length === 0) {
     return { ...base, status: 'pass', reason: 'no behaviour-bearing paths changed' };
