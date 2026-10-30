@@ -6,6 +6,8 @@ import { RouteFallback } from '@/components/RouteFallback';
 import { Card } from '@/components/ui/Card';
 import { useOrg } from '@/hooks/useOrg';
 import { defaultSettingsPath, settingsTabsForRole } from '@/lib/settingsTabs';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { STAFF_DOCUMENTS_FEATURE } from '@/services/documentService';
 
 /**
  * `/app/settings/*`. The eight-section organisation administration area from
@@ -38,6 +40,8 @@ const SECTION_DESCRIPTIONS: Record<string, string> = {
   '/app/settings/roles': 'What each role can see and change.',
   '/app/settings/policies':
     'The working-time, break, holiday and swap rules your rotas are checked against.',
+  '/app/settings/document-types':
+    'The documents your staff keep on file, which ones are required to work, and how long they last.',
   '/app/settings/notifications':
     'What your organisation tells staff about, and on which channels.',
   '/app/settings/integrations':
@@ -50,7 +54,8 @@ export function SettingsLayout(): JSX.Element {
   const { role, orgName } = useOrg();
   const location = useLocation();
 
-  const tabs = settingsTabsForRole(role);
+  const documentTypes = useFeatureAccess().has(STAFF_DOCUMENTS_FEATURE);
+  const tabs = settingsTabsForRole(role, { documentTypes });
 
   // Staff have no Settings sections at all (see settingsTabs.ts). Send them to
   // their own account rather than rendering an empty tab bar over a blank page.

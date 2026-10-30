@@ -1,3 +1,4 @@
+import { EligibilityChip } from '@/components/staff/EligibilityChip';
 import type { JSX } from 'react';
 import { cn } from '@/lib/utils';
 import { rotaGridTemplate } from '@/lib/rotaCanvas';
@@ -95,6 +96,8 @@ interface RotaGridRowProps {
   onMoveCancel?: () => void;
   /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
   onDeleteShift?: (shift: Shift) => void;
+  /** Documents eligibility (compliance, S10), when the module is on. Informs; never blocks. */
+  eligibility?: { missing: string[]; expiringSoon: number };
 }
 
 export function RotaGridRow({
@@ -119,6 +122,7 @@ export function RotaGridRow({
   onMoveKey,
   onMoveCancel,
   onDeleteShift,
+  eligibility,
 }: RotaGridRowProps): JSX.Element {
   const staffProfileId = staff?.id ?? null;
   const contractMinutes = (staff?.weekly_hours ?? 0) * 60;
@@ -170,6 +174,13 @@ export function RotaGridRow({
                 <p className="truncate text-xs text-content-muted dark:text-content-muted-dark">
                   {staff.job_title}
                 </p>
+              )}
+              {eligibility && (
+                <EligibilityChip
+                  missing={eligibility.missing}
+                  expiringSoon={eligibility.expiringSoon}
+                  className="mt-0.5 inline-block"
+                />
               )}
             </div>
           </>

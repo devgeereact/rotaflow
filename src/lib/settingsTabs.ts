@@ -69,12 +69,27 @@ const OWNER_ONLY_SETTINGS: ReadonlySet<string> = new Set([
  * presentation, not enforcement, and the server must keep refusing regardless
  * of what the bar shows.
  */
-export function settingsTabsForRole(role: MembershipRole | null): TabItem[] {
+/** Owners and managers, and only while the `staff_documents` flag is on (compliance, slice S10). */
+export const DOCUMENT_TYPES_TAB: TabItem = {
+  to: '/app/settings/document-types',
+  label: 'Document types',
+};
+
+export function settingsTabsForRole(
+  role: MembershipRole | null,
+  options: { documentTypes?: boolean } = {},
+): TabItem[] {
   if (role !== 'owner' && role !== 'manager') return [];
 
-  return SETTINGS_TABS.filter(
+  const tabs = SETTINGS_TABS.filter(
     (tab) => role === 'owner' || !OWNER_ONLY_SETTINGS.has(tab.to),
   ).map((tab) => ({ ...tab }));
+  if (options.documentTypes) {
+    // After Policies: both describe what the organisation requires of its people.
+    const at = tabs.findIndex((t) => t.to === '/app/settings/policies');
+    tabs.splice(at === -1 ? tabs.length : at + 1, 0, { ...DOCUMENT_TYPES_TAB });
+  }
+  return tabs;
 }
 
 /**

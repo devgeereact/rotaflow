@@ -263,6 +263,10 @@ const OpenShiftsPage = lazyPage(
   'OpenShiftsPage',
   () => import('@/pages/app/OpenShiftsPage'),
 );
+const CompliancePage = lazyPage(
+  'CompliancePage',
+  () => import('@/pages/app/CompliancePage'),
+);
 const OvertimePage = lazyPage('OvertimePage', () => import('@/pages/app/OvertimePage'));
 const AnnouncementsPage = lazyPage(
   'AnnouncementsPage',
@@ -327,6 +331,10 @@ const SettingsRolesPage = lazyPage(
 const SettingsPoliciesPage = lazyPage(
   'SettingsPoliciesPage',
   () => import('@/pages/app/settings/SettingsPoliciesPage'),
+);
+const SettingsDocumentTypesPage = lazyPage(
+  'SettingsDocumentTypesPage',
+  () => import('@/pages/app/settings/SettingsDocumentTypesPage'),
 );
 const SettingsNotificationsPage = lazyPage(
   'SettingsNotificationsPage',
@@ -864,6 +872,9 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                             <Route path="overtime" element={<OvertimePage />} />
                           </Route>
                           <Route path="open-shifts" element={<OpenShiftsPage />} />
+                          {/* Every member: staff keep their own documents; owners and managers
+                              also review. Behind the staff_documents flag inside the page. */}
+                          <Route path="compliance" element={<CompliancePage />} />
                           <Route path="announcements" element={<AnnouncementsPage />} />
                           <Route path="notifications" element={<NotificationsPage />} />
                           <Route path="help" element={<HelpPage />} />
@@ -900,6 +911,10 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                             />
                             <Route path="roles" element={<SettingsRolesPage />} />
                             <Route path="policies" element={<SettingsPoliciesPage />} />
+                            <Route
+                              path="document-types"
+                              element={<SettingsDocumentTypesPage />}
+                            />
                             <Route
                               path="notifications"
                               element={<SettingsNotificationsPage />}

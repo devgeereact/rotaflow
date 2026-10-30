@@ -73,6 +73,8 @@ interface RotaGridProps {
   ) => void;
   /** Omitted where the viewer cannot edit, that is what hides the chip's ×. */
   onDeleteShift?: (shift: Shift) => void;
+  /** Per staff record: documents eligibility (compliance, S10). Absent when the module is off. */
+  eligibility?: Map<string, { missing: string[]; expiringSoon: number }>;
 }
 
 /** A keyboard move in progress: which shift, and where it would land. */
@@ -106,6 +108,7 @@ export function RotaGrid({
   onSelectShift,
   onMoveShift,
   onDeleteShift,
+  eligibility,
 }: RotaGridProps): JSX.Element {
   // One clock for the whole grid. Every chip needs to know whether it is in
   // the past, and hundreds of cells each running their own timer would be
@@ -449,6 +452,7 @@ export function RotaGrid({
           onMoveKey={handleMoveKey}
           onMoveCancel={cancelMove}
           onDeleteShift={onDeleteShift}
+          eligibility={row.staff ? eligibility?.get(row.staff.id) : undefined}
         />
       ))}
 

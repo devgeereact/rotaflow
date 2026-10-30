@@ -1,3 +1,4 @@
+import type { ComplianceDocument } from '@/lib/compliance';
 import type { Database } from '@/types/database.types';
 
 /** Convenience row aliases used across the app. */
@@ -143,8 +144,8 @@ export type EmergencyContact = Database['public']['Tables']['emergency_contacts'
 export type EmergencyContactInsert =
   Database['public']['Tables']['emergency_contacts']['Insert'];
 
-export type StaffDocument = Database['public']['Tables']['documents']['Row'];
-export type StaffDocumentInsert = Database['public']['Tables']['documents']['Insert'];
+/** A staff document as the API returns it (compliance module, S10). See src/lib/compliance.ts. */
+export type StaffDocument = ComplianceDocument;
 
 /**
  * Org SMTP: `smtp_pass` is write-only. Excluded from the column-level

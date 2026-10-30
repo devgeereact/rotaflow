@@ -1,20 +1,18 @@
 /**
- * Staff document files: what may be uploaded, and where it is kept.
+ * Staff document files: what may be uploaded.
  *
- * The bucket (`staff-documents`, migration 0159) is private. An object's path
- * is `<org_id>/<staff_profile_id>/<file>`, and the Storage policies decide who
- * may read, upload or remove it from that path alone, so building it is the
- * one place a mistake would put a file in the wrong person's folder. The limits
- * below repeat the bucket's own so the browser can say no before uploading;
- * Storage enforces them either way.
+ * Files go to the API (compliance, slice S10), which keeps them in its private store at
+ * `<org_id>/<staff_profile_id>/<file>`, checks the type from the bytes, and refuses anything over
+ * 10 MB. The limits below repeat the API's so the browser can say no before uploading; the API
+ * enforces them either way (backend/src/Mod/Compliance.php).
  */
 
 export const DOCUMENT_BUCKET = 'staff-documents';
 
-/** Matches `file_size_limit` on the bucket (0159). */
+/** Matches Compliance::MAX_BYTES in the API. */
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
-/** Matches `allowed_mime_types` on the bucket (0159). */
+/** Matches ComplianceRules::sniff in the API. */
 export const DOCUMENT_MIME_TYPES = [
   'application/pdf',
   'image/jpeg',

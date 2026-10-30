@@ -323,13 +323,13 @@ describe('computeRotaInsights', () => {
     const documents: StaffDocument[] = [
       {
         id: 'd-1',
-        org_id: ORG,
         staff_profile_id: 'p-1',
         type: 'dbs',
         name: 'DBS certificate',
         file_url: 'https://example.test/d.pdf',
         issued_at: '2024-01-01',
         expires_at: '2026-07-29',
+        stored_status: 'approved',
       } as StaffDocument,
     ];
     const rostered = shift({

@@ -42,7 +42,11 @@ import { listActiveStaff } from '@/services/staffService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgAvailability } from '@/services/availabilityService';
-import { listExpiringDocuments } from '@/services/documentService';
+import {
+  complianceSummary,
+  listExpiringDocuments,
+  STAFF_DOCUMENTS_FEATURE,
+} from '@/services/documentService';
 import {
   beginRotaRevision,
   discardRotaRevision,
@@ -256,6 +260,37 @@ export function RotaBuilderPage(): JSX.Element {
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [documents, setDocuments] = useState<StaffDocument[]>([]);
+  // Documents eligibility per staff record (compliance, S10): the chip beside each name. Only
+  // while the module is switched on; it informs and never blocks an assignment.
+  const documentsOn = hasFeature(STAFF_DOCUMENTS_FEATURE);
+  const [eligibility, setEligibility] = useState<
+    Map<string, { missing: string[]; expiringSoon: number }> | undefined
+  >(undefined);
+  useEffect(() => {
+    if (!orgId || !documentsOn) {
+      setEligibility(undefined);
+      return;
+    }
+    let active = true;
+    void complianceSummary(orgId)
+      .then((sum) => {
+        if (!active) return;
+        setEligibility(
+          new Map(
+            sum.people.map((p) => [
+              p.staff_profile_id,
+              { missing: p.missing, expiringSoon: p.expiring.length },
+            ]),
+          ),
+        );
+      })
+      .catch((err: unknown) => {
+        reportError(err, { area: 'rota:eligibility' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [orgId, documentsOn]);
   const [minimumCoverRules, setMinimumCoverRules] = useState<MinimumCoverRule[]>([]);
   // Settings → Policies: minimum rest, maximum weekly hours and maximum
   // consecutive days. Until this was read the rota used fixed 11h and 48h and
@@ -2487,6 +2522,7 @@ export function RotaBuilderPage(): JSX.Element {
                   // refuses the delete, so offering it would be a lie.
                   onMoveShift={readOnly ? undefined : moveShiftTo}
                   onDeleteShift={readOnly ? undefined : handleDeleteShiftFromChip}
+                  eligibility={eligibility}
                 />
               </ScrollRegion>
             )}

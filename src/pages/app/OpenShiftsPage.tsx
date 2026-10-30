@@ -21,6 +21,10 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { EligibilityChip } from '@/components/staff/EligibilityChip';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { myCompliance, STAFF_DOCUMENTS_FEATURE } from '@/services/documentService';
+import { eligibilityOn, type Requirement } from '@/lib/compliance';
 
 /**
  * `/app/open-shifts` — uncovered shifts anybody can take (CAP-010).
@@ -82,6 +86,25 @@ export function OpenShiftsPage(): JSX.Element {
   // organisation's, as SchedulePage resolves it, not the browser's: a phone
   // set to another zone must not move a 09:00 start.
   const [timezone, setTimezone] = useState<string>(FALLBACK_TIMEZONE);
+  // The reader's own documents (compliance, S10), so each card can say whether they would be
+  // cleared on that day. Informs only: the claim itself is checked by the API (S12 adds documents).
+  const documentsOn = useFeatureAccess().has(STAFF_DOCUMENTS_FEATURE);
+  const [requirements, setRequirements] = useState<Requirement[] | null>(null);
+  useEffect(() => {
+    if (!orgId || !documentsOn || !canClaim) {
+      setRequirements(null);
+      return;
+    }
+    let active = true;
+    void myCompliance(orgId)
+      .then((me) => {
+        if (active) setRequirements(me.requirements);
+      })
+      .catch((err: unknown) => reportError(err, { area: 'open-shifts:compliance' }));
+    return () => {
+      active = false;
+    };
+  }, [orgId, documentsOn, canClaim]);
 
   // Somebody else taking a shift is the event this screen most needs to hear
   // about: the board is a queue several people read at once.
@@ -262,6 +285,17 @@ export function OpenShiftsPage(): JSX.Element {
                       <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
                         {shift.notes}
                       </p>
+                    )}
+                    {requirements && (
+                      <EligibilityChip
+                        className="mt-2 inline-block"
+                        missing={
+                          eligibilityOn(
+                            requirements,
+                            start.toLocaleDateString('en-CA', { timeZone: timezone }),
+                          ).missing
+                        }
+                      />
                     )}
                   </div>
 

@@ -16,7 +16,10 @@ export function Breadcrumbs(): JSX.Element {
   const { orgName, role } = useOrg();
   const { pathname } = useLocation();
 
-  const candidates = [...navItemsForRole(role), ...footerNavItemsForRole(role)];
+  const candidates = [
+    ...navItemsForRole(role, { compliance: true }),
+    ...footerNavItemsForRole(role),
+  ];
   const current = candidates
     .filter((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))
     .sort((a, b) => b.to.length - a.to.length)[0];

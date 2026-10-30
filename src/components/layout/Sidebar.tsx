@@ -12,6 +12,8 @@ import { SidebarFooter } from '@/components/layout/SidebarFooter';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { IconButton } from '@/components/ui/IconButton';
 import { navItemsForRole, type NavItem } from '@/lib/sidebarNav';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { STAFF_DOCUMENTS_FEATURE } from '@/services/documentService';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { BRAND } from '@/lib/brand';
 
@@ -119,7 +121,8 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.Element {
   const { role, orgId } = useOrg();
   const { mode } = useWorkMode();
-  const items = navItemsForRole(role, { mode });
+  const compliance = useFeatureAccess().has(STAFF_DOCUMENTS_FEATURE);
+  const items = navItemsForRole(role, { mode, compliance });
   const badges = useNavBadgeCounts(orgId);
   const setMobileOpen = onMobileOpenChange;
   const drawerRef = useRef<HTMLDivElement | null>(null);

@@ -704,6 +704,7 @@ export function StaffPage(): JSX.Element {
           orgId={orgId}
           staffProfileId={documentsFor.id}
           staffName={`${documentsFor.first_name} ${documentsFor.last_name}`}
+          canManage
         />
       )}
     </div>

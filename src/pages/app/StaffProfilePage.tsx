@@ -76,7 +76,10 @@ export function StaffProfilePage(): JSX.Element {
         getStaffProfile(staffId),
         listDepartments(orgId),
         listLocations(orgId),
-        listDocuments(orgId, staffId),
+        // Shown only where the flag is on; and a reader the API keeps out of documents (support) sees none.
+        documentsEnabled
+          ? listDocuments(orgId, staffId).catch(() => [])
+          : Promise.resolve([]),
         listEmergencyContacts(orgId, staffId),
         listMyLeaveRequests(staffId),
         listShiftsForPeriod({
@@ -108,7 +111,7 @@ export function StaffProfilePage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [orgId, staffId, today]);
+  }, [orgId, staffId, today, documentsEnabled]);
 
   useEffect(() => {
     void load();
@@ -123,7 +126,11 @@ export function StaffProfilePage(): JSX.Element {
             locations,
             upcoming,
             thisMonth,
-            documents: documents.map((row) => toStaffDocument(row, today)),
+            // Only documents that count: approved (an expired one still shows, as expired). Drafts,
+            // pending and replaced rows are in the Documents window with their own status chips.
+            documents: documents
+              .filter((row) => row.stored_status === 'approved')
+              .map((row) => toStaffDocument(row, today)),
             emergencyContacts,
             leave,
             today,
@@ -216,6 +223,7 @@ export function StaffProfilePage(): JSX.Element {
           orgId={orgId}
           staffProfileId={staff.id}
           staffName={`${staff.first_name} ${staff.last_name}`}
+          canManage
         />
       )}
 

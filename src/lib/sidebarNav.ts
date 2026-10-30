@@ -10,6 +10,7 @@ import {
   Clock3,
   LogIn,
   ScanFace,
+  ShieldCheck,
   Umbrella,
   Repeat2,
   Timer,
@@ -51,6 +52,11 @@ export interface NavItem {
 export interface NavOptions {
   /** Management or personal. Defaults to management for anyone but staff. */
   mode?: WorkMode;
+  /**
+   * The `staff_documents` feature flag (compliance, slice S10). Off, the row does not exist: the
+   * module ships dark until the platform turns it on.
+   */
+  compliance?: boolean;
 }
 
 /**
@@ -152,6 +158,14 @@ export function navItemsForRole(
   items.push({ label: 'Shift Swaps', icon: Repeat2, to: '/app/swaps', badge: 'swaps' });
   items.push({ label: 'Open Shifts', icon: CalendarPlus, to: '/app/open-shifts' });
   items.push({ label: 'Overtime', icon: TimerReset, to: '/app/overtime' });
+  if (options.compliance) {
+    // Everyone: staff keep their own documents here; owners and managers also review.
+    items.push({
+      label: isManager ? 'Compliance' : 'My documents',
+      icon: ShieldCheck,
+      to: '/app/compliance',
+    });
+  }
 
   if (isManager) {
     // Above Team, because it is the thing a manager opens first: the queue is
