@@ -386,6 +386,7 @@ system. `backend/` is the one top-level folder added by the merge.
 | `backend/bin/cron.php`        | One cPanel cron entry; runs each module's `cron()` job under a lock. No long-running worker exists on the host                                           |
 | `backend/bin/grant-platform-owner.php` | Creates the first Super Admin from an email address. Run once on the server; there is deliberately no endpoint for it |
 | Private root                  | `rotaflow-private/` outside every web root on the server: `config/`, `cache/` (JWKS), `logs/`. Located by `ROTAFLOW_PRIVATE_ROOT`, never by the request      |
+| `backend/bin/doctor.php`      | Run before every release and after any hosting change: checks the PHP version and the extensions the API needs (`pdo_mysql`, `openssl`, `curl`, `json`, `ctype`, `iconv`, `pcre`). The API deliberately calls no `mb_*`, `sodium_*`, `gmp_*` or `bc*` function (a test enforces it), because the host's PHP has shipped without them |
 | Tests                         | `backend/tests/`, run with `pnpm run test:php` against a throwaway MariaDB on `127.0.0.1:3308` (`scripts/test-db.sh up`), never against live data         |
 
 Tenancy, roles and the policy-to-check table arrive with slice S2.

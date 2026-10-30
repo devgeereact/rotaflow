@@ -37,7 +37,7 @@ final class Platform implements Module
         $this->admin($user);
         $name = trim(Input::str($in, 'name'));
         $email = strtolower(trim(Input::str($in, 'owner_email')));
-        if (mb_strlen($name) < 2 || mb_strlen($name) > 120) {
+        if (\RotaFlow\Str::len($name) < 2 || \RotaFlow\Str::len($name) > 120) {
             throw HttpError::invalid('Organisation name must be 2 to 120 characters');
         }
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 255) {

@@ -47,7 +47,7 @@ final class Orgs implements Module
     private function createOrg(array $user, array $in, string $ip): array
     {
         $name = trim(Input::str($in, 'name'));
-        if (mb_strlen($name) < 2 || mb_strlen($name) > 120) {
+        if (\RotaFlow\Str::len($name) < 2 || \RotaFlow\Str::len($name) > 120) {
             throw HttpError::invalid('Organisation name must be 2 to 120 characters');
         }
         if ($this->ctx->orgCreation !== 'open' && !in_array(Scope::platformRole($this->ctx->pdo, $user['id']), ['platform_owner', 'platform_admin'], true)) {
@@ -91,7 +91,7 @@ final class Orgs implements Module
         Scope::require($m, ['owner']);
         Scope::requireWritable($m);
         $name = trim(Input::str($in, 'name'));
-        if (mb_strlen($name) < 2 || mb_strlen($name) > 120) {
+        if (\RotaFlow\Str::len($name) < 2 || \RotaFlow\Str::len($name) > 120) {
             throw HttpError::invalid('Organisation name must be 2 to 120 characters');
         }
         $this->ctx->pdo->prepare('UPDATE organisations SET name = ? WHERE id = ?')->execute([$name, $o]);
@@ -220,7 +220,7 @@ final class Orgs implements Module
             // One live delegation per pair: two overlapping rows make "when does this end" unanswerable.
             $pdo->prepare('UPDATE role_delegations SET revoked_at = UTC_TIMESTAMP() WHERE org_id = ? AND from_user_id = ? AND to_user_id = ? AND revoked_at IS NULL')->execute([$o, $user['id'], $to]);
             $pdo->prepare('INSERT INTO role_delegations (id, org_id, from_user_id, to_user_id, ends_at, note) VALUES (?, ?, ?, ?, ?, ?)')
-                ->execute([$id, $o, $user['id'], $to, gmdate('Y-m-d H:i:s', $until), isset($in['note']) ? mb_substr((string) $in['note'], 0, 500) : null]);
+                ->execute([$id, $o, $user['id'], $to, gmdate('Y-m-d H:i:s', $until), Input::optStr($in, 'note', 500)]);
             Audit::log($pdo, $o, $user['id'], 'org.role_delegated', 'role_delegations', $id, ['to_user_id' => $to, 'ends_at' => gmdate('c', $until)], 'warning', 'org', $ip);
             $pdo->commit();
         } catch (\Throwable $e) {

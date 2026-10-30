@@ -23,7 +23,7 @@ final class Input
             throw HttpError::invalid("$key must be text");
         }
         $v = trim($in[$key]);
-        if (mb_strlen($v) > $max) {
+        if (\RotaFlow\Str::len($v) > $max) {
             throw HttpError::invalid("$key is too long");
         }
         return $v === '' ? null : $v;
@@ -33,7 +33,7 @@ final class Input
     public static function reqStr(array $in, string $key, int $max): string
     {
         $v = trim(self::str($in, $key));
-        if ($v === '' || mb_strlen($v) > $max) {
+        if ($v === '' || \RotaFlow\Str::len($v) > $max) {
             throw HttpError::invalid("$key is required and at most $max characters");
         }
         return $v;

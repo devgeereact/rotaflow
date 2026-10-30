@@ -67,7 +67,7 @@ final class Staff implements Module
             return;
         }
         $pdo->prepare('INSERT INTO staff_profiles (id, org_id, user_id, first_name, last_name, email, active) VALUES (?, ?, ?, ?, ?, ?, 1)')
-            ->execute([Db::uuid(), $orgId, $userId, mb_substr($first, 0, 100), mb_substr($last, 0, 100), strtolower($email)]);
+            ->execute([Db::uuid(), $orgId, $userId, \RotaFlow\Str::cut($first, 100), \RotaFlow\Str::cut($last, 100), strtolower($email)]);
     }
 
     /** accept_invite: link an HR record created earlier by email, then apply the place the person was invited to. */
@@ -276,7 +276,7 @@ final class Staff implements Module
         $out = [];
         $has = static fn (string $k): bool => array_key_exists($k, $in);
         if ($has('first_name')) { $out['first_name'] = Input::reqStr($in, 'first_name', 100); }
-        if ($has('last_name')) { $out['last_name'] = trim(Input::str($in, 'last_name')) ; if (mb_strlen($out['last_name']) > 100) { throw HttpError::invalid('last_name is too long'); } }
+        if ($has('last_name')) { $out['last_name'] = trim(Input::str($in, 'last_name')) ; if (\RotaFlow\Str::len($out['last_name']) > 100) { throw HttpError::invalid('last_name is too long'); } }
         if ($has('email')) {
             $e = Input::optStr($in, 'email', 255);
             if ($e !== null && filter_var($e, FILTER_VALIDATE_EMAIL) === false) { throw HttpError::invalid('email is not valid'); }
@@ -314,7 +314,7 @@ final class Staff implements Module
         if ($has('skills')) {
             $sk = $in['skills'];
             if (!is_array($sk) || !array_is_list($sk) || count($sk) > 30) { throw HttpError::invalid('skills must be a list of up to 30 items'); }
-            foreach ($sk as $x) { if (!is_string($x) || trim($x) === '' || mb_strlen($x) > 40) { throw HttpError::invalid('each skill must be text of at most 40 characters'); } }
+            foreach ($sk as $x) { if (!is_string($x) || trim($x) === '' || \RotaFlow\Str::len($x) > 40) { throw HttpError::invalid('each skill must be text of at most 40 characters'); } }
             $out['skills'] = json_encode(array_values(array_unique(array_map('trim', $sk))), JSON_UNESCAPED_UNICODE);
         }
         if ($has('payroll_id')) { $out['payroll_id'] = Input::optStr($in, 'payroll_id', 60); }

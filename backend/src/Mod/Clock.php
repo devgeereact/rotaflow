@@ -162,7 +162,7 @@ final class Clock implements Module
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
         $reason = trim(Input::str($in, 'reason'));
-        if (mb_strlen($reason) < 3 || mb_strlen($reason) > 500) {
+        if (\RotaFlow\Str::len($reason) < 3 || \RotaFlow\Str::len($reason) > 500) {
             throw new HttpError(422, 'reason_required', 'A correction needs a reason of 3 to 500 characters.');
         }
         $newAt = array_key_exists('event_at', $in) && $in['event_at'] !== null ? Time::parseInstant($in['event_at'], 'event_at', true) : null;
