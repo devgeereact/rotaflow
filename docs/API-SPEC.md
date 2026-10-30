@@ -525,3 +525,19 @@ Placeholders: `{u}` user, `{s}` support session, `{c}` support case, `{i}` incid
 | `POST /enquiries` | public | The contact form: JSON up to 16 KB, honeypot `website`, optional Turnstile `turnstileToken`. 201 `{ok:true}`; 400 `invalid` with field names only, or `verification_failed`; 403 `origin_not_allowed`; 413; 415; 429 |
 | `GET /platform/enquiries[?status]`, `POST .../{e}/status` | operational | The inbox (no address hash or user agent) and its status |
 
+### Slice S8b-1: data lifecycle
+
+Placeholders: `{g}` data-subject request.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /platform/gdpr[?open=1]`, `POST /platform/gdpr` `{email, kind, name?, org_id?, received_on?}` | owner, admin, support | The register (due date order, 200 at most); log a request. Due one calendar month after receipt |
+| `POST /platform/gdpr/{g}/status` `{status, note?}` | owner, admin, support | Completing or refusing needs a note. Completing an erasure queues the login, or refuses with `holds_platform_role` / `sole_owner` |
+| `POST /platform/gdpr/{g}/extend` `{reason}` | owner, admin | Once only, two months from the original due date; reason of 15+ characters |
+| `GET /orgs/{o}/gdpr` | owner | Requests that name the organisation |
+| `POST /me/data-requests` `{kind: access|portability|rectification|erasure, org_id?}`, `GET /me/data-requests` | the person | 200 `already_open` for a repeat; 429 `too_many_open` at five; status only |
+| `POST /orgs/{o}/staff/{s}/erase` | owner (a real owner) | Anonymises the staff record in place; the login and membership are left |
+| `GET /orgs/{o}/deletion-preview`, `POST /orgs/{o}/delete` `{confirm_name}` | owner | Counts; delete with the exact name (422 `name_mismatch`). Immediate and irreversible |
+| `GET /platform/orgs/{o}/deletion-preview`, `POST /platform/orgs/{o}/delete` | owner, admin | The same, for a platform administrator |
+| `GET /platform/retention`, `POST /platform/retention/dry-run` | read: all staff; dry run: owner, admin | Policies and the last 50 runs; count what the next run would remove |
+

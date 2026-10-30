@@ -28,5 +28,7 @@ return [
     'turnstile_secret' => 'REPLACE_ME',
     'enquiry_ip_salt' => 'REPLACE_ME',
     'enquiry_notify_email' => 'support@rotaflow.space',
+    // Clerk Backend API secret key (sk_live_...). Used ONLY to delete a person's login when an erasure request is completed. Omit and those deletions wait in the queue.
+    'clerk_secret_key' => 'REPLACE_ME',
     'vapid' => ['public' => 'REPLACE_ME', 'private' => 'REPLACE_ME', 'subject' => 'mailto:support@rotaflow.space'],
 ];
