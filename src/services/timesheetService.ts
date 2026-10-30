@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, orgPath, seg } from '@/lib/api';
 import type { Database } from '@/types/database.types';
 
 export type Timesheet = Database['public']['Tables']['timesheets']['Row'];
@@ -29,14 +29,13 @@ export async function listTimesheets(
   periodStart: string,
   periodEnd: string,
 ): Promise<Timesheet[]> {
-  const { data, error } = await supabase
-    .from('timesheets')
-    .select('*')
-    .eq('org_id', orgId)
-    .eq('period_start', periodStart)
-    .eq('period_end', periodEnd);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ timesheets: Timesheet[] }>(orgPath(orgId, '/timesheets'), {
+    period_start: periodStart,
+    period_end: periodEnd,
+  });
+  return r.timesheets.filter(
+    (t) => t.period_start === periodStart && t.period_end === periodEnd,
+  );
 }
 
 export interface TimesheetApproval {
@@ -71,18 +70,18 @@ export async function approveTimesheets(
   approvals: TimesheetApproval[],
 ): Promise<Timesheet[]> {
   if (approvals.length === 0) return [];
-
-  const { data, error } = await supabase.rpc('approve_timesheets', {
-    p_org: orgId,
-    p_period_start: periodStart,
-    p_period_end: periodEnd,
-    p_approvals: approvals.map((a) => ({
-      staff_profile_id: a.staffProfileId,
-      total_minutes: a.totalMinutes,
-    })),
-  });
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.post<{ timesheets: Timesheet[] }>(
+    orgPath(orgId, '/timesheets/approve'),
+    {
+      period_start: periodStart,
+      period_end: periodEnd,
+      approvals: approvals.map((a) => ({
+        staff_profile_id: a.staffProfileId,
+        total_minutes: a.totalMinutes,
+      })),
+    },
+  );
+  return r.timesheets;
 }
 
 /**
@@ -95,12 +94,8 @@ export async function approveTimesheets(
  * that is reversed leaves its row and its `updated_at` behind.
  */
 export async function reopenTimesheet(id: string): Promise<Timesheet> {
-  const { data, error } = await supabase
-    .from('timesheets')
-    .update({ status: 'open', updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ timesheet: Timesheet }>(
+    activeOrgPath(`/timesheets/${seg(id)}/reopen`),
+  );
+  return r.timesheet;
 }

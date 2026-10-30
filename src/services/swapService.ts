@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, ApiError, orgPath, seg } from '@/lib/api';
 import type { Shift, ShiftSwap, ShiftSwapInsert } from '@/types';
 
 export interface ShiftSwapWithShift extends ShiftSwap {
@@ -11,47 +11,65 @@ export interface ShiftSwapWithShift extends ShiftSwap {
  * and respond/approve actions, plus 0008_shift_swaps_target_respond.sql,
  * which grants the write access the target colleague was missing.
  */
+type ApiSwap = ShiftSwap & {
+  shift_starts_at?: string;
+  shift_ends_at?: string;
+  shift_location_id?: string | null;
+  shift_staff_profile_id?: string | null;
+};
+
+/** The list carries the shift's times, site and holder; enough of the shift for every swap screen. */
+function withShift(r: ApiSwap): ShiftSwapWithShift {
+  const {
+    shift_starts_at,
+    shift_ends_at,
+    shift_location_id,
+    shift_staff_profile_id,
+    ...swap
+  } = r;
+  const shift =
+    shift_starts_at && shift_ends_at
+      ? ({
+          id: swap.shift_id,
+          org_id: swap.org_id,
+          starts_at: shift_starts_at,
+          ends_at: shift_ends_at,
+          location_id: shift_location_id ?? null,
+          staff_profile_id: shift_staff_profile_id ?? null,
+        } as Shift)
+      : null;
+  return { ...swap, shift };
+}
+
+async function readSwaps(path: string): Promise<ShiftSwapWithShift[]> {
+  const r = await api.get<{ swaps: ApiSwap[] }>(path);
+  return r.swaps.map(withShift);
+}
+
 export async function requestShiftSwap(input: ShiftSwapInsert): Promise<ShiftSwap> {
-  const { data, error } = await supabase
-    .from('shift_swaps')
-    .insert(input)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ swap: ApiSwap }>(orgPath(input.org_id, '/swaps'), {
+    shift_id: input.shift_id,
+    requested_by: input.requested_by,
+    target_staff_profile_id: input.target_staff_profile_id ?? null,
+    note: input.note ?? null,
+    client_event_id: input.client_event_id ?? null,
+  });
+  return withShift(r.swap);
 }
 
 /** Swaps involving one person, as requester or target, newest first. */
 export async function listMyShiftSwaps(
   staffProfileId: string,
 ): Promise<ShiftSwapWithShift[]> {
-  const { data, error } = await supabase
-    .from('shift_swaps')
-    // Named foreign key, not a bare embed.
-    //
-    // `0123` added `applied_shift_id`, a SECOND reference from `shift_swaps`
-    // to `shifts`, and PostgREST then refuses an ambiguous embed outright:
-    // `PGRST201 · Could not embed because more than one relationship was
-    // found`. Every read of a swap has been failing since that migration
-    // merged, which took the dashboard's whole "waiting on a decision" half
-    // with it — the error was caught into a toast, so the board still
-    // rendered and nothing said the list was missing rather than empty.
-    .select('*, shift:shifts!shift_swaps_shift_id_fkey(*)')
-    .or(`requested_by.eq.${staffProfileId},target_staff_profile_id.eq.${staffProfileId}`)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return (await readSwaps(activeOrgPath('/swaps'))).filter(
+    (w) =>
+      w.requested_by === staffProfileId || w.target_staff_profile_id === staffProfileId,
+  );
 }
 
 /** Every swap across the org. Manager approval queue. */
 export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShift[]> {
-  const { data, error } = await supabase
-    .from('shift_swaps')
-    .select('*, shift:shifts!shift_swaps_shift_id_fkey(*)')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return readSwaps(orgPath(orgId, '/swaps'));
 }
 
 /**
@@ -63,13 +81,8 @@ export async function listOrgShiftSwaps(orgId: string): Promise<ShiftSwapWithShi
  * to act on.
  */
 export async function countSwapsNeedingAttention(orgId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('shift_swaps')
-    .select('id', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-    .in('status', ['pending', 'accepted']);
-  if (error) throw error;
-  return count ?? 0;
+  const r = await api.get<{ swaps_pending: number }>(orgPath(orgId, '/attention'));
+  return r.swaps_pending;
 }
 
 /**
@@ -83,14 +96,11 @@ export async function respondToShiftSwap(
   id: string,
   status: 'accepted' | 'rejected',
 ): Promise<ShiftSwap> {
-  const { data, error } = await supabase
-    .from('shift_swaps')
-    .update({ status })
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ swap: ApiSwap }>(
+    activeOrgPath(`/swaps/${seg(id)}/respond`),
+    { status },
+  );
+  return withShift(r.swap);
 }
 
 /**
@@ -120,17 +130,16 @@ export async function respondToShiftSwap(
 export async function reviewShiftSwap(
   id: string,
   status: 'approved' | 'rejected',
-  reviewedBy: string,
+  _reviewedBy: string,
 ): Promise<ShiftSwap | null> {
-  const { data, error } = await supabase
-    .from('shift_swaps')
-    .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
-    .eq('id', id)
-    .in('status', ['pending', 'accepted'])
-    .select('*')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  // The API decides in one transaction (and reassigns on approval). One already decided or withdrawn is null.
+  const r = await api.post<{ outcome: string }>(
+    activeOrgPath(`/swaps/${seg(id)}/decide`),
+    { status },
+  );
+  if (r.outcome === 'already-decided') return null;
+  const swaps = await readSwaps(activeOrgPath('/swaps'));
+  return swaps.find((w) => w.id === id) ?? null;
 }
 
 /**
@@ -146,11 +155,10 @@ export async function reviewShiftSwap(
  * update was not.
  */
 export async function applySwapReassignment(swapId: string): Promise<Shift> {
-  const { data, error } = await supabase.rpc('apply_swap_reassignment', {
-    p_swap_id: swapId,
-  });
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ shift_id: string }>(
+    activeOrgPath(`/swaps/${seg(swapId)}/reassign`),
+  );
+  return { id: r.shift_id } as Shift;
 }
 
 /**
@@ -162,25 +170,16 @@ export async function applySwapReassignment(swapId: string): Promise<Shift> {
  */
 export async function claimShiftSwap(
   id: string,
-  staffProfileId: string,
+  _staffProfileId: string,
 ): Promise<ShiftSwap> {
-  const { data, error } = await supabase
-    .from('shift_swaps')
-    .update({ target_staff_profile_id: staffProfileId, status: 'accepted' })
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+  // The API takes the claimant from the signed-in person's own staff record.
+  const r = await api.post<{ swap: ApiSwap }>(activeOrgPath(`/swaps/${seg(id)}/claim`));
+  return withShift(r.swap);
 }
 
 /** The requester withdrawing their own request. */
 export async function cancelShiftSwap(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('shift_swaps')
-    .update({ status: 'cancelled' })
-    .eq('id', id);
-  if (error) throw error;
+  await api.post(activeOrgPath(`/swaps/${seg(id)}/cancel`));
 }
 
 /**
@@ -219,15 +218,16 @@ export type SwapDecision =
  * decision did not happen and the manager needs to know why. Everything
  * else — a policy denial, a dropped connection — still throws.
  */
+/** The API's refusals for a swap that can no longer be applied, in the words the manager sees. */
 const SWAP_REFUSAL_CODES: Record<string, string> = {
-  SWAP4: 'That shift no longer exists, so the swap was not approved.',
-  SWAP5:
+  shift_gone: 'That shift no longer exists, so the swap was not approved.',
+  rota_archived:
     'That shift is on an archived rota, which is history and is never edited. Raise the swap against the current version. Nothing was changed.',
-  SWAP6:
+  shift_reassigned:
     'That shift is no longer assigned to the person who offered it — somebody else has taken it since. Nothing was changed.',
-  SWAP8:
+  target_inactive:
     'The person taking that shift is no longer an active member of this organisation. Nothing was changed.',
-  SWAP9: 'That swap has already moved its shift. Nothing was changed.',
+  swap_already_applied: 'That swap has already moved its shift. Nothing was changed.',
 };
 
 interface DecideSwapRpcResult {
@@ -239,18 +239,18 @@ export async function decideShiftSwap(
   swap: ShiftSwapWithShift,
   status: 'approved' | 'rejected',
 ): Promise<SwapDecision> {
-  const { data, error } = await supabase.rpc('decide_shift_swap', {
-    p_swap_id: swap.id,
-    p_status: status,
-  });
-
-  if (error) {
-    const refusal = SWAP_REFUSAL_CODES[error.code ?? ''];
+  let result: DecideSwapRpcResult;
+  try {
+    result = await api.post<DecideSwapRpcResult>(
+      orgPath(swap.org_id, `/swaps/${seg(swap.id)}/decide`),
+      { status },
+    );
+  } catch (error) {
+    const refusal =
+      error instanceof ApiError ? SWAP_REFUSAL_CODES[error.code] : undefined;
     if (refusal) return { outcome: 'refused', reason: refusal };
     throw error;
   }
-
-  const result = data as unknown as DecideSwapRpcResult;
   if (result.outcome === 'declined') return { outcome: 'declined' };
   if (result.outcome === 'already-decided') {
     return { outcome: 'already-decided', reassigned: Boolean(result.reassigned) };

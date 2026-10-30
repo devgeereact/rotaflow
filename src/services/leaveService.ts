@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, isApiCode, orgPath, seg } from '@/lib/api';
 import type { LeaveRequest, LeaveRequestInsert } from '@/types';
 
 /**
@@ -38,49 +38,64 @@ const OVERLAP_ON_REVIEW =
  * will be refused every time.
  */
 export function isDoubleBookedLeave(error: unknown): error is Error {
-  return error instanceof Error && (error as { code?: unknown }).code === '23P01';
+  return error instanceof Error && (error as { code?: unknown }).code === 'leave_overlap';
 }
 
 function withOverlapMessage(error: unknown, message: string): unknown {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code !== '23P01') return error;
-  return Object.assign(new Error(message), { code, cause: error });
+  if (!isApiCode(error, 'leave_overlap')) return error;
+  // Status kept: `classifyFailure` reads it, so the offline queue dead-letters a refused request instead of
+  // replaying it for ever.
+  return Object.assign(new Error(message), {
+    code: 'leave_overlap',
+    status: 409,
+    cause: error,
+  });
+}
+
+type ApiLeave = LeaveRequest & { days?: number };
+
+function toLeave(r: ApiLeave): LeaveRequest {
+  const row: ApiLeave = { ...r };
+  delete row.days;
+  return row;
+}
+
+async function readLeave(
+  path: string,
+  query?: Record<string, string>,
+): Promise<LeaveRequest[]> {
+  const r = await api.get<{ leave: ApiLeave[] }>(path, query);
+  return r.leave.map(toLeave).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function createLeaveRequest(
   input: LeaveRequestInsert,
 ): Promise<LeaveRequest> {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .insert(input)
-    .select('*')
-    .single();
-  if (error) throw withOverlapMessage(error, OVERLAP_ON_REQUEST);
-  return data;
+  try {
+    const r = await api.post<{ leave: ApiLeave }>(orgPath(input.org_id, '/leave'), {
+      staff_profile_id: input.staff_profile_id,
+      type: input.type ?? 'holiday',
+      start_date: input.start_date,
+      end_date: input.end_date,
+      reason: input.reason ?? null,
+      client_event_id: input.client_event_id ?? null,
+    });
+    return toLeave(r.leave);
+  } catch (error) {
+    throw withOverlapMessage(error, OVERLAP_ON_REQUEST);
+  }
 }
 
 /** One person's requests, newest first. Their own history. */
 export async function listMyLeaveRequests(
   staffProfileId: string,
 ): Promise<LeaveRequest[]> {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return readLeave(activeOrgPath('/leave'), { staff_profile_id: staffProfileId });
 }
 
 /** Every request across the org. Manager approval queue. */
 export async function listOrgLeaveRequests(orgId: string): Promise<LeaveRequest[]> {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return readLeave(orgPath(orgId, '/leave'));
 }
 
 /**
@@ -90,13 +105,8 @@ export async function listOrgLeaveRequests(orgId: string): Promise<LeaveRequest[
  * requests" for staff and "the approval queue" for a manager.
  */
 export async function countPendingLeaveRequests(orgId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('leave_requests')
-    .select('id', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-    .eq('status', 'pending');
-  if (error) throw error;
-  return count ?? 0;
+  const r = await api.get<{ leave_pending: number }>(orgPath(orgId, '/attention'));
+  return r.leave_pending;
 }
 
 /** Manager approve/reject. RLS (has_org_role) is the real enforcement. */
@@ -120,17 +130,22 @@ export async function countPendingLeaveRequests(orgId: string): Promise<number> 
 export async function reviewLeaveRequest(
   id: string,
   status: 'approved' | 'rejected',
-  reviewedBy: string,
+  _reviewedBy: string,
 ): Promise<LeaveRequest | null> {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('status', 'pending')
-    .select('*')
-    .maybeSingle();
-  if (error) throw withOverlapMessage(error, OVERLAP_ON_REVIEW);
-  return data;
+  // The API records the reviewer as the signed-in person. A request someone else already decided answers 409
+  // `already_decided`, which is the "no longer pending" outcome: null, as before.
+  try {
+    const r = await api.post<{ leave: ApiLeave }>(
+      activeOrgPath(`/leave/${seg(id)}/review`),
+      {
+        status,
+      },
+    );
+    return toLeave(r.leave);
+  } catch (error) {
+    if (isApiCode(error, 'already_decided')) return null;
+    throw withOverlapMessage(error, OVERLAP_ON_REVIEW);
+  }
 }
 
 /**
@@ -147,13 +162,13 @@ export async function reviewLeaveRequest(
  * renders Withdraw only on a pending row.
  */
 export async function cancelLeaveRequest(id: string): Promise<LeaveRequest | null> {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .update({ status: 'cancelled' })
-    .eq('id', id)
-    .eq('status', 'pending')
-    .select('*')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  try {
+    const r = await api.post<{ leave: ApiLeave }>(
+      activeOrgPath(`/leave/${seg(id)}/cancel`),
+    );
+    return toLeave(r.leave);
+  } catch (error) {
+    if (isApiCode(error, 'cannot_cancel')) return null;
+    throw error;
+  }
 }

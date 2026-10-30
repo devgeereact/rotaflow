@@ -204,7 +204,7 @@ export const READ_ONLY_BANNER =
  * to build (0154, `enforce_org_not_read_only`). Its message is written to be
  * shown.
  */
-export const ORG_READ_ONLY_CODE = 'BILL1';
+export const ORG_READ_ONLY_CODE = 'billing_read_only';
 
 /**
  * The server's own words when a write was refused because the organisation is

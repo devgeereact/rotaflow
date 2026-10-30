@@ -1,205 +1,158 @@
-import { supabase } from '@/lib/supabase';
-import { fetchAllPages } from '@/lib/pagination';
+import { activeOrgPath, api, currentOrgId, orgPath, seg } from '@/lib/api';
 import { dropSupersededShifts } from '@/lib/rotaRollup';
 import type { Shift, ShiftInsert, ShiftUpdate } from '@/types';
 
-/** Bulk-insert shifts (e.g. accepted AI rota suggestions) into a draft rota. */
-export async function createShifts(shifts: ShiftInsert[]): Promise<Shift[]> {
-  if (shifts.length === 0) return [];
+/**
+ * Shifts through the API (`/orgs/{o}/shifts`). A shift on a published rota cannot be changed (409, publish lock),
+ * a read-only organisation cannot build (402), and staff never see shifts on a draft rota: the API filters them.
+ */
 
-  const { data, error } = await supabase.from('shifts').insert(shifts).select('*');
+type ApiShift = Shift & {
+  rota?: { status?: string | null; supersedes_rota_id?: string | null } | null;
+};
 
-  if (error) throw error;
-  return data ?? [];
+const FIELDS = [
+  'rota_id',
+  'location_id',
+  'department_id',
+  'staff_profile_id',
+  'shift_type_id',
+  'starts_at',
+  'ends_at',
+  'break_minutes',
+  'status',
+  'colour',
+  'notes',
+] as const;
+
+function body(row: Partial<Shift>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of FIELDS) if (k in row) out[k] = row[k as keyof Shift];
+  return out;
 }
 
-/**
- * Every shift on these rotas, in one round trip (HARDEN-006).
- *
- * This replaces a per-rota `listShiftsForRota`. The rota builder holds one
- * rota per location and fetched each one's shifts separately, so viewing a
- * week across six sites cost six queries on top of six rota lookups — and
- * every caller immediately concatenated the results anyway. Nothing wanted one
- * rota's shifts on their own, so nothing lost a caller when it went.
- *
- * Ordered by rota then start, so a caller grouping by location gets each group
- * already in the order the grid renders it.
- */
+function strip(row: ApiShift): Shift {
+  const out: ApiShift = { ...row };
+  delete out.rota;
+  return out;
+}
+
+/** The API answers at most 50 rota ids per read. */
+const ROTA_CHUNK = 50;
+
+async function fetchForRotas(orgId: string, rotaIds: string[]): Promise<ApiShift[]> {
+  const rows: ApiShift[] = [];
+  for (let i = 0; i < rotaIds.length; i += ROTA_CHUNK) {
+    const r = await api.get<{ shifts: ApiShift[] }>(orgPath(orgId, '/shifts'), {
+      rota_ids: rotaIds.slice(i, i + ROTA_CHUNK).join(','),
+    });
+    rows.push(...r.shifts);
+  }
+  return rows;
+}
+
+/** Create many shifts in one transaction (at most 500): all land or none do. */
+export async function createShifts(shifts: ShiftInsert[]): Promise<Shift[]> {
+  if (shifts.length === 0) return [];
+  const orgId = shifts[0]?.org_id ?? '';
+  const created: string[] = [];
+  for (let i = 0; i < shifts.length; i += 500) {
+    const r = await api.post<{ ids: string[] }>(orgPath(orgId, '/shifts/batch'), {
+      shifts: shifts.slice(i, i + 500).map((s) => body(s as Partial<Shift>)),
+    });
+    created.push(...r.ids);
+  }
+  const rotaIds = [
+    ...new Set(shifts.map((s) => s.rota_id).filter((id): id is string => !!id)),
+  ];
+  const wanted = new Set(created);
+  const rows = (await fetchForRotas(orgId, rotaIds))
+    .filter((s) => wanted.has(s.id))
+    .map(strip);
+  if (rows.length === created.length) return rows;
+  // A shift with no rota is not reachable by rota id; read the period instead.
+  const starts = shifts.map((s) => s.starts_at).sort();
+  const ends = shifts.map((s) => s.ends_at).sort();
+  const loose = await api.get<{ shifts: ApiShift[] }>(orgPath(orgId, '/shifts'), {
+    from: starts[0],
+    to: ends[ends.length - 1],
+    overlapping: '1',
+  });
+  return loose.shifts.filter((s) => wanted.has(s.id)).map(strip);
+}
+
 export async function listShiftsForRotas(rotaIds: string[]): Promise<Shift[]> {
   if (rotaIds.length === 0) return [];
-
-  // Paginated (RF-09). Six locations of a busy month is well past the
-  // PostgREST row cap, and the cap does not announce itself — the builder
-  // simply rendered a week with shifts missing from the end of it.
-  return fetchAllPages(async (from, to) => {
-    const { data, error } = await supabase
-      .from('shifts')
-      .select('*')
-      .in('rota_id', rotaIds)
-      .order('rota_id', { ascending: true })
-      .order('starts_at', { ascending: true })
-      .order('id', { ascending: true })
-      .range(from, to);
-    if (error) throw error;
-    return data ?? [];
-  });
+  const rows = await fetchForRotas(currentOrgId(), rotaIds);
+  return rows
+    .map(strip)
+    .sort(
+      (a, b) =>
+        (a.rota_id ?? '').localeCompare(b.rota_id ?? '') ||
+        a.starts_at.localeCompare(b.starts_at) ||
+        a.id.localeCompare(b.id),
+    );
 }
 
 export interface PeriodShiftQuery {
   orgId: string;
-  /** Inclusive ISO instant for the start of the window. */
   fromIso: string;
-  /** Exclusive ISO instant for the end of the window. */
   toIso: string;
   locationId?: string | null;
-  /** Restrict to one person. The staff "my schedule" view. */
   staffProfileId?: string | null;
-  /**
-   * Only shifts attached to a published rota. The schedule shows what staff
-   * have been told; a draft is a manager's working copy and must not leak into
-   * it. Default true, a caller has to ask for drafts deliberately.
-   */
+  /** Default true: only shifts on a published rota. False includes drafts, one version of each week. */
   publishedOnly?: boolean;
 }
 
-/**
- * Shifts overlapping a time window, for the schedule views.
- *
- * Selects the parent rota's status so drafts can be excluded. Filtering is by
- * instant, not by date string: a night shift starting 23:00 local belongs to
- * the day it starts, and comparing dates as text gets that wrong across a
- * timezone boundary.
- */
-export async function listShiftsForPeriod(query: PeriodShiftQuery): Promise<Shift[]> {
-  // Paginated, and ordered by `starts_at` then `id` so the total order is
-  // deterministic: two shifts starting at the same instant would otherwise be
-  // free to swap between pages, and one of them would be read twice while the
-  // other was never read at all (RF-09).
-  const rows = await fetchAllPages(async (from, to) => {
-    let request = supabase
-      .from('shifts')
-      .select('*, rota:rotas(status, supersedes_rota_id)')
-      .eq('org_id', query.orgId)
-      .gte('starts_at', query.fromIso)
-      .lt('starts_at', query.toIso)
-      .neq('status', 'cancelled');
-
-    if (query.locationId) request = request.eq('location_id', query.locationId);
-    if (query.staffProfileId)
-      request = request.eq('staff_profile_id', query.staffProfileId);
-
-    const { data, error } = await request
-      .order('starts_at', { ascending: true })
-      .order('id', { ascending: true })
-      .range(from, to);
-    if (error) throw error;
-    return data ?? [];
+async function readPeriod(
+  query: PeriodShiftQuery,
+  overlapping: boolean,
+): Promise<Shift[]> {
+  const r = await api.get<{ shifts: ApiShift[] }>(orgPath(query.orgId, '/shifts'), {
+    from: query.fromIso,
+    to: query.toIso,
+    overlapping: overlapping ? '1' : undefined,
+    location_id: query.locationId ?? undefined,
+    staff_profile_id: query.staffProfileId ?? undefined,
   });
-
+  const rows = [...r.shifts].sort(
+    (a, b) => a.starts_at.localeCompare(b.starts_at) || a.id.localeCompare(b.id),
+  );
   const published = query.publishedOnly !== false;
-
-  // A draft-inclusive read returns an amendment AND the published week it
-  // supersedes, which is two copies of the same shift. `dropSupersededShifts`
-  // keeps the version being worked on. See its docstring.
   const versioned = published ? rows : dropSupersededShifts(rows);
-
   return versioned
-    .filter((row) => {
-      if (!published) return true;
-      const rota = (row as { rota?: { status?: string } | null }).rota;
-      return rota?.status === 'published';
-    })
-    .map(({ rota: _rota, ...shift }) => shift);
+    .filter((row) => !published || row.rota?.status === 'published')
+    .map(strip);
 }
 
-export interface OverlappingShiftQuery {
-  orgId: string;
-  /** Inclusive ISO instant. A shift ending exactly here does not overlap. */
-  fromIso: string;
-  /** Exclusive ISO instant. A shift starting exactly here does not overlap. */
-  toIso: string;
-  locationId?: string | null;
-  staffProfileId?: string | null;
-  publishedOnly?: boolean;
+/** Shifts that START in [fromIso, toIso). */
+export async function listShiftsForPeriod(query: PeriodShiftQuery): Promise<Shift[]> {
+  return readPeriod(query, false);
 }
 
-/**
- * Shifts that are *running* during a window, rather than starting in one.
- *
- * `listShiftsForPeriod` filters on `starts_at`, which is right for a rota — a
- * night shift belongs to the day it starts, and every hours calculation in
- * this product allocates it that way. It is wrong for an operations board. At
- * 01:00 the shift that began at 22:00 is the one with people on it, and a
- * `starts_at`-bounded query does not return it, so "who is working now"
- * answered zero for the whole small hours.
- *
- * The two coexist deliberately, and the docstrings say which is which,
- * because collapsing them would move a payroll allocation rule to satisfy a
- * dashboard.
- */
+export type OverlappingShiftQuery = PeriodShiftQuery;
+
+/** Shifts that overlap [fromIso, toIso) at all, including one that started before it. */
 export async function listShiftsOverlapping(
   query: OverlappingShiftQuery,
 ): Promise<Shift[]> {
-  const rows = await fetchAllPages(async (from, to) => {
-    let request = supabase
-      .from('shifts')
-      .select('*, rota:rotas(status, supersedes_rota_id)')
-      .eq('org_id', query.orgId)
-      .lt('starts_at', query.toIso)
-      .gt('ends_at', query.fromIso)
-      .neq('status', 'cancelled');
-
-    if (query.locationId) request = request.eq('location_id', query.locationId);
-    if (query.staffProfileId)
-      request = request.eq('staff_profile_id', query.staffProfileId);
-
-    const { data, error } = await request
-      .order('starts_at', { ascending: true })
-      .order('id', { ascending: true })
-      .range(from, to);
-    if (error) throw error;
-    return data ?? [];
-  });
-
-  const published = query.publishedOnly !== false;
-
-  // Same rule as `listShiftsForPeriod`: one version of a week, not an
-  // amendment stacked on the published rota it supersedes.
-  const versioned = published ? rows : dropSupersededShifts(rows);
-
-  return versioned
-    .filter((row) => {
-      if (!published) return true;
-      const rota = (row as { rota?: { status?: string } | null }).rota;
-      return rota?.status === 'published';
-    })
-    .map(({ rota: _rota, ...shift }) => shift);
+  return readPeriod(query, true);
 }
 
 export async function createShift(shift: ShiftInsert): Promise<Shift> {
-  const { data, error } = await supabase
-    .from('shifts')
-    .insert(shift)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ shift: ApiShift }>(
+    orgPath(shift.org_id, '/shifts'),
+    body(shift),
+  );
+  return strip(r.shift);
 }
 
 export async function updateShift(id: string, patch: ShiftUpdate): Promise<Shift> {
-  const { data, error } = await supabase
-    .from('shifts')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const path = patch.org_id ? orgPath(patch.org_id, '/shifts') : activeOrgPath('/shifts');
+  const r = await api.post<{ shift: ApiShift }>(`${path}/${seg(id)}`, body(patch));
+  return strip(r.shift);
 }
 
 export async function deleteShift(id: string): Promise<void> {
-  const { error } = await supabase.from('shifts').delete().eq('id', id);
-  if (error) throw error;
+  await api.post(activeOrgPath(`/shifts/${seg(id)}/delete`));
 }

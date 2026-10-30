@@ -14,6 +14,7 @@ import { recordClockEvent } from '@/services/clockService';
 import { createLeaveRequest } from '@/services/leaveService';
 import { requestShiftSwap } from '@/services/swapService';
 import { reportError } from '@/lib/sentry';
+import { isApiCode } from '@/lib/api';
 import type { ClockEventInsert, LeaveRequestInsert, ShiftSwapInsert } from '@/types';
 
 /**
@@ -113,9 +114,8 @@ export function classifyFailure(error: unknown): FailureKind {
   if (candidate && typeof candidate.code === 'string') {
     const { code } = candidate;
 
-    // PostgREST's own codes. PGRST301 is an expired/invalid JWT. Recoverable
-    // once supabase-js refreshes the session, so retry rather than discard a
-    // clock-in because a token aged out while the device was in a pocket.
+    // The old REST layer's own codes, kept classified (an item can outlive the build that queued it).
+    // PGRST301 was an expired token: retry rather than discard a clock-in.
     if (code === 'PGRST301') return 'transient';
     if (code.startsWith('PGRST')) return 'permanent';
 
@@ -127,7 +127,7 @@ export function classifyFailure(error: unknown): FailureKind {
     // The PHP API's own client (`ApiError`, `src/lib/apiClient.ts`): status 0 with code 'network' is a dropped connection.
     if (code === 'network') return 'transient';
 
-    // Node/undici network codes seen through supabase-js.
+    // Node/undici network codes.
     if (/^(ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED)$/.test(code)) {
       return 'transient';
     }
@@ -152,6 +152,10 @@ const IDEMPOTENCY_INDEXES = [
 
 /** Did this replay collide with its own earlier, successful insert? */
 export function isAlreadyApplied(error: unknown): boolean {
+  // The PHP API answers a replay of a stored `client_event_id` with 200 (`already_applied: true`), so this is
+  // normally never reached; a 409 carrying that code means the same and is treated the same.
+  if (isApiCode(error, 'already_applied')) return true;
+  // What follows recognises the old database's collision, kept so the classification stays tested.
   const e = error as { code?: unknown; message?: unknown; details?: unknown } | null;
   if (!e || e.code !== '23505') return false;
   // Only genuine strings. PostgREST sends both as text, and coercing an

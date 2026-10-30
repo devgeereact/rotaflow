@@ -73,9 +73,12 @@ describe('trial and read-only (D2, 0154)', () => {
 
   it('shows the server words for a BILL1 refusal and nothing for other errors', () => {
     expect(
-      readOnlyErrorMessage({ code: 'BILL1', message: 'Your trial has ended.' }),
+      readOnlyErrorMessage({
+        code: 'billing_read_only',
+        message: 'Your trial has ended.',
+      }),
     ).toBe('Your trial has ended.');
-    expect(readOnlyErrorMessage({ code: 'BILL1' })).toBe(READ_ONLY_BANNER);
+    expect(readOnlyErrorMessage({ code: 'billing_read_only' })).toBe(READ_ONLY_BANNER);
     expect(readOnlyErrorMessage({ code: '42501', message: 'denied' })).toBeNull();
     expect(readOnlyErrorMessage(new Error('boom'))).toBeNull();
     expect(readOnlyErrorMessage(null)).toBeNull();

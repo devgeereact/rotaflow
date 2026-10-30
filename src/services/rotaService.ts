@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase';
-import { touchOrgActivity } from '@/services/activityService';
+import { activeOrgPath, api, ApiError, isApiCode, orgPath, seg } from '@/lib/api';
 import type { Rota, RotaUpdate } from '@/types';
 import { readOnlyErrorMessage } from '@/lib/billingState';
 
@@ -13,30 +12,30 @@ export interface CreateDraftRotaInput {
 
 /** Create a draft rota for shifts to be attached to. */
 export async function createDraftRota(input: CreateDraftRotaInput): Promise<Rota> {
-  const { data, error } = await supabase
-    .from('rotas')
-    .insert({
-      org_id: input.orgId,
-      name: input.name,
-      period_start: input.periodStart,
-      period_end: input.periodEnd,
-      location_id: input.locationId ?? null,
-      status: 'draft',
-    })
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ rota: Rota }>(orgPath(input.orgId, '/rotas'), {
+    name: input.name,
+    period_start: input.periodStart,
+    period_end: input.periodEnd,
+    location_id: input.locationId ?? null,
+  });
+  return r.rota;
 }
 
 export async function listRotas(orgId: string, locationId?: string): Promise<Rota[]> {
-  let query = supabase.from('rotas').select('*').eq('org_id', orgId);
-  if (locationId) query = query.eq('location_id', locationId);
+  const r = await api.get<{ rotas: Rota[] }>(orgPath(orgId, '/rotas'), {
+    location_id: locationId,
+  });
+  return r.rotas;
+}
 
-  const { data, error } = await query.order('period_start', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+/** Rotas overlapping [from, to], newest first: the API's own filter, narrowed further by the callers. */
+async function rotasOverlapping(
+  orgId: string,
+  from: string,
+  to: string,
+): Promise<Rota[]> {
+  const r = await api.get<{ rotas: Rota[] }>(orgPath(orgId, '/rotas'), { from, to });
+  return [...r.rotas].sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export interface RotaPeriodQuery {
@@ -48,19 +47,13 @@ export interface RotaPeriodQuery {
 
 /** Every rota for one org/location/period, newest first. */
 async function listRotasForPeriod(input: RotaPeriodQuery): Promise<Rota[]> {
-  let query = supabase
-    .from('rotas')
-    .select('*')
-    .eq('org_id', input.orgId)
-    .eq('period_start', input.periodStart)
-    .eq('period_end', input.periodEnd);
-  query = input.locationId
-    ? query.eq('location_id', input.locationId)
-    : query.is('location_id', null);
-
-  const { data, error } = await query.order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const location = input.locationId ?? null;
+  return (await rotasOverlapping(input.orgId, input.periodStart, input.periodEnd)).filter(
+    (r) =>
+      r.period_start === input.periodStart &&
+      r.period_end === input.periodEnd &&
+      r.location_id === location,
+  );
 }
 
 /**
@@ -197,19 +190,18 @@ export async function resolveRotasForWeeks(
   const byKey = new Map<string, RotaPeriodResolution>();
   if (input.locationIds.length === 0 || input.weekStarts.length === 0) return byKey;
 
-  const { data, error } = await supabase
-    .from('rotas')
-    .select('*')
-    .eq('org_id', input.orgId)
-    .in('period_start', [...input.weekStarts])
-    .in('location_id', [...input.locationIds])
-    // Same ordering as `listRotasForPeriod`, because `resolveRotaRows` picks
-    // the first row of each status and therefore depends on it.
-    .order('created_at', { ascending: false });
-  if (error) throw error;
+  const sorted = [...input.weekStarts].sort();
+  const weeks = new Set(input.weekStarts);
+  const sites = new Set(input.locationIds);
+  const rows = (
+    await rotasOverlapping(input.orgId, sorted[0] ?? '', sorted[sorted.length - 1] ?? '')
+  ).filter(
+    (r) =>
+      weeks.has(r.period_start) && r.location_id !== null && sites.has(r.location_id),
+  );
 
   const grouped = new Map<string, Rota[]>();
-  for (const row of data ?? []) {
+  for (const row of rows) {
     if (row.location_id === null) continue;
     const key = rotaWeekKey(row.location_id, row.period_start);
     const bucket = grouped.get(key);
@@ -217,7 +209,7 @@ export async function resolveRotasForWeeks(
     else grouped.set(key, [row]);
   }
 
-  for (const [key, rows] of grouped) byKey.set(key, resolveRotaRows(rows));
+  for (const [key, list] of grouped) byKey.set(key, resolveRotaRows(list));
   return byKey;
 }
 
@@ -227,20 +219,19 @@ export async function resolveRotasForLocations(
   const byLocation = new Map<string, RotaPeriodResolution>();
   if (input.locationIds.length === 0) return byLocation;
 
-  const { data, error } = await supabase
-    .from('rotas')
-    .select('*')
-    .eq('org_id', input.orgId)
-    .eq('period_start', input.periodStart)
-    .eq('period_end', input.periodEnd)
-    .in('location_id', input.locationIds)
-    // Same ordering as `listRotasForPeriod`, because `resolveRotaRows` picks
-    // the first row of each status and therefore depends on it.
-    .order('created_at', { ascending: false });
-  if (error) throw error;
+  const sites = new Set(input.locationIds);
+  const rows = (
+    await rotasOverlapping(input.orgId, input.periodStart, input.periodEnd)
+  ).filter(
+    (r) =>
+      r.period_start === input.periodStart &&
+      r.period_end === input.periodEnd &&
+      r.location_id !== null &&
+      sites.has(r.location_id),
+  );
 
   const grouped = new Map<string, Rota[]>();
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const key = row.location_id;
     if (key === null) continue;
     const bucket = grouped.get(key);
@@ -248,8 +239,8 @@ export async function resolveRotasForLocations(
     else grouped.set(key, [row]);
   }
 
-  for (const [locationId, rows] of grouped) {
-    byLocation.set(locationId, resolveRotaRows(rows));
+  for (const [locationId, list] of grouped) {
+    byLocation.set(locationId, resolveRotaRows(list));
   }
   return byLocation;
 }
@@ -270,8 +261,8 @@ export async function getOrCreateRotaForPeriod(
   try {
     return await createDraftRota(input);
   } catch (err) {
-    const code = (err as { code?: string } | null)?.code;
-    if (code !== '23505') throw err;
+    // Two tabs creating the same week: the second is refused (409 rota_exists) and reloads the winner.
+    if (!isApiCode(err, 'rota_exists')) throw err;
 
     const winner = await findRotaForPeriod(input);
     if (winner) return winner;
@@ -298,22 +289,18 @@ export async function getOrCreateRotaForPeriod(
  * trial has ended, and the message says to choose a plan.
  */
 export function rotaRefusalMessage(err: unknown): string | null {
-  const code = (err as { code?: string } | null)?.code;
-  const message = (err as { message?: string } | null)?.message;
-  if (typeof code === 'string' && /^ROTA\d$/.test(code) && message) return message;
+  // The API refuses a rota change with a 409 and a sentence written for the person (publish lock, minimum
+  // cover, open amendment); read-only billing is a 402 with its own banner text.
+  if (err instanceof ApiError && err.status === 409 && err.message) return err.message;
   return readOnlyErrorMessage(err);
 }
 
 export async function updateRota(id: string, patch: RotaUpdate): Promise<Rota> {
-  const { data, error } = await supabase
-    .from('rotas')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const body: Record<string, unknown> = {};
+  for (const k of ['name', 'period_start', 'period_end'] as const)
+    if (k in patch) body[k] = patch[k];
+  const r = await api.post<{ rota: Rota }>(activeOrgPath(`/rotas/${seg(id)}`), body);
+  return r.rota;
 }
 
 /**
@@ -342,11 +329,8 @@ export function isRotaEditable(rota: Rota | null | undefined): boolean {
  * across the call.
  */
 export async function beginRotaRevision(rotaId: string): Promise<Rota> {
-  const { data, error } = await supabase.rpc('begin_rota_revision', {
-    p_rota_id: rotaId,
-  });
-  if (error) throw error;
-  return data;
+  return (await api.post<{ rota: Rota }>(activeOrgPath(`/rotas/${seg(rotaId)}/revision`)))
+    .rota;
 }
 
 /**
@@ -357,11 +341,8 @@ export async function beginRotaRevision(rotaId: string): Promise<Rota> {
  * deleting rows by hand.
  */
 export async function discardRotaRevision(rotaId: string): Promise<Rota> {
-  const { data, error } = await supabase.rpc('discard_rota_revision', {
-    p_rota_id: rotaId,
-  });
-  if (error) throw error;
-  return data;
+  return (await api.post<{ rota: Rota }>(activeOrgPath(`/rotas/${seg(rotaId)}/discard`)))
+    .rota;
 }
 
 /**
@@ -374,14 +355,8 @@ export async function discardRotaRevision(rotaId: string): Promise<Rota> {
  * thing to every caller, including a curl request with a manager's token.
  */
 export async function publishRota(id: string): Promise<Rota> {
-  const { data, error } = await supabase.rpc('publish_rota', { p_rota_id: id });
-  if (error) throw error;
-
-  const rota = data;
-  // Publishing a rota is a deliberate act by a manager, which is exactly what
-  // "last activity" is meant to record.
-  touchOrgActivity(rota.org_id);
-  return rota;
+  return (await api.post<{ rota: Rota }>(activeOrgPath(`/rotas/${seg(id)}/publish`)))
+    .rota;
 }
 
 /**
@@ -392,9 +367,8 @@ export async function publishRota(id: string): Promise<Rota> {
  * make room.
  */
 export async function unpublishRota(id: string): Promise<Rota> {
-  const { data, error } = await supabase.rpc('unpublish_rota', { p_rota_id: id });
-  if (error) throw error;
-  return data;
+  return (await api.post<{ rota: Rota }>(activeOrgPath(`/rotas/${seg(id)}/unpublish`)))
+    .rota;
 }
 
 export interface RepeatResult {
@@ -420,16 +394,14 @@ export async function repeatRotaWeeks(
   rotaId: string,
   weeks: number,
 ): Promise<RepeatResult> {
-  const { data, error } = await supabase.rpc('repeat_rota_weeks', {
-    p_rota: rotaId,
-    p_weeks: weeks,
-  });
-  if (error) throw error;
-
-  const row = (data ?? [])[0];
+  const r = await api.post<{
+    weeks_created: number;
+    shifts_created: number;
+    weeks_skipped: number;
+  }>(activeOrgPath(`/rotas/${seg(rotaId)}/repeat`), { weeks });
   return {
-    weeksCreated: row?.weeks_created ?? 0,
-    shiftsCreated: row?.shifts_created ?? 0,
-    weeksSkipped: row?.weeks_skipped ?? 0,
+    weeksCreated: r.weeks_created,
+    shiftsCreated: r.shifts_created,
+    weeksSkipped: r.weeks_skipped,
   };
 }

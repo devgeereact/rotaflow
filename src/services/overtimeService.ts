@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, isApiCode, orgPath, seg } from '@/lib/api';
 import type { OvertimeRequest, OvertimeRequestInsert } from '@/types';
 
 /**
@@ -20,36 +20,37 @@ import type { OvertimeRequest, OvertimeRequestInsert } from '@/types';
 export async function listMyOvertimeRequests(
   staffProfileId: string,
 ): Promise<OvertimeRequest[]> {
-  const { data, error } = await supabase
-    .from('overtime_requests')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId)
-    .order('date', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ overtime: OvertimeRequest[] }>(activeOrgPath('/overtime'), {
+    staff_profile_id: staffProfileId,
+  });
+  return r.overtime.map(toOvertime).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function toOvertime(r: OvertimeRequest): OvertimeRequest {
+  return { ...r, hours: Number(r.hours) };
 }
 
 /** Every request across the org. The manager approval queue. */
 export async function listOrgOvertimeRequests(orgId: string): Promise<OvertimeRequest[]> {
-  const { data, error } = await supabase
-    .from('overtime_requests')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ overtime: OvertimeRequest[] }>(orgPath(orgId, '/overtime'));
+  return r.overtime
+    .map(toOvertime)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function createOvertimeRequest(
   input: OvertimeRequestInsert,
 ): Promise<OvertimeRequest> {
-  const { data, error } = await supabase
-    .from('overtime_requests')
-    .insert(input)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ overtime: OvertimeRequest }>(
+    orgPath(input.org_id, '/overtime'),
+    {
+      staff_profile_id: input.staff_profile_id,
+      date: input.date,
+      hours: input.hours,
+      note: input.note ?? null,
+    },
+  );
+  return toOvertime(r.overtime);
 }
 
 /**
@@ -71,17 +72,19 @@ export async function createOvertimeRequest(
 export async function reviewOvertimeRequest(
   id: string,
   status: 'approved' | 'rejected',
-  reviewedBy: string,
+  _reviewedBy: string,
 ): Promise<OvertimeRequest | null> {
-  const { data, error } = await supabase
-    .from('overtime_requests')
-    .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('status', 'pending')
-    .select('*')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  // The reviewer is the signed-in person; a request already decided is the "no longer pending" null.
+  try {
+    const r = await api.post<{ overtime: OvertimeRequest }>(
+      activeOrgPath(`/overtime/${seg(id)}/review`),
+      { status },
+    );
+    return toOvertime(r.overtime);
+  } catch (error) {
+    if (isApiCode(error, 'already_decided')) return null;
+    throw error;
+  }
 }
 
 /**
@@ -92,15 +95,13 @@ export async function reviewOvertimeRequest(
  * thing that said "still-pending"; nothing enforced it.
  */
 export async function cancelOvertimeRequest(id: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('overtime_requests')
-    .update({ status: 'cancelled' })
-    .eq('id', id)
-    .eq('status', 'pending')
-    .select('id')
-    .maybeSingle();
-  if (error) throw error;
-  return data !== null;
+  try {
+    await api.post(activeOrgPath(`/overtime/${seg(id)}/cancel`));
+    return true;
+  } catch (error) {
+    if (isApiCode(error, 'cannot_cancel')) return false;
+    throw error;
+  }
 }
 
 export interface OvertimeEvidence {
@@ -135,17 +136,18 @@ export async function getOvertimeEvidence(
   staffProfileId: string,
   date: string,
 ): Promise<OvertimeEvidence | null> {
-  const { data, error } = await supabase
-    .rpc('overtime_evidence', {
-      p_org: orgId,
-      p_staff: staffProfileId,
-      p_date: date,
-    })
-    .maybeSingle();
-  if (error || !data) return null;
-  return {
-    scheduledMinutes: data.scheduled_minutes ?? 0,
-    workedMinutes: data.worked_minutes ?? 0,
-    unpairedEvents: data.unpaired_events ?? 0,
-  };
+  try {
+    const r = await api.get<{
+      scheduled_minutes: number;
+      worked_minutes: number;
+      unpaired_events: number;
+    }>(orgPath(orgId, '/overtime/evidence'), { staff_profile_id: staffProfileId, date });
+    return {
+      scheduledMinutes: r.scheduled_minutes,
+      workedMinutes: r.worked_minutes,
+      unpairedEvents: r.unpaired_events,
+    };
+  } catch {
+    return null;
+  }
 }

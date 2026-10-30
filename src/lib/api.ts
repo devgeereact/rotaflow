@@ -49,9 +49,14 @@ export function setActiveOrgId(orgId: string | null): void {
  * never a write elsewhere.
  */
 export function activeOrgPath(rest = ''): string {
+  return orgPath(currentOrgId(), rest);
+}
+
+/** The active organisation's id, for the same callers as `activeOrgPath`. */
+export function currentOrgId(): string {
   if (!activeOrgId)
     throw new ApiError(0, 'no_organisation', 'No organisation is selected');
-  return orgPath(activeOrgId, rest);
+  return activeOrgId;
 }
 
 /** `/orgs/{orgId}{rest}` with the id encoded, so a stray value can never change the path. */

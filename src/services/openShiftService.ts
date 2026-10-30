@@ -1,14 +1,10 @@
-import { supabase } from '@/lib/supabase';
+import { api, currentOrgId, orgPath, seg } from '@/lib/api';
 
 /**
- * Open shifts, and taking one (CAP-010).
- *
- * `shifts.status` has accepted `'open'` since `0002` and the rota builder
- * creates them, but no staff-facing screen has ever shown one. So the state
- * meant "a manager knows this is uncovered" and nothing more — the person who
- * could cover it never learned it existed, and the manager rang round.
+ * Open shifts: future, unassigned shifts on a published rota, soonest first. Claiming is first come, first served,
+ * and the API refuses one that has started, is not on a published rota, was just taken (409 `shift_taken`) or
+ * overlaps the person's own work (409 `already_working`).
  */
-
 export interface OpenShift {
   shiftId: string;
   startsAt: string;
@@ -17,41 +13,34 @@ export interface OpenShift {
   notes: string | null;
   shiftType: string | null;
   locationName: string | null;
-  /**
-   * Whether this overlaps something the reader is already working.
-   *
-   * Computed in the database rather than the browser: doing it here would
-   * mean pulling the reader's whole roster down to compare, which is right in
-   * a demo and wrong on a Sunday night on a bad connection.
-   */
   clashesWithMine: boolean;
 }
 
 export async function listOpenShifts(orgId: string): Promise<OpenShift[]> {
-  const { data, error } = await supabase.rpc('open_shifts', { p_org: orgId });
-  if (error) throw error;
-
-  return (data ?? []).map((row) => ({
+  const r = await api.get<{
+    open_shifts: {
+      shift_id: string;
+      starts_at: string;
+      ends_at: string;
+      break_minutes: number | string;
+      notes: string | null;
+      shift_type: string | null;
+      location_name: string | null;
+      clashes_with_mine: boolean;
+    }[];
+  }>(orgPath(orgId, '/open-shifts'));
+  return r.open_shifts.map((row) => ({
     shiftId: row.shift_id,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
-    breakMinutes: row.break_minutes,
+    breakMinutes: Number(row.break_minutes),
     notes: row.notes,
     shiftType: row.shift_type,
     locationName: row.location_name,
-    clashesWithMine: row.clashes_with_mine,
+    clashesWithMine: Boolean(row.clashes_with_mine),
   }));
 }
 
-/**
- * Take an open shift.
- *
- * The database re-checks "still open" inside the UPDATE's WHERE, so two
- * people tapping the same shift within a second of each other — which is what
- * happens on a ward — cannot both succeed. The loser gets `40001`, and the
- * caller is expected to say so plainly rather than retrying.
- */
 export async function claimOpenShift(shiftId: string): Promise<void> {
-  const { error } = await supabase.rpc('claim_open_shift', { p_shift: shiftId });
-  if (error) throw error;
+  await api.post(orgPath(currentOrgId(), `/open-shifts/${seg(shiftId)}/claim`));
 }

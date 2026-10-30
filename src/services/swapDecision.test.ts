@@ -21,32 +21,30 @@ import type { ShiftSwapWithShift } from '@/services/swapService';
  * regression: types check, lint passes, and the split commit comes back.
  */
 
-interface RecordedRpc {
-  name: string;
-  args: Record<string, unknown>;
+interface RecordedPost {
+  path: string;
+  body: unknown;
 }
 
-const rpcCalls: RecordedRpc[] = [];
-const tableCalls: string[] = [];
-let nextResult: { data: unknown; error: { code?: string; message: string } | null } = {
-  data: null,
-  error: null,
-};
+const posts: RecordedPost[] = [];
+let nextResult: unknown = null;
+let nextError: Error | null = null;
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    rpc(name: string, args: Record<string, unknown>) {
-      rpcCalls.push({ name, args });
-      return Promise.resolve(nextResult);
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
+  return {
+    ...actual,
+    api: {
+      get: () => Promise.reject(new Error('decideShiftSwap must not read anything')),
+      post(path: string, body: unknown) {
+        posts.push({ path, body });
+        return nextError ? Promise.reject(nextError) : Promise.resolve(nextResult);
+      },
     },
-    // Any table write during a decision is the two-step path returning.
-    from(table: string): never {
-      tableCalls.push(table);
-      throw new Error(`decideShiftSwap must not write ${table} directly`);
-    },
-  },
-}));
+  };
+});
 
+const { ApiError } = await import('@/lib/apiClient');
 const { decideShiftSwap } = await import('@/services/swapService');
 
 const swap = {
@@ -60,37 +58,36 @@ const swap = {
 } as unknown as ShiftSwapWithShift;
 
 beforeEach(() => {
-  rpcCalls.length = 0;
-  tableCalls.length = 0;
-  nextResult = { data: null, error: null };
+  posts.length = 0;
+  nextResult = null;
+  nextError = null;
 });
 
 describe('decideShiftSwap', () => {
   it('makes one request for the whole decision, not an approve-then-reassign pair', async () => {
-    nextResult = { data: { outcome: 'approved', reassigned: true }, error: null };
+    nextResult = { outcome: 'approved', reassigned: true };
 
     const decision = await decideShiftSwap(swap, 'approved');
 
-    expect(rpcCalls).toHaveLength(1);
-    expect(rpcCalls[0]?.name).toBe('decide_shift_swap');
-    expect(rpcCalls[0]?.args).toEqual({ p_swap_id: 'swap-1', p_status: 'approved' });
-    // No PATCH of shift_swaps, and no second apply_swap_reassignment call.
-    expect(tableCalls).toEqual([]);
+    // One request; no separate reassign call.
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.path).toBe('/orgs/org-1/swaps/swap-1/decide');
+    expect(posts[0]?.body).toEqual({ status: 'approved' });
     expect(decision).toEqual({ outcome: 'approved', reassigned: true });
   });
 
   it('does not send a browser-supplied reviewer id', () => {
-    // The reviewer is auth.uid() inside the function (0123). Passing one from
-    // the client is what let the old service record a reviewer the row policy
-    // constrained but the RPC would not have.
+    // The reviewer is the signed-in person on the API. Passing one from the
+    // client is what once let a reviewer be recorded that nobody checked.
     expect(decideShiftSwap.length).toBe(2);
   });
 
   it('reports a shift that moved on since the swap was raised as changing nothing', async () => {
-    nextResult = {
-      data: null,
-      error: { code: 'SWAP6', message: 'no longer assigned to the requester' },
-    };
+    nextError = new ApiError(
+      409,
+      'shift_reassigned',
+      'no longer assigned to the requester',
+    );
 
     const decision = await decideShiftSwap(swap, 'approved');
 
@@ -104,13 +101,13 @@ describe('decideShiftSwap', () => {
   });
 
   it('refuses an archived rota rather than reaching into superseded history', async () => {
-    nextResult = { data: null, error: { code: 'SWAP5', message: 'archived rota' } };
+    nextError = new ApiError(409, 'rota_archived', 'archived rota');
     const decision = await decideShiftSwap(swap, 'approved');
     expect(decision.outcome).toBe('refused');
   });
 
   it('refuses a swap that already moved its shift, so a replay cannot revert a later transfer', async () => {
-    nextResult = { data: null, error: { code: 'SWAP9', message: 'already applied' } };
+    nextError = new ApiError(409, 'swap_already_applied', 'already applied');
     const decision = await decideShiftSwap(swap, 'approved');
     expect(decision).toEqual({
       outcome: 'refused',
@@ -119,31 +116,25 @@ describe('decideShiftSwap', () => {
   });
 
   it('returns the recorded result for a swap somebody else already decided', async () => {
-    nextResult = {
-      data: { outcome: 'already-decided', status: 'approved', reassigned: true },
-      error: null,
-    };
+    nextResult = { outcome: 'already-decided', status: 'approved', reassigned: true };
     const decision = await decideShiftSwap(swap, 'approved');
     expect(decision).toEqual({ outcome: 'already-decided', reassigned: true });
   });
 
   it('rethrows anything that is not a decision outcome', async () => {
-    nextResult = { data: null, error: { code: '42501', message: 'denied' } };
+    nextError = new ApiError(403, 'forbidden', 'denied');
     await expect(decideShiftSwap(swap, 'approved')).rejects.toMatchObject({
-      code: '42501',
+      code: 'forbidden',
     });
   });
 
   it('declines without claiming a reassignment', async () => {
-    nextResult = { data: { outcome: 'declined' }, error: null };
+    nextResult = { outcome: 'declined' };
     expect(await decideShiftSwap(swap, 'rejected')).toEqual({ outcome: 'declined' });
   });
 
   it('approves an open swap nobody claimed without claiming a transfer', async () => {
-    nextResult = {
-      data: { outcome: 'approved', reassigned: false, reason: 'no-target' },
-      error: null,
-    };
+    nextResult = { outcome: 'approved', reassigned: false, reason: 'no-target' };
     expect(await decideShiftSwap(swap, 'approved')).toEqual({
       outcome: 'approved',
       reassigned: false,

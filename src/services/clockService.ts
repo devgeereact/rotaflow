@@ -1,7 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import { fetchAllPages } from '@/lib/pagination';
+import { activeOrgPath, api, orgPath, seg } from '@/lib/api';
 import { BOUNDARY_CONTEXT_HOURS, shiftIso } from '@/lib/hours';
-import { touchOrgActivity } from '@/services/activityService';
 import type { ClockEvent, ClockEventCorrection, ClockEventInsert } from '@/types';
 
 /**
@@ -9,16 +7,66 @@ import type { ClockEvent, ClockEventCorrection, ClockEventInsert } from '@/types
  * something real to replay a queued 'clock' item against. This phase adds the
  * reads a clock in/out screen and an hours view actually need.
  */
+type ApiClockEvent = ClockEvent;
+
+const n = (v: unknown): number | null =>
+  v === null || v === undefined || v === '' ? null : Number(v);
+
+function toEvent(e: ApiClockEvent): ClockEvent {
+  return {
+    ...e,
+    latitude: n(e.latitude),
+    longitude: n(e.longitude),
+    accuracy: n(e.accuracy),
+  };
+}
+
+const PAGE = 1000;
+
+/** Newest first, a page at a time (the API answers at most 1000 a read), until the window is exhausted. */
+async function readWindow(
+  path: string,
+  query: Record<string, string | undefined>,
+  fromIso: string,
+  toIso: string,
+): Promise<ClockEvent[]> {
+  const out: ClockEvent[] = [];
+  let upper = toIso;
+  for (;;) {
+    const r = await api.get<{ clock_events: ApiClockEvent[] }>(path, {
+      ...query,
+      from: fromIso,
+      to: upper,
+      limit: PAGE,
+    });
+    out.push(...r.clock_events.map(toEvent));
+    const last = r.clock_events[r.clock_events.length - 1];
+    if (r.clock_events.length < PAGE || !last) break;
+    upper = last.event_at;
+  }
+  const seen = new Set<string>();
+  return out.filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)));
+}
+
 export async function recordClockEvent(input: ClockEventInsert): Promise<ClockEvent> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .insert(input)
-    .select('*')
-    .single();
-  if (error) throw error;
-  // A clock-in is the clearest evidence a human is using this tenant today.
-  touchOrgActivity(data.org_id);
-  return data;
+  // A replay of the same `client_event_id` answers 200 with the stored event (`already_applied`), so the offline
+  // outbox can send it again safely.
+  const r = await api.post<{ clock_event: ApiClockEvent; already_applied: boolean }>(
+    orgPath(input.org_id, '/clock-events'),
+    {
+      staff_profile_id: input.staff_profile_id,
+      shift_id: input.shift_id ?? null,
+      type: input.type,
+      event_at: input.event_at ?? null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      accuracy: input.accuracy ?? null,
+      method: input.method ?? 'manual',
+      location_name: input.location_name ?? null,
+      client_event_id: input.client_event_id ?? null,
+    },
+  );
+  return toEvent(r.clock_event);
 }
 
 /**
@@ -29,15 +77,15 @@ export async function recordClockEvent(input: ClockEventInsert): Promise<ClockEv
 export async function getLatestClockEvent(
   staffProfileId: string,
 ): Promise<ClockEvent | null> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId)
-    .order('event_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const r = await api.get<{ clock_events: ApiClockEvent[] }>(
+    activeOrgPath('/clock-events'),
+    {
+      staff_profile_id: staffProfileId,
+      latest: '1',
+    },
+  );
+  const e = r.clock_events[0];
+  return e ? toEvent(e) : null;
 }
 
 /**
@@ -80,28 +128,26 @@ export async function correctClockEvent(
   id: string,
   correction: ClockCorrection,
 ): Promise<ClockEvent> {
-  const { data, error } = await supabase.rpc('correct_clock_event', {
-    p_event: id,
-    p_reason: correction.reason,
-    p_event_at: correction.eventAt ?? null,
-    p_type: correction.type ?? null,
-    p_expected_updated_at: correction.expectedUpdatedAt ?? null,
-  });
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ clock_event: ApiClockEvent }>(
+    activeOrgPath(`/clock-events/${seg(id)}/correct`),
+    {
+      reason: correction.reason,
+      event_at: correction.eventAt ?? null,
+      type: correction.type ?? null,
+      expected_updated_at: correction.expectedUpdatedAt ?? null,
+    },
+  );
+  return toEvent(r.clock_event);
 }
 
 /** The correction history for one event, newest first. Owner and manager only (0128). */
 export async function listClockEventCorrections(
   clockEventId: string,
 ): Promise<ClockEventCorrection[]> {
-  const { data, error } = await supabase
-    .from('clock_event_corrections')
-    .select('*')
-    .eq('clock_event_id', clockEventId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ corrections: ClockEventCorrection[] }>(
+    activeOrgPath(`/clock-events/${seg(clockEventId)}/corrections`),
+  );
+  return r.corrections.map((c) => ({ ...c, clock_event_id: clockEventId }));
 }
 
 /**
@@ -148,19 +194,15 @@ export async function listClockEventsForStaff(
   range: ClockEventRange,
 ): Promise<ClockEvent[]> {
   const [fromIso, toIso] = windowFor(range);
-  return fetchAllPages(async (from, to) => {
-    const { data, error } = await supabase
-      .from('clock_events')
-      .select('*')
-      .eq('staff_profile_id', range.staffProfileId)
-      .gte('event_at', fromIso)
-      .lt('event_at', toIso)
-      .order('event_at', { ascending: true })
-      .order('id', { ascending: true })
-      .range(from, to);
-    if (error) throw error;
-    return data ?? [];
-  });
+  const rows = await readWindow(
+    activeOrgPath('/clock-events'),
+    { staff_profile_id: range.staffProfileId },
+    fromIso,
+    toIso,
+  );
+  return rows.sort(
+    (a, b) => a.event_at.localeCompare(b.event_at) || a.id.localeCompare(b.id),
+  );
 }
 
 export interface OrgClockEventRange extends BoundaryContext {
@@ -174,20 +216,14 @@ export async function listClockEventsForOrg(
   range: OrgClockEventRange,
 ): Promise<ClockEvent[]> {
   const [fromIso, toIso] = windowFor(range);
-  return fetchAllPages(async (from, to) => {
-    const { data, error } = await supabase
-      .from('clock_events')
-      .select('*')
-      .eq('org_id', range.orgId)
-      .gte('event_at', fromIso)
-      .lt('event_at', toIso)
-      // Ascending, then reversed below. Paging a descending order is the same
-      // work; ordering by the same key in both places is what keeps the pages
-      // from overlapping, and `id` is the tie-breaker that makes it total.
-      .order('event_at', { ascending: true })
-      .order('id', { ascending: true })
-      .range(from, to);
-    if (error) throw error;
-    return data ?? [];
-  }).then((rows) => rows.reverse());
+  // Newest first, as the attendance screens read it.
+  const rows = await readWindow(
+    orgPath(range.orgId, '/clock-events'),
+    {},
+    fromIso,
+    toIso,
+  );
+  return rows.sort(
+    (a, b) => b.event_at.localeCompare(a.event_at) || b.id.localeCompare(a.id),
+  );
 }

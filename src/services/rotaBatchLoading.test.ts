@@ -18,60 +18,28 @@ import type { Rota } from '@/types';
  */
 
 let rotaRows: Rota[] = [];
-let shiftRows: { id: string; rota_id: string }[] = [];
-/** Every filter the fake builder saw, so "did it query at all" is assertable. */
-const queries: { table: string; filters: [string, unknown][] }[] = [];
+let shiftRows: { id: string; rota_id: string; starts_at?: string }[] = [];
+/** Every API read the services made, so "did it query at all" is assertable. */
+const queries: { path: string; query: Record<string, unknown> }[] = [];
 
-vi.mock('@/lib/supabase', () => {
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  const from = (table: string) => {
-    const record: { table: string; filters: [string, unknown][] } = {
-      table,
-      filters: [],
-    };
-    const rows = (): unknown[] => (table === 'rotas' ? rotaRows : shiftRows);
-    let page: [number, number] | null = null;
-    const builder = {
-      select() {
-        queries.push(record);
-        return builder;
-      },
-      eq(column: string, value: unknown) {
-        record.filters.push([column, value]);
-        return builder;
-      },
-      in(column: string, value: unknown) {
-        record.filters.push([column, value]);
-        return builder;
-      },
-      is(column: string, value: unknown) {
-        record.filters.push([column, value]);
-        return builder;
-      },
-      // Chainable AND awaitable: PostgREST allows several `.order()` calls
-      // and only resolves when awaited, so the fake has to do both.
-      order() {
-        return builder;
-      },
-      // Since RF-09 the shift reads are paginated, so the fake has to slice
-      // the way PostgREST does. Returning every row for any range would make
-      // `fetchAllPages` loop forever once the fixture grew past a page.
-      range(from: number, to: number) {
-        record.filters.push(['range', [from, to]]);
-        page = [from, to];
-        return builder;
-      },
-      then(
-        resolve: (value: { data: unknown[]; error: null }) => unknown,
-      ): Promise<unknown> {
-        const all = rows();
-        const data = page ? all.slice(page[0], page[1] + 1) : all;
-        return Promise.resolve(resolve({ data, error: null }));
-      },
-    };
-    return builder;
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
+  const get = (path: string, query: Record<string, unknown> = {}): Promise<unknown> => {
+    queries.push({ path, query });
+    if (path.endsWith('/rotas')) return Promise.resolve({ rotas: rotaRows });
+    const ids = typeof query.rota_ids === 'string' ? query.rota_ids.split(',') : [];
+    return Promise.resolve({
+      shifts: shiftRows
+        .filter((r) => ids.includes(r.rota_id))
+        .map((r) => ({ starts_at: '2026-08-31T09:00:00Z', ...r })),
+      truncated: false,
+    });
   };
-  return { supabase: { from } };
+  return {
+    ...actual,
+    api: { get, post: () => Promise.resolve({}) },
+    currentOrgId: () => 'org-1',
+  };
 });
 
 const { pickRotaToOpen, resolveRotaRows, resolveRotasForLocations } = await import(
@@ -93,6 +61,7 @@ function rota(partial: {
     name: 'Week of 2026-08-31',
     period_start: '2026-08-31',
     period_end: '2026-09-06',
+    created_at: '2026-08-01T00:00:00Z',
     status: partial.status,
     supersedes_rota_id: partial.supersedes_rota_id ?? null,
   } as unknown as Rota;
@@ -187,12 +156,9 @@ describe('resolveRotasForLocations', () => {
       ...PERIOD,
       locationIds: ['loc-1', 'loc-2', 'loc-3'],
     });
-    // The point of the change: three sites, one round trip.
+    // The point of the change: three sites, one round trip for the whole period.
     expect(queries).toHaveLength(1);
-    expect(queries[0]?.filters).toContainEqual([
-      'location_id',
-      ['loc-1', 'loc-2', 'loc-3'],
-    ]);
+    expect(queries[0]?.query).toMatchObject({ from: '2026-08-31', to: '2026-09-06' });
   });
 
   it('ignores an org-wide rota, which has no location to group under', async () => {
@@ -207,9 +173,8 @@ describe('resolveRotasForLocations', () => {
   it('does not query at all for an org with no locations', async () => {
     const byLocation = await resolveRotasForLocations({ ...PERIOD, locationIds: [] });
     expect(byLocation.size).toBe(0);
-    // `in('location_id', [])` is valid SQL that matches nothing, so this is a
-    // wasted round trip rather than an error — which is exactly why it is easy
-    // to leave in.
+    // A read that can only match nothing is a wasted round trip rather than an
+    // error, which is exactly why it is easy to leave in.
     expect(queries).toHaveLength(0);
   });
 });
@@ -223,7 +188,7 @@ describe('listShiftsForRotas', () => {
     const rows = await listShiftsForRotas(['r1', 'r2']);
     expect(rows.map((r) => r.id)).toEqual(['s1', 's2']);
     expect(queries).toHaveLength(1);
-    expect(queries[0]?.filters).toContainEqual(['rota_id', ['r1', 'r2']]);
+    expect(queries[0]?.query).toMatchObject({ rota_ids: 'r1,r2' });
   });
 
   it('short-circuits on an empty list', async () => {
