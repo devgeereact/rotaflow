@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
  * `/pricing`.
  *
  * This is a pre-signup, unauthenticated marketing page showing plans
- * hardcoded from `supabase/migrations/0023_commercials.sql` (the source
+ * hardcoded from the seeded plans (backend/migrations/008-billing.sql, the source
  * of truth; see `src/lib/marketing.ts` comment). Plan CTAs route to
  * `/signup` because no `orgId` exists yet — real checkout (via Edge
  * Function) happens in Settings > Billing, after an org is created.

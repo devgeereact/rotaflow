@@ -42,6 +42,8 @@ import {
 } from '@/components/staff/StaffActionsModal';
 import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModal';
 import { DocumentsModal } from '@/components/staff/DocumentsModal';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { STAFF_DOCUMENTS_FEATURE } from '@/services/documentService';
 import { ImportStaffModal } from '@/components/staff/ImportStaffModal';
 import { PayRateModal } from '@/components/staff/PayRateModal';
 import type { ImportPreview } from '@/lib/csvImport';
@@ -112,6 +114,7 @@ const STATUS_OPTIONS: readonly FilterOption[] = [
 export function StaffPage(): JSX.Element {
   const { confirm } = useConfirm();
   const { orgId, orgName } = useOrg();
+  const documentsEnabled = useFeatureAccess().has(STAFF_DOCUMENTS_FEATURE);
   const { user } = useAuth();
   const { canManageStaff, canManageOrg } = usePermissions();
   const navigate = useNavigate();
@@ -489,12 +492,17 @@ export function StaffPage(): JSX.Element {
         icon: Siren,
         onSelect: () => setEmergencyContactsFor(person),
       },
-      {
-        id: 'documents',
-        label: 'Documents',
-        icon: FileText,
-        onSelect: () => setDocumentsFor(person),
-      },
+      // Staff documents arrive with compliance (S10); hidden until the platform turns the flag on.
+      ...(documentsEnabled
+        ? [
+            {
+              id: 'documents',
+              label: 'Documents',
+              icon: FileText,
+              onSelect: () => setDocumentsFor(person),
+            },
+          ]
+        : []),
       {
         id: 'active',
         label: person.active ? 'Deactivate' : 'Reactivate',

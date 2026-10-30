@@ -55,7 +55,7 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
       'Staff job titles, skills, weekly hours and contract type, each person under a short code such as S1 rather than their name, plus the shifts, locations and leave DATES for the week being drafted. Names are put back on our side before the manager sees the draft. A name the manager types into their own request is replaced with its code when it matches exactly one person; anything else typed is sent as written. Leave type is deliberately not sent, so an absence cannot be read as sickness.',
     region: 'United States. The default model is openai/gpt-4o-mini.',
     outsideUkEu: true,
-    evidence: 'supabase/functions/ai-rota-assistant/index.ts',
+    evidence: 'backend/src/Mod/AiAssistant.php',
     optOut:
       'Yes, and it is the default. The assistant’s two deterministic tabs make no network call at all — they read rows the organisation already has. An organisation that never opens “Ask AI” never sends anything to OpenRouter, and the feature is included only with the Business and Enterprise plans.',
   },
@@ -66,26 +66,26 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
       'Billing identity for whoever pays: the email address and card details they enter on Stripe’s own checkout page, plus the organisation id and plan code we attach. Staff records are never sent.',
     region: 'United States, with global processing.',
     outsideUkEu: true,
-    evidence: 'supabase/functions/create-checkout-session/index.ts',
+    evidence: 'backend/src/Mod/Billing.php',
     optOut:
       'Not while subscribing. Nothing reaches Stripe for an organisation that has not started checkout.',
   },
   {
-    name: 'Supabase',
+    name: 'Clerk',
     purpose:
-      'The database, authentication, file storage and the server functions. This is where the product’s data lives.',
+      'Sign-in. Clerk sends the email code, holds the sign-in account and its sessions, and runs two-step verification where it is turned on.',
     personalData:
-      'Everything the product holds: staff records, rotas, clock-in events including GPS, leave, documents and the audit log.',
-    region: 'European Union — eu-west-1, Ireland.',
-    outsideUkEu: false,
-    evidence: 'Supabase project region, eu-west-1',
-    optOut: null,
+      'The email address you sign in with, your name if you give one, and session and device details (IP address, browser) for the sessions it keeps. No rota, staff record or organisation data is sent to it.',
+    region: 'United States.',
+    outsideUkEu: true,
+    evidence: 'src/context/AuthContext.tsx',
+    optOut: 'Not while using the app: signing in is through Clerk.',
   },
   {
     name: 'Sentry',
     purpose: 'Error monitoring, so a crash is noticed without a customer reporting it.',
     personalData:
-      'What appears in an error: the stack trace, the path of the page it happened on, and the steps that led there. Console output is dropped and web addresses have their query strings removed before anything is sent, because a Supabase request carries its filter values — an email address, a staff id — in the query. The browser is never told who you are: `Sentry.setUser` is not called anywhere.',
+      'What appears in an error: the stack trace, the path of the page it happened on, and the steps that led there. Console output is dropped and web addresses have their query strings removed before anything is sent, because an API request can carry filter values (a staff id, a date) in the query. The browser is never told who you are: `Sentry.setUser` is not called anywhere.',
     region: 'European Union — the EU ingest region, fixed when the account was created.',
     outsideUkEu: false,
     evidence: 'src/lib/sentry.ts, VITE_SENTRY_DSN',
@@ -93,20 +93,11 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
       'Yes. Nothing is sent unless you turn on crash reporting, which is off until you do, and you can turn it off again from the Cookie Notice. Until 4 September 2026 this row was wrong in both directions: it claimed a user id that was never sent, and it did not mention the session replay and performance tracing that were.',
   },
   {
-    name: 'ImageKit',
-    purpose: 'Hosting and delivery of uploaded images, such as staff photos.',
-    personalData: 'Uploaded images, which for a staff photo is a photograph of a person.',
-    region: 'United Kingdom.',
-    outsideUkEu: false,
-    evidence: 'VITE_IMAGEKIT_URL_ENDPOINT',
-    optOut: 'Yes. Nothing is sent unless someone uploads an image.',
-  },
-  {
     name: 'Namecheap / cPanel hosting',
     purpose:
-      'Serving the application itself — a static bundle — and the outbound mail for password resets and invitations.',
+      'Serving the application and its API, the database where the product’s data lives, private file storage (staff photos), and the outbound mail for invitations and notifications.',
     personalData:
-      'Email addresses and the content of the messages we send to them. The application files themselves contain no customer data.',
+      'Everything the product holds: staff records, rotas, clock-in events including GPS, leave, the audit log, and the email addresses and content of the messages we send.',
     region: 'United Kingdom — premium17.web-hosting.com.',
     outsideUkEu: false,
     evidence: 'docs/DEPLOYMENT.md',
@@ -143,6 +134,11 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
 ];
 
 /**
+ * Removed on 30 October 2026 (S9): **Supabase**, whose database, sign-in, storage and functions were replaced by
+ * the PHP API and MariaDB on the cPanel host and by Clerk for sign-in; and **ImageKit**, which no code used
+ * (docs/MERGE-TARGET.md cut list). The Supabase project stays until the owner retires it after cutover, and holds
+ * the old data until then.
+ *
  * Removed on 31 August 2026: **Inngest**. It was listed as dispatching
  * notifications, citing `src/services/notificationDispatchService.ts` as its
  * evidence — a file deleted when `0087` moved dispatch into Postgres triggers
@@ -157,4 +153,4 @@ export const SUB_PROCESSORS: readonly SubProcessor[] = [
  */
 
 /** The date the list above was last checked against the code, not last edited. */
-export const SUB_PROCESSORS_REVIEWED = '4 September 2026';
+export const SUB_PROCESSORS_REVIEWED = '30 October 2026';

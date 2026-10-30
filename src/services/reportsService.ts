@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { listOrgMembers } from '@/services/orgService';
 import { listClockEventsForOrg } from '@/services/clockService';
 import { listOrgLeaveRequests } from '@/services/leaveService';
 import { listOrgShiftSwaps } from '@/services/swapService';
@@ -20,23 +20,13 @@ function staffName(staff: { first_name: string; last_name: string } | undefined)
   return staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown';
 }
 
-interface ReviewerProfile {
-  id: string;
-  full_name: string | null;
-  email: string;
-}
-
 /** Who reviewed a leave/swap request. Reviewed_by references profiles, not staff_profiles. */
 async function reviewerNamesByProfileId(orgId: string): Promise<Map<string, string>> {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('profile:profiles(id, full_name, email)')
-    .eq('org_id', orgId)
-    .returns<{ profile: ReviewerProfile | null }[]>();
-  if (error) throw error;
+  // Reviewers are owners and managers, who read every member's name and email.
   const map = new Map<string, string>();
-  for (const row of data ?? []) {
-    if (row.profile) map.set(row.profile.id, row.profile.full_name ?? row.profile.email);
+  for (const m of await listOrgMembers(orgId)) {
+    const name = m.full_name ?? m.email;
+    if (name) map.set(m.user_id, name);
   }
   return map;
 }

@@ -574,3 +574,28 @@ Placeholders: `{a}` platform announcement, `{i}` invoice.
 | `GET /api/files?b&p&e&s` | public, signed | The picture itself; 404 for any bad, expired or stale link |
 | `GET /platform/notification-templates`, `POST .../` `{key, subject, body, org_id?}`, `POST .../delete` `{key, org_id?}` | read: owner, admin, support; write: owner, admin | Email wording, platform-wide or for one organisation (which wins). Placeholders: `org_name`, `staff_name`, `title`, `body`, `body_line`, `app_url` |
 
+
+### Slice S9: the React app moves onto the API
+
+The browser now talks only to this API (`src/lib/api.ts`, `/api` on the same origin, the Clerk session token as
+`Authorization: Bearer`). Every response's `YYYY-MM-DD HH:MM:SS` timestamps are read as UTC (`src/lib/apiDates.ts`).
+Routes added because a screen needed them and they were R1 scope:
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `POST /orgs/{o}` (extended) | owner | Any of `name`, `slug` (409 `slug_taken`), `industry`, `country`, `timezone` (IANA), `contact_email`, `contact_phone`; only fields sent change. `GET /orgs/{o}` returns them and `onboarding_completed_at` |
+| `GET /slug-available?slug&exclude` | signed in | `{available}` only; `exclude` must be an organisation the caller belongs to (404 otherwise); 60 a minute |
+| `POST /orgs/{o}/settings` (extended) | owner | Also the organisation preferences: `size`, `org_type`, `website`, `address_line`, `registration_no`, `primary_contact`, `role_labels`, the scheduling policies, `intended_plan`, `billing_period`, each type-checked; anything unknown is 422 |
+| `GET /orgs/{o}/labour-cost?from&to&paid_breaks` | owner, manager | Per site: minutes, cost at the rate in force on the day of each shift (rounded per shift), unrated people counted; published and archived rotas only; at most 400 days |
+| `GET /orgs/{o}/pay-rates/current` | owner, manager | Each person's rate in force today |
+| `POST /me/profile` `{full_name}` | signed in | The person's display name (email is Clerk's) |
+| `GET/POST /me/settings` (extended) | signed in | Adds `notifications_enabled` (boolean) |
+| `POST /orgs/{o}/audit` `{action, entity_type?, entity_id?, metadata?}` | any member | Records an export or review the person did; allow-listed actions, metadata at most 2000 bytes, 120 an hour |
+| `GET /platform/users/{u}` | owner, admin, support | The person and every membership |
+| `GET /platform/orgs/{o}/structure` | owner, admin, support | Members (name, email), sites, departments, counts (staff, published rotas, this month's shifts) |
+| `GET /platform/notifications/activity?limit` | owner, admin, support | Recent notifications without title or body, and the push subscription count |
+| `GET /platform/summary` (extended) | platform staff | Adds `published_rotas` and `shifts_this_month` |
+
+Not on the API, by decision: manual invoice issue and status (Stripe's webhook owns invoices); the platform
+require-MFA switch (Clerk's dashboard); integrations, the IP allow-list and stored health probes (cut list).
+Staff documents wait for S10 behind the `staff_documents` feature flag.

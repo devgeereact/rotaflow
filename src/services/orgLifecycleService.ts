@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath } from '@/lib/api';
+import { getOrganisation } from '@/services/orgService';
 import type { Organisation } from '@/types';
 
 /**
@@ -26,22 +27,20 @@ export interface OrganisationDeletionPreview {
 export async function organisationDeletionPreview(
   orgId: string,
 ): Promise<OrganisationDeletionPreview | null> {
-  const { data, error } = await supabase.rpc('organisation_deletion_preview', {
-    p_org: orgId,
-  });
-  if (error) throw error;
-
-  const row = (data ?? [])[0];
-  if (!row) return null;
+  const r = await api.get<{ preview: Record<string, number> }>(
+    orgPath(orgId, '/deletion-preview'),
+  );
+  const n = (k: string): number => Number(r.preview[k] ?? 0);
   return {
-    staffProfiles: row.staff_profiles,
-    locations: row.locations,
-    rotas: row.rotas,
-    shifts: row.shifts,
-    clockEvents: row.clock_events,
-    leaveRequests: row.leave_requests,
-    documents: row.documents,
-    members: row.members,
+    staffProfiles: n('staff_profiles'),
+    locations: n('locations'),
+    rotas: n('rotas'),
+    shifts: n('shifts'),
+    clockEvents: n('clock_events'),
+    leaveRequests: n('leave_requests'),
+    // Documents arrive with compliance (S10); none can exist before it.
+    documents: n('documents'),
+    members: n('memberships'),
   };
 }
 
@@ -60,11 +59,8 @@ export async function deleteOrganisation(
   orgId: string,
   confirmName: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('delete_organisation', {
-    p_org: orgId,
-    p_confirm_name: confirmName,
-  });
-  if (error) throw error;
+  // The name must match exactly; the API removes every row and queues every stored file for deletion.
+  await api.post(orgPath(orgId, '/delete'), { confirm_name: confirmName });
 }
 
 /**
@@ -217,39 +213,80 @@ export interface OrganisationExport {
  * lookup table because the generated client types tables and views as
  * separate overloads of `from`, and a union of the two satisfies neither.
  */
-const STAFF_READ_VIEW = 'staff_profiles_visible' as const;
-
 /**
- * Everything RotaFlow holds for one organisation, as one JSON file.
- *
- * Read through the caller's own session, so RLS decides what comes back: an
- * owner gets their whole tenant, and nobody gets anybody else's. A table the
- * reader cannot see is recorded in `omitted` with the reason rather than
- * silently absent — an export that quietly skips a table is worse than one
- * that refuses, because it looks complete.
+ * Where each exported table is read from. Each is the API's own list route, read with the exporter's own
+ * permissions; a table with no route is listed under `omitted` with the reason, never left out silently.
  */
-export async function exportOrganisationData(orgId: string): Promise<OrganisationExport> {
-  const { data: organisation, error: orgError } = await supabase
-    .from('organisations')
-    .select('*')
-    .eq('id', orgId)
-    .single();
-  if (orgError) throw orgError;
+const SOURCES: Partial<
+  Record<ExportedTable, { path: string; key: string; query?: Record<string, string> }>
+> = {
+  locations: { path: '/locations', key: 'locations' },
+  departments: { path: '/departments', key: 'departments' },
+  staff_profiles: { path: '/staff', key: 'staff' },
+  shift_types: { path: '/shift-types', key: 'shift_types' },
+  job_titles: { path: '/job-titles', key: 'job_titles' },
+  rotas: { path: '/rotas', key: 'rotas' },
+  minimum_cover_rules: { path: '/minimum-cover', key: 'rules' },
+  availability: { path: '/availability', key: 'availability' },
+  leave_requests: { path: '/leave', key: 'leave' },
+  overtime_requests: { path: '/overtime', key: 'overtime' },
+  shift_swaps: { path: '/swaps', key: 'swaps' },
+  clock_events: { path: '/clock-events', key: 'clock_events', query: { limit: '1000' } },
+  timesheets: { path: '/timesheets', key: 'timesheets' },
+  announcements: { path: '/announcements', key: 'announcements' },
+  invites: { path: '/invites', key: 'invites' },
+  memberships: { path: '/members', key: 'members' },
+  role_delegations: { path: '/delegations', key: 'delegations' },
+  audit_logs: { path: '/audit', key: 'entries', query: { limit: '100' } },
+  gdpr_requests: { path: '/gdpr', key: 'requests' },
+  support_access_sessions: { path: '/support-sessions', key: 'sessions' },
+  invoices: { path: '/billing', key: 'invoices' },
+};
 
+export async function exportOrganisationData(orgId: string): Promise<OrganisationExport> {
+  const organisation = await getOrganisation(orgId);
   const tables = {} as Record<ExportedTable, unknown[]>;
   const omitted: { table: string; reason: string }[] = [];
 
   for (const table of EXPORTED_TABLES) {
-    const { data, error } =
-      table === 'staff_profiles'
-        ? await supabase.from(STAFF_READ_VIEW).select('*').eq('org_id', orgId)
-        : await supabase.from(table).select('*').eq('org_id', orgId);
-    if (error) {
+    const source = SOURCES[table];
+    if (!source) {
       tables[table] = [];
-      omitted.push({ table, reason: error.message });
+      omitted.push({ table, reason: 'Not available from the API in this release.' });
       continue;
     }
-    tables[table] = data ?? [];
+    try {
+      const r = await api.get<Record<string, unknown[]>>(
+        orgPath(orgId, source.path),
+        source.query,
+      );
+      tables[table] = r[source.key] ?? [];
+    } catch (error) {
+      tables[table] = [];
+      omitted.push({
+        table,
+        reason: error instanceof Error ? error.message : 'Could not be read.',
+      });
+    }
+  }
+  // Shifts are read per rota, at most 50 rotas a request.
+  try {
+    const rotaIds = (tables.rotas as { id: string }[]).map((r) => r.id);
+    const shifts: unknown[] = [];
+    for (let i = 0; i < rotaIds.length; i += 50) {
+      const r = await api.get<{ shifts: unknown[] }>(orgPath(orgId, '/shifts'), {
+        rota_ids: rotaIds.slice(i, i + 50).join(','),
+      });
+      shifts.push(...r.shifts);
+    }
+    tables.shifts = shifts;
+    const pending = omitted.findIndex((o) => o.table === 'shifts');
+    if (pending >= 0) omitted.splice(pending, 1);
+  } catch (error) {
+    omitted.push({
+      table: 'shifts',
+      reason: error instanceof Error ? error.message : 'Could not be read.',
+    });
   }
 
   return {
@@ -258,9 +295,9 @@ export async function exportOrganisationData(orgId: string): Promise<Organisatio
     tables,
     omitted,
     notes: [
-      'Every row scoped to this organisation, read with your own permissions. A table you cannot read is listed under "omitted" with the reason, rather than left out silently.',
-      'Staff records are read through `staff_profiles_visible`. Payroll id, start date, phone, email and holiday allowance are readable only by an owner or manager of this organisation, or by the person the record is about, so they are present in an export an owner runs and would be blank in one run by anybody else.',
-      'Files themselves are not included. `documents` records where each one is: `storage_path` for a file RotaFlow stores privately, or `file_url` for an older pasted link. Deleting the organisation deletes every stored file, so download anything you need to keep first.',
+      'Every row scoped to this organisation, read with your own permissions. A table that cannot be read is listed under "omitted" with the reason, rather than left out silently.',
+      'Staff records carry payroll id, start date, phone, email and holiday allowance only for an owner or manager of this organisation, or for the person the record is about, so they are present in an export an owner runs and blank in one run by anybody else.',
+      'Files themselves are not included. Deleting the organisation deletes every stored file, so download anything you need to keep first.',
       "Staff accounts are not included. A person's RotaFlow login can belong to more than one organisation, so it is not this organisation's to export. Their employment record with you is in `staff_profiles` and the tables around it.",
       "Audit rows survive the organisation being deleted, by design: an audit trail a tenant deletion erases is not an audit trail. They are kept with the organisation's name and no longer linked to it.",
       ...DELIBERATELY_EXCLUDED.map(

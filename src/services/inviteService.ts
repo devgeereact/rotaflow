@@ -10,7 +10,7 @@ import type { Invite, MembershipRole } from '@/types';
  * org-scoped RLS policy on `invites` correctly hides the row from the one
  * person who needs to read it. Widening that policy would expose every
  * pending invite in the system, so redemption goes through
- * `accept_invite()` instead (see supabase/migrations/0006_invites.sql).
+ * `accept_invite()` instead (see backend/src/Mod/Invites.php).
  *
  * Only a sha256 hash of the token is stored. `createInvite` returns the raw
  * token exactly once, if it is not put into the link there and then, it is

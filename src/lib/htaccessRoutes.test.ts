@@ -131,3 +131,35 @@ describe('.htaccess route allowlist', () => {
     expect(prerendered).toBeGreaterThan(maps);
   });
 });
+
+describe('.htaccess and the PHP API (S9)', () => {
+  it('sends every /api path to the API entrypoint before any SPA or 404 rule', () => {
+    const api = HTACCESS.indexOf('RewriteRule ^api(/.*)?$ api/index.php [L,QSA]');
+    const spa = HTACCESS.indexOf('# app-routes:');
+    const fileCheck = HTACCESS.indexOf('RewriteCond %{REQUEST_FILENAME} -f');
+    expect(api).toBeGreaterThan(-1);
+    expect(api).toBeLessThan(spa);
+    expect(api).toBeLessThan(fileCheck);
+  });
+
+  it('passes the bearer token through to PHP', () => {
+    expect(HTACCESS).toContain(
+      'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]',
+    );
+  });
+
+  it('names the Clerk hosts in the CSP and no longer names Supabase or ImageKit', () => {
+    const csp = /Header set Content-Security-Policy "([^"]+)"/.exec(HTACCESS)?.[1] ?? '';
+    for (const host of [
+      'https://clerk.rotaflow.space',
+      'https://cdn.protect.clerk.com',
+      'https://challenges.cloudflare.com',
+      'https://clerk-telemetry.com',
+    ]) {
+      expect(csp).toContain(host);
+    }
+    // img.clerk.com is covered by img-src https:.
+    expect(csp).toMatch(/img-src [^;]*https:/);
+    expect(csp).not.toMatch(/supabase|imagekit/i);
+  });
+});

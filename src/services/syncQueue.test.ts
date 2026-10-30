@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 
-// The replayers are the boundary to Supabase. Mocking them lets these tests
+// The replayers are the boundary to the API. Mocking them lets these tests
 // drive the real IndexedDB code path (via fake-indexeddb) while deciding
 // exactly how the server responds, which is the whole subject here.
 vi.mock('@/services/clockService', () => ({
@@ -47,7 +47,7 @@ function first<T>(items: T[]): T {
   return item;
 }
 
-/** A Supabase PostgrestError as it actually arrives at the catch block. */
+/** An error in the old REST layer's shape, still classified for queued items. */
 function postgrestError(code: string, message = 'rejected'): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
@@ -486,7 +486,7 @@ describe('classifyFailure, on an HTTP status', () => {
   // which is why deleting `InngestDispatchError` with the Inngest path
   // (HARDEN-008) costs these tests nothing: the rule under test is "which
   // status codes deserve another attempt", and it still applies to every
-  // Supabase and fetch failure the outbox sees.
+  // API and fetch failure the outbox sees.
   const httpError = (message: string, status: number): Error & { status: number } =>
     Object.assign(new Error(message), { status });
 

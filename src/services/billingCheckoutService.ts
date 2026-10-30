@@ -34,7 +34,7 @@ export async function listPlans(): Promise<Plan[]> {
 }
 
 /**
- * `supabase-js` populates `result.error` as a generic `FunctionsHttpError`
+ * The API client raises an `ApiError`
  * on any non-2xx response, leaving `result.data` null — so the specific
  * message the Edge Function returned (e.g. "Professional is not available
  * for checkout yet") never reaches the caller by default. The real body is

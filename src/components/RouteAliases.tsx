@@ -39,12 +39,12 @@ export function ProfileRedirect(): JSX.Element {
  *
  * Sign-in already sets `redirectTo` straight at `/app/dashboard`, so nothing
  * in this app routes here today. It exists because the redirect target is
- * configured in the Supabase dashboard, not only in this code: if that
+ * configured in the sign-in provider's dashboard, not only in this code: if that
  * allowlist is ever changed to the conventional `/auth/callback`, or a
  * provider is added whose console has it prefilled. The user lands on a route
  * that must not be the 404 page while holding a valid session in the URL hash.
  *
- * The Supabase client parses the hash itself on load, so this only has to wait
+ * The sign-in client handles the return itself, so this only has to wait
  * a tick and then get out of the way.
  */
 export function AuthCallbackPage(): JSX.Element {

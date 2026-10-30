@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv, type PluginOption } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import checker from 'vite-plugin-checker';
@@ -26,63 +26,6 @@ function resolveSentryRelease(): string {
   }
 }
 const sentryRelease = resolveSentryRelease();
-
-/**
- * Which origin the service worker treats as "the Supabase REST API".
- *
- * The rule below used to be the literal `/^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i`.
- * That is true of the hosted project and of nothing else, and it fails in two
- * ways that both look like nothing at all:
- *
- *   * A local or self-hosted stack (`http://127.0.0.1:54321`, or Supabase on a
- *     custom domain) never matches, so the `supabase-api` cache is never
- *     written. Offline reads simply do not work there, and no error says so.
- *   * More awkwardly, it made GAP-072 untestable. The scenario that gap asks
- *     for — warm an authenticated response, replace the session, read what is
- *     still in `caches` — cannot be run against a local stack if the cache is
- *     never populated in the first place. A test written against the old
- *     pattern would have passed while proving nothing.
- *
- * So the origin comes from the same variable the client is built with — read
- * through `ENV` above as well as `process.env`, because a `.env` file reaches
- * only the first of those — and the hosted wildcard remains the fallback for a
- * build with neither (CI does exactly that). Only the ORIGIN is interpolated, and it is escaped, so a
- * malformed variable cannot widen the pattern into one that matches
- * somebody else's host.
- */
-/**
- * The `VITE_*` variables as this build will actually see them.
- *
- * `process.env` alone is not enough and shipping proved it. Vite's `loadEnv`
- * reads the `.env` files into `import.meta.env` for the CLIENT bundle; it does
- * not put them in `process.env`, so config code that reads `process.env`
- * sees a value only when somebody EXPORTED it into the shell first. The
- * deploy of 7 September 2026 was built from a `.env`, so
- * `supabaseRestPattern` below fell back to the hosted wildcard and the
- * derived pattern it exists to produce was never used. Nothing broke —
- * production is on `*.supabase.co` and the wildcard matches it — but the
- * capability was inert, which is worse than absent because it had already
- * been written down as working.
- *
- * `NODE_ENV` for the mode, because this is module scope and Vite's own `mode`
- * is only available in the function form of `defineConfig`; converting the
- * whole config to that form to read one variable is a large diff for no gain.
- * The shell still wins where it is set, which is what the e2e runs rely on.
- */
-const ENV = loadEnv(process.env['NODE_ENV'] ?? 'production', process.cwd(), 'VITE_');
-
-function supabaseRestPattern(): RegExp {
-  const configured = process.env['VITE_SUPABASE_URL'] ?? ENV['VITE_SUPABASE_URL'];
-  if (!configured) return /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i;
-  try {
-    const origin = new URL(configured).origin;
-    const escaped = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`^${escaped}/rest/v1/.*`, 'i');
-  } catch {
-    return /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i;
-  }
-}
-const SUPABASE_REST_PATTERN = supabaseRestPattern();
 
 /**
  * The origin the sitemap advertises.
@@ -209,9 +152,9 @@ export default defineConfig({
 
   // Project block 04 in the workspace port scheme (see ~/.claude/CLAUDE.md, "Dev-server ports").
   // strictPort so a clash fails loudly instead of drifting to a random port —
-  // a drifted port silently breaks Supabase redirect URLs and CORS allowlists.
-  // 5042 is also in playwright.config.ts and the Supabase edge-function CORS
-  // allowlist — sweep for `localhost:5042` before changing it.
+  // a drifted port silently breaks sign-in redirect URLs and CORS allowlists.
+  // 5042 is also in playwright.config.ts — sweep for `localhost:5042` before
+  // changing it.
   server: {
     port: 5042,
     strictPort: true,
@@ -338,28 +281,9 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: false, // wait for user to accept the update
         runtimeCaching: [
-          {
-            // ImageKit CDN — cache-first, images rarely change.
-            urlPattern: /^https:\/\/ik\.imagekit\.io\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'imagekit-media',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            // Supabase REST/GraphQL reads — network-first with short fallback.
-            // Derived from VITE_SUPABASE_URL; see supabaseRestPattern above.
-            urlPattern: SUPABASE_REST_PATTERN,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
+          // No rule for `/api/*`, on purpose. API responses are tenant data behind a bearer token: the service
+          // worker never caches them, so nothing one person read can be served to the next person on a shared
+          // device (docs/MERGE-TARGET.md cut list). The old REST and image-CDN caches are gone with them.
           {
             // The self-hosted webfonts (public/fonts/). Same-origin since
             // 2026-09-03, and excluded from the precache above, so this rule is
@@ -434,9 +358,9 @@ export default defineConfig({
     // With `true`, every shipped .js pointed at its .map and the production host
     // served them: the production host answered /assets/index-*.js.map with 200 and
     // handed out the app's complete original TypeScript. That is not a secret leak
-    // — VITE_* values are inlined into the bundle regardless, and the anon key is
-    // public by design — but it does publish the exact shape of every Supabase
-    // query, every RLS assumption and every role check to anyone probing a
+    // — VITE_* values are inlined into the bundle regardless, and the Clerk key is
+    // public by design — but it does publish the exact shape of every API
+    // call and every role check to anyone probing a
     // multi-tenant app that holds staff PII. docs/DEPLOYMENT.md §4 already said not
     // to ship them; nothing enforced it.
     //
@@ -464,14 +388,14 @@ export default defineConfig({
         // Vite 8 bundles with Rolldown, which dropped the object form of
         // `manualChunks`; `codeSplitting.groups` is its replacement. Groups match
         // module paths, so each regex names the package and the dependencies the
-        // old form pulled in with it (react-router, scheduler, @supabase/*).
+        // old form pulled in with it (react-router, scheduler).
         codeSplitting: {
           groups: [
             {
               name: 'react-vendor',
               test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
             },
-            { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/ },
+            { name: 'clerk', test: /node_modules[\\/]@clerk[\\/]/ },
             { name: 'icons', test: /node_modules[\\/]lucide-react[\\/]/ },
             { name: 'dates', test: /node_modules[\\/]date-fns(-tz)?[\\/]/ },
             // Only the rota builder uses drag-and-drop, so this rides along with

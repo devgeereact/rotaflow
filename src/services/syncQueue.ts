@@ -22,7 +22,7 @@ import type { ClockEventInsert, LeaveRequestInsert, ShiftSwapInsert } from '@/ty
  *
  * A write made with no connection is appended here instead of failing. On
  * reconnect (`useSyncQueue`, driven by `useOnlineStatus`), every queued item
- * replays against Supabase in the order it was made and is removed once it
+ * replays against the API in the order it was made and is removed once it
  * lands. Nothing here is a full offline-first data layer. It is a durable
  * queue for a small, fixed set of write shapes.
  */

@@ -5,16 +5,12 @@ import { reportError } from '@/lib/sentry';
 /**
  * Client-side teardown that must run whenever a session ends.
  *
- * `supabase.auth.signOut()` only drops the auth token. Everything below
- * survives it, and on a shared device, a ward tablet, a warehouse terminal,
- * a site office PC, which is most of RotaFlow's market, that means the next
- * person to sign in can be served the previous user's tenant data.
- *
- * Two stores hold that data, both configured in `vite.config.ts`:
- *   - `supabase-api`   authenticated REST responses, NetworkFirst, 5 min TTL
- *   - `imagekit-media` staff photos, CacheFirst, 30 days
- *
- * Neither is keyed by user, so neither can be left for the next session.
+ * Signing out of Clerk only drops the session. Everything below survives it,
+ * and on a shared device, a ward tablet, a warehouse terminal, a site office
+ * PC, which is most of RotaFlow's market, that means the next person to sign
+ * in could be served the previous user's data: the active organisation, the
+ * work-mode choice, a remembered calendar link, and the two response caches
+ * older builds wrote (listed below; nothing writes them any more).
  */
 
 /**
@@ -36,6 +32,10 @@ import { reportError } from '@/lib/sentry';
  */
 
 /** Runtime cache names. Must match `workbox.runtimeCaching` in vite.config.ts. */
+/**
+ * Caches older builds wrote, deleted on sign-out so nothing from them outlives the session. Since S9 the service
+ * worker caches no API response at all, so nothing new is written to these.
+ */
 const TENANT_CACHE_NAMES = ['supabase-api', 'imagekit-media'] as const;
 
 /** Which organisation the user last had selected. */

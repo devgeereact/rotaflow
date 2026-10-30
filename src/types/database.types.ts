@@ -1,25 +1,17 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents -- generated file: the generator emits `never` inside a union for tables whose writes are revoked, and reformatting generated output would be undone by the next run. */
 /**
- * Supabase schema types, generated from the live project.
+ * Row shapes for every table the app reads, frozen from the retired Postgres schema (S9, 30 October 2026).
  *
- * Regenerate after any migration:
- *   supabase gen types typescript --project-id vwqqbdvlskngrqrejzxi --schema public \
- *     > src/types/database.types.ts
- *
- * This file was hand maintained from 0015 to 0033 because the generator was
- * never run, which is why several tables carried `Insert: never` and a few
- * columns drifted from the database. It is generated now, and the diff between
- * `supabase gen types` output and the declarations in `supabase/migrations` is
- * the check that the repository still describes production. 0033 was written
- * because that diff found a whole incident feature nobody had declared.
+ * The PHP API (`backend/`) serves the same columns under the same names, so these types still describe what
+ * the services hand to the screens; the services fill in any column the API does not return. They are no
+ * longer generated: a column the API adds or drops is changed here by hand, in the same commit.
  */
 export type Json =
   string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
+  // Kept from the generated shape so the helper types below still resolve.
+  __Internal: {
     PostgrestVersion: '14.5';
   };
   public: {
@@ -3310,7 +3302,7 @@ export type Database = {
        * SELECT on those columns to `authenticated`.
        *
        * Written by hand, and deliberately NOT nullable where the base table
-       * is NOT NULL. Supabase's generator marks every view column nullable
+       * is NOT NULL. The old type generator marked every view column nullable
        * because it cannot prove otherwise; here the view is a straight
        * projection of `staff_profiles`, so `id`, `org_id`, `first_name`,
        * `last_name`, `skills`, `active`, `created_at` and `updated_at` cannot
@@ -4220,7 +4212,7 @@ export type Database = {
   };
 };
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>;
+type DatabaseWithoutInternals = Omit<Database, '__Internal'>;
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>];
 

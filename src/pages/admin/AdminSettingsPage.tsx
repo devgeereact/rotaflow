@@ -507,13 +507,13 @@ export function AdminSettingsPage(): JSX.Element {
             <Panel title="Actual configuration" flush>
               <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
                 <Capability
-                  name="Sign-in providers"
+                  name="Sign-in (Clerk)"
                   detail={
-                    env.oauthProviders.length > 0
-                      ? env.oauthProviders.join(', ')
-                      : 'Email and password only, no OAuth providers declared'
+                    env.clerkPublishableKey
+                      ? 'Email code through Clerk; providers and two-step are set in the Clerk dashboard'
+                      : 'No Clerk publishable key in this build: nobody can sign in'
                   }
-                  enabled={env.oauthProviders.length > 0}
+                  enabled={Boolean(env.clerkPublishableKey)}
                 />
                 <Capability
                   name="Error monitoring"

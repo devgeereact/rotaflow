@@ -1,5 +1,4 @@
-import { env } from '@/lib/env';
-import { supabase } from '@/lib/supabase';
+import { API_BASE_URL, api } from '@/lib/api';
 import {
   isEnquiryStatus,
   type EnquiryFields,
@@ -38,9 +37,6 @@ export async function submitEnquiry(
   fields: EnquiryFields,
   turnstileToken: string | null,
 ): Promise<SubmitOutcome> {
-  if (!env.supabaseUrl || !env.supabaseAnonKey)
-    return { ok: false, reason: 'unavailable' };
-
   const body = {
     name: fields.name.trim(),
     workEmail: fields.workEmail.trim(),
@@ -56,13 +52,11 @@ export async function submitEnquiry(
 
   let response: Response;
   try {
-    response = await fetch(`${env.supabaseUrl}/functions/v1/public-enquiry`, {
+    // The public enquiry route takes no sign-in; it checks the origin, the honeypot and Turnstile itself.
+    response = await fetch(`${API_BASE_URL}/enquiries`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: env.supabaseAnonKey,
-        Authorization: `Bearer ${env.supabaseAnonKey}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'omit',
       body: JSON.stringify(body),
     });
   } catch {
@@ -109,8 +103,6 @@ interface EnquiryRow {
  * Named columns, never `*`: `ip_hash` and `user_agent` are withheld from
  * `authenticated` by column grant, and `select *` would be refused outright.
  */
-const COLUMNS =
-  'id, name, work_email, organisation, team_size, sector, message, wants_demo, marketing_consent, status, created_at, updated_at';
 
 function toRecord(row: EnquiryRow): EnquiryRecord {
   return {
@@ -133,13 +125,14 @@ function toRecord(row: EnquiryRow): EnquiryRecord {
 
 /** The newest 500. Enough for a small inbox; the retention job keeps it small. */
 export async function listEnquiries(): Promise<EnquiryRecord[]> {
-  const { data, error } = await supabase
-    .from('enquiries')
-    .select(COLUMNS)
-    .order('created_at', { ascending: false })
-    .limit(500);
-  if (error) throw error;
-  return ((data ?? []) as EnquiryRow[]).map(toRecord);
+  const r = await api.get<{ enquiries: EnquiryRow[] }>('/platform/enquiries');
+  return r.enquiries.map((row) =>
+    toRecord({
+      ...row,
+      wants_demo: Boolean(Number(row.wants_demo)),
+      marketing_consent: Boolean(Number(row.marketing_consent)),
+    }),
+  );
 }
 
 /**
@@ -148,13 +141,5 @@ export async function listEnquiries(): Promise<EnquiryRecord[]> {
  * "Saved" over that would be lying.
  */
 export async function setEnquiryStatus(id: string, status: EnquiryStatus): Promise<void> {
-  const { data, error } = await supabase
-    .from('enquiries')
-    .update({ status })
-    .eq('id', id)
-    .select('id');
-  if (error) throw error;
-  if (!data || data.length === 0) {
-    throw new Error('The enquiry could not be updated. You may not have access to it.');
-  }
+  await api.post(`/platform/enquiries/${encodeURIComponent(id)}/status`, { status });
 }

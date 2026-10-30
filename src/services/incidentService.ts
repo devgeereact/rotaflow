@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, isApiCode } from '@/lib/api';
 import type { Tables } from '@/types/database.types';
 
 export type Incident = Tables<'incidents'>;
@@ -18,34 +18,33 @@ export type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 're
 
 /** Most recent first. `limit` bounds the register; the screen says what it loaded. */
 export async function listIncidents(limit = 100): Promise<Incident[]> {
-  const { data, error } = await supabase
-    .from('incidents')
-    .select('*')
-    .order('started_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ incidents: Incident[] }>('/platform/incidents');
+  return r.incidents.slice(0, limit);
+}
+
+async function detail(
+  id: string,
+): Promise<{ incident: Incident; updates: IncidentUpdate[] } | null> {
+  try {
+    return await api.get<{ incident: Incident; updates: IncidentUpdate[] }>(
+      `/platform/incidents/${encodeURIComponent(id)}`,
+    );
+  } catch (error) {
+    if (isApiCode(error, 'not_found')) return null;
+    throw error;
+  }
 }
 
 export async function getIncident(id: string): Promise<Incident | null> {
-  const { data, error } = await supabase
-    .from('incidents')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  return (await detail(id))?.incident ?? null;
 }
 
 /** The timeline, oldest first. It is read as a narrative. */
 export async function listIncidentUpdates(incidentId: string): Promise<IncidentUpdate[]> {
-  const { data, error } = await supabase
-    .from('incident_updates')
-    .select('*')
-    .eq('incident_id', incidentId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  return ((await detail(incidentId))?.updates ?? []).map((u) => ({
+    ...u,
+    incident_id: incidentId,
+  }));
 }
 
 export async function declareIncident(input: {
@@ -55,15 +54,14 @@ export async function declareIncident(input: {
   service: string;
   startedAt?: string;
 }): Promise<string> {
-  const { data, error } = await supabase.rpc('declare_incident', {
-    p_title: input.title,
-    p_impact: input.impact,
-    p_severity: input.severity,
-    p_service: input.service,
-    p_started_at: input.startedAt ?? undefined,
+  const r = await api.post<{ id: string }>('/platform/incidents', {
+    title: input.title,
+    impact: input.impact,
+    severity: input.severity,
+    service: input.service,
+    started_at: input.startedAt ?? null,
   });
-  if (error) throw error;
-  return data;
+  return r.id;
 }
 
 export async function addIncidentUpdate(
@@ -71,12 +69,10 @@ export async function addIncidentUpdate(
   status: Exclude<IncidentStatus, 'resolved'>,
   body: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('add_incident_update', {
-    p_incident: incidentId,
-    p_status: status,
-    p_body: body,
+  await api.post(`/platform/incidents/${encodeURIComponent(incidentId)}/updates`, {
+    status,
+    body,
   });
-  if (error) throw error;
 }
 
 /**
@@ -87,9 +83,7 @@ export async function resolveIncident(
   incidentId: string,
   resolution: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('resolve_incident', {
-    p_incident: incidentId,
-    p_resolution: resolution,
+  await api.post(`/platform/incidents/${encodeURIComponent(incidentId)}/resolve`, {
+    resolution,
   });
-  if (error) throw error;
 }

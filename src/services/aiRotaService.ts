@@ -86,7 +86,7 @@ const EXPLAINED_STATUSES = new Set([400, 403, 413, 429]);
 /**
  * Invoke the assistant, turning an explained refusal into a typed error.
  *
- * `supabase.functions.invoke` reports a non-2xx as a `FunctionsHttpError`
+ * The API client reports a non-2xx as an `ApiError`
  * whose `message` is generic — the body has to be read off `context`, which is
  * the raw `Response`. Without this the messages the Edge Function carefully
  * writes never reach the user.
@@ -113,7 +113,7 @@ async function invokeAssistant<T>(
 }
 
 /**
- * Ask the AI rota assistant (Supabase Edge Function → OpenRouter) to draft
+ * Ask the AI rota assistant (the API's AI route → OpenRouter) to draft
  * shift suggestions from a natural-language prompt, grounded in the org's
  * real staff, skills and existing shifts. Returns suggestions only. Nothing
  * is written until the manager applies them via `shiftService.createShifts`.

@@ -256,6 +256,26 @@ carries the commit it shipped from. Two consequences that look like bugs and are
 Verify what is live rather than inferring it: fetch the `index-*.js` the live HTML
 references and grep it for the short SHA.
 
+## The API and Clerk in `.htaccess` (S9, applies from the R1 cutover)
+
+The repository `.htaccess` now carries two things the cutover depends on. Both must survive the composition
+below (merge, never overwrite):
+
+- **`/api` pass-through.** `RewriteRule ^api(/.*)?$ api/index.php [L,QSA]`, placed before the file check, the
+  prerendered pages and the SPA fallback, plus the `HTTP_AUTHORIZATION` pass-through so PHP receives the bearer
+  token. `backend/public/api/index.php` is deployed to `api/index.php` in the webroot; everything else in
+  `backend/` goes to `~/rotaflow-private/app/` outside it.
+- **CSP naming Clerk.** `script-src` adds `https://clerk.rotaflow.space`, `https://cdn.protect.clerk.com`,
+  `https://challenges.cloudflare.com`; `connect-src` adds `https://clerk.rotaflow.space`,
+  `https://clerk-telemetry.com`; `frame-src https://challenges.cloudflare.com`; `img.clerk.com` is covered by
+  `img-src https:`. The Supabase and ImageKit origins are removed. `src/lib/htaccessRoutes.test.ts` checks all of it.
+
+The build needs `VITE_CLERK_PUBLISHABLE_KEY` (the GitHub variable already holds the live `pk_live_…`); without it
+the build renders signed out. `VITE_SUPABASE_*`, `VITE_IMAGEKIT_*` and `VITE_ENABLE_OAUTH` are no longer read.
+
+NOT TESTED: this `.htaccess` behind Apache and Cloudflare. Verify after the cutover deploy: `/api/health` answers
+JSON 200, `/api/me` without a token answers 401 JSON (not HTML), and sign-in loads with no CSP violation.
+
 ## Composing the live `.htaccess`
 
 `--with-htaccess` replaces the file that enforces the Cloudflare origin lock. Get it wrong

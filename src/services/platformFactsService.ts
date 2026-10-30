@@ -56,7 +56,7 @@ export async function getAuthFactsSummary(): Promise<AuthFactsSummary | null> {
 
 /** Rolling 24-hour uptime and latency percentiles, per service. */
 export async function getHealthSummary(): Promise<HealthSummaryRow[]> {
-  // Stored health probes are on the cut list (they probed Supabase); uptime is watched externally.
+  // Stored health probes are on the cut list (they probed the retired database host); uptime is watched externally.
   return Promise.resolve([]);
 }
 

@@ -1,6 +1,5 @@
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { supabase } from '@/lib/supabase';
 import { listShiftsForPeriod } from '@/services/shiftService';
 import { listShiftTypes } from '@/services/shiftTypeService';
 import {
@@ -98,7 +97,7 @@ export interface PendingRequest {
  * they have none, so `createdAt` carries the shift's own start instant).
  * Overtime is deliberately not included: `overtime_requests` exists in the
  * schema but has no service built on it yet, and querying the table
- * directly here would bypass RULES.md's "all Supabase access via
+ * directly here would bypass RULES.md's "all API access via
  * src/services/*".
  */
 export async function getPendingRequests(
@@ -178,15 +177,9 @@ async function getMissedClockInAlerts(
  * `documents` yet, so this queries it directly. Still inside src/services,
  * per RULES.md.
  */
-export async function countStaffWithExpiredDocuments(orgId: string): Promise<number> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('staff_profile_id')
-    .eq('org_id', orgId)
-    .lt('expires_at', new Date().toISOString());
-
-  if (error) throw error;
-  return new Set((data ?? []).map((d) => d.staff_profile_id)).size;
+export async function countStaffWithExpiredDocuments(_orgId: string): Promise<number> {
+  // Documents arrive with compliance (S10); until then nobody can hold an expired one.
+  return Promise.resolve(0);
 }
 
 export interface DashboardOverview {

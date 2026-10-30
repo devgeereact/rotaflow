@@ -1,125 +1,52 @@
-import { supabase } from '@/lib/supabase';
-import {
-  DOCUMENT_BUCKET,
-  SIGNED_URL_SECONDS,
-  documentObjectPath,
-} from '@/lib/documentFiles';
+import { ApiError } from '@/lib/api';
 import type { StaffDocument, StaffDocumentInsert } from '@/types';
 
 /**
- * `org_id` filters are defense-in-depth, not the real enforcement. RLS
- * (0002_rotaflow.sql) already scopes every row by its own `org_id`
- * regardless of what a client sends. Adding them here costs nothing and
- * matches the pattern of never trusting a single layer.
+ * Staff documents. They arrive with the compliance module (R2, slice S10: document types, submit and review,
+ * expiry reminders, eligibility), which has no API yet. Until then the screens are hidden behind the
+ * `staff_documents` feature flag (useFeatureAccess), reads answer empty, and writes are refused with a sentence
+ * rather than failing at the network.
  */
+
+/** The feature flag that shows the documents screens. The platform turns it on when S10 ships. */
+export const STAFF_DOCUMENTS_FEATURE = 'staff_documents';
+
+const NOT_YET =
+  'Staff documents are not available yet. They arrive with the compliance module.';
+
 export async function listDocuments(
-  orgId: string,
-  staffProfileId: string,
+  _orgId: string,
+  _staffProfileId: string,
 ): Promise<StaffDocument[]> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('org_id', orgId)
-    .eq('staff_profile_id', staffProfileId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  return Promise.resolve([]);
 }
 
-/**
- * Every document in the org that has already expired or expires before
- * `beforeDate` ('YYYY-MM-DD').
- *
- * Documents with no expiry (a contract, typically) are excluded by the
- * `expires_at` filter itself, `null` never satisfies `lte`, which is the
- * behaviour wanted here: a document that cannot lapse cannot be a warning.
- */
 export async function listExpiringDocuments(
-  orgId: string,
-  beforeDate: string,
+  _orgId: string,
+  _beforeDate: string,
 ): Promise<StaffDocument[]> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('org_id', orgId)
-    .lte('expires_at', beforeDate)
-    .order('expires_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  return Promise.resolve([]);
 }
 
 export type NewDocumentDetails = Omit<StaffDocumentInsert, 'file_url' | 'storage_path'>;
 
-/**
- * Upload a file to the private bucket and record it, in that order.
- *
- * The object goes first so a row never points at a file that is not there. If
- * the insert then fails, the object is removed again; if that removal fails
- * too, the file sits in the person's folder with no row, and the folder is
- * still swept when the person or the organisation is deleted (0159).
- */
 export async function uploadDocument(
-  details: NewDocumentDetails,
-  file: File,
+  _details: NewDocumentDetails,
+  _file: File,
 ): Promise<StaffDocument> {
-  const path = documentObjectPath(
-    details.org_id,
-    details.staff_profile_id,
-    crypto.randomUUID(),
-    file.name,
-  );
-  const { error: uploadError } = await supabase.storage
-    .from(DOCUMENT_BUCKET)
-    .upload(path, file, { contentType: file.type, upsert: false });
-  if (uploadError) throw uploadError;
-
-  try {
-    return await createDocument({ ...details, storage_path: path });
-  } catch (err) {
-    await supabase.storage.from(DOCUMENT_BUCKET).remove([path]);
-    throw err;
-  }
+  return Promise.reject(new ApiError(405, 'not_available', NOT_YET));
 }
 
-/**
- * The address to open a document at, asked for at the moment of opening.
- *
- * A stored file gets a signed link that expires in a minute, so the address in
- * a browser history or a forwarded message stops working almost at once. A
- * legacy row returns its pasted link unchanged.
- */
-export async function documentOpenUrl(doc: StaffDocument): Promise<string> {
-  if (doc.storage_path) {
-    const { data, error } = await supabase.storage
-      .from(DOCUMENT_BUCKET)
-      .createSignedUrl(doc.storage_path, SIGNED_URL_SECONDS);
-    if (error) throw error;
-    return data.signedUrl;
-  }
-  if (doc.file_url) return doc.file_url;
-  throw new Error('This document has no file.');
+export async function documentOpenUrl(_doc: StaffDocument): Promise<string> {
+  return Promise.reject(new ApiError(405, 'not_available', NOT_YET));
 }
 
-export async function createDocument(input: StaffDocumentInsert): Promise<StaffDocument> {
-  const { data, error } = await supabase
-    .from('documents')
-    .insert(input)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+export async function createDocument(
+  _input: StaffDocumentInsert,
+): Promise<StaffDocument> {
+  return Promise.reject(new ApiError(405, 'not_available', NOT_YET));
 }
 
-/**
- * Removing the row is what removes the file: a trigger queues the object for
- * `purge-storage` in the same transaction (0159). The browser does not delete
- * the object itself, so a deletion can never leave a row pointing at nothing.
- */
-export async function deleteDocument(orgId: string, id: string): Promise<void> {
-  const { error } = await supabase
-    .from('documents')
-    .delete()
-    .eq('org_id', orgId)
-    .eq('id', id);
-  if (error) throw error;
+export async function deleteDocument(_orgId: string, _id: string): Promise<void> {
+  return Promise.reject(new ApiError(405, 'not_available', NOT_YET));
 }

@@ -136,7 +136,7 @@ export const PRODUCT_BENEFITS: readonly Benefit[] = [
     icon: Sparkles,
     title: 'AI-assisted rota building',
     // The plan note mirrors the `ai_rota_assistant` entitlement, granted to
-    // Business and Enterprise only (supabase/migrations/0030, line 41) and
+    // Business and Enterprise only (the plans seed, backend/migrations/008-billing.sql) and
     // enforced server-side (0074). Change both together or neither.
     body: 'Describe the cover you need in plain language and get a first-pass rota to review and adjust. It proposes; you decide. Available on the Business and Enterprise plans.',
   },
@@ -347,7 +347,7 @@ export interface Plan {
 /**
  * Pricing.
  *
- * Mirrors supabase/migrations/0023_commercials.sql's seeded `plans` rows
+ * Mirrors the seeded `plans` rows (backend/migrations/008-billing.sql)
  * exactly — that table, not this array, is what checkout actually charges.
  * If these ever disagree, the migration is right and this needs updating,
  * not the other way round. Not fetched at runtime: this page is
@@ -407,7 +407,7 @@ export const PLANS: readonly Plan[] = [
     cadence: 'per month',
     // Two bullets were removed on 2026-08-31: 'SSO with Microsoft 365 or
     // Google' and 'Payroll and HR integrations'. Neither exists — there is no
-    // `supabase.auth.mfa` or SAML call anywhere in the product, and the whole
+    // SAML call anywhere in the product, and the whole
     // of the payroll story is a `payroll_id` column and a timesheet CSV. This
     // is a public page selling a £790/month plan; a bullet nobody can deliver
     // is a promise made to somebody spending real money, and the fact that

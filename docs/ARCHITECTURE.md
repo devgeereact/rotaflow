@@ -391,6 +391,17 @@ system. `backend/` is the one top-level folder added by the merge.
 
 Tenancy, roles and the policy-to-check table arrive with slice S2.
 
+### The browser on the API (S9, on branch `move/cpanel-clerk`)
+
+On the branch the React app no longer contains supabase-js. `AuthProvider` (`src/context/AuthContext.tsx`) wraps
+Clerk's `ClerkProvider` (key `VITE_CLERK_PUBLISHABLE_KEY`) and reads `GET /me` once per session: the user id the
+app uses is the API's, and memberships and the platform role come with it. `src/lib/api.ts` is the only network
+client: same-origin `/api`, the Clerk session token as Bearer, SQL timestamps read as UTC, and `activeOrgPath()` for
+the services whose callers pass only a row id. Services keep their exported signatures; the screens did not change.
+Sign-in, sign-up, two-step verification, connected accounts and sessions are Clerk's own screens. Realtime is
+polling (`useRealtimeRefresh`). The service worker caches no API response. `main` and the live site still run on
+Supabase until the R1 cutover.
+
 ## 10. Edge Functions
 
 The inventory of every Edge Function, with its auth model, inputs and outputs, and

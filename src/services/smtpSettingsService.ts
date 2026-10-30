@@ -114,7 +114,7 @@ export interface TestSmtpResult {
 
 /**
  * Send a real test email through the org's saved SMTP settings
- * (supabase/functions/test-smtp). A send failure is reported as
+ * (POST /orgs/{o}/smtp/test). A send failure is reported as
  * `{ ok: false, error }`, not a thrown error. That's a legitimate outcome
  * the caller should show inline, not treat as unexpected.
  */

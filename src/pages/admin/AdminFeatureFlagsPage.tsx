@@ -201,13 +201,12 @@ export function AdminFeatureFlagsPage(): JSX.Element {
   // Product features, not service wiring. The services live on Integrations.
   const capabilities: Capability[] = [
     {
-      name: 'Single sign-on',
-      key: 'VITE_ENABLE_OAUTH',
-      enabled: env.oauthProviders.length > 0,
-      detail:
-        env.oauthProviders.length > 0
-          ? `Staff may sign in with: ${env.oauthProviders.join(', ')}`
-          : 'No OAuth providers declared, so sign-in is email and password only',
+      name: 'Sign-in (Clerk)',
+      key: 'VITE_CLERK_PUBLISHABLE_KEY',
+      enabled: Boolean(env.clerkPublishableKey),
+      detail: env.clerkPublishableKey
+        ? 'People sign in with an email code; providers are set in the Clerk dashboard'
+        : 'No Clerk publishable key in this build, so nobody can sign in',
     },
     {
       name: 'Web push notifications',

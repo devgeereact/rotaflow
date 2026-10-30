@@ -53,9 +53,10 @@ export interface StoredItem {
  * Cache Storage was added to this list on 5 September 2026 and is the reason
  * the sentence above names four stores rather than three. The four buckets the
  * service worker writes were undeclared, while the page built from this list
- * said it showed everything kept on the device. Two of them, `supabase-api`
- * and `imagekit-media`, hold more personal data than anything else here: rows
- * of an organisation's rota and staff, and staff photographs. They were missed
+ * said it showed everything kept on the device. Two of them held more personal
+ * data than anything else here: cached API answers and staff photographs
+ * (both removed in S9, 30 October 2026: the service worker caches no API
+ * response any more, and signing out deletes what older builds left). They were missed
  * because the service worker is generated from `vite.config.ts`, so a sweep of
  * storage writes in `src/` cannot see it. When you check this list, read
  * `vite.config.ts` too.
@@ -69,12 +70,20 @@ export interface StoredItem {
  */
 export const STORED_ITEMS: readonly StoredItem[] = [
   {
-    key: 'Supabase session',
+    key: 'Clerk session (cookies __session and __client_uat)',
     purpose:
-      'Keeps you signed in between visits. Without it you would sign in again on every page load.',
+      'Keeps you signed in between visits. Set by Clerk, which runs sign-in for RotaFlow on clerk.rotaflow.space. Without it you would sign in again on every page load.',
     lifetime: 'Until you sign out, or the session expires.',
     category: 'necessary',
-    source: 'src/lib/supabase.ts',
+    source: 'src/context/AuthContext.tsx (@clerk/clerk-react)',
+  },
+  {
+    key: 'rotaflow:calendarFeed:<organisation>',
+    purpose:
+      'The private link to your calendar subscription, so it can be copied again on the device that created it. Only a fingerprint of it is kept on our server.',
+    lifetime: 'Until you reset the link or sign out.',
+    category: 'necessary',
+    source: 'src/services/calendarFeedService.ts, cleared by src/lib/session.ts',
   },
   {
     key: 'rotaflow:activeOrgId',
@@ -152,22 +161,6 @@ export const STORED_ITEMS: readonly StoredItem[] = [
     lifetime: 'Replaced when a new version is installed.',
     category: 'necessary',
     source: 'vite.config.ts (workbox globPatterns)',
-  },
-  {
-    key: 'Cache Storage: supabase-api',
-    purpose:
-      'The most recent answers to up to 50 data requests, so a screen you have already opened can still show something when the network drops. It can therefore hold rota and staff information for your organisation.',
-    lifetime: 'Five minutes, and signing out on this device clears it.',
-    category: 'necessary',
-    source: 'vite.config.ts (runtimeCaching), cleared by src/lib/session.ts',
-  },
-  {
-    key: 'Cache Storage: imagekit-media',
-    purpose:
-      'Images the app has displayed, which includes staff profile photographs, so they do not download again on every visit.',
-    lifetime: 'Thirty days, and signing out on this device clears it.',
-    category: 'necessary',
-    source: 'vite.config.ts (runtimeCaching), cleared by src/lib/session.ts',
   },
   {
     key: 'Cache Storage: rotaflow-fonts',

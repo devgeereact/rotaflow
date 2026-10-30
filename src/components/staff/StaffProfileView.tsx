@@ -26,7 +26,8 @@ interface StaffProfileViewProps {
   onTabChange: (tab: StaffProfileTab) => void;
   backTo: string;
   onAction: (action: string) => void;
-  onUploadDocument: () => void;
+  /** Absent while staff documents are switched off (they arrive with compliance, S10). */
+  onUploadDocument?: () => void;
   onAddEmergencyContact: () => void;
 }
 
@@ -152,9 +153,11 @@ export function StaffProfileView({
               <h2 className="font-semibold text-content dark:text-content-dark">
                 Documents
               </h2>
-              <Button size="sm" onClick={onUploadDocument}>
-                Upload
-              </Button>
+              {onUploadDocument && (
+                <Button size="sm" onClick={onUploadDocument}>
+                  Upload
+                </Button>
+              )}
             </div>
             <div className="p-4">
               {profile.documents.length === 0 ? (

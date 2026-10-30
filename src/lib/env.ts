@@ -3,36 +3,17 @@
  * Nothing else in the app should read `import.meta.env` directly.
  */
 
-/** OAuth providers the sign-in screen knows how to render. */
-export type OAuthProvider = 'google' | 'github';
-
-const SUPPORTED_OAUTH_PROVIDERS: readonly OAuthProvider[] = ['google', 'github'];
-
 interface AppEnv {
   appName: string;
   appUrl: string;
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  imagekitUrlEndpoint: string;
-  imagekitPublicKey: string;
   sentryDsn: string;
   /** Clerk's publishable key (pk_..., public by design). Empty means sign-in is not available in this build. */
   clerkPublishableKey: string;
-  /**
-   * Which OAuth providers to offer on the sign-in screen.
-   *
-   * Per-provider, not a single on/off flag: they are enabled independently in
-   * the Supabase dashboard (Authentication → Providers), and rendering a button
-   * for a provider that is disabled upstream is a dead end for the user. As of
-   * 2026-07-29 this project has Google enabled and GitHub disabled, so one flag
-   * for both would necessarily be wrong for one of them.
-   */
-  oauthProviders: readonly OAuthProvider[];
   vapidPublicKey: string;
   /**
    * Cloudflare Turnstile's public site key for the contact form. Empty means
    * no widget is rendered. It only works alongside `TURNSTILE_SECRET_KEY` on
-   * the `public-enquiry` function: set both, or neither (docs/API-SPEC.md).
+   * the API's private config (`turnstile_secret`): set both, or neither (docs/API-SPEC.md).
    */
   turnstileSiteKey: string;
   isProd: boolean;
@@ -58,13 +39,8 @@ interface AppEnv {
 const RAW = {
   VITE_APP_NAME: import.meta.env.VITE_APP_NAME,
   VITE_APP_URL: import.meta.env.VITE_APP_URL,
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-  VITE_IMAGEKIT_URL_ENDPOINT: import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT,
-  VITE_IMAGEKIT_PUBLIC_KEY: import.meta.env.VITE_IMAGEKIT_PUBLIC_KEY,
   VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
   VITE_CLERK_PUBLISHABLE_KEY: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-  VITE_ENABLE_OAUTH: import.meta.env.VITE_ENABLE_OAUTH,
   VITE_VAPID_PUBLIC_KEY: import.meta.env.VITE_VAPID_PUBLIC_KEY,
   VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY,
 };
@@ -90,33 +66,13 @@ function requireKeys(keys: EnvKey[]): void {
   }
 }
 
-/**
- * Parse `VITE_ENABLE_OAUTH`, a comma-separated provider list, e.g. "google"
- * or "google,github". Unknown or legacy values ("true"/"false") match nothing
- * and yield an empty list, so a misconfigured value hides the buttons rather
- * than shipping dead ones.
- */
-function readOAuthProviders(): readonly OAuthProvider[] {
-  return read('VITE_ENABLE_OAUTH')
-    .split(',')
-    .map((part) => part.trim().toLowerCase())
-    .filter((part): part is OAuthProvider =>
-      SUPPORTED_OAUTH_PROVIDERS.includes(part as OAuthProvider),
-    );
-}
-
-requireKeys(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']);
+requireKeys(['VITE_CLERK_PUBLISHABLE_KEY']);
 
 export const env: AppEnv = {
   appName: read('VITE_APP_NAME', 'RotaFlow'),
   appUrl: read('VITE_APP_URL'),
-  supabaseUrl: read('VITE_SUPABASE_URL'),
-  supabaseAnonKey: read('VITE_SUPABASE_ANON_KEY'),
-  imagekitUrlEndpoint: read('VITE_IMAGEKIT_URL_ENDPOINT'),
-  imagekitPublicKey: read('VITE_IMAGEKIT_PUBLIC_KEY'),
   sentryDsn: read('VITE_SENTRY_DSN'),
   clerkPublishableKey: read('VITE_CLERK_PUBLISHABLE_KEY'),
-  oauthProviders: readOAuthProviders(),
   vapidPublicKey: read('VITE_VAPID_PUBLIC_KEY'),
   turnstileSiteKey: read('VITE_TURNSTILE_SITE_KEY'),
   isProd: import.meta.env.PROD,

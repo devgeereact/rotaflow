@@ -15,7 +15,7 @@ import type { ShiftSwapWithShift } from '@/services/swapService';
  * exactly ONE request for the whole decision, and that a database refusal is
  * surfaced as "nothing changed" rather than "approved, now go and fix it".
  * The atomicity itself is Postgres's, and is asserted in
- * `supabase/tests/database/swap_decision_atomicity.test.sql`.
+ * backend/tests/suites/110-swaps-open-shifts.php.
  *
  * Deleting the RPC and going back to two calls is otherwise an invisible
  * regression: types check, lint passes, and the split commit comes back.

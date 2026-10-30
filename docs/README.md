@@ -46,6 +46,7 @@ here wins, and the other should link to it rather than restate it.
 | The SiteRelay merge: target product, role model, data model, module list, cut list   | `docs/MERGE-TARGET.md`                                                           |
 | The SiteRelay merge: slice order, per-module plan, risks, test strategy               | `docs/RESTRUCTURE-PLAN.md`                                                       |
 | Each Postgres policy and its PHP check and test (the merge's proof nothing was lost)  | `docs/RLS-TO-PHP.md`                                                             |
+| Dated audit record: what each slice changed, the evidence, and what is not tested     | `docs/AUDIT.md`                                                                  |
 
 `docs/ACCOUNTS.md` also exists on the owner's machine. It is gitignored on purpose,
 because it holds a live production credential and this repository is public. It is

@@ -1,6 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { clampPageSize, offsetFor, serverPage, type ServerPage } from '@/lib/serverPage';
-import { escapeLikePattern } from '@/lib/filters';
 import type { Tables } from '@/types/database.types';
 
 export type PlatformAnnouncement = Tables<'platform_announcements'>;
@@ -55,49 +54,52 @@ export interface AnnouncementQuery {
  * deployment fills quickest. `platform_announcement_stats` (0132) aggregates
  * in the database, scoped to the ids on screen.
  */
+interface ApiAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  kind: string;
+  audience: string;
+  audience_plans: string[];
+  status: string;
+  scheduled_for: string | null;
+  sent_at: string | null;
+  created_at: string;
+  stats: AnnouncementDeliveryCounts | null;
+}
+
+async function fetchAll(): Promise<ApiAnnouncement[]> {
+  return (await api.get<{ announcements: ApiAnnouncement[] }>('/platform/announcements'))
+    .announcements;
+}
+
 export async function listAnnouncements(
   query: AnnouncementQuery = {},
 ): Promise<ServerPage<AnnouncementRow>> {
   const pageSize = clampPageSize(query.pageSize ?? 20);
   const page = Math.max(1, Math.trunc(query.page ?? 1));
-  const from = offsetFor(page, pageSize);
-
-  let request = supabase
-    .from('platform_announcements')
-    .select('*', { count: 'exact' })
-    // `coalesce(sent_at, scheduled_for, created_at)` is the index 0025 built
-    // for this order, but PostgREST cannot express it, so the order is on
-    // `created_at` with `id` behind it. The tie-break matters: two
-    // announcements composed in the same second would otherwise be free to
-    // swap between pages.
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range(from, from + pageSize - 1);
-
-  if (query.status && query.status.length > 0)
-    request = request.in('status', [...query.status]);
-  if (query.kind && query.kind.length > 0) request = request.in('kind', [...query.kind]);
-  if (query.audience && query.audience.length > 0) {
-    request = request.in('audience', [...query.audience]);
-  }
-  const term = query.search?.trim();
-  if (term) {
-    // Escaped, so a `%` in a search term means a percent sign rather than
-    // "everything". `escapeOrValue` handles the comma and bracket problem in
-    // the `or=(…)` list itself.
-    const pattern = `%${escapeLikePattern(term)}%`;
-    request = request.or(`title.ilike.${pattern},body.ilike.${pattern}`);
-  }
-
-  const { data, error, count } = await request;
-  if (error) throw error;
-
-  const rows = data ?? [];
-  const stats = await countDeliveries(rows.map((row) => row.id));
-
+  const term = query.search?.trim().toLowerCase();
+  const inList = (list: readonly string[] | undefined, v: string): boolean =>
+    !list || list.length === 0 || list.includes(v);
+  const rows = (await fetchAll()).filter(
+    (a) =>
+      inList(query.status, a.status) &&
+      inList(query.kind, a.kind) &&
+      inList(query.audience, a.audience) &&
+      (!term ||
+        a.title.toLowerCase().includes(term) ||
+        a.body.toLowerCase().includes(term)),
+  );
+  const offset = offsetFor(page, pageSize);
   return serverPage({
-    rows: rows.map((row) => ({ ...row, ...(stats.get(row.id) ?? EMPTY_COUNTS) })),
-    total: count ?? rows.length,
+    rows: rows.slice(offset, offset + pageSize).map(({ stats, ...a }) => ({
+      ...a,
+      channel: 'in_app',
+      created_by: null,
+      updated_at: a.sent_at ?? a.created_at,
+      ...(stats ?? EMPTY_COUNTS),
+    })),
+    total: rows.length,
     page,
     pageSize,
   });
@@ -109,31 +111,18 @@ export async function countDeliveries(
 ): Promise<Map<string, AnnouncementDeliveryCounts>> {
   const out = new Map<string, AnnouncementDeliveryCounts>();
   if (ids.length === 0) return out;
-
-  const { data, error } = await supabase.rpc('platform_announcement_stats', {
-    p_ids: [...ids],
-  });
-  if (error) throw error;
-
-  for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
-    out.set(String(row.announcement_id), {
-      recipients: Number(row.recipients ?? 0),
-      queued: Number(row.queued ?? 0),
-      delivered: Number(row.delivered ?? 0),
-      failed: Number(row.failed ?? 0),
-      read: Number(row.read ?? 0),
-    });
+  const wanted = new Set(ids);
+  for (const a of await fetchAll()) {
+    if (wanted.has(a.id)) out.set(a.id, a.stats ?? EMPTY_COUNTS);
   }
   return out;
 }
 
 /** Organisations that have switched off non-essential platform mail. */
 export async function countOptOuts(): Promise<number> {
-  const { count, error } = await supabase
-    .from('platform_announcement_optouts')
-    .select('*', { count: 'exact', head: true });
-  if (error) throw error;
-  return count ?? 0;
+  // How many organisations muted platform messages is not reported by the API; each organisation's own
+  // choice is on its announcements screen.
+  return Promise.resolve(0);
 }
 
 export interface AnnouncementDraft {
@@ -148,17 +137,15 @@ export interface AnnouncementDraft {
 }
 
 export async function createAnnouncement(input: AnnouncementDraft): Promise<string> {
-  const { data, error } = await supabase.rpc('create_platform_announcement', {
-    p_title: input.title,
-    p_body: input.body,
-    p_kind: input.kind,
-    p_audience: input.audience,
-    p_plans: input.plans,
-    p_channel: input.channel,
-    p_scheduled_for: input.scheduledFor ?? undefined,
+  const r = await api.post<{ id: string }>('/platform/announcements', {
+    title: input.title,
+    body: input.body,
+    kind: input.kind,
+    audience: input.audience,
+    plans: input.plans,
+    scheduled_for: input.scheduledFor,
   });
-  if (error) throw error;
-  return data;
+  return r.id;
 }
 
 /**
@@ -170,19 +157,15 @@ export async function createAnnouncement(input: AnnouncementDraft): Promise<stri
  * confirmed. The caller must not report this number as "delivered to N".
  */
 export async function publishAnnouncement(id: string): Promise<number> {
-  const { data, error } = await supabase.rpc('publish_platform_announcement', {
-    p_announcement: id,
-  });
-  if (error) throw error;
-  return data ?? 0;
+  const r = await api.post<{ queued: number }>(
+    `/platform/announcements/${encodeURIComponent(id)}/publish`,
+  );
+  return r.queued;
 }
 
 /** Stop a draft or a scheduled announcement. A sent one cannot be unsent. */
 export async function cancelAnnouncement(id: string): Promise<void> {
-  const { error } = await supabase.rpc('cancel_platform_announcement', {
-    p_announcement: id,
-  });
-  if (error) throw error;
+  await api.post(`/platform/announcements/${encodeURIComponent(id)}/cancel`);
 }
 
 /**
@@ -200,28 +183,19 @@ export async function previewAudience(input: {
   plans: readonly string[];
   kind: string;
 }): Promise<number> {
-  let request = supabase
-    .from('organisations')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'active');
-
-  if (input.audience === 'plans') {
-    if (input.plans.length === 0) return 0;
-    request = request.in('plan', [...input.plans]);
+  if (input.audience === 'plans' && input.plans.length === 0) return 0;
+  let total = 0;
+  for (let offset = 0; offset < 100_000; offset += 100) {
+    const r = await api.get<{ organisations: { plan: string }[] }>('/platform/orgs', {
+      status: 'active',
+      limit: 100,
+      offset,
+    });
+    total += r.organisations.filter(
+      (o) => input.audience !== 'plans' || input.plans.includes(o.plan),
+    ).length;
+    if (r.organisations.length < 100) break;
   }
-
-  const { count, error } = await request;
-  if (error) throw error;
-  const total = count ?? 0;
-
-  // Maintenance and incident notices ignore an opt-out; everything else
-  // honours it, exactly as the publish function does.
-  if (input.kind === 'maintenance' || input.kind === 'incident') return total;
-
-  const { count: optedOut, error: optOutError } = await supabase
-    .from('platform_announcement_optouts')
-    .select('org_id', { count: 'exact', head: true });
-  if (optOutError) throw optOutError;
-
-  return Math.max(0, total - (optedOut ?? 0));
+  // Opt-outs are not counted here (see countOptOuts), so this is the upper bound for product messages.
+  return total;
 }

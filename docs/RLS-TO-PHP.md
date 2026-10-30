@@ -85,7 +85,7 @@ owner and manager). The replay below is of the final state.
 | `handle_new_org` (staff part) | The founder gets a staff record | `Staff::ensureForOwner` from `Orgs::createOrg`, and from `Invites::accept` for an owner invitation | 080, 060 | DONE |
 | `accept_invite` (staff part) | Link an HR record by email; apply the invited department and site | `Staff::linkOnAccept` | 080 | DONE |
 | `audit_logs_select` | Owner reads the trail; anyone else only their own acts; platform-only rows hidden | `Account::audit` | 085 | DONE (organisation view); platform view PLANNED S8 |
-| `current_pay_rates`, `labour_cost` | Cost without exposing rates | With the rota and reports, S4 and later | none yet | PLANNED |
+| `current_pay_rates`, `labour_cost` | Cost without exposing rates | `LabourCost::labourCost`, `currentRates` (owner and manager; rate on the day of the shift; unrated counted) | 220 | DONE (S9) |
 
 ## S4: the rota
 
@@ -296,3 +296,20 @@ Gating is three independent checks, all failing closed, all before any outside c
 
 Documents (`staff-documents`) use the same store and arrive with the Compliance module (S10), together with the document-expiry alert; that is the one S8 item deliberately left for S10, because it needs the `documents` table that module creates.
 
+
+## S9: the functions the React app still called
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| `slug_available(text, uuid)` | Boolean only; excluding an org the caller owns | `Orgs::slugAvailable` (boolean only, rate limited; `exclude` needs membership, 404 otherwise) | 220 | DONE |
+| `organisations_update` (owner) for profile columns | Owner updates own organisation | `Orgs::updateOrg` (owner, writable, typed fields, slug unique) | 220 | DONE |
+| `log_audit_event` | Any member, own actions, a fixed list | `Account::record` (member, allow-listed actions, size cap, rate limit, attributed to the caller) | 220 | DONE |
+| `profiles_update_own` (display name) | A person updates their own profile | `Account::saveProfile` (the caller's own row only) | 085 | DONE |
+| `app_settings` own row incl. `notifications_enabled` | Own row | `Account::saveSettings` (own row; boolean checked) | 085 | DONE |
+| `platform_tenant_counts`, platform reads of members and sites | Platform staff | `Console::orgStructure` (owner, admin, support; no staff records or pay) | 150 | DONE |
+| `platform_user_auth_facts` (user page) | Platform staff | `Console::userDetail` (owner, admin, support); sign-in facts themselves are Clerk's | 150 | DONE |
+| `notifications` platform read | Platform staff | `Console::notificationActivity` (no title or body) | 150 | DONE |
+| `my_mfa_status`, `set_platform_mfa_required` | Platform MFA in the database | Dropped: Clerk enforces a second factor for platform staff accounts | n/a | DROPPED (Clerk) |
+| `set_invoice_status`, `issue_invoice` | Platform finance, manual invoicing | Dropped: invoices come only from the signed Stripe webhook | n/a | DROPPED |
+| `connect_integration`, `set_org_integration_status`, `platform_ip_allowlist`, `record_health_sample` | Cut list | Not ported; the screens read empty and writes are refused | n/a | CUT |
+| `documents` and `staff-documents` storage | Members and managers | Arrive with Compliance (S10); hidden behind the `staff_documents` flag until then | n/a | R2 (S10) |

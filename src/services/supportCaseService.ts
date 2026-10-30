@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, isApiCode } from '@/lib/api';
 import type { Tables } from '@/types/database.types';
 
 export type SupportCase = Tables<'support_cases'>;
@@ -23,35 +23,29 @@ export interface SupportCaseRow extends SupportCase {
 const PRIORITY_ORDER = ['urgent', 'high', 'normal', 'low'];
 
 export async function listSupportCases(limit = 200): Promise<SupportCaseRow[]> {
-  // Three plain selects rather than PostgREST embedding: the generated types
-  // carry no relationships for these tables, so an embed does not typecheck,
-  // and the two lookups are small enough that joining in memory is cheaper
-  // than the round trip an embed saves.
-  const [cases, orgs, profiles] = await Promise.all([
-    supabase
-      .from('support_cases')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit),
-    supabase.from('organisations').select('id, name'),
-    supabase.from('profiles').select('id, full_name'),
+  const [r, admins] = await Promise.all([
+    api.get<{ cases: (SupportCase & { org_name: string | null })[] }>(
+      '/platform/support/cases',
+      {
+        limit: Math.min(200, limit),
+      },
+    ),
+    // Assignees are platform staff; their names come from the roster. A role that cannot read the roster
+    // still sees the queue, with ids instead of names.
+    api
+      .get<{ admins: { user_id: string; full_name: string | null; email: string }[] }>(
+        '/platform/admins',
+      )
+      .then((x) => x.admins)
+      .catch(() => [] as { user_id: string; full_name: string | null; email: string }[]),
   ]);
-  if (cases.error) throw cases.error;
-  if (orgs.error) throw orgs.error;
-  if (profiles.error) throw profiles.error;
-
-  const orgName = new Map((orgs.data ?? []).map((o) => [o.id, o.name]));
-  const personName = new Map((profiles.data ?? []).map((p) => [p.id, p.full_name]));
-
-  const rows: SupportCaseRow[] = (cases.data ?? []).map((row) => ({
+  const personName = new Map(admins.map((a) => [a.user_id, a.full_name ?? a.email]));
+  const rows: SupportCaseRow[] = r.cases.map(({ org_name, ...row }) => ({
     ...row,
-    orgName: row.org_id ? (orgName.get(row.org_id) ?? null) : null,
+    orgName: org_name,
     assigneeName: row.assigned_to ? (personName.get(row.assigned_to) ?? null) : null,
   }));
 
-  // Sorted here rather than in SQL: "urgent before high before normal" is not
-  // alphabetical, and a CASE expression in an `order` string is the kind of
-  // thing that silently stops matching when a priority is added.
   return rows.sort((a, b) => {
     const openA = a.status === 'resolved' || a.status === 'closed' ? 1 : 0;
     const openB = b.status === 'resolved' || b.status === 'closed' ? 1 : 0;
@@ -63,24 +57,36 @@ export async function listSupportCases(limit = 200): Promise<SupportCaseRow[]> {
   });
 }
 
+interface CaseDetail {
+  case: SupportCase;
+  messages: Omit<SupportCaseMessage, 'case_id'>[];
+  sla: {
+    first_response_state: string;
+    resolution_state: string;
+    minutes_to_respond: number;
+    minutes_to_resolve: number;
+  };
+}
+
+async function detail(id: string): Promise<CaseDetail | null> {
+  try {
+    return await api.get<CaseDetail>(`/support/cases/${encodeURIComponent(id)}`);
+  } catch (error) {
+    if (isApiCode(error, 'not_found')) return null;
+    throw error;
+  }
+}
+
 export async function getSupportCase(id: string): Promise<SupportCase | null> {
-  const { data, error } = await supabase
-    .from('support_cases')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  return (await detail(id))?.case ?? null;
 }
 
 export async function listCaseMessages(caseId: string): Promise<SupportCaseMessage[]> {
-  const { data, error } = await supabase
-    .from('support_case_messages')
-    .select('*')
-    .eq('case_id', caseId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  return ((await detail(caseId))?.messages ?? []).map((m) => ({
+    ...m,
+    case_id: caseId,
+    is_internal: Boolean(Number(m.is_internal)),
+  }));
 }
 
 /**
@@ -94,15 +100,10 @@ export async function listCaseMessages(caseId: string): Promise<SupportCaseMessa
  * auth.uid()`). Showing an owner a colleague's case here would offer a rating
  * control that refuses.
  */
-export async function listMyCases(userId: string, limit = 10): Promise<SupportCase[]> {
-  const { data, error } = await supabase
-    .from('support_cases')
-    .select('*')
-    .eq('requester_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+export async function listMyCases(_userId: string, limit = 10): Promise<SupportCase[]> {
+  // The signed-in person's own cases, and every case of an organisation they own.
+  const r = await api.get<{ cases: SupportCase[] }>('/support/cases');
+  return r.cases.slice(0, limit);
 }
 
 /**
@@ -118,12 +119,10 @@ export async function rateCase(
   score: number,
   comment?: string | null,
 ): Promise<void> {
-  const { error } = await supabase.rpc('rate_support_case', {
-    p_case: caseId,
-    p_score: score,
-    p_comment: comment?.trim() ? comment.trim() : undefined,
+  await api.post(`/support/cases/${encodeURIComponent(caseId)}/rate`, {
+    score,
+    comment: comment?.trim() ? comment.trim() : null,
   });
-  if (error) throw error;
 }
 
 export async function replyToCase(
@@ -131,12 +130,10 @@ export async function replyToCase(
   body: string,
   internal = false,
 ): Promise<void> {
-  const { error } = await supabase.rpc('reply_to_support_case', {
-    p_case: caseId,
-    p_body: body,
-    p_internal: internal,
+  await api.post(`/support/cases/${encodeURIComponent(caseId)}/reply`, {
+    body,
+    internal,
   });
-  if (error) throw error;
 }
 
 export async function setCaseStatus(
@@ -144,22 +141,16 @@ export async function setCaseStatus(
   status: 'open' | 'pending' | 'on_hold' | 'resolved' | 'closed',
   note?: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('set_support_case_status', {
-    p_case: caseId,
-    p_status: status,
-    p_note: note ?? undefined,
+  await api.post(`/platform/support/cases/${encodeURIComponent(caseId)}/status`, {
+    status,
+    note: note ?? null,
   });
-  if (error) throw error;
 }
 
 export async function assignCase(caseId: string, agentId: string | null): Promise<void> {
-  const { error } = await supabase.rpc('assign_support_case', {
-    p_case: caseId,
-    // Unassigning is passing no agent. The function's parameter has no
-    // default, so `undefined` sends SQL NULL, which is what clears it.
-    p_agent: agentId ?? undefined,
+  await api.post(`/platform/support/cases/${encodeURIComponent(caseId)}/assign`, {
+    agent_user_id: agentId,
   });
-  if (error) throw error;
 }
 
 export async function openSupportCase(input: {
@@ -170,16 +161,15 @@ export async function openSupportCase(input: {
   orgId?: string | null;
   requesterEmail?: string | null;
 }): Promise<string> {
-  const { data, error } = await supabase.rpc('open_support_case', {
-    p_subject: input.subject,
-    p_body: input.body,
-    p_category: input.category ?? 'question',
-    p_priority: input.priority ?? 'normal',
-    p_org: input.orgId ?? undefined,
-    p_requester_email: input.requesterEmail ?? undefined,
+  const r = await api.post<{ id: string }>('/support/cases', {
+    subject: input.subject,
+    body: input.body,
+    category: input.category ?? 'question',
+    priority: input.priority ?? 'normal',
+    org_id: input.orgId ?? null,
+    requester_email: input.requesterEmail ?? null,
   });
-  if (error) throw error;
-  return data;
+  return r.id;
 }
 
 export type SlaState = 'met' | 'on_track' | 'due_soon' | 'breached';
@@ -204,15 +194,12 @@ export interface SlaStatus {
  * still report as within target.
  */
 export async function getSlaStatus(caseId: string): Promise<SlaStatus | null> {
-  const { data, error } = await supabase.rpc('support_sla_state', { p_case: caseId });
-  if (error) throw error;
-
-  const row = (data ?? [])[0];
-  if (!row) return null;
+  const d = await detail(caseId);
+  if (!d) return null;
   return {
-    firstResponse: row.first_response_state as SlaState,
-    resolution: row.resolution_state as SlaState,
-    minutesToRespond: row.minutes_to_respond,
-    minutesToResolve: row.minutes_to_resolve,
+    firstResponse: d.sla.first_response_state as SlaState,
+    resolution: d.sla.resolution_state as SlaState,
+    minutesToRespond: d.sla.minutes_to_respond,
+    minutesToResolve: d.sla.minutes_to_resolve,
   };
 }

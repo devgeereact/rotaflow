@@ -4,7 +4,8 @@ import { addDays, startOfDay, startOfMonth } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { getStaffProfile, updateStaffProfile } from '@/services/staffService';
 import { listDepartments, listLocations } from '@/services/locationService';
-import { listDocuments } from '@/services/documentService';
+import { listDocuments, STAFF_DOCUMENTS_FEATURE } from '@/services/documentService';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { listEmergencyContacts } from '@/services/emergencyContactService';
 import { listMyLeaveRequests } from '@/services/leaveService';
 import { listShiftsForPeriod } from '@/services/shiftService';
@@ -36,6 +37,7 @@ import type {
 export function StaffProfilePage(): JSX.Element {
   const { staffId } = useParams<{ staffId: string }>();
   const { orgId } = useOrg();
+  const documentsEnabled = useFeatureAccess().has(STAFF_DOCUMENTS_FEATURE);
   const navigate = useNavigate();
 
   const [staff, setStaff] = useState<StaffProfile | null>(null);
@@ -190,7 +192,7 @@ export function StaffProfilePage(): JSX.Element {
         onTabChange={setTab}
         backTo="/app/team"
         onAction={onAction}
-        onUploadDocument={() => setDocumentsOpen(true)}
+        onUploadDocument={documentsEnabled ? () => setDocumentsOpen(true) : undefined}
         onAddEmergencyContact={() => setEmergencyContactsOpen(true)}
       />
 

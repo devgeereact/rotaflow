@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, currentOrgId, orgPath, seg } from '@/lib/api';
 import { getStaffProfile } from '@/services/staffService';
 import { listMyAvailability } from '@/services/availabilityService';
 import type {
@@ -81,72 +81,61 @@ export const SUBJECT_EXPORT_EXCLUDED: readonly { table: string; reason: string }
   },
 ];
 
+/** Every read below is the API's own list route, scoped to the active organisation and to this person. */
+const sp = (): string => currentOrgId();
+
 async function listShiftsForStaff(staffProfileId: string): Promise<Shift[]> {
-  const { data, error } = await supabase
-    .from('shifts')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ shifts: Shift[] }>(orgPath(sp(), '/shifts'), {
+    from: '2000-01-01T00:00:00Z',
+    to: '2100-01-01T00:00:00Z',
+    staff_profile_id: staffProfileId,
+  });
+  return r.shifts;
 }
 
 async function listClockEventsForPerson(staffProfileId: string): Promise<ClockEvent[]> {
-  const { data, error } = await supabase
-    .from('clock_events')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ clock_events: ClockEvent[] }>(
+    orgPath(sp(), '/clock-events'),
+    {
+      staff_profile_id: staffProfileId,
+      limit: 1000,
+    },
+  );
+  return r.clock_events;
 }
 
 async function listLeaveRequestsForStaff(
   staffProfileId: string,
 ): Promise<LeaveRequest[]> {
-  const { data, error } = await supabase
-    .from('leave_requests')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ leave: LeaveRequest[] }>(orgPath(sp(), '/leave'), {
+    staff_profile_id: staffProfileId,
+  });
+  return r.leave;
 }
 
 async function listShiftSwapsForStaff(staffProfileId: string): Promise<ShiftSwap[]> {
-  const { data, error } = await supabase
-    .from('shift_swaps')
-    .select('*')
-    .or(`requested_by.eq.${staffProfileId},target_staff_profile_id.eq.${staffProfileId}`);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ swaps: ShiftSwap[] }>(orgPath(sp(), '/swaps'));
+  return r.swaps.filter(
+    (w) =>
+      w.requested_by === staffProfileId || w.target_staff_profile_id === staffProfileId,
+  );
 }
 
 async function listEmergencyContactsForStaff(
   staffProfileId: string,
 ): Promise<EmergencyContact[]> {
-  const { data, error } = await supabase
-    .from('emergency_contacts')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ emergency_contacts: EmergencyContact[] }>(
+    orgPath(sp(), `/staff/${seg(staffProfileId)}/emergency-contacts`),
+  );
+  return r.emergency_contacts;
 }
 
-async function listDocumentsForStaff(staffProfileId: string): Promise<StaffDocument[]> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('staff_profile_id', staffProfileId);
-  if (error) throw error;
-  return data ?? [];
+async function listDocumentsForStaff(_staffProfileId: string): Promise<StaffDocument[]> {
+  // Documents arrive with compliance (S10).
+  return Promise.resolve([]);
 }
 
-/**
- * The four tables this export forgot, the read-receipt table, and the
- * correction history added by `0128`.
- *
- * One helper rather than six, because they differ only by name: the risk in
- * a subject-access export is a table missing from it, and six near-identical
- * functions is how the seventh gets written slightly differently and skipped.
- */
+/** The remaining per-person tables, each from its own route. */
 async function listRowsForStaff(
   table:
     | 'overtime_requests'
@@ -157,12 +146,61 @@ async function listRowsForStaff(
     | 'clock_event_corrections',
   staffProfileId: string,
 ): Promise<unknown[]> {
-  const { data, error } = await supabase
-    .from(table)
-    .select('*')
-    .eq('staff_profile_id', staffProfileId);
-  if (error) throw error;
-  return data ?? [];
+  const org = sp();
+  switch (table) {
+    case 'overtime_requests':
+      return (
+        await api.get<{ overtime: unknown[] }>(orgPath(org, '/overtime'), {
+          staff_profile_id: staffProfileId,
+        })
+      ).overtime;
+    case 'timesheets':
+      return (
+        await api.get<{ timesheets: unknown[] }>(orgPath(org, '/timesheets'), {
+          staff_profile_id: staffProfileId,
+        })
+      ).timesheets;
+    case 'staff_pay_rates':
+      return (
+        await api.get<{ pay_rates: unknown[] }>(
+          orgPath(org, `/staff/${seg(staffProfileId)}/pay-rates`),
+        )
+      ).pay_rates;
+    case 'staff_locations': {
+      const r = await api.get<{ staff: { location_ids?: string[] } }>(
+        orgPath(org, `/staff/${seg(staffProfileId)}`),
+      );
+      return (r.staff.location_ids ?? []).map((location_id) => ({
+        staff_profile_id: staffProfileId,
+        location_id,
+      }));
+    }
+    case 'announcement_reads': {
+      const r = await api.get<{
+        announcements: {
+          id: string;
+          read_by_me?: boolean | number;
+          created_at: string;
+        }[];
+      }>(orgPath(org, '/announcements'));
+      // Receipts are readable as the person's own (read_by_me) when they run this themselves; an owner's run
+      // reads them per announcement.
+      return r.announcements
+        .filter((a) => Boolean(a.read_by_me))
+        .map((a) => ({ announcement_id: a.id, staff_profile_id: staffProfileId }));
+    }
+    case 'clock_event_corrections': {
+      const events = await listClockEventsForPerson(staffProfileId);
+      const out: unknown[] = [];
+      for (const e of events) {
+        const r = await api.get<{ corrections: unknown[] }>(
+          orgPath(org, `/clock-events/${seg(e.id)}/corrections`),
+        );
+        out.push(...r.corrections);
+      }
+      return out;
+    }
+  }
 }
 
 /**
@@ -258,9 +296,6 @@ export async function anonymizeStaffMember(
   orgId: string,
   staffProfileId: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('anonymize_staff_member', {
-    p_org: orgId,
-    p_staff_profile_id: staffProfileId,
-  });
-  if (error) throw error;
+  // Owner only, decided by the API; the payroll-locked exception is the API's too.
+  await api.post(orgPath(orgId, `/staff/${seg(staffProfileId)}/erase`));
 }

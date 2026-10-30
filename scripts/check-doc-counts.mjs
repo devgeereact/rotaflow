@@ -81,7 +81,7 @@ function securityTxtExpiry() {
  * whole, or the useful half would be thrown away with the uncheckable half.
  */
 const REPO_PATH =
-  /\b(?:src|supabase|scripts|public|docs|e2e)\/[A-Za-z0-9_./-]*[A-Za-z0-9_/-]/gu;
+  /\b(?:backend|src|supabase|scripts|public|docs|e2e)\/[A-Za-z0-9_./-]*[A-Za-z0-9_/-]/gu;
 
 function subProcessorEvidence() {
   const file = 'src/lib/subprocessors.ts';

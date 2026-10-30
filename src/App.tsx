@@ -541,7 +541,7 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                     Design-loop preview routes. DEV ONLY.
 
                     Every screen below lives behind auth in the real product and
-                    needs a Supabase session, an org and seeded rows that the
+                    needs a signed-in session, an org and seeded rows that the
                     design loop cannot produce, so each preview renders the same
                     component tree against fixed mock data chosen to reproduce
                     its reference PNG's exact numbers. See docs/UX-SPEC.md#design-match-loop.
@@ -710,7 +710,7 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                               element={<AppShellPreviewPage />}
                             />
                             {/* The real DashboardPage, hooks and service calls
-                        included, against a fetch-intercepted Supabase client
+                        included, against an intercepted fetch
                         with realistic edge-case fixtures (null settings, a
                         null holiday_allowance, an orphaned leave request, a
                         null department_id). See DashboardLivePreviewPage. */}
@@ -720,7 +720,7 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                             />
                             {/* The real Settings and My account pages, inside
                         their tab layouts, against a fetch-intercepted
-                        Supabase client. See SettingsLivePreviewPage. */}
+                        API client. See SettingsLivePreviewPage. */}
                             <Route
                               path="/settings-preview/*"
                               element={<SettingsLivePreviewPage />}

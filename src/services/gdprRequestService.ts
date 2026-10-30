@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath } from '@/lib/api';
 import type {
   GdprRequest,
   GdprRequestKind,
@@ -23,50 +23,38 @@ import type {
 
 interface RequestRow {
   id: string;
-  org_id: string | null;
+  org_id?: string | null;
+  org_name?: string | null;
   subject_email: string;
-  subject_name: string | null;
+  subject_name?: string | null;
   kind: string;
   status: string;
   received_on: string;
   due_on: string;
   extended_to: string | null;
-  extension_reason: string | null;
-  assigned_to: string | null;
+  extension_reason?: string | null;
+  assigned_to?: string | null;
   closed_at: string | null;
-  outcome_note: string | null;
-  organisations: { name: string } | null;
-  profiles: { full_name: string | null; email: string | null } | null;
+  outcome_note?: string | null;
 }
 
-const SELECT = `
-  id, org_id, subject_email, subject_name, kind, status,
-  received_on, due_on, extended_to, extension_reason,
-  assigned_to, closed_at, outcome_note,
-  organisations:org_id ( name ),
-  profiles:assigned_to ( full_name, email )
-`;
-
-function toRequest(row: RequestRow): GdprRequest {
+function toRequest(row: RequestRow, orgId: string | null = null): GdprRequest {
   return {
     id: row.id,
-    orgId: row.org_id,
-    // Null rather than a placeholder: "which tenant is this about" is
-    // legitimately unknown when a request first arrives by email, and the
-    // screen shows that as an unresolved state worth acting on.
-    orgName: row.organisations?.name ?? null,
+    orgId: row.org_id ?? orgId,
+    orgName: row.org_name ?? null,
     subjectEmail: row.subject_email,
-    subjectName: row.subject_name,
+    subjectName: row.subject_name ?? null,
     kind: row.kind as GdprRequestKind,
     status: row.status as GdprRequestStatus,
     receivedOn: row.received_on,
     dueOn: row.due_on,
     extendedTo: row.extended_to,
-    extensionReason: row.extension_reason,
-    assignedTo: row.assigned_to,
-    assigneeName: row.profiles?.full_name ?? row.profiles?.email ?? null,
+    extensionReason: row.extension_reason ?? null,
+    assignedTo: row.assigned_to ?? null,
+    assigneeName: null,
     closedAt: row.closed_at,
-    outcomeNote: row.outcome_note,
+    outcomeNote: row.outcome_note ?? null,
   };
 }
 
@@ -86,16 +74,10 @@ export interface GdprRequestPage {
  * register" that shipped the same subset under a complete-sounding name.
  */
 export async function listGdprRequests(limit = 200): Promise<GdprRequestPage> {
-  const { data, error, count } = await supabase
-    .from('gdpr_requests')
-    .select(SELECT, { count: 'exact' })
-    .order('due_on', { ascending: true })
-    .limit(limit);
-
-  if (error) throw error;
+  const r = await api.get<{ requests: RequestRow[]; total: number }>('/platform/gdpr');
   return {
-    rows: ((data ?? []) as unknown as RequestRow[]).map(toRequest),
-    total: count ?? 0,
+    rows: r.requests.slice(0, limit).map((row) => toRequest(row)),
+    total: r.total,
   };
 }
 
@@ -113,14 +95,10 @@ export async function listGdprRequests(limit = 200): Promise<GdprRequestPage> {
  * Scoped in the query instead. At tenant scope this needs no paging.
  */
 export async function listGdprRequestsForOrg(orgId: string): Promise<GdprRequest[]> {
-  const { data, error } = await supabase
-    .from('gdpr_requests')
-    .select(SELECT)
-    .eq('org_id', orgId)
-    .order('due_on', { ascending: true });
-
-  if (error) throw error;
-  return ((data ?? []) as unknown as RequestRow[]).map(toRequest);
+  const r = await api.get<{ requests: RequestRow[] }>(orgPath(orgId, '/gdpr'));
+  return r.requests
+    .map((row) => toRequest(row, orgId))
+    .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
 }
 
 /** Log a newly received request. The database computes the statutory deadline. */
@@ -131,17 +109,14 @@ export async function logGdprRequest(input: {
   orgId?: string | null;
   receivedOn?: string;
 }): Promise<string> {
-  const { data, error } = await supabase.rpc('log_gdpr_request', {
-    p_subject_email: input.subjectEmail,
-    // Required in 0020, and the function normalises an empty string to
-    // null itself, so there is nothing to guess here.
-    p_subject_name: input.subjectName ?? '',
-    p_kind: input.kind,
-    p_org: input.orgId ?? undefined,
-    p_received_on: input.receivedOn ?? undefined,
+  const r = await api.post<{ id: string }>('/platform/gdpr', {
+    email: input.subjectEmail,
+    name: input.subjectName ?? null,
+    kind: input.kind,
+    org_id: input.orgId ?? null,
+    received_on: input.receivedOn ?? null,
   });
-  if (error) throw error;
-  return data;
+  return r.id;
 }
 
 /**
@@ -153,12 +128,10 @@ export async function setGdprRequestStatus(
   status: GdprRequestStatus,
   note?: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('set_gdpr_request_status', {
-    p_request: requestId,
-    p_status: status,
-    p_note: note ?? undefined,
+  await api.post(`/platform/gdpr/${encodeURIComponent(requestId)}/status`, {
+    status,
+    note: note ?? null,
   });
-  if (error) throw error;
 }
 
 /**
@@ -171,12 +144,11 @@ export async function extendGdprRequest(
   requestId: string,
   reason: string,
 ): Promise<string> {
-  const { data, error } = await supabase.rpc('extend_gdpr_request', {
-    p_request: requestId,
-    p_reason: reason,
-  });
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ extended_to: string }>(
+    `/platform/gdpr/${encodeURIComponent(requestId)}/extend`,
+    { reason },
+  );
+  return r.extended_to;
 }
 
 /**
@@ -191,21 +163,17 @@ export async function requestMyData(
   kind: SelfServiceKind,
   orgId?: string | null,
 ): Promise<{ id: string; dueOn: string; alreadyOpen: boolean }> {
-  const { data, error } = await supabase.rpc('request_my_data', {
-    p_kind: kind,
-    p_org: orgId ?? undefined,
-  });
-  if (error) throw error;
-  const row = data?.[0];
-  if (!row) throw new Error('The request was not recorded.');
-  return { id: row.id, dueOn: row.due_on, alreadyOpen: row.already_open };
+  const r = await api.post<{ id: string; due_on: string; already_open: boolean }>(
+    '/me/data-requests',
+    { kind, org_id: orgId ?? null },
+  );
+  return { id: r.id, dueOn: r.due_on, alreadyOpen: r.already_open };
 }
 
 /** The signed-in person's own requests, newest first (`my_data_requests`, 0160). */
 export async function listMyDataRequests(): Promise<OwnDataRequest[]> {
-  const { data, error } = await supabase.rpc('my_data_requests');
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
+  const r = await api.get<{ requests: RequestRow[] }>('/me/data-requests');
+  return r.requests.map((row) => ({
     id: row.id,
     kind: row.kind as GdprRequestKind,
     status: row.status as GdprRequestStatus,
