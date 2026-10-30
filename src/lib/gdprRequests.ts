@@ -16,10 +16,19 @@
  */
 
 export type GdprRequestKind =
-  'access' | 'portability' | 'rectification' | 'erasure' | 'restriction' | 'objection';
+  | 'access'
+  | 'portability'
+  | 'rectification'
+  | 'erasure'
+  | 'restriction'
+  | 'objection';
 
 export type GdprRequestStatus =
-  'received' | 'in_progress' | 'awaiting_information' | 'completed' | 'refused';
+  | 'received'
+  | 'in_progress'
+  | 'awaiting_information'
+  | 'completed'
+  | 'refused';
 
 export interface GdprRequest {
   id: string;

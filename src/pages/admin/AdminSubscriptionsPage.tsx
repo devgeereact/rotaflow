@@ -78,7 +78,14 @@ function statusLabel(status: string): string {
 }
 
 type SubSortKey =
-  'organisation' | 'plan' | 'status' | 'value' | 'period' | 'usage' | 'cycle' | 'payment';
+  | 'organisation'
+  | 'plan'
+  | 'status'
+  | 'value'
+  | 'period'
+  | 'usage'
+  | 'cycle'
+  | 'payment';
 
 interface Row {
   organisation: Organisation;

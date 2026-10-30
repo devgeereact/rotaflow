@@ -74,8 +74,9 @@ vi.mock('@/lib/supabase', () => {
   return { supabase: { from } };
 });
 
-const { pickRotaToOpen, resolveRotaRows, resolveRotasForLocations } =
-  await import('@/services/rotaService');
+const { pickRotaToOpen, resolveRotaRows, resolveRotasForLocations } = await import(
+  '@/services/rotaService'
+);
 const { listShiftsForRotas } = await import('@/services/shiftService');
 
 /** Only the fields precedence actually reads; the rest of `Rota` is noise here. */

@@ -103,9 +103,7 @@ for (const url of precachedUrls) {
 
 // ── the shipped payload ──────────────────────────────────────────────
 // `.map` files are excluded because `cpanel-deploy` does not deploy them.
-const shipped = files.filter(
-  (f) => /\.(js|css)$/.test(f) && !f.endsWith('.map'),
-);
+const shipped = files.filter((f) => /\.(js|css)$/.test(f) && !f.endsWith('.map'));
 const entryJs = files.filter((f) => /assets[/\\]index-[^/\\]+\.js$/.test(f));
 
 if (entryJs.length !== 1) {

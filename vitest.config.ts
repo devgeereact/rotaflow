@@ -28,10 +28,7 @@ export default defineConfig({
       // could never be tested, and it is the one component that competes with
       // a user's unsaved work. The stub is a real module so `vi.mock` in a test
       // has something to replace.
-      'virtual:pwa-register': path.resolve(
-        __dirname,
-        './src/test/stubs/pwa-register.ts',
-      ),
+      'virtual:pwa-register': path.resolve(__dirname, './src/test/stubs/pwa-register.ts'),
     },
   },
   // `__SENTRY_RELEASE__` is a build-time define (vite.config.ts) declared as a

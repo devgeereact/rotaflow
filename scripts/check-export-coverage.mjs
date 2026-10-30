@@ -44,7 +44,9 @@ const SUBJECT_SERVICE = 'src/services/gdprService.ts';
 function tablesWithColumn(column) {
   const found = new Set();
 
-  for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
+  for (const file of readdirSync(MIGRATIONS)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()) {
     const sql = readFileSync(`${MIGRATIONS}/${file}`, 'utf8');
     const create = /create table (?:if not exists )?public\.(\w+)\s*\(([\s\S]*?)\n\);/g;
 

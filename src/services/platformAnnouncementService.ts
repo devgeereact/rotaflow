@@ -25,7 +25,8 @@ export interface AnnouncementDeliveryCounts {
 }
 
 export interface AnnouncementRow
-  extends PlatformAnnouncement, AnnouncementDeliveryCounts {}
+  extends PlatformAnnouncement,
+    AnnouncementDeliveryCounts {}
 
 const EMPTY_COUNTS: AnnouncementDeliveryCounts = {
   recipients: 0,

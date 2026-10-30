@@ -13,7 +13,12 @@ import type { ShiftSwap } from '@/types';
  * swap-approval toggle.
  */
 export type SwapDisplayStatus =
-  'open' | 'awaiting_colleague' | 'accepted' | 'approved' | 'declined' | 'cancelled';
+  | 'open'
+  | 'awaiting_colleague'
+  | 'accepted'
+  | 'approved'
+  | 'declined'
+  | 'cancelled';
 
 export interface SwapParty {
   firstName: string;

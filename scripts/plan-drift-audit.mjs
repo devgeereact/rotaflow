@@ -250,7 +250,8 @@ for (const c of Array.isArray(parsed.corrections) ? parsed.corrections : []) {
   if (occurrences !== 1) {
     // Not unique or not present — do not guess at intent.
     skipped.push({
-      why: occurrences === 0 ? 'text not found in doc' : `text appears ${occurrences} times`,
+      why:
+        occurrences === 0 ? 'text not found in doc' : `text appears ${occurrences} times`,
       old: c.old.slice(0, 80),
     });
     continue;

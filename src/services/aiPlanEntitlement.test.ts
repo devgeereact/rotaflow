@@ -23,8 +23,9 @@ const invoke = vi.fn(() => Promise.resolve(invokeResult));
 
 vi.mock('@/lib/supabase', () => ({ supabase: { functions: { invoke } } }));
 
-const { draftAnnouncement, generateRotaSuggestions, PlanRequiredError } =
-  await import('@/services/aiRotaService');
+const { draftAnnouncement, generateRotaSuggestions, PlanRequiredError } = await import(
+  '@/services/aiRotaService'
+);
 
 /** A `FunctionsHttpError` as the SDK actually shapes one. */
 function httpError(

@@ -72,8 +72,9 @@ vi.mock('@/lib/supabase', () => {
 
 const { reviewLeaveRequest } = await import('@/services/leaveService');
 const { reviewShiftSwap } = await import('@/services/swapService');
-const { cancelOvertimeRequest, reviewOvertimeRequest } =
-  await import('@/services/overtimeService');
+const { cancelOvertimeRequest, reviewOvertimeRequest } = await import(
+  '@/services/overtimeService'
+);
 
 function lastCall(): RecordedCall {
   const call = calls[calls.length - 1];

@@ -56,8 +56,9 @@ vi.mock('@/lib/supabase', () => {
   return { supabase: { from } };
 });
 
-const { createLeaveRequest, isDoubleBookedLeave, reviewLeaveRequest } =
-  await import('@/services/leaveService');
+const { createLeaveRequest, isDoubleBookedLeave, reviewLeaveRequest } = await import(
+  '@/services/leaveService'
+);
 const { classifyFailure } = await import('@/services/syncQueue');
 
 const OVERLAP = {

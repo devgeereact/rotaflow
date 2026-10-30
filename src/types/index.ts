@@ -27,7 +27,10 @@ export type Membership = Database['public']['Tables']['memberships']['Row'];
  * which is why Super Admin has never been a fourth membership role.
  */
 export type PlatformRole =
-  'platform_owner' | 'platform_admin' | 'platform_support' | 'platform_finance';
+  | 'platform_owner'
+  | 'platform_admin'
+  | 'platform_support'
+  | 'platform_finance';
 export type PlatformAdmin = Database['public']['Tables']['platform_admins']['Row'];
 
 export type PlatformSettings = Database['public']['Tables']['platform_settings']['Row'];

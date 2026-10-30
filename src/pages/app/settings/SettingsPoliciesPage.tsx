@@ -24,7 +24,10 @@ import { Toggle } from '@/components/ui/Toggle';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 
 type NumericPolicyKey =
-  'overtimeThresholdHours' | 'minRestHours' | 'maxConsecutiveDays' | 'maxWeeklyHours';
+  | 'overtimeThresholdHours'
+  | 'minRestHours'
+  | 'maxConsecutiveDays'
+  | 'maxWeeklyHours';
 
 interface NumericPolicy {
   key: NumericPolicyKey;

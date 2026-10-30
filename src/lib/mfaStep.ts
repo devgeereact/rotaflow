@@ -98,7 +98,12 @@ export function isCompleteCode(code: string): boolean {
 }
 
 export type MfaVerifyFailure =
-  'wrong-code' | 'expired' | 'rate-limited' | 'offline' | 'factor-missing' | 'unknown';
+  | 'wrong-code'
+  | 'expired'
+  | 'rate-limited'
+  | 'offline'
+  | 'factor-missing'
+  | 'unknown';
 
 function field(err: unknown, key: 'code' | 'status' | 'message'): unknown {
   if (typeof err === 'object' && err !== null && key in err) {

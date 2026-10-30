@@ -196,7 +196,10 @@ export function decideDocsImpact({ files, body = '', actor = '', headRef = '' })
   if (actor === 'dependabot[bot]' || headRef.startsWith('dependabot/')) {
     return { ...base, status: 'exempt', reason: 'dependabot pull request' };
   }
-  if (changed.length > 0 && changed.every((f) => f === 'pnpm-lock.yaml' || f === 'package-lock.json')) {
+  if (
+    changed.length > 0 &&
+    changed.every((f) => f === 'pnpm-lock.yaml' || f === 'package-lock.json')
+  ) {
     return { ...base, status: 'exempt', reason: 'only the lockfile changed' };
   }
   if (codeFiles.length === 0) {

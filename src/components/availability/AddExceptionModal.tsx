@@ -6,7 +6,9 @@ import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 
 export type ExceptionAvailability =
-  'unavailable' | 'available_all_day' | 'available_from_midday';
+  | 'unavailable'
+  | 'available_all_day'
+  | 'available_from_midday';
 
 export interface AddExceptionInput {
   date: string;

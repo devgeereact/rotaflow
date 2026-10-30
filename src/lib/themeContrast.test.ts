@@ -61,11 +61,13 @@ const THEMES: Theme[] = [
     ],
     surfaces: ['background', 'surface', 'surface-subtle', 'surface-rail', 'primary-wash'],
     washPairs: [
-      ...STATUSES.flatMap((s): Array<[string, string]> => [
-        [`${s}-ink`, `${s}-wash`],
-        ['content', `${s}-wash`],
-        ['content-muted', `${s}-wash`],
-      ]),
+      ...STATUSES.flatMap(
+        (s): Array<[string, string]> => [
+          [`${s}-ink`, `${s}-wash`],
+          ['content', `${s}-wash`],
+          ['content-muted', `${s}-wash`],
+        ],
+      ),
       ['primary-fg', 'primary'],
     ],
   },
@@ -85,11 +87,13 @@ const THEMES: Theme[] = [
       'surface-rail-dark',
       'primary-wash-dark',
     ],
-    washPairs: STATUSES.flatMap((s): Array<[string, string]> => [
-      [`${s}-ink-dark`, `${s}-wash-dark`],
-      ['content-dark', `${s}-wash-dark`],
-      ['content-muted-dark', `${s}-wash-dark`],
-    ]),
+    washPairs: STATUSES.flatMap(
+      (s): Array<[string, string]> => [
+        [`${s}-ink-dark`, `${s}-wash-dark`],
+        ['content-dark', `${s}-wash-dark`],
+        ['content-muted-dark', `${s}-wash-dark`],
+      ],
+    ),
   },
 ];
 

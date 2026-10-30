@@ -621,7 +621,7 @@ export function AdminOrganisationsPage(): JSX.Element {
                   : `${facets.newThisMonth >= facets.newLastMonth ? '+' : ''}${(
                       ((facets.newThisMonth - facets.newLastMonth) /
                         facets.newLastMonth) *
-                      100
+                        100
                     ).toFixed(0)}% vs last month`
               }
             />

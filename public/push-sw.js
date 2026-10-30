@@ -51,20 +51,23 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/app/notifications';
+  const target =
+    (event.notification.data && event.notification.data.url) || '/app/notifications';
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus an open tab rather than opening a second one. A staff member on
-      // an old Android with the PWA already installed should not end up with
-      // two instances because they tapped a notification.
-      for (const client of clientList) {
-        if ('focus' in client) {
-          if ('navigate' in client) client.navigate(target);
-          return client.focus();
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Focus an open tab rather than opening a second one. A staff member on
+        // an old Android with the PWA already installed should not end up with
+        // two instances because they tapped a notification.
+        for (const client of clientList) {
+          if ('focus' in client) {
+            if ('navigate' in client) client.navigate(target);
+            return client.focus();
+          }
         }
-      }
-      return self.clients.openWindow(target);
-    }),
+        return self.clients.openWindow(target);
+      }),
   );
 });

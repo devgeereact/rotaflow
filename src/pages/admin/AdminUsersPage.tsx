@@ -43,7 +43,13 @@ import { PLATFORM_ROLE_LABELS } from '@/lib/platformRoles';
 import type { PlatformRole } from '@/types';
 
 type UserSortKey =
-  'name' | 'organisations' | 'role' | 'access' | 'status' | 'created_at' | 'actions';
+  | 'name'
+  | 'organisations'
+  | 'role'
+  | 'access'
+  | 'status'
+  | 'created_at'
+  | 'actions';
 
 /**
  * `/admin/users`. NEW_STRUCTURE §34's platform users.

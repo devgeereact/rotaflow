@@ -118,12 +118,17 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth`, {
-  headers: { Authorization: `Bearer ${TOKEN}` },
-});
+const res = await fetch(
+  `https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth`,
+  {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  },
+);
 
 if (!res.ok) {
-  console.error(`::error::Could not read the auth config: ${res.status} ${res.statusText}`);
+  console.error(
+    `::error::Could not read the auth config: ${res.status} ${res.statusText}`,
+  );
   process.exit(1);
 }
 

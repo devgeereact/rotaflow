@@ -7,7 +7,11 @@ export interface GeoResult {
 }
 
 export type GeolocationStatus =
-  'idle' | 'prompting' | 'granted' | 'denied' | 'unavailable';
+  | 'idle'
+  | 'prompting'
+  | 'granted'
+  | 'denied'
+  | 'unavailable';
 
 export interface UseGeolocation {
   request: () => Promise<GeoResult | null>;

@@ -44,7 +44,9 @@ const ROLE_ORG_NAME = 'Sunnyvale Care Group';
 
 export function AppShellPreviewPage(): JSX.Element {
   const role = (new URLSearchParams(window.location.search).get('role') ?? 'owner') as
-    'owner' | 'manager' | 'staff';
+    | 'owner'
+    | 'manager'
+    | 'staff';
 
   const org = useMemo<OrgContextValue>(
     () => ({
