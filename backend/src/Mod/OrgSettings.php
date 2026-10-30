@@ -14,7 +14,79 @@ final class OrgSettings implements Module
     private const EVENTS = ['rota_published', 'shift_reminder', 'swap_requests', 'leave_updates', 'announcements'];
     private const CHANNELS = ['in_app', 'email', 'push'];
 
+    /**
+     * The other organisation preferences the settings pages and the set-up wizard keep in `settings`, each with its
+     * shape. Anything not listed is refused, so `settings` never becomes a free-form store a client can fill.
+     * Rules: ['str', max] | ['num', min, max] | ['bool'] | ['enum', [...]] | ['labels'] (owner/manager/staff, 40 chars each).
+     */
+    private const PREFERENCES = [
+        'size' => ['str', 40],
+        'org_type' => ['str', 80],
+        'website' => ['str', 300],
+        'address_line' => ['str', 300],
+        'registration_no' => ['str', 60],
+        'primary_contact' => ['str', 120],
+        'role_labels' => ['labels'],
+        'overtime_threshold_hours' => ['num', 0, 168],
+        'min_rest_hours' => ['num', 0, 24],
+        'max_consecutive_days' => ['num', 1, 31],
+        'max_weekly_hours' => ['num', 1, 168],
+        'breaks_are_paid' => ['bool'],
+        'swap_approval_required' => ['bool'],
+        'bank_holiday_region' => ['str', 40],
+        'leave_year_start_month' => ['num', 1, 12],
+        'leave_carry_over_max_days' => ['num', 0, 366],
+        'intended_plan' => ['enum', ['starter', 'professional', 'business', 'enterprise']],
+        'billing_period' => ['enum', ['monthly', 'annual']],
+    ];
+
     public function __construct(private readonly Ctx $ctx) {}
+
+    /** @param array{0:string,1?:mixed,2?:mixed} $rule */
+    private static function preference(string $key, array $rule, mixed $v): mixed
+    {
+        switch ($rule[0]) {
+            case 'str':
+                if ($v === null || $v === '') {
+                    return null;
+                }
+                if (!is_string($v) || \RotaFlow\Str::len(trim($v)) > $rule[1]) {
+                    throw HttpError::invalid("$key must be text of at most {$rule[1]} characters");
+                }
+                return trim($v);
+            case 'num':
+                if ($v === null) {
+                    return null;
+                }
+                if ((!is_int($v) && !is_float($v)) || $v < $rule[1] || $v > $rule[2]) {
+                    throw HttpError::invalid("$key must be a number from {$rule[1]} to {$rule[2]}");
+                }
+                return $v;
+            case 'bool':
+                if (!is_bool($v)) {
+                    throw HttpError::invalid("$key must be true or false");
+                }
+                return $v;
+            case 'enum':
+                if ($v !== null && !in_array($v, $rule[1], true)) {
+                    throw HttpError::invalid("$key is not recognised");
+                }
+                return $v;
+            default: // labels
+                if (!is_array($v)) {
+                    throw HttpError::invalid("$key must be an object");
+                }
+                $out = [];
+                foreach (['owner', 'manager', 'staff'] as $role) {
+                    $label = $v[$role] ?? null;
+                    if (!is_string($label) || trim($label) === '' || \RotaFlow\Str::len(trim($label)) > 40) {
+                        throw HttpError::invalid("$key.$role must be 1 to 40 characters");
+                    }
+                    $out[$role] = trim($label);
+                }
+                return $out;
+        }
+    }
 
     public function routes(): array
     {
@@ -27,7 +99,7 @@ final class OrgSettings implements Module
         ];
     }
 
-    /** Owner only. Replaces only the keys sent: `notification_defaults` (matrix) and `job_titles_managed_by` ('owner' or 'managers'). */
+    /** Owner only. Replaces only the keys sent: `notification_defaults` (matrix), `job_titles_managed_by` ('owner' or 'managers') and the PREFERENCES. */
     private function save(array $user, array $in, string $ip, string $o): array
     {
         $pdo = $this->ctx->pdo;
@@ -43,6 +115,11 @@ final class OrgSettings implements Module
                 throw HttpError::invalid("job_titles_managed_by must be 'owner' or 'managers'");
             }
             $set['job_titles_managed_by'] = $in['job_titles_managed_by'];
+        }
+        foreach (self::PREFERENCES as $key => $rule) {
+            if (array_key_exists($key, $in)) {
+                $set[$key] = self::preference($key, $rule, $in[$key]);
+            }
         }
         if ($set === []) {
             throw HttpError::invalid('Nothing to change');

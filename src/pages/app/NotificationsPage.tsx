@@ -13,7 +13,7 @@ import {
   Umbrella,
   type LucideIcon,
 } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useWebPush } from '@/hooks/useWebPush';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
@@ -62,7 +62,7 @@ const DEFAULT_TYPE_META = {
  * comment used to name was deleted by `0087`.
  */
 export function NotificationsPage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const webPush = useWebPush();
   const { showError, showSuccess } = useToast();
 

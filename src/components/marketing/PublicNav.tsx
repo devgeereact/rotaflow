@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { MARKETING_NAV, PRIMARY_CTA } from '@/lib/marketing';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
  * to solid. Colour only: the bar never changes height.
  */
 export function PublicNav(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const { pathname } = useLocation();

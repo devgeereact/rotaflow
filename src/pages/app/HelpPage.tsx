@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Info, MessageSquarePlus, ShieldCheck, Star } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import {
   listCaseMessages,
@@ -91,7 +91,7 @@ const LEGAL_LINKS = [
 
 export function HelpPage(): JSX.Element {
   const { orgId, orgName } = useOrg();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { showError, showSuccess } = useToast();
 
   const [contactOpen, setContactOpen] = useState(false);

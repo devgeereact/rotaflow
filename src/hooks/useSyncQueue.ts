@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import {
   discardDeadLetteredWrite,
   retryDeadLetteredWrite,
@@ -67,7 +67,7 @@ export function useSyncQueue(): UseSyncQueue {
   // operation below is scoped to the signed-in user so a shared device never
   // replays, or shows, somebody else's writes. See `belongsTo` in
   // services/syncQueue.ts for what that prevents.
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const userId = user?.id ?? null;
   const [pending, setPending] = useState<QueuedItem[]>([]);
   const [deadLettered, setDeadLettered] = useState<DeadLetterRecord[]>([]);

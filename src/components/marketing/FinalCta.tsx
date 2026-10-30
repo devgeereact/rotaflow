@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { HERO, PRIMARY_CTA } from '@/lib/marketing';
 import { BOOK_DEMO_PATH } from '@/lib/enquiry';
@@ -22,7 +22,7 @@ export function FinalCta({
   heading = 'See your own rota in RotaFlow.',
   body = 'Create your organisation, add a location, and build your first rota today.',
 }: FinalCtaProps): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
 
   return (
     <section className="mx-auto max-w-6xl px-6 pb-24">

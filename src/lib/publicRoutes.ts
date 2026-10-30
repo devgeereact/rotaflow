@@ -159,19 +159,6 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     sitemap: true,
     priority: 0.7,
   },
-  {
-    path: '/forgot-password',
-    title: 'Reset your password',
-    description:
-      'Send a password reset link to the email address on your RotaFlow account.',
-    sitemap: false,
-  },
-  {
-    path: '/reset-password',
-    title: 'Choose a new password',
-    description: 'Set a new password for your RotaFlow account.',
-    sitemap: false,
-  },
 ] as const;
 
 /** The metadata for a path, or undefined if it is not a public page. */

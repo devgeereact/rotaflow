@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
@@ -66,7 +66,7 @@ function toInsert(
 export function AnnouncementsPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canManageStaff } = usePermissions();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { showError, showSuccess } = useToast();
 
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);

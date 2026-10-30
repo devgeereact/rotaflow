@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { addDays, addWeeks, format, isSameDay, startOfWeek, subWeeks } from 'date-fns';
 import { LifeBuoy, ScanLine, ShieldQuestion, WifiOff } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
@@ -123,7 +123,7 @@ function nameById<T extends { id: string }>(
  */
 export function ClockInPage(): JSX.Element {
   const { orgId } = useOrg();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const online = useOnlineStatus();
   const geo = useGeolocation();
   const { enqueue, deadLettered, discard, retry, pending } = useSyncQueue();

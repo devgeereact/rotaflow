@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useNavBadgeCounts } from '@/hooks/useNavBadgeCounts';
@@ -94,7 +94,7 @@ const EMPTY_DAY = (date: string): OperationsDaySnapshot => ({
  */
 export function DashboardPage(): JSX.Element {
   const { orgId, orgName, role } = useOrg();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const isManager = role === 'owner' || role === 'manager';
   const badges = useNavBadgeCounts(orgId);

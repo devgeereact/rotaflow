@@ -1,25 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { JSX } from 'react';
-import {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import {
-  createOrganisation,
-  listMyMemberships,
-  type MyMembership,
-} from '@/services/orgService';
-import { getProfile } from '@/services/profileService';
-import type { Profile } from '@/types';
-import { getMyPlatformRole, getPlatformAccess } from '@/services/platformRoleService';
-import { reportError } from '@/lib/sentry';
+import { createContext, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { createOrganisation } from '@/services/orgService';
 import { ACTIVE_ORG_STORAGE_KEY } from '@/lib/session';
-import { isOrgStateStale } from '@/lib/orgLoading';
 import type { MembershipRole, PlatformRole } from '@/types';
 
 export interface OrgMembershipSummary {
@@ -63,114 +47,30 @@ export interface OrgContextValue {
 export const OrgContext = createContext<OrgContextValue | null>(null);
 
 export function OrgProvider({ children }: { children: ReactNode }): JSX.Element {
-  const { user, loading: authLoading } = useSupabaseAuth();
-  const [memberships, setMemberships] = useState<MyMembership[]>([]);
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
-  const [platformRole, setPlatformRole] = useState<PlatformRole | null>(null);
+  // Memberships and the platform role come with `GET /me`, which AuthProvider reads once per session; this provider
+  // only chooses the active organisation from them. A failed read surfaces as `loadFailed`, never as "no
+  // organisation", so an owner is not sent to the no-organisation screen by a dropped connection.
+  const { user, me, meFailed, loading: authLoading, refreshMe } = useAuth();
   const [activeOrgId, setActiveOrgId] = useState<string | null>(() =>
     typeof window === 'undefined'
       ? null
       : window.localStorage.getItem(ACTIVE_ORG_STORAGE_KEY),
   );
-  const [loading, setLoading] = useState(true);
-  const [loadFailed, setLoadFailed] = useState(false);
-  /**
-   * Whose organisations the state below describes. `isOrgStateStale` explains
-   * why a finished query is not the same question as a usable answer.
-   */
-  const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async (): Promise<void> => {
-    if (!user) {
-      setMemberships([]);
-      setIsPlatformAdmin(false);
-      setPlatformRole(null);
-      setLoadFailed(false);
-      setLoadedForUserId(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    setRefreshing(true);
     try {
-      // One retry, and only for the FIRST load of a session.
-      //
-      // Found by `e2e/authenticated-loop.spec.ts`: seconds after signing up,
-      // this pair of queries can fail once, and a single failure was terminal
-      // — the brand-new customer's very first screen was "Couldn't load your
-      // organisations" with a Retry button, on an account that had just been
-      // created successfully. The read races the session being established,
-      // and PostgREST refusing a token that is a moment away from being valid
-      // is not a broken session.
-      //
-      // Bounded deliberately at one extra attempt after a short pause. A
-      // retry loop would turn a genuinely unreachable database into a
-      // spinner that never resolves, which is worse than the error card: the
-      // card at least says what happened and offers the same retry by hand.
-      const loadOnce = async (): Promise<
-        [MyMembership[], Profile | null, PlatformRole | null, boolean | null]
-      > =>
-        await Promise.all([
-          listMyMemberships(user.id),
-          getProfile(user.id),
-          // Deliberately cannot reject. `my_platform_role()` arrives in 0015,
-          // and until that migration is applied the RPC does not exist, a
-          // rejection here would land in the shared catch, set `loadFailed`,
-          // and blank the tenant session for every user in the product over a
-          // detail only the platform console needs. The role is additive UI
-          // granularity: failing to read it degrades to "no granular role",
-          // never to "your session failed".
-          getMyPlatformRole().catch((error: unknown) => {
-            reportError(error, { area: 'org:platformRole' });
-            return null;
-          }),
-          // The database's own verdict, which is the flag AND 0102's MFA
-          // condition. Cannot reject for the same reason as the role above:
-          // null degrades to "fall back to the flag", never to a failed
-          // session.
-          getPlatformAccess().catch((error: unknown) => {
-            reportError(error, { area: 'org:platformAccess' });
-            return null;
-          }),
-        ]);
-
-      const [rows, profile, role, access] = await loadOnce().catch(
-        async (error: unknown) => {
-          reportError(error, { area: 'org:refresh-retry' });
-          await new Promise((resolve) => setTimeout(resolve, 600));
-          return await loadOnce();
-        },
-      );
-
-      setMemberships(rows);
-      // The function's answer when we have it, the raw flag only as a
-      // fallback. They differ exactly when `require_mfa` is on and the session
-      // is `aal1`, and taking the flag there admitted an administrator to a
-      // console where every policy returned nothing.
-      setIsPlatformAdmin(access ?? profile?.is_platform_admin ?? false);
-      setPlatformRole(role);
-      setLoadFailed(false);
-    } catch (error) {
-      reportError(error, { area: 'org:refresh' });
-      // Deliberately leaves any previously loaded memberships in place, a
-      // failed refresh must not blank out a session that was working.
-      setLoadFailed(true);
+      await refreshMe();
     } finally {
-      // Set even when the query threw. Otherwise a failure would hold the
-      // whole app on the boot screen for ever, instead of reaching the
-      // "Couldn't load your organisations" card with its Retry button.
-      setLoadedForUserId(user.id);
-      setLoading(false);
+      setRefreshing(false);
     }
-  }, [user]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  }, [refreshMe]);
 
   const createOrg = useCallback(
     async (name: string): Promise<void> => {
       if (!user) return;
-      await createOrganisation(name, user.id);
+      await createOrganisation(name);
       await refresh();
     },
     [user, refresh],
@@ -182,46 +82,31 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
   }, []);
 
   const value = useMemo<OrgContextValue>(() => {
-    const summaries: OrgMembershipSummary[] = memberships.map((m) => ({
-      orgId: m.org_id,
-      orgName: m.organisation.name,
-      role: m.role as MembershipRole,
-    }));
+    const summaries: OrgMembershipSummary[] = (me?.memberships ?? [])
+      .filter((m) => m.membership_status === 'active')
+      .map((m) => ({
+        orgId: m.org_id,
+        orgName: m.name,
+        role: m.role as MembershipRole,
+      }));
 
     const active = summaries.find((m) => m.orgId === activeOrgId) ?? summaries[0] ?? null;
+    const platformRole = (me?.platform_role ?? null) as PlatformRole | null;
 
     return {
       orgId: active?.orgId ?? null,
       orgName: active?.orgName ?? null,
       role: active?.role ?? null,
       memberships: summaries,
-      isPlatformAdmin,
+      isPlatformAdmin: platformRole !== null,
       platformRole,
       switchOrg,
-      loading: isOrgStateStale({
-        authLoading,
-        queryLoading: loading,
-        userId: user?.id ?? null,
-        loadedForUserId,
-      }),
-      loadFailed,
+      loading: authLoading || (refreshing && me === null),
+      loadFailed: meFailed,
       createOrg,
       refresh,
     };
-  }, [
-    memberships,
-    activeOrgId,
-    isPlatformAdmin,
-    platformRole,
-    switchOrg,
-    loading,
-    authLoading,
-    user,
-    loadedForUserId,
-    loadFailed,
-    createOrg,
-    refresh,
-  ]);
+  }, [me, activeOrgId, switchOrg, authLoading, refreshing, meFailed, createOrg, refresh]);
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 }

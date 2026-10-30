@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 import { FailedWritesNotice } from '@/components/FailedWritesNotice';
@@ -96,7 +96,7 @@ function statusNoteFor(request: LeaveRequest, viewerId: string | null): string |
 export function LeavePage(): JSX.Element {
   const { orgId } = useOrg();
   const { canApprove } = usePermissions();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const online = useOnlineStatus();
   const { enqueue, deadLettered, discard, retry } = useSyncQueue();
   const { showError, showSuccess } = useToast();

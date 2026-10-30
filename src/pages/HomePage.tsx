@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { MarketingLayout } from '@/components/marketing/MarketingLayout';
 import { ProductPreview } from '@/components/marketing/ProductPreview';
@@ -24,7 +24,7 @@ import { BOOK_DEMO_PATH } from '@/lib/enquiry';
  * site. `src/lib/marketing.ts` holds every word of copy and states the rule.
  */
 export function HomePage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
 
   return (
     <MarketingLayout title={TAGLINE}>

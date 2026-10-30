@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { getMyStaffProfile } from '@/services/staffService';
 import { reportError } from '@/lib/sentry';
 import {
@@ -55,7 +55,7 @@ export const WorkModeContext = createContext<WorkModeContextValue | null>(null);
  */
 export function WorkModeProvider({ children }: { children: ReactNode }): JSX.Element {
   const { orgId, role } = useOrg();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
 
   const [staffProfileId, setStaffProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

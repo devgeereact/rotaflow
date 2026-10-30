@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { History } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { formatAuditAction } from '@/lib/auditActions';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { listMyAuditLogs, type AuditLogEntry } from '@/services/auditService';
 import { reportError } from '@/lib/sentry';
@@ -52,7 +52,7 @@ function formatTimestamp(iso: string): string {
  * clean record.
  */
 export function ActivityPage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { orgId } = useOrg();
   const { showError } = useToast();
 

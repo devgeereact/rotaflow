@@ -316,9 +316,12 @@ export function DashboardLivePreviewPage(): JSX.Element {
 
   const auth = useMemo<AuthContextValue>(
     () => ({
-      user: { id: USER_ID, email: 'owner@preview.test' } as AuthContextValue['user'],
-      session: null,
+      user: { id: USER_ID, email: 'owner@preview.test', fullName: null, avatarUrl: null },
       loading: false,
+      signedIn: true,
+      me: null,
+      meFailed: false,
+      refreshMe: () => Promise.resolve(null),
       signOut: async () => {},
     }),
     [],

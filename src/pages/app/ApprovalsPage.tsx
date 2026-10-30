@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { CheckCheck, Repeat2, TimerReset, Umbrella } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
@@ -69,7 +69,7 @@ const KIND_LABEL = {
 export function ApprovalsPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canApprove } = usePermissions();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { showError, showSuccess } = useToast();
 
   const [leave, setLeave] = useState<LeaveRequest[]>([]);

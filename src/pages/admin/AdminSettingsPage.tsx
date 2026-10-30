@@ -18,7 +18,7 @@ import {
   revokePlatformRole,
 } from '@/services/platformRoleService';
 import { listAllProfiles } from '@/services/platformService';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useToast } from '@/hooks/useToast';
@@ -96,7 +96,7 @@ interface AdminRow {
  */
 
 export function AdminSettingsPage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { canManagePlatformAdmins } = usePermissions();
   const { confirm } = useConfirm();
   const { showError, showSuccess } = useToast();

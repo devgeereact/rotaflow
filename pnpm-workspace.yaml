@@ -4,3 +4,5 @@ allowBuilds:
   # Downloads the Sentry CLI binary. Only used by the sourcemap upload in
   # vite.config.ts, which runs only when SENTRY_AUTH_TOKEN is set at build time.
   '@sentry/cli': true
+  # Prints Clerk's telemetry notice only; nothing to build.
+  '@clerk/shared': false

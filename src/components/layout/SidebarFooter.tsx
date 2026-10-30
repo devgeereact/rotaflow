@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, Building2, LogOut, MoreVertical, ShieldCheck } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useOrg } from '@/hooks/useOrg';
 import { useWorkMode } from '@/hooks/useWorkMode';
 import { footerNavItemsForRole } from '@/lib/sidebarNav';
@@ -185,12 +185,11 @@ export function SidebarFooter({
   collapsed,
   onNavigate,
 }: SidebarFooterProps): JSX.Element {
-  const { user, signOut } = useSupabaseAuth();
+  const { user, signOut } = useAuth();
   const { role, isPlatformAdmin } = useOrg();
   const { mode, setMode, canSwitch } = useWorkMode();
 
-  const displayName =
-    (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '';
+  const displayName = user?.fullName ?? user?.email ?? '';
 
   if (collapsed) {
     return (

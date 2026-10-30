@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronUp, LogOut, Menu, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { env } from '@/lib/env';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import {
   ConsoleRefreshContext,
@@ -154,12 +154,11 @@ function ConsoleRole(): JSX.Element {
 
 /** Reference material and who you are. */
 function ConsoleFooter({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
-  const { user, signOut } = useSupabaseAuth();
+  const { user, signOut } = useAuth();
   const { platformRole } = useOrg();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const displayName =
-    (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '';
+  const displayName = user?.fullName ?? user?.email ?? '';
   const [first = '', last = ''] = displayName.split(/[\s@.]+/);
 
   return (

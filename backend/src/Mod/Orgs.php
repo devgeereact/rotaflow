@@ -17,6 +17,7 @@ final class Orgs implements Module
     {
         return [
             ['GET', '/me', $this->me(...)],
+            ['GET', '/slug-available', $this->slugAvailable(...)],
             ['POST', '/orgs', $this->createOrg(...)],
             ['GET', '/orgs/{o}', $this->getOrg(...)],
             ['POST', '/orgs/{o}', $this->updateOrg(...)],
@@ -77,7 +78,7 @@ final class Orgs implements Module
     private function getOrg(array $user, array $in, string $ip, string $o): array
     {
         $m = Scope::membership($this->ctx->pdo, $user['id'], $o);
-        $q = $this->ctx->pdo->prepare('SELECT id, name, slug, plan, status, trial_ends_at, support_access_allowed, settings, created_at FROM organisations WHERE id = ?');
+        $q = $this->ctx->pdo->prepare('SELECT id, name, slug, plan, status, trial_ends_at, support_access_allowed, settings, created_at, industry, country, timezone, contact_email, contact_phone, onboarding_completed_at, suspended_reason FROM organisations WHERE id = ?');
         $q->execute([$o]);
         $org = $q->fetch();
         $org['settings'] = json_decode((string) $org['settings'], true) ?: new \stdClass();
@@ -85,18 +86,87 @@ final class Orgs implements Module
         return [200, ['org' => $org, 'membership' => ['id' => $m['id'], 'role' => $m['role'], 'effective_role' => $m['effective_role']]]];
     }
 
+    /**
+     * Owner only. Every field is optional; only the ones sent change. `slug` must be free (409 slug_taken).
+     * The profile columns (industry, country, timezone, contact email and phone) are the ones the settings page edits.
+     */
     private function updateOrg(array $user, array $in, string $ip, string $o): array
     {
-        $m = Scope::membership($this->ctx->pdo, $user['id'], $o);
+        $pdo = $this->ctx->pdo;
+        $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, ['owner']);
         Scope::requireWritable($m);
-        $name = trim(Input::str($in, 'name'));
-        if (\RotaFlow\Str::len($name) < 2 || \RotaFlow\Str::len($name) > 120) {
-            throw HttpError::invalid('Organisation name must be 2 to 120 characters');
+        $set = [];
+        if (array_key_exists('name', $in)) {
+            $name = trim(Input::str($in, 'name'));
+            if (\RotaFlow\Str::len($name) < 2 || \RotaFlow\Str::len($name) > 120) {
+                throw HttpError::invalid('Organisation name must be 2 to 120 characters');
+            }
+            $set['name'] = $name;
         }
-        $this->ctx->pdo->prepare('UPDATE organisations SET name = ? WHERE id = ?')->execute([$name, $o]);
-        Audit::log($this->ctx->pdo, $o, $user['id'], 'org.renamed', 'organisations', $o, [], 'info', 'org', $ip);
+        if (array_key_exists('slug', $in)) {
+            $slug = strtolower(trim(Input::str($in, 'slug')));
+            if (preg_match('/^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/', $slug) !== 1) {
+                throw HttpError::invalid('slug must be 1 to 60 lower-case letters, digits or hyphens');
+            }
+            $q = $pdo->prepare('SELECT 1 FROM organisations WHERE slug = ? AND id <> ?');
+            $q->execute([$slug, $o]);
+            if ($q->fetchColumn() !== false) {
+                throw HttpError::conflict('slug_taken', 'That web address is already taken');
+            }
+            $set['slug'] = $slug;
+        }
+        foreach (['industry' => 100, 'contact_phone' => 40] as $k => $max) {
+            if (array_key_exists($k, $in)) {
+                $set[$k] = Input::optStr($in, $k, $max);
+            }
+        }
+        if (array_key_exists('contact_email', $in)) {
+            $email = Input::optStr($in, 'contact_email', 254);
+            if ($email !== null && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                throw HttpError::invalid('contact_email is not an email address');
+            }
+            $set['contact_email'] = $email;
+        }
+        if (array_key_exists('country', $in)) {
+            $set['country'] = Input::reqStr($in, 'country', 100);
+        }
+        if (array_key_exists('timezone', $in)) {
+            $tz = Input::reqStr($in, 'timezone', 64);
+            if (!in_array($tz, \DateTimeZone::listIdentifiers(), true)) {
+                throw HttpError::invalid('timezone must be an IANA time zone, for example Europe/London');
+            }
+            $set['timezone'] = $tz;
+        }
+        if ($set === []) {
+            throw HttpError::invalid('Nothing to change');
+        }
+        $cols = implode(', ', array_map(static fn (string $c): string => "$c = ?", array_keys($set)));
+        $pdo->prepare("UPDATE organisations SET $cols WHERE id = ?")->execute([...array_values($set), $o]);
+        Audit::log($pdo, $o, $user['id'], isset($set['name']) && count($set) === 1 ? 'org.renamed' : 'org.updated', 'organisations', $o, ['keys' => array_keys($set)], 'info', 'org', $ip);
         return [200, ['ok' => true]];
+    }
+
+    /**
+     * Is a web address free? Answers a boolean and nothing else, so it cannot list tenants, and is rate limited.
+     * `exclude` names an organisation the caller belongs to (the one being edited), whose own slug then reads as free.
+     */
+    private function slugAvailable(array $user, array $in, string $ip): array
+    {
+        $this->ctx->limits->hit('slug-check', $user['id'], 60, 60);
+        $slug = strtolower(trim(Input::str($in, 'slug')));
+        if (preg_match('/^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/', $slug) !== 1) {
+            return [200, ['available' => false]];
+        }
+        $exclude = Input::str($in, 'exclude');
+        $excludeId = '';
+        if ($exclude !== '' && preg_match('/^[0-9a-f-]{36}$/', $exclude) === 1) {
+            Scope::membership($this->ctx->pdo, $user['id'], $exclude);
+            $excludeId = $exclude;
+        }
+        $q = $this->ctx->pdo->prepare('SELECT 1 FROM organisations WHERE slug = ? AND id <> ?');
+        $q->execute([$slug, $excludeId]);
+        return [200, ['available' => $q->fetchColumn() === false]];
     }
 
     private function listMembers(array $user, array $in, string $ip, string $o): array

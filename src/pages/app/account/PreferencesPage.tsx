@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/hooks/useToast';
 import { useWebPush } from '@/hooks/useWebPush';
@@ -36,7 +36,7 @@ import { useConsent } from '@/context/ConsentContext';
  * product cannot keep.
  */
 export function PreferencesPage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { allows, record, reopen } = useConsent();
   const { showError, showSuccess } = useToast();

@@ -280,13 +280,6 @@ export const SEARCH_ENTRIES: readonly SearchEntry[] = [
     icon: UserCircle,
   },
   {
-    label: 'Sessions',
-    keywords: 'devices signed in sign out revoke',
-    to: '/app/account/sessions',
-    group: 'Account',
-    icon: UserCircle,
-  },
-  {
     label: 'Activity',
     keywords: 'history changes log recent',
     to: '/app/account/activity',

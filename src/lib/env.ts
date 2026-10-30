@@ -16,6 +16,8 @@ interface AppEnv {
   imagekitUrlEndpoint: string;
   imagekitPublicKey: string;
   sentryDsn: string;
+  /** Clerk's publishable key (pk_..., public by design). Empty means sign-in is not available in this build. */
+  clerkPublishableKey: string;
   /**
    * Which OAuth providers to offer on the sign-in screen.
    *
@@ -61,6 +63,7 @@ const RAW = {
   VITE_IMAGEKIT_URL_ENDPOINT: import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT,
   VITE_IMAGEKIT_PUBLIC_KEY: import.meta.env.VITE_IMAGEKIT_PUBLIC_KEY,
   VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
+  VITE_CLERK_PUBLISHABLE_KEY: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
   VITE_ENABLE_OAUTH: import.meta.env.VITE_ENABLE_OAUTH,
   VITE_VAPID_PUBLIC_KEY: import.meta.env.VITE_VAPID_PUBLIC_KEY,
   VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY,
@@ -112,6 +115,7 @@ export const env: AppEnv = {
   imagekitUrlEndpoint: read('VITE_IMAGEKIT_URL_ENDPOINT'),
   imagekitPublicKey: read('VITE_IMAGEKIT_PUBLIC_KEY'),
   sentryDsn: read('VITE_SENTRY_DSN'),
+  clerkPublishableKey: read('VITE_CLERK_PUBLISHABLE_KEY'),
   oauthProviders: readOAuthProviders(),
   vapidPublicKey: read('VITE_VAPID_PUBLIC_KEY'),
   turnstileSiteKey: read('VITE_TURNSTILE_SITE_KEY'),

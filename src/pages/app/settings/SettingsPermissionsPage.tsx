@@ -1,7 +1,7 @@
 import { useEffect, useState, type JSX } from 'react';
 import { ShieldCheck, Users } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import {
   getOrganisation,
@@ -49,7 +49,7 @@ const ROLE_OPTIONS: SystemRole[] = ['owner', 'manager', 'staff'];
 
 export function SettingsPermissionsPage(): JSX.Element {
   const { orgId, role } = useOrg();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { showError, showSuccess } = useToast();
 
   const [members, setMembers] = useState<MemberRow[]>([]);

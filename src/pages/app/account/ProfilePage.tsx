@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ChangeEvent, type JSX } from 're
 import { Link } from 'react-router-dom';
 import { Mail, Phone, User } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { getProfile, updateProfile } from '@/services/profileService';
 import { getMyStaffProfile, updateStaffProfile } from '@/services/staffService';
@@ -60,7 +60,7 @@ const ROLE_SCOPE: Record<SystemRole, string> = {
  * screen tries to write it.
  */
 export function ProfilePage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { orgId, role } = useOrg();
   const { showError, showSuccess } = useToast();
 

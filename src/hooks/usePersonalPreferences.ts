@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { getSettings } from '@/services/settingsService';
 import { setTimeFormat } from '@/lib/format';
 import { reportError } from '@/lib/sentry';
@@ -27,7 +27,7 @@ export function rememberPersonalPreferences(
  * screen. Also points `src/lib/format.ts` at the person's clock format.
  */
 export function usePersonalPreferences(): PersonalPreferences {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const [prefs, setPrefs] = useState<PersonalPreferences>(DEFAULT_PREFERENCES);
 
   useEffect(() => {

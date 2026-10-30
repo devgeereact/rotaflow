@@ -27,8 +27,8 @@ const services = vi.hoisted(() => ({
 
 vi.mock('@/services/syncQueue', () => services);
 vi.mock('@/hooks/useOnlineStatus', () => ({ useOnlineStatus: (): boolean => true }));
-vi.mock('@/hooks/useSupabaseAuth', () => ({
-  useSupabaseAuth: (): { user: { id: string } } => ({ user: { id: 'user-1' } }),
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: (): { user: { id: string } } => ({ user: { id: 'user-1' } }),
 }));
 vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 

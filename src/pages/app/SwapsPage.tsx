@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { BadgeCheck, CalendarClock, Clock3, ShieldCheck, Users } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncQueue } from '@/hooks/useSyncQueue';
 import { FailedWritesNotice } from '@/components/FailedWritesNotice';
@@ -49,7 +49,7 @@ import type { Location, Shift, StaffProfile } from '@/types';
 export function SwapsPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canApprove } = usePermissions();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const online = useOnlineStatus();
   const { enqueue, deadLettered, discard, retry } = useSyncQueue();
   const { showError, showSuccess } = useToast();

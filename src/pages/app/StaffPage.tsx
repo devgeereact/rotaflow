@@ -13,7 +13,7 @@ import {
   UserRoundX,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -112,7 +112,7 @@ const STATUS_OPTIONS: readonly FilterOption[] = [
 export function StaffPage(): JSX.Element {
   const { confirm } = useConfirm();
   const { orgId, orgName } = useOrg();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { canManageStaff, canManageOrg } = usePermissions();
   const navigate = useNavigate();
 

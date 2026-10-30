@@ -29,9 +29,7 @@ export const PROFILE_TABS: readonly TabItem[] = [
   { to: '/app/account/profile', label: 'Profile' },
   { to: '/app/account/preferences', label: 'Preferences' },
   { to: '/app/account/security', label: 'Security' },
-  // §21's "Connected Accounts", between Security and Sessions as listed there.
-  { to: '/app/account/accounts', label: 'Connected Accounts' },
-  { to: '/app/account/sessions', label: 'Sessions' },
+  // §21's "Connected Accounts" and "Sessions" are part of Clerk's account screen on the Security tab.
   // Hidden until a public API exists: a tab for a feature that does not exist
   // reads as unfinished. The route and page stay, so a saved link still works.
   { to: '/app/account/tokens', label: 'API Tokens', hidden: true },

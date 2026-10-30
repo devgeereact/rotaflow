@@ -22,8 +22,8 @@ vi.mock('@/lib/sentry', () => ({ reportError: vi.fn() }));
 vi.mock('@/hooks/useOrg', () => ({
   useOrg: (): unknown => ({ orgId: 'org-1', orgName: 'Sunnyvale Care' }),
 }));
-vi.mock('@/hooks/useSupabaseAuth', () => ({
-  useSupabaseAuth: (): unknown => ({ user: { id: 'user-1', email: 'sam@example.com' } }),
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: (): unknown => ({ user: { id: 'user-1', email: 'sam@example.com' } }),
 }));
 vi.mock('@/hooks/useToast', () => ({
   useToast: (): unknown => ({ showError: vi.fn(), showSuccess: vi.fn() }),

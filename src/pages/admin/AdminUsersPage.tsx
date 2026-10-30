@@ -22,7 +22,7 @@ import {
   type UserDirectoryRow,
   type UserFacets,
 } from '@/services/platformDirectoryService';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { useToast } from '@/hooks/useToast';
@@ -115,7 +115,7 @@ const MEMBERSHIP_OPTIONS: readonly FilterOption[] = [
 ] as const;
 
 export function AdminUsersPage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { canManagePlatformAdmins } = usePermissions();
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();

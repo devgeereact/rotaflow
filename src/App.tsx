@@ -238,14 +238,6 @@ const AcceptInvitePage = lazyPage(
   'AcceptInvitePage',
   () => import('@/pages/AcceptInvitePage'),
 );
-const ForgotPasswordPage = lazyPage(
-  'ForgotPasswordPage',
-  () => import('@/pages/ForgotPasswordPage'),
-);
-const ResetPasswordPage = lazyPage(
-  'ResetPasswordPage',
-  () => import('@/pages/ResetPasswordPage'),
-);
 const SchedulePage = lazyPage('SchedulePage', () => import('@/pages/app/SchedulePage'));
 const ClockInPage = lazyPage('ClockInPage', () => import('@/pages/app/ClockInPage'));
 const SetupPage = lazyPage('SetupPage', () => import('@/pages/app/SetupPage'));
@@ -372,10 +364,6 @@ const SecurityPage = lazyPage(
   'SecurityPage',
   () => import('@/pages/app/account/SecurityPage'),
 );
-const ConnectedAccountsPage = lazyPage(
-  'ConnectedAccountsPage',
-  () => import('@/pages/app/account/ConnectedAccountsPage'),
-);
 
 // Platform administration. Lazy like every other area, so a tenant user never
 // downloads the cross-tenant screens they cannot open.
@@ -460,10 +448,6 @@ const AdminNotificationsPage = lazyPage(
   'AdminNotificationsPage',
   () => import('@/pages/admin/AdminNotificationsPage'),
 );
-const SessionsPage = lazyPage(
-  'SessionsPage',
-  () => import('@/pages/app/account/SessionsPage'),
-);
 const TokensPage = lazyPage('TokensPage', () => import('@/pages/app/account/TokensPage'));
 const ActivityPage = lazyPage(
   'ActivityPage',
@@ -536,10 +520,18 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                           element={<AccessibilityPage />}
                         />
                         <Route path="/legal/trust" element={<TrustPage />} />
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/signup" element={<SignupPage />} />
-                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                        <Route path="/reset-password" element={<ResetPasswordPage />} />
+                        {/* `/*`: Clerk's sign-in and sign-up move through sub-steps under these paths. */}
+                        <Route path="/login/*" element={<LoginPage />} />
+                        <Route path="/signup/*" element={<SignupPage />} />
+                        {/* Clerk resets nothing: there are no passwords. Old links land on sign-in. */}
+                        <Route
+                          path="/forgot-password"
+                          element={<Navigate to="/login" replace />}
+                        />
+                        <Route
+                          path="/reset-password"
+                          element={<Navigate to="/login" replace />}
+                        />
                         <Route path="/splash" element={<SplashScreen />} />
                         {/* Where an OAuth provider or magic link may return. See
                       RouteAliases for why this exists when sign-in already
@@ -924,8 +916,15 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="preferences" element={<PreferencesPage />} />
                             <Route path="security" element={<SecurityPage />} />
-                            <Route path="accounts" element={<ConnectedAccountsPage />} />
-                            <Route path="sessions" element={<SessionsPage />} />
+                            {/* Connected accounts and sessions are part of Clerk's account screen. */}
+                            <Route
+                              path="accounts"
+                              element={<Navigate to="/app/account/security" replace />}
+                            />
+                            <Route
+                              path="sessions"
+                              element={<Navigate to="/app/account/security" replace />}
+                            />
                             <Route path="tokens" element={<TokensPage />} />
                             <Route path="activity" element={<ActivityPage />} />
                             <Route path="data" element={<YourDataPage />} />

@@ -144,7 +144,8 @@ function isRoutable(target: string): boolean {
   // the route is what has to exist.
   const wanted = (target.split('#')[0] ?? '').replace(/\/$/, '');
   return ROUTES.some((route) => {
-    const declared = route.replace(/\/$/, '');
+    // `/login/*` (Clerk's sub-steps) answers `/login` itself too.
+    const declared = route.replace(/\/\*$/, '').replace(/\/$/, '');
     if (declared === '*') return false;
     const declaredSegments = declared.split('/');
     const wantedSegments = wanted.split('/');
@@ -161,7 +162,7 @@ describe('navigation targets', () => {
     // below would pass vacuously against an empty table.
     expect(ROUTES.length).toBeGreaterThan(20);
     expect(ROUTES).toContain('/app/dashboard');
-    expect(ROUTES).toContain('/login');
+    expect(ROUTES).toContain('/login/*');
   });
 
   it.each(SETTINGS_TABS.map((tab) => [tab.label, tab.to] as const))(

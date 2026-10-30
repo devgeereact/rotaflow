@@ -121,24 +121,23 @@ const relative = (file: string): string => path.relative(SRC, file);
  */
 const KNOWN_VIOLATIONS = new Set(['lib/reportsCatalogue.ts']);
 
-/** Does this specifier resolve into the service layer, or to the Supabase client itself? */
+/** Does this specifier resolve into the service layer, or to the API client singleton? */
 function reachesSupabase(specifier: string, fromFile: string): boolean {
   if (/^@\/services\//.test(specifier)) return true;
-  // `lib/supabase.ts` IS the client module. Everything else reaching for it is the bug.
-  if (relative(fromFile) === path.join('lib', 'supabase.ts')) return false;
-  if (specifier === '@/lib/supabase' || specifier === '@supabase/supabase-js')
-    return true;
+  // `lib/api.ts` IS the client module (and `lib/apiClient.ts` the pure factory it uses).
+  if (relative(fromFile) === path.join('lib', 'api.ts')) return false;
+  if (specifier === '@/lib/api' || specifier.startsWith('@clerk/')) return true;
   if (specifier.startsWith('.')) {
     const resolved = path.resolve(path.dirname(fromFile), specifier);
     const asPath = path.relative(SRC, resolved);
     if (asPath.startsWith('services' + path.sep)) return true;
-    if (asPath === path.join('lib', 'supabase')) return true;
+    if (asPath === path.join('lib', 'api')) return true;
   }
   return false;
 }
 
 describe('module boundaries', () => {
-  it('no module under src/lib imports a service or the Supabase client', () => {
+  it('no module under src/lib imports a service or the API client', () => {
     const offenders: string[] = [];
     for (const file of filesUnder(path.join(SRC, 'lib'), isSource)) {
       if (KNOWN_VIOLATIONS.has(relative(file))) continue;

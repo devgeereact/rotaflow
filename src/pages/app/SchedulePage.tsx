@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { usePersonalPreferences } from '@/hooks/usePersonalPreferences';
@@ -52,7 +52,7 @@ const DEFAULT_TZ = 'Europe/London';
 export function SchedulePage(): JSX.Element {
   const { orgId } = useOrg();
   const { canBuildRota } = usePermissions();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
   const isManager = canBuildRota;

@@ -1,7 +1,7 @@
 import { useEffect, useState, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { countMyUnreadNotifications } from '@/services/notificationService';
 import { reportError } from '@/lib/sentry';
 
@@ -14,7 +14,7 @@ const POLL_MS = 60_000;
  * badge is more infrastructure than this warrants right now.
  */
 export function NotificationBell(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {

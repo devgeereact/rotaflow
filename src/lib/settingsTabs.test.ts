@@ -103,14 +103,12 @@ describe('profileTabs', () => {
   });
 
   it('keeps the designed order', () => {
-    // NEW_STRUCTURE §21 lists Connected Accounts between Security and
-    // Sessions; the rest is the order the reference screens show.
+    // NEW_STRUCTURE §21's Connected Accounts and Sessions now live inside
+    // Clerk's account screen on Security; the rest is the reference order.
     expect(profileTabs().map((t) => t.label)).toEqual([
       'Profile',
       'Preferences',
       'Security',
-      'Connected Accounts',
-      'Sessions',
       'Activity',
       'Your data',
     ]);

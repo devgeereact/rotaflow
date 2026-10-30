@@ -1,261 +1,219 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath, seg } from '@/lib/api';
 import { slugify } from '@/lib/slug';
-import { mergeSettings } from '@/lib/orgPreferences';
-import type { Membership, Organisation, OrganisationUpdate } from '@/types';
-
-export interface MyMembership extends Membership {
-  organisation: Organisation;
-}
+import type { Organisation, OrganisationUpdate } from '@/types';
 
 /**
- * Re-exported from `src/lib/slug.ts`, where it moved so the pure unit suite
- * can use it without importing this module and, through it, the Supabase
- * client. Every existing caller imports it from here; both paths are the same
- * function.
+ * Re-exported from `src/lib/slug.ts`, where it moved so the pure unit suite can use it without importing this
+ * module. Every existing caller imports it from here; both paths are the same function.
  */
 export { slugify };
 
+/** A member row as `GET /orgs/{o}/members` returns it. Name and email are null for a staff-role caller. */
+export interface OrgMember {
+  id: string;
+  user_id: string;
+  role: 'owner' | 'manager' | 'staff';
+  status: string;
+  email: string | null;
+  full_name: string | null;
+  created_at: string;
+}
+
+interface OrgPayload {
+  org: Partial<Organisation> & {
+    id: string;
+    name: string;
+    slug: string;
+    settings: unknown;
+  };
+}
+
+/** The API answers the columns it serves; the rest of the old row shape gets neutral values. */
+function toOrganisation(o: OrgPayload['org']): Organisation {
+  return {
+    contact_email: null,
+    contact_phone: null,
+    country: 'United Kingdom',
+    created_at: '',
+    created_by: null,
+    industry: null,
+    is_demo: false,
+    last_activity_at: null,
+    onboarding_completed_at: null,
+    plan: 'starter',
+    status: 'active',
+    support_access_allowed: false,
+    suspended_at: null,
+    suspended_reason: null,
+    timezone: 'Europe/London',
+    trial_ends_at: null,
+    updated_at: '',
+    ...o,
+    settings: o.settings ?? {},
+  };
+}
+
 /**
- * Is this slug free?
- *
- * Cannot be answered with a SELECT: the RLS policy on `organisations` only
- * exposes orgs the caller belongs to, so a taken slug looks free to everyone
- * outside that org. Backed by a SECURITY DEFINER function that returns a
- * boolean and nothing else, so it cannot be used to enumerate tenants.
+ * Is this slug free? The API answers a boolean and nothing else, so it cannot be used to list tenants.
+ * `excludeOrgId` is the organisation being edited, whose own slug then reads as free.
  */
 export async function isSlugAvailable(
   slug: string,
-  /**
-   * An organisation to ignore — the one the caller is editing. Onboarding
-   * creates the org at the end of step 1, so re-entering that step re-checks a
-   * slug the caller now owns; without this it reports their own brand-new
-   * identifier as taken. The database verifies the caller actually owns this
-   * org before honouring it (0060), so it cannot be used to probe.
-   */
   excludeOrgId?: string | null,
 ): Promise<boolean> {
-  const { data, error } = await supabase.rpc('slug_available', {
-    p_slug: slug,
-    ...(excludeOrgId ? { p_exclude_org_id: excludeOrgId } : {}),
+  const r = await api.get<{ available: boolean }>('/slug-available', {
+    slug,
+    exclude: excludeOrgId ?? undefined,
   });
-  if (error) throw error;
-  return data === true;
+  return r.available === true;
 }
 
-/** Every active organisation the current user belongs to, with role. */
-export async function listMyMemberships(userId: string): Promise<MyMembership[]> {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('*, organisation:organisations(*)')
-    .eq('user_id', userId)
-    .eq('status', 'active');
-
-  if (error) throw error;
-  return data ?? [];
+/** Every member of the organisation (any status). */
+export async function listOrgMembers(orgId: string): Promise<OrgMember[]> {
+  const r = await api.get<{ members: OrgMember[] }>(orgPath(orgId, '/members'));
+  return r.members;
 }
 
 /**
- * Every active member's user_id, for fanning a notification out to the whole
- * org (e.g. a published announcement). Excludes the given user (typically the
- * author) so publishing something doesn't notify yourself about it.
+ * Every active member's user_id, for fanning a notification out to the whole org. Excludes the given user
+ * (typically the author) so publishing something doesn't notify yourself about it.
  */
 export async function listOrgMemberUserIds(
   orgId: string,
   excludeUserId?: string,
 ): Promise<string[]> {
-  let query = supabase
-    .from('memberships')
-    .select('user_id')
-    .eq('org_id', orgId)
-    .eq('status', 'active');
-  if (excludeUserId) query = query.neq('user_id', excludeUserId);
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []).map((row) => row.user_id);
+  return (await listOrgMembers(orgId))
+    .filter((m) => m.status === 'active' && m.user_id !== excludeUserId)
+    .map((m) => m.user_id);
 }
 
-/**
- * Every active member's `user_id` → `role`, for labelling who wrote something.
- * `profiles` is select-own-only under RLS, so a member's *name* comes from
- * `staff_profiles` (org-readable) and only their role comes from here.
- */
+/** Every active member's `user_id` → `role`, for labelling who wrote something. */
 export async function listOrgMemberRoles(orgId: string): Promise<Map<string, string>> {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('user_id, role')
-    .eq('org_id', orgId)
-    .eq('status', 'active');
-  if (error) throw error;
-  return new Map((data ?? []).map((row) => [row.user_id, row.role]));
+  return new Map(
+    (await listOrgMembers(orgId))
+      .filter((m) => m.status === 'active')
+      .map((m) => [m.user_id, m.role]),
+  );
 }
 
-/**
- * Owner-only (`memberships_write`, 0002). Demoting or promoting the last
- * owner is refused by `memberships_keep_one_owner_trigger` (0047), not by
- * this function — the database is the actual boundary, this just surfaces
- * whatever it raises.
- */
+async function membershipIdFor(orgId: string, userId: string): Promise<string> {
+  const m = (await listOrgMembers(orgId)).find((row) => row.user_id === userId);
+  if (!m) throw new Error('That person is not a member of this organisation.');
+  return m.id;
+}
+
+/** Owner only. An owner keeps the owner role: ownership moves with `transferOwnership`. */
 export async function updateMemberRole(
   orgId: string,
   userId: string,
   role: 'owner' | 'manager' | 'staff',
 ): Promise<void> {
-  const { error } = await supabase
-    .from('memberships')
-    .update({ role })
-    .eq('org_id', orgId)
-    .eq('user_id', userId);
-  if (error) throw error;
+  if (role === 'owner') {
+    await transferOwnership(orgId, userId);
+    return;
+  }
+  const mid = await membershipIdFor(orgId, userId);
+  await api.post(orgPath(orgId, `/members/${seg(mid)}/role`), { role });
 }
 
-/** Owner-only. Removing the last owner is refused the same way as demoting one (0047). */
+/** Owner only. Removing suspends the membership (kept for the audit trail); the last owner cannot be removed. */
 export async function removeMember(orgId: string, userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('memberships')
-    .delete()
-    .eq('org_id', orgId)
-    .eq('user_id', userId);
-  if (error) throw error;
+  const mid = await membershipIdFor(orgId, userId);
+  await api.post(orgPath(orgId, `/members/${seg(mid)}/status`), { status: 'suspended' });
 }
 
 export interface CreateOrganisationInput {
   name: string;
-  /** Defaults to a slugified name when omitted. */
+  /** Defaults to a server-chosen slug from the name when omitted. */
   slug?: string;
-  /**
-   * A real column (0023), not a `settings` key. It is what the admin console
-   * reads, and writing it into the jsonb instead is what left that column
-   * null for every tenant — see BUG-026.
-   */
   industry?: string | null;
-  /** Merged into the org's `settings` jsonb (size, locale…). */
+  /** Organisation preferences kept in `settings` (size, org type…). */
   settings?: Record<string, unknown>;
 }
 
 /**
- * Create a new organisation. The `on_org_created` trigger (0002_rotaflow.sql)
- * makes the creator an active owner automatically.
+ * Create a new organisation; the creator becomes its owner. Organisations are by invitation only, so outside a
+ * platform administrator this answers 403 `org_creation_closed` (docs/MERGE-TARGET.md section 6).
  */
 export async function createOrganisation(
   input: CreateOrganisationInput | string,
-  createdBy: string,
+  _createdBy?: string,
 ): Promise<Organisation> {
-  // Kept callable with a bare name so existing callers don't have to change.
   const normalised: CreateOrganisationInput =
     typeof input === 'string' ? { name: input } : input;
-
-  const { data, error } = await supabase
-    .from('organisations')
-    .insert({
-      name: normalised.name,
-      slug: normalised.slug?.trim() || slugify(normalised.name),
-      industry: normalised.industry ?? null,
-      settings: (normalised.settings ?? {}) as never,
-      created_by: createdBy,
-    })
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ org: { id: string } }>('/orgs', { name: normalised.name });
+  const id = r.org.id;
+  const patch: Record<string, unknown> = {};
+  if (normalised.slug?.trim()) patch.slug = normalised.slug.trim();
+  if (normalised.industry !== undefined) patch.industry = normalised.industry;
+  if (Object.keys(patch).length > 0) await api.post(orgPath(id), patch);
+  if (normalised.settings && Object.keys(normalised.settings).length > 0) {
+    await api.post(orgPath(id, '/settings'), normalised.settings);
+  }
+  return getOrganisation(id);
 }
 
 /** Fetch a single organisation by id, for a settings/edit form. */
 export async function getOrganisation(orgId: string): Promise<Organisation> {
-  const { data, error } = await supabase
-    .from('organisations')
-    .select('*')
-    .eq('id', orgId)
-    .single();
-
-  if (error) throw error;
-  return data;
+  const r = await api.get<OrgPayload>(orgPath(orgId));
+  return toOrganisation(r.org);
 }
 
-/** Patch an organisation. Owners only, enforced by RLS. */
+/** Patch an organisation's own columns (name, slug, industry, country, timezone, contact). Owner only. */
 export async function updateOrganisation(
   orgId: string,
   patch: OrganisationUpdate,
 ): Promise<Organisation> {
-  const { data, error } = await supabase
-    .from('organisations')
-    .update(patch)
-    .eq('id', orgId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const allowed = [
+    'name',
+    'slug',
+    'industry',
+    'country',
+    'timezone',
+    'contact_email',
+    'contact_phone',
+  ] as const;
+  const body: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in patch) body[key] = patch[key];
+  }
+  if ('settings' in patch && patch.settings && typeof patch.settings === 'object') {
+    await api.post(orgPath(orgId, '/settings'), patch.settings);
+  }
+  if (Object.keys(body).length > 0) await api.post(orgPath(orgId), body);
+  return getOrganisation(orgId);
 }
 
-/**
- * Merge keys into `settings` without clobbering the rest of the object.
- * Read-modify-write is safe here: onboarding is single-user, single-session.
- */
+/** Merge keys into `settings` without clobbering the rest: the API merges under a row lock. Owner only. */
 export async function mergeOrgSettings(
   orgId: string,
   patch: Record<string, unknown>,
 ): Promise<Organisation> {
-  const { data: current, error: readError } = await supabase
-    .from('organisations')
-    .select('settings')
-    .eq('id', orgId)
-    .single();
-
-  if (readError) throw readError;
-
-  // Keys not in `patch` are kept, retired ones included (see `mergeSettings`).
-  const merged = mergeSettings(current?.settings ?? null, patch);
-  return updateOrganisation(orgId, { settings: merged as never });
+  await api.post(orgPath(orgId, '/settings'), patch);
+  return getOrganisation(orgId);
 }
 
 /**
- * Has this organisation's setup wizard ever been finished? (GAP-015)
- *
- * The wizard creates the organisation at the end of step 1, so the org
- * existing says nothing about whether steps 2-4 were ever done. Before this
- * column, `/onboarding` bounced anybody with a membership to the dashboard —
- * which made locations, invitations and plan selection unreachable the moment
- * step 1 succeeded.
- *
- * Returns true when unknown. A failed read must not drop somebody back into a
- * wizard they finished weeks ago; the cost of the wrong answer here is
- * asymmetric.
+ * Has this organisation's setup wizard ever been finished? Returns true when unknown: a failed read must not drop
+ * somebody back into a wizard they finished weeks ago.
  */
 export async function isOnboardingComplete(orgId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('organisations')
-    .select('onboarding_completed_at')
-    .eq('id', orgId)
-    .maybeSingle();
-  if (error) return true;
-  return data?.onboarding_completed_at != null;
+  try {
+    return (await getOrganisation(orgId)).onboarding_completed_at != null;
+  } catch {
+    return true;
+  }
 }
 
-/** Stamp the wizard as finished. Owner only, idempotent (0094). */
+/** Stamp the wizard as finished. Owner only, idempotent. */
 export async function completeOnboarding(orgId: string): Promise<void> {
-  const { error } = await supabase.rpc('complete_onboarding', { p_org: orgId });
-  if (error) throw error;
+  await api.post(orgPath(orgId, '/onboarding/complete'));
 }
 
 /**
- * Hand the organisation to another active member (CAP-091, `0095`).
- *
- * Both halves happen in one transaction. Doing it by hand needs
- * promote-then-demote — `memberships_keep_one_owner` (0047) correctly refuses
- * the other order — which leaves two owners in between, and stays that way if
- * the second step is forgotten. An owner is the only role that can delete the
- * organisation or transfer it again, so that half-finished state is a
- * permissions decision nobody made.
- *
- * The outgoing owner becomes a manager. Losing your own access as a side
- * effect of handing over would be a surprise.
+ * Hand the organisation to another active member in one transaction. The outgoing owner becomes a manager.
  */
 export async function transferOwnership(orgId: string, toUserId: string): Promise<void> {
-  const { error } = await supabase.rpc('transfer_ownership', {
-    p_org: orgId,
-    p_to_user: toUserId,
-  });
-  if (error) throw error;
+  const mid = await membershipIdFor(orgId, toUserId);
+  await api.post(orgPath(orgId, '/transfer-ownership'), { membership_id: mid });
 }

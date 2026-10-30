@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { format } from 'date-fns';
 import { useOrg } from '@/hooks/useOrg';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { getMyStaffProfile, listActiveStaff } from '@/services/staffService';
@@ -65,7 +65,7 @@ function timezoneFor(shift: Shift, locations: Location[]): string {
 export function TimesheetsPage(): JSX.Element {
   const { orgId } = useOrg();
   const { canApprove } = usePermissions();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const isManager = canApprove;
 

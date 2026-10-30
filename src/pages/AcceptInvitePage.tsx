@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useOrg } from '@/hooks/useOrg';
 import { useToast } from '@/hooks/useToast';
 import {
@@ -31,7 +31,7 @@ const ROLE_LABELS: Record<string, string> = {
  */
 export function AcceptInvitePage(): JSX.Element {
   const { token = '' } = useParams<{ token: string }>();
-  const { user, loading: authLoading } = useSupabaseAuth();
+  const { user, loading: authLoading } = useAuth();
   const { refresh, switchOrg } = useOrg();
   const { showError, showSuccess } = useToast();
   const navigate = useNavigate();

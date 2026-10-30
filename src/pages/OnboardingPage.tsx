@@ -18,7 +18,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useOrg } from '@/hooks/useOrg';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import {
   createOrganisation,
@@ -317,7 +317,7 @@ function clearOnboardingDraft(): void {
  * therefore an update, and every later step is skippable.
  */
 export function OnboardingPage(): JSX.Element {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { loading, loadFailed, memberships, refresh, switchOrg } = useOrg();
   const { showError, showSuccess } = useToast();
   const navigate = useNavigate();
@@ -703,6 +703,37 @@ export function OnboardingPage(): JSX.Element {
           <Button className="w-full" onClick={() => void refresh()}>
             Retry
           </Button>
+        </Card>
+      </main>
+    );
+  }
+
+  // The no-organisation screen. Organisations are by invitation only (docs/MERGE-TARGET.md section 6): an account
+  // that belongs to none cannot start one here. An invited first owner arrives with a membership and resumes the
+  // wizard at step 2 above; everyone else needs an invitation.
+  if (memberships.length === 0 && orgId === null) {
+    return (
+      <main className="grid min-h-screen place-items-center px-6">
+        <Card className="w-full max-w-md text-center">
+          <h1 className="mb-1 font-display text-2xl text-content dark:text-content-dark">
+            You are not in an organisation yet
+          </h1>
+          <p className="mb-6 text-sm text-content-muted dark:text-content-muted-dark">
+            RotaFlow organisations are set up by invitation. Ask your employer to invite{' '}
+            {user?.email ?? 'your email address'}, then open the link in the invitation
+            email. Signed in with a different address? Sign out and use the invited one.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button className="w-full" onClick={() => void refresh()}>
+              I have been invited, check again
+            </Button>
+            <Link
+              to="/contact"
+              className="text-sm font-medium text-brand underline-offset-2 hover:underline"
+            >
+              Want RotaFlow for your organisation? Contact us
+            </Link>
+          </div>
         </Card>
       </main>
     );
