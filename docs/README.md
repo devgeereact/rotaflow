@@ -43,6 +43,8 @@ here wins, and the other should link to it rather than restate it.
 | What changed, per merged pull request                                                | `CHANGELOG.md`                                                                   |
 | Limitations a customer can see today                                                 | `KNOWN-ISSUES.md`                                                                |
 | Open work, owner actions and the approved 2026 decisions                             | `docs/SAAS.md` (the work queue at the top)                                       |
+| The SiteRelay merge: target product, role model, data model, module list, cut list   | `docs/MERGE-TARGET.md`                                                           |
+| The SiteRelay merge: slice order, per-module plan, risks, test strategy               | `docs/RESTRUCTURE-PLAN.md`                                                       |
 
 `docs/ACCOUNTS.md` also exists on the owner's machine. It is gitignored on purpose,
 because it holds a live production credential and this repository is public. It is

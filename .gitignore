@@ -96,3 +96,7 @@ graphify-out/
 .env
 .env.*
 !.env.example
+
+# Local scratch and recovery (global rule: gitignored)
+.local-test/
+.local-state/
