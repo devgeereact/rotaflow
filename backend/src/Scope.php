@@ -63,6 +63,15 @@ final class Scope
         }
     }
 
+    /** The caller's staff record id in this organisation (my_staff_profile_id), or null if they have none. */
+    public static function staffProfileId(\PDO $pdo, string $orgId, string $userId): ?string
+    {
+        $q = $pdo->prepare('SELECT id FROM staff_profiles WHERE org_id = ? AND user_id = ?');
+        $q->execute([$orgId, $userId]);
+        $r = $q->fetchColumn();
+        return $r === false ? null : (string) $r;
+    }
+
     public static function platformRole(\PDO $pdo, string $userId): ?string
     {
         $q = $pdo->prepare('SELECT role FROM platform_admins WHERE user_id = ? AND revoked_at IS NULL');

@@ -14,13 +14,14 @@ $routes = [];
 foreach (Modules::all($ctx) as $mod) {
     foreach ($mod->routes() as $r) { $routes[] = $r; }
 }
-check('the sweep found the route table', count($routes) >= 15, 'routes=' . count($routes));
+check('the sweep found the route table', count($routes) >= 40, 'routes=' . count($routes));
+check('every placeholder in every route is substituted, so no route is skipped by the router', array_reduce($routes, static fn (bool $ok, array $r): bool => $ok && preg_match('/^\/[a-z0-9\/{}\-]*$/', $r[1]) === 1, true));
 
 $org = call($api, 'olga', 'POST', '/orgs', ['name' => 'Sweep Org'])[1]['org']['id'];
 call($api, 'zed', 'POST', '/orgs', ['name' => 'Stranger Org']);
 call($api, 'nobody1', 'GET', '/me'); // a user with no organisation
 $u = '11111111-2222-4333-8444-555555555555';
-$subst = static fn (string $path, string $o): string => str_replace(['{o}', '{m}', '{i}', '{d}'], [$o, $u, $u, $u], $path);
+$subst = static fn (string $path, string $o): string => preg_replace_callback('/\{([a-z])\}/', static fn (array $m): string => $m[1] === 'o' ? $o : $u, $path);
 
 $bad = [];
 foreach ($routes as $r) {

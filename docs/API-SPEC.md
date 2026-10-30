@@ -377,3 +377,26 @@ routes, 600 per minute per person elsewhere, request body 64 KB.
 A role check uses the **effective** role: a live delegation lifts a staff member to manager (never owner) and
 ends the moment its lender stops being an owner or manager. Acts a delegate must never perform (lending cover
 onwards, transferring ownership, ending a colleague's cover) check the **real** role.
+
+### Slice S3: people and places
+
+All under `/api`, all org-scoped (`{o}`); `{l}` location, `{d}` department, `{t}` job title, `{s}` staff record,
+`{c}` emergency contact. Reads need membership. Writes need owner or manager unless stated, and are refused with
+`org_not_active` while the organisation is suspended.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/locations`, `POST /orgs/{o}/locations`, `POST .../{l}`, `POST .../{l}/delete` | read: member; write: owner, manager | Sites. Time zone must be IANA, latitude and longitude go together, radius 10 to 10000 m (a new bound). Deleting unplaces its departments |
+| `GET/POST /orgs/{o}/departments`, `POST .../{d}`, `POST .../{d}/delete` | read: member; write: owner, manager | Departments, optionally in a location of the same organisation. Deleting unplaces its staff |
+| `GET /orgs/{o}/job-titles`, `POST /orgs/{o}/job-titles`, `POST .../{t}`, `POST .../{t}/delete` | read: member; write: owner, or manager if the organisation allows | The catalogue. `title_exists` and `colour_in_use` 409. Renaming updates the text copy on staff |
+| `GET /orgs/{o}/staff[?active=1]`, `GET .../{s}` | member | Staff records. Payroll id, start date, phone, email and holiday allowance are `null` unless the caller is an owner or manager or the record is theirs. `location_ids` included |
+| `POST /orgs/{o}/staff` | owner, manager | Create. A matching member without a record is linked. `payroll_id_taken` 409 |
+| `POST /orgs/{o}/staff/{s}` | owner, manager; or the person for `phone` and `photo_url` only | Update. Other fields from the person: `self_edit_restricted` 403. Payroll id once set: `payroll_id_locked` 409 |
+| `POST /orgs/{o}/staff/{s}/locations` | owner, manager | `{location_ids}` replaces the set |
+| `GET/POST /orgs/{o}/staff/{s}/pay-rates` | read: owner, manager, the person; write: owner, manager | History of whole-pence hourly rates by start date. `rate_exists` 409 |
+| `GET/POST /orgs/{o}/staff/{s}/emergency-contacts`, `POST .../{c}`, `POST .../{c}/delete` | the person, owner, manager | Name and phone required |
+| `GET/POST /me/settings` | the person | Theme, time format, week start, digest frequency |
+| `POST /orgs/{o}/onboarding/complete` | owner | Idempotent; keeps the first time |
+| `GET /orgs/{o}/audit[?limit&before_id]` | owner: the organisation's trail; others: only their own acts | Platform-only entries never shown. Newest first, 1 to 100 per page |
+
+An invitation (`POST /orgs/{o}/invites`) may also carry `department_id` and `location_id`; accepting applies them to the person's staff record.

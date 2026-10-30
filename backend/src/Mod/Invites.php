@@ -57,6 +57,17 @@ final class Invites implements Module
         if (!in_array($role, ['manager', 'staff'], true)) {
             throw HttpError::invalid("Role must be 'manager' or 'staff'");
         }
+        $dept = Input::optStr($in, 'department_id', 36);
+        $loc = Input::optStr($in, 'location_id', 36);
+        foreach (['departments' => $dept, 'locations' => $loc] as $table => $id) {
+            if ($id !== null) {
+                $chk = $pdo->prepare("SELECT 1 FROM $table WHERE id = ? AND org_id = ?"); // $table is a literal key above
+                $chk->execute([$id, $o]);
+                if ($chk->fetchColumn() === false) {
+                    throw HttpError::invalid('That department or location is not in this organisation');
+                }
+            }
+        }
         $this->ctx->limits->hit('invite-org', $o, self::PER_ORG_PER_HOUR, 3600);
         $day = $pdo->prepare('SELECT COUNT(*) FROM invites WHERE email = ? AND created_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY)');
         $day->execute([$email]);
@@ -71,8 +82,8 @@ final class Invites implements Module
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $id = Db::uuid();
         try {
-            $pdo->prepare('INSERT INTO invites (id, org_id, email, role, token_hash, expires_at, invited_by) VALUES (?, ?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY), ?)')
-                ->execute([$id, $o, $email, $role, hash('sha256', $token), self::TTL_DAYS, $user['id']]);
+            $pdo->prepare('INSERT INTO invites (id, org_id, email, role, token_hash, expires_at, invited_by, department_id, location_id) VALUES (?, ?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY), ?, ?, ?)')
+                ->execute([$id, $o, $email, $role, hash('sha256', $token), self::TTL_DAYS, $user['id'], $dept, $loc]);
         } catch (\PDOException $e) {
             if ($e->getCode() === '23000') { // invites_pending: one live invitation per address per organisation
                 throw HttpError::conflict('invite_pending', 'That address already has a pending invitation');
@@ -140,7 +151,10 @@ final class Invites implements Module
                 $pdo->prepare("UPDATE memberships SET role = ?, status = 'active' WHERE id = ?")->execute([$inv['role'], $mid]);
             }
             $pdo->prepare('UPDATE invites SET accepted_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$inv['id']]);
-            // S3 links or creates the staff record here, as accept_invite did.
+            Staff::linkOnAccept($pdo, $inv['org_id'], $user['id'], $user['email'], $inv['department_id'], $inv['location_id']);
+            if ($inv['role'] === 'owner') {
+                Staff::ensureForOwner($pdo, $inv['org_id'], $user['id'], $user['email']); // the first owner is also on the rota
+            }
             Audit::log($pdo, $inv['org_id'], $user['id'], 'invite.accepted', 'invites', $inv['id'], ['role' => $inv['role']], 'info', 'org', $ip);
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -160,7 +174,7 @@ final class Invites implements Module
             throw new HttpError(404, 'invite_invalid', 'This invitation is not valid');
         }
         $q = $this->ctx->pdo->prepare(
-            'SELECT i.id, i.org_id, i.email, i.role, i.expires_at, o.name AS org_name
+            'SELECT i.id, i.org_id, i.email, i.role, i.expires_at, i.department_id, i.location_id, o.name AS org_name
                FROM invites i JOIN organisations o ON o.id = i.org_id
               WHERE i.token_hash = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > UTC_TIMESTAMP() AND o.status <> \'archived\''
             . ($lock ? ' FOR UPDATE' : '')

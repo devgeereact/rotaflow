@@ -65,7 +65,7 @@ final class Orgs implements Module
                 ->execute([$id, $name, $slug, $user['id']]);
             $pdo->prepare("INSERT INTO memberships (id, org_id, user_id, role, status) VALUES (?, ?, ?, 'owner', 'active')")->execute([$mid, $id, $user['id']]);
             Audit::log($pdo, $id, $user['id'], 'org.created', 'organisations', $id, [], 'info', 'org', $ip);
-            // S3 adds the founder's staff record here, as handle_new_org did.
+            Staff::ensureForOwner($pdo, $id, $user['id'], $user['email']);
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
