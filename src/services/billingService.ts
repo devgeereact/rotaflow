@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { api, ApiError, orgPath } from '@/lib/api';
+import { listPlans as listPlansFromApi } from '@/services/billingCheckoutService';
 import {
   clampPageSize,
   fetchAllPages,
@@ -25,9 +26,42 @@ export type Plan = Tables<'plans'>;
  */
 
 export async function listPlans(): Promise<Plan[]> {
-  const { data, error } = await supabase.from('plans').select('*').order('sort_order');
-  if (error) throw error;
-  return data ?? [];
+  return listPlansFromApi();
+}
+
+/** The platform invoice list, one page (platform owner, admin or finance). */
+async function invoicePage(
+  query: InvoiceQuery,
+  limit: number,
+  offset: number,
+): Promise<{ rows: InvoiceDirectoryRow[]; total: number }> {
+  const r = await api.get<{ invoices: Record<string, unknown>[]; total: number }>(
+    '/platform/invoices',
+    {
+      q: query.search?.trim() || undefined,
+      status: query.status?.length === 1 ? query.status[0] : undefined,
+      currency: query.currency?.length === 1 ? query.currency[0] : undefined,
+      org_id: query.orgIds?.length === 1 ? query.orgIds[0] : undefined,
+      from: query.from ?? undefined,
+      to: query.to ?? undefined,
+      limit,
+      offset,
+    },
+  );
+  // The API filters on one status, currency and organisation at a time; several are narrowed here.
+  const rows = r.invoices
+    .map(toInvoiceRow)
+    .filter(
+      (row) =>
+        (!query.status ||
+          query.status.length <= 1 ||
+          query.status.includes(row.status)) &&
+        (!query.currency ||
+          query.currency.length <= 1 ||
+          query.currency.includes(row.currency)) &&
+        (!query.orgIds || query.orgIds.length <= 1 || query.orgIds.includes(row.org_id)),
+    );
+  return { rows, total: r.total };
 }
 
 /**
@@ -38,24 +72,17 @@ export async function listPlans(): Promise<Plan[]> {
  * and then is not.
  */
 export async function listInvoices(limit = 300): Promise<Invoice[]> {
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('*')
-    .order('issued_on', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+  const out: Invoice[] = [];
+  for (let offset = 0; out.length < limit; offset += 200) {
+    const page = await invoicePage({}, Math.min(200, limit - out.length), offset);
+    out.push(...page.rows);
+    if (page.rows.length === 0 || out.length >= page.total) break;
+  }
+  return out;
 }
 
 export async function listOrgInvoices(orgId: string, limit = 24): Promise<Invoice[]> {
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('issued_on', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+  return (await invoicePage({ orgIds: [orgId] }, Math.min(200, limit), 0)).rows;
 }
 
 /**
@@ -72,47 +99,63 @@ export async function listOwnerInvoices(
   orgId: string,
   limit = OWNER_INVOICE_LIMIT,
 ): Promise<OwnerInvoiceRow[]> {
-  const { data, error } = await supabase
-    .from('invoices')
-    .select(
-      'id, number, issued_on, amount_pence, currency, status, hosted_invoice_url, invoice_pdf',
-    )
-    .eq('org_id', orgId)
-    .neq('status', 'draft')
-    .order('issued_on', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+  // Owner only. The document links are fetched fresh from Stripe on demand (refreshInvoiceLinks), so the list
+  // says only whether there are any.
+  const r = await api.get<{
+    invoices: {
+      id: string;
+      number: string;
+      issued_on: string;
+      amount_pence: number | string;
+      currency: string;
+      status: string;
+      has_links: boolean | number;
+    }[];
+  }>(orgPath(orgId, '/billing'));
+  return r.invoices
+    .filter((i) => i.status !== 'draft')
+    .slice(0, limit)
+    .map((i) => ({
+      id: i.id,
+      number: i.number,
+      issued_on: i.issued_on,
+      amount_pence: Number(i.amount_pence),
+      currency: i.currency,
+      status: i.status,
+      hosted_invoice_url: i.has_links ? 'on-request' : null,
+      invoice_pdf: i.has_links ? 'on-request' : null,
+    }));
 }
 
 export async function setInvoiceStatus(
-  invoiceId: string,
-  status: 'paid' | 'past_due' | 'refunded' | 'void',
-  reason?: string,
+  _invoiceId: string,
+  _status: 'paid' | 'past_due' | 'refunded' | 'void',
+  _reason?: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('set_invoice_status', {
-    p_invoice: invoiceId,
-    p_status: status,
-    p_reason: reason ?? undefined,
-  });
-  if (error) throw error;
+  // Invoices are created and updated by Stripe (the signed webhook); there is no manual path on the API.
+  return Promise.reject(
+    new ApiError(
+      405,
+      'not_available',
+      'Invoices are issued and updated by Stripe, not by hand.',
+    ),
+  );
 }
 
 export async function issueInvoice(
-  orgId: string,
-  periodStart: string,
-  periodEnd: string,
-  amountPence?: number,
+  _orgId: string,
+  _periodStart: string,
+  _periodEnd: string,
+  _amountPence?: number,
 ): Promise<string> {
-  const { data, error } = await supabase.rpc('issue_invoice', {
-    p_org: orgId,
-    p_period_start: periodStart,
-    p_period_end: periodEnd,
-    p_amount_pence: amountPence ?? undefined,
-  });
-  if (error) throw error;
-  return data;
+  // Invoices are created and updated by Stripe (the signed webhook); there is no manual path on the API.
+  return Promise.reject(
+    new ApiError(
+      405,
+      'not_available',
+      'Invoices are issued and updated by Stripe, not by hand.',
+    ),
+  );
 }
 
 /**
@@ -123,9 +166,14 @@ export async function issueInvoice(
  * Null when the org has no subscription row.
  */
 export async function getOrgMrrPence(orgId: string): Promise<number | null> {
-  const { data, error } = await supabase.rpc('subscription_mrr_pence', { p_org: orgId });
-  if (error) throw error;
-  return data;
+  // The plan's list price while the subscription is billing (active or past due), as the summary counts it.
+  const r = await api.get<{ organisation: { plan: string; sub_status: string | null } }>(
+    `/platform/orgs/${encodeURIComponent(orgId)}`,
+  );
+  const o = r.organisation;
+  if (!o.sub_status || !['active', 'past_due'].includes(o.sub_status)) return null;
+  const plan = (await listPlans()).find((p) => p.code === o.plan);
+  return plan ? plan.monthly_price_pence : null;
 }
 
 /**
@@ -162,9 +210,10 @@ export interface BillingSummaryRow {
 }
 
 export async function getBillingSummary(): Promise<BillingSummaryRow[]> {
-  const { data, error } = await supabase.rpc('platform_billing_summary');
-  if (error) throw error;
-  return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
+  const r = await api.get<{ summary: Record<string, unknown>[] }>(
+    '/platform/billing/summary',
+  );
+  return r.summary.map((row) => ({
     currency: text(row.currency) ?? 'GBP',
     mrrPence: Number(row.mrr_pence ?? 0),
     payingOrgs: Number(row.paying_orgs ?? 0),
@@ -198,37 +247,6 @@ export interface InvoiceQuery {
   pageSize?: number;
 }
 
-interface InvoiceRpcArgs {
-  p_search?: string;
-  p_status?: string[];
-  p_org?: string[];
-  p_currency?: string[];
-  p_from?: string;
-  p_to?: string;
-  p_sort: string;
-  p_direction: string;
-  p_limit: number;
-  p_offset: number;
-}
-
-function invoiceArgs(query: InvoiceQuery, limit: number, offset: number): InvoiceRpcArgs {
-  const list = (values: readonly string[] | undefined): string[] | undefined =>
-    values && values.length > 0 ? [...values] : undefined;
-  return {
-    p_search: query.search?.trim() ? query.search.trim() : undefined,
-    p_status: list(query.status),
-    p_org: list(query.orgIds),
-    p_currency: list(query.currency),
-    p_from: query.from ?? undefined,
-    p_to: query.to ?? undefined,
-    p_sort: query.sort ?? 'issued_on',
-    p_direction: query.direction ?? 'desc',
-    p_limit: limit,
-    p_offset: offset,
-  };
-}
-
-/** A PostgREST JSON value as a string, or null. Never `[object Object]`. */
 function text(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   return typeof value === 'string'
@@ -273,17 +291,22 @@ export async function listInvoiceDirectory(
 ): Promise<ServerPage<InvoiceDirectoryRow>> {
   const pageSize = clampPageSize(query.pageSize);
   const page = Math.max(1, Math.trunc(query.page ?? 1));
-  const { data, error } = await supabase.rpc(
-    'platform_invoice_directory',
-    invoiceArgs(query, pageSize, offsetFor(page, pageSize)),
-  );
-  if (error) throw error;
-  const rows = (data ?? []) as unknown as Record<string, unknown>[];
-  return serverPage({
-    rows: rows.map(toInvoiceRow),
-    total: rows.length === 0 ? 0 : Number(rows[0]?.total_count ?? 0),
-    page,
-    pageSize,
+  const r = await invoicePage(query, pageSize, offsetFor(page, pageSize));
+  return serverPage({ rows: sortRows(r.rows, query), total: r.total, page, pageSize });
+}
+
+/** The API orders by issue date, newest first; any other order the console asks for is applied to the page. */
+function sortRows(
+  rows: InvoiceDirectoryRow[],
+  query: InvoiceQuery,
+): InvoiceDirectoryRow[] {
+  const key = (query.sort ?? 'issued_on') as keyof InvoiceDirectoryRow;
+  const dir = query.direction === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const x = a[key];
+    const y = b[key];
+    if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
+    return String(x ?? '').localeCompare(String(y ?? '')) * dir;
   });
 }
 
@@ -291,16 +314,7 @@ export async function listInvoiceDirectory(
 export async function listInvoiceDirectoryAll(
   query: InvoiceQuery = {},
 ): Promise<FetchAllResult<InvoiceDirectoryRow>> {
-  return fetchAllPages<InvoiceDirectoryRow>(async (offset, limit) => {
-    const { data, error } = await supabase.rpc(
-      'platform_invoice_directory',
-      invoiceArgs(query, limit, offset),
-    );
-    if (error) throw error;
-    const rows = (data ?? []) as unknown as Record<string, unknown>[];
-    return {
-      rows: rows.map(toInvoiceRow),
-      total: rows.length === 0 ? 0 : Number(rows[0]?.total_count ?? 0),
-    };
-  });
+  return fetchAllPages<InvoiceDirectoryRow>((offset, limit) =>
+    invoicePage(query, limit, offset),
+  );
 }

@@ -1,73 +1,60 @@
-import { supabase } from '@/lib/supabase';
-import { env } from '@/lib/env';
-import type { CalendarFeedRow } from '@/lib/calendarFeed';
+import { API_BASE_URL, api, orgPath } from '@/lib/api';
+import { appUrlFor } from '@/lib/appOrigin';
+import { CALENDAR_FEED_KEY_PREFIX, type CalendarFeedRow } from '@/lib/calendarFeed';
 
 /**
- * The subscribable calendar feed for the signed-in person's own rota
- * (docs/SAAS.md CAP-063, `0099`).
- *
- * ## Why this is not the ICS download
- *
- * `src/lib/ics.ts` produces a file, and a file is a snapshot: import it, have
- * the rota amended, and the phone still shows last week's shifts —
- * confidently, with a reminder. `docs/PRODUCT-SPEC.md` has claimed a "calendar
- * subscription" throughout, and this is the thing that makes that true. Both
- * are kept: a download is right for "send me this week", a subscription is
- * right for "keep my calendar current".
- *
- * ## The URL is the credential
- *
- * A calendar client cannot present a header, so the token lives in the query
- * string. It reads one person's own published shifts and nothing else, and it
- * is rotatable from the same screen that shows it ("Reset link" on My rota).
- * Treat it as something worth keeping private, not as a password.
- *
- * A link no calendar reads for 90 days stops working (GAP-052, `0158`);
- * `calendarFeedState` in `src/lib/calendarFeed.ts` decides that from the row
- * this returns, because the database only marks it revoked on the next read.
+ * A person's own calendar subscription (CAP-063). The API issues a token, keeps only its hash, revokes the previous
+ * one in the same transaction, and switches an unused feed off after 90 days. The feed itself is the public
+ * `GET /api/ics?token=…` route.
  */
 
-/** Null when the person has no live feed — the normal state until they ask. */
-export async function getMyCalendarFeed(orgId: string): Promise<CalendarFeedRow | null> {
-  const { data, error } = await supabase
-    .from('calendar_feed_tokens')
-    .select('token, created_at, last_used_at')
-    .eq('org_id', orgId)
-    .is('revoked_at', null)
-    .maybeSingle();
-  if (error) throw error;
-  return data ?? null;
+function remember(orgId: string, token: string | null): void {
+  try {
+    if (token) window.localStorage.setItem(CALENDAR_FEED_KEY_PREFIX + orgId, token);
+    else window.localStorage.removeItem(CALENDAR_FEED_KEY_PREFIX + orgId);
+  } catch {
+    // Storage unavailable: the link is simply not shown again on this device.
+  }
 }
 
-/**
- * Issue a feed, or rotate an existing one.
- *
- * Creating and rotating are the same call on purpose: `0099` revokes any live
- * token and issues a new one in one transaction, so somebody who has shared a
- * URL by accident fixes it with the same button they used to get it.
- */
+function remembered(orgId: string): string {
+  try {
+    return window.localStorage.getItem(CALENDAR_FEED_KEY_PREFIX + orgId) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** The live feed, or null. `token` is empty when the link was issued on another device. */
+export async function getMyCalendarFeed(orgId: string): Promise<CalendarFeedRow | null> {
+  const r = await api.get<{
+    active: boolean;
+    created_at: string | null;
+    last_used_at: string | null;
+  }>(orgPath(orgId, '/calendar-feed'));
+  if (!r.active || !r.created_at) {
+    remember(orgId, null);
+    return null;
+  }
+  return {
+    token: remembered(orgId),
+    created_at: r.created_at,
+    last_used_at: r.last_used_at,
+  };
+}
+
 export async function issueMyCalendarFeedToken(orgId: string): Promise<string> {
-  const { data, error } = await supabase.rpc('issue_calendar_feed_token', {
-    p_org: orgId,
-  });
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ token: string }>(orgPath(orgId, '/calendar-feed/issue'));
+  remember(orgId, r.token);
+  return r.token;
 }
 
 export async function revokeMyCalendarFeedToken(orgId: string): Promise<void> {
-  const { error } = await supabase.rpc('revoke_calendar_feed_token', {
-    p_org: orgId,
-  });
-  if (error) throw error;
+  await api.post(orgPath(orgId, '/calendar-feed/revoke'));
+  remember(orgId, null);
 }
 
-/**
- * The URL a calendar subscribes to.
- *
- * Built from `VITE_SUPABASE_URL` rather than stored, so it cannot go stale
- * against a project that moves, and so the token is the only thing the
- * database holds.
- */
+/** The subscription URL a calendar app polls: absolute, on this origin. */
 export function calendarFeedUrl(token: string): string {
-  return `${env.supabaseUrl}/functions/v1/calendar-feed?token=${token}`;
+  return appUrlFor(`${API_BASE_URL}/ics?token=${encodeURIComponent(token)}`);
 }

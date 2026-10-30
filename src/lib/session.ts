@@ -1,4 +1,5 @@
 import { WORK_MODE_KEY_PREFIX } from '@/lib/workMode';
+import { CALENDAR_FEED_KEY_PREFIX } from '@/lib/calendarFeed';
 import { reportError } from '@/lib/sentry';
 
 /**
@@ -51,7 +52,10 @@ const TENANT_STORAGE_KEYS: readonly string[] = [ACTIVE_ORG_STORAGE_KEY];
  * (`rotaflow:workMode:<user>:<org>`), so the only way to remove the outgoing
  * user's entries is to sweep by prefix.
  */
-const TENANT_STORAGE_PREFIXES: readonly string[] = [WORK_MODE_KEY_PREFIX];
+const TENANT_STORAGE_PREFIXES: readonly string[] = [
+  WORK_MODE_KEY_PREFIX,
+  CALENDAR_FEED_KEY_PREFIX,
+];
 
 /**
  * Purge every client-side store that holds data belonging to the outgoing

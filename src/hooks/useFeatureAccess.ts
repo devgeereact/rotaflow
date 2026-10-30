@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { api, orgPath } from '@/lib/api';
 import { useOrg } from '@/hooks/useOrg';
 
 /**
@@ -45,18 +45,17 @@ export function useFeatureAccess(): FeatureAccess {
     }
     setLoading(true);
     void (async () => {
-      const { data, error } = await supabase.rpc('my_feature_access', { p_org: orgId });
-      if (!active) return;
-      if (error) {
+      try {
+        const r = await api.get<{
+          features: { feature: string; source: 'plan' | 'flag' }[];
+        }>(orgPath(orgId, '/features'));
+        if (!active) return;
+        setGranted(new Map(r.features.map((row) => [row.feature, row.source])));
+      } catch {
+        if (!active) return;
         // Deliberately silent and closed. This is not an error a user can act
         // on, and reporting it on every page load would bury real ones.
         setGranted(new Map());
-      } else {
-        setGranted(
-          new Map(
-            (data ?? []).map((row) => [row.feature, row.source as 'plan' | 'flag']),
-          ),
-        );
       }
       setLoading(false);
     })();

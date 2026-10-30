@@ -1,15 +1,31 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, isApiCode, orgPath, seg } from '@/lib/api';
+import type { MePayload } from '@/context/AuthContext';
 import type { Announcement, AnnouncementInsert, AnnouncementRead } from '@/types';
 
 /** Every announcement in the org, newest first. RLS (org-shared) scopes this to members. */
+type ApiAnnouncement = Omit<Announcement, 'org_id' | 'updated_at'> & {
+  reads_count?: number;
+  read_by_me?: boolean | number;
+};
+
+async function fetchAnnouncements(orgId: string): Promise<ApiAnnouncement[]> {
+  const r = await api.get<{ announcements: ApiAnnouncement[] }>(
+    orgPath(orgId, '/announcements'),
+  );
+  return r.announcements;
+}
+
+function toAnnouncement(orgId: string, a: ApiAnnouncement): Announcement {
+  const row: ApiAnnouncement = { ...a };
+  delete row.reads_count;
+  delete row.read_by_me;
+  return { ...row, org_id: orgId, updated_at: a.created_at, urgent: Boolean(a.urgent) };
+}
+
 export async function listAnnouncements(orgId: string): Promise<Announcement[]> {
-  const { data, error } = await supabase
-    .from('announcements')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return (await fetchAnnouncements(orgId))
+    .map((a) => toAnnouncement(orgId, a))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 /**
@@ -24,43 +40,74 @@ export async function listAnnouncements(orgId: string): Promise<Announcement[]> 
 export async function createAnnouncement(
   input: AnnouncementInsert,
 ): Promise<Announcement> {
-  const { data, error } = await supabase
-    .from('announcements')
-    .insert({ ...input, published_at: new Date().toISOString() })
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+  // Posting publishes at once (the API notifies the audience on publish).
+  const r = await api.post<{ id: string }>(orgPath(input.org_id, '/announcements'), {
+    scope: input.scope ?? 'org',
+    location_id: input.location_id ?? null,
+    department_id: input.department_id ?? null,
+    title: input.title,
+    body: input.body,
+    urgent: input.urgent ?? false,
+    publish: true,
+  });
+  const found = (await listAnnouncements(input.org_id)).find((a) => a.id === r.id);
+  if (!found) throw new Error('Announcement not found');
+  return found;
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {
-  const { error } = await supabase.from('announcements').delete().eq('id', id);
-  if (error) throw error;
+  await api.post(activeOrgPath(`/announcements/${seg(id)}/delete`));
 }
 
 /** Every read receipt in the org, one query, for the read-progress bar (0046). */
 export async function listAnnouncementReads(orgId: string): Promise<AnnouncementRead[]> {
-  const { data, error } = await supabase
-    .from('announcement_reads')
-    .select('*')
-    .eq('org_id', orgId);
-  if (error) throw error;
-  return data ?? [];
+  const list = await fetchAnnouncements(orgId);
+  const out: AnnouncementRead[] = [];
+  try {
+    // An owner or manager reads every receipt, one announcement at a time.
+    for (const a of list) {
+      const r = await api.get<{ reads: { staff_profile_id: string; read_at: string }[] }>(
+        orgPath(orgId, `/announcements/${seg(a.id)}/reads`),
+      );
+      for (const read of r.reads) {
+        out.push({
+          id: `${a.id}:${read.staff_profile_id}`,
+          org_id: orgId,
+          announcement_id: a.id,
+          ...read,
+        });
+      }
+    }
+    return out;
+  } catch (error) {
+    if (!isApiCode(error, 'forbidden')) throw error;
+  }
+  // Anyone else sees only their own receipts, which the list already carries.
+  const me = await api.get<MePayload>('/me');
+  const staff = await api.get<{ staff: { id: string; user_id: string | null }[] }>(
+    orgPath(orgId, '/staff'),
+  );
+  const mine = staff.staff.find((s) => s.user_id === me.user.id);
+  if (!mine) return [];
+  return list
+    .filter((a) => Boolean(a.read_by_me))
+    .map((a) => ({
+      id: `${a.id}:${mine.id}`,
+      org_id: orgId,
+      announcement_id: a.id,
+      staff_profile_id: mine.id,
+      read_at: a.created_at,
+    }));
 }
 
 /** A no-op if already read: `announcement_reads` is unique per (announcement, staff). */
 export async function markAnnouncementRead(
   orgId: string,
   announcementId: string,
-  staffProfileId: string,
+  _staffProfileId: string,
 ): Promise<void> {
-  const { error } = await supabase.from('announcement_reads').insert({
-    org_id: orgId,
-    announcement_id: announcementId,
-    staff_profile_id: staffProfileId,
-  });
-  // A duplicate insert (already marked read) is expected, not a failure.
-  if (error && error.code !== '23505') throw error;
+  // Idempotent on the API: reading twice records one receipt.
+  await api.post(orgPath(orgId, `/announcements/${seg(announcementId)}/read`));
 }
 
 /**
@@ -78,9 +125,8 @@ export async function markAnnouncementRead(
  * Returns how many people it will actually reach.
  */
 export async function remindAnnouncementUnread(announcementId: string): Promise<number> {
-  const { data, error } = await supabase.rpc('remind_announcement_unread', {
-    p_announcement_id: announcementId,
-  });
-  if (error) throw error;
-  return data ?? 0;
+  const r = await api.post<{ reminded: number }>(
+    activeOrgPath(`/announcements/${seg(announcementId)}/remind`),
+  );
+  return r.reminded;
 }

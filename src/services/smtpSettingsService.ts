@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath } from '@/lib/api';
 import type {
   OrgSmtpSettingsInsert,
   OrgSmtpSettingsSafe,
@@ -13,14 +13,29 @@ import type {
 export async function getOrgSmtpSettings(
   orgId: string,
 ): Promise<OrgSmtpSettingsSafe | null> {
-  const { data, error } = await supabase
-    .from('org_smtp_settings_safe')
-    .select('*')
-    .eq('org_id', orgId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  // The password is never returned; the API says only that one is stored.
+  const r = await api.get<{
+    smtp: {
+      smtp_host: string;
+      smtp_port: number | string;
+      smtp_user: string;
+      from_email: string;
+      from_name: string | null;
+      verified_at: string | null;
+    } | null;
+  }>(orgPath(orgId, '/smtp'));
+  if (!r.smtp) return null;
+  return {
+    org_id: orgId,
+    created_at: null,
+    updated_at: null,
+    smtp_host: r.smtp.smtp_host,
+    smtp_port: Number(r.smtp.smtp_port),
+    smtp_user: r.smtp.smtp_user,
+    from_email: r.smtp.from_email,
+    from_name: r.smtp.from_name,
+    verified_at: r.smtp.verified_at,
+  };
 }
 
 /**
@@ -37,12 +52,9 @@ export async function getOrgSmtpSettings(
  * organisations they own, which is what they would see anyway.
  */
 export async function listAllSmtpSettings(): Promise<OrgSmtpSettingsSafe[]> {
-  const { data, error } = await supabase
-    .from('org_smtp_settings_safe')
-    .select('*')
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  // The platform-wide list of organisations' mail accounts has no API route: each organisation's account is its
+  // owner's. The integrations console that read it is on the cut list (docs/MERGE-TARGET.md section 5).
+  return Promise.resolve([]);
 }
 
 /**
@@ -55,10 +67,15 @@ export async function listAllSmtpSettings(): Promise<OrgSmtpSettingsSafe[]> {
  * confirmation.
  */
 export async function saveOrgSmtpSettings(input: OrgSmtpSettingsInsert): Promise<void> {
-  const { error } = await supabase
-    .from('org_smtp_settings')
-    .upsert(input, { onConflict: 'org_id' });
-  if (error) throw error;
+  // Encrypted at rest by the API; changing the host, port, user or password clears `verified_at`.
+  await api.post(orgPath(input.org_id, '/smtp'), {
+    smtp_host: input.smtp_host,
+    smtp_port: input.smtp_port,
+    smtp_user: input.smtp_user,
+    smtp_pass: input.smtp_pass,
+    from_email: input.from_email,
+    from_name: input.from_name ?? null,
+  });
 }
 
 /**
@@ -74,17 +91,19 @@ export async function updateOrgSmtpFields(
   orgId: string,
   patch: Omit<OrgSmtpSettingsUpdate, 'smtp_pass' | 'org_id' | 'verified_at'>,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('org_smtp_settings')
-    .update({ ...patch, verified_at: null })
-    .eq('org_id', orgId);
-  if (error) throw error;
+  // Sending no password keeps the one already stored.
+  await api.post(orgPath(orgId, '/smtp'), {
+    smtp_host: patch.smtp_host,
+    smtp_port: patch.smtp_port,
+    smtp_user: patch.smtp_user,
+    from_email: patch.from_email,
+    from_name: patch.from_name ?? null,
+  });
 }
 
 /** Remove an org's SMTP configuration. Falls back to the global sender. */
 export async function deleteOrgSmtpSettings(orgId: string): Promise<void> {
-  const { error } = await supabase.from('org_smtp_settings').delete().eq('org_id', orgId);
-  if (error) throw error;
+  await api.post(orgPath(orgId, '/smtp/delete'));
 }
 
 export interface TestSmtpResult {
@@ -100,10 +119,10 @@ export interface TestSmtpResult {
  * the caller should show inline, not treat as unexpected.
  */
 export async function testOrgSmtpSettings(orgId: string): Promise<TestSmtpResult> {
-  const result = await supabase.functions.invoke<TestSmtpResult>('test-smtp', {
-    body: { orgId },
-  });
-  if (result.error) throw result.error;
-  if (!result.data) throw new Error('test-smtp returned no data');
-  return result.data;
+  const r = await api.post<{ ok: boolean; error?: string; sent_to?: string }>(
+    orgPath(orgId, '/smtp/test'),
+  );
+  return r.ok
+    ? { ok: true, sentTo: r.sent_to }
+    : { ok: false, error: r.error ?? 'The test email was not sent.' };
 }

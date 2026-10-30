@@ -1,52 +1,41 @@
-import { supabase } from '@/lib/supabase';
+import { api, currentOrgId, orgPath } from '@/lib/api';
 import type { Notification } from '@/types';
 
 /**
- * Read and mark-read only. There is no create/send function here on purpose:
- * `notifications` has no client insert policy (0002_rotaflow.sql). Creating
- * one is supabase/functions/send-notification's job, invoked via
- * the notification outbox (0069, 0087), never a direct table write from this app.
+ * The signed-in person's in-app notifications in the active organisation. The API answers only the caller's own,
+ * so `userId` is kept for the callers' shape and never sent.
  */
-export async function listMyNotifications(userId: string): Promise<Notification[]> {
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (error) throw error;
-  return data ?? [];
+
+interface NotificationPage {
+  notifications: Omit<Notification, 'org_id' | 'user_id' | 'updated_at'>[];
+  unread_count: number;
 }
 
-/**
- * True unread count, not `listMyNotifications(...).filter(n => !n.read_at).length`
- * — that list is capped at 50 rows, so a person with more unread than that
- * had the header badge silently undercount. `head: true` asks Postgres for
- * the count without returning (or capping) any rows.
- */
-export async function countMyUnreadNotifications(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .is('read_at', null);
-  if (error) throw error;
-  return count ?? 0;
+export async function listMyNotifications(userId: string): Promise<Notification[]> {
+  const orgId = currentOrgId();
+  const r = await api.get<NotificationPage>(orgPath(orgId, '/notifications'), {
+    limit: 50,
+  });
+  return r.notifications.map((n) => ({
+    ...n,
+    org_id: orgId,
+    user_id: userId,
+    updated_at: n.created_at,
+  }));
+}
+
+export async function countMyUnreadNotifications(_userId: string): Promise<number> {
+  const r = await api.get<NotificationPage>(orgPath(currentOrgId(), '/notifications'), {
+    limit: 1,
+    unread: '1',
+  });
+  return r.unread_count;
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
+  await api.post(orgPath(currentOrgId(), '/notifications/read'), { ids: [id] });
 }
 
-export async function markAllNotificationsRead(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .is('read_at', null);
-  if (error) throw error;
+export async function markAllNotificationsRead(_userId: string): Promise<void> {
+  await api.post(orgPath(currentOrgId(), '/notifications/read'), { all: true });
 }

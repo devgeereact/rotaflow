@@ -222,11 +222,16 @@ export function SchedulePage(): JSX.Element {
     if (!orgId) return;
     try {
       const current = calendarFeedState(await getMyCalendarFeed(orgId));
+      // A live link issued on another device cannot be shown here (only its hash is kept), so a new one is issued.
       const token =
-        current.kind === 'live' ? current.token : await issueMyCalendarFeedToken(orgId);
+        current.kind === 'live' && current.token
+          ? current.token
+          : await issueMyCalendarFeedToken(orgId);
       await navigator.clipboard.writeText(calendarFeedUrl(token));
       setFeed(
-        current.kind === 'live' ? current : { kind: 'live', token, lastUsedAt: null },
+        current.kind === 'live' && current.token
+          ? current
+          : { kind: 'live', token, lastUsedAt: null },
       );
       showSuccess(
         'Calendar link copied. Add it in your calendar app as a subscription — it updates itself when the rota changes.',

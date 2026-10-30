@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, ApiError, orgPath } from '@/lib/api';
 
 export interface AiRotaRequest {
   orgId: string;
@@ -91,41 +91,25 @@ const EXPLAINED_STATUSES = new Set([400, 403, 413, 429]);
  * the raw `Response`. Without this the messages the Edge Function carefully
  * writes never reach the user.
  */
-async function invokeAssistant<T>(body: Record<string, unknown>): Promise<T> {
-  const result = await supabase.functions.invoke<T>('ai-rota-assistant', { body });
-
-  if (result.error) {
-    const context = (result.error as { context?: unknown }).context;
-    if (context instanceof Response && EXPLAINED_STATUSES.has(context.status)) {
-      try {
-        // `clone()`, because the SDK may already have consumed the body and a
-        // Response can only be read once.
-        const payload = (await context.clone().json()) as {
-          code?: string;
-          error?: string;
-          feature?: string;
-        };
-        if (payload.code === 'plan_required') {
-          throw new PlanRequiredError(
-            payload.error ?? 'This feature is not included in your plan.',
-            payload.feature ?? 'ai_rota_assistant',
-          );
-        }
-        if (payload.code && payload.error) {
-          throw new AssistantRefusedError(payload.error, payload.code);
-        }
-      } catch (err) {
-        // A typed error from the block above is the intended outcome and must
-        // pass through. Anything else means the body was not the JSON we
-        // expected — fall through to the original error, which is more
-        // truthful than inventing a reason.
-        if (err instanceof PlanRequiredError) throw err;
-        if (err instanceof AssistantRefusedError) throw err;
-      }
+async function invokeAssistant<T>(
+  task: 'rota' | 'announcement',
+  request: AiRotaRequest,
+): Promise<T | null> {
+  try {
+    return await api.post<T>(orgPath(request.orgId, `/ai/${task}`), {
+      prompt: request.prompt,
+      periodStart: request.periodStart,
+      periodEnd: request.periodEnd,
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'plan_required') {
+      throw new PlanRequiredError(error.message, 'ai_rota_assistant');
     }
-    throw result.error;
+    if (error instanceof ApiError && EXPLAINED_STATUSES.has(error.status) && error.code) {
+      throw new AssistantRefusedError(error.message, error.code);
+    }
+    throw error;
   }
-  return result.data as T;
 }
 
 /**
@@ -137,7 +121,7 @@ async function invokeAssistant<T>(body: Record<string, unknown>): Promise<T> {
 export async function generateRotaSuggestions(
   request: AiRotaRequest,
 ): Promise<AiRotaResponse> {
-  const data = await invokeAssistant<AiRotaResponse>({ ...request, task: 'rota' });
+  const data = await invokeAssistant<AiRotaResponse>('rota', request);
   if (!data) throw new Error('AI rota assistant returned no data');
   return data;
 }
@@ -151,10 +135,7 @@ export async function generateRotaSuggestions(
 export async function draftAnnouncement(
   request: AiAnnouncementRequest,
 ): Promise<AiAnnouncementDraft> {
-  const data = await invokeAssistant<AiAnnouncementDraft>({
-    ...request,
-    task: 'announcement',
-  });
+  const data = await invokeAssistant<AiAnnouncementDraft>('announcement', request);
   if (!data) throw new Error('AI assistant returned no announcement draft');
   return data;
 }

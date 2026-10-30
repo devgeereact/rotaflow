@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import type { Tables } from '@/types/database.types';
 
 export type FeatureFlag = Tables<'feature_flags'>;
@@ -12,49 +12,92 @@ export type FeatureFlagChange = Tables<'feature_flag_changes'>;
  * roles. The history table is platform-staff only.
  */
 
+interface ApiFlag {
+  flag_key: string;
+  name: string;
+  description: string;
+  enabled: boolean | number;
+  rollout: number | string;
+  environment: string;
+  critical: boolean | number;
+  target_plans: string[] | string | null;
+  retired_at: string | null;
+  retired_reason: string | null;
+  updated_at: string;
+  targeted_orgs: number | string;
+}
+
+async function fetchFlags(): Promise<ApiFlag[]> {
+  return (await api.get<{ flags: ApiFlag[] }>('/platform/flags')).flags;
+}
+
+function plansOf(v: ApiFlag['target_plans']): string[] {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(v);
+      return Array.isArray(parsed)
+        ? parsed.filter((x): x is string => typeof x === 'string')
+        : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export async function listFeatureFlags(): Promise<FeatureFlag[]> {
-  const { data, error } = await supabase.from('feature_flags').select('*').order('name');
-  if (error) throw error;
-  return data ?? [];
+  return (await fetchFlags())
+    .map((f) => ({
+      key: f.flag_key,
+      name: f.name,
+      description: f.description,
+      enabled: Boolean(Number(f.enabled)),
+      rollout: Number(f.rollout),
+      environment: f.environment,
+      critical: Boolean(Number(f.critical)),
+      target_plans: plansOf(f.target_plans),
+      retired_at: f.retired_at,
+      retired_reason: f.retired_reason,
+      updated_at: f.updated_at,
+      updated_by: null,
+      created_at: f.updated_at,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** How many organisations each flag names explicitly, keyed by flag. */
 export async function countFlagTargets(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.from('feature_flag_targets').select('flag_key');
-  if (error) throw error;
-  const counts = new Map<string, number>();
-  for (const row of data ?? []) {
-    counts.set(row.flag_key, (counts.get(row.flag_key) ?? 0) + 1);
-  }
-  return counts;
+  return new Map((await fetchFlags()).map((f) => [f.flag_key, Number(f.targeted_orgs)]));
 }
 
 export async function listFlagChanges(
   flagKey: string,
   limit = 20,
 ): Promise<FeatureFlagChange[]> {
-  const { data, error } = await supabase
-    .from('feature_flag_changes')
-    .select('*')
-    .eq('flag_key', flagKey)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{
+    changes: {
+      actor_name: string | null;
+      field: string;
+      before_value: string | null;
+      after_value: string | null;
+      created_at: string;
+    }[];
+  }>('/platform/flags/changes', { key: flagKey });
+  return r.changes.slice(0, limit).map((c, i) => ({
+    ...c,
+    id: `${flagKey}:${c.created_at}:${i}`,
+    flag_key: flagKey,
+    actor_id: null,
+  }));
 }
 
 /** The most recent change per flag, for the "Updated" line on each card. */
 export async function latestFlagChanges(): Promise<Map<string, FeatureFlagChange>> {
-  const { data, error } = await supabase
-    .from('feature_flag_changes')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(200);
-  if (error) throw error;
   const latest = new Map<string, FeatureFlagChange>();
-  for (const row of data ?? []) {
-    // Rows arrive newest first, so the first one seen for a key is the latest.
-    if (!latest.has(row.flag_key)) latest.set(row.flag_key, row);
+  for (const flag of await fetchFlags()) {
+    const [first] = await listFlagChanges(flag.flag_key, 1);
+    if (first) latest.set(flag.flag_key, first);
   }
   return latest;
 }
@@ -63,13 +106,12 @@ export async function setFeatureFlag(
   key: string,
   patch: { enabled?: boolean; rollout?: number; plans?: string[] },
 ): Promise<void> {
-  const { error } = await supabase.rpc('set_feature_flag', {
-    p_key: key,
-    p_enabled: patch.enabled ?? undefined,
-    p_rollout: patch.rollout ?? undefined,
-    p_plans: patch.plans ?? undefined,
+  await api.post('/platform/flags', {
+    key,
+    enabled: patch.enabled,
+    rollout: patch.rollout,
+    plans: patch.plans,
   });
-  if (error) throw error;
 }
 
 export async function setFeatureFlagTarget(
@@ -77,10 +119,5 @@ export async function setFeatureFlagTarget(
   orgId: string,
   targeted: boolean,
 ): Promise<void> {
-  const { error } = await supabase.rpc('set_feature_flag_target', {
-    p_key: key,
-    p_org: orgId,
-    p_targeted: targeted,
-  });
-  if (error) throw error;
+  await api.post('/platform/flags/targets', { key, org_id: orgId, targeted });
 }

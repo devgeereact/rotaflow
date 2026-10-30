@@ -16,6 +16,12 @@
 /** Mirrors the interval in `calendar_feed_shifts` (`0158`). Change both. */
 export const FEED_IDLE_DAYS = 90;
 
+/**
+ * The API keeps only a hash of a feed token, so the link can be shown again only on the device that issued it.
+ * Stored per organisation under this prefix, and swept on sign-out with the rest of the tenant state.
+ */
+export const CALENDAR_FEED_KEY_PREFIX = 'rotaflow:calendarFeed:';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** The columns of a live `calendar_feed_tokens` row this decision reads. */

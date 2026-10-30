@@ -64,14 +64,11 @@ describe('calendarFeedState', () => {
     ).toBe('idle');
   });
 
-  it('uses the same 90 days as the feed reader in 0158', () => {
-    const sql = readFileSync(
-      path.resolve(
-        __dirname,
-        '../../supabase/migrations/0158_a_calendar_feed_is_bounded.sql',
-      ),
+  it('uses the same 90 days as the feed reader in the API', () => {
+    const php = readFileSync(
+      path.resolve(__dirname, '../../backend/src/Mod/CalendarFeed.php'),
       'utf8',
     );
-    expect(sql).toContain(`interval '${FEED_IDLE_DAYS} days'`);
+    expect(php).toContain(`IDLE_DAYS = ${FEED_IDLE_DAYS};`);
   });
 });
