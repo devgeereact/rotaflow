@@ -10,7 +10,12 @@ import {
   isDoubleBookedLeave,
   listOrgLeaveRequests,
   reviewLeaveRequest,
+  reviewLeaveWithClashes,
+  type ClashingShift,
 } from '@/services/leaveService';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { SCHEDULING_TOOLS_FEATURE } from '@/services/schedulingService';
+import { LeaveClashModal } from '@/components/leave/LeaveClashModal';
 import { decideShiftSwap, listOrgShiftSwaps } from '@/services/swapService';
 import {
   listOrgOvertimeRequests,
@@ -71,6 +76,12 @@ export function ApprovalsPage(): JSX.Element {
   const { canApprove } = usePermissions();
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
+  // S11: with scheduling tools on, an approval lists the shifts that now clash.
+  const { has: hasFeature } = useFeatureAccess();
+  const schedulingOn = hasFeature(SCHEDULING_TOOLS_FEATURE);
+  const [clash, setClash] = useState<{ name: string; shifts: ClashingShift[] } | null>(
+    null,
+  );
 
   const [leave, setLeave] = useState<LeaveRequest[]>([]);
   const [swaps, setSwaps] = useState<ShiftSwapWithShift[]>([]);
@@ -132,7 +143,16 @@ export function ApprovalsPage(): JSX.Element {
       setDeciding(row.id);
       try {
         if (row.kind === 'leave') {
-          const decided = await reviewLeaveRequest(row.id, status, user.id);
+          let decided: LeaveRequest | null;
+          if (schedulingOn) {
+            const r = await reviewLeaveWithClashes(row.id, status);
+            decided = r.leave;
+            if (decided && r.clashingShifts.length > 0) {
+              setClash({ name: row.personName, shifts: r.clashingShifts });
+            }
+          } else {
+            decided = await reviewLeaveRequest(row.id, status, user.id);
+          }
           if (!decided) {
             // Somebody else decided it, or the person withdrew it, between
             // this list loading and the click (BUG-061).
@@ -183,7 +203,7 @@ export function ApprovalsPage(): JSX.Element {
         setReloadKey((k) => k + 1);
       }
     },
-    [user, swaps, showError, showSuccess],
+    [user, swaps, showError, showSuccess, schedulingOn],
   );
 
   return (
@@ -266,6 +286,14 @@ export function ApprovalsPage(): JSX.Element {
             );
           })}
         </ul>
+      )}
+      {clash && (
+        <LeaveClashModal
+          open
+          onClose={() => setClash(null)}
+          personName={clash.name}
+          shifts={clash.shifts}
+        />
       )}
     </div>
   );

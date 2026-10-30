@@ -16,7 +16,12 @@ import {
   listMyLeaveRequests,
   listOrgLeaveRequests,
   reviewLeaveRequest,
+  reviewLeaveWithClashes,
+  type ClashingShift,
 } from '@/services/leaveService';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { SCHEDULING_TOOLS_FEATURE } from '@/services/schedulingService';
+import { LeaveClashModal } from '@/components/leave/LeaveClashModal';
 import { getOrganisation } from '@/services/orgService';
 import { logAuditEvent } from '@/services/auditService';
 import { reportError } from '@/lib/sentry';
@@ -100,6 +105,12 @@ export function LeavePage(): JSX.Element {
   const online = useOnlineStatus();
   const { enqueue, deadLettered, discard, retry } = useSyncQueue();
   const { showError, showSuccess } = useToast();
+  // S11: with scheduling tools on, an approval lists the shifts that now clash.
+  const { has: hasFeature } = useFeatureAccess();
+  const schedulingOn = hasFeature(SCHEDULING_TOOLS_FEATURE);
+  const [clash, setClash] = useState<{ name: string; shifts: ClashingShift[] } | null>(
+    null,
+  );
 
   const [myProfile, setMyProfile] = useState<StaffProfile | null>(null);
   const [staff, setStaff] = useState<StaffProfile[]>([]);
@@ -385,7 +396,19 @@ export function LeavePage(): JSX.Element {
     async (row: LeaveDisplayRow): Promise<void> => {
       if (!user) return;
       try {
-        const updated = await reviewLeaveRequest(row.id, 'approved', user.id);
+        let updated: LeaveRequest | null;
+        if (schedulingOn) {
+          const r = await reviewLeaveWithClashes(row.id, 'approved');
+          updated = r.leave;
+          if (updated && r.clashingShifts.length > 0) {
+            setClash({
+              name: `${row.firstName} ${row.lastName}`,
+              shifts: r.clashingShifts,
+            });
+          }
+        } else {
+          updated = await reviewLeaveRequest(row.id, 'approved', user.id);
+        }
         if (!updated) {
           // Another manager decided it first (BUG-061). Saying "approved" here
           // would be a lie — the stored decision is theirs, not this one — and
@@ -407,7 +430,7 @@ export function LeavePage(): JSX.Element {
         showError('Could not approve that request.');
       }
     },
-    [user, showError, showSuccess],
+    [user, showError, showSuccess, schedulingOn],
   );
 
   const handleDecline = useCallback(
@@ -517,6 +540,14 @@ export function LeavePage(): JSX.Element {
           offline={!online}
           onWithdraw={handleWithdraw}
           bankHolidayRegion={bankHolidayRegion}
+        />
+      )}
+      {clash && (
+        <LeaveClashModal
+          open
+          onClose={() => setClash(null)}
+          personName={clash.name}
+          shifts={clash.shifts}
         />
       )}
     </>

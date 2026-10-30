@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
@@ -68,6 +77,24 @@ import {
 } from '@/services/shiftService';
 import type { AiShiftSuggestion } from '@/services/aiRotaService';
 import { RepeatWeekModal } from '@/components/rota/RepeatWeekModal';
+import { SCHEDULING_TOOLS_FEATURE } from '@/services/schedulingService';
+import {
+  shiftWarnings,
+  type SchedulingWarning,
+  type WarnAvailability,
+} from '@/lib/schedulingRules';
+
+// Scheduling tools (slice S11) load only when the `scheduling_tools` flag is on and a manager opens them.
+const PublishCheckModal = lazy(() =>
+  import('@/components/rota/PublishCheckModal').then((m) => ({
+    default: m.PublishCheckModal,
+  })),
+);
+const GeneratePatternModal = lazy(() =>
+  import('@/components/rota/GeneratePatternModal').then((m) => ({
+    default: m.GeneratePatternModal,
+  })),
+);
 import { canvasDates, weekSpans, weekStartOf } from '@/lib/rotaCanvas';
 import { reportError } from '@/lib/sentry';
 import { cn } from '@/lib/utils';
@@ -206,6 +233,11 @@ export function RotaBuilderPage(): JSX.Element {
   // and nothing read it until now (CAP-038).
   const { has: hasFeature, loading: featuresLoading } = useFeatureAccess();
   const hasAiAssistant = hasFeature('ai_rota_assistant');
+  // Scheduling tools (S11): warnings at assign, the publish preview, Generate pattern. Off, none of it shows.
+  const schedulingOn = hasFeature(SCHEDULING_TOOLS_FEATURE);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [patternOpen, setPatternOpen] = useState(false);
+  const [orgTimezone, setOrgTimezone] = useState(DEFAULT_TZ);
   const { showError, showSuccess } = useToast();
   const { confirm } = useConfirm();
   const navigate = useNavigate();
@@ -414,6 +446,7 @@ export function RotaBuilderPage(): JSX.Element {
         const org = await getOrganisation(orgId);
         if (!active) return;
         const policies = schedulingPolicies(org.settings);
+        setOrgTimezone(org.timezone || DEFAULT_TZ);
         setRotaLimits({
           minRestHours: policies.minRestHours,
           maxWeeklyHours: policies.maxWeeklyHours,
@@ -1151,6 +1184,67 @@ export function RotaBuilderPage(): JSX.Element {
     ],
   );
 
+  /**
+   * S11: what the shift as typed would trip (short rest, long week, leave, declared
+   * unavailability), read against the shifts on screen. The server's publish preview is the
+   * authority; this lets the dialog warn before anything is saved. Never blocks.
+   */
+  const assignWarnings = useCallback(
+    (values: AssignShiftFormValues): SchedulingWarning[] => {
+      if (!values.staffProfileId) return [];
+      const locationId =
+        assignModal.shift?.location_id ??
+        values.locationId ??
+        assignModal.context?.locationId;
+      const tz =
+        (locationId ? locationById.get(locationId)?.timezone : null) ?? DEFAULT_TZ;
+      let range: { startsAt: string; endsAt: string };
+      try {
+        range = computeShiftIsoRange(values.date, values.startTime, values.endTime, tz);
+      } catch {
+        return [];
+      }
+      const id = assignModal.shift?.id ?? 'shift-being-added';
+      const tzOf = (loc: string | null): string | null =>
+        loc ? (locationById.get(loc)?.timezone ?? null) : null;
+      const context = shifts
+        .filter((s) => s.id !== id)
+        .map((s) => ({ ...s, timezone: tzOf(s.location_id) }));
+      const avail: WarnAvailability[] = availability.map((a) => ({
+        staff_profile_id: a.staff_profile_id,
+        weekday: a.weekday,
+        date: a.date,
+        start_time: a.start_time,
+        end_time: a.end_time,
+        status: a.status,
+        recurring: a.recurring,
+      }));
+      const candidate = {
+        id,
+        staff_profile_id: values.staffProfileId,
+        starts_at: range.startsAt,
+        ends_at: range.endsAt,
+        break_minutes: Number(values.breakMinutes) || 0,
+        status: 'assigned',
+        timezone: tz,
+      };
+      return (
+        shiftWarnings(
+          [candidate],
+          context,
+          leave,
+          avail,
+          {
+            minRestHours: rotaLimits.minRestHours,
+            maxWeeklyHours: rotaLimits.maxWeeklyHours,
+          },
+          orgTimezone,
+        )[id] ?? []
+      );
+    },
+    [assignModal, locationById, shifts, availability, leave, rotaLimits, orgTimezone],
+  );
+
   const handleModalSave = async (values: AssignShiftFormValues): Promise<void> => {
     if (!guardEditable()) return;
     const locationId =
@@ -1268,7 +1362,7 @@ export function RotaBuilderPage(): JSX.Element {
     [staffById, locationById, confirm, handleDeleteSelectedShift],
   );
 
-  const handlePublish = async (): Promise<void> => {
+  const handlePublish = async (previewed = false): Promise<void> => {
     if (draftRotasInScope.length === 0 || !orgId) return;
 
     // §41: a critical issue "cannot publish without resolution". Publishing is
@@ -1280,6 +1374,12 @@ export function RotaBuilderPage(): JSX.Element {
       setPublishError(
         `${criticalWarnings.length} critical ${criticalWarnings.length === 1 ? 'issue' : 'issues'} must be resolved before publishing, ${first?.title ?? ''}. See the Warnings tab.`,
       );
+      return;
+    }
+
+    // S11: with scheduling tools on, the manager sees what changes and what to check first.
+    if (schedulingOn && !previewed) {
+      setPreviewOpen(true);
       return;
     }
 
@@ -1325,6 +1425,7 @@ export function RotaBuilderPage(): JSX.Element {
       }
     } finally {
       setPublishing(false);
+      setPreviewOpen(false);
     }
   };
 
@@ -2117,6 +2218,22 @@ export function RotaBuilderPage(): JSX.Element {
               >
                 {busyAction === 'repeat' ? 'Repeating…' : 'Repeat forward'}
               </Button>
+              {schedulingOn && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setPatternOpen(true)}
+                  disabled={draftRotasInScope.length === 0}
+                  title={
+                    draftRotasInScope.length === 0
+                      ? 'Patterns fill a draft week'
+                      : undefined
+                  }
+                >
+                  <CalendarRange size={14} aria-hidden="true" />
+                  Generate pattern
+                </Button>
+              )}
               {/* Shown but disabled rather than hidden while the entitlement is
                 unknown or absent: a button that disappears once the features
                 load reads as a bug, and one that was never there gives a
@@ -2683,6 +2800,7 @@ export function RotaBuilderPage(): JSX.Element {
         shift={assignModal.shift}
         onSave={handleModalSave}
         onDelete={handleModalDelete}
+        warningsFor={schedulingOn ? assignWarnings : undefined}
       />
 
       <Modal
@@ -2886,6 +3004,45 @@ export function RotaBuilderPage(): JSX.Element {
         onConfirm={handleRepeatWeek}
         busy={busyAction === 'repeat'}
       />
+
+      {schedulingOn && previewOpen && (
+        <Suspense fallback={null}>
+          <PublishCheckModal
+            open={previewOpen}
+            onClose={() => setPreviewOpen(false)}
+            rotas={draftRotasInScope}
+            staffName={(id) => {
+              const person = id ? staffById.get(id) : undefined;
+              return person ? `${person.first_name} ${person.last_name}` : 'Open shift';
+            }}
+            timezoneOf={(id) =>
+              (id ? locationById.get(id)?.timezone : null) ?? DEFAULT_TZ
+            }
+            publishing={publishing}
+            onPublish={() => void handlePublish(true)}
+          />
+        </Suspense>
+      )}
+      {schedulingOn && patternOpen && (
+        <Suspense fallback={null}>
+          <GeneratePatternModal
+            open={patternOpen}
+            onClose={() => setPatternOpen(false)}
+            rotas={draftRotasInScope}
+            locations={locations}
+            staff={staff}
+            shiftTypes={shiftTypes}
+            onGenerated={(created) => {
+              setWeekReloadKey((k) => k + 1);
+              if (created > 0) {
+                showSuccess(
+                  `Created ${created} draft ${created === 1 ? 'shift' : 'shifts'} from the pattern.`,
+                );
+              }
+            }}
+          />
+        </Suspense>
+      )}
     </DndContext>
   );
 }

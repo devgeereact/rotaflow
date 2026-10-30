@@ -1,4 +1,6 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import type { SchedulingWarning } from '@/lib/schedulingRules';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -39,6 +41,11 @@ interface AssignShiftModalProps {
   shift?: Shift | null;
   onSave: (values: AssignShiftFormValues) => Promise<void>;
   onDelete?: (shiftId: string) => Promise<void>;
+  /**
+   * Scheduling warnings for the shift as typed (slice S11, `scheduling_tools` flag). Absent while
+   * the module is off, and then nothing here changes. Warnings inform and never block saving.
+   */
+  warningsFor?: (values: AssignShiftFormValues) => SchedulingWarning[];
 }
 
 function blankValues(
@@ -87,9 +94,14 @@ export function AssignShiftModal({
   shift,
   onSave,
   onDelete,
+  warningsFor,
 }: AssignShiftModalProps): JSX.Element {
   const [values, setValues] = useState<AssignShiftFormValues>(
     blankValues(context, dates),
+  );
+  const warnings = useMemo(
+    () => (open && warningsFor ? warningsFor(values) : []),
+    [open, warningsFor, values],
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -316,6 +328,28 @@ export function AssignShiftModal({
             onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))}
           />
         </div>
+
+        {warnings.length > 0 && (
+          <div
+            role="status"
+            className="rounded-xl border border-warning/30 bg-warning-wash p-3 dark:bg-warning-wash-dark"
+          >
+            <p className="flex items-center gap-1.5 text-sm font-medium text-warning-ink dark:text-warning-ink-dark">
+              <AlertTriangle size={14} aria-hidden="true" />
+              {warnings.length === 1
+                ? 'One thing to check'
+                : `${warnings.length} things to check`}
+            </p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-warning-ink dark:text-warning-ink-dark">
+              {warnings.map((w) => (
+                <li key={w.code}>{w.message}</li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+              You can still save. These are warnings, not rules.
+            </p>
+          </div>
+        )}
 
         {error && (
           <p className="text-sm text-danger-ink dark:text-danger-ink-dark">{error}</p>

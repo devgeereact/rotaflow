@@ -132,18 +132,39 @@ export async function reviewLeaveRequest(
   status: 'approved' | 'rejected',
   _reviewedBy: string,
 ): Promise<LeaveRequest | null> {
+  return (await reviewLeaveWithClashes(id, status)).leave;
+}
+
+/** A shift the person is rostered on inside leave just approved (scheduling module, S11). */
+export interface ClashingShift {
+  id: string;
+  rota_id: string | null;
+  rota_status: string | null;
+  location_id: string | null;
+  starts_at: string;
+  ends_at: string;
+}
+
+/**
+ * `reviewLeaveRequest`, plus the shifts that now clash with the leave. The server lists them only
+ * while the `scheduling_tools` flag is on; otherwise the list is empty and nothing else differs.
+ */
+export async function reviewLeaveWithClashes(
+  id: string,
+  status: 'approved' | 'rejected',
+): Promise<{ leave: LeaveRequest | null; clashingShifts: ClashingShift[] }> {
   // The API records the reviewer as the signed-in person. A request someone else already decided answers 409
   // `already_decided`, which is the "no longer pending" outcome: null, as before.
   try {
-    const r = await api.post<{ leave: ApiLeave }>(
+    const r = await api.post<{ leave: ApiLeave; clashing_shifts?: ClashingShift[] }>(
       activeOrgPath(`/leave/${seg(id)}/review`),
       {
         status,
       },
     );
-    return toLeave(r.leave);
+    return { leave: toLeave(r.leave), clashingShifts: r.clashing_shifts ?? [] };
   } catch (error) {
-    if (isApiCode(error, 'already_decided')) return null;
+    if (isApiCode(error, 'already_decided')) return { leave: null, clashingShifts: [] };
     throw withOverlapMessage(error, OVERLAP_ON_REVIEW);
   }
 }
