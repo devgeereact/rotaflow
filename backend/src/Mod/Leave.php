@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Scope, Time};
+use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Notify, RotaDiff, Scope, Time};
 
 /**
  * Leave and overtime requests. A person asks for themselves; an owner or manager can ask for anyone and decides. A decision is made
@@ -288,6 +288,9 @@ final class Leave implements Module
             }
             $pdo->prepare("UPDATE $table SET status = ?, reviewed_by = ?, reviewed_at = UTC_TIMESTAMP() WHERE id = ?")->execute([$status, $user['id'], $id]);
             Audit::log($pdo, $o, $user['id'], "$noun.$status", $table, $id, [], 'info', 'org', $ip);
+            if ($noun === 'leave') {
+                $this->tellRequester($o, $id, $status, $user['id']);
+            }
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -321,6 +324,19 @@ final class Leave implements Module
             throw $e;
         }
         return [200, [$noun => $present($this->row($table, $o, $id))]];
+    }
+
+    /** The person is told of a decision, unless they made it themselves. */
+    private function tellRequester(string $o, string $id, string $status, string $reviewer): void
+    {
+        $q = $this->ctx->pdo->prepare('SELECT staff_profile_id, start_date, end_date FROM leave_requests WHERE id = ?');
+        $q->execute([$id]);
+        $r = $q->fetch();
+        $who = Notify::userOfStaff($this->ctx->pdo, (string) $r['staff_profile_id']);
+        if ($who === null || $who === $reviewer) {
+            return;
+        }
+        Notify::enqueue($this->ctx->pdo, $o, 'leave/reviewed', [$who], 'leave', 'Your leave request was ' . ($status === 'approved' ? 'approved' : 'declined'), RotaDiff::range($r['start_date'], $r['end_date']));
     }
 
     private function clientId(array $in): ?string

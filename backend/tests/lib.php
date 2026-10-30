@@ -72,12 +72,26 @@ function test_private_root(): string
     return $root;
 }
 
+/** A context for code that runs outside a request (the Dispatcher, cron jobs). @param array<string,mixed> $config */
+function test_ctx(PDO $pdo, array $config = []): RotaFlow\Ctx
+{
+    return new RotaFlow\Ctx($pdo, new RateLimiter($pdo), 'https://rotaflow.example.test', test_private_root(), null, 'open', test_config($config));
+}
+
+/** Private config as the tests see it: an encryption key, and no mail account unless a test adds one. @param array<string,mixed> $extra */
+function test_config(array $extra = []): array
+{
+    static $key = null;
+    $key ??= base64_encode(random_bytes(32));
+    return $extra + ['secret_key' => $key];
+}
+
 /**
  * API with a fake verifier: token "tok-<name>" is the signed-in person <name> (<name>@example.test), resolved to a real user row.
  * (JWT verification itself is covered in the core suite.)
  * @param list<RotaFlow\Module> $modules
  */
-function test_api(PDO $pdo, ?array $modules = null, string $orgCreation = 'open'): Api
+function test_api(PDO $pdo, ?array $modules = null, string $orgCreation = 'open', array $config = []): Api
 {
     $verify = static function (string $t) use ($pdo): array {
         if (preg_match('/^tok-([a-z0-9]+)$/', $t, $m) !== 1) {
@@ -87,7 +101,7 @@ function test_api(PDO $pdo, ?array $modules = null, string $orgCreation = 'open'
     };
     $limits = new RateLimiter($pdo);
     if ($modules === null) {
-        $ctx = new RotaFlow\Ctx($pdo, $limits, 'https://rotaflow.example.test', test_private_root(), null, $orgCreation);
+        $ctx = new RotaFlow\Ctx($pdo, $limits, 'https://rotaflow.example.test', test_private_root(), null, $orgCreation, test_config($config));
         $modules = RotaFlow\Modules::all($ctx);
     }
     return new Api($pdo, $verify, $limits, $modules);
@@ -103,4 +117,46 @@ function call(Api $api, string $who, string $method, string $path, array $body =
     }
     $h = $who === '' ? [] : ['authorization' => "Bearer tok-$who"];
     return $api->handle($method, $path, $h, $body !== [] ? json_encode($body) : '', '203.0.113.' . (crc32($who) % 250 + 1), $query);
+}
+
+/**
+ * Starts the fake SMTP server on a free local port. Returns the port, a function that reads the messages it received
+ * (each: ['rcpt' => ..., 'raw' => ...]), and a function that stops it. The server dies with the test process.
+ * @return array{port:int,messages:callable():list<array{rcpt:string,raw:string}>,stop:callable():void}
+ */
+function start_fake_smtp(): array
+{
+    $probe = stream_socket_server('tcp://127.0.0.1:0');
+    $port = (int) substr((string) stream_socket_get_name($probe, false), strrpos((string) stream_socket_get_name($probe, false), ':') + 1);
+    fclose($probe);
+    $file = test_private_root() . '/smtp-' . $port . '.log';
+    $proc = proc_open([PHP_BINARY, __DIR__ . '/fake-smtp.php', (string) $port, $file], [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
+    for ($i = 0; $i < 50; $i++) {
+        $t = @fsockopen('127.0.0.1', $port, $en, $es, 0.2);
+        if ($t !== false) {
+            fclose($t);
+            break;
+        }
+        usleep(100000);
+    }
+    $stop = static function () use (&$proc, $pipes): void {
+        if (is_resource($proc)) {
+            proc_terminate($proc);
+            proc_close($proc);
+        }
+    };
+    register_shutdown_function($stop);
+    return [
+        'port' => $port,
+        'messages' => static function () use ($file): array {
+            $raw = is_file($file) ? (string) file_get_contents($file) : '';
+            $out = [];
+            foreach (array_filter(explode("--MSG--\n", $raw)) as $m) {
+                [$rcpt, $body] = explode("\n", $m, 2) + [1 => ''];
+                $out[] = ['rcpt' => trim(substr($rcpt, 6)), 'raw' => $body];
+            }
+            return $out;
+        },
+        'stop' => $stop,
+    ];
 }

@@ -15,6 +15,8 @@ final class Ctx
         private $log = null,
         /** 'invite_only' (default): only a platform administrator creates organisations, by inviting the first owner. 'open': any signed-in person may. */
         public readonly string $orgCreation = 'invite_only',
+        /** Private config (smtp, secret_key, vapid, ...). Never logged, never returned to a client. @var array<string,mixed> */
+        public readonly array $config = [],
     ) {}
 
     /** Short, non-sensitive categories only. Never log tokens, emails, bodies or file contents. */

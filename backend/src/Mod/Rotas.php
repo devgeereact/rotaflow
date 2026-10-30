@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, Ctx, Db, HttpError, Input, MinimumCover, Module, Scope, Time};
+use RotaFlow\{Audit, Ctx, Db, HttpError, Input, MinimumCover, Module, Notify, RotaDiff, Scope, Time};
 
 /**
  * Rotas and their lifecycle. A rota is a draft, then published, then (when an amendment replaces it) archived.
@@ -132,6 +132,7 @@ final class Rotas implements Module
             }
             $pdo->prepare("UPDATE rotas SET status = 'published', published_at = UTC_TIMESTAMP(), published_by = ? WHERE id = ?")->execute([$user['id'], $r]);
             Audit::log($pdo, $o, $user['id'], 'rota.published', 'rotas', $r, ['supersedes' => $rota['supersedes_rota_id']], 'info', 'org', $ip);
+            $this->notifyPublished($o, $rota);
             $pdo->commit();
         } catch (\PDOException $e) {
             $pdo->rollBack();
@@ -292,6 +293,32 @@ final class Rotas implements Module
     }
 
     // ---- helpers ---------------------------------------------------------------------------------------
+
+    /** Inside the publish transaction. A first publish tells everyone with a shift; an amendment tells each person only what changed for them. */
+    private function notifyPublished(string $o, array $rota): void
+    {
+        $pdo = $this->ctx->pdo;
+        $period = RotaDiff::period($rota['period_start'], $rota['period_end']);
+        if ($rota['supersedes_rota_id'] === null) {
+            $q = $pdo->prepare("SELECT DISTINCT sp.user_id FROM shifts s JOIN staff_profiles sp ON sp.id = s.staff_profile_id AND sp.org_id = s.org_id WHERE s.rota_id = ? AND s.org_id = ? AND s.status <> 'cancelled' AND sp.user_id IS NOT NULL");
+            $q->execute([$rota['id'], $o]);
+            Notify::enqueue($pdo, $o, 'rota/published', $q->fetchAll(\PDO::FETCH_COLUMN), 'rota', $period . ' published');
+            return;
+        }
+        $shape = function (string $rotaId) use ($pdo, $o): array {
+            $q = $pdo->prepare("SELECT s.staff_profile_id AS staff, sp.user_id AS user, s.starts_at, s.ends_at, l.name AS location, COALESCE(l.timezone, 'Europe/London') AS tz FROM shifts s JOIN staff_profiles sp ON sp.id = s.staff_profile_id AND sp.org_id = s.org_id LEFT JOIN locations l ON l.id = s.location_id AND l.org_id = s.org_id WHERE s.rota_id = ? AND s.org_id = ? AND s.status <> 'cancelled' AND s.staff_profile_id IS NOT NULL");
+            $q->execute([$rotaId, $o]);
+            return array_map(static function (array $r): array {
+                $z = new \DateTimeZone($r['tz']);
+                $a = (new \DateTimeImmutable($r['starts_at'] . ' UTC'))->setTimezone($z);
+                $b = (new \DateTimeImmutable($r['ends_at'] . ' UTC'))->setTimezone($z);
+                return ['staff' => $r['staff'], 'user' => $r['user'], 'day' => $a->format('Y-m-d'), 'label' => $a->format('H:i') . '-' . $b->format('H:i') . ($r['location'] !== null ? ' at ' . $r['location'] : '')];
+            }, $q->fetchAll());
+        };
+        foreach (RotaDiff::messages($shape((string) $rota['supersedes_rota_id']), $shape((string) $rota['id']), $period) as $user => $m) {
+            Notify::enqueue($pdo, $o, 'rota/published', [$user], 'rota', $m['title'], $m['body']);
+        }
+    }
 
     /** Copies the non-cancelled shifts of $from into $to, moved $days later in each shift's site time zone. Returns how many. */
     private function copyShifts(string $o, string $from, string $to, int $days, ?string $unused): int

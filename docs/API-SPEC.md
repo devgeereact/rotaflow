@@ -456,3 +456,24 @@ Nothing about a unique index is exposed. A member reads only their own records o
 | `POST /orgs/{o}/timesheets/{t}/reopen` | owner, manager | Back to `open`; the approval history stays |
 
 Deleting a shift removes the swaps that offered it; clock events that pointed at it keep their record and lose the link.
+
+### Slice S6: communication
+
+Placeholders: `{n}` announcement. The Dispatcher and the cron entry have no HTTP surface.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/notifications[?unread=1&limit]` | the person (own) | Inbox, newest first, with `unread_count` |
+| `POST /orgs/{o}/notifications/read` | the person (own) | `{all: true}` or `{ids: [up to 100]}` |
+| `POST /me/push-subscriptions` | the person | `{endpoint (https), keys: {p256dh, auth}}`; registering a device another person had takes it over |
+| `POST /me/push-subscriptions/delete` | the person | `{endpoint}`; only their own |
+| `POST /orgs/{o}/settings` | owner | `{notification_defaults?, job_titles_managed_by?}`; the matrix is 5 events (`rota_published`, `shift_reminder`, `swap_requests`, `leave_updates`, `announcements`) by 3 channels (`in_app`, `email`, `push`), booleans only |
+| `GET/POST /orgs/{o}/smtp`, `POST .../smtp/test`, `POST .../smtp/delete` | owner | The organisation's own mail account. A read says `has_password`, never the password. Saving without `smtp_pass` keeps the stored one; changing host, port, user or password clears `verified_at`. The test mails only the owner's own address and returns `{ok}` or a short `error` |
+| `GET/POST /orgs/{o}/announcements`, `POST .../{n}`, `.../{n}/publish`, `.../{n}/delete` | read: member (staff see published only); write: owner, manager | `{title, body, urgent?, scope: org|location|department, location_id?, department_id?, publish?}`. Publishing the first time notifies the audience once |
+| `POST .../announcements/{n}/read` | a member with a staff record | Idempotent |
+| `GET .../announcements/{n}/reads`, `POST .../{n}/remind` | owner, manager | Who has read it and how many in the audience have not; remind those who have not (6 an hour) |
+| `GET /orgs/{o}/calendar-feed`, `POST .../issue`, `POST .../revoke` | the person (own) | Issue returns the secret token once; issuing a new one revokes the old |
+| `GET /ics?token=` | public | The person's published, uncancelled shifts from 30 days ago to 180 ahead, as `text/calendar`. A bad token is a bare 404; guessing is rate limited; an unused feed ends after 90 days |
+| `POST /orgs/{o}/invites/{i}/resend` | owner, manager | A fresh link for a pending invitation, emailed; the old link stops working |
+
+Creating or resending an invitation now also reports `email_sent` and `email_error` (`no_mail_account`, `connect_failed`, `smtp_550`, ...).

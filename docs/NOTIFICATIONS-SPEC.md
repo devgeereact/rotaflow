@@ -7,6 +7,32 @@ and `public/` on that date; the function and trigger notes at the end were moved
 from `docs/DATA-MODEL.md` §6. Delivery numbers from production (how many have
 actually been sent) are in `docs/SAAS.md` §2, because they change.
 
+## The PHP implementation (merge slice S6, in progress)
+
+Status: **PARTIAL.** This section describes what exists in `backend/` and is tested; the product still delivers through the Supabase
+path below until the cutover. When the cutover happens the rest of this file is rewritten to match, and the Supabase text is deleted.
+
+| Step | Was | Now |
+| ---- | --- | --- |
+| Enqueue | Postgres triggers write `notification_outbox` in the event's transaction | `Notify::enqueue`, called inside the PHP transaction that makes the change (rota publish, leave decision, swap decision, announcement publish and reminder, the missed-clock-in job). Same guarantee: the row commits with the change or not at all |
+| Drain | `pg_cron` every minute posts to `send-notification` with a vault secret | cPanel cron every minute runs `bin/cron.php`, which runs `Mod\Notifications::cron`: scheduled alerts, then `Dispatcher::drain`. No HTTP hop and no shared secret exist, because nothing is called over the network |
+| Claim | The drain marked rows by `request_id` | A row is claimed (`sending`) before delivery; a claim older than ten minutes is returned to `pending`, so a crashed run loses nothing; five attempts then `abandoned`, backing off 1, 2, 4, 8 minutes |
+| Deliver | Edge Function | `Dispatcher::deliver`: drop recipients who are not active members; the organisation's matrix decides channels (an absent or malformed matrix reads as ON); a person's own mute stops email and push but never fills or empties their inbox; inbox row, then email, then push; one `notification_deliveries` row per attempt with a reason when skipped |
+| Email | Deno SMTP | `SmtpMailer`: port 465 implicit TLS, any other port STARTTLS, certificate and host name always verified, header-injection safe. An organisation's own account (password AES-256-GCM encrypted with the private `secret_key`) is preferred, then the platform account (`smtp` in private config), then none |
+| Push | `web-push` over Deno | `WebPushSender`: RFC 8291 encryption and RFC 8292 VAPID with OpenSSL and cURL only, verified against the RFC's own example. The existing VAPID keys go in private config (`vapid`) |
+| Templates | `render_notification` RPC | Organisation row, else platform row, else the built-in wording; `{{name}}` placeholders filled in one pass so a value is never expanded twice |
+| Invitations | `send-invite` function | `Mod\Invites` emails the link on creation and on resend, best effort; the invitation is never lost if the send fails, and its `send_error` says why |
+| Enquiries | `public-enquiry` function | Platform console slice (S8) |
+
+Not yet in PHP: expiring-document alerts (arrive with documents, S8 and S10) and the trial-ending reminder (billing, S7). The daily and
+weekly email summary remains unbuilt, as before. Web push has never been seen arriving on a real device; that stays **NOT TESTED**.
+
+The one cron entry the host needs (the owner adds it; `bin/doctor.php` first):
+
+```text
+* * * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private /usr/local/bin/php $HOME/rotaflow-private/app/bin/cron.php >> $HOME/rotaflow-private/logs/cron.log 2>&1
+```
+
 ## The path, end to end
 
 1. **Enqueue, in the same transaction as the event.** A trigger or RPC writes a

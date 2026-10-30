@@ -3,7 +3,7 @@
 Status: **PARTIAL.** The Supabase back end is being replaced (`docs/MERGE-TARGET.md`). Row-level security has no
 MariaDB equivalent, so every policy becomes an explicit check in `backend/`, and this table is the proof that none
 was lost. The target is every one of the 119 final policies (113 on public tables, 6 on `storage.objects`)
-accounted for here. **57 are mapped so far (slices S2 to S5).** A row is not DONE until the test named in it passes.
+accounted for here. **69 are mapped so far (slices S2 to S6).** A row is not DONE until the test named in it passes.
 
 How to read it. The Postgres rule is the final-state policy after all migrations (replayed, not the first
 definition). The PHP check names the code that now enforces it. Tests are in `backend/tests/suites/`.
@@ -159,3 +159,31 @@ status directly, the API exposes named actions instead, so the rule cannot be by
 | Realtime badges (`useNavBadgeCounts`) | Counts of requests waiting | `GET /orgs/{o}/attention` (owner and manager) | 105, 110 | DONE |
 | Review notification triggers (leave, swap, rota) | A message to the person | Notifications: S6 | none yet | PLANNED S6 |
 | `enforce_org_not_read_only` on these tables | Read-only organisations cannot write | Billing state: S7 | none yet | PLANNED S7 |
+
+## S6: communication
+
+| Table | Policy | Postgres rule (final) | PHP check | Test | Status |
+| ----- | ------ | --------------------- | --------- | ---- | ------ |
+| notifications | `notifications_select` / `_write` | The person reads and updates their own; **no client insert** | `Notifications::list`, `markRead` are keyed to the caller; only the Dispatcher inserts (no route can) | 120 incl. cross-user mark | DONE |
+| notification_outbox | RLS on, no client policy | Written by triggers and the service role only | No endpoint reads or writes it; `Notify::enqueue` is called from server code | 120 | DONE |
+| notification_deliveries | RLS on, no client policy | Service role only | Written by the Dispatcher; no endpoint | 120 | DONE |
+| notification_templates | `notification_templates_select` and `_write` | Read by members (org or platform rows); written by platform admins | Read by the Dispatcher only; the write path arrives with the platform console | 120 (resolution) | DONE (read); PLANNED S8 (write) |
+| push_subscriptions | `push_subscriptions_*` | The person's own rows | `Notifications::subscribe`, `unsubscribe` act only on the caller's rows; the endpoint's hash is unique, so a second person on a device takes it over | 120 | DONE |
+| org_smtp_settings | `org_smtp_settings_*` + column grant withholding `smtp_pass` + `org_smtp_settings_safe` | Owner only; the password is never readable | `OrgSettings::getSmtp` (owner; returns `has_password`, never the password or ciphertext), `saveSmtp`, `testSmtp` (mails only the owner's own address), `deleteSmtp`. **Tightened:** the password is encrypted at rest (it was plaintext) | 125; mutation | DONE |
+| calendar_feed_tokens | `calendar_feed_tokens_*` + `issue_calendar_feed_token`, `calendar_feed_shifts` | The person's own token; a bad token yields nothing; 90 days idle revokes; 120 reads an hour | `CalendarFeed::issue`, `revoke`, `status`, and the public `feed`: only the token's SHA-256 is stored, a new token revokes the old, a bad token is a bare 404, misses are rate limited | 125 | DONE |
+| announcements | `announcements_select`, `announcements_write` | Member reads; owner and manager write | `Announcements::list`, `save`, `publish`, `delete`: owner and manager write. **Tightened:** staff read only published notices (the old policy let any member read drafts) | 125; mutation | DONE |
+| announcement_reads | `announcement_reads_*` | The person's own receipts; managers read all | `Announcements::read` (own staff record), `reads` (owner and manager) | 125 | DONE |
+
+| Postgres function or trigger | Rule | PHP | Test | Status |
+| ---------------------------- | ---- | --- | ---- | ------ |
+| `enqueue_rota_published_notification`, `rota_amendment_changes` | Tell everyone with a shift on a first publish; on an amendment tell each person only what changed for them | `Rotas::notifyPublished`, the pure `RotaDiff::messages` | 120 | DONE |
+| `enqueue_leave_reviewed_notification` | Tell the requester of an approval or rejection, unless they made it | `Leave::tellRequester` | 120 | DONE |
+| `enqueue_swap_reviewed_notification` | Tell the requester of an approval or rejection, unless they made it | `Swaps::tell` (also when the colleague declines) | 120 | DONE |
+| `enqueue_announcement_notification`, `announcement_audience` | Tell the audience once, on first publish | `Announcements::doPublish`, `audience` | 125 | DONE |
+| `remind_announcement_unread` | Owner and manager; remind those in the audience who have not read it | `Announcements::remind` (rate limited 6 an hour) | 125 | DONE |
+| `enqueue_scheduled_alerts` (missed clock-in) | One alert per shift to owners and managers, 30 minutes to 12 hours after the start, none if clocked in | `Notifications::scheduledAlerts` with a dedupe key | 120 | DONE |
+| `enqueue_scheduled_alerts` (document expiry, trial ending) | Alert owners and managers | Documents (S8, S10) and billing (S7) | none yet | PLANNED |
+| `dispatch_notification_outbox`, `verify_notification_secret`, vault | Shared-secret HTTP hop to an Edge Function | Gone: the Dispatcher runs inside the cron process, so there is nothing to authenticate | n/a | DONE (removed) |
+| `send-notification` matrix and mute | Org matrix 5 x 3, person's mute for email and push only, permissive defaults | `Dispatcher::deliver`, `matrix` | 120; mutations | DONE |
+| `send-invite` | Email the invitation | `Invites::email`, `resend` | 125 | DONE |
+| `test-smtp` | Test an organisation's account | `OrgSettings::testSmtp` | 125 | DONE |

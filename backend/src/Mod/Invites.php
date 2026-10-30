@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Scope};
+use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Mail, Module, Scope};
 
 /**
  * Join links. A token is 32 random bytes, shown once; only its SHA-256 is stored. Redeeming needs a signed-in
@@ -24,6 +24,7 @@ final class Invites implements Module
             ['GET', '/orgs/{o}/invites', $this->list(...)],
             ['POST', '/orgs/{o}/invites', $this->create(...)],
             ['POST', '/orgs/{o}/invites/{i}/revoke', $this->revoke(...)],
+            ['POST', '/orgs/{o}/invites/{i}/resend', $this->resend(...)],
             ['POST', '/invites/preview', $this->preview(...), 'public'],
             ['POST', '/invites/accept', $this->accept(...)],
         ];
@@ -91,8 +92,9 @@ final class Invites implements Module
             throw $e;
         }
         Audit::log($pdo, $o, $user['id'], 'invite.created', 'invites', $id, ['role' => $role], 'info', 'org', $ip);
-        // The token is returned once, for the copyable link. Emailing it arrives with the mailer in S6.
-        return [201, ['invite' => ['id' => $id, 'email' => $email, 'role' => $role], 'token' => $token]];
+        // The token is returned once for the copyable link, and emailed best-effort: a refused send never loses the invitation.
+        [$sent, $why] = $this->email($o, $id, $email, $role, $token);
+        return [201, ['invite' => ['id' => $id, 'email' => $email, 'role' => $role], 'token' => $token, 'email_sent' => $sent, 'email_error' => $why]];
     }
 
     private function revoke(array $user, array $in, string $ip, string $o, string $i): array
@@ -107,6 +109,54 @@ final class Invites implements Module
         }
         Audit::log($pdo, $o, $user['id'], 'invite.revoked', 'invites', $i, [], 'info', 'org', $ip);
         return [200, ['ok' => true]];
+    }
+
+    /**
+     * Issues a fresh link for a pending invitation and emails it. The old link stops working. (The token is stored only as a hash, so
+     * an invitation cannot be re-sent as it was; this is how a lost or unsent one is recovered.)
+     */
+    private function resend(array $user, array $in, string $ip, string $o, string $i): array
+    {
+        $pdo = $this->ctx->pdo;
+        $m = Scope::membership($pdo, $user['id'], $o);
+        Scope::require($m, Scope::MANAGERS);
+        Scope::requireWritable($m);
+        $this->ctx->limits->hit('invite-resend', $o, 30, 3600);
+        $q = $pdo->prepare("SELECT email, role FROM invites WHERE id = ? AND org_id = ? AND accepted_at IS NULL AND revoked_at IS NULL");
+        $q->execute([$i, $o]);
+        $inv = $q->fetch() ?: throw HttpError::notFound();
+        if ($inv['role'] === 'owner') {
+            throw HttpError::forbidden('Owner invitations are issued by the platform');
+        }
+        $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        $pdo->prepare('UPDATE invites SET token_hash = ?, expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY) WHERE id = ?')->execute([hash('sha256', $token), self::TTL_DAYS, $i]);
+        [$sent, $why] = $this->email($o, $i, $inv['email'], $inv['role'], $token);
+        Audit::log($pdo, $o, $user['id'], 'invite.resent', 'invites', $i, [], 'info', 'org', $ip);
+        return [200, ['token' => $token, 'email_sent' => $sent, 'email_error' => $why]];
+    }
+
+    /**
+     * Sends the invitation email through the organisation's mail account, else the platform's. The subject names no organisation (so the
+     * message is no use as a phishing template); the body does. Records whether it left, and why not.
+     * @return array{0:bool,1:?string}
+     */
+    private function email(string $o, string $inviteId, string $to, string $role, string $token): array
+    {
+        $pdo = $this->ctx->pdo;
+        $mail = Mail::forOrg($this->ctx, $o);
+        $why = null;
+        $sent = false;
+        if ($mail === null) {
+            $why = 'no_mail_account';
+        } else {
+            $org = $pdo->prepare('SELECT name FROM organisations WHERE id = ?');
+            $org->execute([$o]);
+            $link = rtrim($this->ctx->appUrl, '/') . '/invite/' . $token;
+            $sent = $mail['mailer']->send($to, 'You have been invited to join a team on RotaFlow', "Hello,\n\nYou have been invited to join " . $org->fetchColumn() . " on RotaFlow as " . $role . ".\n\nOpen this link to accept. It works for " . self::TTL_DAYS . " days, and only for this email address:\n" . $link . "\n\nIf you were not expecting this, you can ignore it.");
+            $why = $sent ? null : $mail['mailer']->lastError();
+        }
+        $pdo->prepare('UPDATE invites SET last_sent_at = ?, send_error = ? WHERE id = ?')->execute([$sent ? gmdate('Y-m-d H:i:s') : null, $why, $inviteId]);
+        return [$sent, $why];
     }
 
     /** Public: the token is the credential. Shows enough to recognise the invitation before signing in. */

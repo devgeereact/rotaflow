@@ -21,7 +21,7 @@ if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
 }
 $config = Bootstrap::config($root, getenv('ROTAFLOW_CONFIG_FILE') ?: 'config.php');
 $pdo = Db::connect($config);
-$ctx = new Ctx($pdo, new RateLimiter($pdo), (string) ($config['app_url'] ?? ''), $root, static fn (string $m) => Bootstrap::log($root, $m));
+$ctx = new Ctx($pdo, new RateLimiter($pdo), (string) ($config['app_url'] ?? ''), $root, static fn (string $m) => Bootstrap::log($root, $m), 'invite_only', $config);
 // Build the modules first, as the API does, so listeners they register in their constructors are active for the jobs below.
 Modules::all($ctx);
 $files = glob(__DIR__ . '/../src/Mod/*.php') ?: [];

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Scope, Time};
+use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Notify, Scope, Time};
 
 /**
  * Shift swaps and the open-shift board.
@@ -127,6 +127,9 @@ final class Swaps implements Module
             throw HttpError::forbidden('Only the colleague it was offered to can answer, and only while it is pending');
         }
         Audit::log($pdo, $o, $user['id'], "swap.$status", 'shift_swaps', $w, [], 'info', 'org', $ip);
+        if ($status === 'rejected') {
+            $this->tell($o, $this->load($o, $w), 'rejected', null); // the colleague declined: the requester should hear it
+        }
         return [200, ['swap' => $this->present($this->load($o, $w))]];
     }
 
@@ -200,16 +203,19 @@ final class Swaps implements Module
             $pdo->prepare('UPDATE shift_swaps SET status = ?, reviewed_by = ?, reviewed_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$status, $user['id'], $w]);
             if ($status === 'rejected') {
                 Audit::log($pdo, $o, $user['id'], 'swap.rejected', 'shift_swaps', $w, [], 'info', 'org', $ip);
+                $this->tell($o, $swap, 'rejected', $user['id']);
                 $pdo->commit();
                 return [200, ['outcome' => 'declined']];
             }
             if ($swap['target_staff_profile_id'] === null) {
                 Audit::log($pdo, $o, $user['id'], 'swap.approved', 'shift_swaps', $w, ['reassigned' => false], 'info', 'org', $ip);
+                $this->tell($o, $swap, 'approved', $user['id']);
                 $pdo->commit();
                 return [200, ['outcome' => 'approved', 'reassigned' => false, 'reason' => 'no-target']];
             }
             $applied = $this->applyReassignment($swap, $user['id'], $ip);
             Audit::log($pdo, $o, $user['id'], 'swap.approved', 'shift_swaps', $w, ['reassigned' => true], 'info', 'org', $ip);
+            $this->tell($o, $swap, 'approved', $user['id']);
             $pdo->commit();
         } catch (\Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -355,6 +361,16 @@ final class Swaps implements Module
     }
 
     // ---- helpers ---------------------------------------------------------------------------------------
+
+    /** Tells the requester of an outcome, unless they decided it themselves. */
+    private function tell(string $o, array $swap, string $status, ?string $by): void
+    {
+        $who = Notify::userOfStaff($this->ctx->pdo, (string) $swap['requested_by']);
+        if ($who === null || $who === $by) {
+            return;
+        }
+        Notify::enqueue($this->ctx->pdo, $o, 'swap/reviewed', [$who], 'swap', 'Your shift swap was ' . ($status === 'approved' ? 'approved' : 'declined'));
+    }
 
     /** @return array<string,mixed> */
     private function load(string $o, string $w): array
