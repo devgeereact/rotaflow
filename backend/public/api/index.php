@@ -13,7 +13,7 @@ if (!is_file($autoload)) {  // nosemgrep: php.lang.security.injection.tainted-fi
 }
 require_once $autoload;
 
-use RotaFlow\{Api, Bootstrap, Ctx, Db, HttpError, Modules, RateLimiter};
+use RotaFlow\{Api, Bootstrap, Ctx, Db, HttpError, Modules, RateLimiter, Users};
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -50,7 +50,7 @@ try {
     $ip = (($config['trust_cf_connecting_ip'] ?? false) && Bootstrap::fromCloudflare($remote) && isset($_SERVER['HTTP_CF_CONNECTING_IP'])) ? (string) $_SERVER['HTTP_CF_CONNECTING_IP'] : $remote;
     $limits = new RateLimiter($pdo);
     $ctx = new Ctx($pdo, $limits, (string) ($config['app_url'] ?? ''), $root, static fn (string $m) => Bootstrap::log($root, $m));
-    $api = new Api($pdo, static fn (string $t): array => $jwt->verify($t), $limits, Modules::all($ctx));
+    $api = new Api($pdo, static fn (string $t): array => Users::resolve($pdo, $jwt->verify($t)), $limits, Modules::all($ctx));
     [$status, $payload] = $api->handle($method, $path, $headers, (string) file_get_contents('php://input'), $ip, $_GET);
     $respond($status, $payload);
 } catch (HttpError $e) {

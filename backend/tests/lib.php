@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Env: TEST_DB_HOST/PORT/NAME/USER/PASS. The database is dropped and recreated: its name must contain "test".
 require_once __DIR__ . '/../src/Autoload.php';
 
-use RotaFlow\{Api, Db, HttpError, RateLimiter};
+use RotaFlow\{Api, Db, HttpError, RateLimiter, Users};
 
 $host = getenv('TEST_DB_HOST') ?: '127.0.0.1';
 $port = getenv('TEST_DB_PORT') ?: '3308';
@@ -73,19 +73,24 @@ function test_private_root(): string
 }
 
 /**
- * API with a fake verifier: token "tok-<name>" is the signed-in principal <name>.
+ * API with a fake verifier: token "tok-<name>" is the signed-in person <name> (<name>@example.test), resolved to a real user row.
  * (JWT verification itself is covered in the core suite.)
  * @param list<RotaFlow\Module> $modules
  */
-function test_api(PDO $pdo, array $modules = []): Api
+function test_api(PDO $pdo, ?array $modules = null): Api
 {
-    $verify = static function (string $t): array {
+    $verify = static function (string $t) use ($pdo): array {
         if (preg_match('/^tok-([a-z0-9]+)$/', $t, $m) !== 1) {
             throw HttpError::unauthorized();
         }
-        return ['sub' => 'user_' . $m[1], 'email' => $m[1] . '@example.test'];
+        return Users::resolve($pdo, ['sub' => 'user_' . $m[1], 'email' => $m[1] . '@example.test']);
     };
-    return new Api($pdo, $verify, new RateLimiter($pdo), $modules);
+    $limits = new RateLimiter($pdo);
+    if ($modules === null) {
+        $ctx = new RotaFlow\Ctx($pdo, $limits, 'https://rotaflow.example.test', test_private_root());
+        $modules = RotaFlow\Modules::all($ctx);
+    }
+    return new Api($pdo, $verify, $limits, $modules);
 }
 
 /** Calls the API as <who> ('' = anonymous). @return array{0:int,1:array<string,mixed>} */

@@ -337,3 +337,41 @@ given in `docs/DATA-MODEL.md` §6. The rota publication RPCs are in
   `platform_tenant_counts` above — `locations_select` itself stayed gated behind
   `is_org_member()` (`0028`)/`0031`'s carve-out never covered it, so a direct count
   silently read zero for every org without an open session.
+
+## PHP API (target, slice S2 of the merge)
+
+Status: **PARTIAL.** These endpoints exist in `backend/` and are tested, but the product still runs on the
+Edge Functions and RPCs above until the cutover (`docs/RESTRUCTURE-PLAN.md`). When an endpoint replaces an
+RPC or function, the entry above is removed in the same change.
+
+Conventions. Base path `/api`. GET and POST only; a mutation is a POST with the verb in the path.
+`Authorization: Bearer <Clerk session token>` on everything except routes marked public. JSON in, JSON out.
+Every error is `{"error":{"code","message"}}` with a stable `code`; a 500 adds a `correlation_id` and never a
+trace. Placeholders (`{o}` organisation, `{m}` membership, `{i}` invite, `{d}` delegation) are UUIDs. An
+organisation id the caller does not belong to, a malformed id and an unknown route all answer 404 once
+signed in, and 401 when not, so ids and routes cannot be probed. Limits: 300 per minute per address on public
+routes, 600 per minute per person elsewhere, request body 64 KB.
+
+| Method and path | Who | Does | Notable codes |
+| --------------- | --- | ---- | ------------- |
+| `GET /health` | anyone | Entrypoint is alive; answered before config is read | |
+| `GET /me` | signed in | The person, their active and invited memberships, and their platform role | `email_in_use` 409 |
+| `POST /orgs` | signed in | Create an organisation (30-day trial, `professional`, support access off); the caller becomes owner. 5 per hour | `rate_limited` 429, `invalid_input` 422 |
+| `GET /orgs/{o}` | member | The organisation and the caller's own membership | |
+| `POST /orgs/{o}` | owner | Rename | `org_not_active` 403 |
+| `GET /orgs/{o}/members` | member | Members; email and name only for owner and manager | |
+| `POST /orgs/{o}/members/{m}/role` | owner | Set `manager` or `staff`. Owner changes only by transfer | `forbidden` 403 |
+| `POST /orgs/{o}/members/{m}/status` | owner | `active` or `suspended`; an owner cannot be suspended | `not_accepted` 409 |
+| `POST /orgs/{o}/transfer-ownership` | owner | `{membership_id}`; promotes first, then demotes the caller to manager, in one transaction | `invalid_input` 422 |
+| `GET /orgs/{o}/delegations` | member | Live manager cover | |
+| `POST /orgs/{o}/delegations` | owner, manager (real role) | `{membership_id, ends_at, note?}`; at most 90 days; replaces any live cover for the pair | `invalid_input` 422 |
+| `POST /orgs/{o}/delegations/{d}/revoke` | lender, or real owner or manager | End cover now | |
+| `GET /orgs/{o}/invites` | owner, manager | Invitations with a derived `state`; never a token | |
+| `POST /orgs/{o}/invites` | owner, manager | `{email, role: manager|staff}`; returns the token once. 60 per hour per organisation, 3 per address per day | `invite_pending`, `already_member` 409 |
+| `POST /orgs/{o}/invites/{i}/revoke` | owner, manager | Revoke a pending invitation | |
+| `POST /invites/preview` | public | `{token}` returns organisation name, role, email, expiry. 30 per minute per address | `invite_invalid` 404 |
+| `POST /invites/accept` | signed in | `{token}`; the verified email must equal the invited address | `invite_email_mismatch` 403, `invite_invalid` 404 |
+
+A role check uses the **effective** role: a live delegation lifts a staff member to manager (never owner) and
+ends the moment its lender stops being an owner or manager. Acts a delegate must never perform (lending cover
+onwards, transferring ownership, ending a colleague's cover) check the **real** role.
