@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+
+namespace RotaFlow;
+
+/** Shared services handed to every module. */
+final class Ctx
+{
+    /** @param ?callable(string):void $log */
+    public function __construct(
+        public readonly \PDO $pdo,
+        public readonly RateLimiter $limits,
+        public readonly string $appUrl = '',
+        public readonly string $privateRoot = '',
+        private $log = null,
+    ) {}
+
+    /** Short, non-sensitive categories only. Never log tokens, emails, bodies or file contents. */
+    public function log(string $message): void
+    {
+        if ($this->log !== null) {
+            ($this->log)($message);
+        }
+    }
+}

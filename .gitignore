@@ -100,3 +100,8 @@ graphify-out/
 # Local scratch and recovery (global rule: gitignored)
 .local-test/
 .local-state/
+
+# PHP API: dependencies and real server config (only the example is tracked)
+backend/vendor/
+backend/private/*
+!backend/private/config.example.php

@@ -371,6 +371,24 @@ steps moved to `docs/API-SPEC.md` ("Billing functions") on 11 October 2026.
 
 ---
 
+## 9d. The PHP API (`backend/`, in progress)
+
+Status: **PARTIAL.** The skeleton exists and is tested; the product still runs on
+Supabase until the cutover in `docs/MERGE-TARGET.md` and `docs/RESTRUCTURE-PLAN.md`
+is approved and done. Until then this section describes the target, not the live
+system. `backend/` is the one top-level folder added by the merge.
+
+| Part                          | What it is                                                                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend/public/api/index.php` | The only web-reachable file. Health first, then config, Clerk token check, router. GET and POST only; every error is `{"error":{"code","message"}}`      |
+| `backend/src/`                | `Jwt` (Clerk RS256 against the issuer's cached JWKS), `Api` (router, sign-in gate, rate limits), `Db`, `RateLimiter`, `Sql` (statement splitter), `Bootstrap` |
+| `backend/bin/migrate.php`     | Numbered `NNN-name.sql` files, a checksum per applied file (a changed file aborts the run), run as the migration identity                                |
+| `backend/bin/cron.php`        | One cPanel cron entry; runs each module's `cron()` job under a lock. No long-running worker exists on the host                                           |
+| Private root                  | `rotaflow-private/` outside every web root on the server: `config/`, `cache/` (JWKS), `logs/`. Located by `ROTAFLOW_PRIVATE_ROOT`, never by the request      |
+| Tests                         | `backend/tests/`, run with `pnpm run test:php` against a throwaway MariaDB on `127.0.0.1:3308` (`scripts/test-db.sh up`), never against live data         |
+
+Tenancy, roles and the policy-to-check table arrive with slice S2.
+
 ## 10. Edge Functions
 
 The inventory of every Edge Function, with its auth model, inputs and outputs, and

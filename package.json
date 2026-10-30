@@ -27,7 +27,9 @@
     "og:image": "node scripts/generate-og-image.mjs",
     "load:test": "node scripts/load-test-workforce.mjs",
     "check:docs-impact": "node scripts/check-docs-impact.mjs",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm check:bundle && pnpm check:migrations && pnpm check:docs && pnpm check:export",
+    "test:php": "bash scripts/test-db.sh up && php backend/tests/run.php",
+    "check:php": "for f in $(find backend -name \"*.php\" -not -path \"*/vendor/*\"); do php -l \"$f\" >/dev/null || exit 1; done && pnpm run test:php",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm check:bundle && pnpm check:migrations && pnpm check:docs && pnpm check:export && pnpm check:php",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
   },
   "dependencies": {

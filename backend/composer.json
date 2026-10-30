@@ -1,0 +1,16 @@
+{
+  "name": "rotaflow/backend",
+  "description": "RotaFlow PHP API",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": ">=8.4",
+    "ext-curl": "*",
+    "ext-openssl": "*",
+    "ext-pdo": "*"
+  },
+  "config": {
+    "platform": { "php": "8.4.27" },
+    "sort-packages": true
+  }
+}
